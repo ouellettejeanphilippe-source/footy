@@ -147,13 +147,22 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   </a>
   <span id="hdate" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)"></span>
   <div class="sp"></div>
-  <div class="live-p"><span class="ldot"></span>LIVE</div>
+  <button class="btn" id="filter-all" onclick="applyFilter('all')" style="border-color:var(--accent);color:var(--accent)">TOUS</button>
+  <button class="btn" id="filter-live" onclick="applyFilter('live')"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>LIVE</button>
+  <button class="btn" id="filter-upcoming" onclick="applyFilter('upcoming')">À VENIR</button>
+  <div class="sp"></div>
   <button class="btn" onclick="scrollToNow()">⬤ Now</button>
   <button class="btn o" onclick="openDbg()">🔬 Debug</button>
   <button class="btn g" id="relBtn" onclick="loadAll()">↺ Actualiser</button>
 </div>
 
-<div class="sbar" id="sbar"><span style="color:var(--muted)">footybite.do</span><div class="vsep"></div></div>
+<div class="sbar" id="sbar">
+  <span style="color:var(--muted)">footybite.do</span>
+  <div class="vsep"></div>
+  <select id="sportFilter" class="btn" style="padding:2px 8px;font-size:11px;margin-right:6px;" onchange="applySportFilter()">
+    <option value="all">Tous les sports</option>
+  </select>
+</div>
 
 <div class="epg">
   <div class="ov" id="ov">
@@ -217,7 +226,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 'use strict';
 
 /* ══ STATE ══════════════════════════════ */
-var S = { log:[], raw:'', matches:[], proxy:'' };
+var S = { log:[], raw:'', matches:[], proxy:'', filter:'all', sportFilter:'all' };
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://www.footybite.do/';
@@ -383,6 +392,7 @@ function parseFootybite(html){
 
     if(timeM){
       startTime=pad(parseInt(timeM[1]))+':'+timeM[2];
+      startTime=getEstTime(startTime);
       status='upcoming';
     } else if(scoreM){
       score=[parseInt(scoreM[1]),parseInt(scoreM[2])];
@@ -390,6 +400,7 @@ function parseFootybite(html){
       var parentText=el.parentElement?el.parentElement.textContent:'';
       var ptime=parentText.match(/\b(\d{1,2}):(\d{2})\b/);
       startTime=ptime?pad(parseInt(ptime[1]))+':'+ptime[2]:'00:00';
+      startTime=getEstTime(startTime);
       /* Live si minute trouvée */
       var liveEl=el.querySelector('.time-txt,[class*="live"],[class*="minute"]');
       var liveText=liveEl?liveEl.textContent:'';
@@ -460,53 +471,57 @@ function fetchSubPages(matches){
 function scrapeMatchStreams(m){
   return fetchPage(m.matchUrl).then(function(html){
     var doc=new DOMParser().parseFromString(html,'text/html');
-    var rows=doc.querySelectorAll('tr[id="tr-round"]');
     var links=[];
 
-    [].forEach.call(rows,function(tr){
-      var input=tr.querySelector('input[type="hidden"]');
-      if(!input) return;
-      var url=(input.value||'').trim();
-      if(!url) return;
+    // Nouveau scraping pour footybite.do
+    // Footybite.do utilise principalement des liens directs ou cachés dans des ancres
 
-      var tds=tr.querySelectorAll('td');
-      if(tds.length<7) return;
-
-      var nameEl=tds[1];
-      var name=nameEl?nameEl.textContent.trim():'Stream';
-
-      var qualEl=tds[3];
-      var qualTxt=qualEl?qualEl.textContent.trim():'';
-      var qual=/4[kK]/.test(qualTxt)?'4K':/\bHD\b|720|1080/.test(qualTxt)?'HD':'SD';
-
-      var langEl=tds[4];
-      var lang=langEl?langEl.textContent.trim().toUpperCase():'MULTI';
-
-      links.push({
-        name:name,
-        quality:qual,
-        lang:lang,
-        url:url
-      });
+    // Essayer de trouver d'abord dans certains boutons spécifiques
+    var btns=doc.querySelectorAll('.btn-danger, a.nav-link2, a.btn-3d');
+    [].forEach.call(btns,function(btn){
+       if(btn.tagName==='A' && btn.href){
+          var url=btn.href;
+          if(url && url.indexOf('http')===0 && url.indexOf('footybite')<0) {
+              links.push({
+                 name:btn.textContent.trim()||'Stream externe',
+                 quality:'HD',
+                 lang:'MULTI',
+                 url:url
+              });
+          }
+       }
     });
 
-    // Fallbacks si aucun tr n'a été trouvé
+    // Chercher d'autres liens de streams (souvent dans un container de liens)
     if(links.length===0){
-      var btns=doc.querySelectorAll('.btn-danger');
-      [].forEach.call(btns,function(btn){
-         if(btn.tagName==='A' && btn.href){
-            links.push({
-               name:btn.textContent.trim()||'Stream',
-               quality:'HD',
-               lang:'MULTI',
-               url:btn.href
-            });
-         }
-      });
+       var allLinks = doc.querySelectorAll('a[href]');
+       [].forEach.call(allLinks,function(a){
+           var url = a.getAttribute('href');
+           var txt = a.textContent.trim();
+           // Filtre basique pour éviter les réseaux sociaux, etc.
+           if(url && url.indexOf('http')===0 &&
+              url.indexOf('footybite')<0 &&
+              url.indexOf('twitter')<0 &&
+              url.indexOf('x.com')<0 &&
+              url.indexOf('instagram')<0 &&
+              url.indexOf('tiktok')<0 &&
+              url.indexOf('dmca')<0 &&
+              txt) {
+                // Heuristic: si c'est un lien vers un autre site de streaming
+                // (ex: totalsportek, sportsurge, etc.)
+                links.push({
+                    name: txt,
+                    quality:'HD',
+                    lang:'MULTI',
+                    url: url
+                });
+           }
+       });
     }
 
+    // fallback: si aucun stream externe, ajouter juste un lien vers la page
     if(links.length===0){
-        links.push({name:'Ouvrir page match', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
+        links.push({name:'Voir streams sur le site', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
     }
 
     m.streamLinks=links;
@@ -587,18 +602,57 @@ function findLeagueHeader(el){
   return '';
 }
 
+/* Convert UK time to EST */
+function getEstTime(ukTimeStr){
+    var parts = ukTimeStr.split(':');
+    if(parts.length !== 2) return ukTimeStr;
+    var h = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    // UK is UTC+0 or +1 (BST). EST is UTC-5 or EDT is UTC-4.
+    // Usually a 5 hours difference.
+    var estH = h - 5;
+    if(estH < 0) estH += 24;
+    return pad(estH) + ':' + pad(m);
+}
+
+/* ══ FILTERS ════════════════════════════ */
+function applyFilter(f){
+  S.filter=f;
+  ['all','live','upcoming'].forEach(function(k){
+    var el=document.getElementById('filter-'+k);
+    if(el){
+        el.style.borderColor = k===f ? 'var(--accent)' : 'var(--border2)';
+        el.style.color = k===f ? 'var(--accent)' : 'var(--muted2)';
+    }
+  });
+  buildEPG(S.matches);
+}
+
+function applySportFilter(){
+  var sf = document.getElementById('sportFilter');
+  if(sf) S.sportFilter = sf.value;
+  buildEPG(S.matches);
+}
+
 /* ══ EPG ════════════════════════════════ */
 function buildEPG(matches){
   var hp=HP(),rh=RH(),tw=TOTAL_H*hp;
 
-  matches.sort(function(a,b){
+  var filtered = matches.filter(function(m){
+    if(S.filter==='live' && m.status!=='live') return false;
+    if(S.filter==='upcoming' && m.status!=='upcoming') return false;
+    if(S.sportFilter!=='all' && m.league!==S.sportFilter) return false;
+    return true;
+  });
+
+  filtered.sort(function(a,b){
     if(a.status==='live'&&b.status!=='live') return -1;
     if(b.status==='live'&&a.status!=='live') return 1;
     return a.startTime.localeCompare(b.startTime);
   });
 
   var lgOrder=[],lgMap={};
-  matches.forEach(function(m){
+  filtered.forEach(function(m){
     if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});lgOrder.push(m.league);}
     lgMap[m.league].matches.push(m);
   });
@@ -782,6 +836,20 @@ function openDbg(){
   h+='<div class="dbg-sect"><div class="dbg-sect-title">Statut</div><div class="dbg-code">';
   h+=S.log.length===0?'Aucun chargement lancé.':'Proxy: '+S.proxy+'\nMatches: '+S.matches.length+'\nHTML: '+S.raw.length+' chars';
   h+='</div></div>';
+
+  if(S.matches.length>0){
+    var errMatches = S.matches.filter(function(m) { return m.streamsLoaded && (!m.streamLinks || m.streamLinks.length===0 || m.streamLinks.length===1); });
+    h+='<div class="dbg-sect"><div class="dbg-sect-title">Statut Streams Match par Match</div><div class="dbg-code" style="max-height:400px;">';
+    S.matches.forEach(function(m){
+        var st = m.streamsLoaded ? (m.streamLinks.length + ' streams trouvés') : 'En attente...';
+        if(m.streamsLoaded && m.streamLinks.length===0) st = '<span style="color:var(--red)">0 stream trouvé</span>';
+        h += '['+m.league+'] '+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+'\n';
+        h += 'URL: '+esc(m.matchUrl)+'\n';
+        h += 'Streams: '+st+'\n\n';
+    });
+    h+='</div></div>';
+  }
+
   if(S.log.length>0){
     h+='<div class="dbg-sect"><div class="dbg-sect-title">Log ('+S.log.length+')</div><div class="dbg-code">';
     S.log.forEach(function(e){h+=esc('['+e.l+'] '+e.v)+'\n\n';});
@@ -791,7 +859,7 @@ function openDbg(){
     h+='<div class="dbg-sect"><div class="dbg-sect-title">HTML brut [6000]</div><div class="dbg-code">'+esc(S.raw.slice(0,6000))+'</div></div>';
   }
   if(S.matches.length>0){
-    h+='<div class="dbg-sect"><div class="dbg-sect-title">Matchs ('+S.matches.length+')</div><div class="dbg-code">'+esc(JSON.stringify(S.matches.slice(0,10),null,2))+'</div></div>';
+    h+='<div class="dbg-sect"><div class="dbg-sect-title">Data Matchs ('+S.matches.length+')</div><div class="dbg-code">'+esc(JSON.stringify(S.matches.slice(0,10),null,2))+'</div></div>';
   }
   document.getElementById('dbgbody').innerHTML=h;
   document.getElementById('dbg').classList.add('open');
@@ -833,6 +901,21 @@ function loadAll(){
       if(S.matches.length===0) return;
       stepOk(3);
       document.getElementById('ov').style.display='none';
+
+      // Populate sports filter
+      var sports = {};
+      S.matches.forEach(function(m){ sports[m.league]=true; });
+      var sportNames = Object.keys(sports).sort();
+      var sf = document.getElementById('sportFilter');
+      if(sf){
+          var html = '<option value="all">Tous les sports</option>';
+          sportNames.forEach(function(sp){
+              html += '<option value="'+esc(sp)+'">'+lgFlag(sp)+' '+esc(sp)+'</option>';
+          });
+          sf.innerHTML = html;
+          sf.value = S.sportFilter; // maintain current selection if any
+      }
+
       buildEPG(S.matches);
       var live=S.matches.filter(function(m){return m.status==='live';}).length;
       showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
