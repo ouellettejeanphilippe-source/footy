@@ -378,22 +378,38 @@ function parseFootybite(html){
     var rawTime=timeEl?timeEl.textContent.replace(/\s+/g,' ').trim():'';
     lg('raw time #'+i,rawTime);
 
+    var startTime='00:00';
+    var score=null;
+    var status='upcoming';
+    var minute=null;
+
     /* Cas 1: "19:45" → upcoming */
     var timeM=rawTime.match(/^(\d{1,2}):(\d{2})$/);
     /* Cas 2: "2 - 1" ou "2-1" → finished/live avec score */
     var scoreM=rawTime.match(/(\d+)\s*[-–]\s*(\d+)/);
     /* Cas 3: "45'" ou "HT" → live */
     var minM=rawTime.match(/(\d{1,3})'|HT|FT|Live/i);
-
-    var startTime='00:00';
-    var score=null;
-    var status='upcoming';
-    var minute=null;
+    /* Cas 4: "Starts in 1hr:47min" ou "Starts in 17min" */
+    var startsInM=rawTime.match(/Starts in (?:(\d+)hr:)?(\d+)min/i);
+    /* Cas 5: "Match Started" */
+    var matchStartedM=rawTime.match(/Match Started/i);
 
     if(timeM){
       startTime=pad(parseInt(timeM[1]))+':'+timeM[2];
       startTime=getEstTime(startTime);
       status='upcoming';
+    } else if(startsInM){
+      var n = new Date();
+      var hAdd = startsInM[1]?parseInt(startsInM[1]):0;
+      var mAdd = startsInM[2]?parseInt(startsInM[2]):0;
+      n.setMinutes(n.getMinutes() + mAdd);
+      n.setHours(n.getHours() + hAdd);
+      startTime=pad(n.getHours())+':'+pad(n.getMinutes());
+      status='upcoming';
+    } else if(matchStartedM){
+      var n = new Date();
+      startTime=pad(n.getHours())+':'+pad(n.getMinutes());
+      status='live';
     } else if(scoreM){
       score=[parseInt(scoreM[1]),parseInt(scoreM[2])];
       /* Cherche aussi l'heure dans un autre élément */
@@ -411,11 +427,20 @@ function parseFootybite(html){
     } else if(minM){
       status='live';
       minute=minM[1]||null;
+    } else {
+        /* Fallback: essai de trouver une heure qq part */
+        var parentText=el.parentElement?el.parentElement.textContent:'';
+        var ptime=parentText.match(/\b(\d{1,2}):(\d{2})\b/);
+        if (ptime) {
+            startTime=pad(parseInt(ptime[1]))+':'+ptime[2];
+            startTime=getEstTime(startTime);
+        }
     }
 
     /* On page d'accueil: lien vers la page du match */
     var matchUrl='';
-    var matchLink=el.querySelector('a[target="_blank"][href*="/"]');
+    var matchLink=el.parentElement && el.parentElement.tagName.toLowerCase() === 'a' ? el.parentElement : null;
+    if(!matchLink) matchLink=el.querySelector('a[target="_blank"][href*="/"]');
     if(!matchLink) matchLink=el.querySelector('a[href]');
 
     if(matchLink){
@@ -476,23 +501,56 @@ function scrapeMatchStreams(m){
     // Nouveau scraping pour footybite.do
     // Footybite.do utilise principalement des liens directs ou cachés dans des ancres
 
-    // Essayer de trouver d'abord dans certains boutons spécifiques
-    var btns=doc.querySelectorAll('.btn-danger, a.nav-link2, a.btn-3d');
-    [].forEach.call(btns,function(btn){
-       if(btn.tagName==='A' && btn.href){
-          var url=btn.href;
-          if(url && url.indexOf('http')===0 && url.indexOf('footybite')<0) {
-              links.push({
-                 name:btn.textContent.trim()||'Stream externe',
-                 quality:'HD',
-                 lang:'MULTI',
-                 url:url
-              });
-          }
-       }
+    // Nouveau scraping pour footybite.do (tableau de liens cachés dans <input type="hidden">)
+    var rows = doc.querySelectorAll('tr#tr-round');
+    [].forEach.call(rows, function(row){
+        var input = row.querySelector('input[type="hidden"][id^="linkk"]');
+        if(input && input.value) {
+            var url = input.value;
+            // Name is often in the second column or next to check-circle
+            var nameEl = row.querySelector('.fa-check-circle');
+            var name = nameEl && nameEl.nextSibling ? nameEl.nextSibling.textContent.trim() : 'Stream externe';
+            if(!name) name = 'Stream';
+
+            // Extract language and quality from the buttons in the row
+            var lang = 'MULTI';
+            var qual = 'HD';
+            var cols = row.querySelectorAll('td a.btn');
+            [].forEach.call(cols, function(colBtn){
+                var txt = colBtn.textContent.trim().toLowerCase();
+                if(txt==='english' || txt==='spanish' || txt==='french' || txt==='arabic' || txt==='multi') lang = txt.toUpperCase();
+                if(txt==='hd' || txt==='sd' || txt==='4k') qual = txt.toUpperCase();
+            });
+
+            if(url && url.indexOf('http')===0) {
+                links.push({
+                    name: name,
+                    quality: qual,
+                    lang: lang,
+                    url: url
+                });
+            }
+        }
     });
 
-    // Chercher d'autres liens de streams (souvent dans un container de liens)
+    // Chercher d'autres liens de streams (fallback)
+    if(links.length===0){
+       var btns=doc.querySelectorAll('.btn-danger, a.nav-link2, a.btn-3d');
+       [].forEach.call(btns,function(btn){
+          if(btn.tagName==='A' && btn.href){
+             var url=btn.href;
+             if(url && url.indexOf('http')===0 && url.indexOf('footybite')<0) {
+                 links.push({
+                    name:btn.textContent.trim()||'Stream externe',
+                    quality:'HD',
+                    lang:'MULTI',
+                    url:url
+                 });
+             }
+          }
+       });
+    }
+
     if(links.length===0){
        var allLinks = doc.querySelectorAll('a[href]');
        [].forEach.call(allLinks,function(a){
@@ -656,6 +714,16 @@ function buildEPG(matches){
     if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});lgOrder.push(m.league);}
     lgMap[m.league].matches.push(m);
   });
+
+  // Sort leagues alphabetically, or by earliest match
+  lgOrder.sort(function(a,b) {
+      // Find earliest match in league A
+      var aStart = lgMap[a].matches.length > 0 ? lgMap[a].matches[0].startTime : "99:99";
+      var bStart = lgMap[b].matches.length > 0 ? lgMap[b].matches[0].startTime : "99:99";
+      if (aStart !== bStart) return aStart.localeCompare(bStart);
+      return a.localeCompare(b);
+  });
+
   var leagues=lgOrder.map(function(k){return lgMap[k];});
 
   /* Ruler */
@@ -745,6 +813,7 @@ function scrollToNow(){var nx=now2x();if(nx>0)document.getElementById('tl').scro
 var QC={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
 var QI={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 function openMod(m,col){
+  S.sel=m.id;
   document.getElementById('mdot').style.background=col||'#888';
   document.getElementById('mname').textContent=m.homeTeam+' — '+m.awayTeam;
   document.getElementById('mmeta').innerHTML=
@@ -754,10 +823,25 @@ function openMod(m,col){
   document.getElementById('mscore').innerHTML=m.score?'<div class="msc">'+m.score[0]+'–'+m.score[1]+'</div>':'';
   var body=document.getElementById('mbody');
 
-  if(!m.streamsLoaded){
+  // Wait if streams are still loading, but fetch them specifically if they aren't loading
+  if(!m.streamsLoaded && m.matchUrl) {
+      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez)</span></div>';
+      // Force load the streams for this specific match right away if they aren't loaded yet
+      lg('Force loading stream', m.homeTeam);
+      scrapeMatchStreams(m).then(function() {
+          lg('Force loaded stream ok', m.homeTeam);
+          m.streamsLoaded = true;
+          openMod(m, col); // Re-render modal
+      }).catch(function(e) {
+          lg('Force loaded stream failed', e.message);
+          m.streamsLoaded = true;
+          m.streamLinks = m.streamLinks || [];
+          openMod(m, col);
+      });
+  } else if(!m.streamsLoaded){
       body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams...</div>';
-  } else if(m.streamLinks.length===0){
-      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.</div>';
+  } else if(!m.streamLinks || m.streamLinks.length===0){
+      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.<br><a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a></div>';
   } else {
       body.innerHTML=m.streamLinks.map(function(s,i){
         var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"')";
