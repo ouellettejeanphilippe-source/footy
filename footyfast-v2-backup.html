@@ -34,9 +34,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 
 .sbar{height:28px;flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 14px;overflow-x:auto;scrollbar-width:none;font-size:11px;color:var(--muted);}
 .sbar::-webkit-scrollbar{display:none;}
-.lchip{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 6px;border-radius:3px;cursor:pointer;user-select:none;transition:opacity 0.2s;}
-.lchip:hover{background:rgba(255,255,255,0.05);}
-.lchip.off{opacity:0.4;filter:grayscale(1);}
+.lchip{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 6px;border-radius:3px;}
 .ldotc{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
 .vsep{width:1px;height:12px;background:var(--border);flex-shrink:0;}
 
@@ -45,15 +43,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .corner{height:var(--ruler-h);flex-shrink:0;border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 10px;font-family:'Oswald',sans-serif;font-weight:600;font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
 .chan-list{flex:1;overflow-y:hidden;}
 .chan-cell{height:var(--row-h);display:flex;flex-direction:column;justify-content:center;padding:0 10px;gap:2px;border-bottom:1px solid var(--border);}
-
-/* LIGUE HEADER CSS */
-.lg-hdr { height: 32px; display: flex; align-items: center; padding: 0 10px; background: rgba(255,255,255,.03); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); gap: 6px; cursor: pointer; user-select: none; }
-.lg-hdr:hover { background: rgba(255,255,255,.05); }
-.lg-hdr.collapsed .lg-chev { transform: rotate(-90deg); }
-.lg-chev { transition: transform 0.2s; font-size: 10px; color: var(--muted); }
-.lg-title { font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1px; color: var(--muted2); text-transform: uppercase; }
-.lg-cnt { margin-left: auto; font-size: 10px; color: var(--muted); }
-.lg-row { display: none; } /* Used in right timeline to match heights */
 .ch-flag{font-size:12px;}
 .ch-name{font-family:'Oswald',sans-serif;font-size:12px;font-weight:500;color:var(--text);line-height:1.2;}
 .ch-cnt{font-size:10px;color:var(--muted);}
@@ -237,7 +226,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 'use strict';
 
 /* ══ STATE ══════════════════════════════ */
-var S = { log:[], raw:'', matches:[], proxy:'', filter:'all', sportFilter:'all', hiddenLg:{}, collapsedLg:{} };
+var S = { log:[], raw:'', matches:[], proxy:'', filter:'all', sportFilter:'all' };
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://www.footybite.do/';
@@ -703,17 +692,6 @@ function applySportFilter(){
   buildEPG(S.matches);
 }
 
-/* ══ TOGGLE ET ACCORDÉON ════════════════ */
-function toggleLeague(lgName) {
-  S.hiddenLg[lgName] = !S.hiddenLg[lgName];
-  buildEPG(S.matches);
-}
-
-function toggleAccordion(lgName) {
-  S.collapsedLg[lgName] = !S.collapsedLg[lgName];
-  buildEPG(S.matches);
-}
-
 /* ══ EPG ════════════════════════════════ */
 function buildEPG(matches){
   var hp=HP(),rh=RH(),tw=TOTAL_H*hp;
@@ -725,29 +703,28 @@ function buildEPG(matches){
     return true;
   });
 
-  // Map and sort leagues based on filtered matches
+  filtered.sort(function(a,b){
+    if(a.status==='live'&&b.status!=='live') return -1;
+    if(b.status==='live'&&a.status!=='live') return 1;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
   var lgOrder=[],lgMap={};
   filtered.forEach(function(m){
     if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});lgOrder.push(m.league);}
     lgMap[m.league].matches.push(m);
   });
 
+  // Sort leagues alphabetically, or by earliest match
   lgOrder.sort(function(a,b) {
+      // Find earliest match in league A
       var aStart = lgMap[a].matches.length > 0 ? lgMap[a].matches[0].startTime : "99:99";
       var bStart = lgMap[b].matches.length > 0 ? lgMap[b].matches[0].startTime : "99:99";
       if (aStart !== bStart) return aStart.localeCompare(bStart);
       return a.localeCompare(b);
   });
 
-  var leagues=lgOrder.map(function(k){
-    // sort matches inside league by time
-    lgMap[k].matches.sort(function(m1,m2){
-        if(m1.status==='live'&&m2.status!=='live') return -1;
-        if(m2.status==='live'&&m1.status!=='live') return 1;
-        return m1.startTime.localeCompare(m2.startTime);
-    });
-    return lgMap[k];
-  });
+  var leagues=lgOrder.map(function(k){return lgMap[k];});
 
   /* Ruler */
   var ruler=document.getElementById('ruler');
@@ -761,85 +738,50 @@ function buildEPG(matches){
     ruler.appendChild(tc);
   }
 
+  /* Channels */
   var cl=document.getElementById('chanlist');cl.innerHTML='';
-  var area=document.getElementById('marea');
-  area.querySelectorAll('.mrow,.gl,.lg-row').forEach(function(e){e.remove();});
-
-  var totalRows = 0;
   leagues.forEach(function(lg){
-      if(!S.hiddenLg[lg.league]) {
-          totalRows += 1; // header
-          if(!S.collapsedLg[lg.league]) totalRows += lg.matches.length; // matches
-      }
+    var c=document.createElement('div');c.className='chan-cell';
+    c.innerHTML='<span class="ch-flag">'+lg.flag+'</span>'
+      +'<span class="ch-name">'+esc(lg.league)+'</span>'
+      +'<span class="ch-cnt">'+lg.matches.length+' match'+(lg.matches.length>1?'s':'')+'</span>';
+    cl.appendChild(c);
   });
 
-  area.style.width=tw+'px';
-  area.style.minHeight=(totalRows*rh)+'px';
-
+  /* Match area */
+  var area=document.getElementById('marea');
+  area.querySelectorAll('.mrow,.gl').forEach(function(e){e.remove();});
+  area.style.width=tw+'px';area.style.minHeight=(leagues.length*rh)+'px';
   for(var g=0;g<=TOTAL_H;g++){
     var gl=document.createElement('div');gl.className='gl';gl.style.left=(g*hp)+'px';area.appendChild(gl);
     if(g<TOTAL_H){var gh=document.createElement('div');gh.className='gl h';gh.style.left=(g*hp+hp/2)+'px';area.appendChild(gh);}
   }
 
   leagues.forEach(function(lg){
-    if(S.hiddenLg[lg.league]) return;
-
-    var isCollapsed = S.collapsedLg[lg.league];
     var col=lg.color||lgColor(lg.league);
-
-    // League Header in chan-list
-    var hdr = document.createElement('div');
-    hdr.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
-    hdr.innerHTML = '<span class="lg-chev">▼</span>'
-      + '<span class="ch-flag">'+lg.flag+'</span>'
-      + '<span class="lg-title">'+esc(lg.league)+'</span>'
-      + '<span class="lg-cnt">'+lg.matches.length+' match'+(lg.matches.length>1?'s':'')+'</span>';
-    hdr.addEventListener('click', function(){ toggleAccordion(lg.league); });
-    cl.appendChild(hdr);
-
-    // League Row spacer in marea
-    var lrow = document.createElement('div');
-    lrow.className = 'lg-row';
-    lrow.style.height = '32px'; // Match .lg-hdr height
-    lrow.style.borderBottom = '1px solid var(--border)';
-    lrow.style.borderTop = '1px solid var(--border)';
-    lrow.style.display = 'block';
-    area.appendChild(lrow);
-
-    if(!isCollapsed) {
-        lg.matches.forEach(function(m){
-            // Chan cell for match
-            var c=document.createElement('div');c.className='chan-cell';
-            c.innerHTML='<span class="ch-name" style="padding-left:14px; display:flex; align-items:center; gap:4px;">'
-                + '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2" style="flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>'
-                + esc(m.homeTeam) + '</span>';
-            cl.appendChild(c);
-
-            // Mrow for match block
-            var row=document.createElement('div');row.className='mrow';row.style.height=rh+'px';
-            area.appendChild(row);
-
-            var x=t2x(m.startTime),w=Math.max((m.durationMinutes/60)*hp-4,60);
-            if(x<-hp||x>tw+hp) return;
-            var lx=Math.max(x+2,2);
-            var b=document.createElement('div');
-            b.id='mb-'+m.id;
-            b.className='mb'+(m.status==='live'?' live':'');
-            b.style.cssText='left:'+lx+'px;width:'+w+'px;background:'+col+';background-image:linear-gradient(135deg,'+col+' 0%,'+darken(col,0.18)+' 100%);';
-            var sn=m.streamLinks?m.streamLinks.length:0;
-            var snText=m.streamsLoaded?(sn>0?'<span class="mb-sn">'+sn+' stream'+(sn>1?'s':'')+'</span>':''):'<span class="mb-sn">...</span>';
-            var liveHtml=m.status==='live'
-                ?'<span class="mb-live"><span class="mb-ld"></span>'+(m.minute?m.minute+"'":'LIVE')+'</span>'
-                :'<span class="mb-time">'+m.startTime+'</span>';
-            b.innerHTML='<div class="mb-t">'+esc(m.homeTeam)+'<span class="vs">vs</span>'+esc(m.awayTeam)+'</div>'
-                +'<div class="mb-m">'+liveHtml
-                +(m.score?'<span class="mb-score">'+m.score[0]+'–'+m.score[1]+'</span>':'')
-                +snText
-                +'</div>';
-            (function(match,color){b.addEventListener('click',function(){openMod(match,color);});})(m,col);
-            row.appendChild(b);
-        });
-    }
+    var row=document.createElement('div');row.className='mrow';row.style.height=rh+'px';
+    area.appendChild(row);
+    lg.matches.forEach(function(m){
+      var x=t2x(m.startTime),w=Math.max((m.durationMinutes/60)*hp-4,60);
+      if(x<-hp||x>tw+hp) return;
+      var lx=Math.max(x+2,2);
+      var b=document.createElement('div');
+      b.id='mb-'+m.id;
+      b.className='mb'+(m.status==='live'?' live':'');
+      b.style.cssText='left:'+lx+'px;width:'+w+'px;background:'+col+';background-image:linear-gradient(135deg,'+col+' 0%,'+darken(col,0.18)+' 100%);';
+      var sn=m.streamLinks?m.streamLinks.length:0;
+      var snText=m.streamsLoaded?(sn>0?'<span class="mb-sn">'+sn+' stream'+(sn>1?'s':'')+'</span>':''):'<span class="mb-sn">...</span>';
+      var liveHtml=m.status==='live'
+        ?'<span class="mb-live"><span class="mb-ld"></span>'+(m.minute?m.minute+"'":'LIVE')+'</span>'
+        :'<span class="mb-time">'+m.startTime+'</span>';
+      b.innerHTML='<div class="mb-t">'+esc(m.homeTeam)+'<span class="vs">vs</span>'+esc(m.awayTeam)+'</div>'
+        +'<div class="mb-m">'+liveHtml
+        +(m.score?'<span class="mb-score">'+m.score[0]+'–'+m.score[1]+'</span>':'')
+        +snText
+        +'</div>';
+      (function(match,color){b.addEventListener('click',function(){openMod(match,color);});})(m,col);
+      row.appendChild(b);
+    });
   });
 
   /* Now line */
@@ -848,22 +790,13 @@ function buildEPG(matches){
   nl.style.display=(nx>0&&nx<tw)?'block':'none';
   if(nx>0) nl.style.left=nx+'px';
 
-  /* Legend Toggle Bar */
+  /* Legend */
   var bar=document.getElementById('sbar');
   bar.querySelectorAll('.lchip,.vsep:not(:first-child)').forEach(function(e){e.remove();});
-
-  // Create chips for all leagues present in raw data, not just filtered ones,
-  // so users can toggle them globally
-  var allLeaguesMap = {};
-  matches.forEach(function(m){ allLeaguesMap[m.league] = {flag: m.flag, color: m.color}; });
-  var allLeagues = Object.keys(allLeaguesMap).sort();
-
-  allLeagues.forEach(function(lgName,i){
+  leagues.forEach(function(lg,i){
     if(i>0){var s=document.createElement('div');s.className='vsep';bar.appendChild(s);}
-    var ch=document.createElement('div');
-    ch.className='lchip' + (S.hiddenLg[lgName] ? ' off' : '');
-    ch.innerHTML='<div class="ldotc" style="background:'+(allLeaguesMap[lgName].color||lgColor(lgName))+'"></div>'+allLeaguesMap[lgName].flag+' '+esc(lgName);
-    ch.addEventListener('click', function() { toggleLeague(lgName); });
+    var ch=document.createElement('div');ch.className='lchip';
+    ch.innerHTML='<div class="ldotc" style="background:'+(lg.color||lgColor(lg.league))+'"></div>'+lg.flag+' '+esc(lg.league);
     bar.appendChild(ch);
   });
 
@@ -959,8 +892,8 @@ function openStream(e,eu,en){
 
   var extBtn = document.getElementById('p-ext');
   extBtn.onclick = function(){
-    window.open(url, '_blank', 'noopener,noreferrer');
-    closePlayer();
+    var w=window.open('about:blank','_blank','noopener,noreferrer');
+    if(w){w.opener=null;w.location=url;}
   };
 
   pbg.classList.add('open');
