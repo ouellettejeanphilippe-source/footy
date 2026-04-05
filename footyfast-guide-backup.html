@@ -11,7 +11,7 @@
   --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.11);
   --accent:#00e676; --red:#ff3b3b;
   --text:#dde2ee; --muted:#4a5168; --muted2:#6b7794;
-  --ruler-h:40px; --chan-w:200px; --row-h:72px; --hour-px:170px;
+  --ruler-h:40px; --chan-w:150px; --row-h:72px; --hour-px:170px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;overflow:hidden;}
@@ -34,9 +34,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 
 .sbar{height:28px;flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 14px;overflow-x:auto;scrollbar-width:none;font-size:11px;color:var(--muted);}
 .sbar::-webkit-scrollbar{display:none;}
-.lchip{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 6px;border-radius:3px;cursor:pointer;user-select:none;transition:all .15s;}
-.lchip:hover{background:rgba(255,255,255,.05);}
-.lchip.off{opacity:0.4;filter:grayscale(1);}
+.lchip{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 6px;border-radius:3px;}
 .ldotc{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
 .vsep{width:1px;height:12px;background:var(--border);flex-shrink:0;}
 
@@ -134,7 +132,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .toast.show{opacity:1;transform:translateY(0);}
 
 @media(max-width:680px){
-  :root{--chan-w:110px;--row-h:62px;--hour-px:120px;--ruler-h:34px;}
+  :root{--chan-w:80px;--row-h:62px;--hour-px:120px;--ruler-h:34px;}
   .ch-cnt,.mb-sn{display:none;}
   .ch-name{font-size:10px;}
 }
@@ -149,7 +147,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   </a>
   <span id="hdate" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)"></span>
   <div class="sp"></div>
-  <input type="text" id="searchInput" placeholder="Rechercher une équipe..." oninput="doSearch()" style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 8px;font-size:12px;font-family:'Inter',sans-serif;width:160px;margin-right:10px;">
   <div class="live-p"><span class="ldot"></span>LIVE</div>
   <button class="btn" onclick="scrollToNow()">⬤ Now</button>
   <button class="btn o" onclick="openDbg()">🔬 Debug</button>
@@ -220,16 +217,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 'use strict';
 
 /* ══ STATE ══════════════════════════════ */
-var S = {
-  log:[], raw:'', matches:[], proxy:'', filter:'all', searchQuery:'',
-  hiddenLeagues: JSON.parse(localStorage.getItem('ff_hidden')||'{}'),
-  closedLeagues: JSON.parse(localStorage.getItem('ff_closed')||'{}')
-};
-
-function saveState(){
-  localStorage.setItem('ff_hidden', JSON.stringify(S.hiddenLeagues));
-  localStorage.setItem('ff_closed', JSON.stringify(S.closedLeagues));
-}
+var S = { log:[], raw:'', matches:[], proxy:'' };
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://www.footybite.do/';
@@ -494,56 +482,18 @@ function findLeagueHeader(el){
   return '';
 }
 
-/* ══ SEARCH & FILTERS ══════════════════ */
-function doSearch(){
-  var el = document.getElementById('searchInput');
-  if(el) S.searchQuery = el.value.toLowerCase().trim();
-  buildEPG(S.matches);
-}
-
-function toggleLeague(lgName){
-  if(S.hiddenLeagues[lgName]){
-    delete S.hiddenLeagues[lgName];
-  } else {
-    S.hiddenLeagues[lgName] = true;
-  }
-  saveState();
-  buildEPG(S.matches);
-}
-
 /* ══ EPG ════════════════════════════════ */
-function toggleAccordion(lgName){
-  if(S.closedLeagues[lgName]){
-    delete S.closedLeagues[lgName];
-  } else {
-    S.closedLeagues[lgName] = true;
-  }
-  saveState();
-  buildEPG(S.matches);
-}
-
 function buildEPG(matches){
   var hp=HP(),rh=RH(),tw=TOTAL_H*hp;
 
-  var filtered = matches.filter(function(m){
-    if(S.hiddenLeagues[m.league]) return false;
-    if(S.searchQuery){
-      var q = S.searchQuery;
-      if(m.homeTeam.toLowerCase().indexOf(q)<0 && m.awayTeam.toLowerCase().indexOf(q)<0 && m.league.toLowerCase().indexOf(q)<0){
-        return false;
-      }
-    }
-    return true;
-  });
-
-  filtered.sort(function(a,b){
+  matches.sort(function(a,b){
     if(a.status==='live'&&b.status!=='live') return -1;
     if(b.status==='live'&&a.status!=='live') return 1;
     return a.startTime.localeCompare(b.startTime);
   });
 
   var lgOrder=[],lgMap={};
-  filtered.forEach(function(m){
+  matches.forEach(function(m){
     if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});lgOrder.push(m.league);}
     lgMap[m.league].matches.push(m);
   });
@@ -561,80 +511,49 @@ function buildEPG(matches){
     ruler.appendChild(tc);
   }
 
-  /* Channels & Match area */
+  /* Channels */
   var cl=document.getElementById('chanlist');cl.innerHTML='';
+  leagues.forEach(function(lg){
+    var c=document.createElement('div');c.className='chan-cell';
+    c.innerHTML='<span class="ch-flag">'+lg.flag+'</span>'
+      +'<span class="ch-name">'+esc(lg.league)+'</span>'
+      +'<span class="ch-cnt">'+lg.matches.length+' match'+(lg.matches.length>1?'s':'')+'</span>';
+    cl.appendChild(c);
+  });
+
+  /* Match area */
   var area=document.getElementById('marea');
   area.querySelectorAll('.mrow,.gl').forEach(function(e){e.remove();});
-  area.style.width=tw+'px';
-  // area.style.minHeight will be set later based on total rows
-
+  area.style.width=tw+'px';area.style.minHeight=(leagues.length*rh)+'px';
   for(var g=0;g<=TOTAL_H;g++){
     var gl=document.createElement('div');gl.className='gl';gl.style.left=(g*hp)+'px';area.appendChild(gl);
     if(g<TOTAL_H){var gh=document.createElement('div');gh.className='gl h';gh.style.left=(g*hp+hp/2)+'px';area.appendChild(gh);}
   }
 
-  var totalRows = 0;
-
   leagues.forEach(function(lg){
     var col=lg.color||lgColor(lg.league);
-    var isClosed = S.closedLeagues[lg.league];
-
-    // Header for the league
-    var c=document.createElement('div');
-    c.className='chan-cell';
-    c.style.cursor = 'pointer';
-    c.style.background = 'rgba(255,255,255,0.02)';
-    c.innerHTML='<span class="ch-flag">'+lg.flag+'</span>'
-      +'<span class="ch-name">'+esc(lg.league)+'</span>'
-      +'<span class="ch-cnt">'+(isClosed ? '➕' : '➖')+' '+lg.matches.length+' match'+(lg.matches.length>1?'s':'')+'</span>';
-    c.onclick = function(){ toggleAccordion(lg.league); };
-    cl.appendChild(c);
-
-    var headerRow=document.createElement('div');
-    headerRow.className='mrow';
-    headerRow.style.height=rh+'px';
-    headerRow.style.background = 'rgba(255,255,255,0.02)';
-    area.appendChild(headerRow);
-    totalRows++;
-
-    if(!isClosed){
-      lg.matches.forEach(function(m){
-        // Create an empty channel cell for each match row to maintain alignment
-        var matchCell=document.createElement('div');
-        matchCell.className='chan-cell';
-        matchCell.style.height=rh+'px';
-        matchCell.style.borderBottom='1px solid rgba(255,255,255,0.02)';
-        matchCell.innerHTML='<span style="font-size:10px;color:var(--muted);padding-left:20px;">↳ '+esc(m.homeTeam)+'</span>';
-        cl.appendChild(matchCell);
-
-        var row=document.createElement('div');
-        row.className='mrow';
-        row.style.height=rh+'px';
-        area.appendChild(row);
-        totalRows++;
-
-        var x=t2x(m.startTime),w=Math.max((m.durationMinutes/60)*hp-4,60);
-        if(x<-hp||x>tw+hp) return;
-        var lx=Math.max(x+2,2);
-        var b=document.createElement('div');
-        b.className='mb'+(m.status==='live'?' live':'');
-        b.style.cssText='left:'+lx+'px;width:'+w+'px;background:'+col+';background-image:linear-gradient(135deg,'+col+' 0%,'+darken(col,0.18)+' 100%);';
-        var sn=m.streamLinks.length;
-        var liveHtml=m.status==='live'
-          ?'<span class="mb-live"><span class="mb-ld"></span>'+(m.minute?m.minute+"'":'LIVE')+'</span>'
-          :'<span class="mb-time">'+m.startTime+'</span>';
-        b.innerHTML='<div class="mb-t">'+esc(m.homeTeam)+'<span class="vs">vs</span>'+esc(m.awayTeam)+'</div>'
-          +'<div class="mb-m">'+liveHtml
-          +(m.score?'<span class="mb-score">'+m.score[0]+'–'+m.score[1]+'</span>':'')
-          +(sn>0?'<span class="mb-sn">'+sn+' stream'+(sn>1?'s':'')+'</span>':'')
-          +'</div>';
-        (function(match,color){b.addEventListener('click',function(){openMod(match,color);});})(m,col);
-        row.appendChild(b);
-      });
-    }
+    var row=document.createElement('div');row.className='mrow';row.style.height=rh+'px';
+    area.appendChild(row);
+    lg.matches.forEach(function(m){
+      var x=t2x(m.startTime),w=Math.max((m.durationMinutes/60)*hp-4,60);
+      if(x<-hp||x>tw+hp) return;
+      var lx=Math.max(x+2,2);
+      var b=document.createElement('div');
+      b.className='mb'+(m.status==='live'?' live':'');
+      b.style.cssText='left:'+lx+'px;width:'+w+'px;background:'+col+';background-image:linear-gradient(135deg,'+col+' 0%,'+darken(col,0.18)+' 100%);';
+      var sn=m.streamLinks.length;
+      var liveHtml=m.status==='live'
+        ?'<span class="mb-live"><span class="mb-ld"></span>'+(m.minute?m.minute+"'":'LIVE')+'</span>'
+        :'<span class="mb-time">'+m.startTime+'</span>';
+      b.innerHTML='<div class="mb-t">'+esc(m.homeTeam)+'<span class="vs">vs</span>'+esc(m.awayTeam)+'</div>'
+        +'<div class="mb-m">'+liveHtml
+        +(m.score?'<span class="mb-score">'+m.score[0]+'–'+m.score[1]+'</span>':'')
+        +(sn>0?'<span class="mb-sn">'+sn+' stream'+(sn>1?'s':'')+'</span>':'')
+        +'</div>';
+      (function(match,color){b.addEventListener('click',function(){openMod(match,color);});})(m,col);
+      row.appendChild(b);
+    });
   });
-
-  area.style.minHeight=(totalRows*rh)+'px';
 
   /* Now line */
   var nx=now2x(),nl=document.getElementById('nl');
@@ -642,22 +561,13 @@ function buildEPG(matches){
   nl.style.display=(nx>0&&nx<tw)?'block':'none';
   if(nx>0) nl.style.left=nx+'px';
 
-  /* Legend - Build from ALL matches to avoid disappearing chips when filtered */
-  var allLgOrder=[],allLgMap={};
-  matches.forEach(function(m){
-    if(!allLgMap[m.league]){allLgMap[m.league]=Object.assign({},m,{matches:[]});allLgOrder.push(m.league);}
-    allLgMap[m.league].matches.push(m);
-  });
-  var allLeagues=allLgOrder.map(function(k){return allLgMap[k];});
-
+  /* Legend */
   var bar=document.getElementById('sbar');
   bar.querySelectorAll('.lchip,.vsep:not(:first-child)').forEach(function(e){e.remove();});
-  allLeagues.forEach(function(lg,i){
+  leagues.forEach(function(lg,i){
     if(i>0){var s=document.createElement('div');s.className='vsep';bar.appendChild(s);}
-    var ch=document.createElement('div');
-    ch.className='lchip' + (S.hiddenLeagues[lg.league] ? ' off' : '');
+    var ch=document.createElement('div');ch.className='lchip';
     ch.innerHTML='<div class="ldotc" style="background:'+(lg.color||lgColor(lg.league))+'"></div>'+lg.flag+' '+esc(lg.league);
-    ch.onclick = function(){ toggleLeague(lg.league); };
     bar.appendChild(ch);
   });
 
@@ -684,9 +594,7 @@ function openMod(m,col){
   var body=document.getElementById('mbody');
   body.innerHTML=m.streamLinks.map(function(s,i){
     var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"')";
-    var aTarget = s.url && s.url !== '#' ? s.url : '#';
-    // Si url valide, on met directement l'URL dans href pour que le target="_blank" marche sans bloqueur de pub
-    return '<a class="si" href="'+aTarget+'" target="_blank" rel="noopener noreferrer" onclick="closeMod()">'
+    return '<a class="si" href="#" onclick="'+ev+'">'
       +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
       +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Stream '+(i+1))+'</div>'
       +'<div class="si-s">Langue : '+(s.lang||'?')+' · '+(i===0?'Recommandé':'Alternatif')+'</div></div>'
@@ -696,7 +604,12 @@ function openMod(m,col){
   document.getElementById('mbg').classList.add('open');
 }
 function closeMod(){document.getElementById('mbg').classList.remove('open');}
-// openStream n'est plus utilisé directement via onclick avec preventDefault pour éviter le blocage de pop-up
+function openStream(e,eu,en){
+  e.preventDefault();
+  var url=decodeURIComponent(eu),name=decodeURIComponent(en);
+  closeMod();showToast('Ouverture : '+name);
+  if(url&&url!=='#'){var w=window.open('about:blank','_blank','noopener,noreferrer');if(w){w.opener=null;w.location=url;}}
+}
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMod();closeDbg();}});
 
 /* ══ STEPS ══════════════════════════════ */
