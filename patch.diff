@@ -1,0 +1,11 @@
+<<<<<<< SEARCH
+.lchip{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 6px;border-radius:3px;}
+.ldotc{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
+.vsep{width:1px;height:12px;background:var(--border);flex-shrink:0;}
+=======
+.lchip{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:2px 6px;border-radius:3px;cursor:pointer;user-select:none;transition:opacity 0.2s;}
+.lchip:hover{background:rgba(255,255,255,0.05);}
+.lchip.off{opacity:0.4;filter:grayscale(1);}
+.ldotc{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
+.vsep{width:1px;height:12px;background:var(--border);flex-shrink:0;}
+>>>>>>> REPLACE

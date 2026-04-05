@@ -1,55 +1,35 @@
 from playwright.sync_api import sync_playwright
 import os
-import glob
 
 def run_cuj(page):
-    filepath = "file://" + os.path.abspath("footyfast-guide(4).html")
-    print(f"Loading {filepath}")
-    page.goto(filepath)
+    page.goto(f"file://{os.path.abspath('footyfast-v2.html')}")
+    page.wait_for_timeout(2000)
+
+    # 1. Capture initiale avec les leagues par défaut (toggle all on)
+    page.screenshot(path="/home/jules/verification/screenshots/initial.png")
     page.wait_for_timeout(1000)
 
-    # Screenshot of initial state
-    page.screenshot(path="screenshot_initial.png")
+    # 2. Replier (Collapse) la première ligue
+    headers = page.locator(".lg-hdr")
+    if headers.count() > 0:
+        headers.nth(0).click()
+        page.wait_for_timeout(1000)
+        page.screenshot(path="/home/jules/verification/screenshots/collapsed.png")
 
-    # 1. Search for "premier"
-    print("Searching for 'premier'")
-    page.locator("#searchInput").fill("premier")
-    page.wait_for_timeout(500)
-    page.screenshot(path="screenshot_search.png")
-
-    # Clear search
-    page.locator("#searchInput").fill("")
-    page.wait_for_timeout(500)
-
-    # 2. Toggle a league off and on from the top bar chips
-    print("Toggling first league chip")
+    # 3. Masquer la première ligue avec le chip en haut (Toggle)
     chips = page.locator(".lchip")
     if chips.count() > 0:
-        chips.first.click()
-        page.wait_for_timeout(500)
-        page.screenshot(path="screenshot_toggled_off.png")
-        chips.first.click() # toggle back on
-        page.wait_for_timeout(500)
-        page.screenshot(path="screenshot_toggled_on.png")
-
-    # 3. Test accordion collapse
-    print("Testing accordion collapse")
-    chan_cells = page.locator(".chan-col .chan-cell")
-    if chan_cells.count() > 0:
-        chan_cells.first.click()
-        page.wait_for_timeout(500)
-        page.screenshot(path="screenshot_accordion_collapsed.png")
-        chan_cells.first.click() # expand again
-        page.wait_for_timeout(500)
-
-    print("Test complete")
+        chips.nth(0).click()
+        page.wait_for_timeout(1000)
+        page.screenshot(path="/home/jules/verification/screenshots/toggled.png")
 
 if __name__ == "__main__":
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        # Create temp dir for video
-        os.makedirs("verification_videos", exist_ok=True)
-        context = browser.new_context(record_video_dir="verification_videos")
+        context = browser.new_context(
+            record_video_dir="/home/jules/verification/videos",
+            viewport={"width": 1280, "height": 720}
+        )
         page = context.new_page()
         try:
             run_cuj(page)
