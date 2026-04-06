@@ -334,7 +334,6 @@ function darken(c,a){
 function pad(n){return String(n).padStart(2,'0');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
-function fmtNow(){var n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes());}
 
 /* ══ FOOTYBITE LOGOS SCRAPING ═════════ */
 // Add footybite logo parsing
