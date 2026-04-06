@@ -60,9 +60,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .epg { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; position: relative; padding: 16px; background: var(--bg); gap: 16px; scroll-behavior: smooth; }
 
 /* LAYOUT GRILLE/LISTE MODERNE */
-.lg-section { display: flex; flex-direction: column; gap: 12px; }
-.lg-hdr { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; padding: 4px 8px; margin-left: -8px; border-radius: 8px; transition: background 0.2s; }
-.lg-hdr:hover { background: rgba(255,255,255,0.05); }
+.lg-section { display: flex; flex-direction: column; gap: 12px; position: relative; }
+.lg-hdr { position: sticky; top: -16px; z-index: 10; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; padding: 12px 16px; margin: 0 -16px; background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 0.5px solid var(--border2); transition: background 0.2s; }
+.lg-hdr:hover { background: rgba(44, 44, 46, 0.95); }
 .lg-hdr.collapsed .lg-chev { transform: rotate(-90deg); }
 .lg-chev { transition: transform 0.2s; font-size: 11px; color: var(--muted); }
 .ch-flag { font-size: 16px; }
@@ -143,12 +143,18 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   :root { --chan-w: 90px; --row-h: 68px; --hour-px: 140px; --ruler-h: 40px; }
   .ch-cnt, .mb-sn { display: none; }
   .ch-name { font-size: 11px; }
-  .hdr { padding: 0 12px; gap: 8px; }
-  .logo { font-size: 18px; }
-  .btn { padding: 6px 12px; font-size: 13px; }
-  .mb { padding: 6px 10px; }
-  .mb-t { font-size: 12px; }
-  .mb-score { font-size: 12px; }
+  .hdr { padding: 0 12px; gap: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+  .hdr::-webkit-scrollbar { display: none; }
+  .logo { font-size: 18px; flex-shrink: 0; }
+  .btn { padding: 8px 14px; font-size: 14px; flex-shrink: 0; }
+  .mb { padding: 14px; gap: 10px; border-radius: 12px; }
+  .mb-t { font-size: 13px; }
+  .team-name { font-size: 16px; }
+  .team-score { font-size: 18px; }
+  .mb-time { font-size: 14px; }
+  .mb-score { font-size: 14px; }
+  #hdate { display: none; } /* Hide date on small screens to save space */
+  .match-grid { grid-template-columns: 1fr; } /* Force single column on mobile */
 }
 
 /* DEBUG */
@@ -502,6 +508,39 @@ function parseFootybite(html){
 }
 
 
+/* ══ SIMILARITY ALGORITHM ════════════ */
+function levenshtein(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  var matrix = [];
+  for (var i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+  for (var j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+  for (var i = 1; i <= b.length; i++) {
+    for (var j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) == a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function stringSimilarity(s1, s2) {
+  if (s1 === s2) return 1.0;
+  var maxLen = Math.max(s1.length, s2.length);
+  if (maxLen === 0) return 1.0;
+  var dist = levenshtein(s1, s2);
+  return (maxLen - dist) / maxLen;
+}
+
+function isMatch(name1, name2) {
+  if (!name1 || !name2) return false;
+  if (name1.includes(name2) || name2.includes(name1)) return true;
+  return stringSimilarity(name1, name2) > 0.75;
+}
+
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 var ESPN_LEAGUES = {
   'premier league': 'soccer/eng.1',
@@ -523,9 +562,15 @@ var ESPN_LEAGUES = {
   'dfb pokal': 'soccer/ger.dfb_pokal',
   'saudi pro league': 'soccer/ksa.1',
   'nba': 'basketball/nba',
+  'basketball': 'basketball/nba',
   'nhl': 'hockey/nhl',
+  'hockey': 'hockey/nhl',
+  'ice hockey': 'hockey/nhl',
   'nfl': 'football/nfl',
-  'mlb': 'baseball/mlb'
+  'american football': 'football/nfl',
+  'american-football': 'football/nfl',
+  'mlb': 'baseball/mlb',
+  'baseball': 'baseball/mlb'
 };
 
 function getEspnDateStr(d) {
@@ -540,9 +585,15 @@ function fetchEspnSchedule(leaguePath, dateStr) {
 /* ══ API-SPORTS INTEGRATION ════════════ */
 var SPORT_MAP = {
   'nba': { sport: 'basketball', api: 'v1.basketball.api-sports.io', leagueId: 12 },
+  'basketball': { sport: 'basketball', api: 'v1.basketball.api-sports.io', leagueId: 12 },
   'nhl': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
+  'hockey': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
+  'ice hockey': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
   'nfl': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
+  'american football': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
+  'american-football': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
   'mlb': { sport: 'baseball', api: 'v1.baseball.api-sports.io', leagueId: 1 },
+  'baseball': { sport: 'baseball', api: 'v1.baseball.api-sports.io', leagueId: 1 },
   'premier league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 39 },
   'la liga': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 140 },
   'serie a': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 135 },
@@ -658,9 +709,8 @@ function syncMatchesWithApiSports(matches) {
                  fHome = f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, '');
                  fAway = f.teams.away.name.toLowerCase().replace(/[^a-z0-9]/g, '');
               }
-              // Simple check if one contains the other
-              return (mHome.includes(fHome) || fHome.includes(mHome)) &&
-                     (mAway.includes(fAway) || fAway.includes(mAway));
+              // Simple check if one contains the other + fuzzy matching
+              return isMatch(mHome, fHome) && isMatch(mAway, fAway);
             });
 
             if (matchedApiFixture) {
@@ -724,8 +774,7 @@ function syncMatchesWithEspn(matches) {
               var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
               var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-              if((mHome.includes(eHome) || eHome.includes(mHome)) &&
-                 (mAway.includes(eAway) || eAway.includes(mAway))) {
+              if(isMatch(mHome, eHome) && isMatch(mAway, eAway)) {
 
                 var d = new Date(ev.date);
                 m.startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
