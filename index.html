@@ -1341,7 +1341,7 @@ function openMod(m,col){
       }
 
       body.innerHTML=m.streamLinks.map(function(s,i){
-        var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"')";
+        var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"','"+m.id+"')";
         var addMvEv="addToMultiview('"+(s.url||'#')+"','"+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
 
         return '<div class="si" style="display:flex;align-items:stretch;padding:0;overflow:hidden;">'
@@ -1519,51 +1519,409 @@ function toggleFullscreen(elem) {
 }
 
 /* ══ PLAYER (THIRD PAGE EMBED) ═════════ */
-function openStream(e,eu,en){
-  e.preventDefault();
-  var url=decodeURIComponent(eu),name=decodeURIComponent(en);
+// We pass the match id (mid) so we can fetch alternative streams and suggestions
+function openStream(e, eu, en, mid){
+  if(e) e.preventDefault();
+  var url=decodeURIComponent(eu), name=decodeURIComponent(en);
+
+  // Close modal if open
+  document.getElementById('mbg').classList.remove('open');
 
   var pbg = document.getElementById('player-bg');
   if(!pbg){
     pbg = document.createElement('div');
     pbg.id = 'player-bg';
     pbg.className = 'mbg';
-    pbg.innerHTML = '<div class="modal" style="max-width:800px; width:95%; height:80vh; display:flex; flex-direction:column;">'
-      +'<div class="mhd" style="flex-shrink:0;">'
-        +'<div class="mi"><div class="mn" id="p-name"></div></div>'
-        +'<button class="btn g" id="p-ext" style="margin-right:10px;">Ouvrir ailleurs</button>'
-        +'<div class="mx" onclick="closePlayer()">✕</div>'
+    // Style as a full-screen "Prime Video" layout
+    pbg.innerHTML = '<div id="player-container" style="width:100%; height:100%; background:#000; display:flex; flex-direction:column; position:relative; overflow:hidden;">'
+
+      // Top bar (Header)
+      +'<div id="player-header" style="position:absolute; top:0; left:0; right:0; padding:15px 25px; background:linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index:20; display:flex; justify-content:space-between; align-items:flex-start; transition:opacity 0.3s;">'
+        +'<div style="display:flex; flex-direction:column; gap:5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); pointer-events:none;">'
+          +'<h2 id="p-match-name" style="margin:0; font-size:24px; font-weight:bold; color:#fff;">'+name+'</h2>'
+          +'<div id="p-stream-name" style="font-size:14px; color:#ddd;"></div>'
+        +'</div>'
+        +'<div style="display:flex; gap:10px;">'
+          +'<button class="btn" id="p-pip-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; backdrop-filter:blur(5px); display:flex; align-items:center; gap:5px;" onclick="minimizePlayer()">'
+            +'<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zm-10-7h9v6h-9z"/></svg> Réduire'
+          +'</button>'
+          +'<button class="btn g" id="p-ext" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; backdrop-filter:blur(5px);">Ouvrir ailleurs</button>'
+          +'<button class="btn" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(5px);" onclick="closePlayer()">✕</button>'
+        +'</div>'
       +'</div>'
-      +'<div class="mbody" style="flex:1; padding:0; background:#000; position:relative;">'
-        +'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted2);z-index:1;">Chargement du lecteur... (Si cela échoue, cliquez sur "Ouvrir ailleurs")</div>'
-        +'<iframe id="p-frame" style="width:100%;height:100%;border:none;position:relative;z-index:2;background:transparent;" allowfullscreen></iframe>'
+
+      // Right sidebar trigger
+      +'<div id="player-sidebar-trigger" style="position:absolute; right:0; top:0; bottom:0; width:50px; z-index:15; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity 0.3s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">'
+        +'<div style="background:rgba(0,0,0,0.6); padding:20px 5px; border-radius:10px 0 0 10px; color:#fff;">'
+          +'<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>'
+        +'</div>'
       +'</div>'
+
+      // Main video area
+      +'<div id="player-video-area" style="flex:1; width:100%; position:relative; z-index:1; display:flex; align-items:center; justify-content:center; transition:width 0.3s cubic-bezier(0.4, 0, 0.2, 1);">'
+        +'<div id="p-loader" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted2); z-index:1;">Chargement du lecteur...</div>'
+        +'<iframe id="p-frame" style="width:100%; height:100%; border:none; position:relative; z-index:2; background:transparent;" allowfullscreen></iframe>'
+      +'</div>'
+
+      // Right sidebar panel
+      +'<div id="player-sidebar" style="position:absolute; right:0; top:0; bottom:0; width:350px; background:rgba(20, 20, 20, 0.95); backdrop-filter:blur(10px); z-index:25; border-left:1px solid rgba(255,255,255,0.1); transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display:flex; flex-direction:column;">'
+        +'<div style="padding:15px 20px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">'
+          +'<h3 style="margin:0; font-size:16px; color:#fff;">Plus de streams</h3>'
+          +'<button onclick="togglePlayerSidebar()" style="background:none; border:none; color:#fff; cursor:pointer; padding:5px;">✕</button>'
+        +'</div>'
+        +'<div id="player-sidebar-content" style="flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:20px;">'
+          +'<div id="p-alt-streams-container" style="display:none;">'
+            +'<div style="font-size:12px; font-weight:bold; color:var(--muted); text-transform:uppercase; margin-bottom:10px; letter-spacing:1px;">Autres sources pour ce match</div>'
+            +'<div id="p-alt-streams" style="display:flex; flex-direction:column; gap:8px;"></div>'
+          +'</div>'
+          +'<div id="p-suggestions-container">'
+            +'<div style="font-size:12px; font-weight:bold; color:var(--muted); text-transform:uppercase; margin-bottom:10px; letter-spacing:1px;">En direct maintenant</div>'
+            +'<div id="p-suggestions" style="display:flex; flex-direction:column; gap:10px;"></div>'
+          +'</div>'
+        +'</div>'
+      +'</div>'
+
     +'</div>';
+
+    // Setup interactions
     document.body.appendChild(pbg);
-    pbg.addEventListener('click', function(ev){ if(ev.target===this) closePlayer(); });
+
+    // Hover controls for header
+    var hideTimeout;
+    pbg.addEventListener('mousemove', function() {
+      if(pbg.classList.contains('pip-mode')) return;
+      var hdr = document.getElementById('player-header');
+      if(hdr) hdr.style.opacity = '1';
+      clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(function() {
+        if(!pbg.classList.contains('pip-mode') && document.getElementById('player-sidebar').style.transform === 'translateX(100%)') {
+           if(hdr) hdr.style.opacity = '0';
+        }
+      }, 3000);
+    });
+
+    // Close on background click only if not in pip
+    pbg.addEventListener('click', function(ev){
+      if(ev.target === pbg) {
+         if(!pbg.classList.contains('pip-mode')) closePlayer();
+      }
+    });
+
+    document.getElementById('player-sidebar-trigger').onclick = togglePlayerSidebar;
   }
 
-  document.getElementById('p-name').textContent = 'Lecteur: ' + name;
-  var iframe = document.getElementById('p-frame');
-  iframe.src = ''; // reset
-  setTimeout(function(){ iframe.src = url; }, 50);
+  // Restore from pip if needed
+  if(pbg.classList.contains('pip-mode')) {
+      restorePlayer();
+  }
 
+  pbg.style.display = 'block';
+
+  // Find match context
+  var currentMatch = null;
+  if(mid) {
+      currentMatch = S.matches.find(function(m) { return m.id === mid; });
+  }
+
+  // Update header text
+  var matchNameEl = document.getElementById('p-match-name');
+  if(currentMatch) {
+      matchNameEl.innerHTML = esc(currentMatch.homeTeam) + ' <span style="opacity:0.5;">vs</span> ' + esc(currentMatch.awayTeam);
+      document.getElementById('p-stream-name').textContent = 'Source: ' + name;
+  } else {
+      matchNameEl.textContent = name;
+      document.getElementById('p-stream-name').textContent = 'Stream Externe';
+  }
+
+  // Reset and load iframe
+  var iframe = document.getElementById('p-frame');
+  iframe.src = '';
+  setTimeout(function(){
+      iframe.src = url;
+      // Keep track of current playing info on iframe
+      iframe.dataset.url = url;
+      iframe.dataset.mid = mid;
+  }, 50);
+
+  // External button
   var extBtn = document.getElementById('p-ext');
   extBtn.onclick = function(){
     window.open(url, '_blank', 'noopener,noreferrer');
     closePlayer();
   };
 
+  // Populate Sidebar
+  populatePlayerSidebar(currentMatch, url);
+
+  // Show player, hide EPG for full immersion
+  document.getElementById('epg').style.display = 'none';
   pbg.classList.add('open');
+
+  // Try native fullscreen on the container
+  var container = document.getElementById('player-container');
+  if(container.requestFullscreen) {
+      container.requestFullscreen().catch(function(e) { console.warn("Fullscreen error", e); });
+  }
+
   showToast('Lancement : '+name);
+}
+
+function togglePlayerSidebar() {
+    var sidebar = document.getElementById('player-sidebar');
+    var videoArea = document.getElementById('player-video-area');
+    var header = document.getElementById('player-header');
+
+    if(sidebar.style.transform === 'translateX(100%)') {
+        sidebar.style.transform = 'translateX(0)';
+        // Shrink video area slightly
+        videoArea.style.width = 'calc(100% - 350px)';
+        if(header) header.style.opacity = '1';
+    } else {
+        sidebar.style.transform = 'translateX(100%)';
+        videoArea.style.width = '100%';
+    }
+}
+
+function populatePlayerSidebar(currentMatch, currentUrl) {
+    var altContainer = document.getElementById('p-alt-streams-container');
+    var altList = document.getElementById('p-alt-streams');
+    var sugList = document.getElementById('p-suggestions');
+
+    altList.innerHTML = '';
+    sugList.innerHTML = '';
+
+    // 1. Alternative Streams
+    if(currentMatch && currentMatch.streamLinks && currentMatch.streamLinks.length > 1) {
+        altContainer.style.display = 'block';
+        currentMatch.streamLinks.forEach(function(s, i) {
+            var isActive = (s.url === currentUrl);
+            var qualityClass = QC[s.quality] || 'bSD';
+
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:10px; border-radius:8px; background:'+(isActive?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.05)')+'; display:flex; align-items:center; gap:10px; cursor:'+(isActive?'default':'pointer')+'; border:1px solid '+(isActive?'rgba(255,255,255,0.3)':'transparent')+'; transition:background 0.2s;';
+            if(!isActive) {
+                div.onmouseenter = function(){ this.style.background = 'rgba(255,255,255,0.1)'; };
+                div.onmouseleave = function(){ this.style.background = 'rgba(255,255,255,0.05)'; };
+                div.onclick = function() {
+                    openStream(null, encodeURIComponent(s.url), encodeURIComponent(s.name), currentMatch.id);
+                };
+            }
+
+            div.innerHTML = '<div style="font-size:16px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
+                +'<div style="flex:1; overflow:hidden;">'
+                  +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(s.name||'Stream '+(i+1))+'</div>'
+                  +'<div style="font-size:11px; color:var(--muted);">'+(s.lang||'?')+'</div>'
+                +'</div>'
+                +(isActive ? '<div style="font-size:10px; background:var(--accent); color:#000; padding:2px 6px; border-radius:4px; font-weight:bold;">ACTIF</div>' : '')
+                +'<span class="sbadge '+qualityClass+'" style="font-size:10px; padding:2px 4px;">'+(s.quality||'SD')+'</span>';
+
+            altList.appendChild(div);
+        });
+    } else {
+        altContainer.style.display = 'none';
+    }
+
+    // 2. Suggestions (Other LIVE matches)
+    var liveMatches = S.matches.filter(function(m) { return m.status === 'live' && (!currentMatch || m.id !== currentMatch.id); });
+
+    if(liveMatches.length === 0) {
+        sugList.innerHTML = '<div style="color:var(--muted); font-size:13px; text-align:center; padding:20px;">Aucun autre match en direct</div>';
+    } else {
+        liveMatches.slice(0, 10).forEach(function(m) { // Top 10 suggestions
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; transition:background 0.2s;';
+
+            // Thumbnail / Shield (fallback)
+            var thumb = '<div style="width:40px; height:40px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:18px;">⚽</div>';
+            if(m.homeLogo) {
+                thumb = '<div style="width:40px; height:40px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:2px;">'
+                  +'<img src="'+esc(m.homeLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'">'
+                +'</div>';
+            }
+
+            var info = '<div style="flex:1; overflow:hidden; cursor:pointer;" onclick="openModAndLoad(\''+m.id+'\')">'
+                +'<div style="font-size:11px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(m.minute?m.minute+"'":'LIVE')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>'
+                +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.homeTeam)+'</div>'
+                +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.awayTeam)+'</div>'
+            +'</div>';
+
+            var score = m.score ? '<div style="font-size:14px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;"><span>'+m.score[0]+'</span><span>'+m.score[1]+'</span></div>' : '';
+
+            // Add to Multiview button (if streams are loaded, otherwise just open modal)
+            var addMv = document.createElement('button');
+            addMv.innerHTML = '⊞';
+            addMv.title = 'Ajouter au Multiview';
+            addMv.style.cssText = 'background:rgba(255,255,255,0.1); border:none; color:#fff; width:30px; height:30px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:background 0.2s;';
+            addMv.onmouseenter = function(){ this.style.background = 'rgba(255,255,255,0.2)'; };
+            addMv.onmouseleave = function(){ this.style.background = 'rgba(255,255,255,0.1)'; };
+            addMv.onclick = function(ev) {
+                ev.stopPropagation();
+                if(m.streamsLoaded && m.streamLinks && m.streamLinks.length > 0) {
+                    addToMultiview(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam);
+                } else {
+                    // Not loaded yet, open modal to load
+                    showToast('Chargement des streams...');
+                    openModAndLoad(m.id);
+                }
+            };
+
+            div.innerHTML = thumb + info + score;
+            div.appendChild(addMv);
+
+            sugList.appendChild(div);
+        });
+    }
+}
+
+// Helper to open modal from suggestions
+function openModAndLoad(mid) {
+    var m = S.matches.find(function(x){ return x.id === mid; });
+    if(m) {
+        // We are already inside the player, so opening the modal on top might be weird
+        // Let's close player sidebar if open, and show modal on top
+        var sidebar = document.getElementById('player-sidebar');
+        if(sidebar && sidebar.style.transform === 'translateX(0px)') {
+            togglePlayerSidebar();
+        }
+        openMod(m);
+    }
+}
+
+function minimizePlayer() {
+    var pbg = document.getElementById('player-bg');
+    if(!pbg) return;
+
+    if(document.fullscreenElement) {
+        document.exitFullscreen().catch(function(e){});
+    }
+
+    // Transform into PiP
+    pbg.classList.add('pip-mode');
+
+    // Show EPG again
+    document.getElementById('epg').style.display = 'flex';
+
+    // Add PiP styles dynamically if not present
+    if(!document.getElementById('pip-styles')) {
+        var style = document.createElement('style');
+        style.id = 'pip-styles';
+        style.innerHTML = `
+            .mbg.pip-mode {
+                background: transparent;
+                pointer-events: none;
+                display: block !important;
+                z-index: 999;
+            }
+            .mbg.pip-mode #player-container {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 320px;
+                height: 180px;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+                border: 2px solid rgba(255,255,255,0.1);
+                pointer-events: auto;
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .mbg.pip-mode #player-container:hover {
+                transform: scale(1.05);
+                border-color: rgba(255,255,255,0.3);
+            }
+            .mbg.pip-mode #player-header,
+            .mbg.pip-mode #player-sidebar-trigger,
+            .mbg.pip-mode #player-sidebar {
+                display: none !important;
+            }
+            /* Add an overlay to click and restore */
+            .mbg.pip-mode #player-video-area::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                z-index: 10;
+                background: transparent;
+            }
+            .mbg.pip-mode #player-container:hover::after {
+                content: 'Agrandir ⤢';
+                background: rgba(0,0,0,0.5);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            /* Add close button to PiP */
+            .mbg.pip-mode #pip-close {
+                display: flex !important;
+            }
+            #pip-close { display: none; }
+        `;
+        document.head.appendChild(style);
+
+        // Add close button to container
+        var container = document.getElementById('player-container');
+        var closeBtn = document.createElement('div');
+        closeBtn.id = 'pip-close';
+        closeBtn.innerHTML = '✕';
+        closeBtn.style.cssText = 'position:absolute; top:-10px; right:-10px; width:24px; height:24px; background:var(--red); color:white; border-radius:50%; align-items:center; justify-content:center; font-size:12px; font-weight:bold; cursor:pointer; z-index:20; box-shadow:0 2px 5px rgba(0,0,0,0.5); pointer-events:auto;';
+        closeBtn.onclick = function(e) {
+            e.stopPropagation();
+            closePlayer();
+        };
+        container.appendChild(closeBtn);
+    }
+
+    // Add click event to restore
+    var container = document.getElementById('player-container');
+    container.onclick = function(e) {
+        if(pbg.classList.contains('pip-mode')) {
+            restorePlayer();
+        }
+    };
+
+    showToast('Lecteur réduit. Vous pouvez continuer à naviguer.');
+}
+
+function restorePlayer() {
+    var pbg = document.getElementById('player-bg');
+    if(!pbg) return;
+
+    pbg.classList.remove('pip-mode');
+    document.getElementById('epg').style.display = 'none';
+
+    // Remove restore click event
+    document.getElementById('player-container').onclick = null;
+
+    // Show header briefly
+    var hdr = document.getElementById('player-header');
+    if(hdr) hdr.style.opacity = '1';
+
+    // Try full screen again
+    var container = document.getElementById('player-container');
+    if(container.requestFullscreen) {
+        container.requestFullscreen().catch(function(e) {});
+    }
 }
 
 function closePlayer(){
   var pbg = document.getElementById('player-bg');
   if(pbg){
     pbg.classList.remove('open');
+    pbg.classList.remove('pip-mode');
+    pbg.style.display = 'none';
     var iframe = document.getElementById('p-frame');
-    if(iframe) iframe.src = '';
+    if(iframe) {
+        iframe.src = '';
+        iframe.dataset.url = '';
+        iframe.dataset.mid = '';
+    }
+    document.getElementById('epg').style.display = 'flex';
+
+    if(document.fullscreenElement) {
+        document.exitFullscreen().catch(function(e){});
+    }
   }
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMod();closeDbg();}});
