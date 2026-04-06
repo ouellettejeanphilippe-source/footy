@@ -919,6 +919,68 @@ function getLogo(teamName) {
     return logoCache[key] || null;
 }
 
+/* ══ DOMAIN PREFS ════════════════════════ */
+function getDomain(url) {
+  try {
+    var u = new URL(url);
+    return u.hostname.replace(/^www\./, '');
+  } catch(e) {
+    return url;
+  }
+}
+
+var domainPrefs = {};
+try {
+  var storedPrefs = localStorage.getItem('domain_prefs');
+  if (storedPrefs) domainPrefs = JSON.parse(storedPrefs);
+} catch(e) {}
+
+function saveDomainPrefs() {
+  try {
+    localStorage.setItem('domain_prefs', JSON.stringify(domainPrefs));
+  } catch(e) {}
+}
+
+function toggleDomainPref(domain, type, mid) {
+  var current = domainPrefs[domain] || 0;
+  if (type === 'fav') {
+    if (current === 1) delete domainPrefs[domain];
+    else domainPrefs[domain] = 1;
+  } else if (type === 'dep') {
+    if (current === -1) delete domainPrefs[domain];
+    else domainPrefs[domain] = -1;
+  }
+  saveDomainPrefs();
+
+  // Refresh the UI if necessary
+  if (mid) {
+    var m = S.matches.find(function(x){ return x.id === mid; });
+    if(m) {
+      if (document.getElementById('mbg').classList.contains('open')) {
+        openMod(m);
+      }
+      var pbg = document.getElementById('player-bg');
+      if (pbg && pbg.classList.contains('open')) {
+          var iframe = document.getElementById('p-frame');
+          populatePlayerSidebar(m, iframe ? iframe.dataset.url : null);
+      }
+    }
+  }
+}
+
+function sortStreamLinks(links) {
+  return links.slice().sort(function(a, b) {
+    var domA = getDomain(a.url);
+    var domB = getDomain(b.url);
+    var prefA = domainPrefs[domA] || 0;
+    var prefB = domainPrefs[domB] || 0;
+    if (prefA !== prefB) {
+      return prefB - prefA; // Favs (1) first, dep (-1) last
+    }
+    return 0; // Keep original order if preferences are equal
+  });
+}
+
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 function fetchSubPages(matches){
   // We use a limited concurrency pool so we don't spam the proxy/network
@@ -1066,7 +1128,8 @@ function updateMatchUiAfterScrape(m) {
         if(!m.streamLinks || m.streamLinks.length===0){
             body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.</div>';
         } else {
-            body.innerHTML=m.streamLinks.map(function(s,i){
+            var sortedLinks = sortStreamLinks(m.streamLinks);
+            body.innerHTML=sortedLinks.map(function(s,i){
               var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"')";
               return '<a class="si" href="#" onclick="'+ev+'">'
                 +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
@@ -1331,19 +1394,25 @@ function openMod(m,col){
       body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.<br><a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a></div>';
       document.getElementById('mbg').classList.add('open');
   } else {
+      var sortedLinks = sortStreamLinks(m.streamLinks);
       var mvBtn = document.getElementById('mv-add-btn');
-      if(mvBtn && m.streamLinks.length > 0) {
+      if(mvBtn && sortedLinks.length > 0) {
           mvBtn.disabled = false;
           mvBtn.innerHTML = '⊞ Ajouter au Multiview (' + m.homeTeam + ')';
           mvBtn.onclick = function() {
-              addToMultiview(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam);
+              addToMultiview(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam);
               closeMod();
           };
       }
 
-      body.innerHTML=m.streamLinks.map(function(s,i){
+      body.innerHTML=sortedLinks.map(function(s,i){
         var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"','"+m.id+"')";
         var addMvEv="addToMultiview('"+(s.url||'#')+"','"+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
+
+        var dom = getDomain(s.url);
+        var pref = domainPrefs[dom] || 0;
+        var favEv = "toggleDomainPref('"+dom+"', 'fav', '"+m.id+"');event.stopPropagation();event.preventDefault();";
+        var depEv = "toggleDomainPref('"+dom+"', 'dep', '"+m.id+"');event.stopPropagation();event.preventDefault();";
 
         return '<div class="si" style="display:flex;align-items:stretch;padding:0;overflow:hidden;">'
           +'<a href="#" onclick="'+ev+'" style="flex:1;display:flex;align-items:center;gap:12px;padding:14px;color:var(--text);text-decoration:none;">'
@@ -1352,6 +1421,10 @@ function openMod(m,col){
           +'<div class="si-s">Langue : '+(s.lang||'?')+' · '+(i===0?'Recommandé':'Alternatif')+'</div></div>'
           +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
           +'</a>'
+          +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);">'
+            +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 10px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
+            +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 10px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
+          +'</div>'
           +'<button title="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.05);border:none;border-left:1px solid rgba(255,255,255,0.1);color:var(--text);padding:0 16px;cursor:pointer;transition:background 0.2s;">⊞</button>'
           +'</div>';
       }).join('');
@@ -1694,27 +1767,37 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
     // 1. Alternative Streams
     if(currentMatch && currentMatch.streamLinks && currentMatch.streamLinks.length > 1) {
         altContainer.style.display = 'block';
-        currentMatch.streamLinks.forEach(function(s, i) {
+        var sortedLinks = sortStreamLinks(currentMatch.streamLinks);
+        sortedLinks.forEach(function(s, i) {
             var isActive = (s.url === currentUrl);
             var qualityClass = QC[s.quality] || 'bSD';
 
-            var div = document.createElement('div');
-            div.style.cssText = 'padding:10px; border-radius:8px; background:'+(isActive?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.05)')+'; display:flex; align-items:center; gap:10px; cursor:'+(isActive?'default':'pointer')+'; border:1px solid '+(isActive?'rgba(255,255,255,0.3)':'transparent')+'; transition:background 0.2s;';
-            if(!isActive) {
-                div.onmouseenter = function(){ this.style.background = 'rgba(255,255,255,0.1)'; };
-                div.onmouseleave = function(){ this.style.background = 'rgba(255,255,255,0.05)'; };
-                div.onclick = function() {
-                    openStream(null, encodeURIComponent(s.url), encodeURIComponent(s.name), currentMatch.id);
-                };
-            }
+            var dom = getDomain(s.url);
+            var pref = domainPrefs[dom] || 0;
+            var favEv = "toggleDomainPref('"+dom+"', 'fav', '"+currentMatch.id+"');event.stopPropagation();event.preventDefault();";
+            var depEv = "toggleDomainPref('"+dom+"', 'dep', '"+currentMatch.id+"');event.stopPropagation();event.preventDefault();";
 
-            div.innerHTML = '<div style="font-size:16px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
+            var div = document.createElement('div');
+            div.style.cssText = 'padding:0; border-radius:8px; background:'+(isActive?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.05)')+'; display:flex; align-items:stretch; overflow:hidden; border:1px solid '+(isActive?'rgba(255,255,255,0.3)':'transparent')+'; transition:background 0.2s;';
+
+            var mainClickAttr = isActive ? '' : 'onclick="openStream(null, \''+encodeURIComponent(s.url)+'\', \''+encodeURIComponent(s.name)+'\', \''+currentMatch.id+'\')"';
+            var cursorStyle = isActive ? 'default' : 'pointer';
+
+            var hoverLogic = isActive ? '' : 'onmouseenter="this.parentElement.style.background=\'rgba(255,255,255,0.1)\'" onmouseleave="this.parentElement.style.background=\'rgba(255,255,255,0.05)\'"';
+
+            div.innerHTML = '<div '+mainClickAttr+' '+hoverLogic+' style="flex:1;display:flex;align-items:center;gap:10px;padding:10px;cursor:'+cursorStyle+';">'
+                +'<div style="font-size:16px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
                 +'<div style="flex:1; overflow:hidden;">'
                   +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(s.name||'Stream '+(i+1))+'</div>'
                   +'<div style="font-size:11px; color:var(--muted);">'+(s.lang||'?')+'</div>'
                 +'</div>'
-                +(isActive ? '<div style="font-size:10px; background:var(--accent); color:#000; padding:2px 6px; border-radius:4px; font-weight:bold;">ACTIF</div>' : '')
-                +'<span class="sbadge '+qualityClass+'" style="font-size:10px; padding:2px 4px;">'+(s.quality||'SD')+'</span>';
+                +(isActive ? '<div style="font-size:10px; background:var(--accent); color:#000; padding:2px 6px; border-radius:4px; font-weight:bold; margin-right:5px;">ACTIF</div>' : '')
+                +'<span class="sbadge '+qualityClass+'" style="font-size:10px; padding:2px 4px; margin-right:5px;">'+(s.quality||'SD')+'</span>'
+                +'</div>'
+                +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);">'
+                  +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'transparent')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
+                  +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'transparent')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
+                +'</div>';
 
             altList.appendChild(div);
         });
