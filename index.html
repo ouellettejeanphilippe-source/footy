@@ -24,10 +24,6 @@
   --text: #ffffff;
   --muted: rgba(235, 235, 245, 0.6);
   --muted2: rgba(235, 235, 245, 0.8);
-  --ruler-h: 44px;
-  --chan-w: 160px;
-  --row-h: 76px;
-  --hour-px: 180px;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
@@ -57,41 +53,68 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
 .vsep { width: 1px; height: 16px; background: var(--border); flex-shrink: 0; }
 select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) url("data:image/svg+xml;utf8,<svg fill='%23fff' viewBox='0 0 24 24' width='16' height='16'><path d='M7 10l5 5 5-5z'/></svg>") no-repeat right 8px center; padding-right: 30px; }
 
-.epg { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; position: relative; padding: 16px; background: var(--bg); gap: 16px; scroll-behavior: smooth; }
+.epg { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; position: relative; padding: 16px 0; background: var(--bg); gap: 24px; scroll-behavior: smooth; }
 
-/* LAYOUT GRILLE/LISTE MODERNE */
-.lg-section { display: flex; flex-direction: column; gap: 12px; position: relative; }
-.lg-hdr { position: sticky; top: -16px; z-index: 10; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; padding: 12px 16px; margin: 0 -16px; background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 0.5px solid var(--border2); transition: background 0.2s; }
-.lg-hdr:hover { background: rgba(44, 44, 46, 0.95); }
+/* LAYOUT CAROUSEL PRIME VIDEO */
+.lg-section { display: flex; flex-direction: column; position: relative; margin-bottom: 8px; }
+.lg-hdr { display: flex; align-items: center; gap: 10px; padding: 0 24px 12px 24px; cursor: pointer; user-select: none; transition: opacity 0.2s; }
+.lg-hdr:hover { opacity: 0.8; }
 .lg-hdr.collapsed .lg-chev { transform: rotate(-90deg); }
-.lg-chev { transition: transform 0.2s; font-size: 11px; color: var(--muted); }
-.ch-flag { font-size: 16px; }
-.lg-title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; color: var(--text); }
-.lg-cnt { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--muted2); background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; }
+.lg-chev { transition: transform 0.2s; font-size: 14px; color: var(--muted); display: none; }
+.ch-flag { font-size: 20px; }
+.lg-title { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; color: var(--text); text-transform: uppercase; }
+.lg-cnt { margin-left: 8px; font-size: 14px; font-weight: 600; color: var(--muted2); }
 
-.match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.match-grid {
+  display: flex;
+  overflow-x: auto;
+  gap: 16px;
+  padding: 8px 24px 24px 24px;
+  scroll-snap-type: x mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.match-grid::-webkit-scrollbar { display: none; }
 
-.mb { background: var(--bg3); border: 1px solid var(--border); border-radius: 16px; padding: 16px; cursor: pointer; transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden; }
-.mb::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; bottom: 0; background: var(--color, var(--accent)); }
-.mb:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); border-color: var(--border2); }
-.mb:active { transform: translateY(0); }
+.mb {
+  flex: 0 0 320px;
+  scroll-snap-align: start;
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.3s;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.mb::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 12px; border: 2px solid transparent; transition: border-color 0.3s; pointer-events: none; }
+.mb:hover { transform: scale(1.04) translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.8); z-index: 2; background: var(--bg3); }
+.mb:hover::after { border-color: rgba(255,255,255,0.2); }
+.mb:active { transform: scale(1) translateY(0); }
 
-.mb.live { border-color: rgba(255, 69, 58, 0.3); background: linear-gradient(180deg, rgba(255, 69, 58, 0.05) 0%, var(--bg3) 100%); }
-.mb.live::before { background: var(--red); box-shadow: 0 0 10px var(--red); animation: liveglow 2s infinite; }
-.mb.finished { opacity: 0.5; filter: grayscale(0.5); }
+.mb.live { background: linear-gradient(to bottom right, rgba(255, 69, 58, 0.15), var(--bg2)); }
+.mb.live::after { border-color: rgba(255, 69, 58, 0.4); }
+.mb.finished { opacity: 0.6; filter: grayscale(0.5); }
 
 @keyframes liveglow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-.mb-top { display: flex; justify-content: space-between; align-items: flex-start; }
-.mb-time { font-size: 13px; font-weight: 600; color: var(--muted2); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; }
-.mb-live { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--red); background: rgba(255, 69, 58, 0.15); padding: 4px 8px; border-radius: 6px; letter-spacing: 0.5px; }
-.mb-ld { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: blink 1s infinite; }
-.mb-fin { font-size: 12px; font-weight: 700; color: var(--muted); background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; letter-spacing: 0.5px; }
+.mb-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.mb-time { font-size: 14px; font-weight: 600; color: var(--muted2); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; }
+.mb-live { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--red); background: rgba(255, 69, 58, 0.15); padding: 4px 8px; border-radius: 6px; letter-spacing: 0.5px; animation: liveglow 2s infinite; }
+.mb-ld { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+.mb-fin { font-size: 13px; font-weight: 700; color: var(--muted); background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; letter-spacing: 0.5px; }
 
-.mb-teams { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.mb-teams { display: flex; flex-direction: column; gap: 12px; flex: 1; }
 .team-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.team-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.team-score { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 24px; text-align: right; }
+.team-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.team-logo { width: 32px; height: 32px; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; overflow: hidden; }
+.team-logo img { width: 100%; height: 100%; object-fit: contain; }
+.team-name { font-size: 16px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.team-score { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; width: 30px; text-align: right; }
 
 /* OVERLAY */
 .ov { position: absolute; inset: 0; z-index: 100; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
@@ -140,21 +163,17 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media(max-width: 680px) {
-  :root { --chan-w: 90px; --row-h: 68px; --hour-px: 140px; --ruler-h: 40px; }
-  .ch-cnt, .mb-sn { display: none; }
-  .ch-name { font-size: 11px; }
   .hdr { padding: 0 12px; gap: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
   .hdr::-webkit-scrollbar { display: none; }
   .logo { font-size: 18px; flex-shrink: 0; }
   .btn { padding: 8px 14px; font-size: 14px; flex-shrink: 0; }
-  .mb { padding: 14px; gap: 10px; border-radius: 12px; }
-  .mb-t { font-size: 13px; }
-  .team-name { font-size: 16px; }
-  .team-score { font-size: 18px; }
-  .mb-time { font-size: 14px; }
-  .mb-score { font-size: 14px; }
+  .mb { flex: 0 0 280px; padding: 14px; gap: 12px; border-radius: 12px; }
+  .team-name { font-size: 15px; }
+  .team-score { font-size: 20px; }
+  .mb-time { font-size: 13px; }
+  .match-grid { padding: 8px 16px 24px 16px; gap: 12px; }
+  .lg-hdr { padding: 0 16px 8px 16px; }
   #hdate { display: none; } /* Hide date on small screens to save space */
-  .match-grid { grid-template-columns: 1fr; } /* Force single column on mobile */
 }
 
 /* DEBUG */
@@ -314,16 +333,22 @@ function darken(c,a){
 function pad(n){return String(n).padStart(2,'0');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
-function HP(){return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--hour-px'))||170;}
-function RH(){return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--row-h'))||72;}
 function fmtNow(){var n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes());}
-var RANGE_START=10,RANGE_END=26,TOTAL_H=RANGE_END-RANGE_START;
-function t2x(t){
-  if(!t||t.indexOf(':')<0) return -999;
-  var p=t.split(':'),h=parseInt(p[0]),m=parseInt(p[1]);
-  return((h<RANGE_START?h+24:h)+m/60-RANGE_START)*HP();
+
+/* ══ FOOTYBITE LOGOS SCRAPING ═════════ */
+// Add footybite logo parsing
+function extractFootybiteLogos(doc) {
+    var teams = doc.querySelectorAll('.txt-team');
+    teams.forEach(function(teamEl) {
+        var teamName = teamEl.textContent.trim();
+        var box = teamEl.closest('.row');
+        if(!box) return;
+        var img = box.querySelector('img.img-icone');
+        if(img && img.src && img.src.indexOf('http') === 0 && img.src.indexOf('default') < 0) {
+            cacheLogo(teamName, img.src);
+        }
+    });
 }
-function now2x(){var n=new Date();return t2x(pad(n.getHours())+':'+pad(n.getMinutes()));}
 
 /* ══ FETCH ══════════════════════════════ */
 function fetchPage(url){
@@ -379,6 +404,8 @@ function parseFootybite(html){
 
   /* Snapshot du body pour debug */
   lg('body[5000]',doc.body.innerHTML.slice(0,5000));
+
+  extractFootybiteLogos(doc);
 
   /* Si aucun .div-child-box → page différente */
   var matchEls=doc.querySelectorAll('.div-child-box');
@@ -791,6 +818,16 @@ function syncMatchesWithEspn(matches) {
                   m.score = [parseInt(home.score)||0, parseInt(away.score)||0];
                   m.minute = 'FT';
                 }
+
+                // Set logos from ESPN
+                if(home.team.logo) {
+                    m.homeLogo = home.team.logo;
+                    cacheLogo(m.homeTeam, m.homeLogo);
+                }
+                if(away.team.logo) {
+                    m.awayLogo = away.team.logo;
+                    cacheLogo(m.awayTeam, m.awayLogo);
+                }
               }
             });
           });
@@ -843,6 +880,42 @@ function updateMatchDataFromApi(match, apiFixture, sport) {
        match.startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
     }
   }
+
+  // Update logos from API-Sports if available
+  if(apiFixture.teams) {
+      if(apiFixture.teams.home && apiFixture.teams.home.logo) {
+          match.homeLogo = apiFixture.teams.home.logo;
+          cacheLogo(match.homeTeam, match.homeLogo);
+      }
+      if(apiFixture.teams.away && apiFixture.teams.away.logo) {
+          match.awayLogo = apiFixture.teams.away.logo;
+          cacheLogo(match.awayTeam, match.awayLogo);
+      }
+  }
+}
+
+/* ══ LOGO CACHE ═══════════════════════════ */
+var logoCache = {};
+try {
+    var stored = localStorage.getItem('sports_logos');
+    if(stored) logoCache = JSON.parse(stored);
+} catch(e) {}
+
+function cacheLogo(teamName, url) {
+    if(!teamName || !url) return;
+    var key = teamName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if(logoCache[key] !== url) {
+        logoCache[key] = url;
+        try {
+            localStorage.setItem('sports_logos', JSON.stringify(logoCache));
+        } catch(e) {}
+    }
+}
+
+function getLogo(teamName) {
+    if(!teamName) return null;
+    var key = teamName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return logoCache[key] || null;
 }
 
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
@@ -1168,10 +1241,16 @@ function buildEPG(matches){
             var awayScore = m.score ? m.score[1] : '-';
             if(m.status === 'upcoming') { homeScore = ''; awayScore = ''; }
 
+            var hl = m.homeLogo || getLogo(m.homeTeam);
+            var al = m.awayLogo || getLogo(m.awayTeam);
+
+            var homeLogo = hl ? '<div class="team-logo"><img src="'+esc(hl)+'" loading="lazy"></div>' : '<div class="team-logo">🛡️</div>';
+            var awayLogo = al ? '<div class="team-logo"><img src="'+esc(al)+'" loading="lazy"></div>' : '<div class="team-logo">🛡️</div>';
+
             b.innerHTML = '<div class="mb-top">' + timeHtml + '</div>'
                 + '<div class="mb-teams">'
-                +   '<div class="team-row"><span class="team-name">'+esc(m.homeTeam)+'</span><span class="team-score">'+homeScore+'</span></div>'
-                +   '<div class="team-row"><span class="team-name">'+esc(m.awayTeam)+'</span><span class="team-score">'+awayScore+'</span></div>'
+                +   '<div class="team-row"><div class="team-info">' + homeLogo + '<span class="team-name">'+esc(m.homeTeam)+'</span></div><span class="team-score">'+homeScore+'</span></div>'
+                +   '<div class="team-row"><div class="team-info">' + awayLogo + '<span class="team-name">'+esc(m.awayTeam)+'</span></div><span class="team-score">'+awayScore+'</span></div>'
                 + '</div>';
 
             b.addEventListener('click', function(){ openMod(m, col); });
@@ -1215,6 +1294,16 @@ function openMod(m,col){
     +'<span class="mtag">'+m.startTime+'</span>'
     +(m.status==='live'?'<span class="mtag" style="color:var(--red);background:rgba(255,59,59,.1)">🔴 '+(m.minute?m.minute+"'":'LIVE')+'</span>':'');
   document.getElementById('mscore').innerHTML=m.score?'<div class="msc">'+m.score[0]+'–'+m.score[1]+'</div>':'';
+
+  var addMvBtn = document.createElement('button');
+  addMvBtn.className = 'btn o';
+  addMvBtn.style.marginTop = '12px';
+  addMvBtn.style.alignSelf = 'flex-start';
+  addMvBtn.innerHTML = '⊞ Ajouter au Multiview (Attente du stream)';
+  addMvBtn.id = 'mv-add-btn';
+  addMvBtn.disabled = true;
+  document.getElementById('mmeta').appendChild(addMvBtn);
+
   var body=document.getElementById('mbody');
 
   // Wait if streams are still loading, but fetch them specifically if they aren't loading
@@ -1241,14 +1330,29 @@ function openMod(m,col){
       body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.<br><a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a></div>';
       document.getElementById('mbg').classList.add('open');
   } else {
+      var mvBtn = document.getElementById('mv-add-btn');
+      if(mvBtn && m.streamLinks.length > 0) {
+          mvBtn.disabled = false;
+          mvBtn.innerHTML = '⊞ Ajouter au Multiview (' + m.homeTeam + ')';
+          mvBtn.onclick = function() {
+              addToMultiview(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam);
+              closeMod();
+          };
+      }
+
       body.innerHTML=m.streamLinks.map(function(s,i){
         var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"')";
-        return '<a class="si" href="#" onclick="'+ev+'">'
+        var addMvEv="addToMultiview('"+(s.url||'#')+"','"+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
+
+        return '<div class="si" style="display:flex;align-items:stretch;padding:0;overflow:hidden;">'
+          +'<a href="#" onclick="'+ev+'" style="flex:1;display:flex;align-items:center;gap:12px;padding:14px;color:var(--text);text-decoration:none;">'
           +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
           +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Stream '+(i+1))+'</div>'
           +'<div class="si-s">Langue : '+(s.lang||'?')+' · '+(i===0?'Recommandé':'Alternatif')+'</div></div>'
           +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
-          +'<svg class="sarr" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></a>';
+          +'</a>'
+          +'<button title="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.05);border:none;border-left:1px solid rgba(255,255,255,0.1);color:var(--text);padding:0 16px;cursor:pointer;transition:background 0.2s;">⊞</button>'
+          +'</div>';
       }).join('');
       document.getElementById('mbg').classList.add('open');
   }
@@ -1256,6 +1360,162 @@ function openMod(m,col){
 function closeMod(){
   document.getElementById('mbg').classList.remove('open');
   closePlayer();
+}
+
+/* ══ MULTIVIEW (SPLIT SCREEN) ═════════ */
+var mvStreams = [];
+
+function setupMultiviewUI() {
+    if(document.getElementById('mv-container')) return;
+
+    // Add Multiview button to header
+    var hdr = document.querySelector('.hdr');
+    var mvHeaderBtn = document.createElement('button');
+    mvHeaderBtn.className = 'btn o';
+    mvHeaderBtn.id = 'mv-toggle-btn';
+    mvHeaderBtn.innerHTML = '⊞ Multiview <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span>';
+    mvHeaderBtn.onclick = toggleMultiview;
+
+    // Insert before the refresh button
+    var relBtn = document.getElementById('relBtn');
+    if(relBtn) hdr.insertBefore(mvHeaderBtn, relBtn);
+
+    // Create Multiview Container
+    var mvContainer = document.createElement('div');
+    mvContainer.id = 'mv-container';
+    mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:none;flex-direction:column;';
+
+    var mvToolbar = document.createElement('div');
+    mvToolbar.style.cssText = 'height:40px;background:var(--bg2);display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;';
+    mvToolbar.innerHTML = '<span style="font-weight:bold;color:var(--text);">Mode Multiview</span>'
+      + '<div class="sp" style="flex:1;"></div>'
+      + '<button class="btn" onclick="clearMultiview()">Tout fermer</button>'
+      + '<button class="btn g" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))">Plein écran</button>'
+      + '<button class="btn o" onclick="toggleMultiview()">✕ Fermer Multiview</button>';
+
+    var mvGrid = document.createElement('div');
+    mvGrid.id = 'mv-grid';
+    mvGrid.style.cssText = 'flex:1;display:grid;gap:2px;background:#000;';
+
+    mvContainer.appendChild(mvToolbar);
+    mvContainer.appendChild(mvGrid);
+    document.body.appendChild(mvContainer);
+}
+
+function updateMultiviewLayout() {
+    var grid = document.getElementById('mv-grid');
+    if(!grid) return;
+
+    var count = mvStreams.length;
+    var cBtn = document.getElementById('mv-count');
+    if(cBtn) {
+        cBtn.textContent = count;
+        cBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+
+    grid.innerHTML = '';
+
+    if(count === 0) {
+        grid.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;color:var(--muted);height:100%;">Ajoutez des matchs depuis la modale pour utiliser le Multiview.</div>';
+        return;
+    }
+
+    if(count === 1) grid.style.gridTemplateColumns = '1fr';
+    else if(count === 2) grid.style.gridTemplateColumns = '1fr 1fr';
+    else if(count <= 4) { grid.style.gridTemplateColumns = '1fr 1fr'; grid.style.gridTemplateRows = '1fr 1fr'; }
+    else { grid.style.gridTemplateColumns = 'repeat(3, 1fr)'; grid.style.gridTemplateRows = 'repeat(' + Math.ceil(count/3) + ', 1fr)'; }
+
+    mvStreams.forEach(function(s, idx) {
+        var cell = document.createElement('div');
+        cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;';
+
+        var hdr = document.createElement('div');
+        hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;opacity:0;transition:opacity 0.2s;';
+        hdr.innerHTML = '<span>' + esc(s.name) + '</span><button style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
+
+        cell.onmouseenter = function(){ hdr.style.opacity = '1'; };
+        cell.onmouseleave = function(){ hdr.style.opacity = '0'; };
+
+        var iframe = document.createElement('iframe');
+        iframe.src = s.url;
+        iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;';
+        iframe.setAttribute('allowfullscreen', 'true');
+
+        cell.appendChild(hdr);
+        cell.appendChild(iframe);
+        grid.appendChild(cell);
+    });
+}
+
+function addToMultiview(url, name) {
+    if(mvStreams.length >= 4) {
+        showToast('Maximum 4 streams en Multiview.');
+        return;
+    }
+    mvStreams.push({url: url, name: name});
+    updateMultiviewLayout();
+
+    // Auto-open multiview if it's the first stream added
+    var mvc = document.getElementById('mv-container');
+    if(mvc && mvc.style.display === 'none') {
+        toggleMultiview();
+    }
+    showToast('Ajouté au Multiview: ' + name);
+}
+
+function removeFromMultiview(idx) {
+    mvStreams.splice(idx, 1);
+    updateMultiviewLayout();
+    if(mvStreams.length === 0) {
+        toggleMultiview();
+    }
+}
+
+function clearMultiview() {
+    mvStreams = [];
+    updateMultiviewLayout();
+    toggleMultiview();
+}
+
+function toggleMultiview() {
+    var mvc = document.getElementById('mv-container');
+    var epg = document.getElementById('epg');
+    if(!mvc || !epg) return;
+
+    if(mvc.style.display === 'none') {
+        mvc.style.display = 'flex';
+        epg.style.display = 'none';
+        updateMultiviewLayout();
+    } else {
+        mvc.style.display = 'none';
+        epg.style.display = 'flex';
+    }
+}
+
+function toggleFullscreen(elem) {
+  elem = elem || document.documentElement;
+  if (!document.fullscreenElement && !document.mozFullScreenElement &&
+    !document.webkitFullscreenElement && !document.msFullscreenElement) {
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen();
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen();
+    } else if (elem.mozRequestFullScreen) {
+      elem.mozRequestFullScreen();
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+    }
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+      document.mozCancelFullScreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  }
 }
 
 /* ══ PLAYER (THIRD PAGE EMBED) ═════════ */
@@ -1376,6 +1636,9 @@ function showToast(msg){var t=document.getElementById('toast');document.getEleme
 /* ══ MAIN ═══════════════════════════════ */
 function loadAll(){
   S.log=[];S.raw='';S.matches=[];S.proxy='';
+  /* Setup Multiview UI if not exists */
+  setupMultiviewUI();
+
   var btn=document.getElementById('relBtn');btn.disabled=true;
   document.getElementById('errbox').classList.remove('show');
   document.getElementById('ov').style.display='flex';
