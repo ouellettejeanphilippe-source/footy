@@ -720,6 +720,9 @@ function fetchSubPages(matches){
         next();
       }).catch(function(e){
         lg('Err scrape '+m.homeTeam,e.message);
+        m.streamsLoaded = true; // Empêche un blocage infini dans l'UI
+        m.streamLinks = m.streamLinks || [];
+        updateMatchUiAfterScrape(m);
         active--;
         next();
       });
@@ -729,46 +732,67 @@ function fetchSubPages(matches){
 }
 
 function scrapeMatchStreams(m){
-  return fetchPage(m.matchUrl).then(function(html){
+  // Timeout for individual match scrape
+  return Promise.race([
+    fetchPage(m.matchUrl),
+    new Promise(function(_, reject) { setTimeout(function() { reject(new Error('Timeout match streams')); }, 10000); })
+  ]).then(function(html){
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
 
     // Nouveau scraping pour footybite.to
     // Footybite.do utilise principalement des liens directs ou cachés dans des ancres
 
-    // Nouveau scraping pour footybite.to (tableau de liens cachés dans <input type="hidden">)
-    var rows = doc.querySelectorAll('tr#tr-round');
+    // Nouveau scraping pour les tables de streams sur footybite.do/.to
+    var rows = doc.querySelectorAll('tr');
     [].forEach.call(rows, function(row){
-        var input = row.querySelector('input[type="hidden"][id^="linkk"]');
-        if(input && input.value) {
-            var url = input.value;
-            // Name is often in the second column or next to check-circle
-            var nameEl = row.querySelector('.fa-check-circle');
-            var name = nameEl && nameEl.nextSibling ? nameEl.nextSibling.textContent.trim() : 'Stream externe';
+        var tds = row.querySelectorAll('td');
+        if(tds.length < 5) return; // Ignore les rows qui ne ressemblent pas à notre table
+
+        // Chercher une balise input cachée qui contient l'URL du stream
+        var input = row.querySelector('input');
+        var url = '';
+        if(input && input.value && input.value.indexOf('http') === 0) {
+            url = input.value;
+        } else {
+            // Check dans les href ou onClick s'il n'y a pas d'input (rare mais possible)
+            var as = row.querySelectorAll('a[href]');
+            for(var i=0; i<as.length; i++) {
+                 if(as[i].href.indexOf('http')===0 && as[i].href.indexOf('footybite')<0) {
+                     url = as[i].href;
+                     break;
+                 }
+            }
+        }
+
+        if(url) {
+            // Le nom est généralement dans la deuxième ou troisième colonne
+            var name = tds[1] ? tds[1].textContent.trim() : 'Stream externe';
+            if(!name && tds[2]) name = tds[2].textContent.trim();
             if(!name) name = 'Stream';
 
-            // Extract language and quality from the buttons in the row
-            var lang = 'MULTI';
-            var qual = 'HD';
-            var cols = row.querySelectorAll('td a.btn');
-            [].forEach.call(cols, function(colBtn){
-                var txt = colBtn.textContent.trim().toLowerCase();
-                if(txt==='english' || txt==='spanish' || txt==='french' || txt==='arabic' || txt==='multi') lang = txt.toUpperCase();
-                if(txt==='hd' || txt==='sd' || txt==='4k') qual = txt.toUpperCase();
-            });
+            // Chercher la qualité et la langue dans le texte des tds
+            var rowText = row.textContent.toLowerCase();
+            var qual = 'SD';
+            if(rowText.indexOf('hd') >= 0 || rowText.indexOf('1080') >= 0 || rowText.indexOf('720') >= 0) qual = 'HD';
+            if(rowText.indexOf('4k') >= 0) qual = '4K';
 
-            if(url && url.indexOf('http')===0) {
-                links.push({
-                    name: name,
-                    quality: qual,
-                    lang: lang,
-                    url: url
-                });
-            }
+            var lang = 'MULTI';
+            if(rowText.indexOf('english') >= 0 || rowText.indexOf(' uk') >= 0) lang = 'ENGLISH';
+            else if(rowText.indexOf('french') >= 0 || rowText.indexOf(' fr') >= 0) lang = 'FRENCH';
+            else if(rowText.indexOf('spanish') >= 0 || rowText.indexOf('es') >= 0) lang = 'SPANISH';
+            else if(rowText.indexOf('arabic') >= 0 || rowText.indexOf('ar') >= 0) lang = 'ARABIC';
+
+            links.push({
+                name: name,
+                quality: qual,
+                lang: lang,
+                url: url
+            });
         }
     });
 
-    // Chercher d'autres liens de streams (fallback)
+    // Fallback limité aux boutons de stream si pas de table trouvée
     if(links.length===0){
        var btns=doc.querySelectorAll('.btn-danger, a.nav-link2, a.btn-3d');
        [].forEach.call(btns,function(btn){
@@ -786,32 +810,6 @@ function scrapeMatchStreams(m){
        });
     }
 
-    if(links.length===0){
-       var allLinks = doc.querySelectorAll('a[href]');
-       [].forEach.call(allLinks,function(a){
-           var url = a.getAttribute('href');
-           var txt = a.textContent.trim();
-           // Filtre basique pour éviter les réseaux sociaux, etc.
-           if(url && url.indexOf('http')===0 &&
-              url.indexOf('footybite')<0 &&
-              url.indexOf('twitter')<0 &&
-              url.indexOf('x.com')<0 &&
-              url.indexOf('instagram')<0 &&
-              url.indexOf('tiktok')<0 &&
-              url.indexOf('dmca')<0 &&
-              txt) {
-                // Heuristic: si c'est un lien vers un autre site de streaming
-                // (ex: totalsportek, sportsurge, etc.)
-                links.push({
-                    name: txt,
-                    quality:'HD',
-                    lang:'MULTI',
-                    url: url
-                });
-           }
-       });
-    }
-
     // fallback: si aucun stream externe, ajouter juste un lien vers la page
     if(links.length===0){
         links.push({name:'Voir streams sur le site', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
@@ -819,14 +817,15 @@ function scrapeMatchStreams(m){
 
     m.streamLinks=links;
     m.streamsLoaded=true;
+    updateMatchUiAfterScrape(m);
+  });
+}
 
-    // Refresh UI for this specific match if needed, but since users will click it later,
-    // it will just have the links ready. Or we can force an EPG re-render.
-    // For performance, we just update the specific element if it's open, but rebuilding the EPG isn't needed
-    // unless we show stream count. We show stream count in `.mb-sn`.
+function updateMatchUiAfterScrape(m) {
+    // Refresh UI for this specific match if needed
     var mb=document.getElementById('mb-'+m.id);
     if(mb){
-        var sn=m.streamLinks.length;
+        var sn=m.streamLinks ? m.streamLinks.length : 0;
         var snEl=mb.querySelector('.mb-sn');
         if(snEl){
             snEl.textContent=sn+' stream'+(sn>1?'s':'');
@@ -845,7 +844,7 @@ function scrapeMatchStreams(m){
     var mnameEl=document.getElementById('mname');
     if(document.getElementById('mbg').classList.contains('open') && mnameEl && mnameEl.textContent.indexOf(m.homeTeam) >= 0){
         var body=document.getElementById('mbody');
-        if(m.streamLinks.length===0){
+        if(!m.streamLinks || m.streamLinks.length===0){
             body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.</div>';
         } else {
             body.innerHTML=m.streamLinks.map(function(s,i){
@@ -859,7 +858,6 @@ function scrapeMatchStreams(m){
             }).join('');
         }
     }
-  });
 }
 
 /* Remonte les siblings/parents pour trouver le header de ligue */
