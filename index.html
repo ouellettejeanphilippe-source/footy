@@ -722,26 +722,27 @@ function syncMatchesWithApiSports(matches) {
       promises.push(
         fetchApiSportsFixtures(group.info, today).then(function(apiData) {
           if (!apiData) return;
+
+          var normalizedApiData = apiData.map(function(f) {
+            return {
+              fixture: f,
+              home: f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+              away: f.teams.away.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+            };
+          });
+
           group.matches.forEach(function(m) {
             // Find match by team names (fuzzy match)
             var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
             var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-            var matchedApiFixture = apiData.find(function(f) {
-              var fHome = '', fAway = '';
-              if (group.info.sport === 'football') {
-                 fHome = f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                 fAway = f.teams.away.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-              } else { // basketball, hockey, nfl
-                 fHome = f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                 fAway = f.teams.away.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-              }
+            var matchedApiFixture = normalizedApiData.find(function(nf) {
               // Simple check if one contains the other + fuzzy matching
-              return isMatch(mHome, fHome) && isMatch(mAway, fAway);
+              return isMatch(mHome, nf.home) && isMatch(mAway, nf.away);
             });
 
             if (matchedApiFixture) {
-              updateMatchDataFromApi(m, matchedApiFixture, group.info.sport);
+              updateMatchDataFromApi(m, matchedApiFixture.fixture, group.info.sport);
             }
           });
         })
