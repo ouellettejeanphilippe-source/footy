@@ -39,6 +39,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
 .ball svg { width: 15px; height: 15px; stroke: #fff; }
 .sp { flex: 1; }
 .btn { font-family: inherit; font-weight: 600; font-size: 14px; padding: 6px 14px; border-radius: 9999px; border: none; background: var(--bg3); color: var(--text); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
 .btn:hover { background: #3a3a3c; }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn.g { background: rgba(48, 209, 88, 0.15); color: var(--accent-green); }
@@ -180,22 +181,22 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
     Sports Guide
   </a>
   <span id="hdate" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)"></span>
-  <input type="date" id="date-picker" onchange="changeDate(this.value)" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:13px;outline:none;" />
+  <input type="date" id="date-picker" onchange="changeDate(this.value)" aria-label="Sélectionner une date" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:13px;outline:none;" />
   <div class="sp"></div>
-  <input type="text" id="search-input" onkeyup="applySearch(this.value)" placeholder="Rechercher..." style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:9999px;padding:6px 14px;font-size:13px;outline:none;width:150px;" />
+  <input type="text" id="search-input" onkeyup="applySearch(this.value)" placeholder="Rechercher..." aria-label="Rechercher" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:9999px;padding:6px 14px;font-size:13px;outline:none;width:150px;" />
   <button class="btn" id="filter-all" onclick="applyFilter('all')" style="border-color:var(--accent);color:var(--accent)">TOUS</button>
   <button class="btn" id="filter-live" onclick="applyFilter('live')"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>LIVE</button>
   <button class="btn" id="filter-upcoming" onclick="applyFilter('upcoming')">À VENIR</button>
   <div class="sp"></div>
-  <button class="btn o" onclick="openDbg()">🔬 Debug</button>
-  <button class="btn g" id="relBtn" onclick="loadAll()">↺</button>
-  <button class="btn" onclick="openSettings()" style="width:32px; height:32px; padding:0; display:grid; place-items:center; border-radius:16px; background:rgba(255,255,255,0.1);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+  <button class="btn o" onclick="openDbg()" aria-label="Ouvrir le panneau de débogage">🔬 Debug</button>
+  <button class="btn g" id="relBtn" onclick="loadAll()" aria-label="Actualiser" title="Actualiser">↺</button>
+  <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres" style="width:32px; height:32px; padding:0; display:grid; place-items:center; border-radius:16px; background:rgba(255,255,255,0.1);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
 </div>
 
 <div class="sbar" id="sbar">
   <span style="color:var(--muted)">footybite.to</span>
   <div class="vsep"></div>
-  <select id="sportFilter" class="btn" style="padding:2px 8px;font-size:11px;margin-right:6px;" onchange="applySportFilter()">
+  <select id="sportFilter" class="btn" aria-label="Filtrer par sport" style="padding:2px 8px;font-size:11px;margin-right:6px;" onchange="applySportFilter()">
     <option value="all">Tous les sports</option>
   </select>
 </div>
