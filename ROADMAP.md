@@ -30,7 +30,7 @@
     *   Optimisation des performances de scroll horizontal sur mobile.
     *   *Touch targets* améliorées pour l'ajout au Multiview depuis la grille.
 
-2.  **Précision du Tracking des Matchs**
+2.  **Précision du Tracking des Matchs (Partiellement FAIT)**
     *   Synchronisation plus fine de la durée des événements selon le sport (ex: un match de boxe dure différemment d'un match de NFL). Actuellement, fallback à ~105/120 min par défaut.
     *   Mise à jour en temps réel des scores sans rafraîchir complètement la grille (via WebSocket ou Polling discret).
 

@@ -340,6 +340,26 @@ function pad(n){return String(n).padStart(2,'0');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
 
+/* Formatteur d'heure EST commun pour l'API et l'horloge système */
+var estFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour12: false,
+    hour: 'numeric',
+    minute: 'numeric'
+});
+
+function getEstTimeStrFromDate(d) {
+    // Si l'heure dépasse 24:00 (ce qui arrive avec Intl à minuit qui donne "24:xx"), on le gère avec un match
+    var str = estFormatter.format(d); // e.g. "23:45" or "24:00"
+    var m = str.match(/(\d+):(\d+)/);
+    if(m) {
+        var h = parseInt(m[1], 10);
+        if(h === 24) h = 0;
+        return pad(h) + ':' + pad(m[2]);
+    }
+    return '00:00';
+}
+
 /* ══ PARSE STREAMEAST ════════════════ */
 function parseStreameast(html){
   var matches=[];
@@ -441,7 +461,7 @@ function parseBuffstreams(html){
           var startTime = '00:00';
           if (evObj.matchStartTime) {
               var d = new Date(evObj.matchStartTime);
-              startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
+              startTime = getEstTimeStrFromDate(d);
           }
 
           var streamLinks = [];
@@ -1008,7 +1028,7 @@ function syncMatchesWithEspn(matches) {
               if(isMatch(mHome, eHome) && isMatch(mAway, eAway)) {
 
                 var d = new Date(ev.date);
-                m.startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
+                m.startTime = getEstTimeStrFromDate(d);
 
                 var st = ev.status.type.state; // 'pre', 'in', 'post'
                 if(st === 'pre') {
@@ -1064,7 +1084,7 @@ function updateMatchDataFromApi(match, apiFixture, sport) {
       match.status = 'upcoming';
       // Time is usually correct from footybite, but we can override it
       var d = new Date(fixture.date);
-      match.startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
+      match.startTime = getEstTimeStrFromDate(d);
     }
   } else {
     // Basketball / Hockey / NFL (v1 APIs)
@@ -1081,7 +1101,7 @@ function updateMatchDataFromApi(match, apiFixture, sport) {
     } else {
        match.status = 'upcoming';
        var d = new Date(apiFixture.date);
-       match.startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
+       match.startTime = getEstTimeStrFromDate(d);
     }
   }
 
@@ -1459,6 +1479,10 @@ function buildEPG(matches){
           }
           return "99:99";
       };
+      // Ensure 'Autres Streams' is always sorted last
+      if (a === 'Autres Streams') return 1;
+      if (b === 'Autres Streams') return -1;
+
       var aStart = getSortTime(lgMap[a].matches);
       var bStart = getSortTime(lgMap[b].matches);
       if (aStart !== bStart) return aStart.localeCompare(bStart);
@@ -1499,9 +1523,9 @@ function buildEPG(matches){
   var ruler = document.createElement('div');
   ruler.className = 'ruler';
   var hhtml = '';
-  // Start from 06:00 to 05:00 next day
-  for(var h=6; h<30; h++){
-      hhtml += '<div class="tc">' + pad(h%24) + ':00</div>';
+  // Start from 00:00 to 23:00
+  for(var h=0; h<24; h++){
+      hhtml += '<div class="tc">' + pad(h) + ':00</div>';
   }
   ruler.innerHTML = hhtml;
   tl.appendChild(ruler);
@@ -1601,8 +1625,7 @@ function buildEPG(matches){
             var parts = m.startTime.split(':');
             var mH = parseInt(parts[0], 10);
             var mM = parseInt(parts[1], 10);
-            if(mH < 6) mH += 24; // If match is after midnight, push it to next day scale
-            var leftPx = ((mH - 6) * hourPx) + (mM * minPx);
+            var leftPx = (mH * hourPx) + (mM * minPx);
             var widthPx = (m.durationMinutes || 105) * minPx;
 
             b.style.left = leftPx + 'px';
@@ -1658,13 +1681,16 @@ function updateNowLine() {
     if(isToday) {
         var hourPx = window.innerWidth <= 680 ? 140 : 180;
         var minPx = hourPx / 60;
-        var h = now.getHours();
-        var m = now.getMinutes();
-        if(h < 6) h += 24;
-        var leftPx = ((h - 6) * hourPx) + (m * minPx);
+        // On récupère l'heure EST courante
+        var estStr = getEstTimeStrFromDate(now);
+        var parts = estStr.split(':');
+        var h = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10);
+
+        var leftPx = (h * hourPx) + (m * minPx);
         line.style.left = leftPx + 'px';
         line.style.display = 'block';
-        line.setAttribute('data-t', pad(now.getHours()) + ':' + pad(now.getMinutes()));
+        line.setAttribute('data-t', estStr);
     } else {
         line.style.display = 'none';
     }
@@ -1680,10 +1706,13 @@ function scrollToNow(){
 
     var hourPx = window.innerWidth <= 680 ? 140 : 180;
     var minPx = hourPx / 60;
-    var h = now.getHours();
-    var m = now.getMinutes();
-    if(h < 6) h += 24;
-    var leftPx = ((h - 6) * hourPx) + (m * minPx);
+    // On centre sur l'heure EST
+    var estStr = getEstTimeStrFromDate(now);
+    var parts = estStr.split(':');
+    var h = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+
+    var leftPx = (h * hourPx) + (m * minPx);
 
     // Scroll to position
     var w = tl.clientWidth;
@@ -2509,7 +2538,7 @@ function getApiFirstMatches(targetDate) {
           if(!home || !away) return;
 
           var d = new Date(ev.date);
-          var startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
+          var startTime = getEstTimeStrFromDate(d);
           var st = ev.status.type.state;
           var status = 'upcoming';
           var minute = null;
@@ -2645,7 +2674,19 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
       }
 
       if(!matched) {
+         // Streams that do not match an API match are kept but categorized distinctly
+         // so they appear separated from the official API timeline, usually at the bottom.
          sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+         sm.league = 'Autres Streams';
+         sm.flag = '📡';
+         sm.color = '#555555';
+
+         // Fix the time to 99:99 so it forces this category to the bottom of the league list
+         // And since the timeline is 0-24, these blocks might fly out of view if we don't handle them
+         // We'll set a generic time so it at least appears visually, but in the 'Autres Streams' category
+         var now = new Date();
+         sm.startTime = getEstTimeStrFromDate(now);
+
          apiMatches.push(sm);
       }
   });
