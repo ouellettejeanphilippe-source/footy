@@ -1285,6 +1285,22 @@ function scrapeMatchStreams(m){
     // Footybite.do utilise principalement des liens directs ou cachés dans des ancres
 
     // Nouveau scraping pour les tables de streams sur footybite.do/.to
+
+    // Try to find iframes directly if available (rare but possible)
+    var iframes = doc.querySelectorAll('iframe');
+    [].forEach.call(iframes, function(ifr) {
+        var src = ifr.src;
+        if(src && src.indexOf('http') === 0 && src.indexOf('footybite') < 0 && src.indexOf('ads') < 0) {
+            links.push({
+                name: 'Lecteur direct',
+                quality: 'HD',
+                lang: 'MULTI',
+                url: src,
+                icon: '▶️'
+            });
+        }
+    });
+
     var rows = doc.querySelectorAll('tr');
     [].forEach.call(rows, function(row){
         var tds = row.querySelectorAll('td');
@@ -1855,7 +1871,7 @@ function openMod(m,col){
           mvBtn.disabled = false;
           mvBtn.innerHTML = '⊞ Ajouter au Multiview (' + m.homeTeam + ')';
           mvBtn.onclick = function() {
-              addToMultiview(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam);
+              addToMultiview(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
               closeMod();
           };
       }
@@ -1873,6 +1889,235 @@ function closeMod(){
 
 /* ══ MULTIVIEW (SPLIT SCREEN) ═════════ */
 var mvStreams = [];
+
+
+/* ══ MULTIVIEW STREAM SELECTOR ════════ */
+function showStreamSelector(idx, mid, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    var m = S.matches.find(function(x) { return String(x.id) === String(mid); });
+    if (!m || !m.streamLinks || m.streamLinks.length === 0) {
+        showToast('Aucun autre stream trouvé.');
+        return;
+    }
+
+    var existing = document.getElementById('mv-stream-selector');
+    if (existing) existing.remove();
+
+    var sortedLinks = sortStreamLinks(m.streamLinks);
+
+    var selector = document.createElement('div');
+    selector.id = 'mv-stream-selector';
+    selector.style.cssText = 'position:absolute;z-index:999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:4px;max-height:250px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.8);width:250px;';
+
+    // Position based on click
+    if (event) {
+        var rect = event.target.getBoundingClientRect();
+        selector.style.top = (rect.bottom + 5) + 'px';
+        selector.style.left = Math.max(10, rect.left - 200) + 'px';
+    } else {
+        selector.style.top = '50px';
+        selector.style.left = '50px';
+    }
+
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;margin-bottom:4px;padding:0 4px;';
+    title.textContent = 'Changer la source';
+    selector.appendChild(title);
+
+    sortedLinks.forEach(function(s) {
+        var dom = getDomain(s.url);
+        var isActive = mvStreams[idx].url === s.url;
+
+        var btn = document.createElement('div');
+        btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border-radius:4px;cursor:pointer;transition:background 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'transparent');
+
+        btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
+        btn.onmouseleave = function() { if(!isActive) this.style.background = 'transparent'; };
+
+        btn.onclick = function(e) {
+            e.stopPropagation();
+            mvStreams[idx].url = s.url; saveMultiviewState(); updateMultiviewLayout();
+            selector.remove();
+        };
+
+        btn.innerHTML = '<span style="font-size:14px;">' + (s.icon||QI[s.quality]||'📺') + '</span>' +
+                        '<div style="flex:1;overflow:hidden;">' +
+                        '<div style="font-size:12px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(s.name) + '</div>' +
+                        '<div style="font-size:10px;color:var(--muted);">' + esc(dom) + ' · ' + (s.lang||'?') + '</div>' +
+                        '</div>' +
+                        '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;">' + (s.quality||'SD') + '</span>';
+
+        selector.appendChild(btn);
+    });
+
+    document.body.appendChild(selector);
+
+    // Close on outside click
+    setTimeout(function() {
+        var closeListener = function(e) {
+            if (!selector.contains(e.target)) {
+                selector.remove();
+                document.removeEventListener('click', closeListener);
+            }
+        };
+        document.addEventListener('click', closeListener);
+    }, 10);
+}
+
+function toggleCrop(idx, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    mvStreams[idx].cropped = !mvStreams[idx].cropped;
+    var iframe = document.getElementById('mv-iframe-' + idx);
+    if (iframe) {
+        if (mvStreams[idx].cropped) {
+            iframe.style.transform = 'scale(1.15)';
+        } else {
+            iframe.style.transform = 'scale(1)'; } } saveMultiviewState();
+}
+
+
+
+/* ══ MULTIVIEW MATCH SELECTOR ════════ */
+function showMatchSelector(event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    var existing = document.getElementById('mv-match-selector');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+
+    if (mvStreams.length >= 4) {
+        showToast('Maximum 4 streams en Multiview.');
+        return;
+    }
+
+    var selector = document.createElement('div');
+    selector.id = 'mv-match-selector';
+    selector.style.cssText = 'position:absolute;z-index:999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.8);width:300px;';
+
+    // Position based on click
+    if (event) {
+        var rect = event.target.getBoundingClientRect();
+        selector.style.top = (rect.bottom + 5) + 'px';
+        selector.style.left = Math.max(10, rect.left) + 'px';
+    } else {
+        selector.style.top = '50px';
+        selector.style.left = '50px';
+    }
+
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;margin-bottom:4px;padding:0 4px;';
+    title.textContent = 'Ajouter un match';
+    selector.appendChild(title);
+
+    // Filter matches that have streams
+    var availableMatches = S.matches.filter(function(m) {
+        return m.streamsLoaded && m.streamLinks && m.streamLinks.length > 0;
+    });
+
+    // Sort: Live first, then upcoming by time
+    availableMatches.sort(function(a, b) {
+        if (a.status === 'live' && b.status !== 'live') return -1;
+        if (a.status !== 'live' && b.status === 'live') return 1;
+        return a.startTime.localeCompare(b.startTime);
+    });
+
+    if (availableMatches.length === 0) {
+        var empty = document.createElement('div');
+        empty.style.cssText = 'padding:10px;text-align:center;color:var(--muted);font-size:12px;';
+        empty.innerHTML = 'Aucun stream disponible pour le moment.<br><br>Astuce: Ouvrez un match dans le guide TV pour charger ses streams.';
+        selector.appendChild(empty);
+    } else {
+        availableMatches.forEach(function(m) {
+            // Check if already in multiview
+            var alreadyIn = mvStreams.some(function(s) { return String(s.mid) === String(m.id); });
+            if (alreadyIn) return; // Skip
+
+            var btn = document.createElement('div');
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;transition:background 0.2s;';
+            btn.onmouseenter = function() { this.style.background = 'rgba(255,255,255,0.1)'; };
+            btn.onmouseleave = function() { this.style.background = 'transparent'; };
+
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                var sortedLinks = sortStreamLinks(m.streamLinks);
+                addToMultiview(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+                selector.remove();
+            };
+
+            var timeInfo = m.status === 'live' ?
+                '<span style="color:var(--red);font-weight:bold;font-size:10px;">🔴 ' + (m.minute?m.minute+"'":'LIVE') + '</span>' :
+                '<span style="color:var(--muted);font-size:10px;">' + m.startTime + '</span>';
+
+            btn.innerHTML = '<div style="font-size:18px;">' + lgFlag(m.league) + '</div>' +
+                            '<div style="flex:1;overflow:hidden;">' +
+                            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">' +
+                                '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">' + esc(m.league) + '</div>' +
+                                timeInfo +
+                            '</div>' +
+                            '<div style="font-size:13px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(m.homeTeam) + '</div>' +
+                            '<div style="font-size:13px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(m.awayTeam) + '</div>' +
+                            '</div>';
+
+            selector.appendChild(btn);
+        });
+    }
+
+    document.body.appendChild(selector);
+
+    // Close on outside click
+    setTimeout(function() {
+        var closeListener = function(e) {
+            if (!selector.contains(e.target)) {
+                selector.remove();
+                document.removeEventListener('click', closeListener);
+            }
+        };
+        document.addEventListener('click', closeListener);
+    }, 10);
+}
+
+
+
+function toggleMultiviewPip() {
+    var mvc = document.getElementById('mv-container');
+    var epg = document.getElementById('epg');
+    if(!mvc || !epg) return;
+
+    if(mvc.classList.contains('mv-pip')) {
+        // Restore to full screen multiview
+        mvc.classList.remove('mv-pip');
+        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
+        epg.style.display = 'none';
+        epg.style.paddingRight = '0';
+        updateMultiviewLayout(); // Re-apply grid
+    } else {
+        // Switch to PIP column mode
+        mvc.classList.add('mv-pip');
+        mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:#0a0a0c;z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
+        epg.style.display = 'flex';
+        epg.style.paddingRight = '350px'; // Make room for the column
+
+        // Force layout to a simple vertical stack
+        var grid = document.getElementById('mv-grid');
+        if(grid) {
+            grid.style.gridTemplateColumns = '1fr';
+            grid.style.gridTemplateRows = 'repeat(' + mvStreams.length + ', 1fr)';
+        }
+    }
+}
+
 
 function setupMultiviewUI() {
     if(document.getElementById('mv-container')) return;
@@ -1902,9 +2147,11 @@ function setupMultiviewUI() {
     mvToolbar.style.cssText = 'height:40px;background:var(--bg2);display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;';
     mvToolbar.innerHTML = '<span style="font-weight:bold;color:var(--text);">Mode Multiview</span>'
       + '<div class="sp" style="flex:1;"></div>'
+      + '<button class="btn g" onclick="showMatchSelector(event)">➕ Ajouter un match</button>'
       + '<button class="btn" onclick="clearMultiview()">Tout fermer</button>'
-      + '<button class="btn g" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))">Plein écran</button>'
-      + '<button class="btn o" onclick="toggleMultiview()">✕ Fermer Multiview</button>';
+      + '<button class="btn o" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))">Plein écran</button>'
+      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn">◨ Réduire</button>'
+      + '<button class="btn o" onclick="toggleMultiview()">✕ Fermer</button>';
 
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
@@ -1912,7 +2159,32 @@ function setupMultiviewUI() {
 
     mvContainer.appendChild(mvToolbar);
     mvContainer.appendChild(mvGrid);
-    document.body.appendChild(mvContainer);
+    document.body.appendChild(mvContainer); restoreMultiviewState();
+}
+
+
+/* ══ PERSISTENCE MULTIVIEW ═══════════ */
+function saveMultiviewState() {
+    try {
+        localStorage.setItem('mv_state', JSON.stringify(mvStreams));
+    } catch(e) {}
+}
+
+function restoreMultiviewState() {
+    try {
+        var saved = localStorage.getItem('mv_state');
+        if(saved) {
+            var parsed = JSON.parse(saved);
+            if(Array.isArray(parsed) && parsed.length > 0) {
+                mvStreams = parsed;
+                // Automatically open multiview as PiP or Background if streams exist
+                // To avoid interrupting the initial load, we just update the UI badge
+                setTimeout(function() {
+                    updateMultiviewLayout();
+                }, 500);
+            }
+        }
+    } catch(e) {}
 }
 
 function updateMultiviewLayout() {
@@ -1933,14 +2205,47 @@ function updateMultiviewLayout() {
         return;
     }
 
-    if(count === 1) grid.style.gridTemplateColumns = '1fr';
-    else if(count === 2) grid.style.gridTemplateColumns = '1fr 1fr';
-    else if(count <= 4) { grid.style.gridTemplateColumns = '1fr 1fr'; grid.style.gridTemplateRows = '1fr 1fr'; }
-    else { grid.style.gridTemplateColumns = 'repeat(3, 1fr)'; grid.style.gridTemplateRows = 'repeat(' + Math.ceil(count/3) + ', 1fr)'; }
+
+    // Update PIP button text based on state
+    var pipBtn = document.getElementById('mv-pip-btn');
+    var mvc = document.getElementById('mv-container');
+    if (pipBtn && mvc) {
+        if (mvc.classList.contains('mv-pip')) {
+            pipBtn.innerHTML = '◧ Agrandir';
+            // Force vertical stack when in PiP
+            grid.style.gridTemplateColumns = '1fr';
+            grid.style.gridTemplateRows = 'repeat(' + Math.max(1, count) + ', 1fr)';
+            return; // Skip normal grid layout
+        } else {
+            pipBtn.innerHTML = '◨ Réduire';
+        }
+    }
+
+    if(count === 1) {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridTemplateRows = '1fr';
+    }
+    else if(count === 2) {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridTemplateRows = '1fr 1fr';
+    }
+    else if(count === 3) {
+        grid.style.gridTemplateColumns = '1fr 1fr';
+        grid.style.gridTemplateRows = '1fr 1fr';
+    }
+    else if(count === 4) {
+        grid.style.gridTemplateColumns = '1fr 1fr';
+        grid.style.gridTemplateRows = '1fr 1fr';
+    }
 
     mvStreams.forEach(function(s, idx) {
         var cell = document.createElement('div');
-        cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;';
+        cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;';
+
+        if (count === 3 && idx === 0 && !document.getElementById('mv-container').classList.contains('mv-pip')) {
+            cell.style.gridRow = 'span 2';
+        }
+
         cell.draggable = true;
 
         // Drag and drop event handlers
@@ -1963,26 +2268,51 @@ function updateMultiviewLayout() {
             cell.style.boxShadow = 'none';
             var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
             var toIdx = idx;
-            if (fromIdx !== toIdx) {
-                // Swap the streams
+            if (fromIdx !== toIdx && !isNaN(fromIdx)) {
                 var temp = mvStreams[fromIdx];
                 mvStreams[fromIdx] = mvStreams[toIdx];
-                mvStreams[toIdx] = temp;
-                updateMultiviewLayout();
+                mvStreams[toIdx] = temp; saveMultiviewState(); updateMultiviewLayout();
             }
         };
 
         var hdr = document.createElement('div');
         hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;opacity:0;transition:opacity 0.2s;';
-        hdr.innerHTML = '<span>' + esc(s.name) + '</span><button style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
+
+        // Site tag
+        var domain = s.url ? getDomain(s.url) : 'Stream';
+
+        var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;font-size:10px;">' + esc(domain) + '</span>' +
+            '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
+            '</div>';
+
+        // Changer stream button + Close button
+        var controlsHtml = '<div style="display:flex;gap:4px;">';
+
+        if (s.mid) {
+            controlsHtml += '<button title="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
+        }
+
+        controlsHtml += '<button title="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
+        controlsHtml += '<button title="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
+        controlsHtml += '</div>';
+
+        hdr.innerHTML = hdrHtml + controlsHtml;
 
         cell.onmouseenter = function(){ hdr.style.opacity = '1'; };
         cell.onmouseleave = function(){ hdr.style.opacity = '0'; };
 
+        var videoContainer = document.createElement('div');
+        videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000;';
+
         var iframe = document.createElement('iframe');
+        iframe.id = 'mv-iframe-' + idx;
         iframe.src = s.url;
         // Pointer events none allows dragging the container instead of interacting with iframe during drag
-        iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;pointer-events:auto;';
+        iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
+        if (s.cropped) {
+            iframe.style.transform = 'scale(1.15)';
+        }
         iframe.setAttribute('allowfullscreen', 'true');
         iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox'); // Nuke non-video elements in multiview too
 
@@ -1991,19 +2321,19 @@ function updateMultiviewLayout() {
         cell.addEventListener('mouseup', function() { iframe.style.pointerEvents = 'auto'; });
         cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
 
+        videoContainer.appendChild(iframe);
         cell.appendChild(hdr);
-        cell.appendChild(iframe);
+        cell.appendChild(videoContainer);
         grid.appendChild(cell);
     });
 }
 
-function addToMultiview(url, name) {
+function addToMultiview(url, name, mid) {
     if(mvStreams.length >= 4) {
         showToast('Maximum 4 streams en Multiview.');
         return;
     }
-    mvStreams.push({url: url, name: name});
-    updateMultiviewLayout();
+    mvStreams.push({url: url, name: name, mid: mid, cropped: false}); saveMultiviewState(); updateMultiviewLayout();
 
     // Auto-open multiview if it's the first stream added
     var mvc = document.getElementById('mv-container');
@@ -2014,16 +2344,14 @@ function addToMultiview(url, name) {
 }
 
 function removeFromMultiview(idx) {
-    mvStreams.splice(idx, 1);
-    updateMultiviewLayout();
+    mvStreams.splice(idx, 1); saveMultiviewState(); updateMultiviewLayout();
     if(mvStreams.length === 0) {
         toggleMultiview();
     }
 }
 
 function clearMultiview() {
-    mvStreams = [];
-    updateMultiviewLayout();
+    mvStreams = []; saveMultiviewState(); updateMultiviewLayout();
     toggleMultiview();
 }
 
@@ -2033,12 +2361,18 @@ function toggleMultiview() {
     if(!mvc || !epg) return;
 
     if(mvc.style.display === 'none') {
+        // Reset PIP state when opening
+        mvc.classList.remove('mv-pip');
+        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
+        epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
         updateMultiviewLayout();
     } else {
         mvc.style.display = 'none';
         epg.style.display = 'flex';
+        epg.style.paddingRight = '0';
+        mvc.classList.remove('mv-pip');
     }
 }
 
@@ -2328,7 +2662,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
             addMv.onclick = function(ev) {
                 ev.stopPropagation();
                 if(m.streamsLoaded && m.streamLinks && m.streamLinks.length > 0) {
-                    addToMultiview(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam);
+                    addToMultiview(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
                 } else {
                     // Not loaded yet, open modal to load
                     showToast('Chargement des streams...');
