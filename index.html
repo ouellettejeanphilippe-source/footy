@@ -89,6 +89,8 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .mb { position: absolute; top: 8px; bottom: 8px; border-radius: 10px; cursor: pointer; overflow: hidden; transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.15s; display: flex; flex-direction: column; justify-content: center; padding: 8px 12px; min-width: 70px; border-left: 4px solid rgba(255,255,255,0.3); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 .mb:hover { filter: brightness(1.15); transform: scale(1.02); z-index: 5; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
 .mb.live { border-left-color: var(--text) !important; animation: liveglow 3s ease-in-out infinite; }
+.mb.finished { filter: grayscale(0.8) opacity(0.7); }
+.mb.finished:hover { filter: grayscale(0.2) opacity(1); }
 @keyframes liveglow { 0%, 100% { box-shadow: 0 4px 10px rgba(0,0,0,0.3) } 50% { box-shadow: 0 0 15px rgba(255, 69, 58, 0.4) } }
 .mb-t { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.3px; }
 .vs { color: rgba(255,255,255,0.5); font-weight: 400; font-size: 11px; margin: 0 4px; font-style: italic; }
@@ -660,11 +662,17 @@ function parseFootybite(html){
       var liveText=liveEl?liveEl.textContent:'';
       var lm=liveText.match(/(\d{1,3})'/);
       if(lm){status='live';minute=lm[1];}
-      else if(/FT|Full/i.test(liveText)){status='finished';}
+      else if(/FT|Full/i.test(liveText)){status='finished';minute='FT';}
       else{status='live';}
     } else if(minM){
-      status='live';
-      minute=minM[1]||null;
+      var mText = minM[0];
+      if (/FT/i.test(mText)) {
+        status='finished';
+        minute='FT';
+      } else {
+        status='live';
+        minute=minM[1]||mText;
+      }
     } else {
         /* Fallback: essai de trouver une heure qq part */
         var parentText=el.parentElement?el.parentElement.textContent:'';
@@ -2678,16 +2686,25 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
       if(!matched) {
          // Streams that do not match an API match are kept but categorized distinctly
          // so they appear separated from the official API timeline, usually at the bottom.
+         // If a match is finished, and we don't have a time for it, set it to something logical
+         // so it doesn't pile up at 00:00 or current time
          sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
          sm.league = 'Autres Streams';
          sm.flag = '📡';
          sm.color = '#555555';
 
-         // Fix the time to 99:99 so it forces this category to the bottom of the league list
-         // And since the timeline is 0-24, these blocks might fly out of view if we don't handle them
-         // We'll set a generic time so it at least appears visually, but in the 'Autres Streams' category
-         var now = new Date();
-         sm.startTime = getEstTimeStrFromDate(now);
+         if (sm.startTime === '00:00' && sm.status === 'finished') {
+           // Put finished matches without specific times at the start of the day
+           sm.startTime = '00:01';
+         } else if (sm.startTime === '00:00') {
+           // If it's a live match from fallback without a time, maybe put it at current time
+           // But actually footybite parsed time logic has a fallback that sets it to '00:00'.
+           // Let's just keep the time parsed, or if it is exactly '00:00' and it's 'live', put it at current time
+           var now = new Date();
+           if (sm.status === 'live') {
+               sm.startTime = getEstTimeStrFromDate(now);
+           }
+         }
 
          apiMatches.push(sm);
       }
