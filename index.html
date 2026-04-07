@@ -298,6 +298,8 @@ var S = { log:[], raw:'', matches:[], proxy:'', filter:'all', sportFilter:'all',
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://footybite.to/';
+var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
+var STREAMEAST_URL = 'https://naturallyyou.fit/';
 var PROXIES = [
   function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); },
   function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); },
@@ -341,6 +343,148 @@ function darken(c,a){
 function pad(n){return String(n).padStart(2,'0');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
+
+/* ══ PARSE STREAMEAST ════════════════ */
+function parseStreameast(html){
+  var matches=[];
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var cards = doc.querySelectorAll('.match-card');
+
+  [].forEach.call(cards, function(card, index) {
+      var home = card.getAttribute('data-team1');
+      var away = card.getAttribute('data-team2');
+      var category = card.getAttribute('data-league') || 'Sports';
+      var timeStr = card.getAttribute('data-time2'); // format "ET 08:50 PM"
+      var playerLink = card.getAttribute('data-player');
+      var logo1 = card.getAttribute('data-logo1');
+      var logo2 = card.getAttribute('data-logo2');
+
+      if(!home || !away || !playerLink) return;
+
+      var startTime = '00:00';
+      if(timeStr) {
+          // Convert "ET 08:50 PM" to "HH:MM"
+          var matchTime = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+          if(matchTime) {
+              var h = parseInt(matchTime[1], 10);
+              var m = matchTime[2];
+              var ampm = matchTime[3] ? matchTime[3].toUpperCase() : '';
+
+              if(ampm === 'PM' && h < 12) h += 12;
+              if(ampm === 'AM' && h === 12) h = 0;
+
+              // It's ET time, we keep it as is (or convert based on logic if needed, but our standard seems to accept local/ET depending on source)
+              startTime = pad(h) + ':' + pad(m);
+          }
+      }
+
+      var streamLinks = [{
+          name: 'Streameast - Stream',
+          quality: 'HD',
+          lang: 'MULTI',
+          url: playerLink,
+          icon: '📺'
+      }];
+
+      var l = category.toLowerCase().replace(/-/g, ' ');
+
+      matches.push({
+          id: 'se_' + index,
+          league: l.charAt(0).toUpperCase() + l.slice(1),
+          flag: lgFlag(l),
+          color: lgColor(l),
+          homeTeam: home,
+          awayTeam: away,
+          homeLogo: logo1,
+          awayLogo: logo2,
+          startTime: startTime,
+          status: 'upcoming', // Streameast doesn't give clear live status in the data attrs directly, rely on API fallback or default to upcoming
+          streamLinks: streamLinks,
+          streamsLoaded: true,
+          matchUrl: STREAMEAST_URL,
+          source: 'streameast'
+      });
+  });
+
+  lg('Streameast extraits', matches.length);
+  return matches;
+}
+
+/* ══ PARSE BUFFSTREAMS ════════════════ */
+function parseBuffstreams(html){
+  var matches=[];
+  var scriptRegex = /self\.__next_f\.push\(\[1,"(.*)"\]\)/g;
+  var match;
+  var concatenatedData = "";
+
+  while ((match = scriptRegex.exec(html)) !== null) {
+      var chunk = match[1];
+      chunk = chunk.replace(/\\"/g, '"')
+                   .replace(/\\\\/g, '\\')
+                   .replace(/\\n/g, '\n');
+      concatenatedData += chunk;
+  }
+
+  var eventRegex = /"event":({(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*})/g;
+  var evMatch;
+
+  var index = 0;
+  while ((evMatch = eventRegex.exec(concatenatedData)) !== null) {
+      try {
+          var evObj = JSON.parse(evMatch[1]);
+          var home = evObj.details ? evObj.details.text2 : '';
+          var away = evObj.details ? evObj.details.text3 : '';
+          var category = evObj.category || 'Sports';
+
+          if(!home || !away) continue;
+          if(home === 'null' || away === 'null') continue;
+
+          var status = 'upcoming';
+          if (evObj.status === 'live' || evObj.status === 'Live') status = 'live';
+
+          var startTime = '00:00';
+          if (evObj.matchStartTime) {
+              var d = new Date(evObj.matchStartTime);
+              startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
+          }
+
+          var streamLinks = [];
+          if (evObj.iframeStreams) {
+              evObj.iframeStreams.forEach(function(s) {
+                  streamLinks.push({
+                      name: 'Buffstreams - ' + (s.name || 'Stream'),
+                      quality: 'HD',
+                      lang: 'MULTI',
+                      url: s.src,
+                      icon: '📺'
+                  });
+              });
+          }
+
+          // Use our standard naming
+          var l = category.toLowerCase().replace(/-/g, ' ');
+
+          matches.push({
+              id: 'bs_' + (index++),
+              league: l.charAt(0).toUpperCase() + l.slice(1),
+              flag: lgFlag(l),
+              color: lgColor(l),
+              homeTeam: home,
+              awayTeam: away,
+              startTime: startTime,
+              status: status,
+              streamLinks: streamLinks,
+              streamsLoaded: true, // Buffstreams has links directly in the page
+              matchUrl: BUFFSTREAMS_URL,
+              source: 'buffstreams'
+          });
+
+      } catch (e) {}
+  }
+
+  lg('Buffstreams extraits', matches.length);
+  return matches;
+}
 
 /* ══ FOOTYBITE LOGOS SCRAPING ═════════ */
 // Add footybite logo parsing
@@ -541,6 +685,62 @@ function parseFootybite(html){
   return matches;
 }
 
+
+/* ══ MATCH MERGING LOGIC ══════════════ */
+function mergeMatches(mainList, newList) {
+  newList.forEach(function(nm) {
+    var merged = false;
+
+    // Clean names for better fuzzy matching
+    var nmHome = nm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+    var nmAway = nm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    for (var i = 0; i < mainList.length; i++) {
+      var mm = mainList[i];
+      var mmHome = mm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+      var mmAway = mm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      if (isMatch(nmHome, mmHome) && isMatch(nmAway, mmAway)) {
+        // It's the same match. Merge streams.
+        mm.streamLinks = mm.streamLinks || [];
+        nm.streamLinks = nm.streamLinks || [];
+
+        nm.streamLinks.forEach(function(sl) {
+          // Avoid exact duplicates
+          if(!mm.streamLinks.find(function(existing) { return existing.url === sl.url; })) {
+            mm.streamLinks.push(sl);
+          }
+        });
+
+        // Update logos if the new source has them and we don't
+        if(!mm.homeLogo && nm.homeLogo && nm.homeLogo.indexOf('default') === -1) {
+            mm.homeLogo = nm.homeLogo;
+            cacheLogo(mm.homeTeam, nm.homeLogo);
+        }
+        if(!mm.awayLogo && nm.awayLogo && nm.awayLogo.indexOf('default') === -1) {
+            mm.awayLogo = nm.awayLogo;
+            cacheLogo(mm.awayTeam, nm.awayLogo);
+        }
+
+        // Status resolution: if one says live and other says upcoming, prioritize live
+        if(nm.status === 'live' && mm.status !== 'live') mm.status = 'live';
+        if(nm.status === 'finished' && mm.status !== 'finished') mm.status = 'finished';
+
+        merged = true;
+        break;
+      }
+    }
+
+    if (!merged) {
+      // If no match found, we add it as a new match to the list
+      // Generate a new ID based on the array length to avoid conflicts
+      nm.id = mainList.length;
+      mainList.push(nm);
+    }
+  });
+
+  return mainList;
+}
 
 /* ══ SIMILARITY ALGORITHM ════════════ */
 function levenshtein(a, b) {
@@ -2102,20 +2302,49 @@ function loadAll(){
   });
   document.getElementById('ovmsg').textContent='Fetch de footybite.to…';
 
-  fetchPage(SITE)
-    .then(function(html){
-      S.raw=html;
+  document.getElementById('s1').querySelector('span').textContent = 'Fetch Footybite, Buffstreams, Streameast...';
+
+  Promise.allSettled([
+      fetchPage(SITE),
+      fetchPage(BUFFSTREAMS_URL),
+      fetchPage(STREAMEAST_URL)
+  ]).then(function(results) {
       stepOk(1);
-      document.getElementById('ovmsg').textContent='Parsing .div-child-box…';
-      var m=parseFootybite(html);
-      S.matches=m;
-      if(m.length===0){
-        throw new Error('Page OK ('+html.length+' chars) mais 0 .div-child-box trouvés.\nOuvre 🔬 Debug → "HTML brut" pour voir ce que le proxy a renvoyé.');
+      document.getElementById('ovmsg').textContent='Analyse des données…';
+
+      var allMatches = [];
+
+      if(results[0].status === 'fulfilled' && results[0].value) {
+          S.raw = results[0].value;
+          var fbMatches = parseFootybite(results[0].value);
+          allMatches = mergeMatches(allMatches, fbMatches);
+      } else {
+          lg('Erreur Footybite', results[0].reason);
       }
+
+      if(results[1].status === 'fulfilled' && results[1].value) {
+          var bsMatches = parseBuffstreams(results[1].value);
+          allMatches = mergeMatches(allMatches, bsMatches);
+      } else {
+          lg('Erreur Buffstreams', results[1].reason);
+      }
+
+      if(results[2].status === 'fulfilled' && results[2].value) {
+          var seMatches = parseStreameast(results[2].value);
+          allMatches = mergeMatches(allMatches, seMatches);
+      } else {
+          lg('Erreur Streameast', results[2].reason);
+      }
+
+      if(allMatches.length === 0) {
+          throw new Error('Aucun match trouvé sur aucun des sites.');
+      }
+
+      S.matches = allMatches;
       stepOk(2);
       document.getElementById('ovmsg').textContent='Construction EPG…';
       return new Promise(function(r){setTimeout(r,120);});
-    })
+  })
     .then(function(){
       if(S.matches.length===0) return;
       stepOk(3);
