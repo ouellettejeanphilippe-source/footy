@@ -338,6 +338,7 @@ function darken(c,a){
 /* ══ HELPERS ═══════════════════════════ */
 function pad(n){return String(n).padStart(2,'0');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
 
 /* ══ PARSE STREAMEAST ════════════════ */
@@ -1563,10 +1564,10 @@ function buildEPG(matches){
             var cCell = document.createElement('div');
             cCell.className = 'chan-cell';
             cCell.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">'
-                            + '<span style="font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+'" onclick="toggleFavTeam(\''+m.homeTeam+'\')">★</span>'
+                            + '<span style="font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+'" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</span>'
                             + '<span class="ch-name">'+esc(m.homeTeam)+'</span></div>'
                             + '<div style="display:flex;align-items:center;gap:6px;">'
-                            + '<span style="font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+'" onclick="toggleFavTeam(\''+m.awayTeam+'\')">★</span>'
+                            + '<span style="font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+'" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\')">★</span>'
                             + '<span class="ch-name">'+esc(m.awayTeam)+'</span></div>';
             chanList.appendChild(cCell);
 
@@ -1702,13 +1703,13 @@ var QC={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
 var QI={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
 function renderStreamItem(s, i, m) {
-    var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"','"+m.id+"')";
-    var addMvEv="addToMultiview('"+(s.url||'#')+"','"+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
+    var ev="openStream(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Stream'))+"','"+escJs(m.id)+"')";
+    var addMvEv="addToMultiview('"+escJs(s.url||'#')+"','"+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
 
     var dom = getDomain(s.url);
     var pref = domainPrefs[dom] || 0;
-    var favEv = "toggleDomainPref('"+dom+"', 'fav', '"+m.id+"');event.stopPropagation();event.preventDefault();";
-    var depEv = "toggleDomainPref('"+dom+"', 'dep', '"+m.id+"');event.stopPropagation();event.preventDefault();";
+    var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
+    var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
 
     return '<div class="si" style="display:flex;align-items:stretch;padding:0;overflow:hidden;flex-shrink:0;">'
       +'<a href="#" onclick="'+ev+'" style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:14px;color:var(--text);text-decoration:none;">'
@@ -2182,13 +2183,13 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
 
             var dom = getDomain(s.url);
             var pref = domainPrefs[dom] || 0;
-            var favEv = "toggleDomainPref('"+dom+"', 'fav', '"+currentMatch.id+"');event.stopPropagation();event.preventDefault();";
-            var depEv = "toggleDomainPref('"+dom+"', 'dep', '"+currentMatch.id+"');event.stopPropagation();event.preventDefault();";
+            var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(currentMatch.id)+"');event.stopPropagation();event.preventDefault();";
+            var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(currentMatch.id)+"');event.stopPropagation();event.preventDefault();";
 
             var div = document.createElement('div');
             div.style.cssText = 'padding:0; border-radius:8px; background:'+(isActive?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.05)')+'; display:flex; align-items:stretch; overflow:hidden; border:1px solid '+(isActive?'rgba(255,255,255,0.3)':'transparent')+'; transition:background 0.2s;';
 
-            var mainClickAttr = isActive ? '' : 'onclick="openStream(null, \''+encodeURIComponent(s.url)+'\', \''+encodeURIComponent(s.name)+'\', \''+currentMatch.id+'\')"';
+            var mainClickAttr = isActive ? '' : 'onclick="openStream(null, \''+escJs(encodeURIComponent(s.url))+'\', \''+escJs(encodeURIComponent(s.name))+'\', \''+escJs(currentMatch.id)+'\')"';
             var cursorStyle = isActive ? 'default' : 'pointer';
 
             var hoverLogic = isActive ? '' : 'onmouseenter="this.parentElement.style.background=\'rgba(255,255,255,0.1)\'" onmouseleave="this.parentElement.style.background=\'rgba(255,255,255,0.05)\'"';
@@ -2231,7 +2232,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
                 +'</div>';
             }
 
-            var info = '<div style="flex:1; overflow:hidden; cursor:pointer;" onclick="openModAndLoad(\''+m.id+'\')">'
+            var info = '<div style="flex:1; overflow:hidden; cursor:pointer;" onclick="openModAndLoad(\''+escJs(m.id)+'\')">'
                 +'<div style="font-size:11px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(m.minute?m.minute+"'":'LIVE')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>'
                 +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.homeTeam)+'</div>'
                 +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.awayTeam)+'</div>'
