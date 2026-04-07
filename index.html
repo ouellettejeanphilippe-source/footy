@@ -2529,16 +2529,30 @@ var TARGET_DATE = new Date();
 function getApiFirstMatches(targetDate) {
   var matches = [];
   var promises = [];
-  var dateStr = getEspnDateStr(targetDate);
-  var apiDateStr = targetDate.toISOString().split('T')[0];
+
+  var yesterday = new Date(targetDate); yesterday.setDate(yesterday.getDate() - 1);
+  var tomorrow = new Date(targetDate); tomorrow.setDate(tomorrow.getDate() + 1);
+
+  var espnDates = [
+    getEspnDateStr(yesterday),
+    getEspnDateStr(targetDate),
+    getEspnDateStr(tomorrow)
+  ];
+
+  var apiDates = [
+    yesterday.toISOString().split('T')[0],
+    targetDate.toISOString().split('T')[0],
+    tomorrow.toISOString().split('T')[0]
+  ];
 
   // 1. Fetch ESPN
   var espnPaths = [];
   for(var key in ESPN_LEAGUES) { if(espnPaths.indexOf(ESPN_LEAGUES[key])===-1) espnPaths.push(ESPN_LEAGUES[key]); }
 
   espnPaths.forEach(function(path) {
-    promises.push(
-      fetchEspnSchedule(path, dateStr).then(function(data) {
+    espnDates.forEach(function(dateStr) {
+      promises.push(
+        fetchEspnSchedule(path, dateStr).then(function(data) {
         if(!data || !data.events) return;
         data.events.forEach(function(ev) {
           var comp = ev.competitions[0];
@@ -2590,6 +2604,7 @@ function getApiFirstMatches(targetDate) {
         });
       })
     );
+    });
   });
 
   // 2. Fetch API-Sports if key exists
@@ -2607,8 +2622,9 @@ function getApiFirstMatches(targetDate) {
     }
 
     sportsToFetch.forEach(function(s) {
-      promises.push(
-        fetchApiSportsFixtures(s, apiDateStr).then(function(apiData) {
+      apiDates.forEach(function(apiDateStr) {
+        promises.push(
+          fetchApiSportsFixtures(s, apiDateStr).then(function(apiData) {
           if (!apiData) return;
           apiData.forEach(function(f) {
              var fHome = f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -2648,6 +2664,7 @@ function getApiFirstMatches(targetDate) {
           });
         })
       );
+      });
     });
   }
 
