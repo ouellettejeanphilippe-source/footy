@@ -162,11 +162,18 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 600; background: rgba(28, 28, 30, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--text); font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 9999px; opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; display: flex; align-items: center; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 0.5px solid rgba(255,255,255,0.1); }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* Hide mv-text ONLY on mobile */
+@media(min-width: 681px) {
+  .mv-text { display: inline; }
+}
+
 @media(max-width: 680px) {
   .hdr { padding: 0 12px; gap: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
   .hdr::-webkit-scrollbar { display: none; }
   .logo { font-size: 18px; flex-shrink: 0; }
   .btn { padding: 8px 14px; font-size: 14px; flex-shrink: 0; }
+  .mv-text { display: none; }
+  .mv-btn { padding: 8px 10px; }
   .mb { flex: 0 0 280px; padding: 14px; gap: 12px; border-radius: 12px; }
   .team-name { font-size: 15px; }
   .team-score { font-size: 20px; }
@@ -1130,13 +1137,7 @@ function updateMatchUiAfterScrape(m) {
         } else {
             var sortedLinks = sortStreamLinks(m.streamLinks);
             body.innerHTML=sortedLinks.map(function(s,i){
-              var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"')";
-              return '<a class="si" href="#" onclick="'+ev+'">'
-                +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-                +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Stream '+(i+1))+'</div>'
-                +'<div class="si-s">Langue : '+(s.lang||'?')+' · '+(i===0?'Recommandé':'Alternatif')+'</div></div>'
-                +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
-                +'<svg class="sarr" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></a>';
+                return renderStreamItem(s, i, m);
             }).join('');
         }
     }
@@ -1349,6 +1350,31 @@ function scrollToNow(){ /* Obsolete avec la nouvelle interface */ }
 /* ══ MODAL ══════════════════════════════ */
 var QC={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
 var QI={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
+
+function renderStreamItem(s, i, m) {
+    var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"','"+m.id+"')";
+    var addMvEv="addToMultiview('"+(s.url||'#')+"','"+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
+
+    var dom = getDomain(s.url);
+    var pref = domainPrefs[dom] || 0;
+    var favEv = "toggleDomainPref('"+dom+"', 'fav', '"+m.id+"');event.stopPropagation();event.preventDefault();";
+    var depEv = "toggleDomainPref('"+dom+"', 'dep', '"+m.id+"');event.stopPropagation();event.preventDefault();";
+
+    return '<div class="si" style="display:flex;align-items:stretch;padding:0;overflow:hidden;flex-shrink:0;">'
+      +'<a href="#" onclick="'+ev+'" style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:14px;color:var(--text);text-decoration:none;">'
+      +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
+      +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Stream '+(i+1))+'</div>'
+      +'<div class="si-s">Langue : '+(s.lang||'?')+' · '+(i===0?'Recommandé':'Alternatif')+'</div></div>'
+      +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
+      +'</a>'
+      +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);flex-shrink:0;">'
+        +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 10px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
+        +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 10px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
+      +'</div>'
+      +'<button title="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.05);border:none;border-left:1px solid rgba(255,255,255,0.1);color:var(--text);padding:0 16px;cursor:pointer;transition:background 0.2s;flex-shrink:0;">⊞</button>'
+      +'</div>';
+}
+
 function openMod(m,col){
   S.sel=m.id;
   document.getElementById('mdot').style.background=col||'#888';
@@ -1406,27 +1432,7 @@ function openMod(m,col){
       }
 
       body.innerHTML=sortedLinks.map(function(s,i){
-        var ev="openStream(event,'"+encodeURIComponent(s.url||'#')+"','"+encodeURIComponent(s.name||'Stream')+"','"+m.id+"')";
-        var addMvEv="addToMultiview('"+(s.url||'#')+"','"+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
-
-        var dom = getDomain(s.url);
-        var pref = domainPrefs[dom] || 0;
-        var favEv = "toggleDomainPref('"+dom+"', 'fav', '"+m.id+"');event.stopPropagation();event.preventDefault();";
-        var depEv = "toggleDomainPref('"+dom+"', 'dep', '"+m.id+"');event.stopPropagation();event.preventDefault();";
-
-        return '<div class="si" style="display:flex;align-items:stretch;padding:0;overflow:hidden;">'
-          +'<a href="#" onclick="'+ev+'" style="flex:1;display:flex;align-items:center;gap:12px;padding:14px;color:var(--text);text-decoration:none;">'
-          +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-          +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Stream '+(i+1))+'</div>'
-          +'<div class="si-s">Langue : '+(s.lang||'?')+' · '+(i===0?'Recommandé':'Alternatif')+'</div></div>'
-          +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
-          +'</a>'
-          +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);">'
-            +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 10px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
-            +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 10px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
-          +'</div>'
-          +'<button title="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.05);border:none;border-left:1px solid rgba(255,255,255,0.1);color:var(--text);padding:0 16px;cursor:pointer;transition:background 0.2s;">⊞</button>'
-          +'</div>';
+          return renderStreamItem(s, i, m);
       }).join('');
       document.getElementById('mbg').classList.add('open');
   }
@@ -1445,14 +1451,18 @@ function setupMultiviewUI() {
     // Add Multiview button to header
     var hdr = document.querySelector('.hdr');
     var mvHeaderBtn = document.createElement('button');
-    mvHeaderBtn.className = 'btn o';
+    mvHeaderBtn.className = 'btn o mv-btn';
     mvHeaderBtn.id = 'mv-toggle-btn';
-    mvHeaderBtn.innerHTML = '⊞ Multiview <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span>';
+    mvHeaderBtn.innerHTML = '⊞ <span class="mv-text">Multiview</span> <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span>';
     mvHeaderBtn.onclick = toggleMultiview;
 
-    // Insert before the refresh button
-    var relBtn = document.getElementById('relBtn');
-    if(relBtn) hdr.insertBefore(mvHeaderBtn, relBtn);
+    // Insert just after the date/logo for better visibility on mobile
+    var hdate = document.getElementById('hdate');
+    if(hdr && hdate) {
+        hdr.insertBefore(mvHeaderBtn, hdate.nextSibling);
+    } else if (hdr) {
+        hdr.appendChild(mvHeaderBtn);
+    }
 
     // Create Multiview Container
     var mvContainer = document.createElement('div');
