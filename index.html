@@ -203,13 +203,15 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
     Sports Guide
   </a>
   <span id="hdate" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)"></span>
+  <input type="date" id="date-picker" onchange="changeDate(this.value)" style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:13px;outline:none;" />
   <div class="sp"></div>
+  <input type="text" id="search-input" onkeyup="applySearch(this.value)" placeholder="Rechercher..." style="background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:9999px;padding:6px 14px;font-size:13px;outline:none;width:150px;" />
   <button class="btn" id="filter-all" onclick="applyFilter('all')" style="border-color:var(--accent);color:var(--accent)">TOUS</button>
   <button class="btn" id="filter-live" onclick="applyFilter('live')"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>LIVE</button>
   <button class="btn" id="filter-upcoming" onclick="applyFilter('upcoming')">À VENIR</button>
   <div class="sp"></div>
   <button class="btn o" onclick="openDbg()">🔬 Debug</button>
-  <button class="btn g" id="relBtn" onclick="loadAll()">↺ Actualiser</button>
+  <button class="btn g" id="relBtn" onclick="loadAll()">↺</button>
   <button class="btn" onclick="openSettings()" style="width:32px; height:32px; padding:0; display:grid; place-items:center; border-radius:16px; background:rgba(255,255,255,0.1);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
 </div>
 
@@ -294,7 +296,24 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 'use strict';
 
 /* ══ STATE ══════════════════════════════ */
-var S = { log:[], raw:'', matches:[], proxy:'', filter:'all', sportFilter:'all', hiddenLg:{}, collapsedLg:{} };
+
+var favTeams = {};
+try {
+  var storedFavs = localStorage.getItem('fav_teams');
+  if (storedFavs) favTeams = JSON.parse(storedFavs);
+} catch(e) {}
+
+function toggleFavTeam(teamName) {
+  if (favTeams[teamName]) {
+    delete favTeams[teamName];
+  } else {
+    favTeams[teamName] = 1;
+  }
+  localStorage.setItem('fav_teams', JSON.stringify(favTeams));
+  buildEPG(S.matches);
+}
+
+var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'all', sportFilter:'all', hiddenLg:{}, collapsedLg:{} };
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://footybite.to/';
@@ -1390,6 +1409,18 @@ function getEstTime(ukTimeStr){
 }
 
 /* ══ FILTERS ════════════════════════════ */
+
+function applySearch(q) {
+  S.searchQuery = q.toLowerCase();
+  buildEPG(S.matches);
+}
+
+function changeDate(dStr) {
+  if(!dStr) return;
+  TARGET_DATE = new Date(dStr);
+  loadAll();
+}
+
 function applyFilter(f){
   S.filter=f;
   ['all','live','upcoming'].forEach(function(k){
@@ -1425,6 +1456,14 @@ function buildEPG(matches){
     if(S.filter==='live' && m.status!=='live') return false;
     if(S.filter==='upcoming' && m.status!=='upcoming') return false;
     if(S.sportFilter!=='all' && m.league!==S.sportFilter) return false;
+    if(S.searchQuery) {
+        var q = S.searchQuery;
+        if(m.homeTeam.toLowerCase().indexOf(q) === -1 &&
+           m.awayTeam.toLowerCase().indexOf(q) === -1 &&
+           m.league.toLowerCase().indexOf(q) === -1) {
+            return false;
+        }
+    }
     return true;
   });
 
@@ -1454,6 +1493,10 @@ function buildEPG(matches){
   var leagues=lgOrder.map(function(k){
     // Sort matches inside league: Live first, then Upcoming (by time), then Finished
     lgMap[k].matches.sort(function(m1,m2){
+        var f1 = (favTeams[m1.homeTeam] || favTeams[m1.awayTeam]) ? -1 : 0;
+        var f2 = (favTeams[m2.homeTeam] || favTeams[m2.awayTeam]) ? -1 : 0;
+        if(f1 !== f2) return f1 - f2;
+
         var w1 = m1.status==='live'?0:(m1.status==='upcoming'?1:2);
         var w2 = m2.status==='live'?0:(m2.status==='upcoming'?1:2);
         if(w1 !== w2) return w1 - w2;
@@ -1514,8 +1557,8 @@ function buildEPG(matches){
 
             b.innerHTML = '<div class="mb-top">' + timeHtml + '</div>'
                 + '<div class="mb-teams">'
-                +   '<div class="team-row"><div class="team-info">' + homeLogo + '<span class="team-name">'+esc(m.homeTeam)+'</span></div><span class="team-score">'+homeScore+'</span></div>'
-                +   '<div class="team-row"><div class="team-info">' + awayLogo + '<span class="team-name">'+esc(m.awayTeam)+'</span></div><span class="team-score">'+awayScore+'</span></div>'
+                +   '<div class="team-row"><div class="team-info">' + homeLogo + '<span class="team-name" style="flex:1;">'+esc(m.homeTeam)+'</span><span style="cursor:pointer;font-size:14px;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';" onclick="event.stopPropagation();toggleFavTeam(\''+m.homeTeam+'\')">★</span></div><span class="team-score">'+homeScore+'</span></div>'
+                +   '<div class="team-row"><div class="team-info">' + awayLogo + '<span class="team-name" style="flex:1;">'+esc(m.awayTeam)+'</span><span style="cursor:pointer;font-size:14px;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';" onclick="event.stopPropagation();toggleFavTeam(\''+m.awayTeam+'\')">★</span></div><span class="team-score">'+awayScore+'</span></div>'
                 + '</div>';
 
             b.addEventListener('click', function(){ openMod(m, col); });
@@ -1711,7 +1754,37 @@ function updateMultiviewLayout() {
 
     mvStreams.forEach(function(s, idx) {
         var cell = document.createElement('div');
-        cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;';
+        cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;';
+        cell.draggable = true;
+
+        // Drag and drop event handlers
+        cell.ondragstart = function(e) {
+            e.dataTransfer.setData('text/plain', idx.toString());
+            cell.style.opacity = '0.5';
+        };
+        cell.ondragend = function(e) {
+            cell.style.opacity = '1';
+        };
+        cell.ondragover = function(e) {
+            e.preventDefault();
+            cell.style.boxShadow = 'inset 0 0 0 2px var(--accent)';
+        };
+        cell.ondragleave = function(e) {
+            cell.style.boxShadow = 'none';
+        };
+        cell.ondrop = function(e) {
+            e.preventDefault();
+            cell.style.boxShadow = 'none';
+            var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+            var toIdx = idx;
+            if (fromIdx !== toIdx) {
+                // Swap the streams
+                var temp = mvStreams[fromIdx];
+                mvStreams[fromIdx] = mvStreams[toIdx];
+                mvStreams[toIdx] = temp;
+                updateMultiviewLayout();
+            }
+        };
 
         var hdr = document.createElement('div');
         hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;opacity:0;transition:opacity 0.2s;';
@@ -1722,8 +1795,15 @@ function updateMultiviewLayout() {
 
         var iframe = document.createElement('iframe');
         iframe.src = s.url;
-        iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;';
+        // Pointer events none allows dragging the container instead of interacting with iframe during drag
+        iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;pointer-events:auto;';
         iframe.setAttribute('allowfullscreen', 'true');
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation'); // Nuke non-video elements in multiview too
+
+        // Disable pointer events on iframe while dragging
+        cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
+        cell.addEventListener('mouseup', function() { iframe.style.pointerEvents = 'auto'; });
+        cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
 
         cell.appendChild(hdr);
         cell.appendChild(iframe);
@@ -1918,14 +1998,25 @@ function openStream(e, eu, en, mid){
   }
 
   // Reset and load iframe
+
   var iframe = document.getElementById('p-frame');
   iframe.src = '';
+  // Apply sandbox attributes to nuke popups and navigation (keeps scripts for the video player)
+  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms');
+
   setTimeout(function(){
-      iframe.src = url;
-      // Keep track of current playing info on iframe
-      iframe.dataset.url = url;
+      // Check if we can extract a better URL for known domains
+      var cleanUrl = url;
+      // Some known embed paths to transform regular pages to embeds
+      if(url.indexOf('buffstreams.com.co') > -1) {
+         // sometimes buffstreams has a direct embed or we just sandbox it hard
+      }
+
+      iframe.src = cleanUrl;
+      iframe.dataset.url = cleanUrl;
       iframe.dataset.mid = mid;
   }, 50);
+
 
   // External button
   var extBtn = document.getElementById('p-ext');
@@ -2285,10 +2376,180 @@ function saveSettings() {
 /* ══ TOAST ══════════════════════════════ */
 function showToast(msg){var t=document.getElementById('toast');document.getElementById('toasttxt').textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
 
+
+/* ══ API FIRST LOGIC ══════════════════ */
+var TARGET_DATE = new Date();
+
+function getApiFirstMatches(targetDate) {
+  var matches = [];
+  var promises = [];
+  var dateStr = getEspnDateStr(targetDate);
+  var apiDateStr = targetDate.toISOString().split('T')[0];
+
+  // 1. Fetch ESPN
+  var espnPaths = [];
+  for(var key in ESPN_LEAGUES) { if(espnPaths.indexOf(ESPN_LEAGUES[key])===-1) espnPaths.push(ESPN_LEAGUES[key]); }
+
+  espnPaths.forEach(function(path) {
+    promises.push(
+      fetchEspnSchedule(path, dateStr).then(function(data) {
+        if(!data || !data.events) return;
+        data.events.forEach(function(ev) {
+          var comp = ev.competitions[0];
+          if(!comp) return;
+          var home = comp.competitors.find(function(c){return c.homeAway==='home';});
+          var away = comp.competitors.find(function(c){return c.homeAway==='away';});
+          if(!home || !away) return;
+
+          var d = new Date(ev.date);
+          var startTime = pad(d.getHours()) + ':' + pad(d.getMinutes());
+          var st = ev.status.type.state;
+          var status = 'upcoming';
+          var minute = null;
+          var score = null;
+
+          if(st === 'in') {
+            status = 'live';
+            minute = ev.status.displayClock;
+            score = [parseInt(home.score)||0, parseInt(away.score)||0];
+          } else if(st === 'post') {
+            status = 'finished';
+            score = [parseInt(home.score)||0, parseInt(away.score)||0];
+            minute = 'FT';
+          }
+
+          var lgName = data.leagues && data.leagues[0] ? data.leagues[0].name : 'Sports';
+          var leagueName = lgName.replace('English ', '').replace('Spanish ', '');
+
+          matches.push({
+            id: 'espn_'+ev.id,
+            league: leagueName,
+            flag: lgFlag(leagueName),
+            color: lgColor(leagueName),
+            homeTeam: home.team.name,
+            awayTeam: away.team.name,
+            homeLogo: home.team.logo || null,
+            awayLogo: away.team.logo || null,
+            startTime: startTime,
+            status: status,
+            score: score,
+            minute: minute,
+            streamLinks: [],
+            streamsLoaded: false,
+            source: 'api'
+          });
+
+          if(home.team.logo) cacheLogo(home.team.name, home.team.logo);
+          if(away.team.logo) cacheLogo(away.team.name, away.team.logo);
+        });
+      })
+    );
+  });
+
+  // 2. Fetch API-Sports if key exists
+  var key = localStorage.getItem('apiSportsKey');
+  if (key) {
+    var sportsToFetch = [];
+    var sportIds = {};
+    for(var k in SPORT_MAP) {
+      var s = SPORT_MAP[k];
+      var sid = s.sport + '_' + s.leagueId;
+      if(!sportIds[sid]) {
+        sportIds[sid] = true;
+        sportsToFetch.push(s);
+      }
+    }
+
+    sportsToFetch.forEach(function(s) {
+      promises.push(
+        fetchApiSportsFixtures(s, apiDateStr).then(function(apiData) {
+          if (!apiData) return;
+          apiData.forEach(function(f) {
+             var fHome = f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+             var fAway = f.teams.away.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+             var exists = matches.find(function(m) {
+                var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+                var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+                return isMatch(mHome, fHome) && isMatch(mAway, fAway);
+             });
+
+             if(exists) {
+                updateMatchDataFromApi(exists, f, s.sport);
+             } else {
+                var newMatch = {
+                  id: 'api_'+f.fixture.id,
+                  league: f.league.name,
+                  flag: lgFlag(f.league.name),
+                  color: lgColor(f.league.name),
+                  homeTeam: f.teams.home.name,
+                  awayTeam: f.teams.away.name,
+                  homeLogo: f.teams.home.logo,
+                  awayLogo: f.teams.away.logo,
+                  startTime: '00:00',
+                  status: 'upcoming',
+                  score: null,
+                  streamLinks: [],
+                  streamsLoaded: false,
+                  source: 'api'
+                };
+                updateMatchDataFromApi(newMatch, f, s.sport);
+                matches.push(newMatch);
+
+                if(f.teams.home.logo) cacheLogo(f.teams.home.name, f.teams.home.logo);
+                if(f.teams.away.logo) cacheLogo(f.teams.away.name, f.teams.away.logo);
+             }
+          });
+        })
+      );
+    });
+  }
+
+  return Promise.all(promises).then(function(){
+    return matches;
+  });
+}
+
+function mergeStreamsToApi(apiMatches, scrapedMatches) {
+  scrapedMatches.forEach(function(sm) {
+      var smHome = sm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+      var smAway = sm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      var matched = false;
+      for(var i=0; i<apiMatches.length; i++) {
+         var am = apiMatches[i];
+         var amHome = am.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+         var amAway = am.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+         if(isMatch(amHome, smHome) && isMatch(amAway, smAway)) {
+            if(!am.streamLinks) am.streamLinks = [];
+            if(sm.streamLinks) {
+                sm.streamLinks.forEach(function(sl) {
+                    if(!am.streamLinks.find(function(e){ return e.url === sl.url; })) {
+                        am.streamLinks.push(sl);
+                    }
+                });
+            }
+            if(sm.matchUrl && !am.matchUrl) am.matchUrl = sm.matchUrl;
+            if(sm.status === 'live' && am.status !== 'live') am.status = 'live';
+            matched = true;
+            break;
+         }
+      }
+
+      if(!matched) {
+         sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+         apiMatches.push(sm);
+      }
+  });
+  return apiMatches;
+}
+
+
 /* ══ MAIN ═══════════════════════════════ */
+
 function loadAll(){
   S.log=[];S.raw='';S.matches=[];S.proxy='';
-  /* Setup Multiview UI if not exists */
   setupMultiviewUI();
 
   var btn=document.getElementById('relBtn');btn.disabled=true;
@@ -2300,95 +2561,73 @@ function loadAll(){
     var ic=el.querySelector('.sic');ic.classList.remove('ok');
     ic.innerHTML='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
   });
-  document.getElementById('ovmsg').textContent='Fetch de footybite.to…';
+  document.getElementById('ovmsg').textContent='Connexion au Guide TV (API)...';
+  document.getElementById('s1').querySelector('span').textContent = 'Téléchargement Guide TV Officiel';
+  document.getElementById('s2').querySelector('span').textContent = 'Recherche de streams...';
+  document.getElementById('s3').querySelector('span').textContent = 'Fusion et Affichage';
 
-  document.getElementById('s1').querySelector('span').textContent = 'Fetch Footybite, Buffstreams, Streameast...';
-
-  Promise.allSettled([
-      fetchPage(SITE),
-      fetchPage(BUFFSTREAMS_URL),
-      fetchPage(STREAMEAST_URL)
-  ]).then(function(results) {
+  getApiFirstMatches(TARGET_DATE).then(function(apiMatches) {
       stepOk(1);
-      document.getElementById('ovmsg').textContent='Analyse des données…';
+      document.getElementById('ovmsg').textContent='Recherche de streams...';
 
-      var allMatches = [];
+      // Async scrape sites
+      return Promise.allSettled([
+          fetchPage(SITE),
+          fetchPage(BUFFSTREAMS_URL),
+          fetchPage(STREAMEAST_URL)
+      ]).then(function(results) {
+          stepOk(2);
+          document.getElementById('ovmsg').textContent='Fusion des données...';
 
-      if(results[0].status === 'fulfilled' && results[0].value) {
-          S.raw = results[0].value;
-          var fbMatches = parseFootybite(results[0].value);
-          allMatches = mergeMatches(allMatches, fbMatches);
-      } else {
-          lg('Erreur Footybite', results[0].reason);
-      }
+          var scrapedMatches = [];
+          if(results[0].status === 'fulfilled' && results[0].value) {
+              S.raw = results[0].value;
+              var fbMatches = parseFootybite(results[0].value);
+              scrapedMatches = mergeMatches(scrapedMatches, fbMatches);
+          }
+          if(results[1].status === 'fulfilled' && results[1].value) {
+              var bsMatches = parseBuffstreams(results[1].value);
+              scrapedMatches = mergeMatches(scrapedMatches, bsMatches);
+          }
+          if(results[2].status === 'fulfilled' && results[2].value) {
+              var seMatches = parseStreameast(results[2].value);
+              scrapedMatches = mergeMatches(scrapedMatches, seMatches);
+          }
 
-      if(results[1].status === 'fulfilled' && results[1].value) {
-          var bsMatches = parseBuffstreams(results[1].value);
-          allMatches = mergeMatches(allMatches, bsMatches);
-      } else {
-          lg('Erreur Buffstreams', results[1].reason);
-      }
+          var finalMatches = mergeStreamsToApi(apiMatches, scrapedMatches);
+          S.matches = finalMatches;
 
-      if(results[2].status === 'fulfilled' && results[2].value) {
-          var seMatches = parseStreameast(results[2].value);
-          allMatches = mergeMatches(allMatches, seMatches);
-      } else {
-          lg('Erreur Streameast', results[2].reason);
-      }
+          stepOk(3);
+          document.getElementById('ov').style.display='none';
 
-      if(allMatches.length === 0) {
-          throw new Error('Aucun match trouvé sur aucun des sites.');
-      }
+          // Populate sports filter
+          var sports = {};
+          S.matches.forEach(function(m){ sports[m.league]=true; });
+          var sportNames = Object.keys(sports).sort();
+          var sf = document.getElementById('sportFilter');
+          if(sf){
+              var optionsHtml = '<option value="all">Tous les sports</option>';
+              sportNames.forEach(function(sp){
+                  optionsHtml += '<option value="'+esc(sp)+'">'+lgFlag(sp)+' '+esc(sp)+'</option>';
+              });
+              sf.innerHTML = optionsHtml;
+              sf.value = S.sportFilter;
+          }
 
-      S.matches = allMatches;
-      stepOk(2);
-      document.getElementById('ovmsg').textContent='Construction EPG…';
-      return new Promise(function(r){setTimeout(r,120);});
-  })
-    .then(function(){
-      if(S.matches.length===0) return;
-      stepOk(3);
-      document.getElementById('ov').style.display='none';
-
-      // Populate sports filter
-      var sports = {};
-      S.matches.forEach(function(m){ sports[m.league]=true; });
-      var sportNames = Object.keys(sports).sort();
-      var sf = document.getElementById('sportFilter');
-      if(sf){
-          var html = '<option value="all">Tous les sports</option>';
-          sportNames.forEach(function(sp){
-              html += '<option value="'+esc(sp)+'">'+lgFlag(sp)+' '+esc(sp)+'</option>';
-          });
-          sf.innerHTML = html;
-          sf.value = S.sportFilter; // maintain current selection if any
-      }
-
-      document.getElementById('ovmsg').textContent='Sync ESPN / API-Sports...';
-      return syncMatchesWithEspn(S.matches).then(function(espnMatches) {
-        return syncMatchesWithApiSports(espnMatches);
+          buildEPG(S.matches);
+          var live=S.matches.filter(function(m){return m.status==='live';}).length;
+          showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
       });
-    })
-    .then(function(syncedMatches) {
-      if(!syncedMatches) return;
-      S.matches = syncedMatches;
-      buildEPG(S.matches);
-      var live=S.matches.filter(function(m){return m.status==='live';}).length;
-      showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
-
-      // Streams are now loaded on demand when clicking a match card.
-      // fetchSubPages(S.matches);
-    })
-    .catch(function(err){
+  }).catch(function(err){
       document.getElementById('ov').style.display='none';
       var lines=(err.message||'Erreur').split('\n');
       document.getElementById('errmsg').textContent=lines[0];
       var ec=document.getElementById('errcode');
       if(lines.length>1){ec.textContent=lines.slice(1).join('\n');ec.style.display='block';}
       document.getElementById('errbox').classList.add('show');
-    })
-    .finally(function(){btn.disabled=false;});
+  }).finally(function(){btn.disabled=false;});
 }
+
 
 /* ══ INIT ═══════════════════════════════ */
 
