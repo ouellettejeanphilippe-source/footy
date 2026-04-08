@@ -741,6 +741,14 @@ function parseFootybite(html){
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
 function mergeMatches(mainList, newList) {
+  // ⚡ Bolt: Pre-calculate normalized team names for O(N) instead of O(N*M)
+  var mainListNorm = mainList.map(function(mm) {
+    return {
+      home: mm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      away: mm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '')
+    };
+  });
+
   newList.forEach(function(nm) {
     var merged = false;
 
@@ -750,8 +758,8 @@ function mergeMatches(mainList, newList) {
 
     for (var i = 0; i < mainList.length; i++) {
       var mm = mainList[i];
-      var mmHome = mm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-      var mmAway = mm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+      var mmHome = mainListNorm[i].home;
+      var mmAway = mainListNorm[i].away;
 
       if (isMatch(nmHome, mmHome) && isMatch(nmAway, mmAway)) {
         // It's the same match. Merge streams.
@@ -789,6 +797,10 @@ function mergeMatches(mainList, newList) {
       // Generate a new ID based on the array length to avoid conflicts
       nm.id = mainList.length;
       mainList.push(nm);
+      mainListNorm.push({
+        home: nmHome,
+        away: nmAway
+      });
     }
   });
 
@@ -971,8 +983,13 @@ function syncMatchesWithApiSports(matches) {
   matches.forEach(function(m) {
     var info = getLeagueInfo(m.league);
     var groupKey = info.sport + '_' + (info.leagueId || 'unknown');
-    if (!sportGroups[groupKey]) sportGroups[groupKey] = { info: info, matches: [] };
+    if (!sportGroups[groupKey]) sportGroups[groupKey] = { info: info, matches: [], matchesNorm: [] };
     sportGroups[groupKey].matches.push(m);
+    // ⚡ Bolt: Pre-calculate normalized group team names for O(N) instead of O(N*M)
+    sportGroups[groupKey].matchesNorm.push({
+      home: m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      away: m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '')
+    });
   });
 
   var promises = [];
@@ -991,10 +1008,10 @@ function syncMatchesWithApiSports(matches) {
             };
           });
 
-          group.matches.forEach(function(m) {
+          group.matches.forEach(function(m, i) {
             // Find match by team names (fuzzy match)
-            var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-            var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+            var mHome = group.matchesNorm[i].home;
+            var mAway = group.matchesNorm[i].away;
 
             var matchedApiFixture = normalizedApiData.find(function(nf) {
               // Simple check if one contains the other + fuzzy matching
@@ -1044,6 +1061,15 @@ function syncMatchesWithEspn(matches) {
 
   Object.keys(leagueMatches).forEach(function(path) {
     var group = leagueMatches[path];
+
+    // ⚡ Bolt: Pre-calculate normalized group team names for O(N) instead of O(N*M)
+    var groupNorm = group.map(function(m) {
+      return {
+        home: m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, ''),
+        away: m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '')
+      };
+    });
+
     dates.forEach(function(dateStr) {
       promises.push(
         fetchEspnSchedule(path, dateStr).then(function(data) {
@@ -1058,9 +1084,9 @@ function syncMatchesWithEspn(matches) {
             var eHome = home.team.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             var eAway = away.team.name.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-            group.forEach(function(m) {
-              var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-              var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+            group.forEach(function(m, i) {
+              var mHome = groupNorm[i].home;
+              var mAway = groupNorm[i].away;
 
               if(isMatch(mHome, eHome) && isMatch(mAway, eAway)) {
 
@@ -3056,6 +3082,14 @@ function getApiFirstMatches(targetDate) {
 function mergeStreamsToApi(apiMatches, scrapedMatches) {
   var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
 
+  // ⚡ Bolt: Pre-calculate normalized api matches team names for O(N) instead of O(N*M)
+  var apiMatchesNorm = apiMatches.map(function(am) {
+    return {
+      home: am.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      away: am.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '')
+    };
+  });
+
   scrapedMatches.forEach(function(sm) {
       var smHome = sm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
       var smAway = sm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -3063,8 +3097,8 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
       var matched = false;
       for(var i=0; i<apiMatches.length; i++) {
          var am = apiMatches[i];
-         var amHome = am.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-         var amAway = am.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+         var amHome = apiMatchesNorm[i].home;
+         var amAway = apiMatchesNorm[i].away;
 
          if(isMatch(amHome, smHome) && isMatch(amAway, smAway)) {
             if(!am.streamLinks) am.streamLinks = [];
@@ -3098,6 +3132,10 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
          }
 
          apiMatches.push(sm);
+         apiMatchesNorm.push({
+           home: smHome,
+           away: smAway
+         });
       }
   });
   return apiMatches;
