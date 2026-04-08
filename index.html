@@ -492,7 +492,7 @@ function getEstTimeStrFromDate(d) {
     var m = str.match(/(\d+):(\d+)/);
     if(m) {
         var h = parseInt(m[1], 10);
-        if(h === 24) h = 0;
+        h = h % 24;
         return pad(h) + ':' + pad(m[2]);
     }
     return '00:00';
@@ -1577,6 +1577,7 @@ function getEstTime(ukTimeStr){
     // Usually a 5 hours difference.
     var estH = h - 5;
     if(estH < 0) estH += 24;
+    estH = estH % 24;
     return pad(estH) + ':' + pad(m);
 }
 
