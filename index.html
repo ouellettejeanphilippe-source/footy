@@ -1589,8 +1589,8 @@ function buildEPG(matches){
   var ruler = document.createElement('div');
   ruler.className = 'ruler';
   var hhtml = '';
-  // Start from 00:00 to 23:00
-  for(var h=0; h<24; h++){
+  // Start from 00:00 to 24:00 (to give padding at the end)
+  for(var h=0; h<=24; h++){
       hhtml += '<div class="tc">' + pad(h) + ':00</div>';
   }
   ruler.innerHTML = hhtml;
@@ -1616,6 +1616,9 @@ function buildEPG(matches){
       glh.style.left = (h*hourPx + (hourPx/2)) + 'px'; // Half hour mark
       mareaDiv.appendChild(glh);
   }
+
+  // Make sure the marea expands to full width even if no matches
+  mareaDiv.style.width = (25 * hourPx) + 'px';
 
   var nowLine = document.createElement('div');
   nowLine.className = 'now-line';
