@@ -3092,14 +3092,6 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
          if (sm.startTime === '00:00' && sm.status === 'finished') {
            // Put finished matches without specific times at the start of the day
            sm.startTime = '00:01';
-         } else if (sm.startTime === '00:00') {
-           // If it's a live match from fallback without a time, maybe put it at current time
-           // But actually footybite parsed time logic has a fallback that sets it to '00:00'.
-           // Let's just keep the time parsed, or if it is exactly '00:00' and it's 'live', put it at current time
-           var now = new Date();
-           if (sm.status === 'live') {
-               sm.startTime = getEstTimeStrFromDate(now);
-           }
          }
 
          apiMatches.push(sm);
