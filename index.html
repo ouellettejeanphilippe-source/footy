@@ -361,12 +361,102 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
 
+var TEAM_ALIASES = {
+  // Soccer - France
+  'psg': 'parissaintgermain',
+  'paris sg': 'parissaintgermain',
+  'om': 'olympique marseille',
+  'marseille': 'olympique marseille',
+  'ol': 'olympique lyonnais',
+  'lyon': 'olympique lyonnais',
+  'asse': 'saint etienne',
+  'lille osc': 'lille',
+  'losca lille': 'lille',
+
+  // Soccer - England
+  'man utd': 'manchester united',
+  'man united': 'manchester united',
+  'man city': 'manchester city',
+  'spurs': 'tottenham',
+  'tottenham hotspur': 'tottenham',
+  'wolves': 'wolverhampton',
+  'wolverhampton wanderers': 'wolverhampton',
+  'nottm forest': 'nottingham forest',
+  'newcastle': 'newcastle united',
+
+  // Soccer - Spain
+  'real': 'real madrid',
+  'barca': 'barcelona',
+  'fc barcelona': 'barcelona',
+  'atletico': 'atletico madrid',
+  'atl madrid': 'atletico madrid',
+
+  // Soccer - Italy/Germany
+  'juve': 'juventus',
+  'inter': 'inter milan',
+  'internazionale': 'inter milan',
+  'ac milan': 'milan',
+  'bayern': 'bayern munich',
+  'bayer': 'bayer leverkusen',
+  'bvb': 'borussia dortmund',
+  'dortmund': 'borussia dortmund',
+
+  // NHL
+  'habs': 'montreal canadiens',
+  'canadiens de montreal': 'montreal canadiens',
+  'avs': 'colorado avalanche',
+  'caps': 'washington capitals',
+  'pens': 'pittsburgh penguins',
+  'preds': 'nashville predators',
+  'canes': 'carolina hurricanes',
+  'jackets': 'columbus blue jackets',
+  'leafs': 'toronto maple leafs',
+  'wings': 'detroit red wings',
+
+  // NBA
+  'cavs': 'cleveland cavaliers',
+  'mavs': 'dallas mavericks',
+  't-wolves': 'minnesota timberwolves',
+  'timberwolves': 'minnesota timberwolves',
+  'blazers': 'portland trail blazers',
+  'sixers': 'philadelphia 76ers',
+
+  // NFL
+  'pats': 'new england patriots',
+  'bucs': 'tampa bay buccaneers',
+  'jags': 'jacksonville jaguars',
+  'niners': 'san francisco 49ers',
+  '49ers': 'san francisco 49ers',
+
+  // MLB
+  'yanks': 'new york yankees',
+  'sox': 'boston red sox', // Note: could also be white sox, usually red sox context
+  'd-backs': 'arizona diamondbacks',
+  'diamondbacks': 'arizona diamondbacks',
+
+  // F1/WWE/Others
+  'red bull': 'red bull racing',
+  'mercedes amg': 'mercedes',
+  'smackdown': 'wwe smackdown',
+  'raw': 'wwe raw'
+};
+
 var _normCache = {};
 function normName(n) {
   if (!n) return '';
   var cached = _normCache[n];
   if (cached) return cached;
-  var norm = n.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  var lower = n.toLowerCase().trim();
+  // Apply aliases before stripping characters
+  if (TEAM_ALIASES[lower]) {
+      lower = TEAM_ALIASES[lower];
+  }
+
+  // Basic fallback replacements (e.g. fc, afc, sc, cf)
+  lower = lower.replace(/\b(fc|afc|sc|cf|united|city|racing|club|de|athletic)\b/g, '').trim();
+
+  var norm = lower.replace(/[^a-z0-9]/g, '');
   _normCache[n] = norm;
   return norm;
 }
@@ -1540,10 +1630,17 @@ function buildEPG(matches){
     if(S.filter==='upcoming' && m.status!=='upcoming') return false;
     if(S.sportFilter!=='all' && m.league!==S.sportFilter && S.sportFilter!=='EN DIRECT') return false;
     if(S.searchQuery) {
-        var q = S.searchQuery;
-        if(m.homeTeam.toLowerCase().indexOf(q) === -1 &&
-           m.awayTeam.toLowerCase().indexOf(q) === -1 &&
-           m.league.toLowerCase().indexOf(q) === -1) {
+        var q = normName(S.searchQuery);
+        var hN = normName(m.homeTeam);
+        var aN = normName(m.awayTeam);
+        var lN = normName(m.league);
+
+        if(hN.indexOf(q) === -1 &&
+           aN.indexOf(q) === -1 &&
+           lN.indexOf(q) === -1 &&
+           m.homeTeam.toLowerCase().indexOf(S.searchQuery) === -1 &&
+           m.awayTeam.toLowerCase().indexOf(S.searchQuery) === -1 &&
+           m.league.toLowerCase().indexOf(S.searchQuery) === -1) {
             return false;
         }
     }
@@ -2244,13 +2341,29 @@ function updateMultiviewLayout() {
         cBtn.style.display = count > 0 ? 'inline-block' : 'none';
     }
 
-    grid.innerHTML = '';
+    // Assign internal IDs to streams for tracking DOM elements
+    mvStreams.forEach(function(s, idx) {
+        if (!s._internalId) s._internalId = 'mv-stream-' + Date.now() + '-' + idx;
+    });
 
+    // Remove old empty message if any
+    var emptyMsg = document.getElementById('mv-empty-msg');
     if(count === 0) {
-        grid.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;color:var(--muted);height:100%;">Ajoutez des matchs depuis la modale pour utiliser le Multiview.</div>';
+        if (!emptyMsg) {
+            grid.innerHTML = '<div id="mv-empty-msg" style="display:flex;align-items:center;justify-content:center;color:var(--muted);height:100%;">Ajoutez des matchs depuis la modale pour utiliser le Multiview.</div>';
+        } else {
+            // keep it
+            var children = Array.from(grid.children);
+            children.forEach(function(child) {
+                if (child.id !== 'mv-empty-msg') {
+                    grid.removeChild(child);
+                }
+            });
+        }
         return;
+    } else if (emptyMsg) {
+        emptyMsg.remove();
     }
-
 
     // Update PIP button text based on state
     var pipBtn = document.getElementById('mv-pip-btn');
@@ -2258,43 +2371,82 @@ function updateMultiviewLayout() {
     if (pipBtn && mvc) {
         if (mvc.classList.contains('mv-pip')) {
             pipBtn.innerHTML = '◧ Agrandir';
-            // Force vertical stack when in PiP
             grid.style.gridTemplateColumns = '1fr';
             grid.style.gridTemplateRows = 'repeat(' + Math.max(1, count) + ', 1fr)';
-            return; // Skip normal grid layout
         } else {
             pipBtn.innerHTML = '◨ Réduire';
+            if(count === 1) {
+                grid.style.gridTemplateColumns = '1fr';
+                grid.style.gridTemplateRows = '1fr';
+            }
+            else if(count === 2) {
+                grid.style.gridTemplateColumns = '1fr';
+                grid.style.gridTemplateRows = '1fr 1fr';
+            }
+            else if(count === 3) {
+                grid.style.gridTemplateColumns = '1fr 1fr';
+                grid.style.gridTemplateRows = '1fr 1fr';
+            }
+            else if(count === 4) {
+                grid.style.gridTemplateColumns = '1fr 1fr';
+                grid.style.gridTemplateRows = '1fr 1fr';
+            }
         }
     }
 
-    if(count === 1) {
-        grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridTemplateRows = '1fr';
-    }
-    else if(count === 2) {
-        grid.style.gridTemplateColumns = '1fr';
-        grid.style.gridTemplateRows = '1fr 1fr';
-    }
-    else if(count === 3) {
-        grid.style.gridTemplateColumns = '1fr 1fr';
-        grid.style.gridTemplateRows = '1fr 1fr';
-    }
-    else if(count === 4) {
-        grid.style.gridTemplateColumns = '1fr 1fr';
-        grid.style.gridTemplateRows = '1fr 1fr';
-    }
+    // Existing cells
+    var existingCells = Array.from(grid.children).filter(function(child) {
+        return child.hasAttribute('data-internal-id');
+    });
 
+    // Create or update cells
     mvStreams.forEach(function(s, idx) {
-        var cell = document.createElement('div');
-        cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;';
+        var cellId = s._internalId;
+        var cell = existingCells.find(function(c) { return c.getAttribute('data-internal-id') === cellId; });
 
+        if (!cell) {
+            cell = document.createElement('div');
+            cell.setAttribute('data-internal-id', cellId);
+            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;';
+            cell.draggable = true;
+
+            var hdr = document.createElement('div');
+            hdr.className = 'mv-hdr';
+            hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;opacity:0;transition:opacity 0.2s;';
+
+            var videoContainer = document.createElement('div');
+            videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000;';
+
+            var iframe = document.createElement('iframe');
+            iframe.className = 'mv-iframe';
+            // Pointer events none allows dragging the container instead of interacting with iframe during drag
+            iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
+            iframe.setAttribute('allowfullscreen', 'true');
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox'); // Nuke non-video elements in multiview too
+
+            videoContainer.appendChild(iframe);
+            cell.appendChild(hdr);
+            cell.appendChild(videoContainer);
+            grid.appendChild(cell);
+
+            cell.onmouseenter = function(){ hdr.style.opacity = '1'; };
+            cell.onmouseleave = function(){ hdr.style.opacity = '0'; };
+            cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
+            cell.addEventListener('mouseup', function() { iframe.style.pointerEvents = 'auto'; });
+            cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
+        }
+
+        // Re-append to grid in the correct order
+        grid.appendChild(cell);
+
+        // Update styling/gridRow
         if (count === 3 && idx === 0 && !document.getElementById('mv-container').classList.contains('mv-pip')) {
             cell.style.gridRow = 'span 2';
+        } else {
+            cell.style.gridRow = 'auto';
         }
 
-        cell.draggable = true;
-
-        // Drag and drop event handlers
+        // Update drag/drop indices as they can change
         cell.ondragstart = function(e) {
             e.dataTransfer.setData('text/plain', idx.toString());
             cell.style.opacity = '0.5';
@@ -2317,60 +2469,51 @@ function updateMultiviewLayout() {
             if (fromIdx !== toIdx && !isNaN(fromIdx)) {
                 var temp = mvStreams[fromIdx];
                 mvStreams[fromIdx] = mvStreams[toIdx];
-                mvStreams[toIdx] = temp; saveMultiviewState(); updateMultiviewLayout();
+                mvStreams[toIdx] = temp;
+                saveMultiviewState();
+                updateMultiviewLayout();
             }
         };
 
-        var hdr = document.createElement('div');
-        hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;opacity:0;transition:opacity 0.2s;';
-
-        // Site tag
+        // Update header HTML
+        var hdr = cell.querySelector('.mv-hdr');
         var domain = s.url ? getDomain(s.url) : 'Stream';
-
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;">' +
             '<span style="background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;font-size:10px;">' + esc(domain) + '</span>' +
             '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
             '</div>';
 
-        // Changer stream button + Close button
         var controlsHtml = '<div style="display:flex;gap:4px;">';
-
         if (s.mid) {
             controlsHtml += '<button title="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
         }
-
         controlsHtml += '<button title="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
         controlsHtml += '<button title="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
         controlsHtml += '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
 
-        cell.onmouseenter = function(){ hdr.style.opacity = '1'; };
-        cell.onmouseleave = function(){ hdr.style.opacity = '0'; };
-
-        var videoContainer = document.createElement('div');
-        videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000;';
-
-        var iframe = document.createElement('iframe');
+        // Update Iframe src only if changed
+        var iframe = cell.querySelector('.mv-iframe');
         iframe.id = 'mv-iframe-' + idx;
-        iframe.src = s.url;
-        // Pointer events none allows dragging the container instead of interacting with iframe during drag
-        iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
+        if (iframe.src !== s.url) {
+            iframe.src = s.url;
+        }
+
+        // Update crop transform
         if (s.cropped) {
             iframe.style.transform = 'scale(1.15)';
+        } else {
+            iframe.style.transform = 'scale(1)';
         }
-        iframe.setAttribute('allowfullscreen', 'true');
-        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox'); // Nuke non-video elements in multiview too
+    });
 
-        // Disable pointer events on iframe while dragging
-        cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
-        cell.addEventListener('mouseup', function() { iframe.style.pointerEvents = 'auto'; });
-        cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
-
-        videoContainer.appendChild(iframe);
-        cell.appendChild(hdr);
-        cell.appendChild(videoContainer);
-        grid.appendChild(cell);
+    // Remove cells that are no longer in mvStreams
+    existingCells.forEach(function(cell) {
+        var cellId = cell.getAttribute('data-internal-id');
+        if (!mvStreams.find(function(s) { return s._internalId === cellId; })) {
+            cell.remove();
+        }
     });
 }
 

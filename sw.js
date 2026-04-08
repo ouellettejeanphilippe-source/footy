@@ -30,15 +30,15 @@ self.addEventListener('fetch', event => {
   // Only cache same-origin requests like index.html or manifest.json
   if (event.request.url.startsWith(self.location.origin)) {
     event.respondWith(
-      caches.match(event.request)
-        .then(response => {
-          if (response) return response;
-          return fetch(event.request).then(fetchRes => {
-             return caches.open(CACHE_NAME).then(cache => {
-                cache.put(event.request, fetchRes.clone());
-                return fetchRes;
-             });
+      fetch(event.request)
+        .then(fetchRes => {
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, fetchRes.clone());
+            return fetchRes;
           });
+        })
+        .catch(() => {
+          return caches.match(event.request);
         })
     );
   }
