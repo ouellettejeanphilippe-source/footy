@@ -29,9 +29,9 @@
   --muted: rgba(235, 235, 245, 0.6);
   --muted2: rgba(235, 235, 245, 0.8);
   --ruler-h: 50px;
-  --chan-w: 200px;
-  --row-h: 84px;
-  --hour-px: 200px;
+  --chan-w: 240px;
+  --row-h: 96px;
+  --hour-px: 220px;
   --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -49,15 +49,15 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 .ball { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #5e5ce6); border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 12px var(--accent-glow); }
 .ball svg { width: 18px; height: 18px; stroke: #fff; }
 .sp { flex: 1; }
-.btn { font-family: inherit; font-weight: 600; font-size: 14px; padding: 8px 16px; border-radius: 12px; border: 1px solid transparent; background: var(--bg3); color: var(--text); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(10px); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn { font-family: inherit; font-weight: 600; font-size: 14px; padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.08); color: var(--text); cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 :focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
 .btn:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 .btn:active { transform: translateY(0); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
 .btn.g { background: rgba(48, 209, 88, 0.15); color: var(--accent-green); border-color: rgba(48, 209, 88, 0.2); }
 .btn.g:hover { background: rgba(48, 209, 88, 0.25); box-shadow: 0 4px 12px rgba(48, 209, 88, 0.2); }
-.btn.o { background: rgba(255, 255, 255, 0.1); color: var(--text); border-color: rgba(255, 255, 255, 0.15); }
-.btn.o:hover { background: rgba(255, 255, 255, 0.2); }
+.btn.o { background: transparent; color: var(--text); border-color: rgba(255, 255, 255, 0.2); }
+.btn.o:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.3); }
 .live-p { display: flex; align-items: center; gap: 6px; background: rgba(255, 69, 58, 0.15); color: var(--red); font-weight: 700; font-size: 13px; letter-spacing: 0.5px; padding: 6px 12px; border-radius: 8px; flex-shrink: 0; box-shadow: 0 0 10px var(--red-glow); }
 .ldot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: blink 1.5s ease-in-out infinite; box-shadow: 0 0 8px var(--red); }
 @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
@@ -75,7 +75,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .chan-col { width: var(--chan-w); flex-shrink: 0; display: flex; flex-direction: column; background: rgba(10, 10, 12, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-right: 1px solid var(--border2); z-index: 20; position: relative; box-shadow: 5px 0 20px rgba(0,0,0,0.3); }
 .corner { height: var(--ruler-h); flex-shrink: 0; border-bottom: 1px solid var(--border2); display: flex; align-items: center; padding: 0 20px; font-weight: 700; font-size: 12px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; background: rgba(0,0,0,0.4); }
 .chan-list { flex: 1; overflow-y: hidden; }
-.chan-cell { height: var(--row-h); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; gap: 6px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+.chan-cell { height: var(--row-h); display: flex; flex-direction: column; justify-content: center; padding: 0 16px; gap: 8px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+.chan-team { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.chan-logo { width: 22px; height: 22px; border-radius: 4px; object-fit: contain; background: rgba(255,255,255,0.1); flex-shrink: 0; padding: 2px; }
 .chan-cell:hover { background: rgba(255,255,255,0.03); }
 
 /* LIGUE HEADER CSS */
@@ -99,17 +101,20 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .gl.h { background: rgba(255,255,255,0.04); }
 
 /* Match Blocks */
-.mb { position: absolute; top: 6px; bottom: 6px; border-radius: 12px; cursor: pointer; overflow: hidden; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 80px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); }
+.mb { position: absolute; top: 6px; bottom: 6px; border-radius: 14px; cursor: pointer; overflow: hidden; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); }
 /* Subtle gradient overlay for depth */
-.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.4), transparent); pointer-events: none; }
-.mb:hover { filter: brightness(1.2); transform: scale(1.03); z-index: 5; box-shadow: 0 10px 25px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.3); }
-.mb.live { border: 2px solid rgba(255,255,255,0.8); animation: liveglow 3s ease-in-out infinite; }
-.mb.finished { filter: grayscale(0.7) opacity(0.6); }
+.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%); pointer-events: none; }
+.mb:hover { filter: brightness(1.15); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.4); }
+.mb.live { border: 2px solid rgba(255,69,58,0.8); animation: liveglow 3s ease-in-out infinite; }
+.mb.finished { filter: grayscale(0.8) opacity(0.5); }
 .mb.finished:hover { filter: grayscale(0.2) opacity(1); }
-@keyframes liveglow { 0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4) } 50% { box-shadow: 0 0 20px rgba(255, 69, 58, 0.6) } }
-.mb-t { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); position: relative; z-index: 1; }
-.vs { color: rgba(255,255,255,0.6); font-weight: 500; font-size: 12px; margin: 0 6px; font-style: italic; }
-.mb-m { display: flex; align-items: center; gap: 8px; margin-top: 6px; position: relative; z-index: 1; }
+@keyframes liveglow { 0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4) } 50% { box-shadow: 0 0 24px rgba(255, 69, 58, 0.5) } }
+.mb-teams { display: flex; flex-direction: column; gap: 6px; position: relative; z-index: 1; width: 100%; }
+.mb-team-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+.mb-logo { width: 20px; height: 20px; border-radius: 4px; object-fit: contain; background: rgba(255,255,255,0.15); flex-shrink: 0; padding: 2px; }
+.mb-t { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); flex: 1; min-width: 0; }
+.mb-ts { font-size: 14px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); flex-shrink: 0; margin-left: 6px; }
+.mb-m { display: flex; align-items: center; gap: 8px; margin-top: 8px; position: relative; z-index: 1; }
 .mb-time { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 6px; backdrop-filter: blur(4px); }
 .mb-score { font-weight: 800; font-size: 14px; color: #fff; background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 6px; letter-spacing: 1px; }
 .mb-live { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: #fff; background: var(--red); padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px; box-shadow: 0 2px 8px var(--red-glow); }
@@ -167,9 +172,11 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media(max-width: 768px) {
-  :root { --chan-w: 100px; --row-h: 74px; --hour-px: 160px; --ruler-h: 44px; }
+  :root { --chan-w: 120px; --row-h: 88px; --hour-px: 160px; --ruler-h: 44px; }
   .ch-cnt, .mb-sn { display: none; }
-  .ch-name { font-size: 12px; }
+  .ch-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .chan-logo { width: 18px; height: 18px; }
+  .mb-logo { width: 16px; height: 16px; }
   .hdr { padding: 0 12px; gap: 8px; height: 60px; }
   .logo { font-size: 20px; }
   .btn { padding: 6px 12px; font-size: 13px; }
@@ -1788,14 +1795,21 @@ function buildEPG(matches){
     if(!isCollapsed) {
         lg.matches.forEach(function(m){
             // Channel cell
+            var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
+            var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
+            var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+            var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+
             var cCell = document.createElement('div');
             cCell.className = 'chan-cell';
-            cCell.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">'
-                            + '<span style="font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+'" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</span>'
-                            + '<span class="ch-name">'+esc(m.homeTeam)+'</span></div>'
-                            + '<div style="display:flex;align-items:center;gap:6px;">'
-                            + '<span style="font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+'" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\')">★</span>'
-                            + '<span class="ch-name">'+esc(m.awayTeam)+'</span></div>';
+            cCell.innerHTML = '<div class="chan-team">'
+                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</button>'
+                            + homeLogoHtml
+                            + '<span class="ch-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span></div>'
+                            + '<div class="chan-team">'
+                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\')">★</button>'
+                            + awayLogoHtml
+                            + '<span class="ch-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span></div>';
             chanList.appendChild(cCell);
 
             // Timeline row
@@ -1816,14 +1830,30 @@ function buildEPG(matches){
                 timeHtml = '<div class="mb-time">'+m.startTime+'</div>';
             }
 
-            var homeScore = m.score ? m.score[0] : '';
-            var awayScore = m.score ? m.score[1] : '';
-            var scoreHtml = m.score ? '<div class="mb-score">'+homeScore+' - '+awayScore+'</div>' : '';
+            var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
+            var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
+
+            var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
+            var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
+
+            var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
+            var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
 
             var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' str</div>' : '';
 
-            b.innerHTML = '<div class="mb-t">'+esc(m.homeTeam)+' <span class="vs">vs</span> '+esc(m.awayTeam)+'</div>'
-                        + '<div class="mb-m">'+timeHtml+scoreHtml+streamsBadge+'</div>';
+            b.innerHTML = '<div class="mb-teams">'
+                        +   '<div class="mb-team-row">'
+                        +     homeLogoHtml
+                        +     '<div class="mb-t" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
+                        +     (homeScore !== '' ? '<div class="mb-ts">'+homeScore+'</div>' : '')
+                        +   '</div>'
+                        +   '<div class="mb-team-row">'
+                        +     awayLogoHtml
+                        +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
+                        +     (awayScore !== '' ? '<div class="mb-ts">'+awayScore+'</div>' : '')
+                        +   '</div>'
+                        + '</div>'
+                        + '<div class="mb-m">'+timeHtml+streamsBadge+'</div>';
 
             // Calculate position
             var parts = m.startTime.split(':');
