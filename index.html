@@ -1212,6 +1212,7 @@ function saveDomainPrefs() {
 }
 
 function toggleDomainPref(domain, type, mid) {
+  mid = getOriginalMatchId(mid);
   var current = domainPrefs[domain] || 0;
   if (type === 'fav') {
     if (current === 1) delete domainPrefs[domain];
@@ -1402,22 +1403,24 @@ function scrapeMatchStreams(m){
 
 function updateMatchUiAfterScrape(m) {
     // Refresh UI for this specific match if needed
-    var mb=document.getElementById('mb-'+m.id);
-    if(mb){
-        var sn=m.streamLinks ? m.streamLinks.length : 0;
-        var snEl=mb.querySelector('.mb-sn');
-        if(snEl){
-            snEl.textContent=sn+' stream'+(sn>1?'s':'');
-        }else if(sn>0){
-            var mbM=mb.querySelector('.mb-m');
-            if(mbM){
-                var span=document.createElement('span');
-                span.className='mb-sn';
-                span.textContent=sn+' stream'+(sn>1?'s':'');
-                mbM.appendChild(span);
+    var mbs = [document.getElementById('mb-'+m.id), document.getElementById('mb-'+m.id+'_live_copy')];
+    mbs.forEach(function(mb) {
+        if(mb){
+            var sn=m.streamLinks ? m.streamLinks.length : 0;
+            var snEl=mb.querySelector('.mb-sn');
+            if(snEl){
+                snEl.textContent=sn+' stream'+(sn>1?'s':'');
+            }else if(sn>0){
+                var mbM=mb.querySelector('.mb-m');
+                if(mbM){
+                    var span=document.createElement('span');
+                    span.className='mb-sn';
+                    span.textContent=sn+' stream'+(sn>1?'s':'');
+                    mbM.appendChild(span);
+                }
             }
         }
-    }
+    });
 
     // Si la modale est ouverte pour CE match, on la met à jour
     var mnameEl=document.getElementById('mname');
@@ -1524,11 +1527,18 @@ function toggleAccordion(lgName) {
 }
 
 /* ══ EPG / LISTE ════════════════════════ */
+function getOriginalMatchId(id) {
+    if (typeof id === 'string' && id.endsWith('_live_copy')) {
+        return id.replace('_live_copy', '');
+    }
+    return id;
+}
+
 function buildEPG(matches){
   var filtered = matches.filter(function(m){
     if(S.filter==='live' && m.status!=='live') return false;
     if(S.filter==='upcoming' && m.status!=='upcoming') return false;
-    if(S.sportFilter!=='all' && m.league!==S.sportFilter) return false;
+    if(S.sportFilter!=='all' && m.league!==S.sportFilter && S.sportFilter!=='EN DIRECT') return false;
     if(S.searchQuery) {
         var q = S.searchQuery;
         if(m.homeTeam.toLowerCase().indexOf(q) === -1 &&
@@ -1540,13 +1550,31 @@ function buildEPG(matches){
     return true;
   });
 
+  // Create live copies
+  var epgMatches = filtered.slice();
+  var liveCopies = [];
+  epgMatches.forEach(function(m) {
+      if (m.status === 'live' && m.league !== 'Autres Streams') {
+          var copy = Object.assign({}, m);
+          copy.id = String(m.id) + '_live_copy';
+          copy.league = 'EN DIRECT';
+          copy.flag = '🔴';
+          copy.color = '#ff453a';
+          liveCopies.push(copy);
+      }
+  });
+  epgMatches = liveCopies.concat(epgMatches);
+
   var lgOrder=[],lgMap={};
-  filtered.forEach(function(m){
+  epgMatches.forEach(function(m){
     if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});lgOrder.push(m.league);}
     lgMap[m.league].matches.push(m);
   });
 
   lgOrder.sort(function(a,b) {
+      if (a === 'EN DIRECT') return -1;
+      if (b === 'EN DIRECT') return 1;
+
       var getSortTime = function(lgMatches) {
           var active = lgMatches.filter(function(x){return x.status!=='finished';});
           if(active.length>0) {
@@ -1722,7 +1750,11 @@ function buildEPG(matches){
   bar.querySelectorAll('.lchip,.vsep:not(:first-child)').forEach(function(e){e.remove();});
 
   var allLeaguesMap = {};
-  matches.forEach(function(m){ allLeaguesMap[m.league] = {flag: m.flag, color: m.color}; });
+  matches.forEach(function(m){
+      if(m.league !== 'EN DIRECT') {
+          allLeaguesMap[m.league] = {flag: m.flag, color: m.color};
+      }
+  });
   var allLeagues = Object.keys(allLeaguesMap).sort();
 
   allLeagues.forEach(function(lgName,i){
@@ -1906,6 +1938,7 @@ var mvStreams = [];
 
 /* ══ MULTIVIEW STREAM SELECTOR ════════ */
 function showStreamSelector(idx, mid, event) {
+    mid = getOriginalMatchId(mid);
     if (event) {
         event.stopPropagation();
         event.preventDefault();
@@ -2342,6 +2375,7 @@ function updateMultiviewLayout() {
 }
 
 function addToMultiview(url, name, mid) {
+    mid = getOriginalMatchId(mid);
     if(mvStreams.length >= 4) {
         showToast('Maximum 4 streams en Multiview.');
         return;
@@ -2418,6 +2452,7 @@ function toggleFullscreen(elem) {
 /* ══ PLAYER (THIRD PAGE EMBED) ═════════ */
 // We pass the match id (mid) so we can fetch alternative streams and suggestions
 function openStream(e, eu, en, mid){
+  mid = getOriginalMatchId(mid);
   if(e) e.preventDefault();
   var url=decodeURIComponent(eu), name=decodeURIComponent(en);
 
@@ -2693,6 +2728,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
 
 // Helper to open modal from suggestions
 function openModAndLoad(mid) {
+    mid = getOriginalMatchId(mid);
     var m = S.matches.find(function(x){ return x.id === mid; });
     if(m) {
         // We are already inside the player, so opening the modal on top might be weird
@@ -3088,26 +3124,20 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
                 });
             }
             if(sm.matchUrl && !am.matchUrl) am.matchUrl = sm.matchUrl;
-            if(sm.status === 'live' && am.status !== 'live') am.status = 'live';
             matched = true;
             break;
          }
       }
 
       if(!matched) {
+         if (sm.status === 'finished') return; // Skip finished matches that have no API counterpart
+
          // Streams that do not match an API match are kept but categorized distinctly
          // so they appear separated from the official API timeline, usually at the bottom.
-         // If a match is finished, and we don't have a time for it, set it to something logical
-         // so it doesn't pile up at 00:00 or current time
          sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
          sm.league = 'Autres Streams';
          sm.flag = '📡';
          sm.color = '#555555';
-
-         if (sm.startTime === '00:00' && sm.status === 'finished') {
-           // Put finished matches without specific times at the start of the day
-           sm.startTime = '00:01';
-         }
 
          apiMatches.push(sm);
       }
@@ -3165,6 +3195,8 @@ function loadAll(){
           }
 
           var finalMatches = mergeStreamsToApi(apiMatches, scrapedMatches);
+          S.collapsedLg['Autres Streams'] = true;
+
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           finalMatches = finalMatches.filter(function(m) {
              // If we know the exact date from API, filter it strictly
@@ -3188,7 +3220,9 @@ function loadAll(){
           if(sf){
               var optionsHtml = '<option value="all">Tous les sports</option>';
               sportNames.forEach(function(sp){
-                  optionsHtml += '<option value="'+esc(sp)+'">'+lgFlag(sp)+' '+esc(sp)+'</option>';
+                  if (sp !== 'EN DIRECT') {
+                      optionsHtml += '<option value="'+esc(sp)+'">'+lgFlag(sp)+' '+esc(sp)+'</option>';
+                  }
               });
               sf.innerHTML = optionsHtml;
               sf.value = S.sportFilter;
