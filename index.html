@@ -2287,22 +2287,70 @@ function setupMultiviewUI() {
     mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
-    mvToolbar.style.cssText = 'height:40px;background:var(--bg2);display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;';
+    mvToolbar.id = 'mv-toolbar';
+    mvToolbar.style.cssText = 'height:40px;background:var(--bg2);display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s;';
     mvToolbar.innerHTML = '<span style="font-weight:bold;color:var(--text);">Mode Multiview</span>'
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="btn g" onclick="showMatchSelector(event)">➕ Ajouter un match</button>'
-      + '<button class="btn" onclick="clearMultiview()">Tout fermer</button>'
+      + '<button class="btn" onclick="clearMultiview()">Tout vider</button>'
+      + '<button class="btn o" onclick="isFocusMode = !isFocusMode; updateMultiviewLayout(); this.innerHTML = isFocusMode ? \'⊞ Grille\' : \'⭐ Focus\';">⭐ Focus</button>'
+      + '<button class="btn o" onclick="toggleTheaterMode()">Plein onglet</button>'
       + '<button class="btn o" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))">Plein écran</button>'
       + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn">◨ Réduire</button>'
-      + '<button class="btn o" onclick="toggleMultiview()">✕ Fermer</button>';
+      + '<button class="btn o" onclick="hideMultiview()">✕ Fermer</button>';
 
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
     mvGrid.style.cssText = 'flex:1;display:grid;gap:2px;background:#000;';
 
+    var exitTheaterBtn = document.createElement('button');
+    exitTheaterBtn.id = 'mv-exit-theater';
+    exitTheaterBtn.innerHTML = 'Quitter le Plein Onglet';
+    exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.3s;';
+
+    // Auto-hide the exit theater button after 3 seconds
+    var theaterTimeout;
+    mvContainer.addEventListener('mousemove', function() {
+        if (mvContainer.classList.contains('theater-mode')) {
+            exitTheaterBtn.style.opacity = '1';
+            clearTimeout(theaterTimeout);
+            theaterTimeout = setTimeout(function() {
+                exitTheaterBtn.style.opacity = '0';
+            }, 3000);
+        }
+    });
+
+    exitTheaterBtn.onclick = toggleTheaterMode;
+
     mvContainer.appendChild(mvToolbar);
     mvContainer.appendChild(mvGrid);
+    mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer); restoreMultiviewState();
+}
+
+function toggleTheaterMode() {
+    var mvc = document.getElementById('mv-container');
+    var tb = document.getElementById('mv-toolbar');
+    var exitBtn = document.getElementById('mv-exit-theater');
+    var mainHdr = document.querySelector('.hdr');
+
+    if(!mvc || !tb || !exitBtn || !mainHdr) return;
+
+    if (mvc.classList.contains('theater-mode')) {
+        mvc.classList.remove('theater-mode');
+        mvc.style.top = '60px'; // Revert back under the main header
+        tb.style.display = 'flex';
+        mainHdr.style.display = 'flex'; // Show main header
+        exitBtn.style.display = 'none';
+        exitBtn.style.opacity = '0';
+    } else {
+        mvc.classList.add('theater-mode');
+        mvc.style.top = '0px'; // Full window height
+        tb.style.display = 'none'; // Hide multiview toolbar
+        mainHdr.style.display = 'none'; // Hide main header
+        exitBtn.style.display = 'block';
+        exitBtn.style.opacity = '1';
+    }
 }
 
 
@@ -2328,6 +2376,19 @@ function restoreMultiviewState() {
             }
         }
     } catch(e) {}
+}
+
+// Focus mode state
+var isFocusMode = false;
+
+function setFocusStream(idx) {
+    if (idx === 0) return; // Already focused
+    // Swap stream at idx with stream at 0
+    var temp = mvStreams[0];
+    mvStreams[0] = mvStreams[idx];
+    mvStreams[idx] = temp;
+    saveMultiviewState();
+    updateMultiviewLayout();
 }
 
 function updateMultiviewLayout() {
@@ -2373,23 +2434,31 @@ function updateMultiviewLayout() {
             pipBtn.innerHTML = '◧ Agrandir';
             grid.style.gridTemplateColumns = '1fr';
             grid.style.gridTemplateRows = 'repeat(' + Math.max(1, count) + ', 1fr)';
+            // Disable focus mode overrides when in PiP
         } else {
             pipBtn.innerHTML = '◨ Réduire';
-            if(count === 1) {
-                grid.style.gridTemplateColumns = '1fr';
-                grid.style.gridTemplateRows = '1fr';
-            }
-            else if(count === 2) {
-                grid.style.gridTemplateColumns = '1fr';
-                grid.style.gridTemplateRows = '1fr 1fr';
-            }
-            else if(count === 3) {
-                grid.style.gridTemplateColumns = '1fr 1fr';
-                grid.style.gridTemplateRows = '1fr 1fr';
-            }
-            else if(count === 4) {
-                grid.style.gridTemplateColumns = '1fr 1fr';
-                grid.style.gridTemplateRows = '1fr 1fr';
+            if (isFocusMode && count >= 2) {
+                // Focus Mode Layout (1 large, others small on right)
+                grid.style.gridTemplateColumns = '3fr 1fr';
+                grid.style.gridTemplateRows = 'repeat(' + (count - 1) + ', 1fr)';
+            } else {
+                // Grid Mode Layout
+                if(count === 1) {
+                    grid.style.gridTemplateColumns = '1fr';
+                    grid.style.gridTemplateRows = '1fr';
+                }
+                else if(count === 2) {
+                    grid.style.gridTemplateColumns = '1fr';
+                    grid.style.gridTemplateRows = '1fr 1fr';
+                }
+                else if(count === 3) {
+                    grid.style.gridTemplateColumns = '1fr 1fr';
+                    grid.style.gridTemplateRows = '1fr 1fr';
+                }
+                else if(count === 4) {
+                    grid.style.gridTemplateColumns = '1fr 1fr';
+                    grid.style.gridTemplateRows = '1fr 1fr';
+                }
             }
         }
     }
@@ -2422,6 +2491,8 @@ function updateMultiviewLayout() {
             // Pointer events none allows dragging the container instead of interacting with iframe during drag
             iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
             iframe.setAttribute('allowfullscreen', 'true');
+            // Adding autoplay and presentation to allow Cast
+            iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
             iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox'); // Nuke non-video elements in multiview too
 
             videoContainer.appendChild(iframe);
@@ -2436,14 +2507,29 @@ function updateMultiviewLayout() {
             cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
         }
 
-        // Re-append to grid in the correct order
-        grid.appendChild(cell);
+        // Use CSS flex/grid order to reorder elements without removing them from the DOM
+        cell.style.order = idx;
 
         // Update styling/gridRow
-        if (count === 3 && idx === 0 && !document.getElementById('mv-container').classList.contains('mv-pip')) {
-            cell.style.gridRow = 'span 2';
+        if (!document.getElementById('mv-container').classList.contains('mv-pip')) {
+            if (isFocusMode && count >= 2) {
+                if (idx === 0) {
+                    cell.style.gridRow = 'span ' + (count - 1);
+                    cell.style.gridColumn = '1';
+                } else {
+                    cell.style.gridRow = 'auto';
+                    cell.style.gridColumn = '2';
+                }
+            } else if (count === 3 && idx === 0) {
+                cell.style.gridRow = 'span 2';
+                cell.style.gridColumn = 'auto';
+            } else {
+                cell.style.gridRow = 'auto';
+                cell.style.gridColumn = 'auto';
+            }
         } else {
             cell.style.gridRow = 'auto';
+            cell.style.gridColumn = 'auto';
         }
 
         // Update drag/drop indices as they can change
@@ -2484,6 +2570,9 @@ function updateMultiviewLayout() {
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:4px;">';
+        if (isFocusMode && idx !== 0) {
+            controlsHtml += '<button title="Mettre en avant" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="setFocusStream(' + idx + ')">⭐</button>';
+        }
         if (s.mid) {
             controlsHtml += '<button title="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
         }
@@ -2545,24 +2634,36 @@ function clearMultiview() {
     toggleMultiview();
 }
 
+function hideMultiview() {
+    var mvc = document.getElementById('mv-container');
+    var epg = document.getElementById('epg');
+    if(!mvc || !epg) return;
+
+    mvc.style.display = 'none';
+    epg.style.display = 'flex';
+    epg.style.paddingRight = '0';
+    mvc.classList.remove('mv-pip');
+}
+
 function toggleMultiview() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
     if(!mvc || !epg) return;
 
     if(mvc.style.display === 'none') {
-        // Reset PIP state when opening
+        // Open Multiview full screen
         mvc.classList.remove('mv-pip');
         mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
         updateMultiviewLayout();
+    } else if (!mvc.classList.contains('mv-pip')) {
+        // Full screen -> Switch to PiP
+        toggleMultiviewPip();
     } else {
-        mvc.style.display = 'none';
-        epg.style.display = 'flex';
-        epg.style.paddingRight = '0';
-        mvc.classList.remove('mv-pip');
+        // PiP -> Return to Full Screen
+        toggleMultiviewPip(); // This will remove pip class and restore full view
     }
 }
 
