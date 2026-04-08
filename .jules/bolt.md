@@ -1,0 +1,3 @@
+## 2026-04-08 - Pre-calculate invariant values into a map for string operations
+**Learning:** Nested loops in API matching logic (like `mergeMatches` and `getApiFirstMatches`) perform heavy regex `.toLowerCase().replace(/[^a-z0-9]/g, '')` repeatedly on the same strings, creating an O(N*M) bottleneck. The codebase memory explicitly mentions: "Performance Preference: For nested loops involving repetitive string operations (like team name normalization with regex), pre-calculate invariant values into a map or a pre-processed array to improve efficiency."
+**Action:** Created a memoized `normName` function to cache team name normalizations, converting O(N*M) redundant string regex operations to fast O(1) object property lookups.

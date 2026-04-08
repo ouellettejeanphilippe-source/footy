@@ -361,6 +361,16 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
 
+var _normCache = {};
+function normName(n) {
+  if (!n) return '';
+  var cached = _normCache[n];
+  if (cached) return cached;
+  var norm = n.toLowerCase().replace(/[^a-z0-9]/g, '');
+  _normCache[n] = norm;
+  return norm;
+}
+
 /* Formatteur d'heure EST commun pour l'API et l'horloge système */
 var estFormatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
@@ -745,13 +755,13 @@ function mergeMatches(mainList, newList) {
     var merged = false;
 
     // Clean names for better fuzzy matching
-    var nmHome = nm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-    var nmAway = nm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+    var nmHome = normName(nm.homeTeam);
+    var nmAway = normName(nm.awayTeam);
 
     for (var i = 0; i < mainList.length; i++) {
       var mm = mainList[i];
-      var mmHome = mm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-      var mmAway = mm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+      var mmHome = normName(mm.homeTeam);
+      var mmAway = normName(mm.awayTeam);
 
       if (isMatch(nmHome, mmHome) && isMatch(nmAway, mmAway)) {
         // It's the same match. Merge streams.
@@ -986,15 +996,15 @@ function syncMatchesWithApiSports(matches) {
           var normalizedApiData = apiData.map(function(f) {
             return {
               fixture: f,
-              home: f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
-              away: f.teams.away.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+              home: normName(f.teams.home.name),
+              away: normName(f.teams.away.name)
             };
           });
 
           group.matches.forEach(function(m) {
             // Find match by team names (fuzzy match)
-            var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-            var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+            var mHome = normName(m.homeTeam);
+            var mAway = normName(m.awayTeam);
 
             var matchedApiFixture = normalizedApiData.find(function(nf) {
               // Simple check if one contains the other + fuzzy matching
@@ -1055,12 +1065,12 @@ function syncMatchesWithEspn(matches) {
             var away = comp.competitors.find(function(c){return c.homeAway==='away';});
             if(!home || !away) return;
 
-            var eHome = home.team.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-            var eAway = away.team.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            var eHome = normName(home.team.name);
+            var eAway = normName(away.team.name);
 
             group.forEach(function(m) {
-              var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-              var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+              var mHome = normName(m.homeTeam);
+              var mAway = normName(m.awayTeam);
 
               if(isMatch(mHome, eHome) && isMatch(mAway, eAway)) {
 
@@ -1164,7 +1174,7 @@ try {
 
 function cacheLogo(teamName, url) {
     if(!teamName || !url) return;
-    var key = teamName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    var key = normName(teamName);
     if(logoCache[key] !== url) {
         logoCache[key] = url;
         try {
@@ -1175,7 +1185,7 @@ function cacheLogo(teamName, url) {
 
 function getLogo(teamName) {
     if(!teamName) return null;
-    var key = teamName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    var key = normName(teamName);
     return logoCache[key] || null;
 }
 
@@ -3008,12 +3018,12 @@ function getApiFirstMatches(targetDate) {
           fetchApiSportsFixtures(s, apiDateStr).then(function(apiData) {
           if (!apiData) return;
           apiData.forEach(function(f) {
-             var fHome = f.teams.home.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-             var fAway = f.teams.away.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+             var fHome = normName(f.teams.home.name);
+             var fAway = normName(f.teams.away.name);
 
              var exists = matches.find(function(m) {
-                var mHome = m.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-                var mAway = m.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+                var mHome = normName(m.homeTeam);
+                var mAway = normName(m.awayTeam);
                 return isMatch(mHome, fHome) && isMatch(mAway, fAway);
              });
 
@@ -3059,14 +3069,14 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
   var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
 
   scrapedMatches.forEach(function(sm) {
-      var smHome = sm.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-      var smAway = sm.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+      var smHome = normName(sm.homeTeam);
+      var smAway = normName(sm.awayTeam);
 
       var matched = false;
       for(var i=0; i<apiMatches.length; i++) {
          var am = apiMatches[i];
-         var amHome = am.homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
-         var amAway = am.awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '');
+         var amHome = normName(am.homeTeam);
+         var amAway = normName(am.awayTeam);
 
          if(isMatch(amHome, smHome) && isMatch(amAway, smAway)) {
             if(!am.streamLinks) am.streamLinks = [];
