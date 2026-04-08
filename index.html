@@ -1674,7 +1674,7 @@ function buildEPG(matches){
 
             var timeHtml = '';
             if(m.status === 'live') {
-                timeHtml = '<div class="mb-live"><span class="mb-ld"></span>'+(m.minute?m.minute+"'":'LIVE')+'</div>';
+                timeHtml = '<div class="mb-live"><span class="mb-ld"></span>'+(m.minute?esc(m.minute)+"'":'LIVE')+'</div>';
             } else if(m.status === 'finished') {
                 timeHtml = '<div class="mb-time" style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;color:#fff;">Terminé</div>';
             } else {
@@ -1829,8 +1829,8 @@ function openMod(m,col){
   document.getElementById('mname').textContent=m.homeTeam+' — '+m.awayTeam;
   document.getElementById('mmeta').innerHTML=
     '<span class="mtag">'+m.flag+' '+esc(m.league)+'</span>'
-    +'<span class="mtag">'+m.startTime+'</span>'
-    +(m.status==='live'?'<span class="mtag" style="color:var(--red);background:rgba(255,59,59,.1)">🔴 '+(m.minute?m.minute+"'":'LIVE')+'</span>':'');
+    +'<span class="mtag">'+esc(m.startTime)+'</span>'
+    +(m.status==='live'?'<span class="mtag" style="color:var(--red);background:rgba(255,59,59,.1)">🔴 '+(m.minute?esc(m.minute)+"'":'LIVE')+'</span>':'');
   document.getElementById('mscore').innerHTML=m.score?'<div class="msc">'+m.score[0]+'–'+m.score[1]+'</div>':'';
 
   var addMvBtn = document.createElement('button');
@@ -1872,7 +1872,7 @@ function openMod(m,col){
       var mvBtn = document.getElementById('mv-add-btn');
       if(mvBtn && sortedLinks.length > 0) {
           mvBtn.disabled = false;
-          mvBtn.innerHTML = '⊞ Ajouter au Multiview (' + m.homeTeam + ')';
+          mvBtn.innerHTML = '⊞ Ajouter au Multiview (' + esc(m.homeTeam) + ')';
           mvBtn.onclick = function() {
               addToMultiview(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
               closeMod();
@@ -2060,8 +2060,8 @@ function showMatchSelector(event) {
             };
 
             var timeInfo = m.status === 'live' ?
-                '<span style="color:var(--red);font-weight:bold;font-size:10px;">🔴 ' + (m.minute?m.minute+"'":'LIVE') + '</span>' :
-                '<span style="color:var(--muted);font-size:10px;">' + m.startTime + '</span>';
+                '<span style="color:var(--red);font-weight:bold;font-size:10px;">🔴 ' + (m.minute?esc(m.minute)+"'":'LIVE') + '</span>' :
+                '<span style="color:var(--muted);font-size:10px;">' + esc(m.startTime) + '</span>';
 
             btn.innerHTML = '<div style="font-size:18px;">' + lgFlag(m.league) + '</div>' +
                             '<div style="flex:1;overflow:hidden;">' +
@@ -2425,7 +2425,7 @@ function openStream(e, eu, en, mid){
       // Top bar (Header)
       +'<div id="player-header" style="position:absolute; top:0; left:0; right:0; padding:15px 25px; background:linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index:20; display:flex; justify-content:space-between; align-items:flex-start; transition:opacity 0.3s;">'
         +'<div style="display:flex; flex-direction:column; gap:5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); pointer-events:none;">'
-          +'<h2 id="p-match-name" style="margin:0; font-size:24px; font-weight:bold; color:#fff;">'+name+'</h2>'
+          +'<h2 id="p-match-name" style="margin:0; font-size:24px; font-weight:bold; color:#fff;">'+esc(name)+'</h2>'
           +'<div id="p-stream-name" style="font-size:14px; color:#ddd;"></div>'
         +'</div>'
         +'<div style="display:flex; gap:10px;">'
@@ -2648,7 +2648,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
             }
 
             var info = '<div style="flex:1; overflow:hidden; cursor:pointer;" onclick="openModAndLoad(\''+escJs(m.id)+'\')">'
-                +'<div style="font-size:11px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(m.minute?m.minute+"'":'LIVE')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>'
+                +'<div style="font-size:11px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(m.minute?esc(m.minute)+"'":'LIVE')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>'
                 +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.homeTeam)+'</div>'
                 +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.awayTeam)+'</div>'
             +'</div>';
