@@ -147,7 +147,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .mm { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .mtag { font-size: 13px; font-weight: 700; color: var(--muted2); background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
 .msc { font-weight: 800; font-size: 28px; color: var(--text); background: rgba(0,0,0,0.3); padding: 6px 16px; border-radius: 12px; letter-spacing: 2px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
-.mx { width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,0.1); color: var(--muted2); cursor: pointer; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; transition: all 0.2s; border: none; }
+.mx { width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,0.1); color: var(--muted2); cursor: pointer; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; transition: all 0.2s; border: none; padding: 0; }
 .mx:hover { background: rgba(255,255,255,0.2); color: var(--text); transform: scale(1.05); }
 .mbody { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; max-height: 65vh; overflow-y: auto; }
 .si { display: flex; flex-shrink: 0; align-items: stretch; gap: 0; padding: 0; border-radius: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; transition: all 0.2s; text-decoration: none; color: var(--text); overflow: hidden; }
@@ -184,7 +184,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .dbg.open { display: flex; }
 .dbg-hd { padding: 20px 24px; border-bottom: 1px solid var(--border2); display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 .dbg-title { font-weight: 800; font-size: 20px; flex: 1; letter-spacing: -0.5px; }
-.dbg-x { width: 36px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 18px; color: var(--text); cursor: pointer; display: grid; place-items: center; font-size: 16px; transition: background 0.2s; border: none; }
+.dbg-x { width: 36px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 18px; color: var(--text); cursor: pointer; display: grid; place-items: center; font-size: 16px; transition: background 0.2s; border: none; padding: 0; }
 .dbg-x:hover { background: rgba(255,255,255,0.2); }
 .dbg-body { flex: 1; overflow: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
 .dbg-sect { background: rgba(28, 28, 30, 0.7); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
@@ -250,7 +250,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 <div class="dbg" id="dbg">
   <div class="dbg-hd">
     <div class="dbg-title">🔬 Debug — footybite.to parser</div>
-    <div class="dbg-x" onclick="closeDbg()">✕</div>
+    <button class="dbg-x" onclick="closeDbg()" aria-label="Fermer" title="Fermer">✕</button>
   </div>
   <div class="dbg-body" id="dbgbody"><div style="color:var(--muted);font-size:13px">Lance un chargement d'abord.</div></div>
 </div>
@@ -262,7 +262,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
       <div class="mdot" id="mdot"></div>
       <div class="mi"><div class="mn" id="mname"></div><div class="mm" id="mmeta"></div></div>
       <div id="mscore"></div>
-      <div class="mx" onclick="closeMod()">✕</div>
+      <button class="mx" onclick="closeMod()" aria-label="Fermer" title="Fermer">✕</button>
     </div>
     <div class="mbody" id="mbody"></div>
     <div class="mft"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>Liens directs — pub désactivée</div>
@@ -275,7 +275,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   <div class="modal" style="max-width: 400px;">
     <div class="mhd" style="align-items: center;">
       <div class="mi"><div class="mn">Réglages API-Sports</div></div>
-      <div class="mx" onclick="closeSettings()">✕</div>
+      <button class="mx" onclick="closeSettings()" aria-label="Fermer" title="Fermer">✕</button>
     </div>
     <div class="mbody" style="padding: 24px;">
       <div style="font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.4;">
@@ -2770,10 +2770,12 @@ function minimizePlayer() {
 
         // Add close button to container
         var container = document.getElementById('player-container');
-        var closeBtn = document.createElement('div');
+        var closeBtn = document.createElement('button');
         closeBtn.id = 'pip-close';
+        closeBtn.setAttribute('aria-label', 'Fermer');
+        closeBtn.setAttribute('title', 'Fermer');
         closeBtn.innerHTML = '✕';
-        closeBtn.style.cssText = 'position:absolute; top:-10px; right:-10px; width:24px; height:24px; background:var(--red); color:white; border-radius:50%; align-items:center; justify-content:center; font-size:12px; font-weight:bold; cursor:pointer; z-index:20; box-shadow:0 2px 5px rgba(0,0,0,0.5); pointer-events:auto;';
+        closeBtn.style.cssText = 'position:absolute; top:-10px; right:-10px; width:24px; height:24px; background:var(--red); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; cursor:pointer; z-index:20; box-shadow:0 2px 5px rgba(0,0,0,0.5); pointer-events:auto; padding:0; border:none;';
         closeBtn.onclick = function(e) {
             e.stopPropagation();
             closePlayer();
