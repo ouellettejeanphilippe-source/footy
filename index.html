@@ -1986,10 +1986,10 @@ function renderStreamItem(s, i, m) {
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
       +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.08);flex-shrink:0;width:40px;">'
-        +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.02)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.08);color:'+(pref===1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">⭐</button>'
-        +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.02)')+';border:none;color:'+(pref===-1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">👎</button>'
+        +'<button aria-label="Prioriser ce domaine" title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.02)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.08);color:'+(pref===1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">⭐</button>'
+        +'<button aria-label="Déprioriser ce domaine" title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.02)')+';border:none;color:'+(pref===-1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">👎</button>'
       +'</div>'
-      +'<button title="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.02);border:none;border-left:1px solid rgba(255,255,255,0.08);color:var(--text);width:50px;cursor:pointer;transition:background 0.2s;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center;">⊞</button>'
+      +'<button aria-label="Ajouter au Multiview" title="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.02);border:none;border-left:1px solid rgba(255,255,255,0.08);color:var(--text);width:50px;cursor:pointer;transition:background 0.2s;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center;">⊞</button>'
       +'</div>';
 }
 
@@ -2602,13 +2602,13 @@ function updateMultiviewLayout() {
 
         var controlsHtml = '<div style="display:flex;gap:4px;">';
         if (isFocusMode && idx !== 0) {
-            controlsHtml += '<button title="Mettre en avant" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="setFocusStream(' + idx + ')">⭐</button>';
+            controlsHtml += '<button aria-label="Mettre en avant" title="Mettre en avant" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="setFocusStream(' + idx + ')">⭐</button>';
         }
         if (s.mid) {
-            controlsHtml += '<button title="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
+            controlsHtml += '<button aria-label="Changer de stream" title="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
         }
-        controlsHtml += '<button title="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
-        controlsHtml += '<button title="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
+        controlsHtml += '<button aria-label="Recadrer" title="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
+        controlsHtml += '<button aria-label="Fermer" title="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
         controlsHtml += '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
@@ -2939,8 +2939,8 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
                 +'<span class="sbadge '+qualityClass+'" style="font-size:10px; padding:2px 4px; margin-right:5px;">'+(s.quality||'SD')+'</span>'
                 +'</div>'
                 +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);">'
-                  +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'transparent')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
-                  +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'transparent')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
+                  +'<button aria-label="Prioriser ce domaine" title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'transparent')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
+                  +'<button aria-label="Déprioriser ce domaine" title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'transparent')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
                 +'</div>';
 
             altList.appendChild(div);
