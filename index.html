@@ -922,22 +922,28 @@ function mergeMatches(mainList, newList) {
 }
 
 /* ══ SIMILARITY ALGORITHM ════════════ */
+// ⚡ Bolt optimization: Optimized levenshtein distance using O(N) space complexity
+// Replaced 2D array matrix with a 1D array to reduce memory allocation overhead in fuzzy matching loop
 function levenshtein(a, b) {
+  if (a === b) return 0;
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
-  var matrix = [];
-  for (var i = 0; i <= b.length; i++) { matrix[i] = [i]; }
-  for (var j = 0; j <= a.length; j++) { matrix[0][j] = j; }
-  for (var i = 1; i <= b.length; i++) {
-    for (var j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) == a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
-      }
+
+  var v0 = new Array(a.length + 1);
+  for (var i = 0; i <= a.length; i++) v0[i] = i;
+
+  for (var i = 0; i < b.length; i++) {
+    var bChar = b.charAt(i);
+    var prev = v0[0];
+    v0[0] = i + 1;
+    for (var j = 0; j < a.length; j++) {
+      var cost = (bChar === a.charAt(j)) ? 0 : 1;
+      var temp = v0[j + 1];
+      v0[j + 1] = Math.min(v0[j + 1] + 1, v0[j] + 1, prev + cost);
+      prev = temp;
     }
   }
-  return matrix[b.length][a.length];
+  return v0[a.length];
 }
 
 function stringSimilarity(s1, s2) {
