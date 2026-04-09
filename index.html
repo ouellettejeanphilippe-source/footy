@@ -1676,18 +1676,20 @@ function buildEPG(matches){
 
   // Create live copies
   var epgMatches = filtered.slice();
-  var liveCopies = [];
-  epgMatches.forEach(function(m) {
-      if (m.status === 'live' && m.league !== 'Autres Streams') {
-          var copy = Object.assign({}, m);
-          copy.id = String(m.id) + '_live_copy';
-          copy.league = 'EN DIRECT';
-          copy.flag = '🔴';
-          copy.color = '#ff453a';
-          liveCopies.push(copy);
-      }
-  });
-  epgMatches = liveCopies.concat(epgMatches);
+  if (S.filter === 'all') {
+      var liveCopies = [];
+      epgMatches.forEach(function(m) {
+          if (m.status === 'live' && m.league !== 'Autres Streams') {
+              var copy = Object.assign({}, m);
+              copy.id = String(m.id) + '_live_copy';
+              copy.league = 'EN DIRECT';
+              copy.flag = '🔴';
+              copy.color = '#ff453a';
+              liveCopies.push(copy);
+          }
+      });
+      epgMatches = liveCopies.concat(epgMatches);
+  }
 
   var lgOrder=[],lgMap={};
   epgMatches.forEach(function(m){
