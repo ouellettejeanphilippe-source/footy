@@ -365,6 +365,17 @@ function darken(c,a){
 /* ══ HELPERS ═══════════════════════════ */
 function pad(n){return String(n).padStart(2,'0');}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function getLeagueDuration(league) {
+  if(!league) return 105;
+  var l = league.toLowerCase();
+  if(l.indexOf('mlb') >= 0 || l.indexOf('baseball') >= 0) return 180;
+  if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0) return 180;
+  if(l.indexOf('nba') >= 0 || l.indexOf('basketball') >= 0) return 150;
+  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0) return 150;
+  if(l.indexOf('f1') >= 0 || l.indexOf('formula 1') >= 0) return 120;
+  return 105; // Default for soccer and others
+}
 function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
 
@@ -469,9 +480,9 @@ function normName(n) {
 }
 
 /* Formatteur d'heure EST commun pour l'API et l'horloge système */
-var estFormatter = new Intl.DateTimeFormat('en-US', {
+var estFormatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'America/New_York',
-    hour12: false,
+    hourCycle: 'h23',
     hour: 'numeric',
     minute: 'numeric'
 });
@@ -487,13 +498,19 @@ function getEstDateStrFromDate(d) {
 }
 
 function getEstTimeStrFromDate(d) {
-    // Si l'heure dépasse 24:00 (ce qui arrive avec Intl à minuit qui donne "24:xx"), on le gère avec un match
-    var str = estFormatter.format(d); // e.g. "23:45" or "24:00"
-    var m = str.match(/(\d+):(\d+)/);
+    // Force format extraction even if older browsers fallback to AM/PM despite hourCycle
+    var str = estFormatter.format(d);
+    var m = str.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/i);
     if(m) {
         var h = parseInt(m[1], 10);
+        var mins = m[2];
+        var ampm = m[3] ? m[3].toUpperCase() : '';
+
+        if (ampm === 'PM' && h < 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+
         h = h % 24;
-        return pad(h) + ':' + pad(m[2]);
+        return pad(h) + ':' + pad(mins);
     }
     return '00:00';
 }
@@ -552,6 +569,7 @@ function parseStreameast(html){
           homeLogo: logo1,
           awayLogo: logo2,
           startTime: startTime,
+              durationMinutes: getLeagueDuration(l),
           status: 'upcoming', // Streameast doesn't give clear live status in the data attrs directly, rely on API fallback or default to upcoming
           streamLinks: streamLinks,
           streamsLoaded: true,
@@ -626,6 +644,7 @@ function parseBuffstreams(html){
               homeTeam: home,
               awayTeam: away,
               startTime: startTime,
+              durationMinutes: getLeagueDuration(l),
               status: status,
               streamLinks: streamLinks,
               streamsLoaded: true, // Buffstreams has links directly in the page
@@ -833,7 +852,7 @@ function parseFootybite(html){
     matches.push({
       id:i, league:league, flag:lgFlag(league), color:lgColor(league),
       homeTeam:home, awayTeam:away,
-      startTime:startTime, durationMinutes:105,
+      startTime:startTime, durationMinutes:getLeagueDuration(league),
       status:status, score:score, minute:minute,
       matchUrl:matchUrl,
       streamLinks:[], /* Sera rempli par le scrape asynchrone */
@@ -3293,6 +3312,7 @@ function getApiFirstMatches(targetDate) {
             homeLogo: home.team.logo || null,
             awayLogo: away.team.logo || null,
             startTime: startTime,
+            durationMinutes: getLeagueDuration(leagueName),
             status: status,
             score: score,
             minute: minute,
@@ -3351,6 +3371,7 @@ function getApiFirstMatches(targetDate) {
                   homeLogo: f.teams.home.logo,
                   awayLogo: f.teams.away.logo,
                   startTime: '00:00',
+                  durationMinutes: getLeagueDuration(f.league.name),
                   status: 'upcoming',
                   score: null,
                   streamLinks: [],
