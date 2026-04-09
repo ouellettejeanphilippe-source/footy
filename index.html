@@ -285,9 +285,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
       <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeSettings()">✕</button>
     </div>
     <div class="mbody" style="padding: 24px;">
-      <div style="font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.4;">
+      <label for="apiKeyInput" style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.4;">
         Entrez votre clé API-Sports pour obtenir les scores en direct et le calendrier mis à jour automatiquement.
-      </div>
+      </label>
       <input type="text" id="apiKeyInput" placeholder="Clé API (ex: 3a9...)" style="width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 15px; margin-bottom: 20px; outline: none; font-family: monospace;">
       <button class="btn" style="width: 100%; padding: 12px; background: var(--accent); color: #fff; font-size: 15px; border-radius: 10px;" onclick="saveSettings()">Enregistrer</button>
     </div>
@@ -2007,10 +2007,10 @@ function renderStreamItem(s, i, m) {
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
       +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.08);flex-shrink:0;width:40px;">'
-        +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.02)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.08);color:'+(pref===1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">⭐</button>'
-        +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.02)')+';border:none;color:'+(pref===-1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">👎</button>'
+        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.02)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.08);color:'+(pref===1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">⭐</button>'
+        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.02)')+';border:none;color:'+(pref===-1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">👎</button>'
       +'</div>'
-      +'<button title="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.02);border:none;border-left:1px solid rgba(255,255,255,0.08);color:var(--text);width:50px;cursor:pointer;transition:background 0.2s;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center;">⊞</button>'
+      +'<button title="Ajouter au Multiview" aria-label="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.02);border:none;border-left:1px solid rgba(255,255,255,0.08);color:var(--text);width:50px;cursor:pointer;transition:background 0.2s;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center;">⊞</button>'
       +'</div>';
 }
 
@@ -2623,13 +2623,13 @@ function updateMultiviewLayout() {
 
         var controlsHtml = '<div style="display:flex;gap:4px;">';
         if (isFocusMode && idx !== 0) {
-            controlsHtml += '<button title="Mettre en avant" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="setFocusStream(' + idx + ')">⭐</button>';
+            controlsHtml += '<button title="Mettre en avant" aria-label="Mettre en avant" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="setFocusStream(' + idx + ')">⭐</button>';
         }
         if (s.mid) {
-            controlsHtml += '<button title="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
+            controlsHtml += '<button title="Changer de stream" aria-label="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
         }
-        controlsHtml += '<button title="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
-        controlsHtml += '<button title="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
+        controlsHtml += '<button title="Recadrer" aria-label="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
+        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
         controlsHtml += '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
@@ -2960,8 +2960,8 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
                 +'<span class="sbadge '+qualityClass+'" style="font-size:10px; padding:2px 4px; margin-right:5px;">'+(s.quality||'SD')+'</span>'
                 +'</div>'
                 +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);">'
-                  +'<button title="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'transparent')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
-                  +'<button title="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'transparent')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
+                  +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'transparent')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
+                  +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'transparent')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
                 +'</div>';
 
             altList.appendChild(div);
@@ -3000,6 +3000,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
             var addMv = document.createElement('button');
             addMv.innerHTML = '⊞';
             addMv.title = 'Ajouter au Multiview';
+            addMv.setAttribute('aria-label', 'Ajouter au Multiview');
             addMv.style.cssText = 'background:rgba(255,255,255,0.1); border:none; color:#fff; width:30px; height:30px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:background 0.2s;';
             addMv.onmouseenter = function(){ this.style.background = 'rgba(255,255,255,0.2)'; };
             addMv.onmouseleave = function(){ this.style.background = 'rgba(255,255,255,0.1)'; };

@@ -1,1 +1,5 @@
 ## 2024-04-07 - Icon-only Controls and Interactive Divs\n**Learning:** This application heavily relies on icon-only buttons (like refresh, settings) and `<div class="mx">` elements for modal close actions, lacking proper `aria-label`, `title`, `role="button"`, and `tabindex="0"`.\n**Action:** Always check interactive elements in `index.html` to ensure they have appropriate ARIA attributes and keyboard accessibility when adding new controls or modifying existing ones.
+
+## 2024-10-27 - Dynamic Strings and Settings Modals
+**Learning:** Found an accessibility issue pattern specific to this app's components: string-concatenated UI templates (e.g. `renderStreamItem` and multiview controls) often have a `title` attribute for visual hover but forget the `aria-label` for screen readers. Also, informational text near inputs is often just a `<div>` instead of a semantic `<label>`.
+**Action:** Always check dynamically generated HTML strings for `aria-label` when `title` is present, and ensure all `<input>` elements in custom modals have a `for` linked semantic `<label>`.
