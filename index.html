@@ -739,38 +739,33 @@ function loadStream(m3u8Url, container) {
   });
 }
 
-function extractM3u8(url) {
-  if (url.includes('.m3u8')) {
-    return Promise.resolve(url);
-  }
+function extractStreamOrIframe(url) {
+  if (url.includes('.m3u8')) return Promise.resolve(url);
   return fetchPage(url).then(function(html) {
     if (!html) return null;
     var m3u8Match = html.match(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/i);
-    if (m3u8Match && m3u8Match[1]) {
-      return m3u8Match[1];
-    }
-
-    // Try to find base64 encoded m3u8 (starts with aHR0c, typical for https://)
+    if (m3u8Match && m3u8Match[1]) return m3u8Match[1];
     var b64Match = html.match(/(aHR0cHM6Ly[a-zA-Z0-9+\/]+={0,2})/);
     if (b64Match && b64Match[1]) {
-        try {
-            var decoded = atob(b64Match[1]);
-            if (decoded.includes('.m3u8')) {
-                return decoded;
-            }
-        } catch(e) {}
+        try { var decoded = atob(b64Match[1]); if (decoded.includes('.m3u8')) return decoded; } catch(e) {}
     }
-
-    // Fallback: search for player configs (e.g. source: "http...")
     var sourceMatch = html.match(/(?:source|file|src)\s*:\s*["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/i);
-    if (sourceMatch && sourceMatch[1]) {
-        return sourceMatch[1];
-    }
+    if (sourceMatch && sourceMatch[1]) return sourceMatch[1];
 
+    // Fallback: If we find a single iframe that looks like a player embed, return it to bypass site menus
+    var iframeMatch = html.match(/<iframe[^>]+src=["'](https?:\/\/[^"']+)["'][^>]*>/i);
+    if (iframeMatch && iframeMatch[1] && !iframeMatch[1].includes('ads') && !iframeMatch[1].includes('bet')) {
+        return iframeMatch[1]; // Return the iframe url to be used instead of the page URL
+    }
     return null;
-  }).catch(function() {
-    return null;
-  });
+  }).catch(function() { return null; });
+}
+
+function extractM3u8(url) {
+    return extractStreamOrIframe(url).then(function(res) {
+        if(res && res.includes('.m3u8')) return res;
+        return null;
+    });
 }
 
 function fetchPage(url){
@@ -1455,6 +1450,16 @@ function toggleDomainPref(domain, type, mid) {
 
 function sortStreamLinks(links) {
   return links.slice().sort(function(a, b) {
+    var nameA = (a.name || '').toLowerCase();
+    var nameB = (b.name || '').toLowerCase();
+
+    var isFavA = nameA.includes('sheri') || nameA.includes('4kplayer') ? 1 : 0;
+    var isFavB = nameB.includes('sheri') || nameB.includes('4kplayer') ? 1 : 0;
+
+    if (isFavA !== isFavB) {
+      return isFavB - isFavA; // 1 goes before 0
+    }
+
     var domA = getDomain(a.url);
     var domB = getDomain(b.url);
     var prefA = domainPrefs[domA] || 0;
@@ -2593,6 +2598,34 @@ function setupMultiviewUI() {
     mvContainer.appendChild(mvGrid);
     mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer); restoreMultiviewState();
+
+    // Multiview Idle Timer for Auto-Hide
+    var mvHideTimeout;
+    mvContainer.addEventListener('mousemove', function() {
+        var tb = document.getElementById('mv-toolbar');
+        if (tb) { tb.style.opacity = '1'; tb.style.pointerEvents = 'auto'; }
+        mvContainer.style.cursor = 'default';
+
+        // Show all cell headers
+        var hdrs = mvContainer.querySelectorAll('.mv-cell-hdr');
+        hdrs.forEach(function(h) { h.style.opacity = '1'; h.style.pointerEvents = 'auto'; });
+
+        clearTimeout(mvHideTimeout);
+        mvHideTimeout = setTimeout(function() {
+            // Only hide if we are not hovering over the toolbar itself or a header
+            if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
+            mvContainer.style.cursor = 'none';
+            var hdrs = mvContainer.querySelectorAll('.mv-cell-hdr');
+            hdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
+        }, 3000);
+    });
+
+    mvContainer.addEventListener('mouseleave', function() {
+        var tb = document.getElementById('mv-toolbar');
+        if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
+        var hdrs = mvContainer.querySelectorAll('.mv-cell-hdr');
+        hdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
+    });
 }
 
 function toggleTheaterMode() {
@@ -2767,7 +2800,11 @@ function updateMultiviewLayout() {
                 'Chargement...</div>';
 
             // Try to extract m3u8
-            extractM3u8(s.url).then(function(m3u8Url) {
+            extractStreamOrIframe(s.url).then(function(extractedUrl) {
+                var isM3u8 = extractedUrl && extractedUrl.includes('.m3u8');
+                var fallbackUrl = extractedUrl && !isM3u8 ? extractedUrl : s.url;
+                if (isM3u8) {
+                    var m3u8Url = extractedUrl;
                 if (m3u8Url) {
                     loadStream(m3u8Url, videoContainer).then(function() {
                         var video = videoContainer.querySelector('video');
@@ -2787,10 +2824,10 @@ function updateMultiviewLayout() {
                         }
                     }).catch(function(err) {
                         console.error('Failed to load stream', err);
-                        fallbackToIframe(s.url, videoContainer, cell, s);
+                        fallbackToIframe(fallbackUrl, videoContainer, cell, s);
                     });
                 } else {
-                    fallbackToIframe(s.url, videoContainer, cell, s);
+                    fallbackToIframe(fallbackUrl, videoContainer, cell, s);
                 }
             });
         }
@@ -2907,7 +2944,11 @@ function updateMultiviewLayout() {
                     '<span style="display:inline-block;width:16px;height:16px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;"></span>' +
                     'Chargement...</div>';
 
-                extractM3u8(s.url).then(function(m3u8Url) {
+                extractStreamOrIframe(s.url).then(function(extractedUrl) {
+                var isM3u8 = extractedUrl && extractedUrl.includes('.m3u8');
+                var fallbackUrl = extractedUrl && !isM3u8 ? extractedUrl : s.url;
+                if (isM3u8) {
+                    var m3u8Url = extractedUrl;
                     if (m3u8Url) {
                         loadStream(m3u8Url, videoContainer).then(function() {
                             var video = videoContainer.querySelector('video');
@@ -3113,18 +3154,37 @@ function openStream(e, eu, en, mid){
     // Setup interactions
     document.body.appendChild(pbg);
 
-    // Hover controls for header
+    // Hover controls for header and idle hide
     var hideTimeout;
     pbg.addEventListener('mousemove', function() {
       if(pbg.classList.contains('pip-mode')) return;
       var hdr = document.getElementById('player-header');
-      if(hdr) hdr.style.opacity = '1';
+      if(hdr) { hdr.style.opacity = '1'; hdr.style.pointerEvents = 'auto'; }
+      pbg.style.cursor = 'default';
+
+      // Also show sidebar trigger if needed
+      var trigger = document.getElementById('player-sidebar-trigger');
+      if(trigger) trigger.style.display = 'flex';
+
       clearTimeout(hideTimeout);
       hideTimeout = setTimeout(function() {
-        if(!pbg.classList.contains('pip-mode') && document.getElementById('player-sidebar').style.transform === 'translateX(100%)') {
-           if(hdr) hdr.style.opacity = '0';
+        if(!pbg.classList.contains('pip-mode') && document.getElementById('player-sidebar') && document.getElementById('player-sidebar').style.transform === 'translateX(100%)') {
+           if(hdr) { hdr.style.opacity = '0'; hdr.style.pointerEvents = 'none'; }
+           pbg.style.cursor = 'none';
+           if(trigger) trigger.style.display = 'none';
         }
       }, 3000);
+    });
+
+    // Also trigger mouseleave to hide immediately if mouse leaves the player
+    pbg.addEventListener('mouseleave', function() {
+        if(pbg.classList.contains('pip-mode')) return;
+        var hdr = document.getElementById('player-header');
+        if(!pbg.classList.contains('pip-mode') && document.getElementById('player-sidebar') && document.getElementById('player-sidebar').style.transform === 'translateX(100%)') {
+           if(hdr) { hdr.style.opacity = '0'; hdr.style.pointerEvents = 'none'; }
+           var trigger = document.getElementById('player-sidebar-trigger');
+           if(trigger) trigger.style.display = 'none';
+        }
     });
 
     // Close on background click only if not in pip
@@ -3167,9 +3227,11 @@ function openStream(e, eu, en, mid){
   // Apply sandbox attributes to nuke popups and navigation (keeps scripts for the video player)
   iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox');
 
-  setTimeout(function(){
-      // Check if we can extract a better URL for known domains
-      var cleanUrl = url;
+  extractStreamOrIframe(url).then(function(extractedUrl) {
+      var isM3u8 = extractedUrl && extractedUrl.includes('.m3u8');
+      var cleanUrl = extractedUrl && !isM3u8 ? extractedUrl : url;
+      // We don't load m3u8 directly in single player iframe, so we just use the extracted iframe URL if found.
+
       // Some known embed paths to transform regular pages to embeds
       if(url.indexOf('buffstreams.com.co') > -1) {
          // sometimes buffstreams has a direct embed or we just sandbox it hard
@@ -3178,7 +3240,7 @@ function openStream(e, eu, en, mid){
       iframe.src = cleanUrl;
       iframe.dataset.url = cleanUrl;
       iframe.dataset.mid = mid;
-  }, 50);
+  });
 
 
   // External button
@@ -3448,7 +3510,7 @@ function restorePlayer() {
 
     // Show header briefly
     var hdr = document.getElementById('player-header');
-    if(hdr) hdr.style.opacity = '1';
+    if(hdr) { hdr.style.opacity = '1'; hdr.style.pointerEvents = 'auto'; }
 
     // Try full screen again
     var container = document.getElementById('player-container');
