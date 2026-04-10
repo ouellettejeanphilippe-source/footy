@@ -364,11 +364,6 @@ function lgFlag(n){
   for(var k in FLAGS){ if(l.indexOf(k)>=0) return FLAGS[k]; }
   return '⚽';
 }
-function darken(c,a){
-  a=a||0.25;
-  try{var r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);return 'rgb('+Math.round(r*(1-a))+','+Math.round(g*(1-a))+','+Math.round(b*(1-a))+')';}
-  catch(e){return '#1a2535';}
-}
 
 /* ══ HELPERS ═══════════════════════════ */
 function pad(n){return String(n).padStart(2,'0');}
@@ -754,6 +749,24 @@ function extractM3u8(url) {
     if (m3u8Match && m3u8Match[1]) {
       return m3u8Match[1];
     }
+
+    // Try to find base64 encoded m3u8 (starts with aHR0c, typical for https://)
+    var b64Match = html.match(/(aHR0cHM6Ly[a-zA-Z0-9+\/]+={0,2})/);
+    if (b64Match && b64Match[1]) {
+        try {
+            var decoded = atob(b64Match[1]);
+            if (decoded.includes('.m3u8')) {
+                return decoded;
+            }
+        } catch(e) {}
+    }
+
+    // Fallback: search for player configs (e.g. source: "http...")
+    var sourceMatch = html.match(/(?:source|file|src)\s*:\s*["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/i);
+    if (sourceMatch && sourceMatch[1]) {
+        return sourceMatch[1];
+    }
+
     return null;
   }).catch(function() {
     return null;
@@ -1590,6 +1603,32 @@ function scrapeMatchStreams(m){
        });
     }
 
+    // fallback: search for data- attributes that might contain links or base64 streams
+    if(links.length===0) {
+        var elementsWithData = doc.querySelectorAll('[data-stream], [data-url], [data-src], [data-link]');
+        [].forEach.call(elementsWithData, function(el) {
+            var url = el.getAttribute('data-stream') || el.getAttribute('data-url') || el.getAttribute('data-src') || el.getAttribute('data-link');
+            if(url) {
+                // Check if it's base64 encoded
+                if (url.startsWith('aHR0c')) {
+                    try { url = atob(url); } catch(e) {}
+                }
+                if(url.indexOf('http') === 0 && url.indexOf('footybite') < 0) {
+                    var lowerUrl = url.toLowerCase();
+                    if (!lowerUrl.includes('1xbet') && !lowerUrl.includes('bet365') && !lowerUrl.includes('ads') && lowerUrl.length >= 5) {
+                        links.push({
+                            name: 'Lecteur caché',
+                            quality: 'HD',
+                            lang: 'MULTI',
+                            url: url,
+                            icon: '▶️'
+                        });
+                    }
+                }
+            }
+        });
+    }
+
     // fallback: si aucun stream externe, ajouter juste un lien vers la page
     if(links.length===0 && m.matchUrl){
         links.push({name:'Voir streams sur le site', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
@@ -1836,6 +1875,9 @@ function buildEPG(matches){
   if (S.filter === 'live' || S.filter === 'upcoming') {
       epgContainer.style.display = 'block';
       epgContainer.style.padding = '0';
+      epgContainer.style.overflowY = 'auto';
+      epgContainer.style.height = '100%';
+      epgContainer.style.WebkitOverflowScrolling = 'touch';
       var grid = document.createElement('div');
       grid.className = 'match-grid';
       epgContainer.appendChild(grid);
@@ -1911,6 +1953,7 @@ function buildEPG(matches){
   epgContainer.style.margin = '0';
   epgContainer.style.width = '100%';
   epgContainer.style.height = '100%';
+  epgContainer.style.overflowY = 'hidden';
 
   var chanCol = document.createElement('div');
   chanCol.className = 'chan-col';
@@ -2188,7 +2231,6 @@ function renderStreamItem(s, i, m) {
 }
 
 function openMod(m,col){
-  S.sel=m.id;
   document.getElementById('mdot').style.background=col||'#888';
   document.getElementById('mname').textContent=m.homeTeam+' — '+m.awayTeam;
   document.getElementById('mmeta').innerHTML=
