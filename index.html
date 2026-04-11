@@ -2805,6 +2805,7 @@ function updateMultiviewLayout() {
                 var fallbackUrl = extractedUrl && !isM3u8 ? extractedUrl : s.url;
                 if (isM3u8) {
                     var m3u8Url = extractedUrl;
+                }
                 if (m3u8Url) {
                     loadStream(m3u8Url, videoContainer).then(function() {
                         var video = videoContainer.querySelector('video');
@@ -2949,7 +2950,8 @@ function updateMultiviewLayout() {
                 var fallbackUrl = extractedUrl && !isM3u8 ? extractedUrl : s.url;
                 if (isM3u8) {
                     var m3u8Url = extractedUrl;
-                    if (m3u8Url) {
+                }
+                if (m3u8Url) {
                         loadStream(m3u8Url, videoContainer).then(function() {
                             var video = videoContainer.querySelector('video');
                             if (video) {
