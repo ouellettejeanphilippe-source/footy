@@ -310,8 +310,10 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 </div>
 
 <div class="toast" id="toast"><span id="toasttxt"></span></div>
-
 <script>
+
+
+
 'use strict';
 
 /* ══ STATE ══════════════════════════════ */
@@ -2272,60 +2274,148 @@ function showStreamSelector(idx, mid, event) {
     }
 
     var m = S.matches.find(function(x) { return String(x.id) === String(mid); });
-    if (!m || !m.streamLinks || m.streamLinks.length === 0) {
-        showToast('Aucun autre stream trouvé.');
-        return;
-    }
 
     var existing = document.getElementById('mv-stream-selector');
     if (existing) existing.remove();
 
-    var sortedLinks = sortStreamLinks(m.streamLinks);
-
     var selector = document.createElement('div');
     selector.id = 'mv-stream-selector';
-    selector.style.cssText = 'position:absolute;z-index:999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:4px;max-height:250px;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.8);width:250px;';
+    selector.style.cssText = 'position:absolute;z-index:999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:12px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:12px;max-height:400px;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:320px;';
 
     // Position based on click
     if (event) {
         var rect = event.target.getBoundingClientRect();
         selector.style.top = (rect.bottom + 5) + 'px';
-        selector.style.left = Math.max(10, rect.left - 200) + 'px';
+        selector.style.left = Math.max(10, rect.left - 250) + 'px';
     } else {
         selector.style.top = '50px';
         selector.style.left = '50px';
     }
 
-    var title = document.createElement('div');
-    title.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;margin-bottom:4px;padding:0 4px;';
-    title.textContent = 'Changer la source';
-    selector.appendChild(title);
+    // Section 1: Alternative Streams for current match
+    if (m && m.streamLinks && m.streamLinks.length > 0) {
+        var titleStreams = document.createElement('div');
+        titleStreams.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;';
+        titleStreams.textContent = 'Sources pour ce match';
+        selector.appendChild(titleStreams);
 
-    sortedLinks.forEach(function(s) {
-        var dom = getDomain(s.url);
-        var isActive = mvStreams[idx].url === s.url;
+        var streamsContainer = document.createElement('div');
+        streamsContainer.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
 
-        var btn = document.createElement('div');
-        btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border-radius:4px;cursor:pointer;transition:background 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'transparent');
+        var sortedLinks = sortStreamLinks(m.streamLinks);
+        sortedLinks.forEach(function(s) {
+            var dom = getDomain(s.url);
+            var isActive = mvStreams[idx].url === s.url;
 
-        btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
-        btn.onmouseleave = function() { if(!isActive) this.style.background = 'transparent'; };
+            var btn = document.createElement('div');
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
 
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            mvStreams[idx].url = s.url; saveMultiviewState(); updateMultiviewLayout();
-            selector.remove();
-        };
+            btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
+            btn.onmouseleave = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.05)'; };
 
-        btn.innerHTML = '<span style="font-size:14px;">' + (s.icon||QI[s.quality]||'📺') + '</span>' +
-                        '<div style="flex:1;overflow:hidden;">' +
-                        '<div style="font-size:12px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(s.name) + '</div>' +
-                        '<div style="font-size:10px;color:var(--muted);">' + esc(dom) + ' · ' + (s.lang||'?') + '</div>' +
-                        '</div>' +
-                        '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;">' + (s.quality||'SD') + '</span>';
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                if(!isActive) {
+                    mvStreams[idx].url = s.url;
+                    // name and mid stays the same
+                    saveMultiviewState(); updateMultiviewLayout();
+                }
+                selector.remove();
+            };
 
-        selector.appendChild(btn);
+            btn.innerHTML = '<div style="font-size:16px;">' + (s.icon||QI[s.quality]||'📺') + '</div>' +
+                            '<div style="flex:1;overflow:hidden;">' +
+                            '<div style="font-size:13px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(s.name) + '</div>' +
+                            '<div style="font-size:11px;color:var(--muted);">' + esc(dom) + ' · ' + (s.lang||'?') + '</div>' +
+                            '</div>' +
+                            (isActive ? '<div style="font-size:9px;background:var(--accent);color:#fff;padding:2px 4px;border-radius:4px;font-weight:bold;margin-right:4px;">ACTIF</div>' : '') +
+                            '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;">' + (s.quality||'SD') + '</span>';
+
+            streamsContainer.appendChild(btn);
+        });
+        selector.appendChild(streamsContainer);
+    }
+
+    // Section 2: Other Live Matches
+    var titleMatches = document.createElement('div');
+    titleMatches.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;margin-top:8px;';
+    titleMatches.textContent = 'Remplacer par un autre match';
+    selector.appendChild(titleMatches);
+
+    var matchesContainer = document.createElement('div');
+    matchesContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+
+    var availableMatches = S.matches.filter(function(x) {
+        return x.status === 'live' && String(x.id) !== String(mid);
     });
+
+    if (availableMatches.length === 0) {
+        var empty = document.createElement('div');
+        empty.style.cssText = 'padding:10px;text-align:center;color:var(--muted);font-size:12px;background:rgba(255,255,255,0.02);border-radius:8px;';
+        empty.innerHTML = 'Aucun autre match en direct.';
+        matchesContainer.appendChild(empty);
+    } else {
+        availableMatches.forEach(function(sm) {
+            // Already in multiview?
+            var alreadyIn = mvStreams.some(function(ms) { return String(ms.mid) === String(sm.id); });
+
+            var btn = document.createElement('div');
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
+
+            btn.onmouseenter = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.1)'; };
+            btn.onmouseleave = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.05)'; };
+
+            var thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:16px;">⚽</div>';
+            if(sm.homeLogo) {
+                thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:2px;flex-shrink:0;">'
+                  +'<img src="'+esc(sm.homeLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\\\'none\\\'">'
+                +'</div>';
+            }
+
+            var score = sm.score ? '<div style="font-size:13px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;flex-shrink:0;"><span>'+sm.score[0]+'</span><span>'+sm.score[1]+'</span></div>' : '';
+
+            btn.innerHTML = thumb +
+                '<div style="flex:1; overflow:hidden;">' +
+                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(sm.minute?esc(sm.minute)+"'":'LIVE')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+sm.flag+' '+esc(sm.league)+'</span></div>' +
+                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.homeTeam)+'</div>' +
+                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.awayTeam)+'</div>' +
+                '</div>' + score + (alreadyIn ? '<div style="font-size:10px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 4px;border-radius:4px;margin-left:4px;">AJOUTÉ</div>' : '');
+
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                if(sm.streamsLoaded && sm.streamLinks && sm.streamLinks.length > 0) {
+                    var sortedSmLinks = sortStreamLinks(sm.streamLinks);
+                    mvStreams[idx].url = sortedSmLinks[0].url;
+                    mvStreams[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
+                    mvStreams[idx].mid = sm.id;
+                    saveMultiviewState(); updateMultiviewLayout();
+                    selector.remove();
+                } else {
+                    // Si pas chargé
+                    showToast('Chargement des streams...');
+                    scrapeMatchStreams(sm).then(function() {
+                        sm.streamsLoaded = true;
+                        if(sm.streamLinks && sm.streamLinks.length > 0) {
+                            var sortedSmLinks = sortStreamLinks(sm.streamLinks);
+                            mvStreams[idx].url = sortedSmLinks[0].url;
+                            mvStreams[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
+                            mvStreams[idx].mid = sm.id;
+                            saveMultiviewState(); updateMultiviewLayout();
+                        } else {
+                            showToast('Aucun stream trouvé pour ce match.');
+                        }
+                        selector.remove();
+                    }).catch(function() {
+                        showToast('Erreur lors du chargement des streams.');
+                        selector.remove();
+                    });
+                }
+            };
+
+            matchesContainer.appendChild(btn);
+        });
+    }
+    selector.appendChild(matchesContainer);
 
     document.body.appendChild(selector);
 
@@ -2340,6 +2430,7 @@ function showStreamSelector(idx, mid, event) {
         document.addEventListener('click', closeListener);
     }, 10);
 }
+
 
 
 function toggleMaximize(idx, event) {
@@ -2547,7 +2638,7 @@ function setupMultiviewUI() {
     mvToolbar.innerHTML = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multiview</span>'
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match">➕ <span class="hide-pip">Ajouter</span></button>'
-      + '<button class="btn o" onclick="isFocusMode = !isFocusMode; updateMultiviewLayout(); this.innerHTML = isFocusMode ? \'⊞ <span class=\\\'hide-pip\\\'>Grille</span>\' : \'⭐ <span class=\\\'hide-pip\\\'>Focus</span>\';" aria-label="Changer de disposition" title="Changer de disposition">⭐ <span class="hide-pip">Focus</span></button>'
+      + '<button class="btn o hide-pip" onclick="showLayoutSelector(event)" aria-label="Disposition" title="Disposition">⊞ Layout</button>'
       + '<button class="btn o hide-pip" onclick="toggleTheaterMode()" aria-label="Plein onglet" title="Plein onglet">Plein onglet</button>'
       + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran">⛶</button>'
       + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire">◨ <span class="hide-pip">Réduire</span></button>'
@@ -2661,8 +2752,8 @@ function restoreMultiviewState() {
     } catch(e) {}
 }
 
-// Focus mode state
-var isFocusMode = false;
+// Layout state
+var mvLayout = 'auto'; // auto, focus, vertical, horizontal, custom
 
 function setFocusStream(idx) {
     if (idx === 0) return; // Already focused
@@ -2712,33 +2803,47 @@ function updateMultiviewLayout() {
     // Update PIP button text based on state
     var pipBtn = document.getElementById('mv-pip-btn');
     var mvc = document.getElementById('mv-container');
+
+    // Reset grid styles before applying layout
+    grid.style.display = 'grid';
+    grid.style.flexWrap = '';
+    grid.style.flexDirection = '';
+    grid.style.overflowAuto = '';
+    grid.style.alignContent = '';
+
     if (pipBtn && mvc) {
         if (mvc.classList.contains('mv-pip')) {
             pipBtn.innerHTML = '◧ Agrandir';
             grid.style.gridTemplateColumns = '1fr';
             grid.style.gridTemplateRows = 'repeat(' + Math.max(1, count) + ', 1fr)';
-            // Disable focus mode overrides when in PiP
         } else {
             pipBtn.innerHTML = '◨ Réduire';
-            if (isFocusMode && count >= 2) {
-                // Focus Mode Layout (1 large, others small on right)
+            if (mvLayout === 'focus' && count >= 2) {
                 grid.style.gridTemplateColumns = '3fr 1fr';
                 grid.style.gridTemplateRows = 'repeat(' + (count - 1) + ', 1fr)';
+            } else if (mvLayout === 'vertical') {
+                grid.style.gridTemplateColumns = '1fr';
+                grid.style.gridTemplateRows = 'repeat(' + count + ', 1fr)';
+            } else if (mvLayout === 'horizontal') {
+                grid.style.gridTemplateColumns = 'repeat(' + count + ', 1fr)';
+                grid.style.gridTemplateRows = '1fr';
+            } else if (mvLayout === 'custom') {
+                grid.style.display = 'flex';
+                grid.style.flexWrap = 'wrap';
+                grid.style.alignContent = 'flex-start';
+                grid.style.overflow = 'auto'; // Allow scrolling if they resize too much
             } else {
-                // Grid Mode Layout
+                // auto / Grid Mode Layout
                 if(count === 1) {
                     grid.style.gridTemplateColumns = '1fr';
                     grid.style.gridTemplateRows = '1fr';
-                }
-                else if(count === 2) {
+                } else if(count === 2) {
                     grid.style.gridTemplateColumns = '1fr';
                     grid.style.gridTemplateRows = '1fr 1fr';
-                }
-                else if(count === 3) {
+                } else if(count === 3) {
                     grid.style.gridTemplateColumns = '1fr 1fr';
                     grid.style.gridTemplateRows = '1fr 1fr';
-                }
-                else if(count === 4) {
+                } else if(count >= 4) {
                     grid.style.gridTemplateColumns = '1fr 1fr';
                     grid.style.gridTemplateRows = '1fr 1fr';
                 }
@@ -2812,22 +2917,41 @@ function updateMultiviewLayout() {
 
         // Update styling/gridRow
         if (!document.getElementById('mv-container').classList.contains('mv-pip')) {
-            if (isFocusMode && count >= 2) {
-                if (idx === 0) {
-                    cell.style.gridRow = 'span ' + (count - 1);
-                    cell.style.gridColumn = '1';
+            if (mvLayout === 'custom') {
+                cell.style.gridRow = '';
+                cell.style.gridColumn = '';
+                // Only set default sizing if it doesn't have inline styles already set by the user resizing
+                if (!cell.style.width || cell.style.width === '100%') {
+                    cell.style.width = count <= 2 ? '100%' : '50%';
+                    cell.style.height = count <= 2 ? (100 / count) + '%' : '50%';
+                }
+                cell.style.resize = 'both'; // Enable free resizing
+                cell.style.overflow = 'hidden'; // Required for resize
+            } else {
+                cell.style.width = '100%';
+                cell.style.height = '100%';
+                cell.style.resize = 'none';
+
+                if (mvLayout === 'focus' && count >= 2) {
+                    if (idx === 0) {
+                        cell.style.gridRow = 'span ' + (count - 1);
+                        cell.style.gridColumn = '1';
+                    } else {
+                        cell.style.gridRow = 'auto';
+                        cell.style.gridColumn = '2';
+                    }
+                } else if (mvLayout === 'auto' && count === 3 && idx === 0) {
+                    cell.style.gridRow = 'span 2';
+                    cell.style.gridColumn = 'auto';
                 } else {
                     cell.style.gridRow = 'auto';
-                    cell.style.gridColumn = '2';
+                    cell.style.gridColumn = 'auto';
                 }
-            } else if (count === 3 && idx === 0) {
-                cell.style.gridRow = 'span 2';
-                cell.style.gridColumn = 'auto';
-            } else {
-                cell.style.gridRow = 'auto';
-                cell.style.gridColumn = 'auto';
             }
         } else {
+            cell.style.width = '100%';
+            cell.style.height = '100%';
+            cell.style.resize = 'none';
             cell.style.gridRow = 'auto';
             cell.style.gridColumn = 'auto';
         }
@@ -2870,12 +2994,13 @@ function updateMultiviewLayout() {
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:4px;">';
-        if (isFocusMode && idx !== 0) {
+        if (mvLayout === 'focus' && idx !== 0) {
             controlsHtml += '<button title="Mettre en avant" aria-label="Mettre en avant" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="setFocusStream(' + idx + ')">⭐</button>';
         }
         if (s.mid) {
-            controlsHtml += '<button title="Changer de stream" aria-label="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
+            controlsHtml += '<button title="Changer de stream ou match" aria-label="Changer de stream ou match" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄 Remplacer</button>';
         }
+        controlsHtml += '<button title="Recharger" aria-label="Recharger" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; event.stopPropagation();">↻</button>';
         controlsHtml += '<button title="Recadrer" aria-label="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
         controlsHtml += '<button title="Agrandir" aria-label="Agrandir" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleMaximize(' + idx + ', event)">⛶</button>';
         controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
@@ -3831,6 +3956,72 @@ if ('serviceWorker' in navigator) {
   document.getElementById('hdate').textContent=n.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
   loadAll();
 })();
-</script>
-</body>
-</html>
+
+
+
+function showLayoutSelector(event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    var existing = document.getElementById('mv-layout-selector');
+    if (existing) existing.remove();
+
+    var selector = document.createElement('div');
+    selector.id = 'mv-layout-selector';
+    selector.style.cssText = 'position:absolute;z-index:999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:4px;width:180px;box-shadow:0 10px 25px rgba(0,0,0,0.8);';
+
+    if (event) {
+        var rect = event.target.getBoundingClientRect();
+        selector.style.top = (rect.bottom + 5) + 'px';
+        selector.style.left = rect.left + 'px';
+    }
+
+    var title = document.createElement('div');
+    title.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;margin-bottom:4px;padding:0 4px;';
+    title.textContent = 'Disposition';
+    selector.appendChild(title);
+
+    var layouts = [
+        { id: 'auto', name: 'Grille Automatique', icon: '⊞' },
+        { id: 'focus', name: 'Mode Focus', icon: '⭐' },
+        { id: 'vertical', name: 'Empilé (Vertical)', icon: '⊟' },
+        { id: 'horizontal', name: 'Côte à côte', icon: '◫' },
+        { id: 'custom', name: 'Libre (Redimensionnable)', icon: '📐' }
+    ];
+
+    layouts.forEach(function(l) {
+        var btn = document.createElement('div');
+        var isActive = mvLayout === l.id;
+        btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border-radius:4px;cursor:pointer;transition:background 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'transparent');
+
+        btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
+        btn.onmouseleave = function() { if(!isActive) this.style.background = 'transparent'; };
+
+        btn.onclick = function(e) {
+            e.stopPropagation();
+            mvLayout = l.id;
+            updateMultiviewLayout();
+            selector.remove();
+        };
+
+        btn.innerHTML = '<span style="font-size:14px;width:20px;text-align:center;">' + l.icon + '</span><span style="font-size:13px;' + (isActive ? 'font-weight:bold;color:var(--accent);' : 'color:#fff;') + '">' + l.name + '</span>';
+        selector.appendChild(btn);
+    });
+
+    document.body.appendChild(selector);
+
+    setTimeout(function() {
+        var closeListener = function(e) {
+            if (!selector.contains(e.target)) {
+                selector.remove();
+                document.removeEventListener('click', closeListener);
+            }
+        };
+        document.addEventListener('click', closeListener);
+    }, 10);
+}
+
+
+</body></html>
