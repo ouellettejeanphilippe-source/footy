@@ -2274,17 +2274,14 @@ function showStreamSelector(idx, mid, event) {
 
     var selector = document.createElement('div');
     selector.id = 'mv-stream-selector';
-    selector.style.cssText = 'position:absolute;z-index:999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:12px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:12px;max-height:400px;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:320px;';
+    selector.style.cssText = 'position:fixed;z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:16px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:360px;top:50%;left:50%;transform:translate(-50%, -50%);';
 
-    // Position based on click
-    if (event) {
-        var rect = event.target.getBoundingClientRect();
-        selector.style.top = (rect.bottom + 5) + 'px';
-        selector.style.left = Math.max(10, rect.left - 250) + 'px';
-    } else {
-        selector.style.top = '50px';
-        selector.style.left = '50px';
-    }
+    // Add close button for mobile
+    var closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '✕';
+    closeBtn.style.cssText = 'position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);border-radius:50%;cursor:pointer;color:#fff;font-size:14px;';
+    closeBtn.onclick = function() { selector.remove(); };
+    selector.appendChild(closeBtn);
 
     // Section 1: Alternative Streams for current match
     if (m && m.streamLinks && m.streamLinks.length > 0) {
@@ -2302,7 +2299,7 @@ function showStreamSelector(idx, mid, event) {
             var isActive = mvStreams[idx].url === s.url;
 
             var btn = document.createElement('div');
-            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
 
             btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
             btn.onmouseleave = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.05)'; };
@@ -2354,7 +2351,7 @@ function showStreamSelector(idx, mid, event) {
             var alreadyIn = mvStreams.some(function(ms) { return String(ms.mid) === String(sm.id); });
 
             var btn = document.createElement('div');
-            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
 
             btn.onmouseenter = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.1)'; };
             btn.onmouseleave = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.05)'; };
@@ -2861,12 +2858,12 @@ function updateMultiviewLayout() {
             cell.setAttribute('data-internal-id', cellId);
             cell.classList.add('mv-cell');
             cell.dataset.index = idx;
-            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;';
+            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;resize:both;';
             cell.draggable = true;
 
             var hdr = document.createElement('div');
             hdr.className = 'mv-hdr';
-            hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;opacity:0;transition:opacity 0.2s;';
+            hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);color:#fff;padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;';
 
             var videoContainer = document.createElement('div');
             videoContainer.className = 'mv-video-container';
@@ -2875,9 +2872,6 @@ function updateMultiviewLayout() {
             cell.appendChild(hdr);
             cell.appendChild(videoContainer);
             grid.appendChild(cell);
-
-            cell.onmouseenter = function(){ hdr.style.opacity = '1'; };
-            cell.onmouseleave = function(){ hdr.style.opacity = '0'; };
 
             fallbackToIframe(s.url, videoContainer, cell, s);
         }
@@ -2924,7 +2918,8 @@ function updateMultiviewLayout() {
             } else {
                 cell.style.width = '100%';
                 cell.style.height = '100%';
-                cell.style.resize = 'none';
+                cell.style.resize = 'both';
+                cell.style.overflow = 'hidden';
 
                 if (mvLayout === 'focus' && count >= 2) {
                     if (idx === 0) {
@@ -2982,22 +2977,33 @@ function updateMultiviewLayout() {
         // Update header HTML
         var hdr = cell.querySelector('.mv-hdr');
         var domain = s.url ? getDomain(s.url) : 'Stream';
-        var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<span style="background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;font-size:10px;">' + esc(domain) + '</span>' +
-            '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
+        var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
+            '<span style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);padding:4px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(255,255,255,0.1);">' + esc(domain) + '</span>' +
+            '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;text-shadow:0 1px 2px #000;" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
             '</div>';
 
-        var controlsHtml = '<div style="display:flex;gap:4px;">';
+        var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;">';
+
+        // Add a dropdown/hamburger menu for mobile friendliness
+        controlsHtml += '<div style="position:relative;" class="mv-menu-container" onmouseleave="this.querySelector(\'div\').style.display=\'none\'">';
+        controlsHtml += '<button title="Menu Options" aria-label="Menu Options" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="var m=this.nextElementSibling; m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();">⋮</button>';
+
+        controlsHtml += '<div style="display:none;position:absolute;top:36px;right:0;background:rgba(20,20,20,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px;min-width:160px;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:100;flex-direction:column;gap:4px;">';
+
         if (mvLayout === 'focus' && idx !== 0) {
-            controlsHtml += '<button title="Mettre en avant" aria-label="Mettre en avant" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="setFocusStream(' + idx + ')">⭐</button>';
+            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="setFocusStream(' + idx + ');event.stopPropagation();">⭐ Mettre en avant</button>';
         }
         if (s.mid) {
-            controlsHtml += '<button title="Changer de stream ou match" aria-label="Changer de stream ou match" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄 Remplacer</button>';
+            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄 Remplacer match</button>';
         }
-        controlsHtml += '<button title="Recharger" aria-label="Recharger" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; event.stopPropagation();">↻</button>';
-        controlsHtml += '<button title="Recadrer" aria-label="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
-        controlsHtml += '<button title="Agrandir" aria-label="Agrandir" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleMaximize(' + idx + ', event)">⛶</button>';
-        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
+        controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; event.stopPropagation();">↻ Recharger</button>';
+        controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="toggleCrop(' + idx + ', event);event.stopPropagation();">🔍 ' + (s.cropped ? 'Annuler recadrage' : 'Recadrer') + '</button>';
+
+        controlsHtml += '</div></div>';
+
+        // Primary actions always visible
+        controlsHtml += '<button title="Agrandir" aria-label="Agrandir" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="toggleMaximize(' + idx + ', event)">⛶</button>';
+        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.8);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
         controlsHtml += '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
