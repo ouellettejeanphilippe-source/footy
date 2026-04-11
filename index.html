@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <meta name="theme-color" content="#1c1c1e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -678,96 +677,6 @@ function extractFootybiteLogos(doc) {
 }
 
 /* ══ FETCH ══════════════════════════════ */
-function loadStream(m3u8Url, container) {
-  return new Promise(function(resolve, reject) {
-    container.innerHTML = ''; // Clear loading spinner
-    var video = document.createElement('video');
-    video.style.cssText = 'width:100%;height:100%;background:#000;';
-    video.autoplay = true;
-    video.controls = true;
-    video.muted = true; // Auto-play policies
-    video.setAttribute('playsinline', ''); // For iOS
-
-    container.appendChild(video);
-
-    if (Hls.isSupported()) {
-      var hls = new Hls({
-        maxBufferLength: 30,
-        maxMaxBufferLength: 30
-      });
-      hls.loadSource(m3u8Url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, function() {
-        var playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(function(e) { console.log('Autoplay prevented', e); });
-        }
-      });
-      hls.on(Hls.Events.ERROR, function(event, data) {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.error("fatal network error encountered, aborting to fallback");
-              hls.destroy();
-              reject(new Error("HLS Network Error"));
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.error("fatal media error encountered, try to recover");
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              reject(new Error("HLS Error"));
-              break;
-          }
-        }
-      });
-      // Save instance to container so we can destroy it later
-      container.hlsInstance = hls;
-      resolve(hls);
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = m3u8Url;
-      video.addEventListener('loadedmetadata', function() {
-        var playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(function(e) { console.log('Autoplay prevented', e); });
-        }
-      });
-      resolve(null);
-    } else {
-      reject(new Error('HLS not supported'));
-    }
-  });
-}
-
-function extractStreamOrIframe(url) {
-  if (url.includes('.m3u8')) return Promise.resolve(url);
-  return fetchPage(url).then(function(html) {
-    if (!html) return null;
-    var m3u8Match = html.match(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/i);
-    if (m3u8Match && m3u8Match[1]) return m3u8Match[1];
-    var b64Match = html.match(/(aHR0cHM6Ly[a-zA-Z0-9+\/]+={0,2})/);
-    if (b64Match && b64Match[1]) {
-        try { var decoded = atob(b64Match[1]); if (decoded.includes('.m3u8')) return decoded; } catch(e) {}
-    }
-    var sourceMatch = html.match(/(?:source|file|src)\s*:\s*["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/i);
-    if (sourceMatch && sourceMatch[1]) return sourceMatch[1];
-
-    // Fallback: If we find a single iframe that looks like a player embed, return it to bypass site menus
-    var iframeMatch = html.match(/<iframe[^>]+src=["'](https?:\/\/[^"']+)["'][^>]*>/i);
-    if (iframeMatch && iframeMatch[1] && !iframeMatch[1].includes('ads') && !iframeMatch[1].includes('bet')) {
-        return iframeMatch[1]; // Return the iframe url to be used instead of the page URL
-    }
-    return null;
-  }).catch(function() { return null; });
-}
-
-function extractM3u8(url) {
-    return extractStreamOrIframe(url).then(function(res) {
-        if(res && res.includes('.m3u8')) return res;
-        return null;
-    });
-}
 
 function fetchPage(url){
   return new Promise(function(resolve,reject){
@@ -2839,43 +2748,7 @@ function updateMultiviewLayout() {
             cell.onmouseenter = function(){ hdr.style.opacity = '1'; };
             cell.onmouseleave = function(){ hdr.style.opacity = '0'; };
 
-            // Show loading spinner initially
-            videoContainer.innerHTML = '<div style="color:var(--muted);font-size:14px;display:flex;align-items:center;gap:8px;">' +
-                '<span style="display:inline-block;width:16px;height:16px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;"></span>' +
-                'Chargement...</div>';
-
-            // Try to extract m3u8
-            extractStreamOrIframe(s.url).then(function(extractedUrl) {
-                var isM3u8 = extractedUrl && extractedUrl.includes('.m3u8');
-                var fallbackUrl = extractedUrl && !isM3u8 ? extractedUrl : s.url;
-                if (isM3u8) {
-                    var m3u8Url = extractedUrl;
-                }
-                if (m3u8Url) {
-                    loadStream(m3u8Url, videoContainer).then(function() {
-                        var video = videoContainer.querySelector('video');
-                        if (video) {
-                            video.className = 'mv-media mv-iframe';
-                            video.id = 'mv-iframe-' + idx;
-                            cell.addEventListener('mousedown', function() { video.style.pointerEvents = 'none'; });
-                            cell.addEventListener('mouseup', function() { video.style.pointerEvents = 'auto'; });
-                            cell.addEventListener('mouseleave', function() { video.style.pointerEvents = 'auto'; });
-                            s._currentUrl = s.url;
-
-                            if (s.cropped) {
-                                video.style.transform = 'scale(1.15)';
-                            } else {
-                                video.style.transform = 'scale(1)';
-                            }
-                        }
-                    }).catch(function(err) {
-                        console.error('Failed to load stream', err);
-                        fallbackToIframe(fallbackUrl, videoContainer, cell, s);
-                    });
-                } else {
-                    fallbackToIframe(fallbackUrl, videoContainer, cell, s);
-                }
-            });
+            fallbackToIframe(s.url, videoContainer, cell, s);
         }
 
         // Helper function for fallback
@@ -2886,7 +2759,6 @@ function updateMultiviewLayout() {
             iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
             iframe.setAttribute('allowfullscreen', 'true');
             iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
-            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox');
             iframe.src = url;
             container.appendChild(iframe);
             cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
@@ -2983,41 +2855,7 @@ function updateMultiviewLayout() {
         if (s._currentUrl !== s.url) {
             var videoContainer = cell.querySelector('.mv-video-container');
             if (videoContainer) {
-                // Destroy old HLS instance if exists
-                if (videoContainer.hlsInstance) {
-                    videoContainer.hlsInstance.destroy();
-                    delete videoContainer.hlsInstance;
-                }
-
-                videoContainer.innerHTML = '<div style="color:var(--muted);font-size:14px;display:flex;align-items:center;gap:8px;">' +
-                    '<span style="display:inline-block;width:16px;height:16px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;"></span>' +
-                    'Chargement...</div>';
-
-                extractStreamOrIframe(s.url).then(function(extractedUrl) {
-                var isM3u8 = extractedUrl && extractedUrl.includes('.m3u8');
-                var fallbackUrl = extractedUrl && !isM3u8 ? extractedUrl : s.url;
-                if (isM3u8) {
-                    var m3u8Url = extractedUrl;
-                }
-                if (m3u8Url) {
-                        loadStream(m3u8Url, videoContainer).then(function() {
-                            var video = videoContainer.querySelector('video');
-                            if (video) {
-                                video.className = 'mv-media mv-iframe';
-                                video.id = 'mv-iframe-' + idx;
-                                cell.addEventListener('mousedown', function() { video.style.pointerEvents = 'none'; });
-                                cell.addEventListener('mouseup', function() { video.style.pointerEvents = 'auto'; });
-                                cell.addEventListener('mouseleave', function() { video.style.pointerEvents = 'auto'; });
-                                if (s.cropped) video.style.transform = 'scale(1.15)';
-                                else video.style.transform = 'scale(1)';
-                            }
-                        }).catch(function() {
-                            if (typeof fallbackToIframe === 'function') fallbackToIframe(s.url, videoContainer, cell, s);
-                        });
-                    } else {
-                        if (typeof fallbackToIframe === 'function') fallbackToIframe(s.url, videoContainer, cell, s);
-                    }
-                });
+                if (typeof fallbackToIframe === 'function') fallbackToIframe(s.url, videoContainer, cell, s);
                 s._currentUrl = s.url;
             }
         } else {
@@ -3038,11 +2876,6 @@ function updateMultiviewLayout() {
     existingCells.forEach(function(cell) {
         var cellId = cell.getAttribute('data-internal-id');
         if (!mvStreams.find(function(s) { return s._internalId === cellId; })) {
-            var videoContainer = cell.querySelector('.mv-video-container');
-            if (videoContainer && videoContainer.hlsInstance) {
-                videoContainer.hlsInstance.destroy();
-                delete videoContainer.hlsInstance;
-            }
             cell.remove();
         }
     });
@@ -3273,24 +3106,9 @@ function openStream(e, eu, en, mid){
   // Reset and load iframe
 
   var iframe = document.getElementById('p-frame');
-  iframe.src = '';
-  // Apply sandbox attributes to nuke popups and navigation (keeps scripts for the video player)
-  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-popups-to-escape-sandbox');
-
-  extractStreamOrIframe(url).then(function(extractedUrl) {
-      var isM3u8 = extractedUrl && extractedUrl.includes('.m3u8');
-      var cleanUrl = extractedUrl && !isM3u8 ? extractedUrl : url;
-      // We don't load m3u8 directly in single player iframe, so we just use the extracted iframe URL if found.
-
-      // Some known embed paths to transform regular pages to embeds
-      if(url.indexOf('buffstreams.com.co') > -1) {
-         // sometimes buffstreams has a direct embed or we just sandbox it hard
-      }
-
-      iframe.src = cleanUrl;
-      iframe.dataset.url = cleanUrl;
-      iframe.dataset.mid = mid;
-  });
+  iframe.src = url;
+  iframe.dataset.url = url;
+  iframe.dataset.mid = mid;
 
 
   // External button
