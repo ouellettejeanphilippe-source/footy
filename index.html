@@ -49,11 +49,17 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 .ball { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #5e5ce6); border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 12px var(--accent-glow); }
 .ball svg { width: 18px; height: 18px; stroke: #fff; }
 .sp { flex: 1; }
-.btn { font-family: inherit; font-weight: 600; font-size: 14px; padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.08); color: var(--text); cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.btn { font-family: inherit; font-weight: 700; font-size: 15px; padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.mv-pip .hide-pip { display: none !important; }
+.mv-pip #mv-toolbar { padding: 0 8px !important; gap: 4px !important; }
+.mv-pip #mv-toolbar .btn { padding: 6px 10px !important; font-size: 12px !important; }
 :focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
-.btn:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
 .btn:active { transform: translateY(0); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
+.sport-btn { border-radius: 20px !important; padding: 6px 14px !important; font-size: 13px !important; background: rgba(255,255,255,0.05) !important; border-color: transparent !important; box-shadow: none !important; color: var(--muted2) !important; font-weight: 500 !important; transition: all 0.2s !important; }
+.sport-btn:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+.sport-btn.active { background: rgba(255,255,255,0.15) !important; color: var(--accent) !important; border-color: rgba(10, 132, 255, 0.3) !important; font-weight: 700 !important; box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important; }
 .btn.g { background: rgba(48, 209, 88, 0.15); color: var(--accent-green); border-color: rgba(48, 209, 88, 0.2); }
 .btn.g:hover { background: rgba(48, 209, 88, 0.25); box-shadow: 0 4px 12px rgba(48, 209, 88, 0.2); }
 .btn.o { background: transparent; color: var(--text); border-color: rgba(255, 255, 255, 0.2); }
@@ -82,13 +88,13 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 
 /* MATCH GRID */
-.match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
-.match-card { position: relative; border-radius: 14px; cursor: pointer; overflow: hidden; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: center; padding: 14px 18px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); min-height: 100px; }
-.match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%); pointer-events: none; }
-.match-card:hover { filter: brightness(1.15); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.4); }
-.match-card.live { border: 2px solid rgba(255,69,58,0.8); animation: liveglow 3s ease-in-out infinite; }
-.match-card.finished { filter: grayscale(0.8) opacity(0.5); }
-.match-card.finished:hover { filter: grayscale(0.2) opacity(1); }
+.match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
+.match-card { position: relative; border-radius: 16px; cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); min-height: 110px; }
+.match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; }
+.match-card:hover { filter: brightness(1.15); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: 0 16px 40px rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.4); }
+.match-card.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
+.match-card.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
+.match-card.finished:hover { filter: grayscale(0.2) opacity(1); border-color: rgba(255,255,255,0.2); }
 
 /* LIGUE HEADER CSS */
 .lg-hdr { height: 44px; display: flex; align-items: center; padding: 0 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); gap: 10px; cursor: pointer; user-select: none; transition: background 0.2s; }
@@ -111,13 +117,13 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .gl.h { background: rgba(255,255,255,0.04); }
 
 /* Match Blocks */
-.mb { position: absolute; top: 6px; bottom: 6px; border-radius: 14px; cursor: pointer; overflow: hidden; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); }
+.mb { position: absolute; top: 6px; bottom: 6px; border-radius: 14px; cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); }
 /* Subtle gradient overlay for depth */
-.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%); pointer-events: none; }
+.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; }
 .mb:hover { filter: brightness(1.15); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.4); }
-.mb.live { border: 2px solid rgba(255,69,58,0.8); animation: liveglow 3s ease-in-out infinite; }
-.mb.finished { filter: grayscale(0.8) opacity(0.5); }
-.mb.finished:hover { filter: grayscale(0.2) opacity(1); }
+.mb.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
+.mb.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
+.mb.finished:hover { filter: grayscale(0.2) opacity(1); border-color: rgba(255,255,255,0.2); }
 @keyframes liveglow { 0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4) } 50% { box-shadow: 0 0 24px rgba(255, 69, 58, 0.5) } }
 .mb-teams { display: flex; flex-direction: column; gap: 6px; position: relative; z-index: 1; width: 100%; }
 .mb-team-row { display: flex; align-items: center; gap: 8px; width: 100%; }
@@ -153,7 +159,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 /* MODAL */
 .mbg { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); align-items: center; justify-content: center; padding: 20px; }
 .mbg.open { display: flex; }
-.modal { background: rgba(28, 28, 30, 0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; width: 100%; max-width: 520px; overflow: hidden; animation: mopen 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 25px 50px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+.modal { background: rgba(28, 28, 30, 0.95); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; width: 100%; max-width: 520px; overflow: hidden; animation: mopen 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 25px 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; }
 @keyframes mopen { from { opacity: 0; transform: scale(0.95) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
 .mhd { padding: 24px 24px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 16px; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); }
 .mdot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; box-shadow: 0 0 12px rgba(255,255,255,0.3); }
@@ -165,8 +171,8 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .mx { width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,0.1); color: var(--muted2); cursor: pointer; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; transition: all 0.2s; border: none; }
 .mx:hover { background: rgba(255,255,255,0.2); color: var(--text); transform: scale(1.05); }
 .mbody { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; max-height: 65vh; overflow-y: auto; }
-.si { display: flex; flex-shrink: 0; align-items: stretch; gap: 0; padding: 0; border-radius: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; transition: all 0.2s; text-decoration: none; color: var(--text); overflow: hidden; }
-.si:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); border-color: rgba(255,255,255,0.2); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+.si { display: flex; flex-shrink: 0; align-items: stretch; gap: 0; padding: 0; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s; text-decoration: none; color: var(--text); overflow: hidden; }
+.si:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); border-color: rgba(255,255,255,0.3); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
 .si-ic { width: 44px; height: 44px; border-radius: 12px; background: rgba(0,0,0,0.4); display: grid; place-items: center; font-size: 20px; flex-shrink: 0; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1); }
 .si-inf { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
 .si-n { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
@@ -220,7 +226,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   <button class="btn" id="filter-all" onclick="applyFilter('all')" style="border-color:var(--accent);color:var(--accent)">GUIDE</button>
   <button class="btn" id="filter-live" onclick="applyFilter('live')"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>LIVE</button>
   <button class="btn" id="filter-upcoming" onclick="applyFilter('upcoming')">À VENIR</button>
+  <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVIEW <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
   <div class="sp"></div>
+  <button class="btn o" onclick="installTampermonkey()" aria-label="Installer le script Tampermonkey" title="Installer le script Multiview Cleaner">🧩 Script</button>
   <button class="btn o" onclick="openDbg()" aria-label="Ouvrir le panneau de débogage">🔬 Debug</button>
   <button class="btn g" id="relBtn" onclick="loadAll()" aria-label="Actualiser" title="Actualiser">↺</button>
   <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres" style="width:38px; height:38px; padding:0; display:grid; place-items:center; border-radius:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
@@ -1662,7 +1670,44 @@ function applyFilter(f){
         el.style.color = k===f ? 'var(--accent)' : 'var(--muted2)';
     }
   });
+  var mvBtn = document.getElementById('mv-toggle-btn');
+  if(mvBtn) {
+      mvBtn.style.borderColor = 'var(--border2)';
+      mvBtn.style.color = 'var(--text)';
+  }
+
+  // Force multiview to PIP if it is open full screen
+  var mvc = document.getElementById('mv-container');
+  if(mvc && mvc.style.display !== 'none' && !mvc.classList.contains('mv-pip')) {
+      toggleMultiviewPip();
+  }
+
   buildEPG(S.matches);
+}
+
+function openMultiviewTab() {
+    ['all','live','upcoming'].forEach(function(k){
+      var el=document.getElementById('filter-'+k);
+      if(el){
+          el.style.borderColor = 'var(--border2)';
+          el.style.color = 'var(--muted2)';
+      }
+    });
+
+    var mvBtn = document.getElementById('mv-toggle-btn');
+    if(mvBtn) {
+        mvBtn.style.borderColor = 'var(--accent)';
+        mvBtn.style.color = 'var(--accent)';
+    }
+
+    var mvc = document.getElementById('mv-container');
+    if(mvc) {
+        if(mvc.style.display === 'none') {
+            toggleMultiview(); // Open it
+        } else if(mvc.classList.contains('mv-pip')) {
+            toggleMultiviewPip(); // Restore from PIP to full
+        }
+    }
 }
 
 function applySportFilter(sport){
@@ -1676,8 +1721,11 @@ function applySportFilter(sport){
           if (S.sportFilter === 'all' && btnText === 'Tous les sports') isActive = true;
           if (S.sportFilter !== 'all' && btnText.indexOf(S.sportFilter) !== -1) isActive = true;
 
-          b.style.borderColor = isActive ? 'var(--accent)' : 'var(--border2)';
-          b.style.color = isActive ? 'var(--accent)' : 'var(--muted2)';
+          if (isActive) {
+              b.classList.add('active');
+          } else {
+              b.classList.remove('active');
+          }
       });
   }
   buildEPG(S.matches);
@@ -2488,22 +2536,6 @@ function toggleMultiviewPip() {
 function setupMultiviewUI() {
     if(document.getElementById('mv-container')) return;
 
-    // Add Multiview button to header
-    var hdr = document.querySelector('.hdr');
-    var mvHeaderBtn = document.createElement('button');
-    mvHeaderBtn.className = 'btn o mv-btn';
-    mvHeaderBtn.id = 'mv-toggle-btn';
-    mvHeaderBtn.innerHTML = '⊞ <span class="mv-text">Multiview</span> <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span>';
-    mvHeaderBtn.onclick = toggleMultiview;
-
-    // Insert just after the date/logo for better visibility on mobile
-    var hdate = document.getElementById('hdate');
-    if(hdr && hdate) {
-        hdr.insertBefore(mvHeaderBtn, hdate.nextSibling);
-    } else if (hdr) {
-        hdr.appendChild(mvHeaderBtn);
-    }
-
     // Create Multiview Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
@@ -2512,15 +2544,15 @@ function setupMultiviewUI() {
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
     mvToolbar.style.cssText = 'height:40px;background:var(--bg2);display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s;';
-    mvToolbar.innerHTML = '<span style="font-weight:bold;color:var(--text);">Mode Multiview</span>'
+    mvToolbar.innerHTML = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multiview</span>'
       + '<div class="sp" style="flex:1;"></div>'
-      + '<button class="btn g" onclick="showMatchSelector(event)">➕ Ajouter un match</button>'
-      + '<button class="btn" onclick="clearMultiview()">Tout vider</button>'
-      + '<button class="btn o" onclick="isFocusMode = !isFocusMode; updateMultiviewLayout(); this.innerHTML = isFocusMode ? \'⊞ Grille\' : \'⭐ Focus\';">⭐ Focus</button>'
-      + '<button class="btn o" onclick="toggleTheaterMode()">Plein onglet</button>'
-      + '<button class="btn o" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))">Plein écran</button>'
-      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn">◨ Réduire</button>'
-      + '<button class="btn o" onclick="hideMultiview()">✕ Fermer</button>';
+      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match">➕ <span class="hide-pip">Ajouter</span></button>'
+      + '<button class="btn o" onclick="isFocusMode = !isFocusMode; updateMultiviewLayout(); this.innerHTML = isFocusMode ? \'⊞ <span class=\\\'hide-pip\\\'>Grille</span>\' : \'⭐ <span class=\\\'hide-pip\\\'>Focus</span>\';" aria-label="Changer de disposition" title="Changer de disposition">⭐ <span class="hide-pip">Focus</span></button>'
+      + '<button class="btn o hide-pip" onclick="toggleTheaterMode()" aria-label="Plein onglet" title="Plein onglet">Plein onglet</button>'
+      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran">⛶</button>'
+      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire">◨ <span class="hide-pip">Réduire</span></button>'
+      + '<button class="btn o" onclick="hideMultiview()" aria-label="Fermer le Multiview" title="Fermer le Multiview">✕ <span class="hide-pip">Fermer</span></button>'
+      + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);" onclick="clearMultiview()" aria-label="Tout vider" title="Tout vider">🗑️</button>';
 
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
@@ -2918,6 +2950,13 @@ function hideMultiview() {
     epg.style.display = 'flex';
     epg.style.paddingRight = '0';
     mvc.classList.remove('mv-pip');
+
+    var mvBtn = document.getElementById('mv-toggle-btn');
+    if(mvBtn) {
+        mvBtn.style.borderColor = 'var(--border2)';
+        mvBtn.style.color = 'var(--text)';
+    }
+    applyFilter(S.filter); // Re-apply current tab style
 }
 
 function toggleMultiview() {
@@ -3470,6 +3509,10 @@ function saveSettings() {
   loadAll(); // Reload everything to apply changes
 }
 
+function installTampermonkey() {
+    window.open('./multiview-cleaner.user.js', '_blank');
+}
+
 /* ══ TOAST ══════════════════════════════ */
 function showToast(msg){var t=document.getElementById('toast');document.getElementById('toasttxt').textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
 
@@ -3746,11 +3789,11 @@ function loadAll(){
           var sportNames = Object.keys(sports).sort();
           var sf = document.getElementById('sport-filters');
           if(sf){
-              var optionsHtml = '<button class="btn" style="border-color:'+(S.sportFilter==='all'?'var(--accent)':'var(--border2)')+';color:'+(S.sportFilter==='all'?'var(--accent)':'var(--muted2)')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
+              var optionsHtml = '<button class="btn sport-btn '+(S.sportFilter==='all'?'active':'')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
               sportNames.forEach(function(sp){
                   if (sp !== 'EN DIRECT') {
                       var isSel = S.sportFilter === sp;
-                      optionsHtml += '<button class="btn" style="border-color:'+(isSel?'var(--accent)':'var(--border2)')+';color:'+(isSel?'var(--accent)':'var(--muted2)')+'" onclick="applySportFilter(\''+escJs(sp)+'\');">'+lgFlag(sp)+' '+esc(sp)+'</button>';
+                      optionsHtml += '<button class="btn sport-btn '+(isSel?'active':'')+'" onclick="applySportFilter(\''+escJs(sp)+'\');"><span style="margin-right:4px;">'+lgFlag(sp)+'</span> '+esc(sp)+'</button>';
                   }
               });
               sf.innerHTML = optionsHtml;
