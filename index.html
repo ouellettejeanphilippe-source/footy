@@ -2160,12 +2160,6 @@ function scrollToNow(){
     tl.scrollLeft = Math.max(0, leftPx - (w / 2));
 }
 
-// Override button `loadAll` relBtn to also scroll to now
-var oldLoadAll = loadAll;
-loadAll = function() {
-    window.initialScrollDone = false; // reset so we scroll to now again if on today
-    oldLoadAll();
-};
 
 /* ══ MODAL ══════════════════════════════ */
 var QC={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
@@ -3845,6 +3839,7 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
 /* ══ MAIN ═══════════════════════════════ */
 
 function loadAll(){
+  window.initialScrollDone = false;
   S.log=[];S.raw='';S.matches=[];S.proxy='';
   setupMultiviewUI();
 
@@ -4024,4 +4019,5 @@ function showLayoutSelector(event) {
 }
 
 
+</script>
 </body></html>
