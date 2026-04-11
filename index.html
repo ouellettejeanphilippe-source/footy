@@ -707,8 +707,9 @@ function loadStream(m3u8Url, container) {
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.error("fatal network error encountered, try to recover");
-              hls.startLoad();
+              console.error("fatal network error encountered, aborting to fallback");
+              hls.destroy();
+              reject(new Error("HLS Network Error"));
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               console.error("fatal media error encountered, try to recover");
@@ -2383,6 +2384,47 @@ function showStreamSelector(idx, mid, event) {
     }, 10);
 }
 
+
+function toggleMaximize(idx, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    // Convert to string for querySelector
+    var idxStr = String(idx);
+    var cell = document.querySelector('.mv-cell[data-index="' + idxStr + '"]');
+    if (!cell) return;
+
+    if (cell.classList.contains('mv-maximized')) {
+        cell.classList.remove('mv-maximized');
+        cell.style.position = 'relative';
+        cell.style.inset = '';
+        cell.style.zIndex = '';
+        cell.style.width = '';
+        cell.style.height = '';
+        cell.style.backgroundColor = '#111';
+    } else {
+        // Remove maximized from others first
+        document.querySelectorAll('.mv-cell.mv-maximized').forEach(function(c) {
+            c.classList.remove('mv-maximized');
+            c.style.position = 'relative';
+            c.style.inset = '';
+            c.style.zIndex = '';
+            c.style.width = '';
+            c.style.height = '';
+            c.style.backgroundColor = '#111';
+        });
+
+        cell.classList.add('mv-maximized');
+        cell.style.position = 'absolute';
+        cell.style.inset = '0';
+        cell.style.zIndex = '100';
+        cell.style.width = '100%';
+        cell.style.height = '100%';
+        cell.style.backgroundColor = '#000';
+    }
+}
+
 function toggleCrop(idx, event) {
     if (event) {
         event.stopPropagation();
@@ -2771,11 +2813,14 @@ function updateMultiviewLayout() {
     // Create or update cells
     mvStreams.forEach(function(s, idx) {
         var cellId = s._internalId;
+        var cellClass = 'mv-cell';
         var cell = existingCells.find(function(c) { return c.getAttribute('data-internal-id') === cellId; });
 
         if (!cell) {
             cell = document.createElement('div');
             cell.setAttribute('data-internal-id', cellId);
+            cell.classList.add('mv-cell');
+            cell.dataset.index = idx;
             cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;';
             cell.draggable = true;
 
@@ -2859,6 +2904,8 @@ function updateMultiviewLayout() {
         // Use CSS flex/grid order to reorder elements without removing them from the DOM
         cell.style.order = idx;
 
+        cell.dataset.index = idx;
+
         // Update styling/gridRow
         if (!document.getElementById('mv-container').classList.contains('mv-pip')) {
             if (isFocusMode && count >= 2) {
@@ -2926,6 +2973,7 @@ function updateMultiviewLayout() {
             controlsHtml += '<button title="Changer de stream" aria-label="Changer de stream" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event)">🔄</button>';
         }
         controlsHtml += '<button title="Recadrer" aria-label="Recadrer" style="background:var(--accent-green);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleCrop(' + idx + ', event)">🔍</button>';
+        controlsHtml += '<button title="Agrandir" aria-label="Agrandir" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="toggleMaximize(' + idx + ', event)">⛶</button>';
         controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:var(--red);color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
         controlsHtml += '</div>';
 
