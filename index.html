@@ -50,15 +50,15 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 .ball { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #5e5ce6); border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 12px var(--accent-glow); }
 .ball svg { width: 18px; height: 18px; stroke: #fff; }
 .sp { flex: 1; }
-.btn { font-family: inherit; font-weight: 700; font-size: 15px; padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.btn { font-family: inherit; font-weight: 700; font-size: 15px; padding: 10px 20px; border-radius: var(--radius-btn, 12px); border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
 .mv-pip .hide-pip { display: none !important; }
 .mv-pip #mv-toolbar { padding: 0 8px !important; gap: 4px !important; }
-.mv-pip #mv-toolbar .btn { padding: 6px 10px !important; font-size: 12px !important; }
+.mv-pip #mv-toolbar .btn { padding: 8px 12px !important; font-size: 12px !important; }
 :focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
 .btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
 .btn:active { transform: translateY(0); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
-.sport-btn { border-radius: 20px !important; padding: 6px 14px !important; font-size: 13px !important; background: rgba(255,255,255,0.05) !important; border-color: transparent !important; box-shadow: none !important; color: var(--muted2) !important; font-weight: 500 !important; transition: all 0.2s !important; }
+.sport-btn { border-radius: var(--radius-pill, 20px) !important; padding: 8px 16px !important; font-size: 14px !important; background: rgba(255,255,255,0.05) !important; border-color: transparent !important; box-shadow: none !important; color: var(--muted2) !important; font-weight: 600 !important; transition: all 0.2s !important; }
 .sport-btn:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
 .sport-btn.active { background: rgba(255,255,255,0.15) !important; color: var(--accent) !important; border-color: rgba(10, 132, 255, 0.3) !important; font-weight: 700 !important; box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important; }
 .btn.g { background: rgba(48, 209, 88, 0.15); color: var(--accent-green); border-color: rgba(48, 209, 88, 0.2); }
@@ -82,27 +82,27 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .chan-col { width: var(--chan-w); flex-shrink: 0; display: flex; flex-direction: column; background: rgba(10, 10, 12, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-right: 1px solid var(--border2); z-index: 20; position: relative; box-shadow: 5px 0 20px rgba(0,0,0,0.3); }
 .corner { height: var(--ruler-h); flex-shrink: 0; border-bottom: 1px solid var(--border2); display: flex; align-items: center; padding: 0 20px; font-weight: 700; font-size: 12px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; background: rgba(0,0,0,0.4); }
 .chan-list { flex: 1; overflow-y: hidden; }
-.chan-cell { height: var(--row-h); display: flex; flex-direction: column; justify-content: center; padding: 0 16px; gap: 8px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+.chan-cell { height: var(--row-h); display: flex; flex-direction: column; justify-content: center; padding: 0 16px; gap: 10px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
 .chan-team { display: flex; align-items: center; gap: 8px; overflow: hidden; }
-.chan-logo { width: 22px; height: 22px; border-radius: 4px; object-fit: contain; background: rgba(255,255,255,0.1); flex-shrink: 0; padding: 2px; }
+.chan-logo { width: 24px; height: 24px; border-radius: 4px; object-fit: contain; background: rgba(255,255,255,0.15); flex-shrink: 0; padding: 2px; }
 .chan-cell:hover { background: rgba(255,255,255,0.03); }
 
 
 /* MATCH GRID */
 .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 20px; padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
-.match-card { position: relative; border-radius: 16px; cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); min-height: 110px; }
-.match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; }
-.match-card:hover { filter: brightness(1.15); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: 0 16px 40px rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.4); }
+.match-card { position: relative; border-radius: var(--radius-card, 16px); cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s, background-position 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); min-height: 110px; background-size: 200% 200% !important; background-position: center !important; }
+.match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
+.match-card:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: 0 16px 40px rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.5); background-position: top left !important; }
 .match-card.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
 .match-card.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
 .match-card.finished:hover { filter: grayscale(0.2) opacity(1); border-color: rgba(255,255,255,0.2); }
 
 /* LIGUE HEADER CSS */
-.lg-hdr { height: 44px; display: flex; align-items: center; padding: 0 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); gap: 10px; cursor: pointer; user-select: none; transition: background 0.2s; }
-.lg-hdr:hover { background: rgba(255,255,255,0.06); }
+.lg-hdr { height: 50px; display: flex; align-items: center; padding: 0 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); gap: 12px; cursor: pointer; user-select: none; transition: background 0.2s; }
+.lg-hdr:hover { background: rgba(255,255,255,0.08); }
 .lg-hdr.collapsed .lg-chev { transform: rotate(-90deg); }
-.lg-chev { transition: transform 0.2s; font-size: 12px; color: var(--muted); }
-.lg-title { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; color: var(--muted2); text-transform: uppercase; }
+.lg-chev { transition: transform 0.2s; font-size: 14px; color: var(--muted); }
+.lg-title { font-size: 15px; font-weight: 800; letter-spacing: 0.5px; color: #fff; text-transform: uppercase; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
 .lg-cnt { margin-left: auto; font-size: 12px; color: #fff; font-weight:bold; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 12px; }
 .ch-flag { font-size: 16px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
 .ch-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.2; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
@@ -118,17 +118,17 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .gl.h { background: rgba(255,255,255,0.04); }
 
 /* Match Blocks */
-.mb { position: absolute; top: 6px; bottom: 6px; border-radius: 14px; cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); }
+.mb { position: absolute; top: 6px; bottom: 6px; border-radius: var(--radius-card, 14px); cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s, background-position 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); background-size: 200% 200% !important; background-position: center !important; }
 /* Subtle gradient overlay for depth */
-.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; }
-.mb:hover { filter: brightness(1.15); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.4); }
+.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
+.mb:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.5); background-position: top left !important; }
 .mb.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
 .mb.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
 .mb.finished:hover { filter: grayscale(0.2) opacity(1); border-color: rgba(255,255,255,0.2); }
 @keyframes liveglow { 0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.4) } 50% { box-shadow: 0 0 24px rgba(255, 69, 58, 0.5) } }
 .mb-teams { display: flex; flex-direction: column; gap: 6px; position: relative; z-index: 1; width: 100%; }
 .mb-team-row { display: flex; align-items: center; gap: 8px; width: 100%; }
-.mb-logo { width: 20px; height: 20px; border-radius: 4px; object-fit: contain; background: rgba(255,255,255,0.15); flex-shrink: 0; padding: 2px; }
+.mb-logo { width: 22px; height: 22px; border-radius: 4px; object-fit: contain; background: rgba(255,255,255,0.2); flex-shrink: 0; padding: 2px; }
 .mb-t { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); flex: 1; min-width: 0; }
 .mb-ts { font-size: 14px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); flex-shrink: 0; margin-left: 6px; }
 .mb-m { display: flex; align-items: center; gap: 8px; margin-top: 8px; position: relative; z-index: 1; }
@@ -272,24 +272,24 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
   <div class="nav-links" id="nav-links" style="display:flex; align-items:center; gap:16px;">
       <button class="btn" id="filter-all" onclick="applyFilter('all')">GUIDE</button>
-      <button class="btn" id="filter-live" onclick="applyFilter('live')" style="border-color:var(--accent);color:var(--accent)"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>LIVE</button>
+      <button class="btn" id="filter-live" onclick="applyFilter('live')" style="border-color:var(--accent);color:var(--accent)"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>EN DIRECT</button>
 
-      <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVIEW <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
+      <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVISION <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
   </div>
 
   <div class="sp"></div>
 
   <div class="secondary-actions" id="secondary-actions" style="display:flex; align-items:center; gap:8px;">
-      <button class="btn o" onclick="toggleAppTheaterMode\(\)" aria-label="Plein Onglet" title="Plein Onglet">⛶ Tab</button>
-      <button class="btn o" onclick="toggleFullscreen\(\)" aria-label="Plein Écran" title="Plein Écran">⛶ Fullscreen</button>
+      <button class="btn o" onclick="toggleAppTheaterMode\(\)" aria-label="Plein Onglet" title="Plein Onglet">⛶ Onglet</button>
+      <button class="btn o" onclick="toggleFullscreen\(\)" aria-label="Plein Écran" title="Plein Écran">⛶ Plein écran</button>
       <button class="btn o" onclick="installTampermonkey()" aria-label="Installer le script Tampermonkey" title="Installer le script Multiview Cleaner">🧩 Script</button>
-      <button class="btn o" onclick="openDbg()" aria-label="Ouvrir le panneau de débogage">🔬 Debug</button>
+      <button class="btn o" onclick="openDbg()" aria-label="Ouvrir le panneau de débogage">🔬 Débogage</button>
       <button class="btn g" id="relBtn" onclick="loadAll()" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
       <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres">⚙️ Paramètres</button>
   </div>
 </div>
 
-<!-- Add toggle button for Tab Theater mode to reappear -->
+<!-- Add toggle button for Onglet Theater mode to reappear -->
 <button id="exit-app-theater" onclick="toggleAppTheaterMode()" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999; background:rgba(0,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:8px 16px; cursor:pointer; backdrop-filter:blur(5px); font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.5); transition:opacity 0.3s; opacity:0;">Quitter le Plein Onglet</button>
 
 <div class="sbar" id="sbar" style="display:flex; align-items:center; gap:8px;">
@@ -317,7 +317,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
     <div class="err-code" id="errcode" style="display:none"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">
       <button class="btn g" onclick="loadAll()">↺ Réessayer</button>
-      <button class="btn o" onclick="openDbg()">🔬 Debug</button>
+      <button class="btn o" onclick="openDbg()">🔬 Débogage</button>
     </div>
   </div>
 
@@ -329,7 +329,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 <!-- DEBUG -->
 <div class="dbg" id="dbg">
   <div class="dbg-hd">
-    <div class="dbg-title">🔬 Debug — footybite.to parser</div>
+    <div class="dbg-title">🔬 Débogage — footybite.to parser</div>
     <button class="dbg-x" aria-label="Fermer le panneau de débogage" title="Fermer" onclick="closeDbg()">✕</button>
   </div>
   <div class="dbg-body" id="dbgbody"><div style="color:var(--muted);font-size:13px">Lance un chargement d'abord.</div></div>
@@ -352,17 +352,64 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 <!-- SETTINGS MODAL -->
 <div class="mbg" id="setbg" onclick="if(event.target===this)closeSettings()">
-  <div class="modal" style="max-width: 400px;">
+  <div class="modal" style="max-width: 500px;">
     <div class="mhd" style="align-items: center;">
-      <div class="mi"><div class="mn">Réglages API-Sports</div></div>
+      <div class="mi"><div class="mn">⚙️ Paramètres & Personnalisation</div></div>
       <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeSettings()">✕</button>
     </div>
-    <div class="mbody" style="padding: 24px;">
-      <label for="apiKeyInput" style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.4;">
-        Entrez votre clé API-Sports pour obtenir les scores en direct et le calendrier mis à jour automatiquement.
-      </label>
-      <input type="text" id="apiKeyInput" placeholder="Clé API (ex: 3a9...)" style="width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 15px; margin-bottom: 20px; outline: none; font-family: monospace;">
-      <button class="btn" style="width: 100%; padding: 12px; background: var(--accent); color: #fff; font-size: 15px; border-radius: 10px;" onclick="saveSettings()">Enregistrer</button>
+    <div class="mbody" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+
+      <!-- API Settings -->
+      <div>
+        <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text);">API-Sports</div>
+        <label for="apiKeyInput" style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.4;">
+          Entrez votre clé API-Sports pour obtenir les scores en direct et le calendrier mis à jour automatiquement.
+        </label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="apiKeyInput" placeholder="Clé API (ex: 3a9...)" style="flex:1; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; outline: none; font-family: monospace;">
+          <button class="btn" style="padding: 10px 16px; background: var(--accent); color: #fff; border: none;" onclick="saveApiKey()">Sauvegarder</button>
+        </div>
+      </div>
+
+      <hr style="border:none; border-top:1px solid var(--border); margin:0;">
+
+      <!-- Personalization Settings -->
+      <div>
+        <div style="font-weight:bold; font-size:16px; margin-bottom:16px; color:var(--text);">🎨 Personnalisation Visuelle</div>
+
+        <div style="display:flex; flex-direction:column; gap:16px;">
+
+          <!-- Background -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:14px;">Arrière-plan</div>
+            <select id="pref-bg" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <option value="gradient">Dégradé (Premium)</option>
+              <option value="solid">Uni (Noir)</option>
+            </select>
+          </div>
+
+          <!-- Match Card Colors -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:14px;">Couleurs des cartes</div>
+            <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <option value="gradient">Dégradé (Domicile → Extérieur)</option>
+              <option value="league">Couleur de la Ligue</option>
+              <option value="home">Équipe Domicile seulement</option>
+            </select>
+          </div>
+
+          <!-- Buttons Shape -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:14px;">Forme des boutons</div>
+            <select id="pref-btn-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <option value="rounded">Arrondis</option>
+              <option value="square">Rectangulaires</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -625,7 +672,7 @@ function parseStreameast(html){
       }
 
       var streamLinks = [{
-          name: 'Streameast - Stream',
+          name: 'Streameast - Flux',
           quality: 'HD',
           lang: 'MULTI',
           url: playerLink,
@@ -722,7 +769,7 @@ function parseOnHockey(html) {
               startTime: '00:00', // We don't have time easily without deeper parsing, fallback
               durationMinutes: getLeagueDuration('hockey'),
               status: 'upcoming',
-              streamLinks: [{ name: 'OnHockey Stream', url: streamUrl, quality: 'HD', lang: 'MULTI' }],
+              streamLinks: [{ name: 'OnHockey Flux', url: streamUrl, quality: 'HD', lang: 'MULTI' }],
               streamsLoaded: true, // It points to the match page which we can load in iframe, or maybe we need to scrape?
               // OnHockey requires scraping the match page to get the actual m3u8 or iframe. Let's rely on Tampermonkey for now,
               // or just load the onhockey page in iframe, but it has many ads.
@@ -780,7 +827,7 @@ function parseBuffstreams(html){
           if (evObj.iframeStreams) {
               evObj.iframeStreams.forEach(function(s) {
                   streamLinks.push({
-                      name: 'Buffstreams - ' + (s.name || 'Stream'),
+                      name: 'Buffstreams - ' + (s.name || 'Flux'),
                       quality: 'HD',
                       lang: 'MULTI',
                       url: s.src,
@@ -862,7 +909,7 @@ function fetchPage(url){
    .div-child-box  → chaque match (133x)
    .txt-team       → noms équipes (266x = 2 par match)
    .time-txt       → heure/score (133x)
-   .btn-danger     → bouton stream (133x)
+   .btn-danger     → bouton flux (133x)
    .text-dark-light → titre de ligue (21x)
    .img-icone      → icône de ligue (20x)
 ═══════════════════════════════════════ */
@@ -1512,7 +1559,7 @@ function toggleDomainPref(domain, type, mid) {
   }
 }
 
-function sortStreamLinks(links) {
+function sortFluxLinks(links) {
   return links.slice().sort(function(a, b) {
     var nameA = (a.name || '').toLowerCase();
     var nameB = (b.name || '').toLowerCase();
@@ -1550,7 +1597,7 @@ function fetchSubPages(matches){
     while(active<concurrency && queue.length>0){
       active++;
       var m=queue.shift();
-      scrapeMatchStreams(m).then(function(){
+      scrapeMatchFlux(m).then(function(){
         active--;
         next();
       }).catch(function(e){
@@ -1566,7 +1613,7 @@ function fetchSubPages(matches){
   next();
 }
 
-function scrapeMatchStreams(m){
+function scrapeMatchFlux(m){
   // Timeout for individual match scrape
   return Promise.race([
     fetchPage(m.matchUrl),
@@ -1600,7 +1647,7 @@ function scrapeMatchStreams(m){
         var tds = row.querySelectorAll('td');
         if(tds.length < 5) return; // Ignore les rows qui ne ressemblent pas à notre table
 
-        // Chercher une balise input cachée qui contient l'URL du stream
+        // Chercher une balise input cachée qui contient l'URL du flux
         var input = row.querySelector('input');
         var url = '';
         if(input && input.value && input.value.indexOf('http') === 0) {
@@ -1624,9 +1671,9 @@ function scrapeMatchStreams(m){
             }
 
             // Le nom est généralement dans la deuxième ou troisième colonne
-            var name = tds[1] ? tds[1].textContent.replace(/\s+/g, ' ').trim() : 'Stream externe';
+            var name = tds[1] ? tds[1].textContent.replace(/\s+/g, ' ').trim() : 'Flux externe';
             if(!name && tds[2]) name = tds[2].textContent.replace(/\s+/g, ' ').trim();
-            if(!name) name = 'Stream';
+            if(!name) name = 'Flux';
             if(name.length > 50) name = name.substring(0, 47) + '...';
 
             // Chercher la qualité et la langue dans le texte des tds
@@ -1650,7 +1697,7 @@ function scrapeMatchStreams(m){
         }
     });
 
-    // Fallback limité aux boutons de stream si pas de table trouvée
+    // Fallback limité aux boutons de flux si pas de table trouvée
     if(links.length===0){
        var btns=doc.querySelectorAll('.btn-danger, a.nav-link2, a.btn-3d');
        [].forEach.call(btns,function(btn){
@@ -1659,7 +1706,7 @@ function scrapeMatchStreams(m){
              if(url && url.indexOf('http')===0 && url.indexOf('footybite')<0) {
                  var lowerUrl = url.toLowerCase();
                  if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.length < 5) return;
-                 var name = btn.textContent.replace(/\s+/g, ' ').trim() || 'Stream externe';
+                 var name = btn.textContent.replace(/\s+/g, ' ').trim() || 'Flux externe';
                  if(name.length > 50) name = name.substring(0, 47) + '...';
                  links.push({
                     name:name,
@@ -1698,7 +1745,7 @@ function scrapeMatchStreams(m){
         });
     }
 
-    // fallback: si aucun stream externe, ajouter juste un lien vers la page
+    // fallback: si aucun flux externe, ajouter juste un lien vers la page
     if(links.length===0 && m.matchUrl){
         links.push({name:'Voir streams sur le site', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
     }
@@ -1718,13 +1765,13 @@ function updateMatchUiAfterScrape(m) {
             var sn=m.streamLinks ? m.streamLinks.length : 0;
             var snEl=mb.querySelector('.mb-sn');
             if(snEl){
-                snEl.textContent=sn+' stream'+(sn>1?'s':'');
+                snEl.textContent=sn+' flux'+(sn>1?'s':'');
             }else if(sn>0){
                 var mbM=mb.querySelector('.mb-m');
                 if(mbM){
                     var span=document.createElement('span');
                     span.className='mb-sn';
-                    span.textContent=sn+' stream'+(sn>1?'s':'');
+                    span.textContent=sn+' flux'+(sn>1?'s':'');
                     mbM.appendChild(span);
                 }
             }
@@ -1736,11 +1783,11 @@ function updateMatchUiAfterScrape(m) {
     if(document.getElementById('mbg').classList.contains('open') && mnameEl && mnameEl.textContent.indexOf(m.homeTeam) >= 0){
         var body=document.getElementById('mbody');
         if(!m.streamLinks || m.streamLinks.length===0){
-            body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.</div>';
+            body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
         } else {
-            var sortedLinks = sortStreamLinks(m.streamLinks);
+            var sortedLinks = sortFluxLinks(m.streamLinks);
             body.innerHTML=sortedLinks.map(function(s,i){
-                return renderStreamItem(s, i, m);
+                return renderFluxItem(s, i, m);
             }).join('');
         }
     }
@@ -1822,13 +1869,17 @@ function applyFilter(f){
       mvBtn.style.color = 'var(--text)';
   }
 
-  // Force multiview to PIP if it is open full screen
+  // Hide multiview completely if we click on Guide or Live
   var mvc = document.getElementById('mv-container');
-  if(mvc && mvc.style.display !== 'none' && !mvc.classList.contains('mv-pip')) {
-      toggleMultiviewPip();
+  if(mvc && mvc.style.display !== 'none') {
+      hideMultivision();
   }
 
   buildEPG(S.matches);
+
+  if(f === 'all') {
+      setTimeout(scrollToNow, 100);
+  }
 }
 
 function openMultiviewTab() {
@@ -1897,9 +1948,30 @@ function getOriginalMatchId(id) {
 }
 
 function buildEPG(matches){
+  // Current time minus 15 minutes to treat soon-to-start matches as "live"
+  var now = new Date();
+  var currentEst = getEstTimeStrFromDate(now);
+  var currentParts = currentEst.split(':');
+  var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
+
   var filtered = matches.filter(function(m){
-    if(S.filter==='live' && m.status!=='live') return false;
-    if(S.filter==='upcoming' && m.status!=='upcoming') return false;
+    var isLiveOrSoon = m.status === 'live';
+    if(m.status === 'upcoming' && m.startTime) {
+        var mParts = m.startTime.split(':');
+        var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+        // If match starts within 15 minutes, or started up to 24h ago (to catch late updates)
+        if(mMins - currentMins <= 15 && mMins - currentMins > -1440) {
+            isLiveOrSoon = true;
+        }
+        // Handle midnight wraparound (e.g. current 23:50, match 00:00)
+        if (currentMins >= 1425 && mMins <= 15) {
+            isLiveOrSoon = true;
+        }
+    }
+
+    if(S.filter==='live' && !isLiveOrSoon) return false;
+    if(S.filter==='upcoming' && isLiveOrSoon) return false;
+    if(S.filter==='upcoming' && m.status==='finished') return false;
     if(S.sportFilter!=='all' && m.league!==S.sportFilter && S.sportFilter!=='EN DIRECT') return false;
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
@@ -1924,7 +1996,7 @@ function buildEPG(matches){
   if (S.filter === 'all') {
       var liveCopies = [];
       epgMatches.forEach(function(m) {
-          if (m.status === 'live' && m.league !== 'Autres Streams') {
+          if (m.status === 'live' && m.league !== 'Autres Flux') {
               var copy = Object.assign({}, m);
               copy.id = String(m.id) + '_live_copy';
               copy.league = 'EN DIRECT';
@@ -1954,9 +2026,9 @@ function buildEPG(matches){
           }
           return "99:99";
       };
-      // Ensure 'Autres Streams' is always sorted last
-      if (a === 'Autres Streams') return 1;
-      if (b === 'Autres Streams') return -1;
+      // Ensure 'Autres Flux' is always sorted last
+      if (a === 'Autres Flux') return 1;
+      if (b === 'Autres Flux') return -1;
 
       var aStart = getSortTime(lgMap[a].matches);
       var bStart = getSortTime(lgMap[b].matches);
@@ -2009,15 +2081,27 @@ function buildEPG(matches){
 
           if (!isCollapsed) {
               lg.matches.forEach(function(m) {
-                  var col = lg.color || lgColor(lg.league);
                   var b = document.createElement('div');
                   b.id = 'mb-'+m.id;
                   b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
-                  b.style.background = col;
+
+                  var homeTeamName = normName(m.homeTeam) || 'A';
+                  var awayTeamName = normName(m.awayTeam) || 'B';
+                  var homeColor = lgColor(homeTeamName);
+                  var awayColor = lgColor(awayTeamName);
+                  var lgCol = lg.color || lgColor(lg.league);
+
+                  if (userPrefs.cardColor === 'home') {
+                      b.style.background = homeColor;
+                  } else if (userPrefs.cardColor === 'league') {
+                      b.style.background = lgCol;
+                  } else {
+                      b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+                  }
 
                   var timeHtml = '';
                   if(m.status === 'live') {
-                      timeHtml = '<div class="mb-live"><span class="mb-ld"></span>'+(m.minute?esc(m.minute)+"'":'LIVE')+'</div>';
+                      timeHtml = '<div class="mb-live"><span class="mb-ld"></span>'+(m.minute?esc(m.minute)+"'":'EN DIRECT')+'</div>';
                   } else if(m.status === 'finished') {
                       timeHtml = '<div class="mb-time" style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;color:#fff;">Terminé</div>';
                   } else {
@@ -2033,7 +2117,7 @@ function buildEPG(matches){
                   var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
                   var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
 
-                  var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' str</div>' : '';
+                  var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
                   b.innerHTML = '<div class="mb-teams">'
                               +   '<div class="mb-team-row">'
@@ -2049,7 +2133,7 @@ function buildEPG(matches){
                               + '</div>'
                               + '<div class="mb-m">'+timeHtml+streamsBadge+'</div>';
 
-                  b.addEventListener('click', function(){ openMod(m, col); });
+                  b.addEventListener('click', function(){ openMod(m, lgCol); });
                   grid.appendChild(b);
               });
           }
@@ -2120,7 +2204,7 @@ function buildEPG(matches){
   leagues.forEach(function(lg){
     if(S.hiddenLg[lg.league]) return;
     var isCollapsed = S.collapsedLg[lg.league];
-    var col = lg.color||lgColor(lg.league);
+    var lgCol = lg.color||lgColor(lg.league);
 
     // League Header in Channel Col
     var lHdr = document.createElement('div');
@@ -2164,11 +2248,23 @@ function buildEPG(matches){
             var b = document.createElement('div');
             b.id = 'mb-'+m.id;
             b.className = 'mb' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
-            b.style.background = col;
+
+            var homeTeamName = normName(m.homeTeam) || 'A';
+            var awayTeamName = normName(m.awayTeam) || 'B';
+            var homeColor = lgColor(homeTeamName);
+            var awayColor = lgColor(awayTeamName);
+
+            if (userPrefs.cardColor === 'home') {
+                b.style.background = homeColor;
+            } else if (userPrefs.cardColor === 'league') {
+                b.style.background = lgCol;
+            } else {
+                b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+            }
 
             var timeHtml = '';
             if(m.status === 'live') {
-                timeHtml = '<div class="mb-live"><span class="mb-ld"></span>'+(m.minute?esc(m.minute)+"'":'LIVE')+'</div>';
+                timeHtml = '<div class="mb-live"><span class="mb-ld"></span>'+(m.minute?esc(m.minute)+"'":'EN DIRECT')+'</div>';
             } else if(m.status === 'finished') {
                 timeHtml = '<div class="mb-time" style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;color:#fff;">Terminé</div>';
             } else {
@@ -2184,7 +2280,7 @@ function buildEPG(matches){
             var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
             var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
 
-            var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' str</div>' : '';
+            var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
             b.innerHTML = '<div class="mb-teams">'
                         +   '<div class="mb-team-row">'
@@ -2210,7 +2306,7 @@ function buildEPG(matches){
             b.style.left = leftPx + 'px';
             b.style.width = widthPx + 'px';
 
-            b.addEventListener('click', function(){ openMod(m, col); });
+            b.addEventListener('click', function(){ openMod(m, lgCol); });
             tRow.appendChild(b);
             mareaDiv.appendChild(tRow);
         });
@@ -2309,9 +2405,9 @@ function scrollToNow(){
 var QC={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
 var QI={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
-function renderStreamItem(s, i, m) {
-    var ev="openStream(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Stream'))+"','"+escJs(m.id)+"')";
-    var addMvEv="addToMultiview('"+escJs(s.url||'#')+"','"+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
+function renderFluxItem(s, i, m) {
+    var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"')";
+    var addMvEv="addToMultivision('"+escJs(s.url||'#')+"','"+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+"');closeMod();event.stopPropagation();event.preventDefault();";
 
     var dom = getDomain(s.url);
     var pref = domainPrefs[dom] || 0;
@@ -2321,7 +2417,7 @@ function renderStreamItem(s, i, m) {
     return '<div class="si">'
       +'<a href="#" onclick="'+ev+'" style="flex:1;min-width:0;display:flex;align-items:center;gap:16px;padding:16px;color:var(--text);text-decoration:none;">'
       +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-      +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Stream '+(i+1))+'</div>'
+      +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Flux '+(i+1))+'</div>'
       +'<div class="si-s">Langue : '+(s.lang||'?')+' · '+(i===0?'Recommandé':'Alternatif')+'</div></div>'
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
@@ -2329,7 +2425,7 @@ function renderStreamItem(s, i, m) {
         +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.02)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.08);color:'+(pref===1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">⭐</button>'
         +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.02)')+';border:none;color:'+(pref===-1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">👎</button>'
       +'</div>'
-      +'<button title="Ajouter au Multiview" aria-label="Ajouter au Multiview" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.02);border:none;border-left:1px solid rgba(255,255,255,0.08);color:var(--text);width:50px;cursor:pointer;transition:background 0.2s;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center;">⊞</button>'
+      +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.02);border:none;border-left:1px solid rgba(255,255,255,0.08);color:var(--text);width:50px;cursor:pointer;transition:background 0.2s;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center;">⊞</button>'
       +'</div>';
 }
 
@@ -2339,14 +2435,14 @@ function openMod(m,col){
   document.getElementById('mmeta').innerHTML=
     '<span class="mtag">'+m.flag+' '+esc(m.league)+'</span>'
     +'<span class="mtag">'+esc(m.startTime)+'</span>'
-    +(m.status==='live'?'<span class="mtag" style="color:var(--red);background:rgba(255,59,59,.1)">🔴 '+(m.minute?esc(m.minute)+"'":'LIVE')+'</span>':'');
+    +(m.status==='live'?'<span class="mtag" style="color:var(--red);background:rgba(255,59,59,.1)">🔴 '+(m.minute?esc(m.minute)+"'":'EN DIRECT')+'</span>':'');
   document.getElementById('mscore').innerHTML=m.score?'<div class="msc">'+m.score[0]+'–'+m.score[1]+'</div>':'';
 
   var addMvBtn = document.createElement('button');
   addMvBtn.className = 'btn o';
   addMvBtn.style.marginTop = '12px';
   addMvBtn.style.alignSelf = 'flex-start';
-  addMvBtn.innerHTML = '⊞ Ajouter au Multiview (Attente du stream)';
+  addMvBtn.innerHTML = '⊞ Ajouter au Multivision (Attente du flux)';
   addMvBtn.id = 'mv-add-btn';
   addMvBtn.disabled = true;
   document.getElementById('mmeta').appendChild(addMvBtn);
@@ -2357,13 +2453,13 @@ function openMod(m,col){
   if(!m.streamsLoaded && m.matchUrl) {
       body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez)</span></div>';
       // Force load the streams for this specific match right away if they aren't loaded yet
-      lg('Force loading stream', m.homeTeam);
-      scrapeMatchStreams(m).then(function() {
-          lg('Force loaded stream ok', m.homeTeam);
+      lg('Force loading flux', m.homeTeam);
+      scrapeMatchFlux(m).then(function() {
+          lg('Force loaded flux ok', m.homeTeam);
           m.streamsLoaded = true;
           openMod(m, col); // Re-render modal
       }).catch(function(e) {
-          lg('Force loaded stream failed', e.message);
+          lg('Force loaded flux failed', e.message);
           m.streamsLoaded = true;
           m.streamLinks = m.streamLinks || [];
           openMod(m, col);
@@ -2374,22 +2470,22 @@ function openMod(m,col){
       body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams...</div>';
       document.getElementById('mbg').classList.add('open');
   } else if(!m.streamLinks || m.streamLinks.length===0){
-      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun stream trouvé.<br><a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a></div>';
+      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.<br><a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a></div>';
       document.getElementById('mbg').classList.add('open');
   } else {
-      var sortedLinks = sortStreamLinks(m.streamLinks);
+      var sortedLinks = sortFluxLinks(m.streamLinks);
       var mvBtn = document.getElementById('mv-add-btn');
       if(mvBtn && sortedLinks.length > 0) {
           mvBtn.disabled = false;
-          mvBtn.innerHTML = '⊞ Ajouter au Multiview (' + esc(m.homeTeam) + ')';
+          mvBtn.innerHTML = '⊞ Ajouter au Multivision (' + esc(m.homeTeam) + ')';
           mvBtn.onclick = function() {
-              addToMultiview(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+              addToMultivision(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
               closeMod();
           };
       }
 
       body.innerHTML=sortedLinks.map(function(s,i){
-          return renderStreamItem(s, i, m);
+          return renderFluxItem(s, i, m);
       }).join('');
       document.getElementById('mbg').classList.add('open');
   }
@@ -2399,12 +2495,12 @@ function closeMod(){
   closePlayer();
 }
 
-/* ══ MULTIVIEW (SPLIT SCREEN) ═════════ */
-var mvStreams = [];
+/* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
+var mvFlux = [];
 
 
-/* ══ MULTIVIEW STREAM SELECTOR ════════ */
-function showStreamSelector(idx, mid, event) {
+/* ══ MULTIVISION STREAM SELECTOR ════════ */
+function showFluxSelector(idx, mid, event) {
     mid = getOriginalMatchId(mid);
     if (event) {
         event.stopPropagation();
@@ -2413,11 +2509,11 @@ function showStreamSelector(idx, mid, event) {
 
     var m = S.matches.find(function(x) { return String(x.id) === String(mid); });
 
-    var existing = document.getElementById('mv-stream-selector');
+    var existing = document.getElementById('mv-flux-selector');
     if (existing) existing.remove();
 
     var selector = document.createElement('div');
-    selector.id = 'mv-stream-selector';
+    selector.id = 'mv-flux-selector';
     selector.style.cssText = 'position:fixed;z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:16px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:360px;top:50%;left:50%;transform:translate(-50%, -50%);';
 
     // Add close button for mobile
@@ -2427,20 +2523,20 @@ function showStreamSelector(idx, mid, event) {
     closeBtn.onclick = function() { selector.remove(); };
     selector.appendChild(closeBtn);
 
-    // Section 1: Alternative Streams for current match
+    // Section 1: Alternative Flux for current match
     if (m && m.streamLinks && m.streamLinks.length > 0) {
-        var titleStreams = document.createElement('div');
-        titleStreams.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;';
-        titleStreams.textContent = 'Sources pour ce match';
-        selector.appendChild(titleStreams);
+        var titleFlux = document.createElement('div');
+        titleFlux.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;';
+        titleFlux.textContent = 'Sources pour ce match';
+        selector.appendChild(titleFlux);
 
         var streamsContainer = document.createElement('div');
         streamsContainer.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
 
-        var sortedLinks = sortStreamLinks(m.streamLinks);
+        var sortedLinks = sortFluxLinks(m.streamLinks);
         sortedLinks.forEach(function(s) {
             var dom = getDomain(s.url);
-            var isActive = mvStreams[idx].url === s.url;
+            var isActive = mvFlux[idx].url === s.url;
 
             var btn = document.createElement('div');
             btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
@@ -2451,9 +2547,9 @@ function showStreamSelector(idx, mid, event) {
             btn.onclick = function(e) {
                 e.stopPropagation();
                 if(!isActive) {
-                    mvStreams[idx].url = s.url;
+                    mvFlux[idx].url = s.url;
                     // name and mid stays the same
-                    saveMultiviewState(); updateMultiviewLayout();
+                    saveMultivisionState(); updateMultivisionLayout();
                 }
                 selector.remove();
             };
@@ -2495,12 +2591,12 @@ function showStreamSelector(idx, mid, event) {
     if (availableMatches.length === 0) {
         var empty = document.createElement('div');
         empty.style.cssText = 'padding:10px;text-align:center;color:var(--muted);font-size:12px;background:rgba(255,255,255,0.02);border-radius:8px;';
-        empty.innerHTML = 'Aucun autre match avec stream disponible.';
+        empty.innerHTML = 'Aucun autre match avec flux disponible.';
         matchesContainer.appendChild(empty);
     } else {
         availableMatches.forEach(function(sm) {
             // Already in multiview?
-            var alreadyIn = mvStreams.some(function(ms) { return String(ms.mid) === String(sm.id); });
+            var alreadyIn = mvFlux.some(function(ms) { return String(ms.mid) === String(sm.id); });
 
             var btn = document.createElement('div');
             btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
@@ -2519,7 +2615,7 @@ function showStreamSelector(idx, mid, event) {
 
             btn.innerHTML = thumb +
                 '<div style="flex:1; overflow:hidden;">' +
-                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(sm.minute?esc(sm.minute)+"'":'LIVE')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+sm.flag+' '+esc(sm.league)+'</span></div>' +
+                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(sm.minute?esc(sm.minute)+"'":'EN DIRECT')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+sm.flag+' '+esc(sm.league)+'</span></div>' +
                     '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.homeTeam)+'</div>' +
                     '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.awayTeam)+'</div>' +
                 '</div>' + score + (alreadyIn ? '<div style="font-size:10px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 4px;border-radius:4px;margin-left:4px;">AJOUTÉ</div>' : '');
@@ -2527,25 +2623,25 @@ function showStreamSelector(idx, mid, event) {
             btn.onclick = function(e) {
                 e.stopPropagation();
                 if(sm.streamsLoaded && sm.streamLinks && sm.streamLinks.length > 0) {
-                    var sortedSmLinks = sortStreamLinks(sm.streamLinks);
-                    mvStreams[idx].url = sortedSmLinks[0].url;
-                    mvStreams[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
-                    mvStreams[idx].mid = sm.id;
-                    saveMultiviewState(); updateMultiviewLayout();
+                    var sortedSmLinks = sortFluxLinks(sm.streamLinks);
+                    mvFlux[idx].url = sortedSmLinks[0].url;
+                    mvFlux[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
+                    mvFlux[idx].mid = sm.id;
+                    saveMultivisionState(); updateMultivisionLayout();
                     selector.remove();
                 } else {
                     // Si pas chargé
                     showToast('Chargement des streams...');
-                    scrapeMatchStreams(sm).then(function() {
+                    scrapeMatchFlux(sm).then(function() {
                         sm.streamsLoaded = true;
                         if(sm.streamLinks && sm.streamLinks.length > 0) {
-                            var sortedSmLinks = sortStreamLinks(sm.streamLinks);
-                            mvStreams[idx].url = sortedSmLinks[0].url;
-                            mvStreams[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
-                            mvStreams[idx].mid = sm.id;
-                            saveMultiviewState(); updateMultiviewLayout();
+                            var sortedSmLinks = sortFluxLinks(sm.streamLinks);
+                            mvFlux[idx].url = sortedSmLinks[0].url;
+                            mvFlux[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
+                            mvFlux[idx].mid = sm.id;
+                            saveMultivisionState(); updateMultivisionLayout();
                         } else {
-                            showToast('Aucun stream trouvé pour ce match.');
+                            showToast('Aucun flux trouvé pour ce match.');
                         }
                         selector.remove();
                     }).catch(function() {
@@ -2621,18 +2717,18 @@ function toggleCrop(idx, event) {
         event.stopPropagation();
         event.preventDefault();
     }
-    mvStreams[idx].cropped = !mvStreams[idx].cropped;
+    mvFlux[idx].cropped = !mvFlux[idx].cropped;
     var iframe = document.getElementById('mv-iframe-' + idx);
     if (iframe) {
-        if (mvStreams[idx].cropped) {
+        if (mvFlux[idx].cropped) {
             iframe.style.transform = 'scale(1.15)';
         } else {
-            iframe.style.transform = 'scale(1)'; } } saveMultiviewState();
+            iframe.style.transform = 'scale(1)'; } } saveMultivisionState();
 }
 
 
 
-/* ══ MULTIVIEW MATCH SELECTOR ════════ */
+/* ══ MULTIVISION MATCH SELECTOR ════════ */
 function showMatchSelector(event) {
     if (event) {
         event.stopPropagation();
@@ -2645,8 +2741,8 @@ function showMatchSelector(event) {
         return;
     }
 
-    if (mvStreams.length >= 4) {
-        showToast('Maximum 4 streams en Multiview.');
+    if (mvFlux.length >= 4) {
+        showToast('Maximum 4 streams en Multivision.');
         return;
     }
 
@@ -2676,12 +2772,12 @@ function showMatchSelector(event) {
     if (availableMatches.length === 0) {
         var empty = document.createElement('div');
         empty.style.cssText = 'padding:10px;text-align:center;color:var(--muted);font-size:12px;';
-        empty.innerHTML = 'Aucun stream disponible pour le moment.<br><br>Astuce: Ouvrez un match dans le guide TV pour charger ses streams.';
+        empty.innerHTML = 'Aucun flux disponible pour le moment.<br><br>Astuce: Ouvrez un match dans le guide TV pour charger ses streams.';
         selector.appendChild(empty);
     } else {
         availableMatches.forEach(function(m) {
             // Check if already in multiview
-            var alreadyIn = mvStreams.some(function(s) { return String(s.mid) === String(m.id); });
+            var alreadyIn = mvFlux.some(function(s) { return String(s.mid) === String(m.id); });
             if (alreadyIn) return; // Skip
 
 
@@ -2692,8 +2788,8 @@ function showMatchSelector(event) {
 
             btn.onclick = function(e) {
                 e.stopPropagation();
-                var sortedLinks = sortStreamLinks(m.streamLinks);
-                addToMultiview(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+                var sortedLinks = sortFluxLinks(m.streamLinks);
+                addToMultivision(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
                 selector.remove();
             };
 
@@ -2708,7 +2804,7 @@ function showMatchSelector(event) {
 
             btn.innerHTML = thumb +
                 '<div style="flex:1; overflow:hidden;">' +
-                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">' + (m.status === 'live' ? '🔴 '+(m.minute?esc(m.minute)+"'":'LIVE') : esc(m.startTime)) + ' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>' +
+                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">' + (m.status === 'live' ? '🔴 '+(m.minute?esc(m.minute)+"'":'EN DIRECT') : esc(m.startTime)) + ' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>' +
                     '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.homeTeam)+'</div>' +
                     '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.awayTeam)+'</div>' +
                 '</div>' + score;
@@ -2745,7 +2841,7 @@ function toggleMultiviewPip() {
         mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
-        updateMultiviewLayout(); // Re-apply grid
+        updateMultivisionLayout(); // Re-apply grid
     } else {
         // Switch to PIP mode
         mvc.classList.add('mv-pip');
@@ -2763,12 +2859,8 @@ function toggleMultiviewPip() {
             epg.style.display = 'flex';
             epg.style.paddingRight = '350px'; // Make room for the column
 
-            // Force layout to a simple vertical stack
-            var grid = document.getElementById('mv-grid');
-            if(grid) {
-                grid.style.gridTemplateColumns = '1fr';
-                grid.style.gridTemplateRows = 'repeat(' + mvStreams.length + ', 1fr)';
-            }
+            // Note: The vertical stack layout logic is now handled entirely within updateMultivisionLayout
+            updateMultivisionLayout();
         }
     }
 }
@@ -2790,10 +2882,10 @@ window.addEventListener('resize', function() {
 
 
 
-function setupMultiviewUI() {
+function setupMultivisionUI() {
     if(document.getElementById('mv-container')) return;
 
-    // Create Multiview Container
+    // Create Multivision Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
     mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:none;flex-direction:column;';
@@ -2801,11 +2893,11 @@ function setupMultiviewUI() {
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
     mvToolbar.style.cssText = 'min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;';
-    var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multiview</span>'
+    var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip">Ajouter</span></button>'
       + '<div style="position:relative;" onmouseleave="this.querySelector(\'#mv-main-menu\').style.display=\'none\'" class="hide-pip">'
-      +   '<button class="btn o" onclick="var m=document.getElementById(\'mv-main-menu\'); m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();" aria-label="Menu Multiview" title="Options Multiview" style="padding: 4px 8px;">⚙️ Options</button>'
+      +   '<button class="btn o" onclick="var m=document.getElementById(\'mv-main-menu\'); m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();" aria-label="Menu Multivision" title="Options Multivision" style="padding: 4px 8px;">⚙️ Options</button>'
       +   '<div id="mv-main-menu" style="display:none;position:absolute;top:100%;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:180px;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:100;flex-direction:column;gap:4px;margin-top:4px;">'
       +     '<button class="btn o" onclick="showLayoutSelector(event); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">⊞ Disposition</button>'
       +     '<button class="btn o" onclick="toggleTheaterMode(); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">🖥️ Plein onglet</button>'
@@ -2813,8 +2905,8 @@ function setupMultiviewUI() {
       +   '</div>'
       + '</div>'
       + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire" style="padding: 4px 8px;">◨ <span class="hide-pip">Réduire</span></button>'
-      + '<button class="btn o" onclick="hideMultiview()" aria-label="Fermer le Multiview" title="Fermer le Multiview" style="padding: 4px 8px;">✕ <span class="hide-pip">Fermer</span></button>'
-      + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultiview()" aria-label="Tout vider" title="Tout vider">🗑️</button>';
+      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip">Fermer</span></button>'
+      + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
 
@@ -2844,10 +2936,9 @@ function setupMultiviewUI() {
     mvContainer.appendChild(mvToolbar);
     mvContainer.appendChild(mvGrid);
     mvContainer.appendChild(exitTheaterBtn);
-    document.body.appendChild(mvContainer); restoreMultiviewState();
+    document.body.appendChild(mvContainer); restoreMultivisionState();
 
-    // Multiview Idle Timer for Auto-Hide
-    var mvHideTimeout;
+    // Removed Multivision Idle Timer for Auto-Hide (keep toolbar and headers visible)
     mvContainer.addEventListener('mousemove', function() {
         var tb = document.getElementById('mv-toolbar');
         if (tb) { tb.style.opacity = '1'; tb.style.pointerEvents = 'auto'; }
@@ -2856,27 +2947,6 @@ function setupMultiviewUI() {
         // Show all cell headers
         var hdrs = mvContainer.querySelectorAll('.mv-hdr');
         hdrs.forEach(function(h) { h.style.opacity = '1'; h.style.pointerEvents = 'auto'; });
-
-
-        clearTimeout(mvHideTimeout);
-        mvHideTimeout = setTimeout(function() {
-            if (window.innerWidth <= 768) return; // Don't hide on mobile
-            // Only hide if we are not hovering over the toolbar itself or a header
-            if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
-            mvContainer.style.cursor = 'none';
-            var hdrs = mvContainer.querySelectorAll('.mv-hdr');
-            hdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
-        }, 3000);
-
-    });
-
-
-    mvContainer.addEventListener('mouseleave', function() {
-        if (window.innerWidth <= 768) return; // Don't hide on mobile
-        var tb = document.getElementById('mv-toolbar');
-        if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
-        var hdrs = mvContainer.querySelectorAll('.mv-hdr');
-        hdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
     });
 
 }
@@ -2907,24 +2977,24 @@ function toggleTheaterMode() {
 }
 
 
-/* ══ PERSISTENCE MULTIVIEW ═══════════ */
-function saveMultiviewState() {
+/* ══ PERSISTENCE MULTIVISION ═══════════ */
+function saveMultivisionState() {
     try {
-        localStorage.setItem('mv_state', JSON.stringify(mvStreams));
+        localStorage.setItem('mv_state', JSON.stringify(mvFlux));
     } catch(e) {}
 }
 
-function restoreMultiviewState() {
+function restoreMultivisionState() {
     try {
         var saved = localStorage.getItem('mv_state');
         if(saved) {
             var parsed = JSON.parse(saved);
             if(Array.isArray(parsed) && parsed.length > 0) {
-                mvStreams = parsed;
+                mvFlux = parsed;
                 // Automatically open multiview as PiP or Background if streams exist
                 // To avoid interrupting the initial load, we just update the UI badge
                 setTimeout(function() {
-                    updateMultiviewLayout();
+                    updateMultivisionLayout();
                 }, 500);
             }
         }
@@ -2934,21 +3004,21 @@ function restoreMultiviewState() {
 // Layout state
 var mvLayout = 'auto'; // auto, focus, vertical, horizontal, custom
 
-function setFocusStream(idx) {
+function setFocusFlux(idx) {
     if (idx === 0) return; // Already focused
-    // Swap stream at idx with stream at 0
-    var temp = mvStreams[0];
-    mvStreams[0] = mvStreams[idx];
-    mvStreams[idx] = temp;
-    saveMultiviewState();
-    updateMultiviewLayout();
+    // Swap flux at idx with flux at 0
+    var temp = mvFlux[0];
+    mvFlux[0] = mvFlux[idx];
+    mvFlux[idx] = temp;
+    saveMultivisionState();
+    updateMultivisionLayout();
 }
 
-function updateMultiviewLayout() {
+function updateMultivisionLayout() {
     var grid = document.getElementById('mv-grid');
     if(!grid) return;
 
-    var count = mvStreams.length;
+    var count = mvFlux.length;
     var cBtn = document.getElementById('mv-count');
     if(cBtn) {
         cBtn.textContent = count;
@@ -2956,15 +3026,15 @@ function updateMultiviewLayout() {
     }
 
     // Assign internal IDs to streams for tracking DOM elements
-    mvStreams.forEach(function(s, idx) {
-        if (!s._internalId) s._internalId = 'mv-stream-' + Date.now() + '-' + idx;
+    mvFlux.forEach(function(s, idx) {
+        if (!s._internalId) s._internalId = 'mv-flux-' + Date.now() + '-' + idx;
     });
 
     // Remove old empty message if any
     var emptyMsg = document.getElementById('mv-empty-msg');
     if(count === 0) {
         if (!emptyMsg) {
-            grid.innerHTML = '<div id="mv-empty-msg" style="display:flex;align-items:center;justify-content:center;color:var(--muted);height:100%;">Ajoutez des matchs depuis la modale pour utiliser le Multiview.</div>';
+            grid.innerHTML = '<div id="mv-empty-msg" style="display:flex;align-items:center;justify-content:center;color:var(--muted);height:100%;">Ajoutez des matchs depuis la modale pour utiliser le Multivision.</div>';
         } else {
             // keep it
             var children = Array.from(grid.children);
@@ -2993,6 +3063,7 @@ function updateMultiviewLayout() {
     if (pipBtn && mvc) {
         if (mvc.classList.contains('mv-pip')) {
             pipBtn.innerHTML = '◧ Agrandir';
+            // Always force vertical layout in PiP mode
             grid.style.gridTemplateColumns = '1fr';
             grid.style.gridTemplateRows = 'repeat(' + Math.max(1, count) + ', 1fr)';
         } else {
@@ -3006,19 +3077,14 @@ function updateMultiviewLayout() {
             } else if (mvLayout === 'horizontal') {
                 grid.style.gridTemplateColumns = 'repeat(' + count + ', 1fr)';
                 grid.style.gridTemplateRows = '1fr';
-            } else if (mvLayout === 'custom') {
-                grid.style.display = 'flex';
-                grid.style.flexWrap = 'wrap';
-                grid.style.alignContent = 'flex-start';
-                grid.style.overflow = 'auto'; // Allow scrolling if they resize too much
             } else {
                 // auto / Grid Mode Layout
                 if(count === 1) {
                     grid.style.gridTemplateColumns = '1fr';
                     grid.style.gridTemplateRows = '1fr';
                 } else if(count === 2) {
-                    grid.style.gridTemplateColumns = '1fr';
-                    grid.style.gridTemplateRows = '1fr 1fr';
+                    grid.style.gridTemplateColumns = '1fr 1fr';
+                    grid.style.gridTemplateRows = '1fr';
                 } else if(count === 3) {
                     grid.style.gridTemplateColumns = '1fr 1fr';
                     grid.style.gridTemplateRows = '1fr 1fr';
@@ -3036,7 +3102,7 @@ function updateMultiviewLayout() {
     });
 
     // Create or update cells
-    mvStreams.forEach(function(s, idx) {
+    mvFlux.forEach(function(s, idx) {
         var cellId = s._internalId;
         var cellClass = 'mv-cell';
         var cell = existingCells.find(function(c) { return c.getAttribute('data-internal-id') === cellId; });
@@ -3093,44 +3159,33 @@ function updateMultiviewLayout() {
 
         // Update styling/gridRow
         if (!document.getElementById('mv-container').classList.contains('mv-pip')) {
-            if (mvLayout === 'custom') {
-                cell.style.gridRow = '';
-                cell.style.gridColumn = '';
-                // Only set default sizing if it doesn't have inline styles already set by the user resizing
-                if (!cell.style.width || cell.style.width === '100%') {
-                    cell.style.width = count <= 2 ? '100%' : '50%';
-                    cell.style.height = count <= 2 ? (100 / count) + '%' : '50%';
-                }
-                cell.style.resize = 'both'; // Enable free resizing
-                cell.style.overflow = 'hidden'; // Required for resize
-            } else {
-                cell.style.width = '100%';
-                cell.style.height = '100%';
-                cell.style.resize = 'both';
-                cell.style.overflow = 'hidden';
+            cell.style.width = '100%';
+            cell.style.height = '100%';
+            cell.style.resize = 'both';
+            cell.style.overflow = 'hidden';
 
-                if (mvLayout === 'focus' && count >= 2) {
-                    if (idx === 0) {
-                        cell.style.gridRow = 'span ' + (count - 1);
-                        cell.style.gridColumn = '1';
-                    } else {
-                        cell.style.gridRow = 'auto';
-                        cell.style.gridColumn = '2';
-                    }
-                } else if (mvLayout === 'auto' && count === 3 && idx === 0) {
-                    cell.style.gridRow = 'span 2';
-                    cell.style.gridColumn = 'auto';
+            if (mvLayout === 'focus' && count >= 2) {
+                if (idx === 0) {
+                    cell.style.gridRow = 'span ' + (count - 1);
+                    cell.style.gridColumn = '1';
                 } else {
                     cell.style.gridRow = 'auto';
-                    cell.style.gridColumn = 'auto';
+                    cell.style.gridColumn = '2';
                 }
+            } else if (mvLayout === 'auto' && count === 3 && idx === 0) {
+                cell.style.gridRow = 'span 2';
+                cell.style.gridColumn = 'auto';
+            } else {
+                cell.style.gridRow = 'auto';
+                cell.style.gridColumn = 'auto';
             }
         } else {
+            // Force pure vertical in PiP mode
             cell.style.width = '100%';
             cell.style.height = '100%';
             cell.style.resize = 'none';
             cell.style.gridRow = 'auto';
-            cell.style.gridColumn = 'auto';
+            cell.style.gridColumn = '1';
         }
 
         // Update drag/drop indices as they can change
@@ -3154,35 +3209,41 @@ function updateMultiviewLayout() {
             var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
             var toIdx = idx;
             if (fromIdx !== toIdx && !isNaN(fromIdx)) {
-                var temp = mvStreams[fromIdx];
-                mvStreams[fromIdx] = mvStreams[toIdx];
-                mvStreams[toIdx] = temp;
-                saveMultiviewState();
-                updateMultiviewLayout();
+                var temp = mvFlux[fromIdx];
+                mvFlux[fromIdx] = mvFlux[toIdx];
+                mvFlux[toIdx] = temp;
+                saveMultivisionState();
+                updateMultivisionLayout();
             }
         };
 
         // Update header HTML
         var hdr = cell.querySelector('.mv-hdr');
-        var domain = s.url ? getDomain(s.url) : 'Stream';
+        // Make the header semi-transparent by default so it doesn't block the video too much
+        hdr.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)';
+        hdr.style.transition = 'background 0.2s';
+        hdr.onmouseenter = function() { this.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)'; };
+        hdr.onmouseleave = function() { this.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)'; };
+
+        var domain = s.url ? getDomain(s.url) : 'Flux';
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
-            '<span style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);padding:4px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(255,255,255,0.1);">' + esc(domain) + '</span>' +
-            '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;text-shadow:0 1px 2px #000;" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
+            '<span style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);padding:4px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);">' + esc(domain) + '</span>' +
+            '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;text-shadow:0 1px 2px #000;color:rgba(255,255,255,0.8);" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
             '</div>';
 
-        var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;">';
+        var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;opacity:0.6;transition:opacity 0.2s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.6">';
 
         // Add a dropdown/hamburger menu for mobile friendliness
         controlsHtml += '<div style="position:relative;" class="mv-menu-container" onmouseleave="this.querySelector(\'div\').style.display=\'none\'">';
-        controlsHtml += '<button title="Menu Options" aria-label="Menu Options" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="var m=this.nextElementSibling; m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();">⋮</button>';
+        controlsHtml += '<button title="Menu Options" aria-label="Menu Options" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="var m=this.nextElementSibling; m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();">⋮</button>';
 
         controlsHtml += '<div style="display:none;position:absolute;top:36px;right:0;background:rgba(20,20,20,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px;min-width:160px;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:100;flex-direction:column;gap:4px;">';
 
         if (mvLayout === 'focus' && idx !== 0) {
-            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="setFocusStream(' + idx + ');event.stopPropagation();">⭐ Mettre en avant</button>';
+            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="setFocusFlux(' + idx + ');event.stopPropagation();">⭐ Mettre en avant</button>';
         }
         if (s.mid) {
-            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄 Changer stream/match</button>';
+            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="showFluxSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄 Changer flux/match</button>';
         }
         controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; event.stopPropagation();">↻ Recharger</button>';
         controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="toggleCrop(' + idx + ', event);event.stopPropagation();">🔍 ' + (s.cropped ? 'Annuler recadrage' : 'Recadrer') + '</button>';
@@ -3190,8 +3251,8 @@ function updateMultiviewLayout() {
         controlsHtml += '</div></div>';
 
         // Primary actions always visible
-        controlsHtml += '<button title="Agrandir" aria-label="Agrandir" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="toggleMaximize(' + idx + ', event)">⛶</button>';
-        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.8);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="removeFromMultiview(' + idx + ')">✕</button>';
+        controlsHtml += '<button title="Agrandir" aria-label="Agrandir" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="toggleMaximize(' + idx + ', event)">⛶</button>';
+        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.5);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="removeFromMultivision(' + idx + ')">✕</button>';
         controlsHtml += '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
@@ -3217,44 +3278,42 @@ function updateMultiviewLayout() {
         }
     });
 
-    // Remove cells that are no longer in mvStreams
+    // Remove cells that are no longer in mvFlux
     existingCells.forEach(function(cell) {
         var cellId = cell.getAttribute('data-internal-id');
-        if (!mvStreams.find(function(s) { return s._internalId === cellId; })) {
+        if (!mvFlux.find(function(s) { return s._internalId === cellId; })) {
             cell.remove();
         }
     });
 }
 
-function addToMultiview(url, name, mid) {
+function addToMultivision(url, name, mid) {
     mid = getOriginalMatchId(mid);
-    if(mvStreams.length >= 4) {
-        showToast('Maximum 4 streams en Multiview.');
+    if(mvFlux.length >= 4) {
+        showToast('Maximum 4 streams en Multivision.');
         return;
     }
-    mvStreams.push({url: url, name: name, mid: mid, cropped: false}); saveMultiviewState(); updateMultiviewLayout();
+    mvFlux.push({url: url, name: name, mid: mid, cropped: false}); saveMultivisionState(); updateMultivisionLayout();
 
-    // Auto-open multiview if it's the first stream added
+    // Auto-open multiview if it's the first flux added
     var mvc = document.getElementById('mv-container');
     if(mvc && mvc.style.display === 'none') {
         toggleMultiview();
     }
-    showToast('Ajouté au Multiview: ' + name);
+    showToast('Ajouté au Multivision: ' + name);
 }
 
-function removeFromMultiview(idx) {
-    mvStreams.splice(idx, 1); saveMultiviewState(); updateMultiviewLayout();
-    if(mvStreams.length === 0) {
-        toggleMultiview();
-    }
+function removeFromMultivision(idx) {
+    mvFlux.splice(idx, 1); saveMultivisionState(); updateMultivisionLayout();
+    // Do not auto-close multiview when empty, keep the empty state visible
 }
 
-function clearMultiview() {
-    mvStreams = []; saveMultiviewState(); updateMultiviewLayout();
-    toggleMultiview();
+function clearMultivision() {
+    mvFlux = []; saveMultivisionState(); updateMultivisionLayout();
+    // Do not auto-close multiview when clearing all
 }
 
-function hideMultiview() {
+function hideMultivision() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
     if(!mvc || !epg) return;
@@ -3278,13 +3337,13 @@ function toggleMultiview() {
     if(!mvc || !epg) return;
 
     if(mvc.style.display === 'none') {
-        // Open Multiview full screen
+        // Open Multivision full screen
         mvc.classList.remove('mv-pip');
         mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
-        updateMultiviewLayout();
+        updateMultivisionLayout();
     } else if (!mvc.classList.contains('mv-pip')) {
         // Full screen -> Switch to PiP
         toggleMultiviewPip();
@@ -3298,6 +3357,31 @@ function toggleFullscreen(elem) {
   elem = elem || document.documentElement;
   if (!document.fullscreenElement && !document.mozFullScreenElement &&
     !document.webkitFullscreenElement && !document.msFullscreenElement) {
+
+    // Si c'est la grille Multiview qui passe en plein écran, on cache la barre d'outils
+    if (elem.id === 'mv-grid') {
+        elem.classList.add('mv-fullscreen');
+        var closeFsBtn = document.getElementById('mv-close-fs');
+        if(!closeFsBtn) {
+            closeFsBtn = document.createElement('button');
+            closeFsBtn.id = 'mv-close-fs';
+            closeFsBtn.innerHTML = '✕ Quitter plein écran';
+            closeFsBtn.style.cssText = 'position:fixed; top:10px; right:10px; z-index:99999; background:rgba(0,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:8px 16px; cursor:pointer; font-weight:bold; backdrop-filter:blur(5px); box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.3s;';
+            closeFsBtn.onclick = function() { toggleFullscreen(); };
+            elem.appendChild(closeFsBtn);
+
+            // Auto hide
+            var fsTimer;
+            elem.addEventListener('mousemove', function() {
+                if (document.fullscreenElement) {
+                    closeFsBtn.style.opacity = '1';
+                    clearTimeout(fsTimer);
+                    fsTimer = setTimeout(function(){ closeFsBtn.style.opacity = '0'; }, 3000);
+                }
+            });
+        }
+    }
+
     if (elem.requestFullscreen) {
       elem.requestFullscreen();
     } else if (elem.msRequestFullscreen) {
@@ -3308,6 +3392,14 @@ function toggleFullscreen(elem) {
       elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
     }
   } else {
+    // Restaurer le state si on quitte le plein écran de la grille
+    var grid = document.getElementById('mv-grid');
+    if (grid && grid.classList.contains('mv-fullscreen')) {
+        grid.classList.remove('mv-fullscreen');
+        var closeFsBtn = document.getElementById('mv-close-fs');
+        if(closeFsBtn) closeFsBtn.remove();
+    }
+
     if (document.exitFullscreen) {
       document.exitFullscreen();
     } else if (document.msExitFullscreen) {
@@ -3320,9 +3412,21 @@ function toggleFullscreen(elem) {
   }
 }
 
+// Ensure the button disappears if we exit fullscreen via ESC key
+document.addEventListener("fullscreenchange", function() {
+    if (!document.fullscreenElement) {
+        var grid = document.getElementById('mv-grid');
+        if (grid && grid.classList.contains('mv-fullscreen')) {
+            grid.classList.remove('mv-fullscreen');
+            var closeFsBtn = document.getElementById('mv-close-fs');
+            if(closeFsBtn) closeFsBtn.remove();
+        }
+    }
+});
+
 /* ══ PLAYER (THIRD PAGE EMBED) ═════════ */
 // We pass the match id (mid) so we can fetch alternative streams and suggestions
-function openStream(e, eu, en, mid){
+function openFlux(e, eu, en, mid){
   mid = getOriginalMatchId(mid);
   if(e) e.preventDefault();
   var url=decodeURIComponent(eu), name=decodeURIComponent(en);
@@ -3342,7 +3446,7 @@ function openStream(e, eu, en, mid){
       +'<div id="player-header" style="position:absolute; top:0; left:0; right:0; padding:15px 25px; background:linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index:20; display:flex; justify-content:space-between; align-items:flex-start; transition:opacity 0.3s;">'
         +'<div style="display:flex; flex-direction:column; gap:5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); pointer-events:none;">'
           +'<h2 id="p-match-name" style="margin:0; font-size:24px; font-weight:bold; color:#fff;">'+esc(name)+'</h2>'
-          +'<div id="p-stream-name" style="font-size:14px; color:#ddd;"></div>'
+          +'<div id="p-flux-name" style="font-size:14px; color:#ddd;"></div>'
         +'</div>'
         +'<div style="display:flex; gap:10px;">'
           +'<button class="btn" id="p-pip-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; backdrop-filter:blur(5px); display:flex; align-items:center; gap:5px;" onclick="minimizePlayer()">'
@@ -3449,10 +3553,10 @@ function openStream(e, eu, en, mid){
   var matchNameEl = document.getElementById('p-match-name');
   if(currentMatch) {
       matchNameEl.innerHTML = esc(currentMatch.homeTeam) + ' <span style="opacity:0.5;">vs</span> ' + esc(currentMatch.awayTeam);
-      document.getElementById('p-stream-name').textContent = 'Source: ' + name;
+      document.getElementById('p-flux-name').textContent = 'Source: ' + name;
   } else {
       matchNameEl.textContent = name;
-      document.getElementById('p-stream-name').textContent = 'Stream Externe';
+      document.getElementById('p-flux-name').textContent = 'Flux Externe';
   }
 
   // Reset and load iframe
@@ -3480,7 +3584,7 @@ function openStream(e, eu, en, mid){
   // Try native fullscreen on the container
   var container = document.getElementById('player-container');
   if(container.requestFullscreen) {
-      container.requestFullscreen().catch(function(e) { console.warn("Fullscreen error", e); });
+      container.requestFullscreen().catch(function(e) { console.warn("Plein écran error", e); });
   }
 
   showToast('Lancement : '+name);
@@ -3510,10 +3614,10 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
     altList.innerHTML = '';
     sugList.innerHTML = '';
 
-    // 1. Alternative Streams
+    // 1. Alternative Flux
     if(currentMatch && currentMatch.streamLinks && currentMatch.streamLinks.length > 1) {
         altContainer.style.display = 'block';
-        var sortedLinks = sortStreamLinks(currentMatch.streamLinks);
+        var sortedLinks = sortFluxLinks(currentMatch.streamLinks);
         sortedLinks.forEach(function(s, i) {
             var isActive = (s.url === currentUrl);
             var qualityClass = QC[s.quality] || 'bSD';
@@ -3526,7 +3630,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
             var div = document.createElement('div');
             div.style.cssText = 'padding:0; border-radius:8px; background:'+(isActive?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.05)')+'; display:flex; align-items:stretch; overflow:hidden; border:1px solid '+(isActive?'rgba(255,255,255,0.3)':'transparent')+'; transition:background 0.2s;';
 
-            var mainClickAttr = isActive ? '' : 'onclick="openStream(null, \''+escJs(encodeURIComponent(s.url))+'\', \''+escJs(encodeURIComponent(s.name))+'\', \''+escJs(currentMatch.id)+'\')"';
+            var mainClickAttr = isActive ? '' : 'onclick="openFlux(null, \''+escJs(encodeURIComponent(s.url))+'\', \''+escJs(encodeURIComponent(s.name))+'\', \''+escJs(currentMatch.id)+'\')"';
             var cursorStyle = isActive ? 'default' : 'pointer';
 
             var hoverLogic = isActive ? '' : 'onmouseenter="this.parentElement.style.background=\'rgba(255,255,255,0.1)\'" onmouseleave="this.parentElement.style.background=\'rgba(255,255,255,0.05)\'"';
@@ -3534,7 +3638,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
             div.innerHTML = '<div '+mainClickAttr+' '+hoverLogic+' style="flex:1;display:flex;align-items:center;gap:10px;padding:10px;cursor:'+cursorStyle+';">'
                 +'<div style="font-size:16px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
                 +'<div style="flex:1; overflow:hidden;">'
-                  +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(s.name||'Stream '+(i+1))+'</div>'
+                  +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(s.name||'Flux '+(i+1))+'</div>'
                   +'<div style="font-size:11px; color:var(--muted);">'+(s.lang||'?')+'</div>'
                 +'</div>'
                 +(isActive ? '<div style="font-size:10px; background:var(--accent); color:#000; padding:2px 6px; border-radius:4px; font-weight:bold; margin-right:5px;">ACTIF</div>' : '')
@@ -3551,7 +3655,7 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
         altContainer.style.display = 'none';
     }
 
-    // 2. Suggestions (Other LIVE matches)
+    // 2. Suggestions (Other EN DIRECT matches)
     var liveMatches = S.matches.filter(function(m) { return m.status === 'live' && (!currentMatch || m.id !== currentMatch.id); });
 
     if(liveMatches.length === 0) {
@@ -3570,25 +3674,25 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
             }
 
             var info = '<div style="flex:1; overflow:hidden; cursor:pointer;" onclick="openModAndLoad(\''+escJs(m.id)+'\')">'
-                +'<div style="font-size:11px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(m.minute?esc(m.minute)+"'":'LIVE')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>'
+                +'<div style="font-size:11px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(m.minute?esc(m.minute)+"'":'EN DIRECT')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>'
                 +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.homeTeam)+'</div>'
                 +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.awayTeam)+'</div>'
             +'</div>';
 
             var score = m.score ? '<div style="font-size:14px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;"><span>'+m.score[0]+'</span><span>'+m.score[1]+'</span></div>' : '';
 
-            // Add to Multiview button (if streams are loaded, otherwise just open modal)
+            // Add to Multivision button (if streams are loaded, otherwise just open modal)
             var addMv = document.createElement('button');
             addMv.innerHTML = '⊞';
-            addMv.title = 'Ajouter au Multiview';
-            addMv.setAttribute('aria-label', 'Ajouter au Multiview');
+            addMv.title = 'Ajouter au Multivision';
+            addMv.setAttribute('aria-label', 'Ajouter au Multivision');
             addMv.style.cssText = 'background:rgba(255,255,255,0.1); border:none; color:#fff; width:30px; height:30px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:background 0.2s;';
             addMv.onmouseenter = function(){ this.style.background = 'rgba(255,255,255,0.2)'; };
             addMv.onmouseleave = function(){ this.style.background = 'rgba(255,255,255,0.1)'; };
             addMv.onclick = function(ev) {
                 ev.stopPropagation();
                 if(m.streamsLoaded && m.streamLinks && m.streamLinks.length > 0) {
-                    addToMultiview(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+                    addToMultivision(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
                 } else {
                     // Not loaded yet, open modal to load
                     showToast('Chargement des streams...');
@@ -3773,13 +3877,13 @@ function openDbg(){
 
   if(S.matches.length>0){
     var errMatches = S.matches.filter(function(m) { return m.streamsLoaded && (!m.streamLinks || m.streamLinks.length===0 || m.streamLinks.length===1); });
-    h+='<div class="dbg-sect"><div class="dbg-sect-title">Statut Streams Match par Match</div><div class="dbg-code" style="max-height:400px;">';
+    h+='<div class="dbg-sect"><div class="dbg-sect-title">Statut Flux Match par Match</div><div class="dbg-code" style="max-height:400px;">';
     S.matches.forEach(function(m){
         var st = m.streamsLoaded ? (m.streamLinks.length + ' streams trouvés') : 'En attente...';
-        if(m.streamsLoaded && m.streamLinks.length===0) st = '<span style="color:var(--red)">0 stream trouvé</span>';
+        if(m.streamsLoaded && m.streamLinks.length===0) st = '<span style="color:var(--red)">0 flux trouvé</span>';
         h += '['+m.league+'] '+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+'\n';
         h += 'URL: '+esc(m.matchUrl)+'\n';
-        h += 'Streams: '+st+'\n\n';
+        h += 'Flux: '+st+'\n\n';
     });
     h+='</div></div>';
   }
@@ -3801,15 +3905,64 @@ function openDbg(){
 function closeDbg(){document.getElementById('dbg').classList.remove('open');}
 
 
-/* ══ SETTINGS ═══════════════════════════ */
+/* ══ SETTINGS & PERSONALIZATION ═════════ */
+var userPrefs = {
+  bg: 'gradient',
+  cardColor: 'gradient',
+  btnShape: 'rounded'
+};
+
+try {
+  var storedPrefs = localStorage.getItem('user_prefs');
+  if(storedPrefs) userPrefs = Object.assign(userPrefs, JSON.parse(storedPrefs));
+} catch(e) {}
+
+function initPrefs() {
+  document.documentElement.style.setProperty('--radius-btn', userPrefs.btnShape === 'rounded' ? '12px' : '4px');
+  document.documentElement.style.setProperty('--radius-pill', userPrefs.btnShape === 'rounded' ? '20px' : '6px');
+  document.documentElement.style.setProperty('--radius-card', userPrefs.btnShape === 'rounded' ? '16px' : '8px');
+
+  if (userPrefs.bg === 'solid') {
+    document.documentElement.style.setProperty('--bg-gradient', 'none');
+  } else {
+    document.documentElement.style.setProperty('--bg-gradient', 'radial-gradient(circle at top right, #1a1a2e, #000000)');
+  }
+
+  var bgSel = document.getElementById('pref-bg');
+  var cardSel = document.getElementById('pref-card-color');
+  var btnSel = document.getElementById('pref-btn-shape');
+
+  if(bgSel) bgSel.value = userPrefs.bg;
+  if(cardSel) cardSel.value = userPrefs.cardColor;
+  if(btnSel) btnSel.value = userPrefs.btnShape;
+}
+
+function applyUserPrefs() {
+  var bgSel = document.getElementById('pref-bg');
+  var cardSel = document.getElementById('pref-card-color');
+  var btnSel = document.getElementById('pref-btn-shape');
+
+  if(bgSel) userPrefs.bg = bgSel.value;
+  if(cardSel) userPrefs.cardColor = cardSel.value;
+  if(btnSel) userPrefs.btnShape = btnSel.value;
+
+  localStorage.setItem('user_prefs', JSON.stringify(userPrefs));
+  initPrefs();
+  buildEPG(S.matches); // Rebuild to apply card colors
+  showToast('Préférences sauvegardées');
+}
+
 function openSettings() {
   document.getElementById('apiKeyInput').value = localStorage.getItem('apiSportsKey') || '';
+  initPrefs();
   document.getElementById('setbg').classList.add('open');
 }
+
 function closeSettings() {
   document.getElementById('setbg').classList.remove('open');
 }
-function saveSettings() {
+
+function saveApiKey() {
   var key = document.getElementById('apiKeyInput').value.trim();
   if (key) {
     localStorage.setItem('apiSportsKey', key);
@@ -3818,9 +3971,10 @@ function saveSettings() {
     localStorage.removeItem('apiSportsKey');
     showToast('Clé API supprimée');
   }
-  closeSettings();
-  loadAll(); // Reload everything to apply changes
+  loadAll(); // Reload to fetch api-sports
 }
+
+initPrefs(); // Run once on load
 
 
 function installTampermonkey() {
@@ -3846,7 +4000,7 @@ function installTampermonkey() {
     contentDiv.style.cssText = 'font-size:14px;line-height:1.5;color:#ddd;display:flex;flex-direction:column;gap:12px;';
 
     contentDiv.innerHTML = `
-        <p>Pour profiter pleinement du Multiview sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
+        <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
 
         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
             <strong style="color:var(--accent);">Recommandation : Firefox + uBlock Origin</strong>
@@ -3856,7 +4010,7 @@ function installTampermonkey() {
         <ol style="padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px;">
             <li>Installez l'extension <strong>Tampermonkey</strong> sur votre navigateur (<a href="https://www.tampermonkey.net/" target="_blank" style="color:var(--accent);">Lien</a>).</li>
             <li>Installez l'extension <strong>uBlock Origin</strong> (<a href="https://ublockorigin.com/" target="_blank" style="color:var(--accent);">Lien</a>).</li>
-            <li>Cliquez sur le bouton ci-dessous pour installer le script de nettoyage Multiview.</li>
+            <li>Cliquez sur le bouton ci-dessous pour installer le script de nettoyage Multivision.</li>
         </ol>
     `;
     modal.appendChild(contentDiv);
@@ -3864,7 +4018,7 @@ function installTampermonkey() {
     var btn = document.createElement('button');
     btn.className = 'btn g';
     btn.style.cssText = 'padding:12px;font-size:16px;font-weight:bold;justify-content:center;margin-top:8px;';
-    btn.innerHTML = 'Installer le Script Multiview';
+    btn.innerHTML = 'Installer le Script Multivision';
     btn.onclick = function() {
         window.open('./multiview-cleaner.user.js', '_blank');
     };
@@ -4043,7 +4197,7 @@ function getApiFirstMatches(targetDate) {
   });
 }
 
-function mergeStreamsToApi(apiMatches, scrapedMatches) {
+function mergeFluxToApi(apiMatches, scrapedMatches) {
   var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
 
   scrapedMatches.forEach(function(sm) {
@@ -4074,10 +4228,10 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
       if(!matched) {
          if (sm.status === 'finished') return; // Skip finished matches that have no API counterpart
 
-         // Streams that do not match an API match are kept but categorized distinctly
+         // Flux that do not match an API match are kept but categorized distinctly
          // so they appear separated from the official API timeline, usually at the bottom.
          sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
-         sm.league = 'Autres Streams';
+         sm.league = 'Autres Flux';
          sm.flag = '📡';
          sm.color = '#555555';
 
@@ -4093,7 +4247,7 @@ function mergeStreamsToApi(apiMatches, scrapedMatches) {
 function loadAll(){
   window.initialScrollDone = false;
   S.log=[];S.raw='';S.matches=[];S.proxy='';
-  setupMultiviewUI();
+  setupMultivisionUI();
 
   var btn=document.getElementById('relBtn');btn.disabled=true;
   document.getElementById('errbox').classList.remove('show');
@@ -4104,8 +4258,8 @@ function loadAll(){
     var ic=el.querySelector('.sic');ic.classList.remove('ok');
     ic.innerHTML='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
   });
-  document.getElementById('ovmsg').textContent='Connexion au Guide TV (API)...';
-  document.getElementById('s1').querySelector('span').textContent = 'Téléchargement Guide TV Officiel';
+  document.getElementById('ovmsg').textContent='Connexion au Guide télé (API)...';
+  document.getElementById('s1').querySelector('span').textContent = 'Téléchargement Guide télé Officiel';
   document.getElementById('s2').querySelector('span').textContent = 'Recherche de streams...';
   document.getElementById('s3').querySelector('span').textContent = 'Fusion et Affichage';
 
@@ -4142,8 +4296,8 @@ function loadAll(){
               scrapedMatches = mergeMatches(scrapedMatches, ohMatches);
           }
 
-          var finalMatches = mergeStreamsToApi(apiMatches, scrapedMatches);
-          S.collapsedLg['Autres Streams'] = true;
+          var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches);
+          S.collapsedLg['Autres Flux'] = true;
 
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           finalMatches = finalMatches.filter(function(m) {
@@ -4236,7 +4390,6 @@ function showLayoutSelector(event) {
         { id: 'focus', name: 'Mode Focus', icon: '⭐' },
         { id: 'vertical', name: 'Empilé (Vertical)', icon: '⊟' },
         { id: 'horizontal', name: 'Côte à côte', icon: '◫' },
-        { id: 'custom', name: 'Libre (Redimensionnable)', icon: '📐' }
     ];
 
     layouts.forEach(function(l) {
@@ -4250,7 +4403,7 @@ function showLayoutSelector(event) {
         btn.onclick = function(e) {
             e.stopPropagation();
             mvLayout = l.id;
-            updateMultiviewLayout();
+            updateMultivisionLayout();
             selector.remove();
         };
 
