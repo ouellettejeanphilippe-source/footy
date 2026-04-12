@@ -222,8 +222,14 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   .secondary-actions.open { display: flex !important; gap: 8px; }
 }
 @media(max-width: 768px) {
-  .nav-links { display: none !important; position: absolute; top: 70px; left: 24px; background: rgba(28,28,30,0.95); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; }
-  .nav-links.open { display: flex !important; gap: 8px; }
+
+  .nav-links { display: flex; align-items: center; gap: 16px; }
+
+  .secondary-actions { display: none !important; position: absolute; top: 60px; right: 16px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: flex-start; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 1000; gap: 8px; }
+  .secondary-actions.open { display: flex !important; }
+  .secondary-actions.open .btn { width: 100%; justify-content: flex-start; display: flex; text-align: left; }
+
+
   #main-hdr { overflow: visible !important; } /* Need visible for dropdowns */
 }
 
@@ -259,26 +265,27 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 <div class="hdr" id="main-hdr">
   <button class="btn" onclick="toggleMenu()" id="menu-btn" style="display:none; padding:8px 12px; font-size:18px;">☰</button>
-  <span id="hdate" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)"></span>
-  <input type="date" id="date-picker" onchange="changeDate(this.value)" aria-label="Sélectionner une date" style="background:rgba(255,255,255,0.1);color:var(--text);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:6px 12px;font-size:14px;outline:none;backdrop-filter:blur(10px);cursor:pointer;" />
 
-  <input type="text" id="search-input" onkeyup="applySearch(this.value)" placeholder="Rechercher..." aria-label="Rechercher" style="background:rgba(255,255,255,0.1);color:var(--text);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:8px 16px;font-size:14px;outline:none;width:180px;backdrop-filter:blur(10px);transition:all 0.2s;" onfocus="this.style.background='rgba(255,255,255,0.15)';this.style.borderColor='var(--accent)';" onblur="this.style.background='rgba(255,255,255,0.1)';this.style.borderColor='rgba(255,255,255,0.2)';" />
+
+
+
 
   <div class="nav-links" id="nav-links" style="display:flex; align-items:center; gap:16px;">
       <button class="btn" id="filter-all" onclick="applyFilter('all')">GUIDE</button>
       <button class="btn" id="filter-live" onclick="applyFilter('live')" style="border-color:var(--accent);color:var(--accent)"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>LIVE</button>
-      <button class="btn" id="filter-upcoming" onclick="applyFilter('upcoming')">À VENIR</button>
+
       <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVIEW <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
   </div>
 
   <div class="sp"></div>
 
   <div class="secondary-actions" id="secondary-actions" style="display:flex; align-items:center; gap:8px;">
-      <button class="btn o" onclick="toggleAppTheaterMode()" aria-label="Plein Onglet" title="Plein Onglet">⛶ Tab</button>
+      <button class="btn o" onclick="toggleAppTheaterMode\(\)" aria-label="Plein Onglet" title="Plein Onglet">⛶ Tab</button>
+      <button class="btn o" onclick="toggleFullscreen\(\)" aria-label="Plein Écran" title="Plein Écran">⛶ Fullscreen</button>
       <button class="btn o" onclick="installTampermonkey()" aria-label="Installer le script Tampermonkey" title="Installer le script Multiview Cleaner">🧩 Script</button>
       <button class="btn o" onclick="openDbg()" aria-label="Ouvrir le panneau de débogage">🔬 Debug</button>
-      <button class="btn g" id="relBtn" onclick="loadAll()" aria-label="Actualiser" title="Actualiser">↺</button>
-      <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres" style="width:38px; height:38px; padding:0; display:grid; place-items:center; border-radius:12px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+      <button class="btn g" id="relBtn" onclick="loadAll()" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
+      <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres">⚙️ Paramètres</button>
   </div>
 </div>
 
@@ -391,6 +398,7 @@ var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', 
 var SITE = 'https://footybite.to/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
+var ONHOCKEY_URL = 'https://onhockey.tv/';
 var PROXIES = [
   function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); },
   function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); },
@@ -432,11 +440,15 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function getLeagueDuration(league) {
   if(!league) return 105;
   var l = league.toLowerCase();
+
   if(l.indexOf('mlb') >= 0 || l.indexOf('baseball') >= 0) return 180;
   if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0) return 180;
   if(l.indexOf('nba') >= 0 || l.indexOf('basketball') >= 0) return 150;
   if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0) return 150;
   if(l.indexOf('f1') >= 0 || l.indexOf('formula 1') >= 0) return 120;
+  if(l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0) return 120;
+  if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0) return 180;
+
   return 105; // Default for soccer and others
 }
 function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -644,6 +656,87 @@ function parseStreameast(html){
   lg('Streameast extraits', matches.length);
   return matches;
 }
+
+
+/* ══ PARSE ONHOCKEY ═══════════════════ */
+function parseOnHockey(html) {
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  var matches = [];
+
+  // onhockey.tv uses <ul class="sportlist"> and <li> for matches
+  // However, simpler is just finding match links. Usually it has a format.
+  // Actually, we'll look for specific matches with PWHL or LHJMQ.
+  // They use specific classes or structures. We will simply look for <li> tags with an <a> inside it, and checking the text or <span> inside.
+
+  // They list all matches in a div with id="match-list" or ul with sportlist
+  // Typical structure: <a href="link"> <span class="league">...</span> TEAM A vs TEAM B</a>
+  var links = doc.querySelectorAll('a[href]');
+  for(var i=0; i<links.length; i++) {
+     var link = links[i];
+     var href = link.getAttribute('href');
+     if(!href || href.indexOf('index.php?place=') < 0 && href.indexOf('onhockey.tv') < 0) continue;
+
+     var textContent = link.textContent || '';
+     var upText = textContent.toUpperCase();
+
+     if (upText.indexOf('PWHL') >= 0 || upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) {
+         // Found a relevant match!
+         // We need to extract teams.
+         // Text is often "League - Team A vs Team B" or just "Team A vs Team B"
+         // Let's use a very generic approach
+         var parts = textContent.split('-');
+         var matchText = textContent;
+         var leagueName = 'Hockey';
+
+         if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
+         if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
+
+         if(parts.length > 1) {
+            matchText = parts[parts.length - 1].trim(); // Get the last part usually
+         }
+
+         var teams = matchText.split(/ vs | v | - /i);
+         var home = 'Team 1';
+         var away = 'Team 2';
+
+         if(teams.length >= 2) {
+             home = teams[0].trim();
+             away = teams[1].trim();
+         } else {
+             home = matchText.trim();
+             away = 'TBA';
+         }
+
+         // In OnHockey, the streams are often right there or we need to scrape the specific page.
+         // Let's store it like streameast/buffstreams
+         var streamUrl = href;
+         if(streamUrl.indexOf('http') !== 0) {
+             streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+         }
+
+         matches.push({
+              id: 'onhockey_' + Date.now() + '_' + i,
+              league: leagueName,
+              homeTeam: home,
+              awayTeam: away,
+              startTime: '00:00', // We don't have time easily without deeper parsing, fallback
+              durationMinutes: getLeagueDuration('hockey'),
+              status: 'upcoming',
+              streamLinks: [{ name: 'OnHockey Stream', url: streamUrl, quality: 'HD', lang: 'MULTI' }],
+              streamsLoaded: true, // It points to the match page which we can load in iframe, or maybe we need to scrape?
+              // OnHockey requires scraping the match page to get the actual m3u8 or iframe. Let's rely on Tampermonkey for now,
+              // or just load the onhockey page in iframe, but it has many ads.
+              // Actually for buffstreams we use the matchUrl and then it gets iframe. We'll set streamsLoaded=true and use url.
+              matchUrl: ONHOCKEY_URL,
+              source: 'onhockey'
+          });
+     }
+  }
+
+  lg('OnHockey extraits', matches.length);
+  return matches;
+}
+
 
 /* ══ PARSE BUFFSTREAMS ════════════════ */
 function parseBuffstreams(html){
@@ -2387,14 +2480,22 @@ function showStreamSelector(idx, mid, event) {
     var matchesContainer = document.createElement('div');
     matchesContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
+
     var availableMatches = S.matches.filter(function(x) {
-        return x.status === 'live' && String(x.id) !== String(mid);
+        return x.streamsLoaded && x.streamLinks && x.streamLinks.length > 0 && String(x.id) !== String(mid);
     });
+
+    availableMatches.sort(function(a, b) {
+        if (a.status === 'live' && b.status !== 'live') return -1;
+        if (a.status !== 'live' && b.status === 'live') return 1;
+        return a.startTime.localeCompare(b.startTime);
+    });
+
 
     if (availableMatches.length === 0) {
         var empty = document.createElement('div');
         empty.style.cssText = 'padding:10px;text-align:center;color:var(--muted);font-size:12px;background:rgba(255,255,255,0.02);border-radius:8px;';
-        empty.innerHTML = 'Aucun autre match en direct.';
+        empty.innerHTML = 'Aucun autre match avec stream disponible.';
         matchesContainer.appendChild(empty);
     } else {
         availableMatches.forEach(function(sm) {
@@ -2583,10 +2684,11 @@ function showMatchSelector(event) {
             var alreadyIn = mvStreams.some(function(s) { return String(s.mid) === String(m.id); });
             if (alreadyIn) return; // Skip
 
+
             var btn = document.createElement('div');
-            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;cursor:pointer;transition:background 0.2s;';
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.05);';
             btn.onmouseenter = function() { this.style.background = 'rgba(255,255,255,0.1)'; };
-            btn.onmouseleave = function() { this.style.background = 'transparent'; };
+            btn.onmouseleave = function() { this.style.background = 'rgba(255,255,255,0.05)'; };
 
             btn.onclick = function(e) {
                 e.stopPropagation();
@@ -2595,21 +2697,24 @@ function showMatchSelector(event) {
                 selector.remove();
             };
 
-            var timeInfo = m.status === 'live' ?
-                '<span style="color:var(--red);font-weight:bold;font-size:10px;">🔴 ' + (m.minute?esc(m.minute)+"'":'LIVE') + '</span>' :
-                '<span style="color:var(--muted);font-size:10px;">' + esc(m.startTime) + '</span>';
+            var thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:16px;">' + lgFlag(m.league) + '</div>';
+            if(m.homeLogo) {
+                thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:2px;flex-shrink:0;">'
+                  +'<img src="'+esc(m.homeLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'">'
+                +'</div>';
+            }
 
-            btn.innerHTML = '<div style="font-size:18px;">' + lgFlag(m.league) + '</div>' +
-                            '<div style="flex:1;overflow:hidden;">' +
-                            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">' +
-                                '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">' + esc(m.league) + '</div>' +
-                                timeInfo +
-                            '</div>' +
-                            '<div style="font-size:13px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(m.homeTeam) + '</div>' +
-                            '<div style="font-size:13px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(m.awayTeam) + '</div>' +
-                            '</div>';
+            var score = m.score ? '<div style="font-size:13px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;flex-shrink:0;"><span>'+m.score[0]+'</span><span>'+m.score[1]+'</span></div>' : '';
+
+            btn.innerHTML = thumb +
+                '<div style="flex:1; overflow:hidden;">' +
+                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">' + (m.status === 'live' ? '🔴 '+(m.minute?esc(m.minute)+"'":'LIVE') : esc(m.startTime)) + ' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>' +
+                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.homeTeam)+'</div>' +
+                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.awayTeam)+'</div>' +
+                '</div>' + score;
 
             selector.appendChild(btn);
+
         });
     }
 
@@ -2749,25 +2854,31 @@ function setupMultiviewUI() {
         mvContainer.style.cursor = 'default';
 
         // Show all cell headers
-        var hdrs = mvContainer.querySelectorAll('.mv-cell-hdr');
+        var hdrs = mvContainer.querySelectorAll('.mv-hdr');
         hdrs.forEach(function(h) { h.style.opacity = '1'; h.style.pointerEvents = 'auto'; });
+
 
         clearTimeout(mvHideTimeout);
         mvHideTimeout = setTimeout(function() {
+            if (window.innerWidth <= 768) return; // Don't hide on mobile
             // Only hide if we are not hovering over the toolbar itself or a header
             if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
             mvContainer.style.cursor = 'none';
-            var hdrs = mvContainer.querySelectorAll('.mv-cell-hdr');
+            var hdrs = mvContainer.querySelectorAll('.mv-hdr');
             hdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
         }, 3000);
+
     });
 
+
     mvContainer.addEventListener('mouseleave', function() {
+        if (window.innerWidth <= 768) return; // Don't hide on mobile
         var tb = document.getElementById('mv-toolbar');
         if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
-        var hdrs = mvContainer.querySelectorAll('.mv-cell-hdr');
+        var hdrs = mvContainer.querySelectorAll('.mv-hdr');
         hdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
     });
+
 }
 
 function toggleTheaterMode() {
@@ -3071,7 +3182,7 @@ function updateMultiviewLayout() {
             controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="setFocusStream(' + idx + ');event.stopPropagation();">⭐ Mettre en avant</button>';
         }
         if (s.mid) {
-            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄 Remplacer match</button>';
+            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="showStreamSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄 Changer stream/match</button>';
         }
         controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; event.stopPropagation();">↻ Recharger</button>';
         controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="toggleCrop(' + idx + ', event);event.stopPropagation();">🔍 ' + (s.cropped ? 'Annuler recadrage' : 'Recadrer') + '</button>';
@@ -3711,9 +3822,67 @@ function saveSettings() {
   loadAll(); // Reload everything to apply changes
 }
 
+
 function installTampermonkey() {
-    window.open('./multiview-cleaner.user.js', '_blank');
+    var existing = document.getElementById('tm-modal');
+    if (existing) existing.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'tm-modal';
+    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:500px;-webkit-overflow-scrolling:touch;color:#fff;';
+
+    var closeBtn = document.createElement('div');
+    closeBtn.innerHTML = '✕';
+    closeBtn.style.cssText = 'position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);border-radius:50%;cursor:pointer;color:#fff;font-size:14px;';
+    closeBtn.onclick = function() { modal.remove(); };
+    modal.appendChild(closeBtn);
+
+    var title = document.createElement('h2');
+    title.style.cssText = 'margin:0;font-size:18px;font-weight:bold;display:flex;align-items:center;gap:8px;';
+    title.innerHTML = '🧩 Installation des Scripts';
+    modal.appendChild(title);
+
+    var contentDiv = document.createElement('div');
+    contentDiv.style.cssText = 'font-size:14px;line-height:1.5;color:#ddd;display:flex;flex-direction:column;gap:12px;';
+
+    contentDiv.innerHTML = `
+        <p>Pour profiter pleinement du Multiview sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <strong style="color:var(--accent);">Recommandation : Firefox + uBlock Origin</strong>
+            <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser Firefox. Bien que le script fonctionne sur Chrome, le bloqueur de publicités uBlock Origin y est beaucoup moins efficace en raison des récentes restrictions de Manifest V3 par Google.</p>
+        </div>
+
+        <ol style="padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px;">
+            <li>Installez l'extension <strong>Tampermonkey</strong> sur votre navigateur (<a href="https://www.tampermonkey.net/" target="_blank" style="color:var(--accent);">Lien</a>).</li>
+            <li>Installez l'extension <strong>uBlock Origin</strong> (<a href="https://ublockorigin.com/" target="_blank" style="color:var(--accent);">Lien</a>).</li>
+            <li>Cliquez sur le bouton ci-dessous pour installer le script de nettoyage Multiview.</li>
+        </ol>
+    `;
+    modal.appendChild(contentDiv);
+
+    var btn = document.createElement('button');
+    btn.className = 'btn g';
+    btn.style.cssText = 'padding:12px;font-size:16px;font-weight:bold;justify-content:center;margin-top:8px;';
+    btn.innerHTML = 'Installer le Script Multiview';
+    btn.onclick = function() {
+        window.open('./multiview-cleaner.user.js', '_blank');
+    };
+    modal.appendChild(btn);
+
+    document.body.appendChild(modal);
+
+    setTimeout(function() {
+        var closeListener = function(e) {
+            if (!modal.contains(e.target)) {
+                modal.remove();
+                document.removeEventListener('click', closeListener);
+            }
+        };
+        document.addEventListener('click', closeListener);
+    }, 10);
 }
+
 
 /* ══ TOAST ══════════════════════════════ */
 function showToast(msg){var t=document.getElementById('toast');document.getElementById('toasttxt').textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
@@ -3948,7 +4117,8 @@ function loadAll(){
       return Promise.allSettled([
           fetchPage(SITE),
           fetchPage(BUFFSTREAMS_URL),
-          fetchPage(STREAMEAST_URL)
+          fetchPage(STREAMEAST_URL),
+          fetchPage(ONHOCKEY_URL)
       ]).then(function(results) {
           stepOk(2);
           document.getElementById('ovmsg').textContent='Fusion des données...';
@@ -3966,6 +4136,10 @@ function loadAll(){
           if(results[2].status === 'fulfilled' && results[2].value) {
               var seMatches = parseStreameast(results[2].value);
               scrapedMatches = mergeMatches(scrapedMatches, seMatches);
+          }
+          if(results[3] && results[3].status === 'fulfilled' && results[3].value) {
+              var ohMatches = parseOnHockey(results[3].value);
+              scrapedMatches = mergeMatches(scrapedMatches, ohMatches);
           }
 
           var finalMatches = mergeStreamsToApi(apiMatches, scrapedMatches);
@@ -4031,7 +4205,7 @@ if ('serviceWorker' in navigator) {
 
 (function(){
   var n=new Date();
-  document.getElementById('hdate').textContent=n.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
+
   loadAll();
 })();
 
@@ -4100,58 +4274,18 @@ function showLayoutSelector(event) {
 
 
 
+
 function toggleMenu() {
-    var nav = document.getElementById('nav-links');
     var sec = document.getElementById('secondary-actions');
-    var hdr = document.getElementById('main-hdr');
-
-    if(window.innerWidth <= 768) {
-        if(!nav.contains(sec)) {
-            // Add separator
-            var sep = document.createElement('div');
-            sep.className = 'mobile-menu-sep';
-            sep.style.cssText = 'height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0; width: 100%;';
-            nav.appendChild(sep);
-
-            // Move sec into nav
-            sec.style.position = 'static';
-            sec.style.background = 'transparent';
-            sec.style.border = 'none';
-            sec.style.boxShadow = 'none';
-            sec.style.padding = '0';
-            sec.style.width = '100%';
-
-            nav.appendChild(sec);
-        }
-        nav.classList.toggle('open');
-        sec.classList.add('open');
-    } else {
-        if(nav.contains(sec)) {
-            // Move back
-            var sep = nav.querySelector('.mobile-menu-sep');
-            if(sep) sep.remove();
-
-            sec.style.position = '';
-            sec.style.background = '';
-            sec.style.border = '';
-            sec.style.boxShadow = '';
-            sec.style.padding = '';
-            sec.style.width = '';
-
-            hdr.appendChild(sec);
-        }
-        sec.classList.toggle('open');
-        nav.classList.remove('open');
-    }
+    sec.classList.toggle('open');
 }
+
 
 // Close menus when clicking elsewhere
 document.addEventListener('click', function(e) {
-    if(!e.target.closest('#main-hdr') && !e.target.closest('.mbg')) {
-        var nav = document.getElementById('nav-links');
-        var sec = document.getElementById('secondary-actions');
-        if(nav) nav.classList.remove('open');
-        if(sec) sec.classList.remove('open');
+    var sec = document.getElementById('secondary-actions');
+    if(sec && sec.classList.contains('open') && !sec.contains(e.target) && (!document.getElementById('menu-btn') || !document.getElementById('menu-btn').contains(e.target))) {
+        sec.classList.remove('open');
     }
 });
 
