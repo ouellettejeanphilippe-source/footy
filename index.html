@@ -249,6 +249,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
     .nav-links { min-width: 200px; }
 }
 
+
+
+
 </style>
 </head>
 <body>
@@ -2639,20 +2642,47 @@ function toggleMultiviewPip() {
         epg.style.paddingRight = '0';
         updateMultiviewLayout(); // Re-apply grid
     } else {
-        // Switch to PIP column mode
+        // Switch to PIP mode
         mvc.classList.add('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:#0a0a0c;z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
-        epg.style.display = 'flex';
-        epg.style.paddingRight = '350px'; // Make room for the column
 
-        // Force layout to a simple vertical stack
-        var grid = document.getElementById('mv-grid');
-        if(grid) {
-            grid.style.gridTemplateColumns = '1fr';
-            grid.style.gridTemplateRows = 'repeat(' + mvStreams.length + ', 1fr)';
+        var isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+            // On mobile, completely hide it in the background
+            mvc.style.cssText = 'display:none;';
+            epg.style.display = 'flex';
+            epg.style.paddingRight = '0'; // No column room needed
+        } else {
+            // On tablet/desktop, show column
+            mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:#0a0a0c;z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
+            epg.style.display = 'flex';
+            epg.style.paddingRight = '350px'; // Make room for the column
+
+            // Force layout to a simple vertical stack
+            var grid = document.getElementById('mv-grid');
+            if(grid) {
+                grid.style.gridTemplateColumns = '1fr';
+                grid.style.gridTemplateRows = 'repeat(' + mvStreams.length + ', 1fr)';
+            }
         }
     }
 }
+
+// Ensure resize events also apply the correct PIP mode styling if resizing while in PIP
+window.addEventListener('resize', function() {
+    var mvc = document.getElementById('mv-container');
+    var epg = document.getElementById('epg');
+    if(mvc && mvc.classList.contains('mv-pip')) {
+        if(window.innerWidth <= 768) {
+            mvc.style.display = 'none';
+            if(epg) epg.style.paddingRight = '0';
+        } else {
+            mvc.style.display = 'flex';
+            if(epg) epg.style.paddingRight = '350px';
+        }
+    }
+});
+
 
 
 function setupMultiviewUI() {
@@ -2666,15 +2696,22 @@ function setupMultiviewUI() {
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
     mvToolbar.style.cssText = 'min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;';
-    mvToolbar.innerHTML = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multiview</span>'
+    var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multiview</span>'
       + '<div class="sp" style="flex:1;"></div>'
-      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match">➕ <span class="hide-pip">Ajouter</span></button>'
-      + '<button class="btn o hide-pip" onclick="showLayoutSelector(event)" aria-label="Disposition" title="Disposition">⊞ Layout</button>'
-      + '<button class="btn o hide-pip" onclick="toggleTheaterMode()" aria-label="Plein onglet" title="Plein onglet">Plein onglet</button>'
-      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran">⛶</button>'
-      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire">◨ <span class="hide-pip">Réduire</span></button>'
-      + '<button class="btn o" onclick="hideMultiview()" aria-label="Fermer le Multiview" title="Fermer le Multiview">✕ <span class="hide-pip">Fermer</span></button>'
-      + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);" onclick="clearMultiview()" aria-label="Tout vider" title="Tout vider">🗑️</button>';
+      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip">Ajouter</span></button>'
+      + '<div style="position:relative;" onmouseleave="this.querySelector(\'#mv-main-menu\').style.display=\'none\'" class="hide-pip">'
+      +   '<button class="btn o" onclick="var m=document.getElementById(\'mv-main-menu\'); m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();" aria-label="Menu Multiview" title="Options Multiview" style="padding: 4px 8px;">⚙️ Options</button>'
+      +   '<div id="mv-main-menu" style="display:none;position:absolute;top:100%;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:180px;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:100;flex-direction:column;gap:4px;margin-top:4px;">'
+      +     '<button class="btn o" onclick="showLayoutSelector(event); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">⊞ Disposition</button>'
+      +     '<button class="btn o" onclick="toggleTheaterMode(); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">🖥️ Plein onglet</button>'
+      +     '<button class="btn o" onclick="toggleFullscreen(document.getElementById(\'mv-grid\')); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">⛶ Plein écran</button>'
+      +   '</div>'
+      + '</div>'
+      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire" style="padding: 4px 8px;">◨ <span class="hide-pip">Réduire</span></button>'
+      + '<button class="btn o" onclick="hideMultiview()" aria-label="Fermer le Multiview" title="Fermer le Multiview" style="padding: 4px 8px;">✕ <span class="hide-pip">Fermer</span></button>'
+      + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultiview()" aria-label="Tout vider" title="Tout vider">🗑️</button>';
+
+    mvToolbar.innerHTML = mvToolbarHtml;
 
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
@@ -4062,13 +4099,47 @@ function showLayoutSelector(event) {
 
 
 
+
 function toggleMenu() {
     var nav = document.getElementById('nav-links');
     var sec = document.getElementById('secondary-actions');
+    var hdr = document.getElementById('main-hdr');
+
     if(window.innerWidth <= 768) {
+        if(!nav.contains(sec)) {
+            // Add separator
+            var sep = document.createElement('div');
+            sep.className = 'mobile-menu-sep';
+            sep.style.cssText = 'height: 1px; background: rgba(255,255,255,0.1); margin: 8px 0; width: 100%;';
+            nav.appendChild(sep);
+
+            // Move sec into nav
+            sec.style.position = 'static';
+            sec.style.background = 'transparent';
+            sec.style.border = 'none';
+            sec.style.boxShadow = 'none';
+            sec.style.padding = '0';
+            sec.style.width = '100%';
+
+            nav.appendChild(sec);
+        }
         nav.classList.toggle('open');
-        sec.classList.remove('open');
+        sec.classList.add('open');
     } else {
+        if(nav.contains(sec)) {
+            // Move back
+            var sep = nav.querySelector('.mobile-menu-sep');
+            if(sep) sep.remove();
+
+            sec.style.position = '';
+            sec.style.background = '';
+            sec.style.border = '';
+            sec.style.boxShadow = '';
+            sec.style.padding = '';
+            sec.style.width = '';
+
+            hdr.appendChild(sec);
+        }
         sec.classList.toggle('open');
         nav.classList.remove('open');
     }
