@@ -1554,7 +1554,7 @@ function syncMatchesWithEspn(matches) {
           if(!data || !data.events) return;
           data.events.forEach(function(ev) {
             var comp = ev.competitions[0];
-            if(!comp) return;
+            if(!comp || !comp.competitors) return;
             var home = comp.competitors.find(function(c){return c.homeAway==='home';});
             var away = comp.competitors.find(function(c){return c.homeAway==='away';});
             if(!home || !away) return;
@@ -4299,7 +4299,7 @@ function getApiFirstMatches(targetDate) {
         if(!data || !data.events) return;
         data.events.forEach(function(ev) {
           var comp = ev.competitions[0];
-          if(!comp) return;
+          if(!comp || !comp.competitors) return;
           var home = comp.competitors.find(function(c){return c.homeAway==='home';});
           var away = comp.competitors.find(function(c){return c.homeAway==='away';});
           if(!home || !away) return;
