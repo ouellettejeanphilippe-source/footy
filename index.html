@@ -4555,6 +4555,7 @@ function loadAll(){
           }
 
           buildEPG(S.matches);
+          fetchSubPages(S.matches);
           var live=S.matches.filter(function(m){return m.status==='live';}).length;
           showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
       });
