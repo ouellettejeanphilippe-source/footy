@@ -91,7 +91,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 /* MATCH GRID */
 .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 20px; padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
 .match-card { position: relative; border-radius: var(--radius-card, 16px); cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s, background-position 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); min-height: 110px; background-size: 200% 200% !important; background-position: center !important; }
-.match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
+.match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,var(--card-opacity, 0.15)) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
 .match-card:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: 0 16px 40px rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.5); background-position: top left !important; }
 .match-card.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
 .match-card.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
@@ -120,7 +120,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 /* Match Blocks */
 .mb { position: absolute; top: 6px; bottom: 6px; border-radius: var(--radius-card, 14px); cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s, background-position 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); background-size: 200% 200% !important; background-position: center !important; }
 /* Subtle gradient overlay for depth */
-.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
+.mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,var(--card-opacity, 0.15)) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
 .mb:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.5); background-position: top left !important; }
 .mb.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
 .mb.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
@@ -141,6 +141,10 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .now-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); z-index: 10; pointer-events: none; display: none; box-shadow: 0 0 12px var(--red-glow); }
 .now-line::before { content: ''; position: absolute; top: 0; left: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--red); box-shadow: 0 0 12px var(--red); }
 .now-line::after { content: attr(data-t); position: absolute; top: 20px; left: 10px; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 12px; color: #fff; white-space: nowrap; background: var(--red); padding: 4px 8px; border-radius: 8px; box-shadow: 0 4px 12px var(--red-glow); }
+
+/* BIGGER RESIZE HANDLE */
+.mv-cell::-webkit-resizer { background: rgba(255,255,255,0.2); border-left: 10px solid transparent; border-top: 10px solid transparent; box-shadow: inset -4px -4px 0 rgba(255,255,255,0.8); }
+.mv-cell { border-bottom-right-radius: 8px; }
 
 /* OVERLAY */
 .ov { position: absolute; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
@@ -280,22 +284,18 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   <div class="sp"></div>
 
   <div class="secondary-actions" id="secondary-actions" style="display:flex; align-items:center; gap:8px;">
-      <button class="btn o" onclick="toggleAppTheaterMode\(\)" aria-label="Plein Onglet" title="Plein Onglet">⛶ Onglet</button>
-      <button class="btn o" onclick="toggleFullscreen\(\)" aria-label="Plein Écran" title="Plein Écran">⛶ Plein écran</button>
+
+
       <button class="btn o" onclick="installTampermonkey()" aria-label="Installer le script Tampermonkey" title="Installer le script Multiview Cleaner">🧩 Script</button>
-      <button class="btn o" onclick="openDbg()" aria-label="Ouvrir le panneau de débogage">🔬 Débogage</button>
       <button class="btn g" id="relBtn" onclick="loadAll()" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
       <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres">⚙️ Paramètres</button>
   </div>
 </div>
 
 <!-- Add toggle button for Onglet Theater mode to reappear -->
-<button id="exit-app-theater" onclick="toggleAppTheaterMode()" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999; background:rgba(0,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:8px 16px; cursor:pointer; backdrop-filter:blur(5px); font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.5); transition:opacity 0.3s; opacity:0;">Quitter le Plein Onglet</button>
 
-<div class="sbar" id="sbar" style="display:flex; align-items:center; gap:8px;">
-  <span style="color:var(--muted)">footybite.to</span>
-  <div class="vsep"></div>
-  <div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;">
+
+<div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;">
     <!-- Buttons generated dynamically -->
   </div>
 </div>
@@ -317,8 +317,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
     <div class="err-code" id="errcode" style="display:none"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">
       <button class="btn g" onclick="loadAll()">↺ Réessayer</button>
-      <button class="btn o" onclick="openDbg()">🔬 Débogage</button>
-    </div>
+      </div>
   </div>
 
   <div id="marea" style="display:flex; flex-direction:column; gap:24px; max-width:1200px; margin:0 auto; width:100%;">
@@ -376,10 +375,8 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
       <!-- Personalization Settings -->
       <div>
         <div style="font-weight:bold; font-size:16px; margin-bottom:16px; color:var(--text);">🎨 Personnalisation Visuelle</div>
-
         <div style="display:flex; flex-direction:column; gap:16px;">
 
-          <!-- Background -->
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Arrière-plan</div>
             <select id="pref-bg" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
@@ -388,30 +385,65 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             </select>
           </div>
 
-          <!-- Match Card Colors -->
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:14px;">Couleurs des cartes</div>
-            <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="gradient">Dégradé (Domicile → Extérieur)</option>
-              <option value="league">Couleur de la Ligue</option>
-              <option value="home">Équipe Domicile seulement</option>
+            <div style="font-size:14px;">Couleur d'accentuation</div>
+            <select id="pref-accent" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <option value="#0a84ff">Bleu (Défaut)</option>
+              <option value="#30d158">Vert</option>
+              <option value="#ff453a">Rouge</option>
+              <option value="#ff9f0a">Orange</option>
+              <option value="#bf5af2">Violet</option>
+              <option value="#ffffff">Blanc</option>
             </select>
           </div>
 
-          <!-- Buttons Shape -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:14px;">Couleurs des cartes</div>
+            <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <option value="gradient">Dégradé Équipes (Dom → Ext)</option>
+              <option value="gradient-top">Dégradé Équipes (Haut → Bas)</option>
+              <option value="league">Couleur de la Ligue</option>
+              <option value="home">Équipe Domicile seulement</option>
+              <option value="dark">Sombre (Désactivé)</option>
+            </select>
+          </div>
+
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Forme des boutons</div>
             <select id="pref-btn-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="rounded">Arrondis</option>
+              <option value="rounded">Arrondis (Défaut)</option>
               <option value="square">Rectangulaires</option>
+              <option value="pill">Pilule</option>
             </select>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:14px;">Opacité des cartes</div>
+            <input type="range" id="pref-card-opacity" min="0" max="100" value="15" onchange="applyUserPrefs()" style="width: 140px;">
           </div>
 
         </div>
       </div>
 
+      <hr style="border:none; border-top:1px solid var(--border); margin:0;">
+
+      <div>
+         <div style="font-weight:bold; font-size:16px; margin-bottom:16px; color:var(--text);">🔧 Avancé</div>
+         <div style="display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:14px;">Script d'installation (Multiview cleaner)</div>
+              <a href="multiview-cleaner.user.js" target="_blank" class="btn" style="text-decoration:none; display:inline-block;">Installer le script</a>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:14px;">Menu de débogage</div>
+              <button class="btn o" onclick="toggleDbg(); closeSettings();">Ouvrir</button>
+            </div>
+         </div>
+      </div>
+
     </div>
   </div>
+</div>
 </div>
 
 <div class="toast" id="toast"><span id="toasttxt"></span></div>
@@ -443,6 +475,8 @@ var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', 
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://footybite.to/';
+var MLBITE_URL = 'https://mlbite.to/';
+var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
 var ONHOCKEY_URL = 'https://onhockey.tv/';
@@ -500,6 +534,64 @@ function getLeagueDuration(league) {
 }
 function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
+
+
+/* ══ TEAM COLORS ════════════ */
+var TEAM_COLORS = {
+  'montreal canadiens': ['#af1e2d', '#192168'],
+  'toronto maple leafs': ['#00205b', '#ffffff'],
+  'boston bruins': ['#ffb81c', '#000000'],
+  'new york rangers': ['#0038a8', '#ce1126'],
+  'colorado avalanche': ['#6f263d', '#236192'],
+  'tampa bay lightning': ['#002868', '#ffffff'],
+  'dallas stars': ['#006847', '#8f8f8c'],
+  'edmonton oilers': ['#041e42', '#ff4c00'],
+  'vancouver canucks': ['#00205b', '#00843d'],
+  'calgary flames': ['#c8102e', '#f15a24'],
+  'winnipeg jets': ['#041e42', '#004c97'],
+  'ottawa senators': ['#c52032', '#000000'],
+
+  // MLB
+  'blue jays': ['#134a8e', '#1d2d5c'],
+  'new york yankees': ['#003087', '#e4002c'],
+  'boston red sox': ['#bd3039', '#0c2340'],
+  'los angeles dodgers': ['#005a9c', '#a5acaf'],
+
+  // Soccer
+  'manchester city': ['#6cabdd', '#1c2c5b'],
+  'manchester united': ['#da291c', '#fbe122'],
+  'arsenal': ['#ef0107', '#063672'],
+  'liverpool': ['#c8102e', '#00b2a9'],
+  'real madrid': ['#ffffff', '#00529f'],
+  'barcelona': ['#004d98', '#a50044'],
+  'parissaintgermain': ['#004170', '#da291c'],
+  'bayern munich': ['#dc052d', '#0066b2'],
+
+  // NFL
+  'kansas city chiefs': ['#e31837', '#ffb81c'],
+  'san francisco 49ers': ['#aa0000', '#b3995d'],
+  'dallas cowboys': ['#003594', '#041e42'],
+  'philadelphia eagles': ['#004c54', '#a5acaf'],
+
+  // NBA
+  'los angeles lakers': ['#552583', '#fdb927'],
+  'golden state warriors': ['#1d428a', '#ffc72c'],
+  'boston celtics': ['#007a33', '#ba9653'],
+  'chicago bulls': ['#ce1141', '#000000'],
+  'miami heat': ['#98002e', '#f9a01b'],
+  'toronto raptors': ['#ce1141', '#000000']
+};
+
+function getTeamColors(teamName) {
+    if (!teamName) return null;
+    var norm = normName(teamName);
+    for (var key in TEAM_COLORS) {
+        if (norm.includes(key) || key.includes(norm)) {
+            return TEAM_COLORS[key];
+        }
+    }
+    return null;
+}
 
 var TEAM_ALIASES = {
   // Soccer - France
@@ -706,6 +798,53 @@ function parseStreameast(html){
 
 
 /* ══ PARSE ONHOCKEY ═══════════════════ */
+
+/* ══ PARSE SPORTSURGE ═════════════════ */
+function parseSportsurge(html) {
+  var matches = [];
+  try {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+
+      // Sportsurge v2 uses .MatchListItem or similar, but often it's rendered.
+      // Sometimes it has direct <a> links.
+      var matchLinks = doc.querySelectorAll('a[href*="/live/"]');
+
+      [].forEach.call(matchLinks, function(a) {
+          var titleEl = a.querySelector('.MatchTitle') || a;
+          var titleText = titleEl.textContent.trim();
+          var url = a.href;
+
+          if(titleText && url) {
+              var home = titleText;
+              var away = 'TBD';
+              if(titleText.includes(' vs ')) {
+                 var pts = titleText.split(' vs ');
+                 home = pts[0].trim();
+                 away = pts[1].trim();
+              } else if (titleText.includes('-')) {
+                 var pts = titleText.split('-');
+                 home = pts[0].trim();
+                 away = pts[1].trim();
+              }
+
+              var m = {
+                  id: 'surge_' + Math.random().toString(36).substr(2, 9),
+                  homeTeam: home,
+                  awayTeam: away,
+                  league: 'Sports',
+                  matchUrl: url,
+                  streamLinks: [],
+                  streamsLoaded: false,
+                  source: 'sportsurge'
+              };
+              matches.push(m);
+          }
+      });
+  } catch(e) {}
+  lg('Sportsurge extraits', matches.length);
+  return matches;
+}
+
 function parseOnHockey(html) {
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var matches = [];
@@ -1187,7 +1326,14 @@ var ESPN_LEAGUES = {
   'american football': 'football/nfl',
   'american-football': 'football/nfl',
   'mlb': 'baseball/mlb',
-  'baseball': 'baseball/mlb'
+  'baseball': 'baseball/mlb',
+  'f1': 'racing/f1',
+  'formula 1': 'racing/f1',
+  'boxe': 'boxing',
+  'boxing': 'boxing',
+  'lhjmq': 'hockey/qmjhl',
+  'qmjhl': 'hockey/qmjhl',
+  'pwhl': 'hockey/pwhl'
 };
 
 function getEspnDateStr(d) {
@@ -1228,7 +1374,9 @@ var SPORT_MAP = {
   'coupe de france': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 66 },
   'dfb pokal': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 81 },
   'coppa italia': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 137 },
-  'nations league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 5 }
+  'nations league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 5 },
+  'f1': { sport: 'formula-1', api: 'v1.formula-1.api-sports.io', leagueId: 1 },
+  'formula 1': { sport: 'formula-1', api: 'v1.formula-1.api-sports.io', leagueId: 1 }
 };
 
 function getLeagueInfo(leagueName) {
@@ -1238,6 +1386,32 @@ function getLeagueInfo(leagueName) {
   }
   // Default to football if unknown, though it might fail
   return { sport: 'football', api: 'v3.football.api-sports.io', leagueId: null };
+}
+
+
+function filterBuggyMatches(matches) {
+    var today = new Date();
+    var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
+
+    return matches.filter(function(m) {
+        var lowerHome = m.homeTeam.toLowerCase();
+        var lowerAway = m.awayTeam.toLowerCase();
+        var isWWE = lowerHome.includes('wwe') || lowerAway.includes('wwe') || m.league.toLowerCase().includes('wwe');
+        var isRaw = lowerHome.includes('raw') || lowerAway.includes('raw');
+        var isSmackdown = lowerHome.includes('smackdown') || lowerAway.includes('smackdown');
+
+        if (isWWE) {
+            // WWE Raw happens on Monday (1).
+            // We might allow Tuesday (2) if it's past midnight EST.
+            if (isRaw && dayOfWeek !== 1 && dayOfWeek !== 2) return false;
+
+            // WWE Smackdown happens on Friday (5).
+            // We might allow Saturday (6) if it's past midnight EST.
+            if (isSmackdown && dayOfWeek !== 5 && dayOfWeek !== 6) return false;
+        }
+
+        return true;
+    });
 }
 
 function fetchApiSportsFixtures(sportInfo, dateStr) {
@@ -1411,6 +1585,12 @@ function syncMatchesWithEspn(matches) {
                 }
 
                 // Set logos from ESPN
+                if (home.records && home.records.length > 0) {
+                   m.homeRecord = home.records[0].summary;
+                }
+                if (away.records && away.records.length > 0) {
+                   m.awayRecord = away.records[0].summary;
+                }
                 if(home.team.logo) {
                     m.homeLogo = home.team.logo;
                     cacheLogo(m.homeTeam, m.homeLogo);
@@ -1681,6 +1861,24 @@ function scrapeMatchFlux(m){
             var qual = 'SD';
             if(rowText.indexOf('hd') >= 0 || rowText.indexOf('1080') >= 0 || rowText.indexOf('720') >= 0) qual = 'HD';
             if(rowText.indexOf('4k') >= 0) qual = '4K';
+
+
+            var channel = '';
+            var thirdColText = tds[2] ? tds[2].textContent.trim() : '';
+            var firstColText = tds[0] ? tds[0].textContent.trim() : '';
+
+            if (thirdColText && thirdColText.length > 2 && thirdColText.length < 20 && !thirdColText.includes('Kbps')) {
+                 channel = thirdColText;
+            } else if (firstColText && firstColText.length > 2 && firstColText.length < 20) {
+                 channel = firstColText;
+            }
+
+            if(channel) {
+                channel = channel.replace(/\s+/g, ' ').trim();
+                if (channel && channel.toLowerCase() !== 'sd' && channel.toLowerCase() !== 'hd' && !name.includes(channel)) {
+                    name = channel + ' (' + name + ')';
+                }
+            }
 
             var lang = 'MULTI';
             if(rowText.indexOf('english') >= 0 || rowText.indexOf(' uk') >= 0) lang = 'ENGLISH';
@@ -2091,10 +2289,20 @@ function buildEPG(matches){
                   var awayColor = lgColor(awayTeamName);
                   var lgCol = lg.color || lgColor(lg.league);
 
+
+                  var tColorsH = getTeamColors(m.homeTeam);
+                  var tColorsA = getTeamColors(m.awayTeam);
+                  if (tColorsH) { homeColor = tColorsH[0]; awayColor = tColorsH[1]; }
+                  if (tColorsA && !tColorsH) { homeColor = tColorsA[1]; awayColor = tColorsA[0]; }
+
                   if (userPrefs.cardColor === 'home') {
                       b.style.background = homeColor;
                   } else if (userPrefs.cardColor === 'league') {
                       b.style.background = lgCol;
+                  } else if (userPrefs.cardColor === 'dark') {
+                      b.style.background = 'rgba(255,255,255,0.05)';
+                  } else if (userPrefs.cardColor === 'gradient-top') {
+                      b.style.background = 'linear-gradient(to bottom, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
                   } else {
                       b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
                   }
@@ -2317,7 +2525,7 @@ function buildEPG(matches){
 
   /* Legend Toggle Bar */
   var bar=document.getElementById('sbar');
-  bar.querySelectorAll('.lchip,.vsep:not(:first-child)').forEach(function(e){e.remove();});
+  if (bar) bar.querySelectorAll('.lchip,.vsep:not(:first-child)').forEach(function(e){e.remove();});
 
   var allLeaguesMap = {};
   matches.forEach(function(m){
@@ -2327,7 +2535,7 @@ function buildEPG(matches){
   });
   var allLeagues = Object.keys(allLeaguesMap).sort();
 
-  allLeagues.forEach(function(lgName,i){
+  if(bar) allLeagues.forEach(function(lgName,i){
     if(i>0){var s=document.createElement('div');s.className='vsep';bar.appendChild(s);}
     var ch=document.createElement('div');
     ch.className='lchip' + (S.hiddenLg[lgName] ? ' off' : '');
@@ -2896,14 +3104,13 @@ function setupMultivisionUI() {
     var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip">Ajouter</span></button>'
-      + '<div style="position:relative;" onmouseleave="this.querySelector(\'#mv-main-menu\').style.display=\'none\'" class="hide-pip">'
-      +   '<button class="btn o" onclick="var m=document.getElementById(\'mv-main-menu\'); m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();" aria-label="Menu Multivision" title="Options Multivision" style="padding: 4px 8px;">⚙️ Options</button>'
-      +   '<div id="mv-main-menu" style="display:none;position:absolute;top:100%;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:180px;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:100;flex-direction:column;gap:4px;margin-top:4px;">'
-      +     '<button class="btn o" onclick="showLayoutSelector(event); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">⊞ Disposition</button>'
-      +     '<button class="btn o" onclick="toggleTheaterMode(); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">🖥️ Plein onglet</button>'
-      +     '<button class="btn o" onclick="toggleFullscreen(document.getElementById(\'mv-grid\')); document.getElementById(\'mv-main-menu\').style.display=\'none\';" style="width:100%;text-align:left;justify-content:flex-start;border:none;">⛶ Plein écran</button>'
-      +   '</div>'
-      + '</div>'
+      + '<select class="btn o hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 4px 36px 4px 12px; min-width: 130px;" id="mv-layout-select">'
+      +   '<option value="auto">⊞ Auto</option>'
+      +   '<option value="focus">⭐ Focus</option>'
+      +   '<option value="vertical">⊟ Vertical</option>'
+      +   '<option value="horizontal">⊟ Horizontal</option>'
+      + '</select>'
+      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
       + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire" style="padding: 4px 8px;">◨ <span class="hide-pip">Réduire</span></button>'
       + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip">Fermer</span></button>'
       + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>';
@@ -3015,6 +3222,8 @@ function setFocusFlux(idx) {
 }
 
 function updateMultivisionLayout() {
+    var ls = document.getElementById('mv-layout-select');
+    if(ls) ls.value = mvLayout;
     var grid = document.getElementById('mv-grid');
     if(!grid) return;
 
@@ -3231,28 +3440,15 @@ function updateMultivisionLayout() {
             '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;text-shadow:0 1px 2px #000;color:rgba(255,255,255,0.8);" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
             '</div>';
 
-        var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;opacity:0.6;transition:opacity 0.2s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.6">';
+        var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);">';
 
-        // Add a dropdown/hamburger menu for mobile friendliness
-        controlsHtml += '<div style="position:relative;" class="mv-menu-container" onmouseleave="this.querySelector(\'div\').style.display=\'none\'">';
-        controlsHtml += '<button title="Menu Options" aria-label="Menu Options" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="var m=this.nextElementSibling; m.style.display=m.style.display===\'block\' ? \'none\' : \'block\'; event.stopPropagation();">⋮</button>';
-
-        controlsHtml += '<div style="display:none;position:absolute;top:36px;right:0;background:rgba(20,20,20,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px;min-width:160px;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:100;flex-direction:column;gap:4px;">';
-
-        if (mvLayout === 'focus' && idx !== 0) {
-            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="setFocusFlux(' + idx + ');event.stopPropagation();">⭐ Mettre en avant</button>';
-        }
         if (s.mid) {
-            controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="showFluxSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄 Changer flux/match</button>';
+             controlsHtml += '<button title="Changer de flux" aria-label="Changer de flux" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="showFluxSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄</button>';
         }
-        controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; event.stopPropagation();">↻ Recharger</button>';
-        controlsHtml += '<button style="background:transparent;color:#fff;border:none;border-radius:4px;padding:10px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" onclick="toggleCrop(' + idx + ', event);event.stopPropagation();">🔍 ' + (s.cropped ? 'Annuler recadrage' : 'Recadrer') + '</button>';
+        controlsHtml += '<button title="Recharger" aria-label="Recharger" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; event.stopPropagation();">↻</button>';
+        controlsHtml += '<button title="Recadrer" aria-label="Recadrer" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="toggleCrop(' + idx + ', event);event.stopPropagation();">🔍</button>';
+        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.5);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(220,53,69,0.8)\'" onmouseout="this.style.background=\'rgba(220,53,69,0.5)\'" onclick="removeFromMultivision(' + idx + ')">✕</button>';
 
-        controlsHtml += '</div></div>';
-
-        // Primary actions always visible
-        controlsHtml += '<button title="Agrandir" aria-label="Agrandir" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="toggleMaximize(' + idx + ', event)">⛶</button>';
-        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.5);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="removeFromMultivision(' + idx + ')">✕</button>';
         controlsHtml += '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
@@ -3908,8 +4104,10 @@ function closeDbg(){document.getElementById('dbg').classList.remove('open');}
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
 var userPrefs = {
   bg: 'gradient',
+  accent: '#0a84ff',
   cardColor: 'gradient',
-  btnShape: 'rounded'
+  btnShape: 'rounded',
+  cardOpacity: '15'
 };
 
 try {
@@ -3918,33 +4116,59 @@ try {
 } catch(e) {}
 
 function initPrefs() {
-  document.documentElement.style.setProperty('--radius-btn', userPrefs.btnShape === 'rounded' ? '12px' : '4px');
-  document.documentElement.style.setProperty('--radius-pill', userPrefs.btnShape === 'rounded' ? '20px' : '6px');
-  document.documentElement.style.setProperty('--radius-card', userPrefs.btnShape === 'rounded' ? '16px' : '8px');
-
-  if (userPrefs.bg === 'solid') {
-    document.documentElement.style.setProperty('--bg-gradient', 'none');
-  } else {
-    document.documentElement.style.setProperty('--bg-gradient', 'radial-gradient(circle at top right, #1a1a2e, #000000)');
+  var saved = localStorage.getItem('user_prefs');
+  if(saved) {
+    try { Object.assign(userPrefs, JSON.parse(saved)); } catch(e){}
   }
 
-  var bgSel = document.getElementById('pref-bg');
-  var cardSel = document.getElementById('pref-card-color');
-  var btnSel = document.getElementById('pref-btn-shape');
+  if(userPrefs.bg === 'solid') {
+    document.body.style.background = '#000';
+  } else {
+    document.body.style.background = '#000 radial-gradient(circle at 50% -20%, #1a1a24 0%, #000 70%)';
+  }
 
-  if(bgSel) bgSel.value = userPrefs.bg;
-  if(cardSel) cardSel.value = userPrefs.cardColor;
-  if(btnSel) btnSel.value = userPrefs.btnShape;
+  // Accent Color
+  document.documentElement.style.setProperty('--accent', userPrefs.accent || '#0a84ff');
+
+  // Btn Shape
+  var br = '12px';
+  if(userPrefs.btnShape === 'square') br = '4px';
+  else if(userPrefs.btnShape === 'pill') br = '24px';
+  document.documentElement.style.setProperty('--radius-btn', br);
+
+  // Card Radius and Opacity
+  var cr = '16px';
+  if(userPrefs.btnShape === 'square') cr = '8px';
+  document.documentElement.style.setProperty('--radius-card', cr);
+
+  document.documentElement.style.setProperty('--card-opacity', (userPrefs.cardOpacity || 15) / 100);
+
+  // Update DOM selectors
+  var selBg = document.getElementById('pref-bg');
+  var selCard = document.getElementById('pref-card-color');
+  var selBtn = document.getElementById('pref-btn-shape');
+  var selAccent = document.getElementById('pref-accent');
+  var selOpacity = document.getElementById('pref-card-opacity');
+
+  if(selBg) selBg.value = userPrefs.bg;
+  if(selCard) selCard.value = userPrefs.cardColor;
+  if(selBtn) selBtn.value = userPrefs.btnShape;
+  if(selAccent) selAccent.value = userPrefs.accent || '#0a84ff';
+  if(selOpacity) selOpacity.value = userPrefs.cardOpacity || 15;
 }
 
 function applyUserPrefs() {
   var bgSel = document.getElementById('pref-bg');
   var cardSel = document.getElementById('pref-card-color');
   var btnSel = document.getElementById('pref-btn-shape');
+  var accentSel = document.getElementById('pref-accent');
+  var opacSel = document.getElementById('pref-card-opacity');
 
   if(bgSel) userPrefs.bg = bgSel.value;
   if(cardSel) userPrefs.cardColor = cardSel.value;
   if(btnSel) userPrefs.btnShape = btnSel.value;
+  if(accentSel) userPrefs.accent = accentSel.value;
+  if(opacSel) userPrefs.cardOpacity = opacSel.value;
 
   localStorage.setItem('user_prefs', JSON.stringify(userPrefs));
   initPrefs();
@@ -4193,7 +4417,7 @@ function getApiFirstMatches(targetDate) {
   }
 
   return Promise.all(promises).then(function(){
-    return matches;
+    return filterBuggyMatches(matches);
   });
 }
 
@@ -4270,6 +4494,8 @@ function loadAll(){
       // Async scrape sites
       return Promise.allSettled([
           fetchPage(SITE),
+          fetchPage(MLBITE_URL),
+          fetchPage(SPORTSURGE_URL),
           fetchPage(BUFFSTREAMS_URL),
           fetchPage(STREAMEAST_URL),
           fetchPage(ONHOCKEY_URL)
@@ -4284,34 +4510,32 @@ function loadAll(){
               scrapedMatches = mergeMatches(scrapedMatches, fbMatches);
           }
           if(results[1].status === 'fulfilled' && results[1].value) {
-              var bsMatches = parseBuffstreams(results[1].value);
-              scrapedMatches = mergeMatches(scrapedMatches, bsMatches);
+              var mlbMatches = parseFootybite(results[1].value);
+              scrapedMatches = mergeMatches(scrapedMatches, mlbMatches);
           }
           if(results[2].status === 'fulfilled' && results[2].value) {
-              var seMatches = parseStreameast(results[2].value);
+              var surgeMatches = parseSportsurge(results[2].value);
+              scrapedMatches = mergeMatches(scrapedMatches, surgeMatches);
+          }
+          if(results[3].status === 'fulfilled' && results[3].value) {
+              var bsMatches = parseBuffstreams(results[3].value);
+              scrapedMatches = mergeMatches(scrapedMatches, bsMatches);
+          }
+          if(results[4].status === 'fulfilled' && results[4].value) {
+              var seMatches = parseStreameast(results[4].value);
               scrapedMatches = mergeMatches(scrapedMatches, seMatches);
           }
-          if(results[3] && results[3].status === 'fulfilled' && results[3].value) {
-              var ohMatches = parseOnHockey(results[3].value);
+          if(results[5].status === 'fulfilled' && results[5].value) {
+              var ohMatches = parseOnHockey(results[5].value);
               scrapedMatches = mergeMatches(scrapedMatches, ohMatches);
           }
 
-          var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches);
-          S.collapsedLg['Autres Flux'] = true;
 
+                    var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches);
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
-          finalMatches = finalMatches.filter(function(m) {
-             // If we know the exact date from API, filter it strictly
-             if (m.matchDate) {
-                 return m.matchDate === targetDateStr;
-             }
-             // For pure scraped matches without an exact date, they only apply if TARGET_DATE is today
-             var isToday = (getEstDateStrFromDate(new Date()) === targetDateStr);
-             return isToday;
+          S.matches = finalMatches.filter(function(m) {
+              return m.matchDate === targetDateStr;
           });
-          S.matches = finalMatches;
-
-          stepOk(3);
           document.getElementById('ov').style.display='none';
 
           // Populate sports filter

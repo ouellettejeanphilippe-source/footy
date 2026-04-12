@@ -39,6 +39,15 @@ Ce document décrit l'architecture complète, la philosophie et les éléments c
 -   **Image sur image (PiP) interne** : Le lecteur peut être minimisé en bas à droite (ou transformé en colonne latérale en mode Multivision) pour continuer de naviguer dans le guide.
 -   **Isolation des lecteurs** : Les iframes de flux utilisent l'attribut `sandbox` pour bloquer les alertes et redirections, tout en autorisant les fenêtres contextuelles nécessaires à l'initialisation de certains lecteurs tiers.
 
+
+
+## 🔧 Script d'Installation (Tampermonkey)
+
+L'application utilise un script externe (Multiview cleaner) pour nettoyer les lecteurs vidéo au sein des iframes.
+Vous pouvez l'installer depuis l'interface (dans Paramètres) ou via ce lien:
+**[multiview-cleaner.user.js](./multiview-cleaner.user.js)**
+
+
 ---
 
 ## 📜 Dictionnaire des Fonctions JavaScript
