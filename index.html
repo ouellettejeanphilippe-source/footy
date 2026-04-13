@@ -69,7 +69,7 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 .ldot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: blink 1.5s ease-in-out infinite; box-shadow: 0 0 8px var(--red); }
 @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
 
-.sbar { height: 48px; flex-shrink: 0; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; padding: 0 24px; overflow-x: auto; scrollbar-width: none; font-size: 14px; color: var(--muted); }
+.sbar { height: 48px; flex-shrink: 0; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border); display: none !important; align-items: center; gap: 12px; padding: 0 24px; overflow-x: auto; scrollbar-width: none; font-size: 14px; color: var(--muted); }
 .sbar::-webkit-scrollbar { display: none; }
 .lchip { display: flex; align-items: center; gap: 8px; white-space: nowrap; padding: 6px 14px; border-radius: 12px; cursor: pointer; user-select: none; transition: all 0.2s; background: rgba(255,255,255,0.05); font-weight: 600; border: 1px solid transparent; }
 .lchip:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.1); transform: translateY(-1px); }
@@ -2380,9 +2380,9 @@ function buildEPG(matches){
   mareaDiv.id = 'innerMarea';
 
   // Grid lines
-  // Read scale from CSS variable or default to 180
-  var hourPx = 180;
-  if(window.innerWidth <= 680) hourPx = 140;
+  // Read scale from CSS variable or default to 220
+  var hourPx = 220;
+  if(window.innerWidth <= 680) hourPx = 160;
   var minPx = hourPx / 60;
 
   for(var h=0; h<=24; h++){
@@ -2568,7 +2568,7 @@ function updateNowLine() {
     var isToday = (TARGET_DATE.toDateString() === now.toDateString());
 
     if(isToday) {
-        var hourPx = window.innerWidth <= 680 ? 140 : 180;
+        var hourPx = window.innerWidth <= 680 ? 160 : 220;
         var minPx = hourPx / 60;
         // On récupère l'heure EST courante
         var estStr = getEstTimeStrFromDate(now);
@@ -2593,7 +2593,7 @@ function scrollToNow(){
     var now = new Date();
     if(TARGET_DATE.toDateString() !== now.toDateString()) return;
 
-    var hourPx = window.innerWidth <= 680 ? 140 : 180;
+    var hourPx = window.innerWidth <= 680 ? 160 : 220;
     var minPx = hourPx / 60;
     // On centre sur l'heure EST
     var estStr = getEstTimeStrFromDate(now);
@@ -4785,7 +4785,7 @@ function toggleAppTheaterMode() {
 
     if (hdr.style.display === 'none') {
         hdr.style.display = 'flex';
-        sbar.style.display = 'flex';
+        sbar.style.display = 'none';
         exitBtn.style.display = 'none';
         exitBtn.style.opacity = '0';
         document.removeEventListener('mousemove', appTheaterMouseHandler);
