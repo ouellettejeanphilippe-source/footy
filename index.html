@@ -3262,6 +3262,11 @@ function updateMultivisionLayout() {
     var pipBtn = document.getElementById('mv-pip-btn');
     var mvc = document.getElementById('mv-container');
 
+
+
+    // Ensure we track custom column widths
+    if (!grid._customCols) grid._customCols = {};
+
     // Reset grid styles before applying layout
     grid.style.display = 'grid';
     grid.style.flexWrap = '';
@@ -3278,13 +3283,24 @@ function updateMultivisionLayout() {
         } else {
             pipBtn.innerHTML = '◨ Réduire';
             if (mvLayout === 'focus' && count >= 2) {
-                grid.style.gridTemplateColumns = '3fr 1fr';
+                var col1 = grid._customCols[0] ? grid._customCols[0] + 'fr' : '3fr';
+                var col2 = grid._customCols[0] ? (1 - grid._customCols[0]).toFixed(3) + 'fr' : '1fr';
+                grid.style.gridTemplateColumns = col1 + ' ' + col2;
                 grid.style.gridTemplateRows = 'repeat(' + (count - 1) + ', 1fr)';
             } else if (mvLayout === 'vertical') {
                 grid.style.gridTemplateColumns = '1fr';
                 grid.style.gridTemplateRows = 'repeat(' + count + ', 1fr)';
             } else if (mvLayout === 'horizontal') {
-                grid.style.gridTemplateColumns = 'repeat(' + count + ', 1fr)';
+                var template = '';
+                var usedFr = 0;
+                var remainingCols = count - Object.keys(grid._customCols).length;
+                for (var c in grid._customCols) usedFr += parseFloat(grid._customCols[c]);
+                var remainingFr = 1 - usedFr;
+
+                for (var i = 0; i < count; i++) {
+                    template += (grid._customCols[i] ? grid._customCols[i] + 'fr ' : (remainingCols > 0 ? (remainingFr / remainingCols).toFixed(3) : 0) + 'fr ');
+                }
+                grid.style.gridTemplateColumns = template.trim();
                 grid.style.gridTemplateRows = '1fr';
             } else {
                 // auto / Grid Mode Layout
@@ -3292,20 +3308,24 @@ function updateMultivisionLayout() {
                     grid.style.gridTemplateColumns = '1fr';
                     grid.style.gridTemplateRows = '1fr';
                 } else if(count === 2) {
-                    grid.style.gridTemplateColumns = '1fr 1fr';
+                    var col1 = grid._customCols[0] ? grid._customCols[0] + 'fr' : '1fr';
+                    var col2 = grid._customCols[0] ? (1 - grid._customCols[0]).toFixed(3) + 'fr' : '1fr';
+                    grid.style.gridTemplateColumns = col1 + ' ' + col2;
                     grid.style.gridTemplateRows = '1fr';
                 } else if(count === 3) {
-                    grid.style.gridTemplateColumns = '1fr 1fr';
+                    var col1 = grid._customCols[0] ? grid._customCols[0] + 'fr' : '1fr';
+                    var col2 = grid._customCols[0] ? (1 - grid._customCols[0]).toFixed(3) + 'fr' : '1fr';
+                    grid.style.gridTemplateColumns = col1 + ' ' + col2;
                     grid.style.gridTemplateRows = '1fr 1fr';
                 } else if(count >= 4) {
-                    grid.style.gridTemplateColumns = '1fr 1fr';
+                    var col1 = grid._customCols[0] ? grid._customCols[0] + 'fr' : '1fr';
+                    var col2 = grid._customCols[0] ? (1 - grid._customCols[0]).toFixed(3) + 'fr' : '1fr';
+                    grid.style.gridTemplateColumns = col1 + ' ' + col2;
                     grid.style.gridTemplateRows = '1fr 1fr';
                 }
             }
         }
-    }
-
-    // Existing cells
+    }    // Existing cells
     var existingCells = Array.from(grid.children).filter(function(child) {
         return child.hasAttribute('data-internal-id');
     });
@@ -3366,28 +3386,119 @@ function updateMultivisionLayout() {
 
         cell.dataset.index = idx;
 
+
         // Update styling/gridRow
         if (!document.getElementById('mv-container').classList.contains('mv-pip')) {
             cell.style.width = '100%';
             cell.style.height = '100%';
-            cell.style.resize = 'both';
+            // Enable horizontal resize only on elements that represent a column boundary
+            cell.style.resize = 'horizontal';
             cell.style.overflow = 'hidden';
+
+            var colIndex = 0;
+
 
             if (mvLayout === 'focus' && count >= 2) {
                 if (idx === 0) {
                     cell.style.gridRow = 'span ' + (count - 1);
                     cell.style.gridColumn = '1';
+                    colIndex = 0;
                 } else {
                     cell.style.gridRow = 'auto';
                     cell.style.gridColumn = '2';
+                    colIndex = 1;
+                    cell.style.resize = 'none'; // Only resize main focus col
                 }
             } else if (mvLayout === 'auto' && count === 3 && idx === 0) {
                 cell.style.gridRow = 'span 2';
-                cell.style.gridColumn = 'auto';
+                cell.style.gridColumn = '1'; // Force column 1
+                colIndex = 0;
             } else {
                 cell.style.gridRow = 'auto';
-                cell.style.gridColumn = 'auto';
+
+                if (mvLayout === 'horizontal') {
+                    cell.style.gridColumn = 'auto';
+                    colIndex = idx;
+                    if (idx === count - 1) cell.style.resize = 'none'; // No need to resize last col
+                } else {
+                    // Standard auto mode (usually 2 cols)
+                    if (count === 3) {
+                        cell.style.gridColumn = '2';
+                        colIndex = 1;
+                    } else {
+                        colIndex = (idx % 2 === 0) ? 0 : 1;
+                        cell.style.gridColumn = 'auto';
+                    }
+                    if (colIndex === 1 || count === 1) cell.style.resize = 'none';
+                }
             }
+            // Assign col index for tracking
+            cell.dataset.col = colIndex.toString();
+
+            // Reset inline width from previous resizes so CSS Grid takes over
+            cell.style.width = '';
+
+            // Attach observer to detect resizing and update the grid template
+            if (!cell._hasResizeObserver && cell.style.resize !== 'none') {
+                cell._hasResizeObserver = new ResizeObserver(function(entries) {
+                    var isPip = document.getElementById('mv-container').classList.contains('mv-pip');
+                    if (isPip) return;
+
+                    for (var i = 0; i < entries.length; i++) {
+                        var target = entries[i].target;
+                        // Only react if width was injected via user resizing
+                        if (target.style.width && target.style.width !== '' && target.style.width !== '100%') {
+                            var w = target.offsetWidth;
+                            var gridWidth = grid.offsetWidth;
+
+                            // Convert pixel width to fractional unit (fr)
+                            var fraction = w / gridWidth;
+                            // Ensure fraction stays within bounds (5% to 95%)
+                            fraction = Math.max(0.05, Math.min(0.95, fraction));
+
+                            var colIdx = parseInt(target.dataset.col);
+                            if (!isNaN(colIdx)) {
+                                grid._customCols[colIdx] = fraction.toFixed(3); // Store as fr
+                                // clear the inline width so the grid template enforces it
+                                target.style.width = '';
+
+                                // Calculate total custom fr applied to other columns (for horizontal)
+                                var usedFr = 0;
+                                for (var c in grid._customCols) {
+                                    if (parseInt(c) !== colIdx) usedFr += parseFloat(grid._customCols[c] || 0);
+                                }
+
+
+                                // Re-apply grid template proportionally
+                                if (mvLayout === 'focus' && count >= 2) {
+                                    grid.style.gridTemplateColumns = grid._customCols[0] + 'fr ' + (1 - fraction).toFixed(3) + 'fr';
+                                } else if (mvLayout === 'horizontal') {
+                                    var template = '';
+                                    var remainingFr = 1 - usedFr - fraction;
+                                    if (remainingFr < 0.05 * count) remainingFr = 0.05 * count; // Clamp remaining to minimum
+                                    var remainingCols = count - Object.keys(grid._customCols).length;
+
+                                    for (var j = 0; j < count; j++) {
+                                        if (grid._customCols[j]) {
+                                            template += grid._customCols[j] + 'fr ';
+                                        } else {
+                                            template += (remainingCols > 0 ? (remainingFr / remainingCols).toFixed(3) : 0) + 'fr ';
+                                        }
+                                    }
+                                    grid.style.gridTemplateColumns = template.trim();
+                                } else {
+                                    // Default 2 cols (auto, count >= 2)
+                                    grid.style.gridTemplateColumns = grid._customCols[0] + 'fr ' + (1 - fraction).toFixed(3) + 'fr';
+                                }                            }
+                        }
+                    }
+                });
+                cell._hasResizeObserver.observe(cell);
+            } else if (cell.style.resize === 'none' && cell._hasResizeObserver) {
+                cell._hasResizeObserver.disconnect();
+                cell._hasResizeObserver = null;
+            }
+
         } else {
             // Force pure vertical in PiP mode
             cell.style.width = '100%';
@@ -3396,7 +3507,6 @@ function updateMultivisionLayout() {
             cell.style.gridRow = 'auto';
             cell.style.gridColumn = '1';
         }
-
         // Update drag/drop indices as they can change
         cell.ondragstart = function(e) {
             e.dataTransfer.setData('text/plain', idx.toString());
