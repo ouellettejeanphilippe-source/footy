@@ -50,13 +50,13 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 .ball { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #5e5ce6); border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 12px var(--accent-glow); }
 .ball svg { width: 18px; height: 18px; stroke: #fff; }
 .sp { flex: 1; }
-.btn { font-family: inherit; font-weight: 700; font-size: 15px; padding: 10px 20px; border-radius: var(--radius-btn, 12px); border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8); position: relative; overflow: hidden; }
-.btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.btn { font-family: inherit; font-weight: 700; font-size: 15px; padding: 10px 20px; border-radius: var(--radius-btn, 12px); border: var(--btn-border, 1px solid rgba(255,255,255,0.15)); background: var(--btn-bg, rgba(255,255,255,0.05)); color: var(--text); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: var(--btn-blur, blur(12px)); -webkit-backdrop-filter: var(--btn-blur, blur(12px)); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: var(--btn-shadow, 0 4px 10px rgba(0,0,0,0.3)); text-shadow: var(--btn-text-shadow, 0 1px 2px rgba(0,0,0,0.8)); position: relative; overflow: hidden; }
+.btn::after { content: ''; position: absolute; inset: 0; background: var(--btn-hover-bg, linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)); opacity: 0; transition: opacity 0.3s; pointer-events: none; border-radius: inherit; }
 .mv-pip .hide-pip { display: none !important; }
 .mv-pip #mv-toolbar { padding: 0 8px !important; gap: 4px !important; }
 .mv-pip #mv-toolbar .btn { padding: 8px 12px !important; font-size: 12px !important; }
 :focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
-.btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+.btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
 .btn:hover::after { opacity: 1; }
 .btn:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
@@ -405,13 +405,21 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
               <option value="magma">Magma (Rouge/Noir)</option>
               <option value="aurora">Nuit Boréale (Vert foncé/Noir)</option>
               <option value="monochrome">Monochrome (Noir/Gris)</option>
+              <option disabled>--- Systèmes ---</option>
+              <option value="ps2">PS2 (Bleu/Noir)</option>
+              <option value="xbox">Xbox OG (Vert/Noir)</option>
+              <option value="samsung">Samsung (Bleu profond)</option>
+              <option value="chromecast">Chromecast (Ambiant)</option>
+              <option value="windows">Windows 11 (Bloom)</option>
+              <option value="macos">macOS (Big Sur)</option>
+              <option value="ubuntu">Ubuntu (Aubergine/Orange)</option>
             </select>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Style d'arrière-plan</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
                 <option value="solid">Couleur unie (C1)</option>
                 <option value="gradient">Dégradé subtil (Premium)</option>
                 <option value="linear">Linéaire (C1 → C2 → C3)</option>
@@ -419,6 +427,11 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="blur">Diffus (C1, C2, C3)</option>
                 <option value="waves">Vagues abstraites (C1, C2, C3)</option>
                 <option value="mesh">Maillage (C1, C2, C3)</option>
+                <option disabled>--- Nouveaux Styles ---</option>
+                <option value="diagonal">Diagonale douce (Apple)</option>
+                <option value="glow">Lueurs diffuses</option>
+                <option value="aurora">Aurore Boréale complexe</option>
+                <option value="snow">Poussière d'étoiles / Neige</option>
               </select>
             </div>
           </div>
@@ -456,6 +469,14 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
               <option value="rounded">Arrondis (Défaut)</option>
               <option value="square">Rectangulaires</option>
               <option value="pill">Pilule</option>
+              <option value="apple">Apple (Doux/Verre)</option>
+              <option value="neumorphism">Neumorphisme</option>
+              <option value="ps2">PS2 (Bordure bleue/noir)</option>
+              <option value="xbox">Xbox OG (Vert toxique)</option>
+              <option value="samsung">Samsung OneUI</option>
+              <option value="windows">Windows 11 (Mica)</option>
+              <option value="macos">macOS (Aqua/Big Sur)</option>
+              <option value="ubuntu">Ubuntu (Yaru)</option>
             </select>
           </div>
 
@@ -2014,22 +2035,28 @@ function buildEPG(matches){
 
   var filtered = matches.filter(function(m){
     var isLiveOrSoon = m.status === 'live';
+    var isUpcomingInHour = false;
     if(m.status === 'upcoming' && m.startTime) {
         var mParts = m.startTime.split(':');
         var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-        // If match starts within 15 minutes, or started up to 24h ago (to catch late updates)
-        if(mMins - currentMins <= 15 && mMins - currentMins > -1440) {
+
+        var diff = mMins - currentMins;
+        if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
+
+        // Live or soon (within 15 min or already started)
+        if(diff <= 15 && diff > -1440) {
             isLiveOrSoon = true;
-        }
-        // Handle midnight wraparound (e.g. current 23:50, match 00:00)
-        if (currentMins >= 1425 && mMins <= 15) {
-            isLiveOrSoon = true;
+        } else if (diff > 15 && diff <= 60) {
+            isUpcomingInHour = true;
         }
     }
 
-    if(S.filter==='live' && !isLiveOrSoon) return false;
-    if(S.filter==='upcoming' && isLiveOrSoon) return false;
-    if(S.filter==='upcoming' && m.status==='finished') return false;
+    // In Live tab: show both isLiveOrSoon and isUpcomingInHour
+    // We will separate them visually later.
+    if(S.filter==='live' && !isLiveOrSoon && !isUpcomingInHour) return false;
+
+    // In Upcoming tab: hide everything that is live or soon, and finished
+    if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished')) return false;
     if(S.sportFilter!=='all' && m.league!==S.sportFilter && S.sportFilter!=='EN DIRECT') return false;
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
@@ -2117,31 +2144,52 @@ function buildEPG(matches){
       epgContainer.style.overflowY = 'auto';
       epgContainer.style.height = '100%';
       epgContainer.style.WebkitOverflowScrolling = 'touch';
-      var grid = document.createElement('div');
-      grid.className = 'match-grid';
-      epgContainer.appendChild(grid);
 
-      leagues.forEach(function(lg) {
-          if(S.hiddenLg[lg.league]) return;
-          var isCollapsed = S.collapsedLg[lg.league];
+      var renderMatches = function(matchesToRender, container, titleStr) {
+          if (!matchesToRender || matchesToRender.length === 0) return;
 
-          // League Header
-          var lHdr = document.createElement('div');
-          lHdr.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
-          lHdr.style.gridColumn = '1 / -1'; // Span full width
-          lHdr.style.marginBottom = '8px';
-          lHdr.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
-            + '<span class="ch-flag">'+lg.flag+'</span>'
-            + '<span class="lg-title">'+esc(lg.league)+'</span>'
-            + '<span class="lg-cnt">'+lg.matches.length+'</span>';
-          lHdr.addEventListener('click', function(){ toggleAccordion(lg.league); });
-          grid.appendChild(lHdr);
+          if (titleStr) {
+              var secTitle = document.createElement('div');
+              secTitle.style.cssText = 'padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px;';
+              secTitle.innerHTML = titleStr;
+              container.appendChild(secTitle);
+          }
 
-          if (!isCollapsed) {
-              lg.matches.forEach(function(m) {
-                  var b = document.createElement('div');
-                  b.id = 'mb-'+m.id;
-                  b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
+          var grid = document.createElement('div');
+          grid.className = 'match-grid';
+          container.appendChild(grid);
+
+          // Group by league inside this section
+          var lgMap = {};
+          var lgOrder = [];
+          matchesToRender.forEach(function(m) {
+              if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});lgOrder.push(m.league);}
+              lgMap[m.league].matches.push(m);
+          });
+
+          lgOrder.forEach(function(lgName) {
+              var lg = lgMap[lgName];
+              if(S.hiddenLg[lg.league]) return;
+              var isCollapsed = S.collapsedLg[lg.league];
+
+              // League Header (Hidden via CSS but code remains for logic/state)
+              var lHdr = document.createElement('div');
+              lHdr.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
+              lHdr.style.gridColumn = '1 / -1'; // Span full width
+              lHdr.style.marginBottom = '8px';
+              lHdr.style.display = 'none'; // explicitly hiding it here to satisfy requirement if CSS fails
+              lHdr.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
+                + '<span class="ch-flag">'+lg.flag+'</span>'
+                + '<span class="lg-title">'+esc(lg.league)+'</span>'
+                + '<span class="lg-cnt">'+lg.matches.length+'</span>';
+              lHdr.addEventListener('click', function(){ toggleAccordion(lg.league); });
+              grid.appendChild(lHdr);
+
+              if (!isCollapsed) {
+                  lg.matches.forEach(function(m) {
+                      var b = document.createElement('div');
+                      b.id = 'mb-'+m.id;
+                      b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
 
                   var homeTeamName = normName(m.homeTeam) || 'A';
                   var awayTeamName = normName(m.awayTeam) || 'B';
@@ -2205,7 +2253,44 @@ function buildEPG(matches){
                   grid.appendChild(b);
               });
           }
-      });
+          });
+      };
+
+      if (S.filter === 'live') {
+          // Splitting logic
+          var justLiveMatches = filtered.filter(function(m) {
+              // Now we safely include everything starting within 15 mins (or already live) in justLiveMatches
+              if (m.status === 'live') return true;
+              if (m.status === 'upcoming' && m.startTime) {
+                  var mParts = m.startTime.split(':');
+                  var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+                  var diff = mMins - currentMins;
+                  if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
+                  if (diff <= 15 && diff > -1440) return true;
+              }
+              return false;
+          });
+
+          var upcomingInHourMatches = filtered.filter(function(m) {
+              if (m.status === 'live') return false;
+              if (m.status === 'upcoming' && m.startTime) {
+                  var mParts = m.startTime.split(':');
+                  var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+                  var diff = mMins - currentMins;
+                  if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
+                  if (diff > 15 && diff <= 60) return true;
+              }
+              return false;
+          });
+
+          renderMatches(justLiveMatches, epgContainer, "");
+          if (upcomingInHourMatches.length > 0) {
+              renderMatches(upcomingInHourMatches, epgContainer, "À venir dans l'heure");
+          }
+      } else {
+          renderMatches(filtered, epgContainer, "");
+      }
+
   } else { // Timeline EPG
 
   epgContainer.style.display = 'flex';
@@ -2800,8 +2885,25 @@ function showMatchSelector(event, replaceIdx) {
     var scrollArea = document.createElement('div');
     scrollArea.style.cssText = 'flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;';
 
+    var now = new Date();
+    var currentEst = getEstTimeStrFromDate(now);
+    var currentParts = currentEst.split(':');
+    var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
+
     var availableMatches = S.matches.filter(function(m) {
-        return m.streamsLoaded && m.streamLinks && m.streamLinks.length > 0;
+        if (!m.streamsLoaded || !m.streamLinks || m.streamLinks.length === 0) return false;
+
+        var isLiveOrSoon = m.status === 'live';
+        if(m.status === 'upcoming' && m.startTime) {
+            var mParts = m.startTime.split(':');
+            var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+            var diff = mMins - currentMins;
+            if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
+            if (diff <= 60 && diff > -1440) {
+                isLiveOrSoon = true;
+            }
+        }
+        return isLiveOrSoon;
     });
 
     availableMatches.sort(function(a, b) {
@@ -4146,6 +4248,16 @@ function applyBgStyle() {
   } else if (s === 'mesh') {
     document.body.style.background = 'radial-gradient(at 0% 0%, '+c1+' 0, transparent 50%), radial-gradient(at 100% 0%, '+c2+' 0, transparent 50%), radial-gradient(at 100% 100%, '+c3+' 0, transparent 50%), radial-gradient(at 0% 100%, '+c1+' 0, transparent 50%)';
     document.body.style.backgroundColor = '#000';
+  } else if (s === 'diagonal') {
+    document.body.style.background = 'linear-gradient(115deg, ' + c1 + ' 20%, ' + c2 + ' 50%, ' + c3 + ' 80%)';
+  } else if (s === 'glow') {
+    document.body.style.background = 'radial-gradient(circle at top left, '+c2+' 0%, transparent 40%), radial-gradient(circle at bottom right, '+c3+' 0%, transparent 40%), '+c1;
+  } else if (s === 'aurora') {
+    document.body.style.background = 'linear-gradient(to bottom, '+c1+', '+c1+'), radial-gradient(ellipse at top left, '+c2+' 0%, transparent 50%), radial-gradient(ellipse at top right, '+c3+' 0%, transparent 50%), radial-gradient(ellipse at bottom center, '+c2+' 0%, transparent 50%)';
+    document.body.style.backgroundBlendMode = 'screen, screen, screen, normal';
+    document.body.style.backgroundColor = c1;
+  } else if (s === 'snow') {
+    document.body.style.background = 'radial-gradient(circle at 10% 20%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.1) 1.5px, transparent 1.5px), radial-gradient(circle at 80% 40%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 30% 60%, rgba(255,255,255,0.1) 2px, transparent 2px), linear-gradient(135deg, '+c1+', '+c2+')';
   } else {
     document.body.style.background = c1 + ' radial-gradient(circle at 50% -20%, rgba(255,255,255,0.05) 0%, transparent 70%)';
   }
@@ -4163,15 +4275,67 @@ function initPrefs() {
   var accent = userPrefs.accent || '#0a84ff';
   document.documentElement.style.setProperty('--accent', accent);
 
-  // Btn Shape
+  // Btn Shape and Custom Button Styles
   var br = '12px';
-  if(userPrefs.btnShape === 'square') br = '4px';
-  else if(userPrefs.btnShape === 'pill') br = '24px';
-  document.documentElement.style.setProperty('--radius-btn', br);
-
-  // Card Radius and Opacity
+  var btnBg = 'rgba(255,255,255,0.05)';
+  var btnBorder = '1px solid rgba(255,255,255,0.15)';
+  var btnShadow = '0 4px 10px rgba(0,0,0,0.3)';
+  var btnBlur = 'blur(12px)';
   var cr = '16px';
-  if(userPrefs.btnShape === 'square') cr = '8px';
+
+  if(userPrefs.btnShape === 'square') { br = '4px'; cr = '8px'; }
+  else if(userPrefs.btnShape === 'pill') br = '24px';
+  else if(userPrefs.btnShape === 'apple') {
+      br = '18px';
+      cr = '20px';
+      btnBg = 'rgba(255,255,255,0.1)';
+      btnBorder = '1px solid rgba(255,255,255,0.2)';
+      btnBlur = 'blur(20px)';
+      btnShadow = '0 8px 24px rgba(0,0,0,0.15)';
+  } else if(userPrefs.btnShape === 'neumorphism') {
+      br = '16px';
+      btnBg = 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,0,0,0.2))';
+      btnBorder = 'none';
+      btnShadow = '4px 4px 10px rgba(0,0,0,0.4), -4px -4px 10px rgba(255,255,255,0.05)';
+  } else if(userPrefs.btnShape === 'ps2') {
+      br = '2px';
+      cr = '4px';
+      btnBg = 'linear-gradient(to bottom, #000033, #000000)';
+      btnBorder = '2px solid #0033cc';
+      btnShadow = '0 0 8px #0033cc';
+  } else if(userPrefs.btnShape === 'xbox') {
+      br = '8px';
+      btnBg = 'rgba(16, 124, 16, 0.2)';
+      btnBorder = '1px solid #107c10';
+      btnShadow = '0 0 10px rgba(16, 124, 16, 0.4)';
+  } else if(userPrefs.btnShape === 'samsung') {
+      br = '24px';
+      cr = '24px';
+      btnBg = 'rgba(255,255,255,0.08)';
+      btnBorder = 'none';
+  } else if(userPrefs.btnShape === 'windows') {
+      br = '4px';
+      cr = '8px';
+      btnBg = 'rgba(255,255,255,0.05)';
+      btnBorder = '1px solid rgba(255,255,255,0.1)';
+      btnBlur = 'blur(30px)';
+  } else if(userPrefs.btnShape === 'macos') {
+      br = '6px';
+      cr = '12px';
+      btnBg = 'rgba(255,255,255,0.1)';
+      btnBorder = '1px solid rgba(255,255,255,0.15)';
+      btnShadow = '0 1px 3px rgba(0,0,0,0.3)';
+  } else if(userPrefs.btnShape === 'ubuntu') {
+      br = '6px';
+      btnBg = 'linear-gradient(to bottom, #4a1936, #300a24)';
+      btnBorder = '1px solid #5e2750';
+  }
+
+  document.documentElement.style.setProperty('--radius-btn', br);
+  document.documentElement.style.setProperty('--btn-bg', btnBg);
+  document.documentElement.style.setProperty('--btn-border', btnBorder);
+  document.documentElement.style.setProperty('--btn-shadow', btnShadow);
+  document.documentElement.style.setProperty('--btn-blur', btnBlur);
   document.documentElement.style.setProperty('--radius-card', cr);
 
   document.documentElement.style.setProperty('--card-opacity', (userPrefs.cardOpacity || 15) / 100);
@@ -4209,6 +4373,10 @@ function applyUserPrefs() {
   var accentColorSel = document.getElementById('pref-accent-color');
   var opacSel = document.getElementById('pref-card-opacity');
 
+  // Do not reset colors based on theme if the user is just changing the bg style
+  // we ONLY update theme if it is not custom, or if applyPredefinedTheme was not called
+  // The logic to preserve current colors/bg is simply taking the current input values.
+
   if(themeSel) userPrefs.theme = themeSel.value;
   if(bgStyleSel) userPrefs.bgStyle = bgStyleSel.value;
   if(c1Sel) userPrefs.c1 = c1Sel.value;
@@ -4228,6 +4396,13 @@ function applyUserPrefs() {
 function markCustomTheme() {
   var themeSel = document.getElementById('pref-theme');
   if(themeSel) themeSel.value = 'custom';
+  // when a user changes a color manually, we set theme to custom, and then save
+  applyUserPrefs();
+}
+
+function applyUserBgStyleOnly() {
+  var themeSel = document.getElementById('pref-theme');
+  if(themeSel) themeSel.value = 'custom'; // mark custom so it doesn't revert to preset
   applyUserPrefs();
 }
 
@@ -4245,7 +4420,14 @@ function applyPredefinedTheme() {
     'sunset': { bgStyle: 'linear', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933' },
     'magma': { bgStyle: 'radial', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300' },
     'aurora': { bgStyle: 'blur', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80' },
-    'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff' }
+    'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff' },
+    'ps2': { bgStyle: 'radial', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff' },
+    'xbox': { bgStyle: 'radial', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10' },
+    'samsung': { bgStyle: 'gradient', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6' },
+    'chromecast': { bgStyle: 'blur', c1: '#2c3e50', c2: '#34495e', c3: '#7f8c8d', accent: '#ecf0f1' },
+    'windows': { bgStyle: 'blur', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4' },
+    'macos': { bgStyle: 'gradient', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff' },
+    'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420' }
   };
 
   if(presets[theme]) {
