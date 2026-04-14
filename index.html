@@ -50,13 +50,15 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 .ball { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #5e5ce6); border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 12px var(--accent-glow); }
 .ball svg { width: 18px; height: 18px; stroke: #fff; }
 .sp { flex: 1; }
-.btn { font-family: inherit; font-weight: 700; font-size: 15px; padding: 10px 20px; border-radius: var(--radius-btn, 12px); border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.btn { font-family: inherit; font-weight: 700; font-size: 15px; padding: 10px 20px; border-radius: var(--radius-btn, 12px); border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8); position: relative; overflow: hidden; }
+.btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 .mv-pip .hide-pip { display: none !important; }
 .mv-pip #mv-toolbar { padding: 0 8px !important; gap: 4px !important; }
 .mv-pip #mv-toolbar .btn { padding: 8px 12px !important; font-size: 12px !important; }
 :focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
-.btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.3); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
-.btn:active { transform: translateY(0); }
+.btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+.btn:hover::after { opacity: 1; }
+.btn:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
 .sport-btn { border-radius: var(--radius-pill, 20px) !important; padding: 8px 16px !important; font-size: 14px !important; background: rgba(255,255,255,0.05) !important; border-color: transparent !important; box-shadow: none !important; color: var(--muted2) !important; font-weight: 600 !important; transition: all 0.2s !important; }
 .sport-btn:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
@@ -90,9 +92,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 /* MATCH GRID */
 .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 20px; padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
-.match-card { position: relative; border-radius: var(--radius-card, 16px); cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s, background-position 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); min-height: 110px; background-size: 200% 200% !important; background-position: center !important; }
+.match-card { position: relative; border-radius: var(--radius-card, 16px); cursor: pointer; overflow: hidden; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s, box-shadow 0.3s, background-position 0.3s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); min-height: 110px; background-size: 200% 200% !important; background-position: center !important; }
 .match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,var(--card-opacity, 0.15)) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
-.match-card:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: 0 16px 40px rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.5); background-position: top left !important; }
+.match-card:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: 0 15px 40px rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.5); background-position: top left !important; }
 .match-card.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
 .match-card.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
 .match-card.finished:hover { filter: grayscale(0.2) opacity(1); border-color: rgba(255,255,255,0.2); }
@@ -118,10 +120,10 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .gl.h { background: rgba(255,255,255,0.04); }
 
 /* Match Blocks */
-.mb { position: absolute; top: 6px; bottom: 6px; border-radius: var(--radius-card, 14px); cursor: pointer; overflow: hidden; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s, box-shadow 0.25s, background-position 0.25s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 6px 16px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); background-size: 200% 200% !important; background-position: center !important; }
+.mb { position: absolute; top: 6px; bottom: 6px; border-radius: var(--radius-card, 14px); cursor: pointer; overflow: hidden; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s, box-shadow 0.3s, background-position 0.3s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); background-size: 200% 200% !important; background-position: center !important; }
 /* Subtle gradient overlay for depth */
 .mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,var(--card-opacity, 0.15)) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
-.mb:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.5); background-position: top left !important; }
+.mb:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.4); background-position: top left !important; }
 .mb.live { border: 2px solid rgba(255,69,58,0.9); animation: liveglow 3s ease-in-out infinite; }
 .mb.finished { filter: grayscale(0.8) opacity(0.6); border: 1px solid rgba(255,255,255,0.05); }
 .mb.finished:hover { filter: grayscale(0.2) opacity(1); border-color: rgba(255,255,255,0.2); }
@@ -162,9 +164,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .err-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; color: var(--red); background: rgba(255,69,58,0.1); border: 1px solid rgba(255,69,58,0.3); border-radius: 12px; padding: 16px; max-width: 500px; width: 100%; text-align: left; max-height: 150px; overflow-y: auto; }
 
 /* MODAL */
-.mbg { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); align-items: center; justify-content: center; padding: 20px; }
+.mbg { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); align-items: center; justify-content: center; padding: 20px; transition: opacity 0.3s; }
 .mbg.open { display: flex; }
-.modal { background: rgba(28, 28, 30, 0.95); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; width: 90%; max-width: 520px; overflow: hidden; animation: mopen 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 25px 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; }
+.modal { background: rgba(28, 28, 30, 0.95); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; width: 90%; max-width: 520px; overflow: hidden; animation: mopen 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 30px 60px rgba(0,0,0,0.9); display: flex; flex-direction: column; backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); }
 @keyframes mopen { from { opacity: 0; transform: scale(0.95) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
 .mhd { padding: 24px 24px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 16px; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); }
 .mdot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; box-shadow: 0 0 12px rgba(255,255,255,0.3); }
@@ -176,8 +178,8 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .mx { width: 36px; height: 36px; border-radius: 18px; background: rgba(255,255,255,0.1); color: var(--muted2); cursor: pointer; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; transition: all 0.2s; border: none; }
 .mx:hover { background: rgba(255,255,255,0.2); color: var(--text); transform: scale(1.05); }
 .mbody { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; max-height: 65vh; overflow-y: auto; }
-.si { display: flex; flex-shrink: 0; align-items: stretch; gap: 0; padding: 0; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s; text-decoration: none; color: var(--text); overflow: hidden; }
-.si:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); border-color: rgba(255,255,255,0.3); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+.si { display: flex; flex-shrink: 0; align-items: stretch; gap: 0; padding: 0; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); text-decoration: none; color: var(--text); overflow: hidden; }
+.si:hover { background: rgba(255,255,255,0.15); transform: translateY(-4px) scale(1.01); border-color: rgba(255,255,255,0.3); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 .si-ic { width: 44px; height: 44px; border-radius: 12px; background: rgba(0,0,0,0.4); display: grid; place-items: center; font-size: 20px; flex-shrink: 0; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1); }
 .si-inf { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
 .si-n { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
@@ -189,8 +191,8 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .sarr { color: var(--muted); transition: color 0.2s; flex-shrink: 0; }
 .mft { padding: 16px 24px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--muted); background: rgba(0,0,0,0.3); border-top: 1px solid var(--border); }
 
-.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 600; background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); color: var(--text); font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 9999px; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; display: flex; align-items: center; gap: 10px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); letter-spacing: 0.5px; }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px) scale(0.95); z-index: 600; background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); color: var(--text); font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 9999px; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; display: flex; align-items: center; gap: 10px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2); letter-spacing: 0.5px; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 
 @media(max-width: 768px) {
   :root { --chan-w: 120px; --row-h: 88px; --hour-px: 160px; --ruler-h: 44px; }
@@ -396,14 +398,18 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Couleur d'accentuation</div>
-            <select id="pref-accent" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="#0a84ff">Bleu (Défaut)</option>
-              <option value="#30d158">Vert</option>
-              <option value="#ff453a">Rouge</option>
-              <option value="#ff9f0a">Orange</option>
-              <option value="#bf5af2">Violet</option>
-              <option value="#ffffff">Blanc</option>
-            </select>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="applyUserPrefs()" title="Couleur personnalisée">
+              <select id="pref-accent" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="custom">Personnalisée</option>
+                <option value="#0a84ff">Bleu (Défaut)</option>
+                <option value="#30d158">Vert</option>
+                <option value="#ff453a">Rouge</option>
+                <option value="#ff9f0a">Orange</option>
+                <option value="#bf5af2">Violet</option>
+                <option value="#ffffff">Blanc</option>
+              </select>
+            </div>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -442,10 +448,6 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div style="font-size:14px;">Script d'installation (Multiview cleaner)</div>
               <a href="multiview-cleaner.user.js" target="_blank" class="btn" style="text-decoration:none; display:inline-block;">Installer le script</a>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div style="font-size:14px;">Menu de débogage</div>
-              <button class="btn o" onclick="toggleDbg(); closeSettings();">Ouvrir</button>
             </div>
          </div>
       </div>
@@ -1473,151 +1475,7 @@ function fetchApiSportsFixtures(sportInfo, dateStr) {
   });
 }
 
-function syncMatchesWithApiSports(matches) {
-  var key = localStorage.getItem('apiSportsKey');
-  if (!key || matches.length === 0) return Promise.resolve(matches);
 
-  var today = new Date().toISOString().split('T')[0];
-  var sportGroups = {};
-
-  // Group matches by sport info
-  matches.forEach(function(m) {
-    var info = getLeagueInfo(m.league);
-    var groupKey = info.sport + '_' + (info.leagueId || 'unknown');
-    if (!sportGroups[groupKey]) sportGroups[groupKey] = { info: info, matches: [] };
-    sportGroups[groupKey].matches.push(m);
-  });
-
-  var promises = [];
-  Object.keys(sportGroups).forEach(function(gKey) {
-    var group = sportGroups[gKey];
-    if (group.info.leagueId) {
-      promises.push(
-        fetchApiSportsFixtures(group.info, today).then(function(apiData) {
-          if (!apiData) return;
-
-          var normalizedApiData = apiData.map(function(f) {
-            return {
-              fixture: f,
-              home: normName(f.teams.home.name),
-              away: normName(f.teams.away.name)
-            };
-          });
-
-          group.matches.forEach(function(m) {
-            // Find match by team names (fuzzy match)
-            var mHome = normName(m.homeTeam);
-            var mAway = normName(m.awayTeam);
-
-            var matchedApiFixture = normalizedApiData.find(function(nf) {
-              // Simple check if one contains the other + fuzzy matching
-              return isMatch(mHome, nf.home) && isMatch(mAway, nf.away);
-            });
-
-            if (matchedApiFixture) {
-              updateMatchDataFromApi(m, matchedApiFixture.fixture, group.info.sport);
-            }
-          });
-        })
-      );
-    }
-  });
-
-  return Promise.all(promises).then(function() { return matches; });
-}
-
-function syncMatchesWithEspn(matches) {
-  var today = new Date();
-  var yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-  var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-
-  var dates = [
-    getEspnDateStr(yesterday),
-    getEspnDateStr(today),
-    getEspnDateStr(tomorrow)
-  ];
-
-  var promises = [];
-  var leagueMatches = {};
-
-  matches.forEach(function(m) {
-    var l = m.league.toLowerCase();
-    var espnPath = null;
-    for(var key in ESPN_LEAGUES) {
-      if(l.indexOf(key) >= 0) {
-        espnPath = ESPN_LEAGUES[key];
-        break;
-      }
-    }
-    if(espnPath) {
-      if(!leagueMatches[espnPath]) leagueMatches[espnPath] = [];
-      leagueMatches[espnPath].push(m);
-    }
-  });
-
-  Object.keys(leagueMatches).forEach(function(path) {
-    var group = leagueMatches[path];
-    dates.forEach(function(dateStr) {
-      promises.push(
-        fetchEspnSchedule(path, dateStr).then(function(data) {
-          if(!data || !data.events) return;
-          data.events.forEach(function(ev) {
-            var comp = ev.competitions[0];
-            if(!comp || !comp.competitors) return;
-            var home = comp.competitors.find(function(c){return c.homeAway==='home';});
-            var away = comp.competitors.find(function(c){return c.homeAway==='away';});
-            if(!home || !away) return;
-
-            var eHome = normName(home.team.name);
-            var eAway = normName(away.team.name);
-
-            group.forEach(function(m) {
-              var mHome = normName(m.homeTeam);
-              var mAway = normName(m.awayTeam);
-
-              if(isMatch(mHome, eHome) && isMatch(mAway, eAway)) {
-
-                var d = new Date(ev.date);
-                m.startTime = getEstTimeStrFromDate(d);
-
-                var st = ev.status.type.state; // 'pre', 'in', 'post'
-                if(st === 'pre') {
-                  m.status = 'upcoming';
-                } else if(st === 'in') {
-                  m.status = 'live';
-                  m.minute = ev.status.displayClock;
-                  m.score = [parseInt(home.score)||0, parseInt(away.score)||0];
-                } else if(st === 'post') {
-                  m.status = 'finished';
-                  m.score = [parseInt(home.score)||0, parseInt(away.score)||0];
-                  m.minute = 'FT';
-                }
-
-                // Set logos from ESPN
-                if (home.records && home.records.length > 0) {
-                   m.homeRecord = home.records[0].summary;
-                }
-                if (away.records && away.records.length > 0) {
-                   m.awayRecord = away.records[0].summary;
-                }
-                if(home.team.logo) {
-                    m.homeLogo = home.team.logo;
-                    cacheLogo(m.homeTeam, m.homeLogo);
-                }
-                if(away.team.logo) {
-                    m.awayLogo = away.team.logo;
-                    cacheLogo(m.awayTeam, m.awayLogo);
-                }
-              }
-            });
-          });
-        })
-      );
-    });
-  });
-
-  return Promise.all(promises).then(function(){ return matches; });
-}
 
 function updateMatchDataFromApi(match, apiFixture, sport) {
   if (sport === 'football') {
@@ -2049,17 +1907,7 @@ function getEstTime(ukTimeStr){
 
 /* ══ FILTERS ════════════════════════════ */
 
-function applySearch(q) {
-  S.searchQuery = q.toLowerCase();
-  buildEPG(S.matches);
-}
 
-function changeDate(dStr) {
-  if(!dStr) return;
-  var parts = dStr.split('-');
-  TARGET_DATE = new Date(parts[0], parts[1] - 1, parts[2]);
-  loadAll();
-}
 
 function applyFilter(f){
   S.filter=f;
@@ -2898,59 +2746,7 @@ function showFluxSelector(idx, mid, event) {
 
 
 
-function toggleMaximize(idx, event) {
-    if (event) {
-        event.stopPropagation();
-        event.preventDefault();
-    }
-    // Convert to string for querySelector
-    var idxStr = String(idx);
-    var cell = document.querySelector('.mv-cell[data-index="' + idxStr + '"]');
-    if (!cell) return;
 
-    if (cell.classList.contains('mv-maximized')) {
-        cell.classList.remove('mv-maximized');
-        cell.style.position = 'relative';
-        cell.style.inset = '';
-        cell.style.zIndex = '';
-        cell.style.width = '';
-        cell.style.height = '';
-        cell.style.backgroundColor = '#111';
-    } else {
-        // Remove maximized from others first
-        document.querySelectorAll('.mv-cell.mv-maximized').forEach(function(c) {
-            c.classList.remove('mv-maximized');
-            c.style.position = 'relative';
-            c.style.inset = '';
-            c.style.zIndex = '';
-            c.style.width = '';
-            c.style.height = '';
-            c.style.backgroundColor = '#111';
-        });
-
-        cell.classList.add('mv-maximized');
-        cell.style.position = 'absolute';
-        cell.style.inset = '0';
-        cell.style.zIndex = '100';
-        cell.style.width = '100%';
-        cell.style.height = '100%';
-        cell.style.backgroundColor = '#000';
-    }
-}
-
-function toggleCrop(idx, event) {
-    if (event) {
-        event.stopPropagation();
-        event.preventDefault();
-    }
-    mvFlux[idx].cropped = !mvFlux[idx].cropped;
-    var iframe = document.getElementById('mv-iframe-' + idx);
-    if (iframe) {
-        if (mvFlux[idx].cropped) {
-            iframe.style.transform = 'scale(1.15)';
-        } else {
-            iframe.style.transform = 'scale(1)'; } } saveMultivisionState();
-}
 
 
 
@@ -3251,6 +3047,27 @@ function toggleTheaterMode() {
 }
 
 
+function moveMultiviewStream(idx, direction) {
+    if (idx < 0 || idx >= mvFlux.length) return;
+
+    var targetIdx;
+    if (direction === 'left' || direction === 'up') {
+        targetIdx = idx - 1;
+    } else if (direction === 'right' || direction === 'down') {
+        targetIdx = idx + 1;
+    }
+
+    if (targetIdx < 0 || targetIdx >= mvFlux.length) return;
+
+    // Swap the elements in the array
+    var temp = mvFlux[idx];
+    mvFlux[idx] = mvFlux[targetIdx];
+    mvFlux[targetIdx] = temp;
+
+    saveMultivisionState();
+    updateMultivisionLayout();
+}
+
 /* ══ PERSISTENCE MULTIVISION ═══════════ */
 function saveMultivisionState() {
     try {
@@ -3278,15 +3095,6 @@ function restoreMultivisionState() {
 // Layout state
 var mvLayout = 'auto'; // auto, focus, vertical, horizontal, custom
 
-function setFocusFlux(idx) {
-    if (idx === 0) return; // Already focused
-    // Swap flux at idx with flux at 0
-    var temp = mvFlux[0];
-    mvFlux[0] = mvFlux[idx];
-    mvFlux[idx] = temp;
-    saveMultivisionState();
-    updateMultivisionLayout();
-}
 
 function updateMultivisionLayout() {
     var ls = document.getElementById('mv-layout-select');
@@ -3618,6 +3426,13 @@ function updateMultivisionLayout() {
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);">';
+
+        if (idx > 0) {
+             controlsHtml += '<button title="Déplacer à gauche" aria-label="Déplacer à gauche" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="moveMultiviewStream(' + idx + ', \'left\');event.stopPropagation();">◀</button>';
+        }
+        if (idx < mvFlux.length - 1) {
+             controlsHtml += '<button title="Déplacer à droite" aria-label="Déplacer à droite" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s; margin-right: 8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="moveMultiviewStream(' + idx + ', \'right\');event.stopPropagation();">▶</button>';
+        }
 
         if (s.mid) {
              controlsHtml += '<button title="Changer de flux" aria-label="Changer de flux" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="showFluxSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">🔄</button>';
@@ -4260,40 +4075,6 @@ var TICK='<svg viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" str
 function stepOk(n){var el=document.getElementById('s'+n);if(!el)return;el.style.opacity='1';var ic=el.querySelector('.sic');ic.innerHTML=TICK;ic.classList.add('ok');var nx=document.getElementById('s'+(n+1));if(nx)nx.style.opacity='1';}
 
 /* ══ DEBUG ══════════════════════════════ */
-function openDbg(){
-  var h='';
-  h+='<div class="dbg-sect"><div class="dbg-sect-title">Statut</div><div class="dbg-code">';
-  h+=S.log.length===0?'Aucun chargement lancé.':'Proxy: '+S.proxy+'\nMatches: '+S.matches.length+'\nHTML: '+S.raw.length+' chars';
-  h+='</div></div>';
-
-  if(S.matches.length>0){
-    var errMatches = S.matches.filter(function(m) { return m.streamsLoaded && (!m.streamLinks || m.streamLinks.length===0 || m.streamLinks.length===1); });
-    h+='<div class="dbg-sect"><div class="dbg-sect-title">Statut Flux Match par Match</div><div class="dbg-code" style="max-height:400px;">';
-    S.matches.forEach(function(m){
-        var st = m.streamsLoaded ? (m.streamLinks.length + ' streams trouvés') : 'En attente...';
-        if(m.streamsLoaded && m.streamLinks.length===0) st = '<span style="color:var(--red)">0 flux trouvé</span>';
-        h += '['+m.league+'] '+esc(m.homeTeam)+' vs '+esc(m.awayTeam)+'\n';
-        h += 'URL: '+esc(m.matchUrl)+'\n';
-        h += 'Flux: '+st+'\n\n';
-    });
-    h+='</div></div>';
-  }
-
-  if(S.log.length>0){
-    h+='<div class="dbg-sect"><div class="dbg-sect-title">Log ('+S.log.length+')</div><div class="dbg-code">';
-    S.log.forEach(function(e){h+=esc('['+e.l+'] '+e.v)+'\n\n';});
-    h+='</div></div>';
-  }
-  if(S.raw){
-    h+='<div class="dbg-sect"><div class="dbg-sect-title">HTML brut [6000]</div><div class="dbg-code">'+esc(S.raw.slice(0,6000))+'</div></div>';
-  }
-  if(S.matches.length>0){
-    h+='<div class="dbg-sect"><div class="dbg-sect-title">Data Matchs ('+S.matches.length+')</div><div class="dbg-code">'+esc(JSON.stringify(S.matches.slice(0,10),null,2))+'</div></div>';
-  }
-  document.getElementById('dbgbody').innerHTML=h;
-  document.getElementById('dbg').classList.add('open');
-}
-function closeDbg(){document.getElementById('dbg').classList.remove('open');}
 
 
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
@@ -4344,7 +4125,11 @@ function initPrefs() {
   }
 
   // Accent Color
-  document.documentElement.style.setProperty('--accent', userPrefs.accent || '#0a84ff');
+  var accent = userPrefs.accent || '#0a84ff';
+  if (accent === 'custom') {
+     accent = userPrefs.accentColor || '#0a84ff';
+  }
+  document.documentElement.style.setProperty('--accent', accent);
 
   // Btn Shape
   var br = '12px';
@@ -4380,6 +4165,7 @@ function applyUserPrefs() {
   var btnSel = document.getElementById('pref-btn-shape');
   var accentSel = document.getElementById('pref-accent');
   var opacSel = document.getElementById('pref-card-opacity');
+  var accentColorSel = document.getElementById('pref-accent-color');
 
   if(bgSel) userPrefs.bg = bgSel.value;
   if(bgColorSel) userPrefs.bgColor = bgColorSel.value;
@@ -4387,6 +4173,7 @@ function applyUserPrefs() {
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentSel) userPrefs.accent = accentSel.value;
   if(opacSel) userPrefs.cardOpacity = opacSel.value;
+  if(accentColorSel) userPrefs.accentColor = accentColorSel.value;
 
   localStorage.setItem('user_prefs', JSON.stringify(userPrefs));
   initPrefs();
@@ -4444,14 +4231,25 @@ function installTampermonkey() {
     contentDiv.innerHTML = `
         <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
 
-        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
-            <strong style="color:var(--accent);">Recommandation : Firefox + uBlock Origin</strong>
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1); margin-bottom: 8px;">
+            <strong style="color:var(--accent);">🦊 Recommandation : Firefox + uBlock Origin</strong>
             <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser Firefox. Bien que le script fonctionne sur Chrome, le bloqueur de publicités uBlock Origin y est beaucoup moins efficace en raison des récentes restrictions de Manifest V3 par Google.</p>
         </div>
 
-        <ol style="padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px;">
-            <li>Installez l'extension <strong>Tampermonkey</strong> sur votre navigateur (<a href="https://www.tampermonkey.net/" target="_blank" style="color:var(--accent);">Lien</a>).</li>
-            <li>Installez l'extension <strong>uBlock Origin</strong> (<a href="https://ublockorigin.com/" target="_blank" style="color:var(--accent);">Lien</a>).</li>
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <strong style="color:#4285F4;">🌍 Navigateurs Chrome / Chromium (Edge, Brave, Opera)</strong>
+            <p style="margin-top:4px;font-size:13px;">Vous pouvez également utiliser le script sur les navigateurs basés sur Chromium. Assurez-vous d'installer les extensions appropriées depuis le Chrome Web Store.</p>
+        </div>
+
+        <ol style="padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px; margin-top: 8px;">
+            <li>Installez l'extension <strong>Tampermonkey</strong> sur votre navigateur :
+                <a href="https://addons.mozilla.org/fr/firefox/addon/tampermonkey/" target="_blank" style="color:var(--accent);">Firefox</a> |
+                <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" style="color:#4285F4;">Chrome</a>
+            </li>
+            <li>Installez l'extension <strong>uBlock Origin</strong> :
+                <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" style="color:var(--accent);">Firefox</a> |
+                <a href="https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" style="color:#4285F4;">Chrome</a>
+            </li>
             <li>Cliquez sur le bouton ci-dessous pour installer le script de nettoyage Multivision.</li>
         </ol>
     `;
@@ -4462,7 +4260,7 @@ function installTampermonkey() {
     btn.style.cssText = 'padding:12px;font-size:16px;font-weight:bold;justify-content:center;margin-top:8px;';
     btn.innerHTML = 'Installer le Script Multivision';
     btn.onclick = function() {
-        window.open('./multiview-cleaner.user.js', '_blank');
+        window.location.href = './multiview-cleaner.user.js';
     };
     modal.appendChild(btn);
 
@@ -4808,64 +4606,6 @@ if ('serviceWorker' in navigator) {
 
 
 
-function showLayoutSelector(event) {
-    if (event) {
-        event.stopPropagation();
-        event.preventDefault();
-    }
-
-    var existing = document.getElementById('mv-layout-selector');
-    if (existing) existing.remove();
-
-    var selector = document.createElement('div');
-    selector.id = 'mv-layout-selector';
-    selector.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:12px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:4px;width:90%;max-width:220px;box-shadow:0 15px 40px rgba(0,0,0,0.8);';
-
-    // Centered using position fixed
-
-    var title = document.createElement('div');
-    title.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;margin-bottom:4px;padding:0 4px;';
-    title.textContent = 'Disposition';
-    selector.appendChild(title);
-
-    var layouts = [
-        { id: 'auto', name: 'Grille Automatique', icon: '⊞' },
-        { id: 'focus', name: 'Mode Focus', icon: '⭐' },
-        { id: 'vertical', name: 'Empilé (Vertical)', icon: '⊟' },
-        { id: 'horizontal', name: 'Côte à côte', icon: '◫' },
-    ];
-
-    layouts.forEach(function(l) {
-        var btn = document.createElement('div');
-        var isActive = mvLayout === l.id;
-        btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border-radius:4px;cursor:pointer;transition:background 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'transparent');
-
-        btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
-        btn.onmouseleave = function() { if(!isActive) this.style.background = 'transparent'; };
-
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            mvLayout = l.id;
-            updateMultivisionLayout();
-            selector.remove();
-        };
-
-        btn.innerHTML = '<span style="font-size:14px;width:20px;text-align:center;">' + l.icon + '</span><span style="font-size:13px;' + (isActive ? 'font-weight:bold;color:var(--accent);' : 'color:#fff;') + '">' + l.name + '</span>';
-        selector.appendChild(btn);
-    });
-
-    document.body.appendChild(selector);
-
-    setTimeout(function() {
-        var closeListener = function(e) {
-            if (!selector.contains(e.target)) {
-                selector.remove();
-                document.removeEventListener('click', closeListener);
-            }
-        };
-        document.addEventListener('click', closeListener);
-    }, 10);
-}
 
 
 
@@ -4886,39 +4626,7 @@ document.addEventListener('click', function(e) {
 });
 
 var appTheaterTimer;
-function toggleAppTheaterMode() {
-    var hdr = document.getElementById('main-hdr');
-    var sbar = document.getElementById('sbar');
-    var exitBtn = document.getElementById('exit-app-theater');
 
-    if (hdr.style.display === 'none') {
-        hdr.style.display = 'flex';
-        sbar.style.display = 'none';
-        exitBtn.style.display = 'none';
-        exitBtn.style.opacity = '0';
-        document.removeEventListener('mousemove', appTheaterMouseHandler);
-    } else {
-        hdr.style.display = 'none';
-        sbar.style.display = 'none';
-        exitBtn.style.display = 'block';
-        exitBtn.style.opacity = '1';
-
-        // Hide button after 3 seconds of inactivity
-        document.addEventListener('mousemove', appTheaterMouseHandler);
-        appTheaterMouseHandler(); // Trigger once immediately
-    }
-}
-
-function appTheaterMouseHandler() {
-    var exitBtn = document.getElementById('exit-app-theater');
-    if(exitBtn) {
-        exitBtn.style.opacity = '1';
-        clearTimeout(appTheaterTimer);
-        appTheaterTimer = setTimeout(function() {
-            exitBtn.style.opacity = '0';
-        }, 3000);
-    }
-}
 
 
 </script>
