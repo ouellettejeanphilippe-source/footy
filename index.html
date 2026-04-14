@@ -227,43 +227,57 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   .secondary-actions { display: none !important; position: absolute; top: 70px; right: 24px; background: rgba(28,28,30,0.95); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; }
   .secondary-actions.open { display: flex !important; gap: 8px; }
 }
+
 @media(max-width: 768px) {
+  .nav-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+  .nav-links .btn { padding: 8px; min-width: auto; font-size: 12px; flex: 1; text-align: center; justify-content: center; }
 
-  .nav-links { display: flex; align-items: center; gap: 16px; }
-
-  .secondary-actions { display: none !important; position: absolute; top: 60px; right: 16px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: flex-start; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 1000; gap: 8px; }
+  .secondary-actions { display: none !important; position: absolute; top: 120px; right: 16px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: stretch; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 1000; gap: 8px; }
   .secondary-actions.open { display: flex !important; }
   .secondary-actions.open .btn { width: 100%; justify-content: flex-start; display: flex; text-align: left; }
 
-
-  #main-hdr { overflow: visible !important; } /* Need visible for dropdowns */
-}
-
-
-@media(max-width: 768px) {
-    .nav-links.open .btn { width: 100%; justify-content: flex-start; }
-    .secondary-actions.open .btn { width: 100%; justify-content: flex-start; }
-}
-
-
-@media(max-width: 768px) {
-    .nav-links.open .btn { display: flex !important; width: auto !important; min-width: 150px; justify-content: flex-start !important; padding: 10px 16px !important; }
-    .secondary-actions.open .btn { display: flex !important; width: 100% !important; justify-content: flex-start !important; }
-}
-
-
-@media(max-width: 768px) {
-    .nav-links.open .btn { white-space: normal !important; text-align: left !important; }
-}
-
-
-@media(max-width: 768px) {
-    .nav-links { min-width: 200px; }
+  #main-hdr { flex-wrap: wrap; height: auto; padding: 12px; gap: 12px; overflow: visible !important; justify-content: space-between; }
+  .logo { font-size: 18px; margin-right: 0; }
+  .sp { display: none; }
 }
 
 
 
 
+.mv-theater {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: var(--bg) !important;
+}
+.theater-close-btn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 9999999;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  backdrop-filter: blur(5px);
+  opacity: 0.1;
+  transition: opacity 0.3s;
+}
+.theater-close-btn:hover, .theater-close-btn:active {
+  opacity: 1;
+}
 </style>
 </head>
 <body>
@@ -388,10 +402,14 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="solid">Couleur unie</option>
                 <option value="linear1">Dégradé Linéaire (Aube)</option>
                 <option value="linear2">Dégradé Linéaire (Crépuscule)</option>
+                <option value="linear3">Dégradé Linéaire (Forêt)</option>
+                <option value="linear4">Dégradé Linéaire (Cyberpunk)</option>
                 <option value="radial1">Dégradé Radial (Océan)</option>
                 <option value="radial2">Dégradé Radial (Nuit boréale)</option>
+                <option value="radial3">Dégradé Radial (Magma)</option>
                 <option value="blur1">Couleurs diffuses (Néon)</option>
                 <option value="blur2">Couleurs diffuses (Chaud)</option>
+                <option value="blur3">Couleurs diffuses (Froid)</option>
               </select>
             </div>
           </div>
@@ -1678,7 +1696,7 @@ function scrapeMatchFlux(m){
     var iframes = doc.querySelectorAll('iframe');
     [].forEach.call(iframes, function(ifr) {
         var src = ifr.src;
-        if(src && src.indexOf('http') === 0 && src.indexOf('footybite') < 0 && src.indexOf('ads') < 0) {
+        if(src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
             links.push({
                 name: 'Lecteur direct',
                 quality: 'HD',
@@ -1703,7 +1721,7 @@ function scrapeMatchFlux(m){
             // Check dans les href ou onClick s'il n'y a pas d'input (rare mais possible)
             var as = row.querySelectorAll('a[href]');
             for(var i=0; i<as.length; i++) {
-                 if(as[i].href.indexOf('http')===0 && as[i].href.indexOf('footybite')<0) {
+                 if(as[i].href.indexOf('http')===0) {
                      url = as[i].href;
                      break;
                  }
@@ -1734,24 +1752,34 @@ function scrapeMatchFlux(m){
             var thirdColText = tds[2] ? tds[2].textContent.trim() : '';
             var firstColText = tds[0] ? tds[0].textContent.trim() : '';
 
-            if (thirdColText && thirdColText.length > 2 && thirdColText.length < 20 && !thirdColText.includes('Kbps')) {
-                 channel = thirdColText;
-            } else if (firstColText && firstColText.length > 2 && firstColText.length < 20) {
-                 channel = firstColText;
+            var knownChannels = ['TSN', 'TNT', 'ESPN', 'Sky Sport', 'Sky Sports', 'RDS'];
+            for (var k=0; k<knownChannels.length; k++) {
+                if (rowText.indexOf(knownChannels[k].toLowerCase()) >= 0) {
+                    channel = knownChannels[k];
+                    break;
+                }
             }
 
-            if(channel) {
-                channel = channel.replace(/\s+/g, ' ').trim();
-                if (channel && channel.toLowerCase() !== 'sd' && channel.toLowerCase() !== 'hd' && !name.includes(channel)) {
-                    name = channel + ' (' + name + ')';
+            if (!channel) {
+                if (thirdColText && thirdColText.length > 2 && thirdColText.length < 20 && !thirdColText.includes('Kbps')) {
+                     channel = thirdColText;
+                } else if (firstColText && firstColText.length > 2 && firstColText.length < 20) {
+                     channel = firstColText;
                 }
             }
 
             var lang = 'MULTI';
-            if(rowText.indexOf('english') >= 0 || rowText.indexOf(' uk') >= 0) lang = 'ENGLISH';
-            else if(rowText.indexOf('french') >= 0 || rowText.indexOf(' fr') >= 0) lang = 'FRENCH';
+            if(rowText.indexOf('english') >= 0 || rowText.indexOf(' uk') >= 0 || channel.includes('TSN') || channel.includes('TNT') || channel.includes('ESPN') || channel.includes('Sky')) lang = 'ENGLISH';
+            if(rowText.indexOf('french') >= 0 || rowText.indexOf(' fr') >= 0 || channel.includes('RDS')) lang = 'FRENCH';
             else if(rowText.indexOf('spanish') >= 0 || rowText.indexOf('es') >= 0) lang = 'SPANISH';
             else if(rowText.indexOf('arabic') >= 0 || rowText.indexOf('ar') >= 0) lang = 'ARABIC';
+
+            if(channel) {
+                channel = channel.replace(/\s+/g, ' ').trim();
+                if (channel && channel.toLowerCase() !== 'sd' && channel.toLowerCase() !== 'hd' && !name.includes(channel)) {
+                    name = channel + ' [' + lang + '] - ' + name;
+                }
+            }
 
             links.push({
                 name: name,
@@ -1768,7 +1796,7 @@ function scrapeMatchFlux(m){
        [].forEach.call(btns,function(btn){
           if(btn.tagName==='A' && btn.href){
              var url=btn.href;
-             if(url && url.indexOf('http')===0 && url.indexOf('footybite')<0) {
+             if(url && url.indexOf('http')===0) {
                  var lowerUrl = url.toLowerCase();
                  if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.length < 5) return;
                  var name = btn.textContent.replace(/\s+/g, ' ').trim() || 'Flux externe';
@@ -1794,7 +1822,7 @@ function scrapeMatchFlux(m){
                 if (url.startsWith('aHR0c')) {
                     try { url = atob(url); } catch(e) {}
                 }
-                if(url.indexOf('http') === 0 && url.indexOf('footybite') < 0) {
+                if(url.indexOf('http') === 0) {
                     var lowerUrl = url.toLowerCase();
                     if (!lowerUrl.includes('1xbet') && !lowerUrl.includes('bet365') && !lowerUrl.includes('ads') && lowerUrl.length >= 5) {
                         links.push({
@@ -2973,6 +3001,7 @@ function setupMultivisionUI() {
       +   '<option value="vertical">⊟ Vertical</option>'
       +   '<option value="horizontal">⊟ Horizontal</option>'
       + '</select>'
+      + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
       + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
       + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire" style="padding: 4px 8px;">◨ <span class="hide-pip">Réduire</span></button>'
       + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip">Fermer</span></button>'
@@ -3001,7 +3030,7 @@ function setupMultivisionUI() {
         }
     });
 
-    exitTheaterBtn.onclick = toggleTheaterMode;
+    exitTheaterBtn.onclick = function() { toggleTheaterMode(document.getElementById('mv-grid')); };
 
     mvContainer.appendChild(mvToolbar);
     mvContainer.appendChild(mvGrid);
@@ -3021,30 +3050,6 @@ function setupMultivisionUI() {
 
 }
 
-function toggleTheaterMode() {
-    var mvc = document.getElementById('mv-container');
-    var tb = document.getElementById('mv-toolbar');
-    var exitBtn = document.getElementById('mv-exit-theater');
-    var mainHdr = document.querySelector('.hdr');
-
-    if(!mvc || !tb || !exitBtn || !mainHdr) return;
-
-    if (mvc.classList.contains('theater-mode')) {
-        mvc.classList.remove('theater-mode');
-        mvc.style.top = '60px'; // Revert back under the main header
-        tb.style.display = 'flex';
-        mainHdr.style.display = 'flex'; // Show main header
-        exitBtn.style.display = 'none';
-        exitBtn.style.opacity = '0';
-    } else {
-        mvc.classList.add('theater-mode');
-        mvc.style.top = '0px'; // Full window height
-        tb.style.display = 'none'; // Hide multiview toolbar
-        mainHdr.style.display = 'none'; // Hide main header
-        exitBtn.style.display = 'block';
-        exitBtn.style.opacity = '1';
-    }
-}
 
 
 function moveMultiviewStream(idx, direction) {
@@ -3071,7 +3076,10 @@ function moveMultiviewStream(idx, direction) {
 /* ══ PERSISTENCE MULTIVISION ═══════════ */
 function saveMultivisionState() {
     try {
-        localStorage.setItem('mv_state', JSON.stringify(mvFlux));
+        localStorage.setItem('mv_state', JSON.stringify({
+            flux: mvFlux,
+            layout: mvLayout
+        }));
     } catch(e) {}
 }
 
@@ -3080,10 +3088,16 @@ function restoreMultivisionState() {
         var saved = localStorage.getItem('mv_state');
         if(saved) {
             var parsed = JSON.parse(saved);
+
+            // Backward compatibility with just array
             if(Array.isArray(parsed) && parsed.length > 0) {
                 mvFlux = parsed;
-                // Automatically open multiview as PiP or Background if streams exist
-                // To avoid interrupting the initial load, we just update the UI badge
+                setTimeout(function() {
+                    updateMultivisionLayout();
+                }, 500);
+            } else if (parsed && parsed.flux && Array.isArray(parsed.flux)) {
+                mvFlux = parsed.flux;
+                if (parsed.layout) mvLayout = parsed.layout;
                 setTimeout(function() {
                     updateMultivisionLayout();
                 }, 500);
@@ -3539,6 +3553,34 @@ function toggleMultiview() {
         // PiP -> Return to Full Screen
         toggleMultiviewPip(); // This will remove pip class and restore full view
     }
+}
+
+function toggleTheaterMode(elem) {
+  elem = elem || document.getElementById('mv-grid');
+  if (!elem) return;
+
+  if (elem.classList.contains('mv-theater')) {
+      elem.classList.remove('mv-theater');
+      var closeBtn = document.getElementById('mv-close-theater');
+      if(closeBtn) closeBtn.remove();
+      // Restore overflow
+      document.body.style.overflow = '';
+  } else {
+      elem.classList.add('mv-theater');
+      // Hide body overflow to avoid double scrollbars
+      document.body.style.overflow = 'hidden';
+
+      var closeBtn = document.getElementById('mv-close-theater');
+      if(!closeBtn) {
+          closeBtn = document.createElement('button');
+          closeBtn.id = 'mv-close-theater';
+          closeBtn.className = 'theater-close-btn';
+          closeBtn.innerHTML = '✕';
+          closeBtn.title = 'Quitter le mode Cinéma';
+          closeBtn.onclick = function() { toggleTheaterMode(elem); };
+          elem.appendChild(closeBtn);
+      }
+  }
 }
 
 function toggleFullscreen(elem) {
@@ -4112,14 +4154,22 @@ function initPrefs() {
     document.body.style.background = 'linear-gradient(135deg, #2b1055 0%, #7597de 100%)';
   } else if(userPrefs.bg === 'linear2') {
     document.body.style.background = 'linear-gradient(to bottom, #141e30, #243b55)';
+  } else if(userPrefs.bg === 'linear3') {
+    document.body.style.background = 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)';
+  } else if(userPrefs.bg === 'linear4') {
+    document.body.style.background = 'linear-gradient(135deg, #4b134f, #c94b4b)';
   } else if(userPrefs.bg === 'radial1') {
     document.body.style.background = 'radial-gradient(circle at center, #0b2b40 0%, #000000 100%)';
   } else if(userPrefs.bg === 'radial2') {
     document.body.style.background = 'radial-gradient(circle at top right, #004d40, #000000 70%)';
+  } else if(userPrefs.bg === 'radial3') {
+    document.body.style.background = 'radial-gradient(circle at center, #870000 0%, #190a05 100%)';
   } else if(userPrefs.bg === 'blur1') {
     document.body.style.background = baseColor + ' radial-gradient(circle at 20% 30%, rgba(255,0,128,0.15) 0%, transparent 40%), radial-gradient(circle at 80% 80%, rgba(0,200,255,0.15) 0%, transparent 40%)';
   } else if(userPrefs.bg === 'blur2') {
     document.body.style.background = baseColor + ' radial-gradient(circle at 50% 0%, rgba(255,165,0,0.15) 0%, transparent 50%), radial-gradient(circle at 0% 100%, rgba(255,0,0,0.1) 0%, transparent 50%)';
+  } else if(userPrefs.bg === 'blur3') {
+    document.body.style.background = baseColor + ' radial-gradient(circle at 30% 80%, rgba(0,100,255,0.15) 0%, transparent 50%), radial-gradient(circle at 70% 20%, rgba(0,255,150,0.1) 0%, transparent 50%)';
   } else {
     document.body.style.background = baseColor + ' radial-gradient(circle at 50% -20%, rgba(255,255,255,0.05) 0%, transparent 70%)';
   }
