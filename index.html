@@ -520,6 +520,7 @@ function toggleFavTeam(teamName) {
   buildEPG(S.matches);
 }
 
+var logoCache = {};
 var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{}, collapsedLg:{} };
 
 /* ══ CONFIG ═════════════════════════════ */
@@ -723,6 +724,17 @@ var TEAM_ALIASES = {
 };
 
 var _normCache = {};
+function cacheLogo(teamName, url) {
+  var k = normName(teamName);
+  if(!logoCache[k] && url && url.indexOf("default") === -1) {
+    logoCache[k] = url;
+  }
+}
+
+function getLogo(teamName) {
+  return logoCache[normName(teamName)] || null;
+}
+
 function normName(n) {
   if (!n) return '';
   var cached = _normCache[n];
