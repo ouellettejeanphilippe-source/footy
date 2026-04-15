@@ -3039,7 +3039,7 @@ function toggleMultiviewPip() {
     if(mvc.classList.contains('mv-pip')) {
         // Restore to full screen multiview
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
         updateMultivisionLayout(); // Re-apply grid
@@ -3056,7 +3056,7 @@ function toggleMultiviewPip() {
             epg.style.paddingRight = '0'; // No column room needed
         } else {
             // On tablet/desktop, show column
-            mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:#0a0a0c;z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
+            mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
             epg.style.display = 'flex';
             epg.style.paddingRight = '350px'; // Make room for the column
 
@@ -3099,7 +3099,7 @@ function setupMultivisionUI() {
     // Create Multivision Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
-    mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:none;flex-direction:column;';
+    mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
@@ -3123,7 +3123,7 @@ function setupMultivisionUI() {
 
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
-    mvGrid.style.cssText = 'flex:1;display:grid;gap:2px;background:#000;';
+    mvGrid.style.cssText = 'flex:1;display:grid;gap:2px;background:transparent;';
 
     var exitTheaterBtn = document.createElement('button');
     exitTheaterBtn.id = 'mv-exit-theater';
@@ -3351,7 +3351,7 @@ function updateMultivisionLayout() {
 
             var videoContainer = document.createElement('div');
             videoContainer.className = 'mv-video-container';
-            videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000;';
+            videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:transparent;';
 
             cell.appendChild(hdr);
             cell.appendChild(videoContainer);
@@ -3653,7 +3653,7 @@ function toggleMultiview() {
     if(mvc.style.display === 'none') {
         // Open Multivision full screen
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
@@ -3805,7 +3805,7 @@ function openFlux(e, eu, en, mid){
     pbg.id = 'player-bg';
     pbg.className = 'mbg';
     // Style as a full-screen "Prime Video" layout
-    pbg.innerHTML = '<div id="player-container" style="width:100%; height:100%; background:#000; display:flex; flex-direction:column; position:relative; overflow:hidden;">'
+    pbg.innerHTML = '<div id="player-container" style="width:100%; height:100%; background:transparent; display:flex; flex-direction:column; position:relative; overflow:hidden;">'
 
       // Top bar (Header)
       +'<div id="player-header" style="position:absolute; top:0; left:0; right:0; padding:15px 25px; background:linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index:20; display:flex; justify-content:space-between; align-items:flex-start; transition:opacity 0.3s;">'
@@ -4438,21 +4438,21 @@ function applyPredefinedTheme() {
   if(theme === 'custom') return;
 
   var presets = {
-    'neon': { bgStyle: 'blur', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff' },
-    'ocean': { bgStyle: 'linear', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3' },
-    'cyberpunk': { bgStyle: 'linear', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c' },
-    'forest': { bgStyle: 'radial', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55' },
-    'sunset': { bgStyle: 'linear', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933' },
-    'magma': { bgStyle: 'radial', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300' },
-    'aurora': { bgStyle: 'blur', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80' },
-    'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff' },
-    'ps2': { bgStyle: 'radial', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff' },
-    'xbox': { bgStyle: 'radial', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10' },
-    'samsung': { bgStyle: 'gradient', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6' },
-    'chromecast': { bgStyle: 'blur', c1: '#2c3e50', c2: '#34495e', c3: '#7f8c8d', accent: '#ecf0f1' },
-    'windows': { bgStyle: 'blur', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4' },
-    'macos': { bgStyle: 'gradient', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff' },
-    'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420' }
+    'neon': { bgStyle: 'blur', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff', btnShape: 'rounded' },
+    'ocean': { bgStyle: 'linear', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3', btnShape: 'rounded' },
+    'cyberpunk': { bgStyle: 'linear', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c', btnShape: 'square' },
+    'forest': { bgStyle: 'radial', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55', btnShape: 'rounded' },
+    'sunset': { bgStyle: 'linear', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933', btnShape: 'rounded' },
+    'magma': { bgStyle: 'radial', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300', btnShape: 'rounded' },
+    'aurora': { bgStyle: 'blur', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80', btnShape: 'rounded' },
+    'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff', btnShape: 'square' },
+    'ps2': { bgStyle: 'radial', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff', btnShape: 'ps2' },
+    'xbox': { bgStyle: 'radial', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10', btnShape: 'xbox' },
+    'samsung': { bgStyle: 'gradient', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6', btnShape: 'samsung' },
+    'chromecast': { bgStyle: 'blur', c1: '#2c3e50', c2: '#34495e', c3: '#7f8c8d', accent: '#ecf0f1', btnShape: 'pill' },
+    'windows': { bgStyle: 'blur', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4', btnShape: 'windows' },
+    'macos': { bgStyle: 'gradient', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff', btnShape: 'macos' },
+    'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420', btnShape: 'ubuntu' }
   };
 
   if(presets[theme]) {
@@ -4461,6 +4461,7 @@ function applyPredefinedTheme() {
     userPrefs.c2 = presets[theme].c2;
     userPrefs.c3 = presets[theme].c3;
     userPrefs.accent = presets[theme].accent;
+    if(presets[theme].btnShape) userPrefs.btnShape = presets[theme].btnShape;
     userPrefs.theme = theme;
 
     // Update inputs
@@ -4469,6 +4470,9 @@ function applyPredefinedTheme() {
     document.getElementById('pref-c2').value = userPrefs.c2;
     document.getElementById('pref-c3').value = userPrefs.c3;
     document.getElementById('pref-accent-color').value = userPrefs.accent;
+    if(document.getElementById('pref-btn-shape') && presets[theme].btnShape) {
+      document.getElementById('pref-btn-shape').value = presets[theme].btnShape;
+    }
 
     applyUserPrefs();
   }
