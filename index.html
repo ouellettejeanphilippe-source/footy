@@ -376,17 +376,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
       <!-- API Settings -->
       <div>
-        <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text);">API-Sports</div>
-        <label for="apiKeyInput" style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.4;">
-          Entrez votre clé API-Sports pour obtenir les scores en direct et le calendrier mis à jour automatiquement.
-        </label>
-        <div style="display:flex; gap:10px;">
-          <input type="text" id="apiKeyInput" placeholder="Clé API (ex: 3a9...)" style="flex:1; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; outline: none; font-family: monospace;">
-          <button class="btn" style="padding: 10px 16px; background: var(--accent); color: #fff; border: none;" onclick="saveApiKey()">Sauvegarder</button>
-        </div>
-      </div>
 
-      <hr style="border:none; border-top:1px solid var(--border); margin:0;">
 
       <!-- Personalization Settings -->
       <div>
@@ -394,7 +384,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
         <div style="display:flex; flex-direction:column; gap:16px;">
 
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:14px;">Thème prédéfini</div>
+            <div style="font-size:14px;">Palette de couleurs</div>
             <select id="pref-theme" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyPredefinedTheme()">
               <option value="custom">Personnalisé</option>
               <option value="neon">Néon (Rose/Cyan)</option>
@@ -419,7 +409,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Style d'arrière-plan</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
+              <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
                 <option value="solid">Couleur unie (C1)</option>
                 <option value="gradient">Dégradé subtil (Premium)</option>
                 <option value="linear">Linéaire (C1 → C2 → C3)</option>
@@ -438,27 +428,27 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Couleurs du fond</div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <input type="color" id="pref-c1" value="#000000" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 1 (Base)">
-              <input type="color" id="pref-c2" value="#111111" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 2 (Intermédiaire)">
-              <input type="color" id="pref-c3" value="#222222" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 3 (Extrémité)">
+            <div style="display:flex; gap:8px; align-items:center; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 6px;">
+              <input type="color" id="pref-c1" value="#000000" style="width:36px; height:36px; padding:0; border:none; border-radius:4px; cursor:pointer; box-shadow: 0 0 5px rgba(0,0,0,0.5);" onchange="markCustomTheme()" title="Couleur 1 (Base)">
+              <input type="color" id="pref-c2" value="#111111" style="width:36px; height:36px; padding:0; border:none; border-radius:4px; cursor:pointer; box-shadow: 0 0 5px rgba(0,0,0,0.5);" onchange="markCustomTheme()" title="Couleur 2 (Intermédiaire)">
+              <input type="color" id="pref-c3" value="#222222" style="width:36px; height:36px; padding:0; border:none; border-radius:4px; cursor:pointer; box-shadow: 0 0 5px rgba(0,0,0,0.5);" onchange="markCustomTheme()" title="Couleur 3 (Extrémité)">
             </div>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Couleur d'accentuation</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur personnalisée">
+              <input type="color" id="pref-accent-color" value="#0a84ff" style="width:36px; height:36px; padding:0; border:none; border-radius:4px; cursor:pointer; box-shadow: 0 0 5px rgba(0,0,0,0.5);" onchange="markCustomTheme()" title="Couleur personnalisée">
             </div>
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:14px;">Couleurs des cartes</div>
             <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <option value="home">Équipe Domicile (Défaut)</option>
               <option value="gradient">Dégradé Équipes (Dom → Ext)</option>
               <option value="gradient-top">Dégradé Équipes (Haut → Bas)</option>
               <option value="league">Couleur de la Ligue</option>
-              <option value="home">Équipe Domicile seulement</option>
               <option value="dark">Sombre (Désactivé)</option>
             </select>
           </div>
@@ -1404,279 +1394,6 @@ function fetchEspnSchedule(leaguePath, dateStr) {
   return fetch(url).then(function(res) { return res.json(); }).catch(function(){ return null; });
 }
 
-/* ══ API-SPORTS INTEGRATION ════════════ */
-var SPORT_MAP = {
-  'nba': { sport: 'basketball', api: 'v1.basketball.api-sports.io', leagueId: 12 },
-  'basketball': { sport: 'basketball', api: 'v1.basketball.api-sports.io', leagueId: 12 },
-  'nhl': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
-  'hockey': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
-  'ice hockey': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
-  'nfl': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
-  'american football': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
-  'american-football': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
-  'mlb': { sport: 'baseball', api: 'v1.baseball.api-sports.io', leagueId: 1 },
-  'baseball': { sport: 'baseball', api: 'v1.baseball.api-sports.io', leagueId: 1 },
-  'premier league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 39 },
-  'la liga': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 140 },
-  'serie a': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 135 },
-  'bundesliga': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 78 },
-  'ligue 1': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 61 },
-  'champions league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 2 },
-  'europa league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 3 },
-  'conference league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 848 },
-  'mls': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 253 },
-  'saudi pro league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 307 },
-  'eredivisie': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 88 },
-  'primeira liga': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 94 },
-  'fa cup': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 45 },
-  'copa del rey': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 143 },
-  'coupe de france': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 66 },
-  'dfb pokal': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 81 },
-  'coppa italia': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 137 },
-  'nations league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 5 },
-  'f1': { sport: 'formula-1', api: 'v1.formula-1.api-sports.io', leagueId: 1 },
-  'formula 1': { sport: 'formula-1', api: 'v1.formula-1.api-sports.io', leagueId: 1 }
-};
-
-function getLeagueInfo(leagueName) {
-  var l = leagueName.toLowerCase();
-  for (var key in SPORT_MAP) {
-    if (l.indexOf(key) >= 0) return SPORT_MAP[key];
-  }
-  // Default to football if unknown, though it might fail
-  return { sport: 'football', api: 'v3.football.api-sports.io', leagueId: null };
-}
-
-
-function filterBuggyMatches(matches) {
-    var today = new Date();
-    var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
-
-    return matches.filter(function(m) {
-        var lowerHome = m.homeTeam.toLowerCase();
-        var lowerAway = m.awayTeam.toLowerCase();
-        var isWWE = lowerHome.includes('wwe') || lowerAway.includes('wwe') || m.league.toLowerCase().includes('wwe');
-        var isRaw = lowerHome.includes('raw') || lowerAway.includes('raw');
-        var isSmackdown = lowerHome.includes('smackdown') || lowerAway.includes('smackdown');
-
-        if (isWWE) {
-            // WWE Raw happens on Monday (1).
-            // We might allow Tuesday (2) if it's past midnight EST.
-            if (isRaw && dayOfWeek !== 1 && dayOfWeek !== 2) return false;
-
-            // WWE Smackdown happens on Friday (5).
-            // We might allow Saturday (6) if it's past midnight EST.
-            if (isSmackdown && dayOfWeek !== 5 && dayOfWeek !== 6) return false;
-        }
-
-        return true;
-    });
-}
-
-function fetchApiSportsFixtures(sportInfo, dateStr) {
-  var key = localStorage.getItem('apiSportsKey');
-  if (!key) return Promise.resolve(null);
-
-  var cacheKey = 'apisports_' + sportInfo.sport + '_' + (sportInfo.leagueId || 'all') + '_' + dateStr;
-  var cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    try {
-      var data = JSON.parse(cached);
-      // Cache expires after 4 hours for non-live sync
-      if (Date.now() - data.ts < 4 * 3600 * 1000) {
-        lg('API-Sports Cache Hit', cacheKey);
-        return Promise.resolve(data.response);
-      }
-    } catch(e){}
-  }
-
-  var url = 'https://' + sportInfo.api + '/fixtures?date=' + dateStr;
-  if (sportInfo.sport !== 'football') {
-      url = 'https://' + sportInfo.api + '/games?date=' + dateStr;
-  }
-  if (sportInfo.leagueId) {
-    var season = new Date().getFullYear();
-    // Some logic for season year overlap (e.g. 2023-2024 usually uses 2023 for football)
-    if (new Date().getMonth() < 6 && sportInfo.sport === 'football') season -= 1;
-    if (sportInfo.sport === 'football') {
-        url += '&league=' + sportInfo.leagueId + '&season=' + season;
-    } else {
-        url += '&league=' + sportInfo.leagueId + '&season=' + season;
-    }
-  }
-
-  lg('API-Sports Req', url);
-  return fetch(url, {
-    headers: {
-      'x-apisports-key': key,
-      'x-rapidapi-key': key
-    }
-  }).then(function(res) { return res.json(); }).then(function(data) {
-    if (data && data.response) {
-      localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), response: data.response }));
-      return data.response;
-    }
-    return null;
-  }).catch(function(e) {
-    lg('API-Sports Err', e.message);
-    return null;
-  });
-}
-
-
-
-function updateMatchDataFromApi(match, apiFixture, sport) {
-  if (sport === 'football') {
-    var fixture = apiFixture.fixture;
-    var goals = apiFixture.goals;
-    var status = fixture.status.short; // NS, 1H, HT, 2H, FT, etc.
-
-    // Convert API status to our status
-    if (['1H', '2H', 'HT', 'ET', 'P', 'LIVE'].includes(status)) {
-      match.status = 'live';
-      match.minute = fixture.status.elapsed ? fixture.status.elapsed + "'" : 'HT';
-      if(status === 'HT') match.minute = 'HT';
-      match.score = [goals.home !== null ? goals.home : 0, goals.away !== null ? goals.away : 0];
-    } else if (['FT', 'AET', 'PEN'].includes(status)) {
-      match.status = 'finished';
-      match.minute = 'FT';
-      match.score = [goals.home !== null ? goals.home : 0, goals.away !== null ? goals.away : 0];
-    } else {
-      // NS (Not Started), TBD
-      match.status = 'upcoming';
-      // Time is usually correct from footybite, but we can override it
-      var d = new Date(fixture.date);
-      match.startTime = getEstTimeStrFromDate(d);
-    }
-  } else {
-    // Basketball / Hockey / NFL (v1 APIs)
-    var status = apiFixture.status.short;
-    var scores = apiFixture.scores;
-    if (['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT', 'LIVE', 'P1', 'P2', 'P3'].includes(status)) {
-       match.status = 'live';
-       match.minute = apiFixture.status.timer ? apiFixture.status.timer : status;
-       match.score = [scores.home.total !== null ? scores.home.total : 0, scores.away.total !== null ? scores.away.total : 0];
-    } else if (['FT', 'AOT'].includes(status)) {
-       match.status = 'finished';
-       match.minute = 'FT';
-       match.score = [scores.home.total !== null ? scores.home.total : 0, scores.away.total !== null ? scores.away.total : 0];
-    } else {
-       match.status = 'upcoming';
-       var d = new Date(apiFixture.date);
-       match.startTime = getEstTimeStrFromDate(d);
-    }
-  }
-
-  // Update logos from API-Sports if available
-  if(apiFixture.teams) {
-      if(apiFixture.teams.home && apiFixture.teams.home.logo) {
-          match.homeLogo = apiFixture.teams.home.logo;
-          cacheLogo(match.homeTeam, match.homeLogo);
-      }
-      if(apiFixture.teams.away && apiFixture.teams.away.logo) {
-          match.awayLogo = apiFixture.teams.away.logo;
-          cacheLogo(match.awayTeam, match.awayLogo);
-      }
-  }
-}
-
-/* ══ LOGO CACHE ═══════════════════════════ */
-var logoCache = {};
-try {
-    var stored = localStorage.getItem('sports_logos');
-    if(stored) logoCache = JSON.parse(stored);
-} catch(e) {}
-
-function cacheLogo(teamName, url) {
-    if(!teamName || !url) return;
-    var key = normName(teamName);
-    if(logoCache[key] !== url) {
-        logoCache[key] = url;
-        try {
-            localStorage.setItem('sports_logos', JSON.stringify(logoCache));
-        } catch(e) {}
-    }
-}
-
-function getLogo(teamName) {
-    if(!teamName) return null;
-    var key = normName(teamName);
-    return logoCache[key] || null;
-}
-
-/* ══ DOMAIN PREFS ════════════════════════ */
-function getDomain(url) {
-  try {
-    var u = new URL(url);
-    return u.hostname.replace(/^www\./, '');
-  } catch(e) {
-    return url;
-  }
-}
-
-var domainPrefs = {};
-try {
-  var storedPrefs = localStorage.getItem('domain_prefs');
-  if (storedPrefs) domainPrefs = JSON.parse(storedPrefs);
-} catch(e) {}
-
-function saveDomainPrefs() {
-  try {
-    localStorage.setItem('domain_prefs', JSON.stringify(domainPrefs));
-  } catch(e) {}
-}
-
-function toggleDomainPref(domain, type, mid) {
-  mid = getOriginalMatchId(mid);
-  var current = domainPrefs[domain] || 0;
-  if (type === 'fav') {
-    if (current === 1) delete domainPrefs[domain];
-    else domainPrefs[domain] = 1;
-  } else if (type === 'dep') {
-    if (current === -1) delete domainPrefs[domain];
-    else domainPrefs[domain] = -1;
-  }
-  saveDomainPrefs();
-
-  // Refresh the UI if necessary
-  if (mid) {
-    var m = S.matches.find(function(x){ return x.id === mid; });
-    if(m) {
-      if (document.getElementById('mbg').classList.contains('open')) {
-        openMod(m);
-      }
-      var pbg = document.getElementById('player-bg');
-      if (pbg && pbg.classList.contains('open')) {
-          var iframe = document.getElementById('p-frame');
-          populatePlayerSidebar(m, iframe ? iframe.dataset.url : null);
-      }
-    }
-  }
-}
-
-function sortFluxLinks(links) {
-  return links.slice().sort(function(a, b) {
-    var nameA = (a.name || '').toLowerCase();
-    var nameB = (b.name || '').toLowerCase();
-
-    var isFavA = nameA.includes('sheri') || nameA.includes('4kplayer') ? 1 : 0;
-    var isFavB = nameB.includes('sheri') || nameB.includes('4kplayer') ? 1 : 0;
-
-    if (isFavA !== isFavB) {
-      return isFavB - isFavA; // 1 goes before 0
-    }
-
-    var domA = getDomain(a.url);
-    var domB = getDomain(b.url);
-    var prefA = domainPrefs[domA] || 0;
-    var prefB = domainPrefs[domB] || 0;
-    if (prefA !== prefB) {
-      return prefB - prefA; // Favs (1) first, dep (-1) last
-    }
-    return 0; // Keep original order if preferences are equal
-  });
-}
-
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 function fetchSubPages(matches){
   // We use a limited concurrency pool so we don't spam the proxy/network
@@ -2197,6 +1914,11 @@ function buildEPG(matches){
                   var awayColor = lgColor(awayTeamName);
                   var lgCol = lg.color || lgColor(lg.league);
 
+                  var tColorsH = getTeamColors(m.homeTeam);
+                  var tColorsA = getTeamColors(m.awayTeam);
+                  if (tColorsH) { homeColor = tColorsH[0]; awayColor = tColorsH[1]; }
+                  if (tColorsA && !tColorsH) { homeColor = tColorsA[1]; awayColor = tColorsA[0]; }
+
 
                   var tColorsH = getTeamColors(m.homeTeam);
                   var tColorsA = getTeamColors(m.awayTeam);
@@ -2205,6 +1927,7 @@ function buildEPG(matches){
 
                   if (userPrefs.cardColor === 'home') {
                       b.style.background = homeColor;
+                      b.style.boxShadow = '0 8px 32px ' + homeColor + '40';
                   } else if (userPrefs.cardColor === 'league') {
                       b.style.background = lgCol;
                   } else if (userPrefs.cardColor === 'dark') {
@@ -2406,6 +2129,12 @@ function buildEPG(matches){
             var awayTeamName = normName(m.awayTeam) || 'B';
             var homeColor = lgColor(homeTeamName);
             var awayColor = lgColor(awayTeamName);
+            var lgCol = m.color || lgColor(m.league);
+
+            var tColorsH = getTeamColors(m.homeTeam);
+            var tColorsA = getTeamColors(m.awayTeam);
+            if (tColorsH) { homeColor = tColorsH[0]; awayColor = tColorsH[1]; }
+            if (tColorsA && !tColorsH) { homeColor = tColorsA[1]; awayColor = tColorsA[0]; }
 
             if (userPrefs.cardColor === 'home') {
                 b.style.background = homeColor;
@@ -3014,7 +2743,7 @@ function toggleMultiviewPip() {
     if(mvc.classList.contains('mv-pip')) {
         // Restore to full screen multiview
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
         updateMultivisionLayout(); // Re-apply grid
@@ -3031,7 +2760,7 @@ function toggleMultiviewPip() {
             epg.style.paddingRight = '0'; // No column room needed
         } else {
             // On tablet/desktop, show column
-            mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:#0a0a0c;z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
+            mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:var(--bg);z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
             epg.style.display = 'flex';
             epg.style.paddingRight = '350px'; // Make room for the column
 
@@ -3074,7 +2803,7 @@ function setupMultivisionUI() {
     // Create Multivision Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
-    mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:none;flex-direction:column;';
+    mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
@@ -3098,7 +2827,7 @@ function setupMultivisionUI() {
 
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
-    mvGrid.style.cssText = 'flex:1;display:grid;gap:2px;background:#000;';
+    mvGrid.style.cssText = 'flex:1;display:grid;gap:2px;background:transparent;';
 
     var exitTheaterBtn = document.createElement('button');
     exitTheaterBtn.id = 'mv-exit-theater';
@@ -3317,7 +3046,7 @@ function updateMultivisionLayout() {
             cell.setAttribute('data-internal-id', cellId);
             cell.classList.add('mv-cell');
             cell.dataset.index = idx;
-            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;resize:both;';
+            cell.style.cssText = 'position:relative;background:rgba(0,0,0,0.5);display:flex;flex-direction:column;cursor:grab;overflow:hidden;resize:both;';
             cell.draggable = true;
 
             var hdr = document.createElement('div');
@@ -3326,7 +3055,7 @@ function updateMultivisionLayout() {
 
             var videoContainer = document.createElement('div');
             videoContainer.className = 'mv-video-container';
-            videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000;';
+            videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:transparent;';
 
             cell.appendChild(hdr);
             cell.appendChild(videoContainer);
@@ -3628,7 +3357,7 @@ function toggleMultiview() {
     if(mvc.style.display === 'none') {
         // Open Multivision full screen
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:#000;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
@@ -3780,7 +3509,7 @@ function openFlux(e, eu, en, mid){
     pbg.id = 'player-bg';
     pbg.className = 'mbg';
     // Style as a full-screen "Prime Video" layout
-    pbg.innerHTML = '<div id="player-container" style="width:100%; height:100%; background:#000; display:flex; flex-direction:column; position:relative; overflow:hidden;">'
+    pbg.innerHTML = '<div id="player-container" style="width:100%; height:100%; background:transparent; display:flex; flex-direction:column; position:relative; overflow:hidden;">'
 
       // Top bar (Header)
       +'<div id="player-header" style="position:absolute; top:0; left:0; right:0; padding:15px 25px; background:linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index:20; display:flex; justify-content:space-between; align-items:flex-start; transition:opacity 0.3s;">'
@@ -4218,7 +3947,7 @@ var userPrefs = {
   c2: '#111111',
   c3: '#222222',
   accent: '#0a84ff',
-  cardColor: 'gradient',
+  cardColor: 'home',
   btnShape: 'rounded',
   cardOpacity: '15'
 };
@@ -4356,7 +4085,7 @@ function initPrefs() {
   if(selC1) selC1.value = userPrefs.c1 || '#000000';
   if(selC2) selC2.value = userPrefs.c2 || '#111111';
   if(selC3) selC3.value = userPrefs.c3 || '#222222';
-  if(selCard) selCard.value = userPrefs.cardColor || 'gradient';
+  if(selCard) selCard.value = userPrefs.cardColor || 'home';
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) selAccentColor.value = userPrefs.accent || '#0a84ff';
   if(selOpacity) selOpacity.value = userPrefs.cardOpacity || 15;
@@ -4400,11 +4129,7 @@ function markCustomTheme() {
   applyUserPrefs();
 }
 
-function applyUserBgStyleOnly() {
-  var themeSel = document.getElementById('pref-theme');
-  if(themeSel) themeSel.value = 'custom'; // mark custom so it doesn't revert to preset
-  applyUserPrefs();
-}
+
 
 function applyPredefinedTheme() {
   var themeSel = document.getElementById('pref-theme');
@@ -4431,15 +4156,13 @@ function applyPredefinedTheme() {
   };
 
   if(presets[theme]) {
-    userPrefs.bgStyle = presets[theme].bgStyle;
     userPrefs.c1 = presets[theme].c1;
     userPrefs.c2 = presets[theme].c2;
     userPrefs.c3 = presets[theme].c3;
     userPrefs.accent = presets[theme].accent;
     userPrefs.theme = theme;
 
-    // Update inputs
-    document.getElementById('pref-bg-style').value = userPrefs.bgStyle;
+    // Update inputs (do not override background style automatically to allow better mix and match)
     document.getElementById('pref-c1').value = userPrefs.c1;
     document.getElementById('pref-c2').value = userPrefs.c2;
     document.getElementById('pref-c3').value = userPrefs.c3;
@@ -4450,7 +4173,7 @@ function applyPredefinedTheme() {
 }
 
 function openSettings() {
-  document.getElementById('apiKeyInput').value = localStorage.getItem('apiSportsKey') || '';
+
   initPrefs();
   document.getElementById('setbg').classList.add('open');
 }
@@ -4459,17 +4182,7 @@ function closeSettings() {
   document.getElementById('setbg').classList.remove('open');
 }
 
-function saveApiKey() {
-  var key = document.getElementById('apiKeyInput').value.trim();
-  if (key) {
-    localStorage.setItem('apiSportsKey', key);
-    showToast('Clé API sauvegardée');
-  } else {
-    localStorage.removeItem('apiSportsKey');
-    showToast('Clé API supprimée');
-  }
-  loadAll(); // Reload to fetch api-sports
-}
+
 
 initPrefs(); // Run once on load
 
@@ -4637,70 +4350,7 @@ function getApiFirstMatches(targetDate) {
     });
   });
 
-  // 2. Fetch API-Sports if key exists
-  var key = localStorage.getItem('apiSportsKey');
-  if (key) {
-    var sportsToFetch = [];
-    var sportIds = {};
-    for(var k in SPORT_MAP) {
-      var s = SPORT_MAP[k];
-      var sid = s.sport + '_' + s.leagueId;
-      if(!sportIds[sid]) {
-        sportIds[sid] = true;
-        sportsToFetch.push(s);
-      }
-    }
-
-    sportsToFetch.forEach(function(s) {
-      apiDates.forEach(function(apiDateStr) {
-        promises.push(
-          fetchApiSportsFixtures(s, apiDateStr).then(function(apiData) {
-          if (!apiData) return;
-          apiData.forEach(function(f) {
-             var fHome = normName(f.teams.home.name);
-             var fAway = normName(f.teams.away.name);
-
-             var exists = matches.find(function(m) {
-                var mHome = normName(m.homeTeam);
-                var mAway = normName(m.awayTeam);
-                return isMatch(mHome, fHome) && isMatch(mAway, fAway);
-             });
-
-             if(exists) {
-                updateMatchDataFromApi(exists, f, s.sport);
-             } else {
-                var newMatch = {
-                  id: 'api_'+f.fixture.id,
-                  league: f.league.name,
-                  flag: lgFlag(f.league.name),
-                  color: lgColor(f.league.name),
-                  homeTeam: f.teams.home.name,
-                  awayTeam: f.teams.away.name,
-                  homeLogo: f.teams.home.logo,
-                  awayLogo: f.teams.away.logo,
-                  startTime: '00:00',
-                  durationMinutes: getLeagueDuration(f.league.name),
-                  status: 'upcoming',
-                  score: null,
-                  streamLinks: [],
-                  streamsLoaded: false,
-                  source: 'api'
-                };
-                newMatch.matchDate = getEstDateStrFromDate(new Date(f.fixture.date));
-                updateMatchDataFromApi(newMatch, f, s.sport);
-                matches.push(newMatch);
-
-                if(f.teams.home.logo) cacheLogo(f.teams.home.name, f.teams.home.logo);
-                if(f.teams.away.logo) cacheLogo(f.teams.away.name, f.teams.away.logo);
-             }
-          });
-        })
-      );
-      });
-    });
-  }
-
-  return Promise.all(promises).then(function(){
+    return Promise.all(promises).then(function(){
     return filterBuggyMatches(matches);
   });
 }
@@ -4741,6 +4391,7 @@ function mergeFluxToApi(apiMatches, scrapedMatches) {
          sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
          sm.league = 'Autres Flux';
          sm.flag = '📡';
+         sm.matchDate = targetDateStr;
          sm.color = '#555555';
 
          apiMatches.push(sm);
