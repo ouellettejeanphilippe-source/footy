@@ -60,8 +60,8 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 .btn:hover::after { opacity: 1; }
 .btn:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
-.sport-btn { border-radius: var(--radius-pill, 20px) !important; padding: 8px 16px !important; font-size: 14px !important; background: rgba(255,255,255,0.05) !important; border-color: transparent !important; box-shadow: none !important; color: var(--muted2) !important; font-weight: 600 !important; transition: all 0.2s !important; }
-.sport-btn:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+.sport-btn { border-radius: var(--radius-btn, 20px) !important; padding: 8px 16px !important; font-size: 14px !important; background: var(--btn-bg, rgba(255,255,255,0.05)) !important; border: var(--btn-border, transparent) !important; box-shadow: var(--btn-shadow, none) !important; color: var(--muted2) !important; font-weight: 600 !important; transition: all 0.2s !important; backdrop-filter: var(--btn-blur, blur(12px)); -webkit-backdrop-filter: var(--btn-blur, blur(12px)); }
+.sport-btn:hover { filter: brightness(1.2); }
 .sport-btn.active { background: rgba(255,255,255,0.15) !important; color: var(--accent) !important; border-color: rgba(10, 132, 255, 0.3) !important; font-weight: 700 !important; box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important; }
 .btn.g { background: rgba(48, 209, 88, 0.15); color: var(--accent-green); border-color: rgba(48, 209, 88, 0.2); }
 .btn.g:hover { background: rgba(48, 209, 88, 0.25); box-shadow: 0 4px 12px rgba(48, 209, 88, 0.2); }
@@ -278,7 +278,83 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   opacity: 1;
   transform: scale(1.05);
 }
+
+@media (max-width: 768px) {
+  .btn, .sport-btn, .mv-btn { min-height: 44px; }
+  .mv-hdr { padding: 12px 16px; }
+}
+
 </style>
+
+<style id="custom-ui-effects">
+  .crt-effect {
+      animation: crtFlicker 0.15s infinite;
+  }
+  @keyframes crtFlicker {
+      0% { opacity: 0.98; }
+      50% { opacity: 1; }
+      100% { opacity: 0.98; }
+  }
+  .crt-effect .match-card, .crt-effect .btn {
+      border-radius: 8px !important;
+      border: 1px solid rgba(255,255,255,0.4) !important;
+  }
+
+  .neon-glow-effect .btn {
+      box-shadow: 0 0 10px var(--accent), inset 0 0 10px var(--accent) !important;
+      border: 1px solid var(--accent) !important;
+      background: rgba(0,0,0,0.6) !important;
+  }
+  .neon-glow-effect .match-card {
+      box-shadow: 0 0 15px var(--mc, var(--accent)) !important;
+      border: 1px solid var(--mc, var(--accent)) !important;
+  }
+
+  .matrix-rain {
+      width: 100%; height: 100%;
+      background: linear-gradient(180deg, rgba(0,255,0,0) 0%, rgba(0,255,0,0.1) 100%);
+      background-size: 100% 20px;
+      animation: matrixFall 2s linear infinite;
+      opacity: 0.3;
+  }
+  @keyframes matrixFall {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 100vh; }
+  }
+</style>
+
+
+<style id="custom-animated-bgs">
+  @keyframes gradientFluid {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+  }
+  .bg-animated-gradient {
+      background-size: 200% 200% !important;
+      animation: gradientFluid 15s ease infinite;
+  }
+
+  .floating-shapes-container {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      overflow: hidden; pointer-events: none; z-index: -1;
+  }
+  .floating-shape {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(5px);
+      border-radius: 50%;
+      animation: floatShape 20s infinite linear;
+  }
+  @keyframes floatShape {
+      0% { transform: translateY(100vh) translateX(0) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-20vh) translateX(100px) rotate(360deg); opacity: 0; }
+  }
+</style>
+
 </head>
 <body>
 
@@ -393,7 +469,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
         <div style="font-weight:bold; font-size:16px; margin-bottom:16px; color:var(--text);">🎨 Personnalisation Visuelle</div>
         <div style="display:flex; flex-direction:column; gap:16px;">
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14px;">Thème prédéfini</div>
             <select id="pref-theme" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyPredefinedTheme()">
               <option value="custom">Personnalisé</option>
@@ -416,7 +492,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             </select>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14px;">Style d'arrière-plan</div>
             <div style="display:flex; gap:8px; align-items:center;">
               <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
@@ -431,12 +507,24 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="diagonal">Diagonale douce (Apple)</option>
                 <option value="glow">Lueurs diffuses</option>
                 <option value="aurora">Aurore Boréale complexe</option>
+
                 <option value="snow">Poussière d'étoiles / Neige</option>
+                <option value="animated_gradient">Dégradé animé (Fluide)</option>
+                <option value="floating_shapes">Formes flottantes</option>
+
               </select>
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="font-size:14px; margin-bottom: 4px;">Palettes (Swatches)</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; max-height:120px; overflow-y:auto; padding-bottom:4px; padding-right:4px;" class="swatches-container">
+              <!-- Swatches generated in JS -->
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14px;">Couleurs du fond</div>
             <div style="display:flex; gap:8px; align-items:center;">
               <input type="color" id="pref-c1" value="#000000" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 1 (Base)">
@@ -445,14 +533,14 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14px;">Couleur d'accentuation</div>
             <div style="display:flex; gap:8px; align-items:center;">
               <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur personnalisée">
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14px;">Couleurs des cartes</div>
             <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
               <option value="gradient">Dégradé Équipes (Dom → Ext)</option>
@@ -463,7 +551,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             </select>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14px;">Forme des boutons</div>
             <select id="pref-btn-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
               <option value="rounded">Arrondis (Défaut)</option>
@@ -480,10 +568,25 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             </select>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14px;">Opacité des cartes</div>
             <input type="range" id="pref-card-opacity" min="0" max="100" value="15" onchange="applyUserPrefs()" style="width: 140px;">
           </div>
+
+
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="font-size:14px;">Effets spéciaux (UI)</div>
+            <select id="pref-ui-effect" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+              <option value="none">Aucun</option>
+              <option value="glassmorphism">Verre poli (Glassmorphism)</option>
+              <option value="scanlines">Lignes de balayage (Rétro)</option>
+              <option value="grain">Grain de pellicule (Film)</option>
+              <option value="rain">Pluie numérique (Matrix)</option>
+              <option value="crt">Distorsion CRT (Tube Cathodique)</option>
+              <option value="neon_glow">Lueur Néon (Cyberpunk)</option>
+            </select>
+          </div>
+
 
         </div>
       </div>
@@ -493,7 +596,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
       <div>
          <div style="font-weight:bold; font-size:16px; margin-bottom:16px; color:var(--text);">🔧 Avancé</div>
          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:14px;">Script d'installation (Multiview cleaner)</div>
               <a href="multiview-cleaner.user.js" target="_blank" class="btn" style="text-decoration:none; display:inline-block;">Installer le script</a>
             </div>
@@ -4300,6 +4403,51 @@ function initPrefs() {
   var accent = userPrefs.accent || '#0a84ff';
   document.documentElement.style.setProperty('--accent', accent);
 
+
+  // Special UI Effects overlay
+  var effectOverlay = document.getElementById('ui-effect-overlay');
+  if(!effectOverlay) {
+      effectOverlay = document.createElement('div');
+      effectOverlay.id = 'ui-effect-overlay';
+      effectOverlay.style.position = 'fixed';
+      effectOverlay.style.top = '0';
+      effectOverlay.style.left = '0';
+      effectOverlay.style.width = '100vw';
+      effectOverlay.style.height = '100vh';
+      effectOverlay.style.pointerEvents = 'none';
+      effectOverlay.style.zIndex = '9999';
+      document.body.appendChild(effectOverlay);
+  }
+
+  effectOverlay.style.background = 'none';
+  effectOverlay.style.backdropFilter = 'none';
+  effectOverlay.style.boxShadow = 'none';
+  effectOverlay.style.animation = 'none';
+  effectOverlay.innerHTML = '';
+  document.body.classList.remove('crt-effect', 'neon-glow-effect');
+
+  var effect = userPrefs.uiEffect || 'none';
+  if(effect === 'glassmorphism') {
+      // Handled via CSS variables mostly, but add subtle noise
+      effectOverlay.style.background = 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.05\'/%3E%3C/svg%3E")';
+  } else if(effect === 'scanlines') {
+      effectOverlay.style.background = 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))';
+      effectOverlay.style.backgroundSize = '100% 4px, 3px 100%';
+  } else if(effect === 'grain') {
+      effectOverlay.style.background = 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.08\'/%3E%3C/svg%3E")';
+  } else if(effect === 'rain') {
+      // Basic CSS rain animation setup
+      effectOverlay.innerHTML = '<div class="matrix-rain"></div>';
+  } else if(effect === 'crt') {
+      document.body.classList.add('crt-effect');
+      effectOverlay.style.background = 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))';
+      effectOverlay.style.backgroundSize = '100% 4px, 3px 100%';
+      effectOverlay.style.boxShadow = 'inset 0 0 100px rgba(0,0,0,0.9)';
+  } else if(effect === 'neon_glow') {
+      document.body.classList.add('neon-glow-effect');
+  }
+
+
   // Btn Shape and Custom Button Styles
   var br = '12px';
   var btnBg = 'rgba(255,255,255,0.05)';
@@ -4397,6 +4545,8 @@ function applyUserPrefs() {
   var btnSel = document.getElementById('pref-btn-shape');
   var accentColorSel = document.getElementById('pref-accent-color');
   var opacSel = document.getElementById('pref-card-opacity');
+  var effectSel = document.getElementById('pref-ui-effect');
+  if(effectSel && userPrefs.uiEffect) effectSel.value = userPrefs.uiEffect;
 
   // Do not reset colors based on theme if the user is just changing the bg style
   // we ONLY update theme if it is not custom, or if applyPredefinedTheme was not called
@@ -4411,6 +4561,8 @@ function applyUserPrefs() {
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   if(opacSel) userPrefs.cardOpacity = opacSel.value;
+  var effectSel = document.getElementById('pref-ui-effect');
+  if(effectSel) userPrefs.uiEffect = effectSel.value;
 
   localStorage.setItem('user_prefs', JSON.stringify(userPrefs));
   initPrefs();
@@ -4438,21 +4590,21 @@ function applyPredefinedTheme() {
   if(theme === 'custom') return;
 
   var presets = {
-    'neon': { bgStyle: 'blur', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff', btnShape: 'rounded' },
-    'ocean': { bgStyle: 'linear', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3', btnShape: 'rounded' },
-    'cyberpunk': { bgStyle: 'linear', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c', btnShape: 'square' },
-    'forest': { bgStyle: 'radial', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55', btnShape: 'rounded' },
-    'sunset': { bgStyle: 'linear', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933', btnShape: 'rounded' },
-    'magma': { bgStyle: 'radial', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300', btnShape: 'rounded' },
-    'aurora': { bgStyle: 'blur', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80', btnShape: 'rounded' },
-    'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff', btnShape: 'square' },
-    'ps2': { bgStyle: 'radial', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff', btnShape: 'ps2' },
-    'xbox': { bgStyle: 'radial', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10', btnShape: 'xbox' },
-    'samsung': { bgStyle: 'gradient', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6', btnShape: 'samsung' },
-    'chromecast': { bgStyle: 'blur', c1: '#2c3e50', c2: '#34495e', c3: '#7f8c8d', accent: '#ecf0f1', btnShape: 'pill' },
-    'windows': { bgStyle: 'blur', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4', btnShape: 'windows' },
-    'macos': { bgStyle: 'gradient', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff', btnShape: 'macos' },
-    'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420', btnShape: 'ubuntu' }
+    'neon': { bgStyle: 'blur', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff', btnShape: 'rounded', uiEffect: 'neon_glow' },
+    'ocean': { bgStyle: 'linear', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3', btnShape: 'rounded', uiEffect: 'glassmorphism' },
+    'cyberpunk': { bgStyle: 'linear', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c', btnShape: 'square', uiEffect: 'neon_glow' },
+    'forest': { bgStyle: 'radial', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55', btnShape: 'rounded', uiEffect: 'grain' },
+    'sunset': { bgStyle: 'linear', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933', btnShape: 'rounded', uiEffect: 'none' },
+    'magma': { bgStyle: 'radial', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300', btnShape: 'rounded', uiEffect: 'none' },
+    'aurora': { bgStyle: 'blur', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80', btnShape: 'rounded', uiEffect: 'glassmorphism' },
+    'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff', btnShape: 'square', uiEffect: 'grain' },
+    'ps2': { bgStyle: 'radial', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff', btnShape: 'ps2', uiEffect: 'scanlines' },
+    'xbox': { bgStyle: 'radial', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10', btnShape: 'xbox', uiEffect: 'scanlines' },
+    'samsung': { bgStyle: 'gradient', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6', btnShape: 'samsung', uiEffect: 'none' },
+    'chromecast': { bgStyle: 'blur', c1: '#2c3e50', c2: '#34495e', c3: '#7f8c8d', accent: '#ecf0f1', btnShape: 'pill', uiEffect: 'glassmorphism' },
+    'windows': { bgStyle: 'blur', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4', btnShape: 'windows', uiEffect: 'glassmorphism' },
+    'macos': { bgStyle: 'gradient', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff', btnShape: 'macos', uiEffect: 'glassmorphism' },
+    'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420', btnShape: 'ubuntu', uiEffect: 'none' }
   };
 
   if(presets[theme]) {
@@ -4462,6 +4614,7 @@ function applyPredefinedTheme() {
     userPrefs.c3 = presets[theme].c3;
     userPrefs.accent = presets[theme].accent;
     if(presets[theme].btnShape) userPrefs.btnShape = presets[theme].btnShape;
+    if(presets[theme].uiEffect) userPrefs.uiEffect = presets[theme].uiEffect;
     userPrefs.theme = theme;
 
     // Update inputs
@@ -4473,12 +4626,80 @@ function applyPredefinedTheme() {
     if(document.getElementById('pref-btn-shape') && presets[theme].btnShape) {
       document.getElementById('pref-btn-shape').value = presets[theme].btnShape;
     }
+    if(document.getElementById('pref-ui-effect') && presets[theme].uiEffect) {
+      document.getElementById('pref-ui-effect').value = presets[theme].uiEffect;
+    }
 
     applyUserPrefs();
   }
 }
 
+
+const PALETTES = [
+    { id: 'neon', name: 'Néon', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff' },
+    { id: 'ocean', name: 'Océan', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3' },
+    { id: 'cyberpunk', name: 'Cyberpunk', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c' },
+    { id: 'forest', name: 'Forêt', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55' },
+    { id: 'sunset', name: 'Crépuscule', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933' },
+    { id: 'magma', name: 'Magma', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300' },
+    { id: 'aurora', name: 'Nuit Boréale', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80' },
+    { id: 'monochrome', name: 'Monochrome', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff' },
+    { id: 'ps2', name: 'PS2', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff' },
+    { id: 'xbox', name: 'Xbox', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10' },
+    { id: 'samsung', name: 'Samsung', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6' },
+    { id: 'windows', name: 'Windows', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4' },
+    { id: 'macos', name: 'macOS', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff' },
+    { id: 'ubuntu', name: 'Ubuntu', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420' },
+    { id: 'vampire', name: 'Vampire', c1: '#1a0000', c2: '#330000', c3: '#800000', accent: '#ff0000' },
+    { id: 'ice', name: 'Glace', c1: '#e0f7fa', c2: '#b2ebf2', c3: '#80deea', accent: '#00bcd4' },
+    { id: 'desert', name: 'Désert', c1: '#4e342e', c2: '#5d4037', c3: '#8d6e63', accent: '#ffb300' },
+    { id: 'pastel', name: 'Pastel', c1: '#fce4ec', c2: '#f3e5f5', c3: '#e8eaf6', accent: '#f48fb1' }
+];
+
+function buildSwatches() {
+    var container = document.querySelector('.swatches-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+    PALETTES.forEach(function(p) {
+        var swatch = document.createElement('div');
+        swatch.className = 'swatch-item';
+        swatch.title = p.name;
+        swatch.style.width = '32px';
+        swatch.style.height = '32px';
+        swatch.style.borderRadius = '50%';
+        swatch.style.cursor = 'pointer';
+        swatch.style.border = '2px solid rgba(255,255,255,0.2)';
+        swatch.style.background = 'linear-gradient(135deg, ' + p.c1 + ' 0%, ' + p.c2 + ' 50%, ' + p.c3 + ' 100%)';
+        swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
+        swatch.style.transition = 'transform 0.2s, border-color 0.2s';
+
+        swatch.onmouseenter = function() {
+            swatch.style.transform = 'scale(1.15)';
+            swatch.style.borderColor = p.accent;
+            swatch.style.boxShadow = '0 0 8px ' + p.accent;
+        };
+        swatch.onmouseleave = function() {
+            swatch.style.transform = 'scale(1)';
+            swatch.style.borderColor = 'rgba(255,255,255,0.2)';
+            swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
+        };
+
+        swatch.onclick = function() {
+            document.getElementById('pref-c1').value = p.c1;
+            document.getElementById('pref-c2').value = p.c2;
+            document.getElementById('pref-c3').value = p.c3;
+            document.getElementById('pref-accent-color').value = p.accent;
+            markCustomTheme();
+        };
+
+        container.appendChild(swatch);
+    });
+}
+
+
 function openSettings() {
+  buildSwatches();
   document.getElementById('apiKeyInput').value = localStorage.getItem('apiSportsKey') || '';
   initPrefs();
   document.getElementById('setbg').classList.add('open');
