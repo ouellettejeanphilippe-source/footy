@@ -1851,8 +1851,21 @@ function scrapeMatchFlux(m){
         links.push({name:'Voir streams sur le site', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
     }
 
-    // Limit to 20 streams maximum to prevent UI overload
-    m.streamLinks = links.slice(0, 20);
+    // Preserve existing streams and avoid duplicates
+    var existingLinks = m.streamLinks || [];
+    var combinedLinks = existingLinks.slice();
+
+    links.forEach(function(newLink) {
+        var isDuplicate = combinedLinks.some(function(existingLink) {
+            return existingLink.url === newLink.url;
+        });
+        if (!isDuplicate) {
+            combinedLinks.push(newLink);
+        }
+    });
+
+    // Limit to 40 streams maximum to prevent UI overload, allow more streams since we are combining
+    m.streamLinks = combinedLinks.slice(0, 40);
     m.streamsLoaded=true;
     updateMatchUiAfterScrape(m);
   });
