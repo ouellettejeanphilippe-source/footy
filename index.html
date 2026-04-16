@@ -710,6 +710,19 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
          </div>
       </div>
 
+      <hr style="border:none; border-top:1px solid var(--border); margin:0;">
+
+      <!-- Logs de Scraping -->
+      <div>
+         <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text); display:flex; justify-content:space-between; align-items:center;">
+            <span>📋 Logs de Scraping</span>
+            <button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
+         </div>
+         <div id="scrape-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Logs will be populated here -->
+         </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -723,6 +736,18 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 'use strict';
 
 /* ══ STATE ══════════════════════════════ */
+
+var scrapeLogs = [];
+function addScrapeLog(url, status, errorMsg) {
+    var entry = {
+        time: new Date().toLocaleTimeString('fr-CA', {hour12: false}),
+        url: url,
+        status: status,
+        error: errorMsg || ''
+    };
+    scrapeLogs.unshift(entry);
+    if(scrapeLogs.length > 50) scrapeLogs.pop();
+}
 
 var favTeams = {};
 try {
@@ -3687,6 +3712,28 @@ function sortFluxLinks(links) {
   });
 }
 
+/* ══ CACHE STREAMS (2 hours) ══════════════ */
+function getStreamCache(mid) {
+    try {
+        var cached = localStorage.getItem('streams_' + mid);
+        if (cached) {
+            var data = JSON.parse(cached);
+            if (Date.now() - data.ts < 2 * 60 * 60 * 1000) {
+                return data.streams;
+            } else {
+                localStorage.removeItem('streams_' + mid);
+            }
+        }
+    } catch(e) {}
+    return null;
+}
+
+function saveStreamCache(mid, streams) {
+    try {
+        localStorage.setItem('streams_' + mid, JSON.stringify({ ts: Date.now(), streams: streams }));
+    } catch(e) {}
+}
+
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 function fetchSubPages(matches){
   // We use a limited concurrency pool so we don't spam the proxy/network
@@ -3707,6 +3754,7 @@ function fetchSubPages(matches){
         next();
       }).catch(function(e){
         lg('Err scrape '+m.homeTeam,e.message);
+        addScrapeLog(m.matchUrl, 'error', 'Match scrape failed: ' + e.message);
         m.streamsLoaded = true; // Empêche un blocage infini dans l'UI
         m.streamLinks = m.streamLinks || [];
         updateMatchUiAfterScrape(m);
@@ -3719,11 +3767,22 @@ function fetchSubPages(matches){
 }
 
 function scrapeMatchFlux(m){
+  // Check cache first
+  var cachedStreams = getStreamCache(m.id);
+  if (cachedStreams) {
+      lg('Scrape streams cached', m.homeTeam);
+      m.streamLinks = cachedStreams;
+      m.streamsLoaded = true;
+      updateMatchUiAfterScrape(m);
+      return Promise.resolve();
+  }
+
   // Timeout for individual match scrape
   return Promise.race([
     fetchPage(m.matchUrl),
     new Promise(function(_, reject) { setTimeout(function() { reject(new Error('Timeout match streams')); }, 10000); })
   ]).then(function(html){
+    addScrapeLog(m.matchUrl, 'success', '');
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
 
@@ -3865,6 +3924,7 @@ function scrapeMatchFlux(m){
     // Limit to 40 streams maximum to prevent UI overload, allow more streams since we are combining
     m.streamLinks = combinedLinks.slice(0, 40);
     m.streamsLoaded=true;
+    saveStreamCache(m.id, m.streamLinks);
     updateMatchUiAfterScrape(m);
   });
 }
@@ -4772,21 +4832,24 @@ function openMod(m,col){
 
   // Wait if streams are still loading, but fetch them specifically if they aren't loading
   if(!m.streamsLoaded && m.matchUrl) {
-      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez)</span></div>';
+      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
+      document.getElementById('mbg').classList.add('open');
+
       // Force load the streams for this specific match right away if they aren't loaded yet
       lg('Force loading flux', m.homeTeam);
       scrapeMatchFlux(m).then(function() {
           lg('Force loaded flux ok', m.homeTeam);
           m.streamsLoaded = true;
-          openMod(m, col); // Re-render modal
+          if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').textContent.indexOf(m.homeTeam) >= 0) {
+              openMod(m, col); // Re-render modal only if still open and matching
+          }
       }).catch(function(e) {
           lg('Force loaded flux failed', e.message);
           m.streamsLoaded = true;
-          m.streamLinks = m.streamLinks || [];
-          openMod(m, col);
+          if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').textContent.indexOf(m.homeTeam) >= 0) {
+              openMod(m, col); // Re-render modal only if still open and matching
+          }
       });
-      // We must show the modal right away so the user sees the "Loading" state
-      document.getElementById('mbg').classList.add('open');
   } else if(!m.streamsLoaded){
       body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams...</div>';
       document.getElementById('mbg').classList.add('open');
@@ -7060,10 +7123,34 @@ function buildSwatches() {
 }
 
 
+function renderScrapeLogs() {
+    var container = document.getElementById('scrape-logs-container');
+    if(!container) return;
+    if(scrapeLogs.length === 0) {
+        container.innerHTML = '<div style="color: var(--muted2); text-align: center; padding: 10px;">Aucun log récent.</div>';
+        return;
+    }
+    var html = '';
+    scrapeLogs.forEach(function(log) {
+        var color = log.status === 'error' ? 'var(--red)' : (log.status === 'success' ? '#34c759' : 'var(--text)');
+        var icon = log.status === 'error' ? '❌' : (log.status === 'success' ? '✅' : 'ℹ️');
+        html += '<div style="display:flex; flex-direction:column; gap:2px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;">' +
+                  '<div style="display:flex; justify-content:space-between;">' +
+                      '<span style="color:var(--muted);">' + log.time + '</span>' +
+                      '<span style="color:' + color + ';">' + icon + ' ' + log.status.toUpperCase() + '</span>' +
+                  '</div>' +
+                  '<div style="word-break: break-all; color: #a1a1aa;">' + log.url + '</div>' +
+                  (log.error ? '<div style="color:var(--red); font-size: 11px;">' + log.error + '</div>' : '') +
+                '</div>';
+    });
+    container.innerHTML = html;
+}
+
 function openSettings() {
   buildSwatches();
   document.getElementById('apiKeyInput').value = localStorage.getItem('apiSportsKey') || '';
   initPrefs();
+  renderScrapeLogs();
   document.getElementById('setbg').classList.add('open');
 }
 
@@ -7415,7 +7502,10 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
               if (r.status === 'rejected') {
                   var domain = new URL(sources[idx]).hostname;
                   console.error('Failed to fetch:', sources[idx], r.reason);
+                  addScrapeLog(sources[idx], 'error', (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion'));
                   setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
+              } else {
+                  addScrapeLog(sources[idx], 'success', '');
               }
           });
 
