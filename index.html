@@ -714,7 +714,7 @@ var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', 
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://footybite.to/';
-var MLBITE_URL = 'https://mlbite.to/';
+var MLBITE_URL = 'https://nflbite.to/'; // mlbite.to is dead, using nflbite.to as a working fallback on the same network
 var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
@@ -1271,8 +1271,9 @@ function extractFootybiteLogos(doc) {
 function fetchPage(url){
   return new Promise(function(resolve,reject){
     var i=0,errs=[];
+    var maxTries = 3; // Try a maximum of 3 proxies to avoid long hangs
     function next(){
-      if(i>=PROXIES.length){reject(new Error(errs.join('\n')));return;}
+      if(i>=PROXIES.length || i>=maxTries){reject(new Error(errs.join('\n')));return;}
       var pu=PROXIES[i++](url);
       lg('Proxy '+i,pu.slice(0,70)+'…');
       fetch(pu,{signal:AbortSignal.timeout(12000),headers:{'Accept':'text/html,*/*'}})
@@ -4522,7 +4523,7 @@ function applyBgStyle() {
     document.body.style.background = 'repeating-radial-gradient(circle at 0 0, transparent 0, '+c1+' 10px), repeating-linear-gradient('+c2+', '+c2+')';
     document.body.style.backgroundColor = c3;
   } else if (s === 'mesh_isometric') {
-    document.body.style.background = 'linear-gradient(30deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(150deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(30deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(150deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(60deg, '+c3+' 25%, transparent 25.5%, transparent 75%, '+c3+' 75%, '+c3+'), linear-gradient(60deg, '+c3+' 25%, transparent 25.5%, transparent 75%, '+c3+' 75%, '+c3+)';
+    document.body.style.background = 'linear-gradient(30deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(150deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(30deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(150deg, '+c2+' 12%, transparent 12.5%, transparent 87%, '+c2+' 87.5%, '+c2+'), linear-gradient(60deg, '+c3+' 25%, transparent 25.5%, transparent 75%, '+c3+' 75%, '+c3+'), linear-gradient(60deg, '+c3+' 25%, transparent 25.5%, transparent 75%, '+c3+' 75%, '+c3+')';
     document.body.style.backgroundSize = '40px 70px';
     document.body.style.backgroundPosition = '0 0, 0 0, 20px 35px, 20px 35px, 0 0, 20px 35px';
     document.body.style.backgroundColor = c1;
@@ -5406,6 +5407,16 @@ function loadAll(){
       ]).then(function(results) {
           stepOk(2);
           document.getElementById('ovmsg').textContent='Fusion des données...';
+
+          // Check for failures and notify user
+          var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL];
+          results.forEach(function(r, idx) {
+              if (r.status === 'rejected') {
+                  var domain = new URL(sources[idx]).hostname;
+                  console.error('Failed to fetch:', sources[idx], r.reason);
+                  setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
+              }
+          });
 
           var scrapedMatches = [];
           if(results[0].status === 'fulfilled' && results[0].value) {
