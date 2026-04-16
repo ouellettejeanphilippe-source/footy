@@ -389,6 +389,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   <div class="nav-links" id="nav-links" style="display:flex; align-items:center; gap:16px;">
       <button class="btn" id="filter-all" onclick="applyFilter('all')">GUIDE</button>
       <button class="btn" id="filter-live" onclick="applyFilter('live')" style="border-color:var(--accent);color:var(--accent)"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>EN DIRECT</button>
+      <button class="btn" id="filter-fav" onclick="applyFilter('fav')">FAVORIS</button>
 
       <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVISION <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
   </div>
@@ -737,7 +738,12 @@ function toggleFavTeam(teamName) {
     favTeams[teamName] = 1;
   }
   localStorage.setItem('fav_teams', JSON.stringify(favTeams));
-  buildEPG(S.matches);
+
+  if (S.filter === 'fav' && typeof window.renderFavTeams === 'function') {
+      window.renderFavTeams();
+  } else {
+      buildEPG(S.matches);
+  }
 }
 
 var logoCache = {};
@@ -2171,7 +2177,7 @@ function getEstTime(ukTimeStr){
 
 function applyFilter(f){
   S.filter=f;
-  ['all','live','upcoming'].forEach(function(k){
+  ['all','live','upcoming','fav'].forEach(function(k){
     var el=document.getElementById('filter-'+k);
     if(el){
         if (k===f) {
@@ -2219,7 +2225,7 @@ function applyFilter(f){
 }
 
 function openMultiviewTab() {
-    ['all','live','upcoming'].forEach(function(k){
+    ['all','live','upcoming','fav'].forEach(function(k){
       var el=document.getElementById('filter-'+k);
       if(el){
           el.style.borderColor = 'var(--border2)';
@@ -2277,8 +2283,9 @@ function toggleAccordion(lgName) {
 
 /* ══ EPG / LISTE ════════════════════════ */
 function getOriginalMatchId(id) {
-    if (typeof id === 'string' && id.endsWith('_live_copy')) {
-        return id.replace('_live_copy', '');
+    if (typeof id === 'string') {
+        if (id.endsWith('_live_copy')) return id.replace('_live_copy', '');
+        if (id.endsWith('_fav_copy')) return id.replace('_fav_copy', '');
     }
     return id;
 }
@@ -2333,12 +2340,27 @@ function buildEPG(matches){
     return true;
   });
 
-  // Create live copies
+  // Create live copies and favorites group
   var epgMatches = filtered.slice();
+  if (S.filter === 'all' || S.filter === 'live' || S.filter === 'upcoming') {
+      var favCopies = [];
+      epgMatches.forEach(function(m) {
+          if ((favTeams[m.homeTeam] || favTeams[m.awayTeam]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT' && m.league !== 'Autres Flux') {
+              var copy = Object.assign({}, m);
+              copy.id = String(m.id) + '_fav_copy';
+              copy.league = 'FAVORIS';
+              copy.flag = '⭐';
+              copy.color = '#ff9f0a';
+              favCopies.push(copy);
+          }
+      });
+      epgMatches = favCopies.concat(epgMatches);
+  }
+
   if (S.filter === 'all') {
       var liveCopies = [];
       epgMatches.forEach(function(m) {
-          if (m.status === 'live' && m.league !== 'Autres Flux') {
+          if (m.status === 'live' && m.league !== 'Autres Flux' && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
               var copy = Object.assign({}, m);
               copy.id = String(m.id) + '_live_copy';
               copy.league = 'EN DIRECT';
@@ -2357,6 +2379,8 @@ function buildEPG(matches){
   });
 
   lgOrder.sort(function(a,b) {
+      if (a === 'FAVORIS') return -1;
+      if (b === 'FAVORIS') return 1;
       if (a === 'EN DIRECT') return -1;
       if (b === 'EN DIRECT') return 1;
 
@@ -2392,8 +2416,71 @@ function buildEPG(matches){
   });
 
   var epgContainer = document.getElementById('marea');
+  epgContainer.style.cssText = '';
+  epgContainer.style.display = 'flex';
+  epgContainer.style.flexDirection = 'column';
+  epgContainer.style.gap = '24px';
+  epgContainer.style.maxWidth = '1200px';
+  epgContainer.style.margin = '0 auto';
+  epgContainer.style.width = '100%';
   epgContainer.innerHTML = '';
 
+  if (S.filter === 'fav') {
+      epgContainer.style.display = 'flex';
+      epgContainer.style.flexDirection = 'column';
+      epgContainer.style.gap = '16px';
+      epgContainer.style.padding = '20px';
+      epgContainer.style.overflowY = 'auto';
+      epgContainer.style.height = '100%';
+
+      var searchInput = '<input type="text" id="fav-search-input" placeholder="Rechercher une équipe..." oninput="renderFavTeams()" style="padding:12px; border-radius:8px; border:1px solid var(--border); background:rgba(0,0,0,0.3); color:var(--text); font-size:16px; width:100%; max-width:400px; margin-bottom:16px;">';
+
+      epgContainer.innerHTML = '<h2>Gestion des Favoris</h2>' + searchInput + '<div id="fav-list-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px;"></div>';
+
+      window.renderFavTeams = function() {
+          var container = document.getElementById('fav-list-container');
+          if(!container) return;
+          var searchVal = (document.getElementById('fav-search-input').value || '').toLowerCase();
+
+          // Get unique teams
+          var allTeams = {};
+          S.matches.forEach(function(m) {
+              if (m.homeTeam && m.homeTeam !== 'TBD') allTeams[m.homeTeam] = (allTeams[m.homeTeam] || m.league);
+              if (m.awayTeam && m.awayTeam !== 'TBD') allTeams[m.awayTeam] = (allTeams[m.awayTeam] || m.league);
+          });
+
+          // Sort teams
+          var teamNames = Object.keys(allTeams).sort(function(a,b) {
+              // Favorites first
+              if (favTeams[a] && !favTeams[b]) return -1;
+              if (!favTeams[a] && favTeams[b]) return 1;
+              return a.localeCompare(b);
+          });
+
+          var html = '';
+          teamNames.forEach(function(t) {
+              if (searchVal && t.toLowerCase().indexOf(searchVal) === -1) return;
+              var isFav = !!favTeams[t];
+              var logoUrl = getLogo(t) || '';
+              var logoHtml = logoUrl ? '<img src="'+esc(logoUrl)+'" style="width:24px;height:24px;object-fit:contain;margin-right:12px;" onerror="this.style.display=\'none\'">' : '<div style="width:24px;height:24px;margin-right:12px;display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+
+              html += '<div style="display:flex; align-items:center; padding:12px; background:var(--card-bg); border:1px solid '+(isFav?'var(--accent)':'var(--border)')+'; border-radius:8px; cursor:pointer; transition:all 0.2s;" onclick="toggleFavTeam(\''+escJs(t)+'\');">'
+                   + '<button style="background:transparent;border:none;color:'+(isFav?'var(--accent)':'var(--muted)')+';font-size:20px;margin-right:12px;cursor:pointer;flex-shrink:0;">'+(isFav?'★':'☆')+'</button>'
+                   + logoHtml
+                   + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;">'
+                   + '<span style="font-weight:bold;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(t)+'</span>'
+                   + '<span style="font-size:11px;color:var(--muted);">' + esc(allTeams[t]) + '</span>'
+                   + '</div>'
+                   + '</div>';
+          });
+
+          if (html === '') html = '<div style="color:var(--muted); padding:20px;">Aucune équipe trouvée.</div>';
+          container.innerHTML = html;
+      };
+
+      window.renderFavTeams();
+      return;
+  }
 
   if (S.filter === 'live' || S.filter === 'upcoming') {
       epgContainer.style.display = 'block';
@@ -2492,13 +2579,18 @@ function buildEPG(matches){
 
                   var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
+                  var homeFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>';
+                  var awayFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>';
+
                   b.innerHTML = '<div class="mb-teams">'
                               +   '<div class="mb-team-row">'
+                              +     homeFavBtn
                               +     homeLogoHtml
                               +     '<div class="mb-t" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
                               +     (homeScore !== '' ? '<div class="mb-ts">'+homeScore+'</div>' : '')
                               +   '</div>'
                               +   '<div class="mb-team-row">'
+                              +     awayFavBtn
                               +     awayLogoHtml
                               +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
                               +     (awayScore !== '' ? '<div class="mb-ts">'+awayScore+'</div>' : '')
@@ -3001,6 +3093,10 @@ function showFluxSelector(idx, mid, event) {
     });
 
     availableMatches.sort(function(a, b) {
+        var f1 = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? -1 : 0;
+        var f2 = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? -1 : 0;
+        if (f1 !== f2) return f1 - f2;
+
         if (a.status === 'live' && b.status !== 'live') return -1;
         if (a.status !== 'live' && b.status === 'live') return 1;
         return a.startTime.localeCompare(b.startTime);
@@ -4265,6 +4361,13 @@ function populatePlayerSidebar(currentMatch, currentUrl) {
 
     // 2. Suggestions (Other EN DIRECT matches)
     var liveMatches = S.matches.filter(function(m) { return m.status === 'live' && (!currentMatch || m.id !== currentMatch.id); });
+
+    liveMatches.sort(function(a,b) {
+        var f1 = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? -1 : 0;
+        var f2 = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? -1 : 0;
+        if(f1 !== f2) return f1 - f2;
+        return a.startTime.localeCompare(b.startTime);
+    });
 
     if(liveMatches.length === 0) {
         sugList.innerHTML = '<div style="color:var(--muted); font-size:13px; text-align:center; padding:20px;">Aucun autre match en direct</div>';
