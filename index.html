@@ -1805,6 +1805,33 @@ var STATIC_TEAMS = [
   { name: 'Racing Bulls', league: 'f1' },
   { name: 'Red Bull', league: 'f1' },
   { name: 'Williams', league: 'f1' },
+  // PWHL
+  { name: 'Boston Fleet', league: 'pwhl' },
+  { name: 'Minnesota Frost', league: 'pwhl' },
+  { name: 'Montréal Victoire', league: 'pwhl' },
+  { name: 'New York Sirens', league: 'pwhl' },
+  { name: 'Ottawa Charge', league: 'pwhl' },
+  { name: 'Toronto Sceptres', league: 'pwhl' },
+  // LHJMQ
+  { name: 'Acadie-Bathurst Titan', league: 'lhjmq' },
+  { name: 'Baie-Comeau Drakkar', league: 'lhjmq' },
+  { name: 'Blainville-Boisbriand Armada', league: 'lhjmq' },
+  { name: 'Cape Breton Eagles', league: 'lhjmq' },
+  { name: 'Charlottetown Islanders', league: 'lhjmq' },
+  { name: 'Chicoutimi Saguenéens', league: 'lhjmq' },
+  { name: 'Drummondville Voltigeurs', league: 'lhjmq' },
+  { name: 'Gatineau Olympiques', league: 'lhjmq' },
+  { name: 'Halifax Mooseheads', league: 'lhjmq' },
+  { name: 'Moncton Wildcats', league: 'lhjmq' },
+  { name: 'Québec Remparts', league: 'lhjmq' },
+  { name: 'Rimouski Océanic', league: 'lhjmq' },
+  { name: 'Rouyn-Noranda Huskies', league: 'lhjmq' },
+  { name: 'Saint John Sea Dogs', league: 'lhjmq' },
+  { name: 'Shawinigan Cataractes', league: 'lhjmq' },
+  { name: 'Sherbrooke Phoenix', league: 'lhjmq' },
+  { name: 'Val-d\'Or Foreurs', league: 'lhjmq' },
+  { name: 'Victoriaville Tigres', league: 'lhjmq' },
+
 ];
 Object.assign(TEAM_COLORS, {
   'afc bournemouth': ['#f42727', '#0000CC'],
@@ -2536,6 +2563,35 @@ Object.assign(TEAM_COLORS, {
   'racing bulls': ['#6692FF', '#ffffff'],
   'red bull': ['#00327D', '#ffffff'],
   'williams': ['#FFFFFF', '#ffffff'],
+  // PWHL Colors
+  'boston fleet': ['#1B4332', '#B9E28C'],
+  'minnesota frost': ['#3B225D', '#9A85B8'],
+  'montréal victoire': ['#6C1A31', '#E3C1B4'],
+  'new york sirens': ['#195861', '#ECA921'],
+  'ottawa charge': ['#C2002F', '#FFC107'],
+  'toronto sceptres': ['#0033A0', '#FFC72C'],
+  // LHJMQ Colors
+  'acadie-bathurst titan': ['#D0202E', '#F6B221'],
+  'baie-comeau drakkar': ['#D51820', '#FFCD00'],
+  'blainville-boisbriand armada': ['#000000', '#FFFFFF'],
+  'cape breton eagles': ['#000000', '#FDBA31'],
+  'charlottetown islanders': ['#000000', '#C4A052'],
+  'chicoutimi saguenéens': ['#002147', '#A0C6EB'],
+  'drummondville voltigeurs': ['#E31837', '#000000'],
+  'gatineau olympiques': ['#000000', '#B0B2B5'],
+  'halifax mooseheads': ['#004C2E', '#CF152D'],
+  'moncton wildcats': ['#000000', '#F2A900'],
+  'québec remparts': ['#E31837', '#000000'],
+  'rimouski océanic': ['#00205B', '#FFFFFF'],
+  'rouyn-noranda huskies': ['#C8102E', '#000000'],
+  'saint john sea dogs': ['#003E7E', '#000000'],
+  'shawinigan cataractes': ['#003A70', '#FFC72C'],
+  'sherbrooke phoenix': ['#002D62', '#E4B61C'],
+  'val-d\'or foreurs': ['#00573F', '#FFC72C'],
+  'victoriaville tigres': ['#000000', '#FFD100'],
+  // Missing Teams Colors
+  'toledo': ['#009A44', '#FFFFFF'],
+
 });
 
 function getTeamColors(teamName) {
@@ -2638,7 +2694,13 @@ function cacheLogo(teamName, url) {
 }
 
 function getLogo(teamName) {
-  return logoCache[normName(teamName)] || null;
+    if(!teamName) return null;
+    var key = normName(teamName);
+    if (logoCache[key]) return logoCache[key];
+    var colors = getTeamColors(teamName) || ['#333333', '#ffffff'];
+    var bg = colors[0].replace('#', '');
+    var fg = colors[1].replace('#', '');
+    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teamName) + '&background=' + bg + '&color=' + fg + '&size=200';
 }
 
 function normName(n) {
@@ -2653,7 +2715,7 @@ function normName(n) {
   }
 
   // Basic fallback replacements (e.g. fc, afc, sc, cf)
-  lower = lower.replace(/\b(fc|afc|sc|cf|united|city|racing|club|de|athletic)\b/g, '').trim();
+  lower = lower.replace(/\b(fc|afc|sc|cf|de)\b/g, '').trim();
 
   var norm = lower.replace(/[^a-z0-9]/g, '');
   _normCache[n] = norm;
@@ -3490,10 +3552,45 @@ function updateMatchDataFromApi(match, apiFixture, sport) {
 }
 
 /* ══ LOGO CACHE ═══════════════════════════ */
+var STATIC_LOGOS_RAW = {
+  'boston fleet': "https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Boston_Fleet_logo.svg/1024px-Boston_Fleet_logo.svg.png",
+  'minnesota frost': "https://upload.wikimedia.org/wikipedia/en/thumb/1/13/Minnesota_Frost_logo.svg/1024px-Minnesota_Frost_logo.svg.png",
+  'montréal victoire': "https://upload.wikimedia.org/wikipedia/en/thumb/9/90/Montreal_Victoire_logo.svg/1024px-Montreal_Victoire_logo.svg.png",
+  'new york sirens': "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/New_York_Sirens_logo.svg/1024px-New_York_Sirens_logo.svg.png",
+  'ottawa charge': "https://upload.wikimedia.org/wikipedia/en/thumb/e/e6/Ottawa_Charge_logo.svg/1024px-Ottawa_Charge_logo.svg.png",
+  'toronto sceptres': "https://upload.wikimedia.org/wikipedia/en/thumb/1/14/Toronto_Sceptres_logo.svg/1024px-Toronto_Sceptres_logo.svg.png",
+  'acadie-bathurst titan': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/acadiebathursttitan.png",
+  'baie-comeau drakkar': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/baiecomeaudrakkar.png",
+  'blainville-boisbriand armada': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/blainvilleboisbriandarmada.png",
+  'cape breton eagles': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/capebretoneagles.png",
+  'charlottetown islanders': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/charlottetownislanders.png",
+  'chicoutimi saguenéens': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/chicoutimisaguenens.png",
+  'drummondville voltigeurs': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/drummondvillevoltigeurs.png",
+  'gatineau olympiques': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/gatineauolympiques.png",
+  'halifax mooseheads': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/halifaxmooseheads.png",
+  'moncton wildcats': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/monctonwildcats.png",
+  'québec remparts': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/qubecremparts.png",
+  'rimouski océanic': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/rimouskiocanic.png",
+  'rouyn-noranda huskies': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/rouynnorandahuskies.png",
+  'saint john sea dogs': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/saintjohnseadogs.png",
+  'shawinigan cataractes': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/shawinigancataractes.png",
+  'sherbrooke phoenix': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/sherbrookephoenix.png",
+  'val-d\'or foreurs': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/valdorforeurs.png",
+  'victoriaville tigres': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/victoriavilletigres.png",
+};
+
+
+
+
 var logoCache = {};
+if (typeof STATIC_LOGOS_RAW !== 'undefined') {
+    for (var k in STATIC_LOGOS_RAW) {
+        logoCache[normName(k)] = STATIC_LOGOS_RAW[k];
+    }
+}
 try {
     var stored = localStorage.getItem('sports_logos');
-    if(stored) logoCache = JSON.parse(stored);
+    if(stored) Object.assign(logoCache, JSON.parse(stored));
 } catch(e) {}
 
 function cacheLogo(teamName, url) {
@@ -3510,7 +3607,11 @@ function cacheLogo(teamName, url) {
 function getLogo(teamName) {
     if(!teamName) return null;
     var key = normName(teamName);
-    return logoCache[key] || null;
+    if (logoCache[key]) return logoCache[key];
+    var colors = getTeamColors(teamName) || ['#333333', '#ffffff'];
+    var bg = colors[0].replace('#', '');
+    var fg = colors[1].replace('#', '');
+    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teamName) + '&background=' + bg + '&color=' + fg + '&size=200';
 }
 
 /* ══ DOMAIN PREFS ════════════════════════ */
