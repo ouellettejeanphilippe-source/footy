@@ -209,7 +209,10 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px) scale(0.95); z-index: 600; background: rgba(28, 28, 30, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); color: var(--text); font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 9999px; opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; display: flex; align-items: center; gap: 10px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2); letter-spacing: 0.5px; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 
+
 @media(max-width: 768px) {
+  .hide-mobile { display: none !important; }
+
   :root { --chan-w: 120px; --row-h: 88px; --hour-px: 160px; --ruler-h: 44px; }
   .ch-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .chan-logo { width: 18px; height: 18px; }
@@ -239,7 +242,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 @media(max-width: 1024px) {
   #menu-btn { display: inline-flex !important; }
-  .secondary-actions { display: none !important; position: absolute; top: 70px; right: 24px; background: rgba(28,28,30,0.95); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; }
+  .secondary-actions { display: none !important; position: absolute; top: var(--hdr-height, 70px); right: 24px; background: rgba(28,28,30,0.95); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; }
   .secondary-actions.open { display: flex !important; gap: 8px; }
 }
 
@@ -247,7 +250,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   .nav-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
   .nav-links .btn { padding: 8px; min-width: auto; font-size: 12px; flex: 1; text-align: center; justify-content: center; }
 
-  .secondary-actions { display: none !important; position: absolute; top: 120px; right: 16px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: stretch; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 1000; gap: 8px; }
+  .secondary-actions { display: none !important; position: absolute; top: var(--hdr-height, 120px); right: 16px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: stretch; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 1000; gap: 8px; }
   .secondary-actions.open { display: flex !important; }
   .secondary-actions.open .btn { width: 100%; justify-content: flex-start; display: flex; text-align: left; }
 
@@ -404,10 +407,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 <!-- Add toggle button for Onglet Theater mode to reappear -->
 
 
-<div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;">
+<div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;padding:8px 12px;">
     <!-- Buttons generated dynamically -->
   </div>
-</div>
 
 <div class="epg" id="epg">
   <div class="ov" id="ov">
@@ -3240,10 +3242,12 @@ function toggleMultiviewPip() {
     if(mvc.classList.contains('mv-pip')) {
         // Restore to full screen multiview
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
-        updateMultivisionLayout(); // Re-apply grid
+        var sf = document.getElementById('sport-filters');
+        if(sf) sf.style.display = 'none';
+        updateMultivisionLayout();
     } else {
         // Switch to PIP mode
         mvc.classList.add('mv-pip');
@@ -3254,12 +3258,16 @@ function toggleMultiviewPip() {
             // On mobile, completely hide it in the background
             mvc.style.cssText = 'display:none;';
             epg.style.display = 'flex';
-            epg.style.paddingRight = '0'; // No column room needed
+            epg.style.paddingRight = '0';
+            var sf = document.getElementById('sport-filters');
+            if(sf) sf.style.display = 'flex';
         } else {
             // On tablet/desktop, show column
             mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
             epg.style.display = 'flex';
-            epg.style.paddingRight = '350px'; // Make room for the column
+            epg.style.paddingRight = '350px';
+            var sf = document.getElementById('sport-filters');
+            if(sf) sf.style.display = 'flex';
 
             // Note: The vertical stack layout logic is now handled entirely within updateMultivisionLayout
             updateMultivisionLayout();
@@ -3300,14 +3308,14 @@ function setupMultivisionUI() {
     // Create Multivision Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
-    mvContainer.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:none;flex-direction:column;';
+    mvContainer.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:0;background:transparent;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
     mvToolbar.style.cssText = 'min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;';
-    var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip">Mode </span>Multivision</span>'
+    var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
-      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip">Ajouter</span></button>'
+      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip hide-mobile">Ajouter</span></button>'
       + '<select class="btn o hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 4px 36px 4px 12px; min-width: 130px;" id="mv-layout-select">'
       +   '<option value="auto">⊞ Auto</option>'
       +   '<option value="focus">⭐ Focus</option>'
@@ -3316,8 +3324,8 @@ function setupMultivisionUI() {
       + '</select>'
       + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
       + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
-      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire" style="padding: 4px 8px;">◨ <span class="hide-pip">Réduire</span></button>'
-      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip">Fermer</span></button>'
+      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire" style="padding: 4px 8px;">◨ <span class="hide-pip hide-mobile">Réduire</span></button>'
+      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip hide-mobile">Fermer</span></button>'
       + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
@@ -3836,7 +3844,11 @@ function hideMultivision() {
     mvc.style.display = 'none';
     epg.style.display = 'flex';
     epg.style.paddingRight = '0';
+    var sf = document.getElementById('sport-filters');
+    if(sf) sf.style.display = 'flex';
     mvc.classList.remove('mv-pip');
+    var sf = document.getElementById('sport-filters');
+    if(sf) sf.style.display = 'flex';
 
     var mvBtn = document.getElementById('mv-toggle-btn');
     if(mvBtn) {
@@ -3854,10 +3866,12 @@ function toggleMultiview() {
     if(mvc.style.display === 'none') {
         // Open Multivision full screen
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:60px;left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
+        var sf = document.getElementById('sport-filters');
+        if(sf) sf.style.display = 'none';
         updateMultivisionLayout();
     } else if (!mvc.classList.contains('mv-pip')) {
         // Full screen -> Switch to PiP
@@ -5374,6 +5388,15 @@ function mergeFluxToApi(apiMatches, scrapedMatches) {
 /* ══ MAIN ═══════════════════════════════ */
 
 function loadAll(){
+const hdrObserver = new ResizeObserver(() => {
+  const hdr = document.getElementById('main-hdr');
+  if (hdr) {
+    document.documentElement.style.setProperty('--hdr-height', hdr.offsetHeight + 'px');
+  }
+});
+const mainHdrElement = document.getElementById('main-hdr');
+if (mainHdrElement) hdrObserver.observe(mainHdrElement);
+
   window.initialScrollDone = false;
   S.log=[];S.raw='';S.matches=[];S.proxy='';
   setupMultivisionUI();
