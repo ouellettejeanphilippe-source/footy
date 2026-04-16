@@ -486,47 +486,53 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
       <!-- Personalization Settings -->
       <div>
-        <div style="font-weight:bold; font-size:16px; margin-bottom:16px; color:var(--text);">🎨 Personnalisation Visuelle</div>
-        <div style="display:flex; flex-direction:column; gap:16px;">
+        <div style="font-weight:bold; font-size:18px; margin-bottom:16px; color:var(--text); display:flex; align-items:center; gap:8px;">
+          🎨
+          Personnalisation Visuelle
+        </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Thème prédéfini</div>
-            <select id="pref-theme" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyPredefinedTheme()">
-              <option value="custom">Personnalisé</option>
-              <option value="neon">Néon (Rose/Cyan)</option>
-              <option value="ocean">Océan (Bleu/Turquoise)</option>
-              <option value="cyberpunk">Cyberpunk (Violet/Rouge)</option>
-              <option value="forest">Forêt (Vert/Émeraude)</option>
-              <option value="sunset">Crépuscule (Orange/Violet)</option>
-              <option value="magma">Magma (Rouge/Noir)</option>
-              <option value="aurora">Nuit Boréale (Vert foncé/Noir)</option>
-              <option value="monochrome">Monochrome (Noir/Gris)</option>
-              <option disabled>--- Systèmes ---</option>
-              <option value="ps2">PS2 (Bleu/Noir)</option>
-              <option value="xbox">Xbox OG (Vert/Noir)</option>
-              <option value="samsung">Samsung (Bleu profond)</option>
-              <option value="chromecast">Chromecast (Ambiant)</option>
-              <option value="windows">Windows 11 (Bloom)</option>
-              <option value="macos">macOS (Big Sur)</option>
-              <option value="ubuntu">Ubuntu (Aubergine/Orange)</option>
-            </select>
+        <div style="display:flex; flex-direction:column; gap:24px;">
+
+          <!-- 1. Thème Général -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">✨ Thème Général</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Thème prédéfini</div>
+              <select id="pref-theme" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyPredefinedTheme()">
+                <option value="custom">Personnalisé</option>
+                <option value="neon">Néon (Rose/Cyan)</option>
+                <option value="ocean">Océan (Bleu/Turquoise)</option>
+                <option value="cyberpunk">Cyberpunk (Violet/Rouge)</option>
+                <option value="forest">Forêt (Vert/Émeraude)</option>
+                <option value="sunset">Crépuscule (Orange/Violet)</option>
+                <option value="magma">Magma (Rouge/Noir)</option>
+                <option value="aurora">Nuit Boréale (Vert foncé/Noir)</option>
+                <option value="monochrome">Monochrome (Noir/Gris)</option>
+                <option disabled>--- Systèmes ---</option>
+                <option value="ps2">PS2 (Bleu/Noir)</option>
+                <option value="xbox">Xbox OG (Vert/Noir)</option>
+                <option value="samsung">Samsung (Bleu profond)</option>
+                <option value="chromecast">Chromecast (Ambiant)</option>
+                <option value="windows">Windows 11 (Bloom)</option>
+                <option value="macos">macOS (Big Sur)</option>
+                <option value="ubuntu">Ubuntu (Aubergine/Orange)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+              <div style="font-size:13px; color:var(--muted); margin-bottom:4px;">Palettes rapides (Swatches)</div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; max-height:120px; overflow-y:auto; padding-bottom:4px; padding-right:4px;" class="swatches-container">
+                <!-- Swatches generated in JS -->
+              </div>
+            </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Style du Menu (En-tête)</div>
-            <select id="pref-hdr-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="transparent">Transparent (Défaut)</option>
-              <option value="glass">Verre Poli (Glassmorphism)</option>
-              <option value="solid">Couleur Unie Foncée</option>
-              <option value="gradient">Dégradé Subtil</option>
-              <option value="floating">Flottant (Ombre + Bordure)</option>
-              <option value="neon">Néon (Ligne inférieure)</option>
-            </select>
-          </div>
+          <!-- 2. Arrière-plan -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🌌 Arrière-plan</div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Style d'arrière-plan</div>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Style d'arrière-plan</div>
               <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
                 <option value="solid">Couleur unie (C1)</option>
                 <option value="gradient">Dégradé subtil (Premium)</option>
@@ -535,6 +541,13 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="blur">Diffus (C1, C2, C3)</option>
                 <option value="waves">Vagues abstraites (C1, C2, C3)</option>
                 <option value="mesh">Maillage (Classique)</option>
+                <option disabled>--- Nouveaux Animés ---</option>
+                <option value="animated_waves">Ondes Animées (Fluide)</option>
+                <option value="animated_aurora">Aurore Boréale Animée</option>
+                <option value="moving_glows">Lueurs Mouvantes</option>
+                <option value="animated_gradient">Dégradé animé (Fluide)</option>
+                <option value="floating_shapes">Formes flottantes</option>
+                <option value="snow">Poussière d'étoiles / Neige</option>
                 <option disabled>--- Maillages ---</option>
                 <option value="mesh_flou_1">Maillage Flou (Doux)</option>
                 <option value="mesh_flou_2">Maillage Flou (Asymétrique)</option>
@@ -560,112 +573,128 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="mesh_radar">Maillage Radar</option>
                 <option value="mesh_blueprint">Maillage Blueprint (Plan)</option>
                 <option value="mesh_dna">Maillage ADN (Hélice)</option>
-                <option disabled>--- Nouveaux Styles ---</option>
+                <option disabled>--- Autres ---</option>
                 <option value="diagonal">Diagonale douce (Apple)</option>
                 <option value="glow">Lueurs diffuses</option>
                 <option value="aurora">Aurore Boréale complexe</option>
+              </select>
+            </div>
 
-                <option value="snow">Poussière d'étoiles / Neige</option>
-                <option value="animated_gradient">Dégradé animé (Fluide)</option>
-                <option value="floating_shapes">Formes flottantes</option>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Couleurs du fond</div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="color" id="pref-c1" value="#000000" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 1 (Base)">
+                <input type="color" id="pref-c2" value="#111111" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 2 (Intermédiaire)">
+                <input type="color" id="pref-c3" value="#222222" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 3 (Extrémité)">
+              </div>
+            </div>
 
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); display:flex; flex-direction:column;">Flou d'arrière-plan <span style="font-size:10px; opacity:0.6;">(Blur)</span></div>
+              <input type="range" id="pref-bg-blur" min="0" max="100" value="0" onchange="applyUserPrefs()" style="width: 140px;">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); display:flex; flex-direction:column;">Assombrissement <span style="font-size:10px; opacity:0.6;">(Darkening)</span></div>
+              <input type="range" id="pref-bg-darken" min="0" max="100" value="0" onchange="applyUserPrefs()" style="width: 140px;">
+            </div>
+          </div>
+
+          <!-- 3. Interface & Boutons -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🎛️ Interface & Boutons</div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Couleur d'accentuation</div>
+              <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur personnalisée">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Style de l'En-tête</div>
+              <select id="pref-hdr-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="transparent">Transparent (Défaut)</option>
+                <option value="glass">Verre Poli (Glassmorphism)</option>
+                <option value="solid">Couleur Unie Foncée</option>
+                <option value="gradient">Dégradé Subtil</option>
+                <option value="floating">Flottant (Ombre + Bordure)</option>
+                <option value="neon">Néon (Ligne inférieure)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Forme des boutons</div>
+              <select id="pref-btn-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="rounded">Arrondis (Défaut)</option>
+                <option value="square">Rectangulaires</option>
+                <option value="pill">Pilule</option>
+                <option value="apple">Apple (Doux/Verre)</option>
+                <option value="neumorphism">Neumorphisme</option>
+                <option value="ps2">PS2 (Bordure bleue/noir)</option>
+                <option value="xbox">Xbox OG (Vert toxique)</option>
+                <option value="samsung">Samsung OneUI</option>
+                <option value="windows">Windows 11 (Mica)</option>
+                <option value="macos">macOS (Aqua/Big Sur)</option>
+                <option value="ubuntu">Ubuntu (Yaru)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Style Bouton Actif</div>
+              <select id="pref-toggle-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="default">Défaut (Légèrement plus clair)</option>
+                <option value="neon">Néon (Lueur intense)</option>
+                <option value="solid">Couleur Accentuation Unie</option>
+                <option value="inset">Enfoncé (3D Inset)</option>
+                <option value="underlined">Souligné (Minimal)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Effet au Survol (Hover)</div>
+              <select id="pref-hover-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="default">Défaut (Léger soulèvement)</option>
+                <option value="float">Flottaison (Ombre 3D)</option>
+                <option value="glow">Luminescence</option>
+                <option value="scale">Agrandissement</option>
+                <option value="none">Aucun effet</option>
               </select>
             </div>
           </div>
 
+          <!-- 4. Cartes (Matchs) -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">📋 Cartes des Matchs</div>
 
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="font-size:14px; margin-bottom: 4px;">Palettes (Swatches)</div>
-            <div style="display:flex; flex-wrap:wrap; gap:8px; max-height:120px; overflow-y:auto; padding-bottom:4px; padding-right:4px;" class="swatches-container">
-              <!-- Swatches generated in JS -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Couleurs des cartes</div>
+              <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="gradient">Dégradé Équipes (Dom → Ext)</option>
+                <option value="gradient-top">Dégradé Équipes (Haut → Bas)</option>
+                <option value="league">Couleur de la Ligue</option>
+                <option value="home">Équipe Domicile seulement</option>
+                <option value="dark">Sombre (Désactivé)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Opacité des cartes</div>
+              <input type="range" id="pref-card-opacity" min="0" max="100" value="15" onchange="applyUserPrefs()" style="width: 140px;">
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Couleurs du fond</div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <input type="color" id="pref-c1" value="#000000" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 1 (Base)">
-              <input type="color" id="pref-c2" value="#111111" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 2 (Intermédiaire)">
-              <input type="color" id="pref-c3" value="#222222" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 3 (Extrémité)">
+          <!-- 5. Effets Spéciaux (UI) -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">🪄 Effets Spéciaux (UI)</div>
+            <div style="display:flex; flex-wrap:wrap; gap:12px;" id="pref-ui-effects-container">
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="glassmorphism" onchange="applyUserPrefs()"> Verre poli</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="scanlines" onchange="applyUserPrefs()"> Rétro</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="grain" onchange="applyUserPrefs()"> Film</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="rain" onchange="applyUserPrefs()"> Matrix</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="crt" onchange="applyUserPrefs()"> CRT</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="neon_glow" onchange="applyUserPrefs()"> Lueur Néon</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="stars" onchange="applyUserPrefs()"> Étoiles / Poussière</label>
             </div>
           </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Couleur d'accentuation</div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur personnalisée">
-            </div>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Couleurs des cartes</div>
-            <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="gradient">Dégradé Équipes (Dom → Ext)</option>
-              <option value="gradient-top">Dégradé Équipes (Haut → Bas)</option>
-              <option value="league">Couleur de la Ligue</option>
-              <option value="home">Équipe Domicile seulement</option>
-              <option value="dark">Sombre (Désactivé)</option>
-            </select>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Effet de Survol (Hover)</div>
-            <select id="pref-hover-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="default">Défaut (Léger soulèvement)</option>
-              <option value="float">Flottaison (Ombre 3D)</option>
-              <option value="glow">Luminescence</option>
-              <option value="scale">Agrandissement</option>
-              <option value="none">Aucun effet</option>
-            </select>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Style Bouton Actif (Toggle)</div>
-            <select id="pref-toggle-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="default">Défaut (Légèrement plus clair)</option>
-              <option value="neon">Néon (Lueur intense)</option>
-              <option value="solid">Couleur Accentuation Unie</option>
-              <option value="inset">Enfoncé (3D Inset)</option>
-              <option value="underlined">Souligné (Minimal)</option>
-            </select>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Forme des boutons</div>
-            <select id="pref-btn-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-              <option value="rounded">Arrondis (Défaut)</option>
-              <option value="square">Rectangulaires</option>
-              <option value="pill">Pilule</option>
-              <option value="apple">Apple (Doux/Verre)</option>
-              <option value="neumorphism">Neumorphisme</option>
-              <option value="ps2">PS2 (Bordure bleue/noir)</option>
-              <option value="xbox">Xbox OG (Vert toxique)</option>
-              <option value="samsung">Samsung OneUI</option>
-              <option value="windows">Windows 11 (Mica)</option>
-              <option value="macos">macOS (Aqua/Big Sur)</option>
-              <option value="ubuntu">Ubuntu (Yaru)</option>
-            </select>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:14px;">Opacité des cartes</div>
-            <input type="range" id="pref-card-opacity" min="0" max="100" value="15" onchange="applyUserPrefs()" style="width: 140px;">
-          </div>
-
-
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="font-size:14px; margin-bottom: 4px;">Effets spéciaux (UI)</div>
-            <div style="display:flex; flex-wrap:wrap; gap:8px;" id="pref-ui-effects-container">
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;"><input type="checkbox" value="glassmorphism" onchange="applyUserPrefs()"> Verre poli</label>
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;"><input type="checkbox" value="scanlines" onchange="applyUserPrefs()"> Rétro</label>
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;"><input type="checkbox" value="grain" onchange="applyUserPrefs()"> Film</label>
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;"><input type="checkbox" value="rain" onchange="applyUserPrefs()"> Matrix</label>
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;"><input type="checkbox" value="crt" onchange="applyUserPrefs()"> CRT</label>
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;"><input type="checkbox" value="neon_glow" onchange="applyUserPrefs()"> Lueur Néon</label>
-              <label style="display:flex; align-items:center; gap:4px; font-size:13px; cursor:pointer;"><input type="checkbox" value="stars" onchange="applyUserPrefs()"> Étoiles / Poussière</label>
-            </div>
-          </div>
-
 
         </div>
       </div>
@@ -4576,13 +4605,37 @@ function applyBgStyle() {
   var c1 = userPrefs.c1 || '#000000';
   var c2 = userPrefs.c2 || '#111111';
   var c3 = userPrefs.c3 || '#222222';
+  var blurVal = userPrefs.bgBlur || 0;
+  var darkenVal = userPrefs.bgDarken || 0;
+
   document.documentElement.style.setProperty('--bg', c1);
 
   document.body.style.backgroundColor = '';
   document.body.style.backgroundBlendMode = '';
-  document.body.classList.remove('bg-animated-gradient');
+  document.body.classList.remove('bg-animated-gradient', 'bg-animated-aurora', 'bg-moving-glows');
   var existingShapes = document.getElementById('floating-shapes-container');
   if(existingShapes) existingShapes.style.display = 'none';
+  var existingWaves = document.getElementById('animated-waves-container');
+  if(existingWaves) existingWaves.style.display = 'none';
+
+  // Handle Blur and Darken via a dynamic pseudo-element or overlay
+  var bgModifier = document.getElementById('bg-modifier-overlay');
+  if(!bgModifier) {
+      bgModifier = document.createElement('div');
+      bgModifier.id = 'bg-modifier-overlay';
+      bgModifier.style.position = 'fixed';
+      bgModifier.style.top = '0';
+      bgModifier.style.left = '0';
+      bgModifier.style.width = '100vw';
+      bgModifier.style.height = '100vh';
+      bgModifier.style.pointerEvents = 'none';
+      bgModifier.style.zIndex = '-1'; // just above the body background
+      document.body.appendChild(bgModifier);
+  }
+
+  bgModifier.style.backdropFilter = blurVal > 0 ? 'blur(' + (blurVal / 5) + 'px)' : 'none';
+  bgModifier.style.backgroundColor = darkenVal > 0 ? 'rgba(0, 0, 0, ' + (darkenVal / 100) + ')' : 'transparent';
+
 
   if (s === 'solid') {
     document.body.style.background = c1;
@@ -4699,6 +4752,61 @@ function applyBgStyle() {
     document.body.style.backgroundColor = c1;
   } else if (s === 'snow') {
     document.body.style.background = 'radial-gradient(circle at 10% 20%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.1) 1.5px, transparent 1.5px), radial-gradient(circle at 80% 40%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 30% 60%, rgba(255,255,255,0.1) 2px, transparent 2px), linear-gradient(135deg, '+c1+', '+c2+')';
+  } else if (s === 'animated_waves') {
+    document.body.style.background = 'linear-gradient(to bottom, '+c1+', '+c2+')';
+    var awc = document.getElementById('animated-waves-container');
+    if(!awc) {
+        awc = document.createElement('div');
+        awc.id = 'animated-waves-container';
+        awc.className = 'animated-waves-container';
+        awc.innerHTML = '<div class="wave wave1"></div><div class="wave wave2"></div><div class="wave wave3"></div>';
+        // Add styles dynamically if not in CSS
+        if(!document.getElementById('anim-bg-styles')) {
+            var style = document.createElement('style');
+            style.id = 'anim-bg-styles';
+            style.innerHTML = `
+                .animated-waves-container { position: fixed; bottom: 0; left: 0; width: 100vw; height: 100vh; overflow: hidden; z-index: -2; pointer-events: none; }
+                .wave { position: absolute; bottom: 0; left: 0; width: 200%; height: 50vh; background-repeat: repeat-x; transform-origin: center bottom; }
+                .wave1 { background-image: radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 70%); animation: wave-move1 20s linear infinite; }
+                .wave2 { background-image: radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 60%); animation: wave-move2 25s linear infinite; height: 60vh; bottom: -10vh; }
+                .wave3 { background-image: radial-gradient(ellipse at center, rgba(255,255,255,0.08) 0%, transparent 80%); animation: wave-move3 15s linear infinite; height: 40vh; }
+                @keyframes wave-move1 { 0% { transform: translateX(0) translateZ(0) scaleY(1); } 50% { transform: translateX(-25%) translateZ(0) scaleY(0.8); } 100% { transform: translateX(-50%) translateZ(0) scaleY(1); } }
+                @keyframes wave-move2 { 0% { transform: translateX(-50%) translateZ(0) scaleY(0.9); } 50% { transform: translateX(-25%) translateZ(0) scaleY(1.1); } 100% { transform: translateX(0) translateZ(0) scaleY(0.9); } }
+                @keyframes wave-move3 { 0% { transform: translateX(0) translateZ(0) scaleY(1.2); } 50% { transform: translateX(-25%) translateZ(0) scaleY(0.9); } 100% { transform: translateX(-50%) translateZ(0) scaleY(1.2); } }
+
+                .bg-animated-aurora { background: linear-gradient(45deg, var(--bg-c1), var(--bg-c2), var(--bg-c3), var(--bg-c1)); background-size: 400% 400%; animation: gradientBG 15s ease infinite; }
+                .bg-moving-glows { background: var(--bg-c1); }
+                .bg-moving-glows::before, .bg-moving-glows::after { content: ''; position: fixed; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(80px); opacity: 0.5; z-index: -2; pointer-events: none; }
+                .bg-moving-glows::before { background: var(--bg-c2); animation: moveGlow1 20s ease-in-out infinite alternate; top: -10%; left: -10%; }
+                .bg-moving-glows::after { background: var(--bg-c3); animation: moveGlow2 25s ease-in-out infinite alternate; bottom: -10%; right: -10%; }
+                @keyframes moveGlow1 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(30vw, 30vh) scale(1.5); } }
+                @keyframes moveGlow2 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-30vw, -30vh) scale(1.2); } }
+            `;
+            document.head.appendChild(style);
+        }
+        document.body.appendChild(awc);
+    }
+    awc.style.display = 'block';
+    // Update wave colors
+    var waves = awc.querySelectorAll('.wave');
+    if(waves.length >= 3) {
+        waves[0].style.backgroundImage = 'radial-gradient(ellipse at center, ' + c2 + '80 0%, transparent 70%)';
+        waves[1].style.backgroundImage = 'radial-gradient(ellipse at center, ' + c3 + '60 0%, transparent 60%)';
+        waves[2].style.backgroundImage = 'radial-gradient(ellipse at center, ' + c1 + '80 0%, transparent 80%)';
+    }
+
+  } else if (s === 'animated_aurora') {
+    document.documentElement.style.setProperty('--bg-c1', c1);
+    document.documentElement.style.setProperty('--bg-c2', c2);
+    document.documentElement.style.setProperty('--bg-c3', c3);
+    document.body.classList.add('bg-animated-aurora');
+
+  } else if (s === 'moving_glows') {
+    document.documentElement.style.setProperty('--bg-c1', c1);
+    document.documentElement.style.setProperty('--bg-c2', c2);
+    document.documentElement.style.setProperty('--bg-c3', c3);
+    document.body.classList.add('bg-moving-glows');
+
   } else if (s === 'animated_gradient') {
     document.body.style.background = 'linear-gradient(45deg, '+c1+', '+c2+', '+c3+', '+c1+')';
     document.body.classList.add('bg-animated-gradient');
@@ -4732,6 +4840,9 @@ function initPrefs() {
   if(saved) {
     try { Object.assign(userPrefs, JSON.parse(saved)); } catch(e){}
   }
+
+  if(document.getElementById('pref-bg-blur')) document.getElementById('pref-bg-blur').value = userPrefs.bgBlur || 0;
+  if(document.getElementById('pref-bg-darken')) document.getElementById('pref-bg-darken').value = userPrefs.bgDarken || 0;
 
   applyBgStyle();
 
@@ -5022,6 +5133,11 @@ function applyUserPrefs() {
   if(hdrSel) userPrefs.hdrStyle = hdrSel.value;
   if(opacSel) userPrefs.cardOpacity = opacSel.value;
 
+  var blurSel = document.getElementById('pref-bg-blur');
+  if(blurSel) userPrefs.bgBlur = blurSel.value;
+  var darkenSel = document.getElementById('pref-bg-darken');
+  if(darkenSel) userPrefs.bgDarken = darkenSel.value;
+
   if(effectsContainer) {
       var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
       var activeEffects = [];
@@ -5093,7 +5209,13 @@ function applyPredefinedTheme() {
     }
     userPrefs.theme = theme;
 
+    // Reset blur and darken when applying predefined theme
+    userPrefs.bgBlur = 0;
+    userPrefs.bgDarken = 0;
+
     // Update inputs
+    if(document.getElementById('pref-bg-blur')) document.getElementById('pref-bg-blur').value = userPrefs.bgBlur || 0;
+    if(document.getElementById('pref-bg-darken')) document.getElementById('pref-bg-darken').value = userPrefs.bgDarken || 0;
     document.getElementById('pref-bg-style').value = userPrefs.bgStyle;
     document.getElementById('pref-c1').value = userPrefs.c1;
     document.getElementById('pref-c2').value = userPrefs.c2;
