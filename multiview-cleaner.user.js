@@ -26,6 +26,35 @@
     let cleaned = false;
     let mainPlayerBase = null;
 
+    function injectPopupBlocker() {
+        // Injecter un script pour bloquer window.open dans le contexte de la page principale (hors bac à sable Tampermonkey)
+        const script = document.createElement('script');
+        script.textContent = `
+            window.open = function() {
+                console.log('[Multiview Cleaner] Popup bloqué (window.open)');
+                return null;
+            };
+        `;
+        (document.head || document.documentElement).appendChild(script);
+        // Clean up the script tag to keep DOM tidy
+        script.remove();
+
+        // Intercepter et bloquer les clics sur les liens ouvrant de nouveaux onglets
+        document.addEventListener('click', function(e) {
+            let target = e.target;
+            while (target && target.tagName !== 'A') {
+                target = target.parentElement;
+            }
+            if (target && target.tagName === 'A') {
+                if (target.target === '_blank' || target.href.includes('javascript:')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[Multiview Cleaner] Clic sur un lien suspect bloqué', target.href);
+                }
+            }
+        }, true); // Use capture phase to intercept early
+    }
+
     function injectStyles() {
         const styleId = 'multiview-cleaner-styles';
         if (document.getElementById(styleId)) return;
@@ -86,7 +115,8 @@
         const knownClasses = [
             'player', 'vjs', 'jw', 'plyr', 'shaka', 'dplayer', 'artplayer',
             'flowplayer', 'fp-engine', 'html5-video', 'video-js', 'clappr',
-            'theoplayer', 'bitdash', 'jwplayer', 'vpaid'
+            'theoplayer', 'bitdash', 'jwplayer', 'vpaid', 'video-container',
+            'media-control', 'vp-video', 'fluid_video_wrapper', 'rmp', 'dash-video'
         ];
 
         let current = element.parentElement;
@@ -114,10 +144,30 @@
         return element.parentElement ? (element.parentElement.parentElement || element.parentElement) : element;
     }
 
+    function isSafeControlElement(node) {
+        // Safe check for controls, play, pause, volume, ui elements
+        let className = '';
+        if (typeof node.className === 'string') {
+            className = node.className.toLowerCase();
+        } else if (node.className && typeof node.className.baseVal === 'string') {
+            className = node.className.baseVal.toLowerCase();
+        }
+
+        const id = (node.id || '').toString().toLowerCase();
+        const safeKeywords = ['control', 'play', 'pause', 'volume', 'ui', 'layer', 'bar', 'button', 'btn', 'progress', 'slider', 'time', 'mute', 'fullscreen', 'icon', 'menu', 'settings'];
+
+        return safeKeywords.some(keyword => className.includes(keyword) || id.includes(keyword));
+    }
+
     function removeInvisibleOverlays(playerBase) {
         // Souvent, des div transparentes sont mises par-dessus pour capter les clics
         const elements = playerBase.querySelectorAll('*');
         elements.forEach(el => {
+            // Ne pas supprimer les contrôles du lecteur
+            if (isSafeControlElement(el)) {
+                return;
+            }
+
             const style = window.getComputedStyle(el);
             // Si l'élément couvre presque tout le lecteur mais est invisible ou a un z-index énorme sans contenu utile
             if (
@@ -126,7 +176,7 @@
                 parseFloat(style.height) > (playerBase.offsetHeight * 0.8) &&
                 el.tagName !== 'VIDEO' && el.tagName !== 'IFRAME' &&
                 (style.opacity === '0' || style.backgroundColor === 'rgba(0, 0, 0, 0)' || style.backgroundColor === 'transparent') &&
-                el.children.length === 0
+                !el.querySelector('video, iframe') // S'assurer de ne pas supprimer le conteneur du lecteur
             ) {
                 el.remove();
             }
@@ -166,6 +216,13 @@
             target.classList.add('mv-cleaner-maximized');
         }
 
+        // Fallback: forcer les contrôles natifs si la cible est une vidéo
+        if (target.tagName === 'VIDEO') {
+            target.setAttribute('controls', 'true');
+            // S'assurer que la vidéo elle-même peut recevoir des clics
+            target.style.setProperty('pointer-events', 'auto', 'important');
+        }
+
         removeInvisibleOverlays(mainPlayerBase);
 
         cleaned = true;
@@ -182,6 +239,9 @@
                                 node.classList.add('mv-cleaner-hidden');
                                 try { node.remove(); } catch(e) {}
                             } else if (mainPlayerBase.contains(node)) {
+                                // Ne pas supprimer les éléments de contrôle qui pourraient être ajoutés dynamiquement
+                                if (isSafeControlElement(node)) return;
+
                                 // Vérifier si c'est un overlay ajouté à l'intérieur
                                 const style = window.getComputedStyle(node);
                                 if (['absolute', 'fixed'].includes(style.position) && parseInt(style.zIndex, 10) > 1000 && node.tagName !== 'VIDEO') {
@@ -201,6 +261,8 @@
 
     function findAndClean() {
         if (cleaned) return;
+
+        injectPopupBlocker();
 
         // Chercher une vidéo
         const videos = Array.from(document.querySelectorAll('video')).filter(v => v.offsetWidth > 50 || v.offsetHeight > 50);
