@@ -2869,6 +2869,13 @@ function parseOnHockey(html) {
          if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
          if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
 
+         // Extract time if present
+         var startTime = '00:00';
+         var timeMatch = textContent.match(/(\d{1,2}:\d{2})/);
+         if (timeMatch) {
+             startTime = timeMatch[1];
+         }
+
          if(parts.length > 1) {
             matchText = parts[parts.length - 1].trim(); // Get the last part usually
          }
@@ -2897,7 +2904,7 @@ function parseOnHockey(html) {
               league: leagueName,
               homeTeam: home,
               awayTeam: away,
-              startTime: '00:00', // We don't have time easily without deeper parsing, fallback
+              startTime: startTime, // Extracted from text if present
               durationMinutes: getLeagueDuration('hockey'),
               status: 'upcoming',
               streamLinks: [{ name: 'OnHockey Flux', url: streamUrl, quality: 'HD', lang: 'MULTI' }],
@@ -2906,7 +2913,8 @@ function parseOnHockey(html) {
               // or just load the onhockey page in iframe, but it has many ads.
               // Actually for buffstreams we use the matchUrl and then it gets iframe. We'll set streamsLoaded=true and use url.
               matchUrl: ONHOCKEY_URL,
-              source: 'onhockey'
+              source: 'onhockey',
+              matchDate: getEstDateStrFromDate(TARGET_DATE)
           });
      }
   }
@@ -7410,6 +7418,7 @@ function mergeFluxToApi(apiMatches, scrapedMatches) {
          // Flux that do not match an API match are kept but categorized distinctly
          // so they appear separated from the official API timeline, usually at the bottom.
          sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+         if (!sm.matchDate) sm.matchDate = targetDateStr;
          sm.league = 'Autres Flux';
          sm.flag = '📡';
          sm.color = '#555555';
