@@ -109,9 +109,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 /* MATCH GRID */
 .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 20px; padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
-.match-card { position: relative; border-radius: var(--radius-card, 16px); cursor: pointer; overflow: hidden; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s, box-shadow 0.3s, background-position 0.3s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: none; min-height: 110px; background-size: 200% 200% !important; background-position: center !important; }
+.match-card { position: relative; border-radius: var(--radius-card, 16px); cursor: pointer; overflow: hidden; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s, box-shadow 0.3s, background-position 0.3s; display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; box-shadow: var(--card-shadow, 0 10px 30px rgba(0,0,0,0.6)); border: var(--card-border, none); min-height: 110px; background-size: 200% 200% !important; background-position: center !important; }
 .match-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,var(--card-opacity, 0.15)) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
-.match-card:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: 0 15px 40px rgba(0,0,0,0.8); background-position: top left !important; }
+.match-card:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.03) translateY(-4px); z-index: 5; box-shadow: var(--card-shadow, 0 15px 40px rgba(0,0,0,0.8)); background-position: top left !important; }
 .match-card.live { animation: liveglow 3s ease-in-out infinite; }
 .match-card.finished { filter: grayscale(0.8) opacity(0.6); }
 .match-card.finished:hover { filter: grayscale(0.2) opacity(1); }
@@ -135,10 +135,10 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .gl.h { background: rgba(255,255,255,0.04); }
 
 /* Match Blocks */
-.mb { position: absolute; top: 6px; bottom: 6px; border-radius: var(--radius-card, 14px); cursor: pointer; overflow: hidden; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s, box-shadow 0.3s, background-position 0.3s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); border: none; background-size: 200% 200% !important; background-position: center !important; }
+.mb { position: absolute; top: 6px; bottom: 6px; border-radius: var(--radius-card, 14px); cursor: pointer; overflow: hidden; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s, box-shadow 0.3s, background-position 0.3s; display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; min-width: 100px; box-shadow: var(--card-shadow, 0 8px 20px rgba(0,0,0,0.5)); border: var(--card-border, none); background-size: 200% 200% !important; background-position: center !important; }
 /* Subtle gradient overlay for depth */
 .mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,var(--card-opacity, 0.15)) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
-.mb:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: 0 12px 30px rgba(0,0,0,0.7); background-position: top left !important; }
+.mb:hover { filter: brightness(1.15) saturate(1.2); transform: scale(1.02) translateY(-2px); z-index: 5; box-shadow: var(--card-shadow, 0 12px 30px rgba(0,0,0,0.7)); background-position: top left !important; }
 .mb.live { animation: liveglow 3s ease-in-out infinite; }
 .mb.finished { filter: grayscale(0.8) opacity(0.6); }
 .mb.finished:hover { filter: grayscale(0.2) opacity(1); }
@@ -318,55 +318,6 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 </style>
 
 
-<style id="custom-animated-bgs">
-  @keyframes gradientFluid {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-  }
-  .bg-animated-gradient {
-      background-size: 200% 200% !important;
-      animation: gradientFluid 15s ease infinite;
-  }
-
-  .floating-shapes-container {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      overflow: hidden; pointer-events: none; z-index: -1;
-  }
-  .floating-shape {
-      position: absolute;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(5px);
-      border-radius: 50%;
-      animation: floatShape 20s infinite linear;
-  }
-  @keyframes floatShape {
-      0% { transform: translateY(100vh) translateX(0) rotate(0deg); opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { transform: translateY(-20vh) translateX(100px) rotate(360deg); opacity: 0; }
-  }
-
-  /* Animated waves and moving glows globally available */
-  .animated-waves-container { position: fixed; bottom: 0; left: 0; width: 100vw; height: 100vh; overflow: hidden; z-index: -2; pointer-events: none; }
-  .wave { position: absolute; bottom: 0; left: 0; width: 200%; height: 50vh; background-repeat: repeat-x; transform-origin: center bottom; }
-  .wave1 { background-image: radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 70%); animation: wave-move1 20s linear infinite; }
-  .wave2 { background-image: radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 60%); animation: wave-move2 25s linear infinite; height: 60vh; bottom: -10vh; }
-  .wave3 { background-image: radial-gradient(ellipse at center, rgba(255,255,255,0.08) 0%, transparent 80%); animation: wave-move3 15s linear infinite; height: 40vh; }
-  @keyframes wave-move1 { 0% { transform: translateX(0) translateZ(0) scaleY(1); } 50% { transform: translateX(-25%) translateZ(0) scaleY(0.8); } 100% { transform: translateX(-50%) translateZ(0) scaleY(1); } }
-  @keyframes wave-move2 { 0% { transform: translateX(-50%) translateZ(0) scaleY(0.9); } 50% { transform: translateX(-25%) translateZ(0) scaleY(1.1); } 100% { transform: translateX(0) translateZ(0) scaleY(0.9); } }
-  @keyframes wave-move3 { 0% { transform: translateX(0) translateZ(0) scaleY(1.2); } 50% { transform: translateX(-25%) translateZ(0) scaleY(0.9); } 100% { transform: translateX(-50%) translateZ(0) scaleY(1.2); } }
-
-  .bg-animated-aurora { background: linear-gradient(45deg, var(--bg-c1), var(--bg-c2), var(--bg-c3), var(--bg-c1)); background-size: 400% 400%; animation: gradientFluid 15s ease infinite; }
-  .bg-moving-glows { background: var(--bg-c1); }
-  .bg-moving-glows::before, .bg-moving-glows::after { content: ''; position: fixed; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(80px); opacity: 0.5; z-index: -2; pointer-events: none; }
-  .bg-moving-glows::before { background: var(--bg-c2); animation: moveGlow1 20s ease-in-out infinite alternate; top: -10%; left: -10%; }
-  .bg-moving-glows::after { background: var(--bg-c3); animation: moveGlow2 25s ease-in-out infinite alternate; bottom: -10%; right: -10%; }
-  @keyframes moveGlow1 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(30vw, 30vh) scale(1.5); } }
-  @keyframes moveGlow2 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-30vw, -30vh) scale(1.2); } }
-
-</style>
 
 </head>
 <body>
@@ -493,31 +444,20 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
               <div style="font-size:13px; color:var(--muted);">Thème prédéfini</div>
               <select id="pref-theme" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyPredefinedTheme()">
                 <option value="custom">Personnalisé</option>
-                <option value="neon">Néon (Rose/Cyan)</option>
-                <option value="ocean">Océan (Bleu/Turquoise)</option>
-                <option value="cyberpunk">Cyberpunk (Violet/Rouge)</option>
-                <option value="forest">Forêt (Vert/Émeraude)</option>
-                <option value="sunset">Crépuscule (Orange/Violet)</option>
-                <option value="magma">Magma (Rouge/Noir)</option>
-                <option value="aurora">Nuit Boréale (Vert foncé/Noir)</option>
-                <option value="monochrome">Monochrome (Noir/Gris)</option>
-                <option disabled>--- Thématiques ---</option>
-                <option value="retro">Rétro Arcade (Néon/Sombre)</option>
-                <option value="cyberpunk_v2">Cyberpunk 2077 (Jaune/Cyan)</option>
-                <option value="nature">Nature Paisible (Vert/Marron)</option>
-                <option value="minimal">Minimaliste Clair (Gris clair)</option>
-                <option disabled>--- Systèmes ---</option>
-                <option value="ps2">PS2 (Bleu/Noir)</option>
-                <option value="xbox">Xbox (Dashboard Sombre)</option>
-                <option value="samsung">Samsung (Bleu profond)</option>
-                <option value="chromecast">Chromecast (Ambiant)</option>
-                <option value="windows">Windows 11 (Bloom)</option>
-                <option value="winxp">Windows XP (Luna)</option>
-                <option value="winxproyale">Windows XP (Royale)</option>
-                <option value="macos">macOS (Big Sur)</option>
-                <option value="macos_metal">macOS (Métal brossé)</option>
-                <option value="ubuntu">Ubuntu (Aubergine/Orange)</option>
-                <option value="ubuntu_grey">Ubuntu (Gris/Orange)</option>
+                <option disabled>--- Minimaliste & Épuré ---</option>
+                <option value="midnight">Minuit (Bleu nuit profond)</option>
+                <option value="slate">Ardoise (Gris sombre)</option>
+                <option value="minimal_light">Clair (Gris doux)</option>
+                <option value="nordic">Nordique (Bleu/Gris doux)</option>
+                <option disabled>--- Tech & Dashboards ---</option>
+                <option value="steam">Steam (Sombre classique)</option>
+                <option value="github">Code (Noir et bleu)</option>
+                <option value="vercel">Vercel (Noir et blanc contrasté)</option>
+                <option disabled>--- Moderne & Fluide ---</option>
+                <option value="macos">macOS (Glassmorphism)</option>
+                <option value="windows11">Windows 11 (Mica / Bloom)</option>
+                <option value="ocean_glass">Profondeurs (Océan flouté)</option>
+                <option value="aurora_mesh">Aurore (Maillage lumineux)</option>
               </select>
             </div>
 
@@ -535,23 +475,14 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Style global</div>
               <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
-                <option value="solid">Couleur Unie</option>
-                <option value="gradient">Dégradé Simple</option>
-                <option value="linear">Dégradé Linéaire</option>
-                <option value="radial">Dégradé Radial</option>
-                <option disabled>--- Animés ---</option>
-                <option value="animated_gradient">Dégradé Animé</option>
-                <option value="waves">Vagues Océan</option>
-                <option value="snow">Poussière d'étoiles / Neige</option>
-                <option disabled>--- Maillages ---</option>
-                <option value="mesh_flou_1">Maillage Flou (Doux)</option>
-                <option value="mesh_flou_2">Maillage Flou (Asymétrique)</option>
-                <option value="mesh_flou_3">Maillage Flou (Organique)</option>
-                <option value="mesh_flou_4">Maillage Flou (Aura)</option>
-                <option disabled>--- Autres ---</option>
-                <option value="diagonal">Diagonale douce (Apple)</option>
-                <option value="glow">Lueurs diffuses</option>
-                <option value="aurora">Aurore Boréale complexe</option>
+                <option value="solid">Couleur Unie (Classique)</option>
+                <option value="gradient">Dégradé Doux</option>
+                <option disabled>--- Patterns & Grilles ---</option>
+                <option value="grid">Grille Subtile (Pro)</option>
+                <option disabled>--- Textures & Lumières ---</option>
+                <option value="mesh_flou_1">Maillage Flou (Apple Style)</option>
+                <option value="glow">Lueurs Diffuses (Moderne)</option>
+                <option value="aurora">Aurore (Élégant)</option>
               </select>
             </div>
 
@@ -599,23 +530,14 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Forme des boutons</div>
               <select id="pref-btn-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-                <option value="rounded">Arrondis (Défaut)</option>
-                <option value="square">Rectangulaires</option>
-                <option value="pill">Pilule</option>
-                <option value="apple">Apple (Doux/Verre)</option>
-                <option value="neumorphism">Neumorphisme</option>
-                <option value="ps2">PS2 (Bordure bleue/noir)</option>
-                <option value="xbox">Xbox (Interface globale)</option>
-                <option value="samsung">Samsung OneUI</option>
-                <option value="windows">Windows 11 (Mica)</option>
-                <option value="winxp">Windows XP (Luna)</option>
-                <option value="winxproyale">Windows XP (Royale)</option>
-                <option value="macos">macOS (Aqua/Big Sur)</option>
-                <option value="macos_metal">macOS (Métal brossé)</option>
-                <option value="ubuntu">Ubuntu (Yaru)</option>
-                <option value="ubuntu_grey">Ubuntu (Gris texturé)</option>
-                <option value="steam">Steam (Gris foncé/bleu)</option>
-                <option value="discord">Discord (Gris/Blurple)</option>
+                <option value="rounded">Arrondis (Standard)</option>
+                <option value="soft">Doux (Mobile Moderne)</option>
+                <option value="pill">Pilule (Web Moderne)</option>
+                <option value="square">Rectangulaires (Minimal)</option>
+                <option value="ghost">Ghost (Bordure Lumineuse)</option>
+                <option value="apple">Apple (Verre Poli)</option>
+                <option value="windows">Windows (Mica/Fluent)</option>
+                <option value="steam">Steam (Interface Sombre)</option>
               </select>
             </div>
 
@@ -623,9 +545,8 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
               <div style="font-size:13px; color:var(--muted);">Style Bouton Actif</div>
               <select id="pref-toggle-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
                 <option value="default">Défaut (Légèrement plus clair)</option>
-                <option value="neon">Néon (Lueur intense)</option>
+                <option value="dot">Point Minimaliste (Pro)</option>
                 <option value="solid">Couleur Accentuation Unie</option>
-                <option value="inset">Enfoncé (3D Inset)</option>
                 <option value="underlined">Souligné (Minimal)</option>
               </select>
             </div>
@@ -659,14 +580,21 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Style de l'En-tête (Menu Haut)</div>
+              <div style="font-size:13px; color:var(--muted);">Style de l'En-tête</div>
               <select id="pref-hdr-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-                <option value="transparent">Transparent (Défaut)</option>
+                <option value="transparent">Transparent (Minimaliste)</option>
                 <option value="glass">Verre Poli (Glassmorphism)</option>
                 <option value="solid">Couleur Unie Foncée</option>
-                <option value="gradient">Dégradé Subtil</option>
-                <option value="floating">Flottant (Ombre + Bordure)</option>
-                <option value="neon">Néon (Ligne inférieure)</option>
+                <option value="floating">Îlot Flottant (Moderne)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Position de la Navigation</div>
+              <select id="pref-nav-layout" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="top">En Haut (Standard)</option>
+                <option value="bottom">En Bas (Mobile/App)</option>
+                <option value="sidebar">Barre Latérale (Dashboard)</option>
               </select>
             </div>
 
@@ -681,7 +609,17 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Opacité des cartes</div>
+              <div style="font-size:13px; color:var(--muted);">Style des Cartes</div>
+              <select id="pref-card-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="glass">Verre Poli (Défaut)</option>
+                <option value="solid">Couleur Unie (Classique)</option>
+                <option value="bordered">Contour Fin (Minimal)</option>
+                <option value="elevated">Surélevé (Ombre Douce)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Opacité des cartes (Glass/Solid)</div>
               <input type="range" id="pref-card-opacity" min="0" max="100" value="15" onchange="applyUserPrefs()" style="width: 140px;">
             </div>
           </div>
@@ -6520,12 +6458,6 @@ function applyBgStyle() {
 
   appBg.style.backgroundColor = '';
   appBg.style.backgroundBlendMode = '';
-  appBg.classList.remove('bg-animated-gradient', 'bg-animated-aurora', 'bg-moving-glows');
-
-  var existingShapes = document.getElementById('floating-shapes-container');
-  if(existingShapes) existingShapes.style.display = 'none';
-  var existingWaves = document.getElementById('animated-waves-container');
-  if(existingWaves) existingWaves.style.display = 'none';
 
   // Handle Blur and Darken via a dynamic pseudo-element or overlay
   var bgModifier = document.getElementById('bg-modifier-overlay');
@@ -6548,94 +6480,22 @@ function applyBgStyle() {
 
   if (s === 'solid') {
     appBg.style.background = c1;
-  } else if (s === 'linear') {
-    appBg.style.background = 'linear-gradient(135deg, ' + c1 + ' 0%, ' + c2 + ' 50%, ' + c3 + ' 100%)';
-  } else if (s === 'radial') {
-    appBg.style.background = 'radial-gradient(circle at center, ' + c2 + ' 0%, ' + c3 + ' 50%, ' + c1 + ' 100%)';
-  } else if (s === 'blur') {
-    appBg.style.background = '#000 radial-gradient(circle at 20% 30%, '+c1+'80 0%, transparent 40%), radial-gradient(circle at 80% 80%, '+c2+'80 0%, transparent 40%), radial-gradient(circle at 50% 50%, '+c3+'60 0%, transparent 50%)';
-  } else if (s === 'waves') {
-    appBg.style.background = 'repeating-radial-gradient(ellipse at bottom, '+c1+' 0%, '+c2+' 10%, '+c3+' 20%)';
-  } else if (s === 'mesh') {
-    appBg.style.background = 'radial-gradient(at 0% 0%, '+c1+' 0, transparent 50%), radial-gradient(at 100% 0%, '+c2+' 0, transparent 50%), radial-gradient(at 100% 100%, '+c3+' 0, transparent 50%), radial-gradient(at 0% 100%, '+c1+' 0, transparent 50%)';
-    appBg.style.backgroundColor = '#000';
+  } else if (s === 'gradient') {
+    appBg.style.background = 'radial-gradient(circle at top right, ' + c2 + ' 0%, ' + c1 + ' 60%, ' + c3 + ' 100%)';
+  } else if (s === 'grid') {
+    appBg.style.backgroundColor = c1;
+    appBg.style.backgroundImage = 'radial-gradient(' + c2 + ' 1px, transparent 1px)';
+    appBg.style.backgroundSize = '24px 24px';
+    appBg.style.backgroundPosition = '0 0';
   } else if (s === 'mesh_flou_1') {
     appBg.style.background = 'radial-gradient(at 20% 20%, '+c1+' 0, transparent 40%), radial-gradient(at 80% 10%, '+c2+' 0, transparent 40%), radial-gradient(at 90% 80%, '+c3+' 0, transparent 50%), radial-gradient(at 10% 90%, '+c1+' 0, transparent 40%)';
     appBg.style.backgroundColor = '#000';
-  } else if (s === 'mesh_flou_2') {
-    appBg.style.background = 'radial-gradient(ellipse at 10% 40%, '+c1+' 0, transparent 50%), radial-gradient(ellipse at 90% 30%, '+c2+' 0, transparent 60%), radial-gradient(circle at 60% 90%, '+c3+' 0, transparent 50%), radial-gradient(ellipse at 40% 10%, '+c1+' 0, transparent 40%)';
-    appBg.style.backgroundColor = '#111';
-  } else if (s === 'mesh_flou_3') {
-    appBg.style.background = 'radial-gradient(circle at 0% 50%, '+c1+' 0, transparent 60%), radial-gradient(circle at 100% 50%, '+c2+' 0, transparent 60%), radial-gradient(circle at 50% 100%, '+c3+' 0, transparent 60%), radial-gradient(circle at 50% 0%, '+c2+' 0, transparent 60%)';
-    appBg.style.backgroundColor = '#0a0a0a';
-  } else if (s === 'mesh_flou_4') {
-    appBg.style.background = 'radial-gradient(at 30% 70%, '+c1+' 0, transparent 70%), radial-gradient(at 70% 30%, '+c3+' 0, transparent 70%), radial-gradient(at 50% 50%, '+c2+' 0, transparent 50%)';
-    appBg.style.backgroundColor = '#050505';
-  } else if (s === 'diagonal') {
-    appBg.style.background = 'linear-gradient(115deg, ' + c1 + ' 20%, ' + c2 + ' 50%, ' + c3 + ' 80%)';
   } else if (s === 'glow') {
     appBg.style.background = 'radial-gradient(circle at top left, '+c2+' 0%, transparent 40%), radial-gradient(circle at bottom right, '+c3+' 0%, transparent 40%), '+c1;
   } else if (s === 'aurora') {
     appBg.style.background = 'linear-gradient(to bottom, '+c1+', '+c1+'), radial-gradient(ellipse at top left, '+c2+' 0%, transparent 50%), radial-gradient(ellipse at top right, '+c3+' 0%, transparent 50%), radial-gradient(ellipse at bottom center, '+c2+' 0%, transparent 50%)';
     appBg.style.backgroundBlendMode = 'screen, screen, screen, normal';
     appBg.style.backgroundColor = c1;
-  } else if (s === 'snow') {
-    appBg.style.background = 'radial-gradient(circle at 10% 20%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 50% 80%, rgba(255,255,255,0.1) 1.5px, transparent 1.5px), radial-gradient(circle at 80% 40%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 30% 60%, rgba(255,255,255,0.1) 2px, transparent 2px), linear-gradient(135deg, '+c1+', '+c2+')';
-  } else if (s === 'animated_waves') {
-    appBg.style.background = 'linear-gradient(to bottom, '+c1+', '+c2+')';
-    var awc = document.getElementById('animated-waves-container');
-    if(!awc) {
-        awc = document.createElement('div');
-        awc.id = 'animated-waves-container';
-        awc.className = 'animated-waves-container';
-        awc.innerHTML = '<div class="wave wave1"></div><div class="wave wave2"></div><div class="wave wave3"></div>';
-        document.body.appendChild(awc);
-    }
-    awc.style.display = 'block';
-    // Update wave colors
-    var waves = awc.querySelectorAll('.wave');
-    if(waves.length >= 3) {
-        waves[0].style.backgroundImage = 'radial-gradient(ellipse at center, ' + c2 + '80 0%, transparent 70%)';
-        waves[1].style.backgroundImage = 'radial-gradient(ellipse at center, ' + c3 + '60 0%, transparent 60%)';
-        waves[2].style.backgroundImage = 'radial-gradient(ellipse at center, ' + c1 + '80 0%, transparent 80%)';
-    }
-
-  } else if (s === 'animated_aurora') {
-    document.documentElement.style.setProperty('--bg-c1', c1);
-    document.documentElement.style.setProperty('--bg-c2', c2);
-    document.documentElement.style.setProperty('--bg-c3', c3);
-    appBg.classList.add('bg-animated-aurora');
-
-  } else if (s === 'moving_glows') {
-    document.documentElement.style.setProperty('--bg-c1', c1);
-    document.documentElement.style.setProperty('--bg-c2', c2);
-    document.documentElement.style.setProperty('--bg-c3', c3);
-    appBg.classList.add('bg-moving-glows');
-
-  } else if (s === 'animated_gradient') {
-    appBg.style.background = 'linear-gradient(45deg, '+c1+', '+c2+', '+c3+', '+c1+')';
-    appBg.classList.add('bg-animated-gradient');
-  } else if (s === 'floating_shapes') {
-    appBg.style.background = 'linear-gradient(to bottom right, '+c1+', '+c2+')';
-    var fsc = document.getElementById('floating-shapes-container');
-    if(!fsc) {
-        fsc = document.createElement('div');
-        fsc.id = 'floating-shapes-container';
-        fsc.className = 'floating-shapes-container';
-        fsc.style.zIndex = '-2';
-        for(let i=0; i<15; i++) {
-            let shape = document.createElement('div');
-            shape.className = 'floating-shape';
-            shape.style.width = (Math.random() * 100 + 20) + 'px';
-            shape.style.height = shape.style.width;
-            shape.style.left = (Math.random() * 100) + 'vw';
-            shape.style.animationDuration = (Math.random() * 20 + 10) + 's';
-            shape.style.animationDelay = (Math.random() * 10) + 's';
-            fsc.appendChild(shape);
-        }
-        document.body.appendChild(fsc);
-    }
-    fsc.style.display = 'block';
   } else {
     appBg.style.background = c1 + ' radial-gradient(circle at 50% -20%, rgba(255,255,255,0.05) 0%, transparent 70%)';
   }
@@ -6713,6 +6573,21 @@ function initPrefs() {
 
   if(userPrefs.btnShape === 'square') { br = '4px'; cr = '8px'; }
   else if(userPrefs.btnShape === 'pill') br = '24px';
+  else if(userPrefs.btnShape === 'soft') {
+      br = '16px';
+      cr = '16px';
+      btnBg = 'rgba(255,255,255,0.08)';
+      btnBorder = '1px solid rgba(255,255,255,0.05)';
+      btnShadow = '0 2px 8px rgba(0,0,0,0.1)';
+  }
+  else if(userPrefs.btnShape === 'ghost') {
+      br = '8px';
+      cr = '12px';
+      btnBg = 'transparent';
+      btnBorder = '1px solid rgba(255,255,255,0.3)';
+      btnShadow = 'none';
+      btnBlur = 'none';
+  }
   else if(userPrefs.btnShape === 'apple') {
       br = '18px';
       cr = '20px';
@@ -6720,79 +6595,18 @@ function initPrefs() {
       btnBorder = '1px solid rgba(255,255,255,0.2)';
       btnBlur = 'blur(20px)';
       btnShadow = '0 8px 24px rgba(0,0,0,0.15)';
-  } else if(userPrefs.btnShape === 'neumorphism') {
-      br = '16px';
-      btnBg = 'linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,0,0,0.2))';
-      btnBorder = 'none';
-      btnShadow = '4px 4px 10px rgba(0,0,0,0.4), -4px -4px 10px rgba(255,255,255,0.05)';
-  } else if(userPrefs.btnShape === 'ps2') {
-      br = '2px';
-      cr = '4px';
-      btnBg = 'linear-gradient(to bottom, #000033, #000000)';
-      btnBorder = '2px solid #0033cc';
-      btnShadow = '0 0 8px #0033cc';
-  } else if(userPrefs.btnShape === 'xbox') {
-      br = '2px';
-      cr = '4px';
-      btnBg = 'linear-gradient(to bottom, #2e2e2e, #1a1a1a)';
-      btnBorder = '1px solid #333333';
-      btnShadow = 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.5)';
-  } else if(userPrefs.btnShape === 'samsung') {
-      br = '24px';
-      cr = '24px';
-      btnBg = 'rgba(255,255,255,0.08)';
-      btnBorder = 'none';
   } else if(userPrefs.btnShape === 'windows') {
       br = '4px';
       cr = '8px';
       btnBg = 'rgba(255,255,255,0.05)';
       btnBorder = '1px solid rgba(255,255,255,0.1)';
       btnBlur = 'blur(30px)';
-  } else if(userPrefs.btnShape === 'winxp') {
-      br = '4px';
-      cr = '6px';
-      btnBg = 'linear-gradient(to bottom, #3f8cf3, #245edb 50%, #1749c2 50%, #1b53c9)';
-      btnBorder = '1px solid #002266';
-      btnShadow = 'inset 0 1px 1px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.3)';
-  } else if(userPrefs.btnShape === 'winxproyale') {
-      br = '4px';
-      cr = '6px';
-      btnBg = 'linear-gradient(to bottom, #5086d7, #2d63c8 50%, #1e52bc 50%, #265ec4)';
-      btnBorder = '1px solid #002266';
-      btnShadow = 'inset 0 1px 1px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.3)';
-  } else if(userPrefs.btnShape === 'macos') {
-      br = '6px';
-      cr = '12px';
-      btnBg = 'rgba(255,255,255,0.1)';
-      btnBorder = '1px solid rgba(255,255,255,0.15)';
-      btnShadow = '0 1px 3px rgba(0,0,0,0.3)';
-  } else if(userPrefs.btnShape === 'macos_metal') {
-      br = '8px';
-      cr = '12px';
-      btnBg = 'linear-gradient(to bottom, #e6e6e6, #cccccc)';
-      btnBorder = '1px solid #999999';
-      btnShadow = 'inset 0 1px 0 #ffffff, 0 1px 2px rgba(0,0,0,0.3)';
-  } else if(userPrefs.btnShape === 'ubuntu') {
-      br = '6px';
-      btnBg = 'linear-gradient(to bottom, #4a1936, #300a24)';
-      btnBorder = '1px solid #5e2750';
-  } else if(userPrefs.btnShape === 'ubuntu_grey') {
-      br = '6px';
-      btnBg = 'linear-gradient(to bottom, #4d4d4d, #333333)';
-      btnBorder = '1px solid #222222';
-      btnShadow = 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.4)';
   } else if(userPrefs.btnShape === 'steam') {
       br = '2px';
       cr = '4px';
       btnBg = 'linear-gradient(to bottom, #3a3f44, #272b30)';
       btnBorder = '1px solid #1a1c1f';
       btnShadow = 'inset 0 1px 0 rgba(255,255,255,0.1)';
-  } else if(userPrefs.btnShape === 'discord') {
-      br = '4px';
-      cr = '8px';
-      btnBg = '#5865F2';
-      btnBorder = 'none';
-      btnShadow = 'none';
   }
 
   document.documentElement.style.setProperty('--radius-btn', br);
@@ -6804,27 +6618,105 @@ function initPrefs() {
 
   document.documentElement.style.setProperty('--card-opacity', (userPrefs.cardOpacity || 15) / 100);
 
+  // Match Card Styles
+  var cStyle = userPrefs.cardStyle || 'glass';
+  var cardBorder = 'none';
+  var cardBgOpac = (userPrefs.cardOpacity || 15) / 100;
+  var cardShadow = '0 8px 20px rgba(0,0,0,0.5)';
+
+  if (cStyle === 'solid') {
+      cardBgOpac = Math.max(cardBgOpac, 0.8); // Ensure it's mostly solid
+      document.documentElement.style.setProperty('--card-opacity', cardBgOpac);
+      cardShadow = '0 4px 12px rgba(0,0,0,0.3)';
+  } else if (cStyle === 'bordered') {
+      cardBorder = '1px solid rgba(255,255,255,0.1)';
+      cardShadow = 'none';
+      document.documentElement.style.setProperty('--card-opacity', Math.min(cardBgOpac, 0.1)); // Very light bg
+  } else if (cStyle === 'elevated') {
+      cardBorder = '1px solid rgba(255,255,255,0.05)';
+      cardShadow = '0 10px 30px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)';
+  }
+
+  document.documentElement.style.setProperty('--card-border', cardBorder);
+  document.documentElement.style.setProperty('--card-shadow', cardShadow);
+
+
+  // Nav Layout Styles
+  var nLayout = userPrefs.navLayout || 'top';
+  var hdrElem = document.getElementById('main-hdr');
+  var mainAppContainer = document.getElementById('app-container') || document.body;
+
+  if (hdrElem) {
+      if (nLayout === 'bottom') {
+          hdrElem.style.top = 'auto';
+          hdrElem.style.bottom = '0';
+          hdrElem.style.flexDirection = 'row';
+          hdrElem.style.height = '70px';
+          hdrElem.style.width = '100%';
+          hdrElem.style.borderBottom = 'none';
+          hdrElem.style.borderTop = '1px solid var(--border)';
+          document.documentElement.style.setProperty('--hdr-height', '70px');
+          // Add padding bottom to body to not overlap content
+          document.body.style.paddingTop = '0';
+          document.body.style.paddingBottom = '70px';
+      } else if (nLayout === 'sidebar') {
+          hdrElem.style.top = '0';
+          hdrElem.style.bottom = '0';
+          hdrElem.style.left = '0';
+          hdrElem.style.width = '240px';
+          hdrElem.style.height = '100vh';
+          hdrElem.style.flexDirection = 'column';
+          hdrElem.style.alignItems = 'flex-start';
+          hdrElem.style.borderBottom = 'none';
+          hdrElem.style.borderRight = '1px solid var(--border)';
+          document.documentElement.style.setProperty('--hdr-height', '100vh');
+          document.body.style.paddingTop = '0';
+          document.body.style.paddingBottom = '0';
+          document.body.style.paddingLeft = '240px';
+
+          // Fix internal nav items for sidebar
+          var navLinks = document.getElementById('nav-links');
+          if(navLinks) navLinks.style.flexDirection = 'column';
+      } else {
+          // Default TOP
+          hdrElem.style.top = '0';
+          hdrElem.style.bottom = 'auto';
+          hdrElem.style.left = '0';
+          hdrElem.style.width = '100%';
+          hdrElem.style.height = '70px';
+          hdrElem.style.flexDirection = 'row';
+          hdrElem.style.alignItems = 'center';
+          hdrElem.style.borderRight = 'none';
+          hdrElem.style.borderTop = 'none';
+          hdrElem.style.borderBottom = '1px solid var(--border)';
+          document.documentElement.style.setProperty('--hdr-height', '70px');
+          document.body.style.paddingTop = '70px';
+          document.body.style.paddingBottom = '0';
+          document.body.style.paddingLeft = '0';
+
+          var navLinks = document.getElementById('nav-links');
+          if(navLinks) navLinks.style.flexDirection = 'row';
+      }
+  }
+
   // Toggle Button Styles
   var tStyle = userPrefs.toggleStyle || 'default';
   var tGlow = 'none';
   var tBg = 'rgba(255,255,255,0.2)';
   var tBorder = '1px solid var(--accent)';
 
-  if (tStyle === 'neon') {
-      tGlow = '0 0 12px var(--accent), inset 0 0 8px var(--accent)';
-      tBg = 'rgba(0,0,0,0.4)';
-  } else if (tStyle === 'solid') {
+  if (tStyle === 'solid') {
       tBg = 'var(--accent)';
       tBorder = '1px solid var(--accent)';
       tGlow = '0 4px 12px rgba(0,0,0,0.5)';
-  } else if (tStyle === 'inset') {
-      tGlow = 'inset 0 4px 8px rgba(0,0,0,0.6)';
-      tBg = 'rgba(0,0,0,0.3)';
-      tBorder = '1px solid rgba(255,255,255,0.05)';
   } else if (tStyle === 'underlined') {
       tBg = 'rgba(255,255,255,0.05)';
       tBorder = 'none';
       tGlow = 'inset 0 -3px 0 var(--accent)';
+  } else if (tStyle === 'dot') {
+      tBg = 'transparent';
+      tBorder = 'none';
+      tGlow = 'inset 0 -4px 0 -2px var(--accent)'; // Simulate a dot using inset shadow trick or just a subtle bottom border
   }
 
   document.documentElement.style.setProperty('--toggle-glow', tGlow);
@@ -6869,18 +6761,11 @@ function initPrefs() {
   } else if (hStyle === 'solid') {
       hBg = 'var(--bg)';
       hBorder = '1px solid var(--border)';
-  } else if (hStyle === 'gradient') {
-      hBg = 'linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%)';
   } else if (hStyle === 'floating') {
       hBg = 'rgba(20,20,22,0.85)';
       hBlur = 'blur(15px)';
       hShadow = '0 10px 30px rgba(0,0,0,0.8)';
       hBorder = '1px solid rgba(255,255,255,0.1)';
-  } else if (hStyle === 'neon') {
-      hBg = 'rgba(0,0,0,0.8)';
-      hBlur = 'blur(10px)';
-      hBorder = '1px solid var(--accent)';
-      hShadow = '0 4px 15px var(--accent)';
   }
 
   document.documentElement.style.setProperty('--hdr-bg', hBg);
@@ -6896,9 +6781,11 @@ function initPrefs() {
   var selC2 = document.getElementById('pref-c2');
   var selC3 = document.getElementById('pref-c3');
   var selCard = document.getElementById('pref-card-color');
+  var selCardStyle = document.getElementById('pref-card-style');
   var selBtn = document.getElementById('pref-btn-shape');
   var selAccentColor = document.getElementById('pref-accent-color');
   var selOpacity = document.getElementById('pref-card-opacity');
+  var selNavLayout = document.getElementById('pref-nav-layout');
 
   if(selTheme) selTheme.value = userPrefs.theme || 'custom';
   if(selBgStyle) selBgStyle.value = userPrefs.bgStyle || 'gradient';
@@ -6918,6 +6805,8 @@ function initPrefs() {
       if(hexC3) hexC3.textContent = selC3.value;
   }
   if(selCard) selCard.value = userPrefs.cardColor || 'gradient-45';
+  if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
+  if(selNavLayout) selNavLayout.value = userPrefs.navLayout || 'top';
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
       selAccentColor.value = userPrefs.accent || '#0a84ff';
@@ -6960,6 +6849,8 @@ function applyUserPrefs() {
   var c2Sel = document.getElementById('pref-c2');
   var c3Sel = document.getElementById('pref-c3');
   var cardSel = document.getElementById('pref-card-color');
+  var cardStyleSel = document.getElementById('pref-card-style');
+  var navLayoutSel = document.getElementById('pref-nav-layout');
   var btnSel = document.getElementById('pref-btn-shape');
   var accentColorSel = document.getElementById('pref-accent-color');
   var opacSel = document.getElementById('pref-card-opacity');
@@ -6971,6 +6862,8 @@ function applyUserPrefs() {
   if(c2Sel) userPrefs.c2 = c2Sel.value;
   if(c3Sel) userPrefs.c3 = c3Sel.value;
   if(cardSel) userPrefs.cardColor = cardSel.value;
+  if(cardStyleSel) userPrefs.cardStyle = cardStyleSel.value;
+  if(navLayoutSel) userPrefs.navLayout = navLayoutSel.value;
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');
@@ -7027,31 +6920,22 @@ function applyPredefinedTheme() {
   if(theme === 'custom') return;
 
   var presets = {
-    'neon': { bgStyle: 'glow', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff', btnShape: 'rounded', toggleStyle: 'neon', hdrStyle: 'neon', uiEffects: ['neon_glow'] },
-    'ocean': { bgStyle: 'waves', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3', btnShape: 'rounded', toggleStyle: 'inset', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-      'cyberpunk': { bgStyle: 'glow', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c', btnShape: 'square', toggleStyle: 'neon', hdrStyle: 'solid', uiEffects: ['neon_glow'] },
-      'forest': { bgStyle: 'mesh_flou_3', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55', btnShape: 'rounded', toggleStyle: 'default', hdrStyle: 'gradient', uiEffects: [] },
-    'sunset': { bgStyle: 'linear', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933', btnShape: 'pill', toggleStyle: 'solid', hdrStyle: 'floating', uiEffects: [] },
-    'magma': { bgStyle: 'radial', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300', btnShape: 'rounded', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
-      'aurora': { bgStyle: 'aurora', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-      'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff', btnShape: 'square', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [] },
+    // Épuré & Minimaliste
+    'midnight': { bgStyle: 'solid', c1: '#0f172a', c2: '#1e293b', c3: '#334155', accent: '#38bdf8', btnShape: 'soft', toggleStyle: 'dot', hdrStyle: 'transparent', uiEffects: [] },
+    'slate': { bgStyle: 'gradient', c1: '#1e293b', c2: '#334155', c3: '#475569', accent: '#cbd5e1', btnShape: 'rounded', toggleStyle: 'default', hdrStyle: 'solid', uiEffects: [] },
+    'minimal_light': { bgStyle: 'solid', c1: '#f8fafc', c2: '#f1f5f9', c3: '#e2e8f0', accent: '#0f172a', btnShape: 'apple', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [] },
+    'nordic': { bgStyle: 'gradient', c1: '#2e3440', c2: '#3b4252', c3: '#434c5e', accent: '#88c0d0', btnShape: 'rounded', toggleStyle: 'dot', hdrStyle: 'solid', uiEffects: [] },
 
-      'retro': { bgStyle: 'radial', c1: '#110022', c2: '#220044', c3: '#ff0055', accent: '#00ffff', btnShape: 'square', toggleStyle: 'neon', hdrStyle: 'neon', uiEffects: ['neon_glow'] },
-      'cyberpunk_v2': { bgStyle: 'linear', c1: '#fcee0a', c2: '#000000', c3: '#00ffff', accent: '#fcee0a', btnShape: 'square', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
-      'nature': { bgStyle: 'mesh_flou_1', c1: '#2b3a2a', c2: '#3f5238', c3: '#8c7a6b', accent: '#d9d1c7', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-      'minimal': { bgStyle: 'solid', c1: '#f5f5f7', c2: '#e5e5ea', c3: '#d1d1d6', accent: '#000000', btnShape: 'apple', toggleStyle: 'solid', hdrStyle: 'transparent', uiEffects: [] },
+    // Dashboards Pro
+    'steam': { bgStyle: 'gradient', c1: '#171a21', c2: '#1b2838', c3: '#2a475e', accent: '#66c0f4', btnShape: 'steam', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
+    'github': { bgStyle: 'solid', c1: '#0d1117', c2: '#161b22', c3: '#21262d', accent: '#58a6ff', btnShape: 'ghost', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [] },
+    'vercel': { bgStyle: 'solid', c1: '#000000', c2: '#111111', c3: '#333333', accent: '#ffffff', btnShape: 'square', toggleStyle: 'dot', hdrStyle: 'transparent', uiEffects: [] },
 
-      'ps2': { bgStyle: 'linear', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff', btnShape: 'ps2', toggleStyle: 'neon', hdrStyle: 'neon', uiEffects: ['neon_glow'] },
-      'xbox': { bgStyle: 'radial', c1: '#1a1a1a', c2: '#2e2e2e', c3: '#107c10', accent: '#107c10', btnShape: 'xbox', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
-    'samsung': { bgStyle: 'gradient', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6', btnShape: 'samsung', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: [] },
-    'chromecast': { bgStyle: 'animated_gradient', c1: '#2c3e50', c2: '#34495e', c3: '#7f8c8d', accent: '#ecf0f1', btnShape: 'pill', toggleStyle: 'default', hdrStyle: 'floating', uiEffects: ['glassmorphism'] },
-    'windows': { bgStyle: 'diagonal', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4', btnShape: 'windows', toggleStyle: 'solid', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-      'winxp': { bgStyle: 'linear', c1: '#245edb', c2: '#0033cc', c3: '#001a66', accent: '#316ac5', btnShape: 'winxp', toggleStyle: 'solid', hdrStyle: 'gradient', uiEffects: [] },
-      'winxproyale': { bgStyle: 'linear', c1: '#003399', c2: '#0055cc', c3: '#0077ff', accent: '#0055cc', btnShape: 'winxproyale', toggleStyle: 'solid', hdrStyle: 'gradient', uiEffects: [] },
-    'macos': { bgStyle: 'diagonal', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff', btnShape: 'macos', toggleStyle: 'inset', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-      'macos_metal': { bgStyle: 'solid', c1: '#bfbfbf', c2: '#a6a6a6', c3: '#8c8c8c', accent: '#007aff', btnShape: 'macos_metal', toggleStyle: 'inset', hdrStyle: 'gradient', uiEffects: [] },
-      'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420', btnShape: 'ubuntu', toggleStyle: 'solid', hdrStyle: 'gradient', uiEffects: [] },
-      'ubuntu_grey': { bgStyle: 'solid', c1: '#333333', c2: '#2b2b2b', c3: '#222222', accent: '#e95420', btnShape: 'ubuntu_grey', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] }
+    // Moderne & Fluide
+    'macos': { bgStyle: 'mesh_flou_1', c1: '#1c1c1e', c2: '#2c2c2e', c3: '#3a3a3c', accent: '#0a84ff', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
+    'windows11': { bgStyle: 'glow', c1: '#202020', c2: '#282828', c3: '#333333', accent: '#60cdff', btnShape: 'windows', toggleStyle: 'solid', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
+    'ocean_glass': { bgStyle: 'glow', c1: '#0c4a6e', c2: '#075985', c3: '#0369a1', accent: '#38bdf8', btnShape: 'soft', toggleStyle: 'dot', hdrStyle: 'floating', uiEffects: ['glassmorphism'] },
+    'aurora_mesh': { bgStyle: 'aurora', c1: '#022c22', c2: '#064e3b', c3: '#065f46', accent: '#10b981', btnShape: 'pill', toggleStyle: 'solid', hdrStyle: 'floating', uiEffects: ['glassmorphism'] }
   };
 
   if(presets[theme]) {
@@ -7122,37 +7006,29 @@ function applyPredefinedTheme() {
 
 
 const PALETTES = [
-    { id: 'neon', name: 'Néon', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff' },
-    { id: 'ocean', name: 'Océan', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3' },
-    { id: 'cyberpunk', name: 'Cyberpunk', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c' },
-    { id: 'forest', name: 'Forêt', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55' },
-    { id: 'sunset', name: 'Crépuscule', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933' },
-    { id: 'magma', name: 'Magma', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300' },
-    { id: 'aurora', name: 'Nuit Boréale', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80' },
-    { id: 'monochrome', name: 'Monochrome', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff' },
+    // Épuré & Dashboards (Tailwind/Vercel/GitHub inspired)
+    { id: 'midnight', name: 'Minuit', c1: '#0f172a', c2: '#1e293b', c3: '#334155', accent: '#38bdf8' },
+    { id: 'vercel', name: 'Vercel', c1: '#000000', c2: '#111111', c3: '#333333', accent: '#ffffff' },
+    { id: 'github_dark', name: 'Code Sombre', c1: '#0d1117', c2: '#161b22', c3: '#21262d', accent: '#58a6ff' },
+    { id: 'minimal_light', name: 'Minimal Clair', c1: '#f8fafc', c2: '#f1f5f9', c3: '#e2e8f0', accent: '#0f172a' },
+    { id: 'slate', name: 'Ardoise', c1: '#1e293b', c2: '#334155', c3: '#475569', accent: '#cbd5e1' },
+    { id: 'zinc', name: 'Zinc', c1: '#18181b', c2: '#27272a', c3: '#3f3f46', accent: '#f4f4f5' },
 
-    { id: 'retro', name: 'Rétro Arcade', c1: '#110022', c2: '#220044', c3: '#ff0055', accent: '#00ffff' },
-    { id: 'cyberpunk_v2', name: 'Cyberpunk V2', c1: '#fcee0a', c2: '#000000', c3: '#00ffff', accent: '#fcee0a' },
-    { id: 'nature', name: 'Nature', c1: '#2b3a2a', c2: '#3f5238', c3: '#8c7a6b', accent: '#d9d1c7' },
-    { id: 'minimal', name: 'Minimaliste', c1: '#f5f5f7', c2: '#e5e5ea', c3: '#d1d1d6', accent: '#000000' },
-
-    { id: 'ps2', name: 'PS2', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff' },
-    { id: 'xbox', name: 'Xbox', c1: '#1a1a1a', c2: '#2e2e2e', c3: '#107c10', accent: '#107c10' },
-    { id: 'samsung', name: 'Samsung', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6' },
-    { id: 'windows', name: 'Windows 11', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4' },
-    { id: 'winxp', name: 'Windows XP', c1: '#245edb', c2: '#0033cc', c3: '#001a66', accent: '#316ac5' },
-    { id: 'winxproyale', name: 'Win XP Royale', c1: '#003399', c2: '#0055cc', c3: '#0077ff', accent: '#0055cc' },
-    { id: 'macos', name: 'macOS', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff' },
-    { id: 'macos_metal', name: 'macOS Métal', c1: '#bfbfbf', c2: '#a6a6a6', c3: '#8c8c8c', accent: '#007aff' },
-    { id: 'ubuntu', name: 'Ubuntu', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420' },
-    { id: 'ubuntu_grey', name: 'Ubuntu Gris', c1: '#333333', c2: '#2b2b2b', c3: '#222222', accent: '#e95420' },
+    // Steam & Tech (Material / Interfaces)
     { id: 'steam', name: 'Steam', c1: '#171a21', c2: '#1b2838', c3: '#2a475e', accent: '#66c0f4' },
-    { id: 'discord', name: 'Discord', c1: '#36393f', c2: '#2f3136', c3: '#202225', accent: '#5865F2' },
+    { id: 'macos_dark', name: 'macOS Sombre', c1: '#1c1c1e', c2: '#2c2c2e', c3: '#3a3a3c', accent: '#0a84ff' },
+    { id: 'win_fluent', name: 'Windows 11', c1: '#202020', c2: '#282828', c3: '#333333', accent: '#60cdff' },
 
-    { id: 'vampire', name: 'Vampire', c1: '#1a0000', c2: '#330000', c3: '#800000', accent: '#ff0000' },
-    { id: 'ice', name: 'Glace', c1: '#e0f7fa', c2: '#b2ebf2', c3: '#80deea', accent: '#00bcd4' },
-    { id: 'desert', name: 'Désert', c1: '#4e342e', c2: '#5d4037', c3: '#8d6e63', accent: '#ffb300' },
-    { id: 'pastel', name: 'Pastel', c1: '#fce4ec', c2: '#f3e5f5', c3: '#e8eaf6', accent: '#f48fb1' }
+    // Nature & Éléments (Couleurs douces, Material HIG)
+    { id: 'ocean', name: 'Océan', c1: '#0c4a6e', c2: '#075985', c3: '#0369a1', accent: '#38bdf8' },
+    { id: 'forest', name: 'Forêt', c1: '#064e3b', c2: '#065f46', c3: '#047857', accent: '#34d399' },
+    { id: 'nordic', name: 'Nordique', c1: '#2e3440', c2: '#3b4252', c3: '#434c5e', accent: '#88c0d0' },
+    { id: 'sand', name: 'Sable', c1: '#451a03', c2: '#78350f', c3: '#92400e', accent: '#fbbf24' },
+
+    // Vibrants maîtrisés (Accents forts sur fond très sombre)
+    { id: 'cyberpunk', name: 'Cyberpunk', c1: '#09090b', c2: '#18181b', c3: '#27272a', accent: '#e11d48' },
+    { id: 'aurora', name: 'Aurore', c1: '#022c22', c2: '#064e3b', c3: '#065f46', accent: '#10b981' },
+    { id: 'sunset', name: 'Crépuscule', c1: '#2e1065', c2: '#4c1d95', c3: '#5b21b6', accent: '#f43f5e' }
 ];
 
 function buildSwatches() {
