@@ -307,21 +307,6 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 </style>
 
 <style id="custom-ui-effects">
-  .crt-effect {
-      animation: crtFlicker 0.15s infinite;
-  }
-  @keyframes crtFlicker {
-      0% { opacity: 0.98; }
-      50% { opacity: 1; }
-      100% { opacity: 0.98; }
-  }
-  .crt-effect .match-card, .crt-effect .btn {
-      border-radius: 8px !important;
-  }
-  .crt-effect .btn {
-      border: 1px solid rgba(255,255,255,0.4) !important;
-  }
-
   .neon-glow-effect .btn {
       box-shadow: 0 0 10px var(--accent), inset 0 0 10px var(--accent) !important;
       border: 1px solid var(--accent) !important;
@@ -329,18 +314,6 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   }
   .neon-glow-effect .match-card {
       box-shadow: 0 0 15px var(--mc, var(--accent)) !important;
-  }
-
-  .matrix-rain {
-      width: 100%; height: 100%;
-      background: linear-gradient(180deg, rgba(0,255,0,0) 0%, rgba(0,255,0,0.1) 100%);
-      background-size: 100% 20px;
-      animation: matrixFall 2s linear infinite;
-      opacity: 0.3;
-  }
-  @keyframes matrixFall {
-      0% { background-position: 0 0; }
-      100% { background-position: 0 100vh; }
   }
 </style>
 
@@ -528,14 +501,23 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="magma">Magma (Rouge/Noir)</option>
                 <option value="aurora">Nuit Boréale (Vert foncé/Noir)</option>
                 <option value="monochrome">Monochrome (Noir/Gris)</option>
+                <option disabled>--- Thématiques ---</option>
+                <option value="retro">Rétro Arcade (Néon/Sombre)</option>
+                <option value="cyberpunk_v2">Cyberpunk 2077 (Jaune/Cyan)</option>
+                <option value="nature">Nature Paisible (Vert/Marron)</option>
+                <option value="minimal">Minimaliste Clair (Gris clair)</option>
                 <option disabled>--- Systèmes ---</option>
                 <option value="ps2">PS2 (Bleu/Noir)</option>
-                <option value="xbox">Xbox OG (Vert/Noir)</option>
+                <option value="xbox">Xbox (Dashboard Sombre)</option>
                 <option value="samsung">Samsung (Bleu profond)</option>
                 <option value="chromecast">Chromecast (Ambiant)</option>
                 <option value="windows">Windows 11 (Bloom)</option>
+                <option value="winxp">Windows XP (Luna)</option>
+                <option value="winxproyale">Windows XP (Royale)</option>
                 <option value="macos">macOS (Big Sur)</option>
+                <option value="macos_metal">macOS (Métal brossé)</option>
                 <option value="ubuntu">Ubuntu (Aubergine/Orange)</option>
+                <option value="ubuntu_grey">Ubuntu (Gris/Orange)</option>
               </select>
             </div>
 
@@ -549,24 +531,17 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
           <!-- 2. Arrière-plan -->
           <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
-            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🌌 Arrière-plan</div>
-
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🖼️ Arrière-plan</div>
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Style d'arrière-plan</div>
+              <div style="font-size:13px; color:var(--muted);">Style global</div>
               <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
-                <option value="solid">Couleur unie (C1)</option>
-                <option value="gradient">Dégradé subtil (Premium)</option>
-                <option value="linear">Linéaire (C1 → C2 → C3)</option>
-                <option value="radial">Radial (C1 → C2 → C3)</option>
-                <option value="blur">Diffus (C1, C2, C3)</option>
-                <option value="waves">Vagues abstraites (C1, C2, C3)</option>
-                <option value="mesh">Maillage (Classique)</option>
-                <option disabled>--- Nouveaux Animés ---</option>
-                <option value="animated_waves">Ondes Animées (Fluide)</option>
-                <option value="animated_aurora">Aurore Boréale Animée</option>
-                <option value="moving_glows">Lueurs Mouvantes</option>
-                <option value="animated_gradient">Dégradé animé (Fluide)</option>
-                <option value="floating_shapes">Formes flottantes</option>
+                <option value="solid">Couleur Unie</option>
+                <option value="gradient">Dégradé Simple</option>
+                <option value="linear">Dégradé Linéaire</option>
+                <option value="radial">Dégradé Radial</option>
+                <option disabled>--- Animés ---</option>
+                <option value="animated_gradient">Dégradé Animé</option>
+                <option value="waves">Vagues Océan</option>
                 <option value="snow">Poussière d'étoiles / Neige</option>
                 <option disabled>--- Maillages ---</option>
                 <option value="mesh_flou_1">Maillage Flou (Doux)</option>
@@ -583,9 +558,18 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Couleurs du fond</div>
               <div style="display:flex; gap:8px; align-items:center;">
-                <input type="color" id="pref-c1" value="#000000" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 1 (Base)">
-                <input type="color" id="pref-c2" value="#111111" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 2 (Intermédiaire)">
-                <input type="color" id="pref-c3" value="#222222" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur 3 (Extrémité)">
+                <div style="display:flex; align-items:center; gap:4px; flex-direction:column;">
+                  <input type="color" id="pref-c1" value="#000000" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-c1').textContent=this.value;" oninput="document.getElementById('hex-c1').textContent=this.value;" title="Couleur 1 (Base)">
+                  <span id="hex-c1" style="font-family:monospace; font-size:10px; color:var(--muted);">#000000</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:4px; flex-direction:column;">
+                  <input type="color" id="pref-c2" value="#111111" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-c2').textContent=this.value;" oninput="document.getElementById('hex-c2').textContent=this.value;" title="Couleur 2 (Intermédiaire)">
+                  <span id="hex-c2" style="font-family:monospace; font-size:10px; color:var(--muted);">#111111</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:4px; flex-direction:column;">
+                  <input type="color" id="pref-c3" value="#222222" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-c3').textContent=this.value;" oninput="document.getElementById('hex-c3').textContent=this.value;" title="Couleur 3 (Extrémité)">
+                  <span id="hex-c3" style="font-family:monospace; font-size:10px; color:var(--muted);">#222222</span>
+                </div>
               </div>
             </div>
 
@@ -606,19 +590,10 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Couleur d'accentuation</div>
-              <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme()" title="Couleur personnalisée">
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Style de l'En-tête</div>
-              <select id="pref-hdr-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-                <option value="transparent">Transparent (Défaut)</option>
-                <option value="glass">Verre Poli (Glassmorphism)</option>
-                <option value="solid">Couleur Unie Foncée</option>
-                <option value="gradient">Dégradé Subtil</option>
-                <option value="floating">Flottant (Ombre + Bordure)</option>
-                <option value="neon">Néon (Ligne inférieure)</option>
-              </select>
+              <div style="display:flex; align-items:center; gap:8px;">
+                 <span id="hex-accent-color" style="font-family:monospace; font-size:12px; color:var(--muted); background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;">#0a84ff</span>
+                 <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-accent-color').textContent=this.value;" oninput="document.getElementById('hex-accent-color').textContent=this.value;" title="Couleur personnalisée">
+              </div>
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -630,11 +605,17 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="apple">Apple (Doux/Verre)</option>
                 <option value="neumorphism">Neumorphisme</option>
                 <option value="ps2">PS2 (Bordure bleue/noir)</option>
-                <option value="xbox">Xbox OG (Vert toxique)</option>
+                <option value="xbox">Xbox (Interface globale)</option>
                 <option value="samsung">Samsung OneUI</option>
                 <option value="windows">Windows 11 (Mica)</option>
+                <option value="winxp">Windows XP (Luna)</option>
+                <option value="winxproyale">Windows XP (Royale)</option>
                 <option value="macos">macOS (Aqua/Big Sur)</option>
+                <option value="macos_metal">macOS (Métal brossé)</option>
                 <option value="ubuntu">Ubuntu (Yaru)</option>
+                <option value="ubuntu_grey">Ubuntu (Gris texturé)</option>
+                <option value="steam">Steam (Gris foncé/bleu)</option>
+                <option value="discord">Discord (Gris/Blurple)</option>
               </select>
             </div>
 
@@ -659,14 +640,38 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="none">Aucun effet</option>
               </select>
             </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+              <div style="font-size:13px; color:var(--muted);">Effet lumineux (Boutons/Cartes)</div>
+              <div style="display:flex; flex-wrap:wrap; gap:12px;" id="pref-ui-effects-container">
+                  <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="neon_glow" onchange="applyUserPrefs()"> Lueur Néon</label>
+              </div>
+            </div>
           </div>
 
-          <!-- 4. Cartes (Matchs) -->
+          <!-- 4. Textures UI & Composants -->
           <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
-            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">📋 Cartes des Matchs</div>
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🎨 Textures UI & Composants</div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Couleurs des cartes</div>
+              <div style="font-size:13px; color:var(--muted);">Effet de matière (Global)</div>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" id="pref-glassmorphism" value="glassmorphism" onchange="applyUserPrefs()"> Verre poli (Glassmorphism)</label>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Style de l'En-tête (Menu Haut)</div>
+              <select id="pref-hdr-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="transparent">Transparent (Défaut)</option>
+                <option value="glass">Verre Poli (Glassmorphism)</option>
+                <option value="solid">Couleur Unie Foncée</option>
+                <option value="gradient">Dégradé Subtil</option>
+                <option value="floating">Flottant (Ombre + Bordure)</option>
+                <option value="neon">Néon (Ligne inférieure)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
+              <div style="font-size:13px; color:var(--muted);">Couleurs des cartes de matchs</div>
               <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
                 <option value="gradient-45">Dégradé (Haut → Bas, 45°)</option>
                 <option value="league">Couleur de la Ligue</option>
@@ -678,20 +683,6 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Opacité des cartes</div>
               <input type="range" id="pref-card-opacity" min="0" max="100" value="15" onchange="applyUserPrefs()" style="width: 140px;">
-            </div>
-          </div>
-
-          <!-- 5. Effets Spéciaux (UI) -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
-            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">🪄 Effets Spéciaux (UI)</div>
-            <div style="display:flex; flex-wrap:wrap; gap:12px;" id="pref-ui-effects-container">
-              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="glassmorphism" onchange="applyUserPrefs()"> Verre poli</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="scanlines" onchange="applyUserPrefs()"> Rétro</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="grain" onchange="applyUserPrefs()"> Film</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="rain" onchange="applyUserPrefs()"> Matrix</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="crt" onchange="applyUserPrefs()"> CRT</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="neon_glow" onchange="applyUserPrefs()"> Lueur Néon</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer;"><input type="checkbox" value="stars" onchange="applyUserPrefs()"> Étoiles / Poussière</label>
             </div>
           </div>
 
@@ -6686,11 +6677,15 @@ function initPrefs() {
   effectOverlay.style.boxShadow = 'none';
   effectOverlay.style.animation = 'none';
   effectOverlay.innerHTML = '';
-  document.body.classList.remove('crt-effect', 'neon-glow-effect', 'glassmorphism-effect');
+  document.body.classList.remove('neon-glow-effect', 'glassmorphism-effect');
 
   var effects = userPrefs.uiEffects || [];
-  if (userPrefs.uiEffect && userPrefs.uiEffect !== 'none' && effects.length === 0) {
-      effects = [userPrefs.uiEffect];
+  // Migrate old setting if needed
+  if (userPrefs.uiEffect && userPrefs.uiEffect !== 'none') {
+      if (!effects.includes(userPrefs.uiEffect)) {
+          effects.push(userPrefs.uiEffect);
+      }
+      delete userPrefs.uiEffect;
   }
 
   var overlayBgs = [];
@@ -6699,33 +6694,12 @@ function initPrefs() {
       document.body.classList.add('glassmorphism-effect');
       overlayBgs.push('url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.05\'/%3E%3C/svg%3E")');
   }
-  if (effects.includes('stars')) {
-      overlayBgs.push('radial-gradient(circle at 20% 30%, rgba(255,255,255,0.8) 1px, transparent 1px), radial-gradient(circle at 80% 40%, rgba(255,255,255,0.5) 1px, transparent 1px), radial-gradient(circle at 40% 80%, rgba(255,255,255,0.9) 2px, transparent 2px), radial-gradient(circle at 60% 10%, rgba(255,255,255,0.4) 1px, transparent 1px)');
-  }
-  if (effects.includes('scanlines')) {
-      overlayBgs.push('linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))');
-  }
-  if (effects.includes('grain')) {
-      overlayBgs.push('url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.08\'/%3E%3C/svg%3E")');
-  }
-  if (effects.includes('rain')) {
-      effectOverlay.innerHTML = '<div class="matrix-rain"></div>';
-  }
-  if (effects.includes('crt')) {
-      document.body.classList.add('crt-effect');
-      overlayBgs.push('radial-gradient(circle, transparent 60%, rgba(0,0,0,0.4) 100%)');
-      overlayBgs.push('linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))');
-      effectOverlay.style.boxShadow = 'inset 0 0 100px rgba(0,0,0,0.9)';
-  }
   if (effects.includes('neon_glow')) {
       document.body.classList.add('neon-glow-effect');
   }
 
   if (overlayBgs.length > 0) {
       effectOverlay.style.background = overlayBgs.join(', ');
-      if (effects.includes('scanlines') || effects.includes('crt')) {
-          effectOverlay.style.backgroundSize = '100% 4px, 3px 100%';
-      }
   }
 
 
@@ -6758,10 +6732,11 @@ function initPrefs() {
       btnBorder = '2px solid #0033cc';
       btnShadow = '0 0 8px #0033cc';
   } else if(userPrefs.btnShape === 'xbox') {
-      br = '8px';
-      btnBg = 'rgba(16, 124, 16, 0.2)';
-      btnBorder = '1px solid #107c10';
-      btnShadow = '0 0 10px rgba(16, 124, 16, 0.4)';
+      br = '2px';
+      cr = '4px';
+      btnBg = 'linear-gradient(to bottom, #2e2e2e, #1a1a1a)';
+      btnBorder = '1px solid #333333';
+      btnShadow = 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.5)';
   } else if(userPrefs.btnShape === 'samsung') {
       br = '24px';
       cr = '24px';
@@ -6773,16 +6748,51 @@ function initPrefs() {
       btnBg = 'rgba(255,255,255,0.05)';
       btnBorder = '1px solid rgba(255,255,255,0.1)';
       btnBlur = 'blur(30px)';
+  } else if(userPrefs.btnShape === 'winxp') {
+      br = '4px';
+      cr = '6px';
+      btnBg = 'linear-gradient(to bottom, #3f8cf3, #245edb 50%, #1749c2 50%, #1b53c9)';
+      btnBorder = '1px solid #002266';
+      btnShadow = 'inset 0 1px 1px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.3)';
+  } else if(userPrefs.btnShape === 'winxproyale') {
+      br = '4px';
+      cr = '6px';
+      btnBg = 'linear-gradient(to bottom, #5086d7, #2d63c8 50%, #1e52bc 50%, #265ec4)';
+      btnBorder = '1px solid #002266';
+      btnShadow = 'inset 0 1px 1px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.3)';
   } else if(userPrefs.btnShape === 'macos') {
       br = '6px';
       cr = '12px';
       btnBg = 'rgba(255,255,255,0.1)';
       btnBorder = '1px solid rgba(255,255,255,0.15)';
       btnShadow = '0 1px 3px rgba(0,0,0,0.3)';
+  } else if(userPrefs.btnShape === 'macos_metal') {
+      br = '8px';
+      cr = '12px';
+      btnBg = 'linear-gradient(to bottom, #e6e6e6, #cccccc)';
+      btnBorder = '1px solid #999999';
+      btnShadow = 'inset 0 1px 0 #ffffff, 0 1px 2px rgba(0,0,0,0.3)';
   } else if(userPrefs.btnShape === 'ubuntu') {
       br = '6px';
       btnBg = 'linear-gradient(to bottom, #4a1936, #300a24)';
       btnBorder = '1px solid #5e2750';
+  } else if(userPrefs.btnShape === 'ubuntu_grey') {
+      br = '6px';
+      btnBg = 'linear-gradient(to bottom, #4d4d4d, #333333)';
+      btnBorder = '1px solid #222222';
+      btnShadow = 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.4)';
+  } else if(userPrefs.btnShape === 'steam') {
+      br = '2px';
+      cr = '4px';
+      btnBg = 'linear-gradient(to bottom, #3a3f44, #272b30)';
+      btnBorder = '1px solid #1a1c1f';
+      btnShadow = 'inset 0 1px 0 rgba(255,255,255,0.1)';
+  } else if(userPrefs.btnShape === 'discord') {
+      br = '4px';
+      cr = '8px';
+      btnBg = '#5865F2';
+      btnBorder = 'none';
+      btnShadow = 'none';
   }
 
   document.documentElement.style.setProperty('--radius-btn', br);
@@ -6892,12 +6902,28 @@ function initPrefs() {
 
   if(selTheme) selTheme.value = userPrefs.theme || 'custom';
   if(selBgStyle) selBgStyle.value = userPrefs.bgStyle || 'gradient';
-  if(selC1) selC1.value = userPrefs.c1 || '#000000';
-  if(selC2) selC2.value = userPrefs.c2 || '#111111';
-  if(selC3) selC3.value = userPrefs.c3 || '#222222';
+  if(selC1) {
+      selC1.value = userPrefs.c1 || '#000000';
+      var hexC1 = document.getElementById('hex-c1');
+      if(hexC1) hexC1.textContent = selC1.value;
+  }
+  if(selC2) {
+      selC2.value = userPrefs.c2 || '#111111';
+      var hexC2 = document.getElementById('hex-c2');
+      if(hexC2) hexC2.textContent = selC2.value;
+  }
+  if(selC3) {
+      selC3.value = userPrefs.c3 || '#222222';
+      var hexC3 = document.getElementById('hex-c3');
+      if(hexC3) hexC3.textContent = selC3.value;
+  }
   if(selCard) selCard.value = userPrefs.cardColor || 'gradient-45';
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
-  if(selAccentColor) selAccentColor.value = userPrefs.accent || '#0a84ff';
+  if(selAccentColor) {
+      selAccentColor.value = userPrefs.accent || '#0a84ff';
+      var hexAccent = document.getElementById('hex-accent-color');
+      if(hexAccent) hexAccent.textContent = selAccentColor.value;
+  }
   if(selOpacity) selOpacity.value = userPrefs.cardOpacity || 15;
   var selHover = document.getElementById('pref-hover-style');
   if(selHover) selHover.value = userPrefs.hoverStyle || 'default';
@@ -6911,12 +6937,19 @@ function initPrefs() {
       var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
       var effects = userPrefs.uiEffects || [];
       // migrate if needed
-      if (userPrefs.uiEffect && userPrefs.uiEffect !== 'none' && effects.length === 0) {
-          effects = [userPrefs.uiEffect];
+      if (userPrefs.uiEffect && userPrefs.uiEffect !== 'none') {
+          if (!effects.includes(userPrefs.uiEffect)) {
+              effects.push(userPrefs.uiEffect);
+          }
       }
       checkboxes.forEach(cb => {
           cb.checked = effects.includes(cb.value);
       });
+
+      var glassCb = document.getElementById('pref-glassmorphism');
+      if (glassCb) {
+          glassCb.checked = effects.includes('glassmorphism');
+      }
   }
 }
 
@@ -6959,6 +6992,12 @@ function applyUserPrefs() {
       checkboxes.forEach(cb => {
           if(cb.checked) activeEffects.push(cb.value);
       });
+
+      var glassCb = document.getElementById('pref-glassmorphism');
+      if (glassCb && glassCb.checked) {
+          activeEffects.push('glassmorphism');
+      }
+
       userPrefs.uiEffects = activeEffects;
   }
 
@@ -6990,19 +7029,29 @@ function applyPredefinedTheme() {
   var presets = {
     'neon': { bgStyle: 'glow', c1: '#ff0080', c2: '#00e5ff', c3: '#9d00ff', accent: '#00e5ff', btnShape: 'rounded', toggleStyle: 'neon', hdrStyle: 'neon', uiEffects: ['neon_glow'] },
     'ocean': { bgStyle: 'waves', c1: '#001a33', c2: '#004d66', c3: '#00b3b3', accent: '#00b3b3', btnShape: 'rounded', toggleStyle: 'inset', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-    'cyberpunk': { bgStyle: 'glow', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c', btnShape: 'square', toggleStyle: 'neon', hdrStyle: 'solid', uiEffects: ['neon_glow', 'crt', 'scanlines'] },
-    'forest': { bgStyle: 'mesh_flou_3', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55', btnShape: 'rounded', toggleStyle: 'default', hdrStyle: 'gradient', uiEffects: ['grain'] },
+      'cyberpunk': { bgStyle: 'glow', c1: '#1a0033', c2: '#4d0066', c3: '#ff003c', accent: '#ff003c', btnShape: 'square', toggleStyle: 'neon', hdrStyle: 'solid', uiEffects: ['neon_glow'] },
+      'forest': { bgStyle: 'mesh_flou_3', c1: '#001a00', c2: '#004d00', c3: '#009933', accent: '#00ff55', btnShape: 'rounded', toggleStyle: 'default', hdrStyle: 'gradient', uiEffects: [] },
     'sunset': { bgStyle: 'linear', c1: '#33001a', c2: '#993333', c3: '#ff9933', accent: '#ff9933', btnShape: 'pill', toggleStyle: 'solid', hdrStyle: 'floating', uiEffects: [] },
     'magma': { bgStyle: 'radial', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300', btnShape: 'rounded', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
-    'aurora': { bgStyle: 'aurora', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism', 'stars'] },
-    'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff', btnShape: 'square', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: ['grain'] },
-    'ps2': { bgStyle: 'linear', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff', btnShape: 'ps2', toggleStyle: 'neon', hdrStyle: 'neon', uiEffects: ['scanlines', 'crt'] },
-    'xbox': { bgStyle: 'radial', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10', btnShape: 'xbox', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: ['scanlines'] },
+      'aurora': { bgStyle: 'aurora', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
+      'monochrome': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff', btnShape: 'square', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [] },
+
+      'retro': { bgStyle: 'radial', c1: '#110022', c2: '#220044', c3: '#ff0055', accent: '#00ffff', btnShape: 'square', toggleStyle: 'neon', hdrStyle: 'neon', uiEffects: ['neon_glow'] },
+      'cyberpunk_v2': { bgStyle: 'linear', c1: '#fcee0a', c2: '#000000', c3: '#00ffff', accent: '#fcee0a', btnShape: 'square', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
+      'nature': { bgStyle: 'mesh_flou_1', c1: '#2b3a2a', c2: '#3f5238', c3: '#8c7a6b', accent: '#d9d1c7', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
+      'minimal': { bgStyle: 'solid', c1: '#f5f5f7', c2: '#e5e5ea', c3: '#d1d1d6', accent: '#000000', btnShape: 'apple', toggleStyle: 'solid', hdrStyle: 'transparent', uiEffects: [] },
+
+      'ps2': { bgStyle: 'linear', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff', btnShape: 'ps2', toggleStyle: 'neon', hdrStyle: 'neon', uiEffects: ['neon_glow'] },
+      'xbox': { bgStyle: 'radial', c1: '#1a1a1a', c2: '#2e2e2e', c3: '#107c10', accent: '#107c10', btnShape: 'xbox', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
     'samsung': { bgStyle: 'gradient', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6', btnShape: 'samsung', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: [] },
     'chromecast': { bgStyle: 'animated_gradient', c1: '#2c3e50', c2: '#34495e', c3: '#7f8c8d', accent: '#ecf0f1', btnShape: 'pill', toggleStyle: 'default', hdrStyle: 'floating', uiEffects: ['glassmorphism'] },
     'windows': { bgStyle: 'diagonal', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4', btnShape: 'windows', toggleStyle: 'solid', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
+      'winxp': { bgStyle: 'linear', c1: '#245edb', c2: '#0033cc', c3: '#001a66', accent: '#316ac5', btnShape: 'winxp', toggleStyle: 'solid', hdrStyle: 'gradient', uiEffects: [] },
+      'winxproyale': { bgStyle: 'linear', c1: '#003399', c2: '#0055cc', c3: '#0077ff', accent: '#0055cc', btnShape: 'winxproyale', toggleStyle: 'solid', hdrStyle: 'gradient', uiEffects: [] },
     'macos': { bgStyle: 'diagonal', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff', btnShape: 'macos', toggleStyle: 'inset', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-    'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420', btnShape: 'ubuntu', toggleStyle: 'solid', hdrStyle: 'gradient', uiEffects: [] }
+      'macos_metal': { bgStyle: 'solid', c1: '#bfbfbf', c2: '#a6a6a6', c3: '#8c8c8c', accent: '#007aff', btnShape: 'macos_metal', toggleStyle: 'inset', hdrStyle: 'gradient', uiEffects: [] },
+      'ubuntu': { bgStyle: 'linear', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420', btnShape: 'ubuntu', toggleStyle: 'solid', hdrStyle: 'gradient', uiEffects: [] },
+      'ubuntu_grey': { bgStyle: 'solid', c1: '#333333', c2: '#2b2b2b', c3: '#222222', accent: '#e95420', btnShape: 'ubuntu_grey', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] }
   };
 
   if(presets[theme]) {
@@ -7017,8 +7066,6 @@ function applyPredefinedTheme() {
 
     if(presets[theme].uiEffects !== undefined) {
         userPrefs.uiEffects = presets[theme].uiEffects;
-    } else if (presets[theme].uiEffect) {
-        userPrefs.uiEffects = [presets[theme].uiEffect];
     } else {
         userPrefs.uiEffects = [];
     }
@@ -7036,6 +7083,15 @@ function applyPredefinedTheme() {
     document.getElementById('pref-c2').value = userPrefs.c2;
     document.getElementById('pref-c3').value = userPrefs.c3;
     document.getElementById('pref-accent-color').value = userPrefs.accent;
+
+    var hexC1 = document.getElementById('hex-c1');
+    if(hexC1) hexC1.textContent = userPrefs.c1;
+    var hexC2 = document.getElementById('hex-c2');
+    if(hexC2) hexC2.textContent = userPrefs.c2;
+    var hexC3 = document.getElementById('hex-c3');
+    if(hexC3) hexC3.textContent = userPrefs.c3;
+    var hexAccent = document.getElementById('hex-accent-color');
+    if(hexAccent) hexAccent.textContent = userPrefs.accent;
     if(document.getElementById('pref-btn-shape') && presets[theme].btnShape) {
       document.getElementById('pref-btn-shape').value = presets[theme].btnShape;
     }
@@ -7053,6 +7109,11 @@ function applyPredefinedTheme() {
         checkboxes.forEach(cb => {
             cb.checked = effects.includes(cb.value);
         });
+
+        var glassCb = document.getElementById('pref-glassmorphism');
+        if (glassCb) {
+            glassCb.checked = effects.includes('glassmorphism');
+        }
     }
 
     applyUserPrefs();
@@ -7069,12 +7130,25 @@ const PALETTES = [
     { id: 'magma', name: 'Magma', c1: '#1a0000', c2: '#660000', c3: '#ff3300', accent: '#ff3300' },
     { id: 'aurora', name: 'Nuit Boréale', c1: '#001a0d', c2: '#004d26', c3: '#00ff80', accent: '#00ff80' },
     { id: 'monochrome', name: 'Monochrome', c1: '#0a0a0a', c2: '#1f1f1f', c3: '#333333', accent: '#ffffff' },
+
+    { id: 'retro', name: 'Rétro Arcade', c1: '#110022', c2: '#220044', c3: '#ff0055', accent: '#00ffff' },
+    { id: 'cyberpunk_v2', name: 'Cyberpunk V2', c1: '#fcee0a', c2: '#000000', c3: '#00ffff', accent: '#fcee0a' },
+    { id: 'nature', name: 'Nature', c1: '#2b3a2a', c2: '#3f5238', c3: '#8c7a6b', accent: '#d9d1c7' },
+    { id: 'minimal', name: 'Minimaliste', c1: '#f5f5f7', c2: '#e5e5ea', c3: '#d1d1d6', accent: '#000000' },
+
     { id: 'ps2', name: 'PS2', c1: '#000000', c2: '#000033', c3: '#0033cc', accent: '#0066ff' },
-    { id: 'xbox', name: 'Xbox', c1: '#000000', c2: '#001a00', c3: '#107c10', accent: '#107c10' },
+    { id: 'xbox', name: 'Xbox', c1: '#1a1a1a', c2: '#2e2e2e', c3: '#107c10', accent: '#107c10' },
     { id: 'samsung', name: 'Samsung', c1: '#000000', c2: '#0a1128', c3: '#1c3d72', accent: '#3b82f6' },
-    { id: 'windows', name: 'Windows', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4' },
+    { id: 'windows', name: 'Windows 11', c1: '#002244', c2: '#003366', c3: '#0055ff', accent: '#0078d4' },
+    { id: 'winxp', name: 'Windows XP', c1: '#245edb', c2: '#0033cc', c3: '#001a66', accent: '#316ac5' },
+    { id: 'winxproyale', name: 'Win XP Royale', c1: '#003399', c2: '#0055cc', c3: '#0077ff', accent: '#0055cc' },
     { id: 'macos', name: 'macOS', c1: '#000000', c2: '#1a1a2e', c3: '#4b0082', accent: '#007aff' },
+    { id: 'macos_metal', name: 'macOS Métal', c1: '#bfbfbf', c2: '#a6a6a6', c3: '#8c8c8c', accent: '#007aff' },
     { id: 'ubuntu', name: 'Ubuntu', c1: '#300a24', c2: '#5e2750', c3: '#e95420', accent: '#e95420' },
+    { id: 'ubuntu_grey', name: 'Ubuntu Gris', c1: '#333333', c2: '#2b2b2b', c3: '#222222', accent: '#e95420' },
+    { id: 'steam', name: 'Steam', c1: '#171a21', c2: '#1b2838', c3: '#2a475e', accent: '#66c0f4' },
+    { id: 'discord', name: 'Discord', c1: '#36393f', c2: '#2f3136', c3: '#202225', accent: '#5865F2' },
+
     { id: 'vampire', name: 'Vampire', c1: '#1a0000', c2: '#330000', c3: '#800000', accent: '#ff0000' },
     { id: 'ice', name: 'Glace', c1: '#e0f7fa', c2: '#b2ebf2', c3: '#80deea', accent: '#00bcd4' },
     { id: 'desert', name: 'Désert', c1: '#4e342e', c2: '#5d4037', c3: '#8d6e63', accent: '#ffb300' },
@@ -7115,6 +7189,16 @@ function buildSwatches() {
             document.getElementById('pref-c2').value = p.c2;
             document.getElementById('pref-c3').value = p.c3;
             document.getElementById('pref-accent-color').value = p.accent;
+
+            var hexC1 = document.getElementById('hex-c1');
+            if(hexC1) hexC1.textContent = p.c1;
+            var hexC2 = document.getElementById('hex-c2');
+            if(hexC2) hexC2.textContent = p.c2;
+            var hexC3 = document.getElementById('hex-c3');
+            if(hexC3) hexC3.textContent = p.c3;
+            var hexAccent = document.getElementById('hex-accent-color');
+            if(hexAccent) hexAccent.textContent = p.accent;
+
             markCustomTheme();
         };
 
