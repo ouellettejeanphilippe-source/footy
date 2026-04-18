@@ -400,74 +400,113 @@ function parseOnHockey(html) {
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var matches = [];
 
-  // onhockey.tv uses <ul class="sportlist"> and <li> for matches
-  // However, simpler is just finding match links. Usually it has a format.
-  // Actually, we'll look for specific matches with PWHL or LHJMQ.
-  // They use specific classes or structures. We will simply look for <li> tags with an <a> inside it, and checking the text or <span> inside.
+  // onhockey.tv groups matches by league inside <tbody> elements in schedule_table.php
+  var tbodies = doc.querySelectorAll('tbody');
+  var matchIndex = 0;
 
-  // They list all matches in a div with id="match-list" or ul with sportlist
-  // Typical structure: <a href="link"> <span class="league">...</span> TEAM A vs TEAM B</a>
-  var links = doc.querySelectorAll('a[href]');
-  for(var i=0; i<links.length; i++) {
-     var link = links[i];
-     var href = link.getAttribute('href');
-     if(!href || href.indexOf('index.php?place=') < 0 && href.indexOf('onhockey.tv') < 0) continue;
+  for (var i = 0; i < tbodies.length; i++) {
+      var tbody = tbodies[i];
+      var textContent = tbody.textContent || '';
+      var upText = textContent.toUpperCase();
 
-     var textContent = link.textContent || '';
-     var upText = textContent.toUpperCase();
+      if (upText.indexOf('PWHL') >= 0 || upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) {
+          var leagueName = 'Hockey';
+          if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
+          if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
 
-     if (upText.indexOf('PWHL') >= 0 || upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) {
-         // Found a relevant match!
-         // We need to extract teams.
-         // Text is often "League - Team A vs Team B" or just "Team A vs Team B"
-         // Let's use a very generic approach
-         var parts = textContent.split('-');
-         var matchText = textContent;
-         var leagueName = 'Hockey';
+          var rows = tbody.querySelectorAll('tr.game');
+          for (var r = 0; r < rows.length; r++) {
+              var row = rows[r];
+              var tds = row.querySelectorAll('td');
+              if (tds.length >= 2) {
+                  // The team names are usually in the second td.
+                  // We clone it and remove .gamelinks to just get the text.
+                  var tdClone = tds[1].cloneNode(true);
+                  var gamelinksNode = tdClone.querySelector('.gamelinks');
+                  if (gamelinksNode) gamelinksNode.remove();
 
-         if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
-         if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
+                  var matchText = tdClone.textContent.trim();
 
-         if(parts.length > 1) {
-            matchText = parts[parts.length - 1].trim(); // Get the last part usually
-         }
+                  var teams = matchText.split(/ vs | v | - /i);
+                  var home = 'Team 1';
+                  var away = 'Team 2';
 
-         var teams = matchText.split(/ vs | v | - /i);
-         var home = 'Team 1';
-         var away = 'Team 2';
+                  if (teams.length >= 2) {
+                      home = teams[0].trim();
+                      away = teams[1].trim();
+                  } else {
+                      home = matchText.trim();
+                      away = 'TBA';
+                  }
 
-         if(teams.length >= 2) {
-             home = teams[0].trim();
-             away = teams[1].trim();
-         } else {
-             home = matchText.trim();
-             away = 'TBA';
-         }
+                  // Find all the stream links for this match
+                  var streamLinksArr = [];
+                  var linkElements = row.querySelectorAll('.gamelinks a');
+                  for (var l = 0; l < linkElements.length; l++) {
+                      var linkEl = linkElements[l];
+                      var href = linkEl.getAttribute('href');
+                      if (!href) continue;
 
-         // In OnHockey, the streams are often right there or we need to scrape the specific page.
-         // Let's store it like streameast/buffstreams
-         var streamUrl = href;
-         if(streamUrl.indexOf('http') !== 0) {
-             streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
-         }
+                      var streamUrl = href;
+                      if (streamUrl.indexOf('http') !== 0) {
+                          streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                      }
 
-         matches.push({
-              id: 'onhockey_' + Date.now() + '_' + i,
-              league: leagueName,
-              homeTeam: home,
-              awayTeam: away,
-              startTime: '00:00', // We don't have time easily without deeper parsing, fallback
-              durationMinutes: getLeagueDuration('hockey'),
-              status: 'upcoming',
-              streamLinks: [{ name: 'OnHockey Flux', url: streamUrl, quality: 'HD', lang: 'MULTI' }],
-              streamsLoaded: true, // It points to the match page which we can load in iframe, or maybe we need to scrape?
-              // OnHockey requires scraping the match page to get the actual m3u8 or iframe. Let's rely on Tampermonkey for now,
-              // or just load the onhockey page in iframe, but it has many ads.
-              // Actually for buffstreams we use the matchUrl and then it gets iframe. We'll set streamsLoaded=true and use url.
-              matchUrl: ONHOCKEY_URL,
-              source: 'onhockey'
-          });
-     }
+                      streamLinksArr.push({
+                          name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux'),
+                          url: streamUrl,
+                          quality: 'HD',
+                          lang: 'MULTI'
+                      });
+                  }
+
+                  // If no specific stream links were found, we could try falling back to the row's general links
+                  if (streamLinksArr.length === 0) {
+                      var allRowLinks = row.querySelectorAll('a[href]');
+                      if (allRowLinks.length > 0) {
+                          var firstHref = allRowLinks[0].getAttribute('href');
+                          if (firstHref) {
+                              var fallbackUrl = firstHref;
+                              if (fallbackUrl.indexOf('http') !== 0) {
+                                  fallbackUrl = 'https://onhockey.tv' + (fallbackUrl.charAt(0) === '/' ? '' : '/') + fallbackUrl;
+                              }
+                              streamLinksArr.push({
+                                  name: 'OnHockey Flux',
+                                  url: fallbackUrl,
+                                  quality: 'HD',
+                                  lang: 'MULTI'
+                              });
+                          }
+                      }
+                  }
+
+                  // Try to extract start time if available
+                  var startTimeStr = '00:00';
+                  var hourEl = row.querySelector('.game_hour');
+                  if (hourEl) {
+                       var timeText = tds[0].textContent.trim();
+                       var timeParts = timeText.match(/(\d+):(\d+)/);
+                       if (timeParts) {
+                           startTimeStr = timeParts[1] + ':' + timeParts[2];
+                       }
+                  }
+
+                  matches.push({
+                      id: 'onhockey_' + Date.now() + '_' + matchIndex++,
+                      league: leagueName,
+                      homeTeam: home,
+                      awayTeam: away,
+                      startTime: startTimeStr,
+                      durationMinutes: getLeagueDuration('hockey'),
+                      status: 'upcoming',
+                      streamLinks: streamLinksArr.length > 0 ? streamLinksArr : [],
+                      streamsLoaded: true,
+                      matchUrl: ONHOCKEY_URL,
+                      source: 'onhockey'
+                  });
+              }
+          }
+      }
   }
 
   lg('OnHockey extraits', matches.length);
