@@ -30,7 +30,7 @@ var MLBITE_URL = 'https://mlbite.to/';
 var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
-var ONHOCKEY_URL = 'https://onhockey.tv/';
+var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
 var PROXIES = [
   function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); },
   function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); },
@@ -615,7 +615,14 @@ function fetchPage(url){
       if(i>=PROXIES.length){reject(new Error(errs.join('\n')));return;}
       var pu=PROXIES[i++](url);
       lg('Proxy '+i,pu.slice(0,70)+'…');
-      fetch(pu,{signal:AbortSignal.timeout(12000),headers:{'Accept':'text/html,*/*'}})
+
+      var headers = {'Accept':'text/html,*/*'};
+      // OnHockey specific headers to trick the API/Proxy into thinking it's an AJAX request
+      if(url.indexOf('onhockey.tv') >= 0) {
+          headers['X-Requested-With'] = 'XMLHttpRequest';
+      }
+
+      fetch(pu,{signal:AbortSignal.timeout(12000),headers:headers})
         .then(function(r){
           if(!r.ok){errs.push('HTTP '+r.status+' p'+i);next();return null;}
           return r.text();

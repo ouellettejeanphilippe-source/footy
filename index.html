@@ -718,7 +718,7 @@ var MLBBITE_PLUS_URL = 'https://mlbbite.plus';
 var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
-var ONHOCKEY_URL = 'https://onhockey.tv/';
+var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
 var PROXIES = [
   function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); },
   function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); },
@@ -2843,17 +2843,23 @@ function parseOnHockey(html) {
 
   // onhockey.tv groups matches by league inside <tbody> elements in schedule_table.php
   var tbodies = doc.querySelectorAll('tbody');
-  var matchIndex = 0;
 
   for (var i = 0; i < tbodies.length; i++) {
       var tbody = tbodies[i];
+
+      // onhockey structure: first tr in tbody usually contains the league name
+      var firstTr = tbody.querySelector('tr');
+      var leagueName = 'Hockey';
+      if (firstTr && firstTr.textContent.trim() !== '') {
+          leagueName = firstTr.textContent.replace(/standings|draw/gi, '').trim();
+      }
+
       var textContent = tbody.textContent || '';
       var upText = textContent.toUpperCase();
 
-      if (upText.indexOf('PWHL') >= 0 || upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) {
-          var leagueName = 'Hockey';
+      if (upText.indexOf('PWHL') >= 0 || upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0 || upText.indexOf('WHL') >= 0 || upText.indexOf('OHL') >= 0) {
           if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
-          if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
+          else if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
 
           var rows = tbody.querySelectorAll('tr.game');
           for (var r = 0; r < rows.length; r++) {
@@ -2874,7 +2880,7 @@ function parseOnHockey(html) {
 
                   if (teams.length >= 2) {
                       home = teams[0].trim();
-                      away = teams[1].trim();
+                      away = teams.slice(1).join(' - ').trim();
                   } else {
                       home = matchText.trim();
                       away = 'TBA';
@@ -3058,7 +3064,14 @@ function fetchPage(url){
       if(i>=PROXIES.length || i>=maxTries){reject(new Error(errs.join('\n')));return;}
       var pu=PROXIES[i++](url);
       lg('Proxy '+i,pu.slice(0,70)+'…');
-      fetch(pu,{signal:AbortSignal.timeout(12000),headers:{'Accept':'text/html,*/*'}})
+
+      var headers = {'Accept':'text/html,*/*'};
+      // OnHockey specific headers to trick the API/Proxy into thinking it's an AJAX request
+      if(url.indexOf('onhockey.tv') >= 0) {
+          headers['X-Requested-With'] = 'XMLHttpRequest';
+      }
+
+      fetch(pu,{signal:AbortSignal.timeout(12000),headers:headers})
         .then(function(r){
           if(!r.ok){errs.push('HTTP '+r.status+' p'+i);next();return null;}
           return r.text();
@@ -4134,9 +4147,9 @@ function buildEPG(matches){
         }
     }
 
-    // In Live tab: show both isLiveOrSoon and isUpcomingInHour
-    // We will separate them visually later.
-    if(S.filter==='live' && !isLiveOrSoon && !isUpcomingInHour) return false;
+    // In Live tab: strictly show live matches.
+    // User requested: "Faut que ça doit des matchs lives pour vrai."
+    if(S.filter==='live' && m.status !== 'live') return false;
 
     // In Upcoming tab: hide everything that is live or soon, and finished
     if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished')) return false;
@@ -4452,40 +4465,8 @@ function buildEPG(matches){
           });
       };
 
-      if (S.filter === 'live') {
-          // Splitting logic
-          var justLiveMatches = filtered.filter(function(m) {
-              // Now we safely include everything starting within 15 mins (or already live) in justLiveMatches
-              if (m.status === 'live') return true;
-              if (m.status === 'upcoming' && m.startTime) {
-                  var mParts = m.startTime.split(':');
-                  var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-                  var diff = mMins - currentMins;
-                  if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
-                  if (diff <= 15 && diff > -1440) return true;
-              }
-              return false;
-          });
-
-          var upcomingInHourMatches = filtered.filter(function(m) {
-              if (m.status === 'live') return false;
-              if (m.status === 'upcoming' && m.startTime) {
-                  var mParts = m.startTime.split(':');
-                  var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-                  var diff = mMins - currentMins;
-                  if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
-                  if (diff > 15 && diff <= 60) return true;
-              }
-              return false;
-          });
-
-          renderMatches(justLiveMatches, epgContainer, "");
-          if (upcomingInHourMatches.length > 0) {
-              renderMatches(upcomingInHourMatches, epgContainer, "À venir dans l'heure");
-          }
-      } else {
-          renderMatches(filtered, epgContainer, "");
-      }
+      // Render matches normally
+      renderMatches(filtered, epgContainer, "");
 
   } else { // Timeline EPG
 
