@@ -61,7 +61,7 @@ body { font-family: var(--font-family); display: flex; flex-direction: column; -
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
-.hdr { height: 70px; flex-shrink: 0; background: var(--hdr-bg, rgba(0, 0, 0, 0.4)); backdrop-filter: var(--hdr-blur, blur(30px)); -webkit-backdrop-filter: var(--hdr-blur, blur(30px)); border-bottom: var(--hdr-border, 1px solid var(--border)); display: flex; align-items: center; padding: 0 24px; gap: 16px; z-index: 100; position: relative; box-shadow: var(--hdr-shadow, 0 4px 20px rgba(0,0,0,0.5)); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.hdr { height: 70px; flex-shrink: 0; background: var(--hdr-bg, rgba(0, 0, 0, 0.4)); backdrop-filter: var(--hdr-blur, blur(30px)); -webkit-backdrop-filter: var(--hdr-blur, blur(30px)); border-bottom: var(--hdr-border, 1px solid var(--border)); display: flex; align-items: center; padding: 0 24px; gap: 16px; z-index: 100; position: sticky; top: 0; box-shadow: var(--hdr-shadow, 0 4px 20px rgba(0,0,0,0.5)); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .hdr::-webkit-scrollbar { display: none; }
 .logo { font-weight: 800; font-size: 24px; color: var(--text); display: flex; align-items: center; gap: 10px; text-decoration: none; letter-spacing: -0.5px; }
 .ball { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #5e5ce6); border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 12px var(--accent-glow); }
@@ -217,7 +217,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   .ch-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .chan-logo { width: 18px; height: 18px; }
   .mb-logo { width: 16px; height: 16px; }
-  .hdr { padding: 0 12px; gap: 8px; height: 60px; }
+  .hdr { padding: 0 12px; gap: 8px; height: 60px; position: sticky; top: 0; }
   .logo { font-size: 20px; }
   .btn { padding: 6px 12px; font-size: 13px; flex-shrink: 0; }
   .mb { padding: 8px 12px; border-radius: 10px; }
@@ -688,10 +688,17 @@ function addScrapeLog(url, status, errorMsg) {
 }
 
 var favTeams = {};
+var customLgOrder = [];
 try {
   var storedFavs = localStorage.getItem('fav_teams');
   if (storedFavs) favTeams = JSON.parse(storedFavs);
+  var storedLgOrder = localStorage.getItem('custom_lg_order');
+  if (storedLgOrder) customLgOrder = JSON.parse(storedLgOrder);
 } catch(e) {}
+
+function saveCustomLgOrder() {
+    localStorage.setItem('custom_lg_order', JSON.stringify(customLgOrder));
+}
 
 function toggleFavTeam(teamName) {
   if (favTeams[teamName]) {
@@ -709,7 +716,7 @@ function toggleFavTeam(teamName) {
 }
 
 var logoCache = {};
-var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{}, collapsedLg:{} };
+var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{} };
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://footybite.to/';
@@ -4082,20 +4089,60 @@ function openMultiviewTab() {
 }
 
 function applySportFilter(sport){
-  if(sport) S.sportFilter = sport;
-
   var sfContainer = document.getElementById('sport-filters');
-  if(sfContainer) {
-      sfContainer.querySelectorAll('button').forEach(function(b) {
-          var btnText = b.textContent.trim();
-          var isActive = false;
-          if (S.sportFilter === 'all' && btnText === 'Tous les sports') isActive = true;
-          if (S.sportFilter !== 'all' && btnText.indexOf(S.sportFilter) !== -1) isActive = true;
 
-          if (isActive) {
-              b.classList.add('active-toggle');
+  if(sport) {
+      if (sport === 'all') {
+          S.hiddenLg = {'Autres Flux': true};
+      } else {
+          // If we were previously showing 'all' (none hidden), first hide all EXCEPT the clicked one
+          // to easily select just one league to start with.
+          var allWereVisible = true;
+          var sports = {};
+          S.matches.forEach(function(m){ sports[m.league]=true; });
+          Object.keys(sports).forEach(function(k) {
+              if (k !== 'Autres Flux' && S.hiddenLg[k]) allWereVisible = false;
+          });
+
+          if (allWereVisible) {
+              Object.keys(sports).forEach(function(k) {
+                  if (k !== 'Autres Flux') S.hiddenLg[k] = true;
+              });
+              S.hiddenLg[sport] = false; // Show only clicked
           } else {
-              b.classList.remove('active-toggle');
+              // Otherwise toggle normally
+              S.hiddenLg[sport] = !S.hiddenLg[sport];
+
+              // If user manually unhid everything one by one, effectively it's 'all'
+              var anyHidden = false;
+              Object.keys(sports).forEach(function(k) {
+                  if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+              });
+              if (!anyHidden) S.hiddenLg = {'Autres Flux': true};
+          }
+      }
+  }
+
+  if(sfContainer) {
+      var anyHidden = false;
+      Object.keys(S.hiddenLg).forEach(function(k) {
+          if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+      });
+
+      var buttons = sfContainer.querySelectorAll('.sport-btn');
+      buttons.forEach(function(b) {
+          if (b.id === 'btn-autres-flux') return;
+          var onClickStr = b.getAttribute('onclick') || '';
+          if (onClickStr.indexOf("'all'") !== -1) {
+              if (!anyHidden) b.classList.add('active-toggle');
+              else b.classList.remove('active-toggle');
+          } else {
+              var m = onClickStr.match(/applySportFilter\('([^']+)'\)/);
+              if (m && m[1]) {
+                  var spName = m[1];
+                  if (!S.hiddenLg[spName]) b.classList.add('active-toggle');
+                  else b.classList.remove('active-toggle');
+              }
           }
       });
   }
@@ -4105,7 +4152,42 @@ function applySportFilter(sport){
 /* ══ TOGGLE ET ACCORDÉON ════════════════ */
 function toggleLeague(lgName) {
   S.hiddenLg[lgName] = !S.hiddenLg[lgName];
+
+  var sfContainer = document.getElementById('sport-filters');
+  if(sfContainer) {
+      var anyHidden = false;
+      Object.keys(S.hiddenLg).forEach(function(k) {
+          if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+      });
+
+      var buttons = sfContainer.querySelectorAll('.sport-btn');
+      buttons.forEach(function(b) {
+          if (b.id === 'btn-autres-flux') return;
+          var onClickStr = b.getAttribute('onclick') || '';
+          if (onClickStr.indexOf("'all'") !== -1) {
+              if (!anyHidden) b.classList.add('active-toggle');
+              else b.classList.remove('active-toggle');
+          } else {
+              var m = onClickStr.match(/applySportFilter\('([^']+)'\)/);
+              if (m && m[1]) {
+                  var spName = m[1];
+                  if (!S.hiddenLg[spName]) b.classList.add('active-toggle');
+                  else b.classList.remove('active-toggle');
+              }
+          }
+      });
+  }
   buildEPG(S.matches);
+}
+
+function toggleAutresFlux() {
+    S.hiddenLg['Autres Flux'] = !S.hiddenLg['Autres Flux'];
+    var btn = document.getElementById('btn-autres-flux');
+    if(btn) {
+        if (!S.hiddenLg['Autres Flux']) btn.classList.add('active-toggle');
+        else btn.classList.remove('active-toggle');
+    }
+    buildEPG(S.matches);
 }
 
 function toggleAccordion(lgName) {
@@ -4153,7 +4235,7 @@ function buildEPG(matches){
 
     // In Upcoming tab: hide everything that is live or soon, and finished
     if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished')) return false;
-    if(S.sportFilter!=='all' && m.league!==S.sportFilter && S.sportFilter!=='EN DIRECT') return false;
+    if(S.hiddenLg[m.league]) return false;
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
         var hN = normName(m.homeTeam);
@@ -4216,6 +4298,18 @@ function buildEPG(matches){
       if (a === 'EN DIRECT') return -1;
       if (b === 'EN DIRECT') return 1;
 
+      // Ensure 'Autres Flux' is always sorted last
+      if (a === 'Autres Flux') return 1;
+      if (b === 'Autres Flux') return -1;
+
+      // Custom League Order User Preference
+      var idxA = customLgOrder.indexOf(a);
+      var idxB = customLgOrder.indexOf(b);
+
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+
       var getSortTime = function(lgMatches) {
           var active = lgMatches.filter(function(x){return x.status!=='finished';});
           if(active.length>0) {
@@ -4224,9 +4318,6 @@ function buildEPG(matches){
           }
           return "99:99";
       };
-      // Ensure 'Autres Flux' is always sorted last
-      if (a === 'Autres Flux') return 1;
-      if (b === 'Autres Flux') return -1;
 
       var aStart = getSortTime(lgMap[a].matches);
       var bStart = getSortTime(lgMap[b].matches);
@@ -4267,11 +4358,69 @@ function buildEPG(matches){
 
       var searchInput = '<input type="text" id="fav-search-input" placeholder="Rechercher une équipe..." oninput="renderFavTeams()" style="padding:12px; border-radius:8px; border:1px solid var(--border); background:rgba(0,0,0,0.3); color:var(--text); font-size:16px; width:100%; max-width:400px; margin-bottom:16px;">';
 
-      epgContainer.innerHTML = '<h2>Gestion des Favoris</h2>' + searchInput + '<div id="fav-list-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px;"></div>';
+      epgContainer.innerHTML = '<div style="display:flex; gap: 24px; flex-wrap: wrap;">'
+                             + '<div style="flex: 2; min-width: 300px;">'
+                             + '<h2>Gestion des Équipes</h2><p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Sélectionnez vos équipes favorites. Leurs matchs s\'afficheront en haut de la liste.</p>' + searchInput + '<div id="fav-list-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px;"></div>'
+                             + '</div>'
+                             + '<div style="flex: 1; min-width: 250px;">'
+                             + '<h2>Ordre des Ligues</h2><p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Glissez pour modifier l\'ordre ou utilisez les flèches.</p><div id="fav-lg-container" style="display:flex; flex-direction:column; gap:8px;"></div>'
+                             + '</div>'
+                             + '</div>';
+
+      window.moveLgOrder = function(dir, idx) {
+          if (dir === 'up' && idx > 0) {
+              var temp = customLgOrder[idx];
+              customLgOrder[idx] = customLgOrder[idx-1];
+              customLgOrder[idx-1] = temp;
+          } else if (dir === 'down' && idx < customLgOrder.length - 1) {
+              var temp = customLgOrder[idx];
+              customLgOrder[idx] = customLgOrder[idx+1];
+              customLgOrder[idx+1] = temp;
+          }
+          saveCustomLgOrder();
+          window.renderFavTeams();
+      };
 
       window.renderFavTeams = function() {
           var container = document.getElementById('fav-list-container');
-          if(!container) return;
+          var lgContainer = document.getElementById('fav-lg-container');
+          if(!container || !lgContainer) return;
+
+          // --- Leagues Sorting Manager ---
+          var sports = {};
+          S.matches.forEach(function(m){
+              if (m.league && m.league !== 'EN DIRECT' && m.league !== 'FAVORIS' && m.league !== 'Autres Flux') sports[m.league]=true;
+          });
+          // Add known ones from custom order if they exist there but not in current matches
+          customLgOrder.forEach(function(lg) { sports[lg] = true; });
+          var sportNames = Object.keys(sports);
+
+          // Re-sync customLgOrder with all discovered sports
+          var newOrder = [];
+          customLgOrder.forEach(function(lg) {
+              if (sports[lg]) { newOrder.push(lg); delete sports[lg]; }
+          });
+          // Add any remaining sports to the end
+          Object.keys(sports).forEach(function(lg) {
+              newOrder.push(lg);
+          });
+          customLgOrder = newOrder;
+          saveCustomLgOrder();
+
+          var lgHtml = '';
+          customLgOrder.forEach(function(lg, i) {
+              lgHtml += '<div style="display:flex; align-items:center; padding:10px 16px; background:var(--bg3); border:1px solid var(--border); border-radius:8px;">'
+                     + '<span style="margin-right:12px; font-size:16px;">'+lgFlag(lg)+'</span>'
+                     + '<span style="flex:1; font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+esc(lg)+'</span>'
+                     + '<div style="display:flex; flex-direction:column; gap:2px; margin-left:8px;">'
+                     + '<button onclick="moveLgOrder(\'up\', '+i+')" style="background:transparent; border:none; color:'+(i===0?'var(--muted2)':'var(--text)')+'; cursor:'+(i===0?'default':'pointer')+'; font-size:14px; padding:2px;">▲</button>'
+                     + '<button onclick="moveLgOrder(\'down\', '+i+')" style="background:transparent; border:none; color:'+(i===customLgOrder.length-1?'var(--muted2)':'var(--text)')+'; cursor:'+(i===customLgOrder.length-1?'default':'pointer')+'; font-size:14px; padding:2px;">▼</button>'
+                     + '</div></div>';
+          });
+          lgContainer.innerHTML = lgHtml;
+
+
+          // --- Teams Manager ---
           var searchVal = (document.getElementById('fav-search-input').value || '').toLowerCase();
 
           // Get unique teams
@@ -4375,6 +4524,7 @@ function buildEPG(matches){
 
           lgOrder.forEach(function(lgName) {
               var lg = lgMap[lgName];
+              if(!lg || lg.matches.length === 0) return;
               if(S.hiddenLg[lg.league]) return;
               var isCollapsed = S.collapsedLg[lg.league];
 
@@ -4532,6 +4682,7 @@ function buildEPG(matches){
   var chanList = chanCol.querySelector('#chanList');
 
   leagues.forEach(function(lg){
+    if(!lg || lg.matches.length === 0) return;
     if(S.hiddenLg[lg.league]) return;
     var isCollapsed = S.collapsedLg[lg.league];
     var lgCol = lg.color||lgColor(lg.league);
@@ -5203,7 +5354,7 @@ function toggleMultiviewPip() {
         mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
-        var sf = document.getElementById('sport-filters');
+        var sf = document.getElementById('sport-filters-container');
         if(sf) sf.style.display = 'none';
         updateMultivisionLayout();
     } else {
@@ -5217,14 +5368,14 @@ function toggleMultiviewPip() {
             mvc.style.cssText = 'display:none;';
             epg.style.display = 'flex';
             epg.style.paddingRight = '0';
-            var sf = document.getElementById('sport-filters');
+            var sf = document.getElementById('sport-filters-container');
             if(sf) sf.style.display = 'flex';
         } else {
             // On tablet/desktop, show column
             mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
             epg.style.display = 'flex';
             epg.style.paddingRight = '350px';
-            var sf = document.getElementById('sport-filters');
+            var sf = document.getElementById('sport-filters-container');
             if(sf) sf.style.display = 'flex';
 
             // Note: The vertical stack layout logic is now handled entirely within updateMultivisionLayout
@@ -5273,7 +5424,7 @@ function setupMultivisionUI() {
     mvToolbar.style.cssText = 'min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;';
     var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
-      + '<button class="btn o hide-desktop" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\')" style="padding: 4px 12px; display:none; font-size: 16px;" id="mv-menu-btn">☰</button>'
+      + '<button class="btn o" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\')" style="padding: 4px 12px; display:none; font-size: 16px;" id="mv-menu-btn">☰</button>'
       + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
       + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip hide-mobile">Ajouter</span></button>'
       + '<select class="btn o hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 4px 36px 4px 12px; min-width: 130px;" id="mv-layout-select">'
@@ -5829,11 +5980,9 @@ function hideMultivision() {
     mvc.style.display = 'none';
     epg.style.display = 'flex';
     epg.style.paddingRight = '0';
-    var sf = document.getElementById('sport-filters');
+    var sf = document.getElementById('sport-filters-container');
     if(sf) sf.style.display = 'flex';
     mvc.classList.remove('mv-pip');
-    var sf = document.getElementById('sport-filters');
-    if(sf) sf.style.display = 'flex';
 
     var mvBtn = document.getElementById('mv-toggle-btn');
     if(mvBtn) {
@@ -5855,7 +6004,7 @@ function toggleMultiview() {
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
-        var sf = document.getElementById('sport-filters');
+        var sf = document.getElementById('sport-filters-container');
         if(sf) sf.style.display = 'none';
         updateMultivisionLayout();
     } else if (!mvc.classList.contains('mv-pip')) {
@@ -6723,7 +6872,7 @@ function initPrefs() {
           hdrElem.style.borderTop = 'none';
           hdrElem.style.borderBottom = '1px solid var(--border)';
           document.documentElement.style.setProperty('--hdr-height', '70px');
-          document.body.style.paddingTop = '70px';
+          document.body.style.paddingTop = '0px';
           document.body.style.paddingBottom = '0';
           document.body.style.paddingLeft = '0';
 
@@ -7548,13 +7697,25 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
           var sportNames = Object.keys(sports).sort();
           var sf = document.getElementById('sport-filters');
           if(sf){
-              var optionsHtml = '<button class="btn sport-btn '+(S.sportFilter==='all'?'active-toggle':'')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
+              var anyHidden = false;
+              Object.keys(S.hiddenLg).forEach(function(k) {
+                  if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+              });
+              var isAllSel = !anyHidden;
+
+              var optionsHtml = '<button class="btn sport-btn '+(isAllSel?'active-toggle':'')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
               sportNames.forEach(function(sp){
-                  if (sp !== 'EN DIRECT') {
-                      var isSel = S.sportFilter === sp;
+                  if (sp !== 'EN DIRECT' && sp !== 'Autres Flux') {
+                      var isSel = !S.hiddenLg[sp];
                       optionsHtml += '<button class="btn sport-btn '+(isSel?'active-toggle':'')+'" onclick="applySportFilter(\''+escJs(sp)+'\');"><span style="margin-right:4px;">'+lgFlag(sp)+'</span> '+esc(sp)+'</button>';
                   }
               });
+              // Add a toggle for 'Autres Flux' at the end if it exists in matches
+              if (sports['Autres Flux']) {
+                  var isAutresFluxVisible = !S.hiddenLg['Autres Flux'];
+                  optionsHtml += '<div style="width:1px; background:rgba(255,255,255,0.1); margin:4px 8px;"></div>'; // separator
+                  optionsHtml += '<button id="btn-autres-flux" class="btn sport-btn '+(isAutresFluxVisible?'active-toggle':'')+'" onclick="toggleAutresFlux();" style="border:1px dashed var(--border2) !important;"><span style="margin-right:4px;">📡</span> Autres Flux</button>';
+              }
               sf.innerHTML = optionsHtml;
           }
 
