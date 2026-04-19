@@ -331,7 +331,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 
 <div class="hdr" id="main-hdr">
-  <button class="btn" onclick="toggleMenu()" id="menu-btn" style="display:none; padding:8px 12px; font-size:18px;">☰</button>
+  <button class="btn" onclick="toggleMenu(event)" id="menu-btn" style="display:none; padding:8px 12px; font-size:18px;">☰</button>
 
 
 
@@ -359,7 +359,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 <!-- Add toggle button for Onglet Theater mode to reappear -->
 
 <div id="sport-filters-container" style="display:flex; flex-direction:column; padding:8px 12px; gap:8px;">
-  <button class="btn" id="sport-menu-btn" onclick="toggleSportFilters()" style="display:none; align-self:flex-start;">☰ Ligues</button>
+  <button class="btn" id="sport-menu-btn" onclick="toggleSportFilters(event)" style="display:none; align-self:flex-start;">☰ Ligues</button>
   <div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;">
     <!-- Buttons generated dynamically -->
   </div>
@@ -2655,6 +2655,25 @@ var TEAM_ALIASES = {
   'raw': 'wwe raw'
 };
 
+var LEAGUE_ALIASES = {
+  'nba': 'national basketball association',
+  'nhl': 'national hockey league',
+  'ligue nationale de hockey': 'national hockey league',
+  'nfl': 'national football league',
+  'mlb': 'major league baseball',
+  'mls': 'major league soccer',
+  'pl': 'premier league',
+  'premier league anglaise': 'premier league',
+  'epl': 'premier league',
+  'champions league': 'uefa champions league',
+  'ligue des champions': 'uefa champions league',
+  'ldc': 'uefa champions league',
+  'pwhl': 'professional womens hockey league',
+  'lhjmq': 'quebec maritimes junior hockey league',
+  'qmjhl': 'quebec maritimes junior hockey league',
+  'ligue de hockey junior maritimes quebec': 'quebec maritimes junior hockey league'
+};
+
 var _normCache = {};
 function cacheLogo(teamName, url) {
   var k = normName(teamName);
@@ -2682,6 +2701,8 @@ function normName(n) {
   // Apply aliases before stripping characters
   if (TEAM_ALIASES[lower]) {
       lower = TEAM_ALIASES[lower];
+  } else if (LEAGUE_ALIASES[lower]) {
+      lower = LEAGUE_ALIASES[lower];
   }
 
   // Basic fallback replacements (e.g. fc, afc, sc, cf)
@@ -5424,7 +5445,7 @@ function setupMultivisionUI() {
     mvToolbar.style.cssText = 'min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;';
     var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
-      + '<button class="btn o" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\')" style="padding: 4px 12px; display:none; font-size: 16px;" id="mv-menu-btn">☰</button>'
+      + '<button class="btn o" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 4px 12px; display:none; font-size: 16px;" id="mv-menu-btn">☰</button>'
       + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
       + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip hide-mobile">Ajouter</span></button>'
       + '<select class="btn o hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 4px 36px 4px 12px; min-width: 130px;" id="mv-layout-select">'
@@ -7760,12 +7781,14 @@ if ('serviceWorker' in navigator) {
 
 
 
-function toggleMenu() {
+function toggleMenu(e) {
+    if (e) e.stopPropagation();
     var sec = document.getElementById('secondary-actions');
     sec.classList.toggle('open');
 }
 
-function toggleSportFilters() {
+function toggleSportFilters(e) {
+    if (e) e.stopPropagation();
     var sf = document.getElementById('sport-filters');
     if(sf) {
         sf.classList.toggle('open');
