@@ -1627,9 +1627,17 @@ function getEstTime(ukTimeStr){
     if(parts.length !== 2) return ukTimeStr;
     var h = parseInt(parts[0], 10);
     var m = parseInt(parts[1], 10);
-    // UK is UTC+0 or +1 (BST). EST is UTC-5 or EDT is UTC-4.
-    // Usually a 5 hours difference.
-    var estH = h - 5;
+
+    // Calculate dynamic difference between UK and EST to handle DST correctly
+    var now = new Date();
+    var lStr = now.toLocaleString("en-US", { timeZone: "Europe/London" });
+    var nStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+
+    var lDate = new Date(lStr);
+    var nDate = new Date(nStr);
+    var diffHours = Math.round((lDate - nDate) / 3600000);
+
+    var estH = h - diffHours;
     if(estH < 0) estH += 24;
     estH = estH % 24;
     return pad(estH) + ':' + pad(m);
@@ -1751,20 +1759,26 @@ function buildEPG(matches){
 
   var filtered = matches.filter(function(m){
     var isLiveOrSoon = m.status === 'live';
+    var isLiveOrWithin30Mins = m.status === 'live';
     if(m.status === 'upcoming' && m.startTime) {
         var mParts = m.startTime.split(':');
         var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+
+        var diff = mMins - currentMins;
+        if (currentMins >= 1425 && mMins <= 60) diff += 1440; // wrap around
+
         // If match starts within 15 minutes, or started up to 24h ago (to catch late updates)
-        if(mMins - currentMins <= 15 && mMins - currentMins > -1440) {
+        if(diff <= 15 && diff > -1440) {
             isLiveOrSoon = true;
         }
-        // Handle midnight wraparound (e.g. current 23:50, match 00:00)
-        if (currentMins >= 1425 && mMins <= 15) {
-            isLiveOrSoon = true;
+
+        // Within 30 mins
+        if (diff <= 30 && diff > -1440) {
+            isLiveOrWithin30Mins = true;
         }
     }
 
-    if(S.filter==='live' && !isLiveOrSoon) return false;
+    if(S.filter==='live' && !isLiveOrWithin30Mins) return false;
     if(S.filter==='upcoming' && isLiveOrSoon) return false;
     if(S.filter==='upcoming' && m.status==='finished') return false;
     if(S.sportFilter!=='all' && m.league!==S.sportFilter && S.sportFilter!=='EN DIRECT') return false;
@@ -2143,8 +2157,24 @@ function buildEPG(matches){
 
   // Sync scroll
   if(chanList && tl) {
-      chanList.onscroll = function() { tl.scrollTop = chanList.scrollTop; };
-      tl.onscroll = function() { chanList.scrollTop = tl.scrollTop; };
+      var isSyncingLeft = false;
+      var isSyncingRight = false;
+
+      chanList.onscroll = function() {
+          if (!isSyncingLeft) {
+              isSyncingRight = true;
+              tl.scrollTop = chanList.scrollTop;
+          }
+          isSyncingLeft = false;
+      };
+
+      tl.onscroll = function() {
+          if (!isSyncingRight) {
+              isSyncingLeft = true;
+              chanList.scrollTop = tl.scrollTop;
+          }
+          isSyncingRight = false;
+      };
   }
 
   updateNowLine();
