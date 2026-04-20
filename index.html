@@ -2656,23 +2656,62 @@ var TEAM_ALIASES = {
 };
 
 var LEAGUE_ALIASES = {
-  'nba': 'national basketball association',
-  'nhl': 'national hockey league',
-  'ligue nationale de hockey': 'national hockey league',
-  'nfl': 'national football league',
-  'mlb': 'major league baseball',
-  'mls': 'major league soccer',
+  'nba': 'nba',
+  'national basketball association': 'nba',
+  'nhl': 'nhl',
+  'national hockey league': 'nhl',
+  'ligue nationale de hockey': 'nhl',
+  'nfl': 'nfl',
+  'national football league': 'nfl',
+  'mlb': 'mlb',
+  'major league baseball': 'mlb',
+  'mls': 'mls',
+  'major league soccer': 'mls',
   'pl': 'premier league',
   'premier league anglaise': 'premier league',
   'epl': 'premier league',
   'champions league': 'uefa champions league',
   'ligue des champions': 'uefa champions league',
   'ldc': 'uefa champions league',
-  'pwhl': 'professional womens hockey league',
-  'lhjmq': 'quebec maritimes junior hockey league',
-  'qmjhl': 'quebec maritimes junior hockey league',
-  'ligue de hockey junior maritimes quebec': 'quebec maritimes junior hockey league'
+  'pwhl': 'pwhl',
+  'professional womens hockey league': 'pwhl',
+  'lhjmq': 'lhjmq',
+  'qmjhl': 'lhjmq',
+  'quebec maritimes junior hockey league': 'lhjmq',
+  'ligue de hockey junior maritimes quebec': 'lhjmq'
 };
+
+var LEAGUE_FORMAT_NAMES = {
+    'nba': 'NBA',
+    'nhl': 'NHL',
+    'nfl': 'NFL',
+    'mlb': 'MLB',
+    'mls': 'MLS',
+    'premier league': 'Premier League',
+    'la liga': 'La Liga',
+    'serie a': 'Serie A',
+    'bundesliga': 'Bundesliga',
+    'ligue 1': 'Ligue 1',
+    'uefa champions league': 'Champions League',
+    'uefa europa league': 'Europa League',
+    'pwhl': 'PWHL',
+    'lhjmq': 'LHJMQ'
+};
+
+function formatLeagueName(league) {
+    if (!league) return 'Autres Flux';
+    var lower = league.toLowerCase().trim();
+    if (LEAGUE_ALIASES[lower]) {
+        lower = LEAGUE_ALIASES[lower];
+    }
+
+    if (LEAGUE_FORMAT_NAMES[lower]) {
+        return LEAGUE_FORMAT_NAMES[lower];
+    }
+
+    // Capitalize first letters if not in map
+    return lower.replace(/\b\w/g, function(l){ return l.toUpperCase(); });
+}
 
 var _normCache = {};
 function cacheLogo(teamName, url) {
@@ -2705,8 +2744,8 @@ function normName(n) {
       lower = LEAGUE_ALIASES[lower];
   }
 
-  // Basic fallback replacements (e.g. fc, afc, sc, cf)
-  lower = lower.replace(/\b(fc|afc|sc|cf|de)\b/g, '').trim();
+  // Basic fallback replacements (e.g. fc, afc, sc, cf, united, city)
+  lower = lower.replace(/\b(fc|afc|sc|cf|de|united|city|real|sporting|athletic|club|cd)\b/g, '').trim();
 
   var norm = lower.replace(/[^a-z0-9]/g, '');
   _normCache[n] = norm;
@@ -2795,7 +2834,7 @@ function parseStreameast(html){
 
       matches.push({
           id: 'se_' + index,
-          league: l.charAt(0).toUpperCase() + l.slice(1),
+          league: formatLeagueName(l),
           flag: lgFlag(l),
           color: lgColor(l),
           homeTeam: home,
@@ -2968,7 +3007,7 @@ function parseOnHockey(html) {
 
                   matches.push({
                       id: 'onhockey_' + Date.now() + '_' + matchIndex++,
-                      league: leagueName,
+                      league: formatLeagueName(leagueName),
                       homeTeam: home,
                       awayTeam: away,
                       startTime: startTimeStr,
@@ -3046,7 +3085,7 @@ function parseBuffstreams(html){
 
           matches.push({
               id: 'bs_' + (index++),
-              league: l.charAt(0).toUpperCase() + l.slice(1),
+              league: formatLeagueName(l),
               flag: lgFlag(l),
               color: lgColor(l),
               homeTeam: home,
@@ -3267,7 +3306,7 @@ function parseFootybite(html){
     }
 
     matches.push({
-      id:i, league:league, flag:lgFlag(league), color:lgColor(league),
+      id:i, league:formatLeagueName(league), flag:lgFlag(league), color:lgColor(league),
       homeTeam:home, awayTeam:away,
       startTime:startTime, durationMinutes:getLeagueDuration(league),
       status:status, score:score, minute:minute,
@@ -3322,6 +3361,9 @@ function mergeMatches(mainList, newList) {
         if(nm.status === 'live' && mm.status !== 'live') mm.status = 'live';
         if(nm.status === 'finished' && mm.status !== 'finished') mm.status = 'finished';
 
+        // If API doesn't have time but source does
+        if(mm.startTime === '00:00' && nm.startTime && nm.startTime !== '00:00') mm.startTime = nm.startTime;
+
         merged = true;
         break;
       }
@@ -3367,8 +3409,23 @@ function stringSimilarity(s1, s2) {
 
 function isMatch(name1, name2) {
   if (!name1 || !name2) return false;
+  if (name1 === name2) return true;
+
+  // Clean empty strings might happen after normName replacements
+  if (name1.length < 3 || name2.length < 3) return name1 === name2;
+
+  // Check if one contains the other (e.g. 'manchester' in 'manchesterunited')
   if (name1.includes(name2) || name2.includes(name1)) return true;
-  return stringSimilarity(name1, name2) > 0.75;
+
+  // Lower threshold slightly to catch typos, or cases where prefixes differ
+  var sim = stringSimilarity(name1, name2);
+
+  // Specific fallback for short names
+  if (name1.length <= 4 || name2.length <= 4) {
+      return sim > 0.8;
+  }
+
+  return sim > 0.65;
 }
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
@@ -7473,7 +7530,7 @@ function getApiFirstMatches(targetDate) {
 
           matches.push({
             id: 'espn_'+ev.id,
-            league: leagueName,
+            league: formatLeagueName(leagueName),
             flag: lgFlag(leagueName),
             color: lgColor(leagueName),
             homeTeam: home.team.name,
@@ -7590,6 +7647,13 @@ function mergeFluxToApi(apiMatches, scrapedMatches) {
                 });
             }
             if(sm.matchUrl && !am.matchUrl) am.matchUrl = sm.matchUrl;
+
+            // For time and status, trust API (am) over scraped (sm),
+            // but if API somehow has no time and sm does, use sm time.
+            if(am.startTime === '00:00' && sm.startTime && sm.startTime !== '00:00') {
+               am.startTime = sm.startTime;
+            }
+
             matched = true;
             break;
          }
