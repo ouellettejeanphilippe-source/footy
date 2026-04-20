@@ -654,17 +654,6 @@ function parseFootybite(html){
   lg('Title',doc.title);
   lg('HTML len',html.length);
 
-  /* Compte les sélecteurs clés pour validation */
-  var counts={
-    'div-child-box': doc.querySelectorAll('.div-child-box').length,
-    'txt-team':      doc.querySelectorAll('.txt-team').length,
-    'time-txt':      doc.querySelectorAll('.time-txt').length,
-    'btn-danger':    doc.querySelectorAll('.btn-danger').length,
-    'text-dark-light':doc.querySelectorAll('.text-dark-light').length,
-    'img-icone':     doc.querySelectorAll('.img-icone').length,
-    'my-1':          doc.querySelectorAll('.my-1').length,
-  };
-  lg('Counts clés',JSON.stringify(counts));
 
   /* Snapshot du body pour debug */
   lg('body[5000]',doc.body.innerHTML.slice(0,5000));
