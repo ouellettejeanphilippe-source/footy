@@ -27,7 +27,8 @@ Ce document décrit l'architecture complète, la philosophie et les éléments c
 1.  **Architecture "API-First"** : Le guide télé utilise des sources de données officielles (API ESPN gratuite et API-Sports via clé) comme **stricte source de vérité** pour construire la grille des matchs. Cela empêche les doublons et assure des horaires exacts.
 2.  **Moissonnage chirurgical en relève** : L'application moissonne des sites de diffusion (Footybite, Buffstreams, Streameast) en utilisant des serveurs mandataires CORS (`fetchPage`). Les matchs trouvés sont "fusionnés" (merge) dans la grille API-First grâce à un algorithme de similarité de chaînes (Fuzzy Matching).
 3.  **Expérience Utilisateur Premium (Apple TV / Prime Video)** : L'interface est pensée pour être fluide, sombre, avec des dégradés subtils. Les interactions doivent être rapides et sur demande (chargement paresseux des flux au clic).
-4.  **Tout-en-un (Fichier unique)** : Tout le code (HTML, CSS, JS) réside dans `index.html` pour une portabilité et une simplicité maximales.
+4.  **Garantie de Noms Officiels (No duplicates)** : Les sites de streaming écrivent mal les noms d'équipes. Nous imposons une correspondance stricte via `STATIC_TEAM_MAP` lors du *parsing* afin de normaliser instantanément les noms moissonnés vers notre base de données. Plus de doublons !
+5.  **Tout-en-un (Fichier unique)** : Tout le code (HTML, CSS, JS) réside dans `index.html` pour une portabilité et une simplicité maximales.
 
 ---
 
