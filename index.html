@@ -6815,6 +6815,31 @@ function setupMultivisionUI() {
     exitTheaterBtn.innerHTML = 'Quitter le Plein Onglet';
     exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.3s;';
 
+    setInterval(applyMvAudioState, 2000);
+
+    window.addEventListener('message', function(e) {
+        if (e.data === 'mv_frame_clicked') {
+            mvFlux.forEach(function(s, idx) {
+                var iframe = document.getElementById('mv-iframe-' + idx);
+                if (iframe && iframe.contentWindow === e.source) {
+                    focusStream(idx);
+                }
+            });
+        }
+    });
+
+    window.addEventListener('blur', function() {
+        setTimeout(function() {
+            var activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName === 'IFRAME' && activeElement.classList.contains('mv-iframe')) {
+                var idx = parseInt(activeElement.id.replace('mv-iframe-', ''));
+                if (!isNaN(idx)) {
+                    focusStream(idx);
+                }
+            }
+        }, 100);
+    });
+
     // Auto-hide the exit theater button after 3 seconds
     var theaterTimeout;
     mvContainer.addEventListener('mousemove', function() {
@@ -6905,6 +6930,54 @@ function restoreMultivisionState() {
 
 // Layout state
 var mvLayout = 'auto'; // auto, focus, vertical, horizontal, custom
+var activeMvIdx = null;
+
+function focusStream(idx) {
+    if (idx < 0 || idx >= mvFlux.length) return;
+
+    // Auto swap if in focus mode and clicking on a non-focus item
+    if (mvLayout === 'focus' && idx !== 0) {
+        var temp = mvFlux[0];
+        mvFlux[0] = mvFlux[idx];
+        mvFlux[idx] = temp;
+        activeMvIdx = 0; // Focus always moves to main slot
+        saveMultivisionState();
+        updateMultivisionLayout();
+    } else {
+        activeMvIdx = idx;
+        applyMvFocusStyling();
+        applyMvAudioState();
+    }
+}
+
+function applyMvFocusStyling() {
+    var cells = document.querySelectorAll('.mv-cell');
+    cells.forEach(function(cell) {
+        var idx = parseInt(cell.dataset.index);
+        if (idx === activeMvIdx) {
+            cell.style.boxShadow = 'inset 0 0 0 3px var(--accent)';
+        } else {
+            cell.style.boxShadow = 'none';
+        }
+    });
+}
+
+function applyMvAudioState() {
+    // Determine which stream should be unmuted.
+    // If activeMvIdx is null or out of bounds, unmute the first one (0) or default logic.
+    var targetIdx = activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : (mvFlux.length > 0 ? 0 : null);
+
+    mvFlux.forEach(function(s, idx) {
+        var iframe = document.getElementById('mv-iframe-' + idx);
+        if (iframe && iframe.contentWindow) {
+            if (idx === targetIdx) {
+                iframe.contentWindow.postMessage('mv_unmute', '*');
+            } else {
+                iframe.contentWindow.postMessage('mv_mute', '*');
+            }
+        }
+    });
+}
 
 
 function updateMultivisionLayout() {
@@ -7187,6 +7260,11 @@ function updateMultivisionLayout() {
             cell.style.gridRow = 'auto';
             cell.style.gridColumn = '1';
         }
+        // Make cell clickable for focus logic
+        cell.onmousedown = function(e) {
+            focusStream(idx);
+        };
+
         // Update drag/drop indices as they can change
         cell.ondragstart = function(e) {
             e.dataTransfer.setData('text/plain', idx.toString());
@@ -7304,6 +7382,13 @@ function updateMultivisionLayout() {
             cell.remove();
         }
     });
+
+    if (activeMvIdx === null || activeMvIdx >= mvFlux.length) {
+        activeMvIdx = mvFlux.length > 0 ? mvFlux.length - 1 : null;
+    }
+
+    applyMvFocusStyling();
+    applyMvAudioState();
 }
 
 function addToMultivision(url, name, mid) {

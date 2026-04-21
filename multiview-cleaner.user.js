@@ -257,6 +257,28 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
+
+        // Add event listeners for audio control
+        window.addEventListener('message', function(e) {
+            if (e.data === 'mv_mute') {
+                const mediaElements = document.querySelectorAll('video, audio');
+                mediaElements.forEach(el => {
+                    el.muted = true;
+                    el.volume = 0;
+                });
+            } else if (e.data === 'mv_unmute') {
+                const mediaElements = document.querySelectorAll('video, audio');
+                mediaElements.forEach(el => {
+                    el.muted = false;
+                    el.volume = 1;
+                });
+            }
+        });
+
+        // Detect clicks anywhere in the window to broadcast click to parent
+        window.addEventListener('mousedown', function(e) {
+            window.parent.postMessage('mv_frame_clicked', '*');
+        }, true);
     }
 
     function findAndClean() {
