@@ -516,7 +516,6 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
       <button class="btn" id="filter-all" onclick="applyFilter('all')">GUIDE</button>
       <button class="btn" id="filter-live" onclick="applyFilter('live')" style="border-color:var(--accent);color:var(--accent)"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>EN DIRECT</button>
       <button class="btn" id="filter-fav" onclick="applyFilter('fav')">FAVORIS</button>
-      <button class="btn o" id="stats-toggle-btn" onclick="toggleGlobalStats()">📊 Scores & Stats</button>
 
       <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVISION <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
   </div>
@@ -2741,14 +2740,19 @@ Object.assign(TEAM_COLORS, {
 });
 
 function getTeamColors(teamName) {
-    if (!teamName) return null;
+    if (!teamName) return ['#333333', '#ffffff']; // Fallback absolu
     var norm = normName(teamName);
     for (var key in TEAM_COLORS) {
-        if (norm.includes(key) || key.includes(norm)) {
+        var normKey = normName(key);
+        if (norm === normKey || norm.includes(normKey) || normKey.includes(norm)) {
             return TEAM_COLORS[key];
         }
     }
-    return null;
+    // Génération pseudo-aléatoire basée sur le nom si aucune couleur trouvée
+    var hash = 0;
+    for (var i = 0; i < norm.length; i++) hash = norm.charCodeAt(i) + ((hash << 5) - hash);
+    var hue = Math.abs(hash % 360);
+    return ['hsl('+hue+', 60%, 30%)', '#ffffff'];
 }
 
 var TEAM_ALIASES = {
@@ -2940,10 +2944,35 @@ function getLogo(teamName) {
     if(!teamName) return null;
     var key = normName(teamName);
     if (logoCache[key]) return logoCache[key];
-    var colors = getTeamColors(teamName) || ['#333333', '#ffffff'];
+
+    var colors = getTeamColors(teamName);
     var bg = colors[0].replace('#', '');
+    if (bg.startsWith('hsl')) bg = '333333'; // fallback for hsl
     var fg = colors[1].replace('#', '');
-    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teamName) + '&background=' + bg + '&color=' + fg + '&size=200';
+    if (fg.startsWith('hsl')) fg = 'ffffff';
+
+    // UI Avatars as ultimate fallback
+    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teamName) + '&background=' + bg + '&color=' + fg + '&size=200&font-size=0.4';
+}
+
+function fetchAndCacheLogoDynamically(teamName) {
+    var key = normName(teamName);
+    if(logoCache[key] && logoCache[key].indexOf('ui-avatars') === -1) return Promise.resolve(logoCache[key]);
+
+    // Essaie d'aller chercher sur TheSportsDB (API publique sans clé)
+    var url = 'https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=' + encodeURIComponent(teamName);
+    return fetch(url).then(r => r.json()).then(data => {
+        if(data && data.teams && data.teams.length > 0) {
+            var badge = data.teams[0].strTeamBadge || data.teams[0].strBadge;
+            if(badge) {
+                cacheLogo(teamName, badge);
+                return badge;
+            }
+        }
+        return getLogo(teamName);
+    }).catch(e => {
+        return getLogo(teamName);
+    });
 }
 
 var STATIC_TEAM_MAP = {
@@ -3719,9 +3748,109 @@ function toggleGlobalStats() {
     var sidebar = document.getElementById('global-stats-sidebar');
     if (sidebar.style.transform === 'translateX(0px)') {
         sidebar.style.transform = 'translateX(100%)';
-    } else {
-        openGlobalStats();
     }
+}
+
+function openGlobalStatsFromMatch(mid) {
+    var m = S.matches.find(function(x) { return x.id === mid; });
+    if (!m) return;
+    var sidebar = document.getElementById('global-stats-sidebar');
+    sidebar.style.transform = 'translateX(0px)';
+    var content = document.getElementById('gstats-content');
+    var title = document.getElementById('gstats-title');
+    var backBtn = document.getElementById('gstats-back-btn');
+
+    title.textContent = m.homeTeam + ' vs ' + m.awayTeam;
+    backBtn.style.display = 'none';
+
+    content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Chargement des données du match...</div>';
+
+    fetchGameStats(mid).then(function(res) {
+        var html = '<div style="display:flex; flex-direction:column; gap:16px;">';
+
+        // Simple header
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:16px; border-radius:12px;">';
+        var hLogo = getLogo(m.homeTeam);
+        var aLogo = getLogo(m.awayTeam);
+        html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\''+escJs(m.homeTeam)+'\')"><img src="'+esc(hLogo)+'" style="height:40px;object-fit:contain;" onerror="this.style.display=\'none\'"><span style="font-weight:bold;font-size:12px;">'+esc(m.homeTeam)+'</span></div>';
+
+        html += '<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">';
+        if(m.score) {
+            html += '<div style="font-size:24px;font-weight:800;">'+m.score[0]+' - '+m.score[1]+'</div>';
+        }
+        var statusStr = m.status === 'live' ? '<span style="color:var(--red);">🔴 '+(m.minute?m.minute+'\'':'Live')+'</span>' : (m.status === 'finished' ? 'Terminé' : m.startTime);
+        html += '<div style="font-size:12px;color:var(--muted);font-weight:bold;">'+statusStr+'</div>';
+        html += '</div>';
+
+        html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\''+escJs(m.awayTeam)+'\')"><img src="'+esc(aLogo)+'" style="height:40px;object-fit:contain;" onerror="this.style.display=\'none\'"><span style="font-weight:bold;font-size:12px;">'+esc(m.awayTeam)+'</span></div>';
+        html += '</div>';
+
+        // Stats section if available
+        if (res.data) {
+            var stats = [];
+            // Parse ESPN stats if available
+            if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
+                var ts = res.data.boxscore.teams;
+                if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
+                    var statNames = {};
+                    ts[0].statistics.forEach(s => statNames[s.name] = {h: s.displayValue});
+                    ts[1].statistics.forEach(s => {
+                        if(statNames[s.name]) statNames[s.name].a = s.displayValue;
+                    });
+                    for(var k in statNames) {
+                        if(statNames[k].h && statNames[k].a) {
+                            stats.push({label: k, h: statNames[k].h, a: statNames[k].a});
+                        }
+                    }
+                }
+            } else if (res.source === 'api-sports' && res.data.statistics) {
+                var sData = res.data.statistics;
+                if(sData.length === 2) {
+                    var sHome = sData[0].statistics;
+                    var sAway = sData[1].statistics;
+                    sHome.forEach(sh => {
+                        var sa = sAway.find(x => x.type === sh.type);
+                        if(sa && sh.value !== null && sa.value !== null) {
+                            stats.push({label: sh.type, h: sh.value, a: sa.value});
+                        }
+                    });
+                }
+            }
+
+            if(stats.length > 0) {
+                html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques du match</h4>';
+                html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
+                stats.forEach(function(st) {
+                    var label = st.label;
+                    if(label === 'possessionTime') label = 'Possession';
+                    if(label === 'shots') label = 'Tirs';
+                    if(label === 'shotsOnTarget') label = 'Tirs Cadrés';
+                    if(label === 'fouls') label = 'Fautes';
+                    if(label === 'yellowCards') label = 'Cartons Jaunes';
+                    if(label === 'redCards') label = 'Cartons Rouges';
+                    if(label === 'cornerKicks') label = 'Corners';
+                    if(label === 'offsides') label = 'Hors-jeux';
+                    if(label === 'saves') label = 'Arrêts';
+
+                    html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">';
+                    html += '<span style="font-weight:bold;width:40px;text-align:right;">'+st.h+'</span>';
+                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+label+'</span>';
+                    html += '<span style="font-weight:bold;width:40px;text-align:left;">'+st.a+'</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            } else {
+                html += '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Statistiques détaillées non disponibles.</div>';
+            }
+        }
+
+        html += '</div>';
+        content.innerHTML = html;
+
+    }).catch(function(e) {
+        content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Oups, les données ne sont pas disponibles pour ce match.<br><br>Source: Non supportée ou API absente.</div>';
+        console.error(e);
+    });
 }
 
 function openGlobalStats(teamName) {
@@ -3733,19 +3862,11 @@ function openGlobalStats(teamName) {
 
     if (teamName) {
         title.textContent = teamName;
-        backBtn.style.display = 'inline-block';
-        content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Chargement des statistiques pour ' + esc(teamName) + '...</div>';
+        backBtn.style.display = 'none';
+        content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Chargement de la fiche de ' + esc(teamName) + '...</div>';
 
         fetchTeamStats(teamName);
-    } else {
-        title.textContent = 'Scores & Stats';
-        backBtn.style.display = 'none';
-        content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Cliquez sur une équipe dans l\'onglet FAVORIS pour voir ses statistiques.</div>';
     }
-}
-
-function gstatsGoBack() {
-    openGlobalStats();
 }
 
 function fetchTeamStats(teamName) {
@@ -3755,39 +3876,120 @@ function fetchTeamStats(teamName) {
         return normName(m.homeTeam) === normName(teamName) || normName(m.awayTeam) === normName(teamName);
     });
 
-    var html = '<div style="margin-bottom:16px;">';
+    var html = '<div style="display:flex;flex-direction:column;gap:20px;">';
+
+    // Fetch real logo dynamically if not in cache (or if fallback)
+    fetchAndCacheLogoDynamically(teamName).then(function(realLogo) {
+        var imgEl = document.getElementById('gstats-team-logo');
+        if(imgEl && realLogo) imgEl.src = realLogo;
+    });
+
+    // Header Equipe
+    html += '<div style="display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.05);padding:20px;border-radius:16px;">';
     var logoUrl = getLogo(teamName);
     if (logoUrl) {
-        html += '<div style="text-align:center;margin-bottom:16px;"><img src="'+esc(logoUrl)+'" style="max-width:100px;max-height:100px;object-fit:contain;"></div>';
+        html += '<img id="gstats-team-logo" src="'+esc(logoUrl)+'" style="width:60px;height:60px;object-fit:contain;" onerror="this.style.display=\'none\'">';
     }
+    html += '<div style="flex:1;">';
+    html += '<h2 style="margin:0;font-size:22px;color:#fff;">'+esc(teamName)+'</h2>';
+    var lg = teamMatches.length > 0 ? teamMatches[0].league : '';
+    if(lg) html += '<div style="color:var(--muted);font-size:13px;">'+esc(lg)+'</div>';
+    html += '</div>';
+    html += '</div>';
 
-    html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Matchs Associés (Aujourd\'hui)</h4>';
+    // Calendrier d'aujourd'hui
+    html += '<div>';
+    html += '<h4 style="color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📅 Matchs (Aujourd\'hui)</h4>';
 
     if (teamMatches.length > 0) {
         teamMatches.forEach(function(m) {
-            html += '<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;margin-bottom:8px;display:flex;flex-direction:column;gap:4px;cursor:pointer;" onclick="openMod(S.matches.find(x=>x.id===\''+escJs(m.id)+'\'))">';
-            html += '<div style="font-size:12px;color:var(--muted);">'+esc(m.league)+' • '+esc(m.startTime)+'</div>';
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-            html += '<span style="font-weight:bold;color:#fff;">'+esc(m.homeTeam)+'</span>';
-            var hScore = m.score ? m.score[0] : '-';
-            html += '<span style="font-weight:bold;color:var(--accent);">'+hScore+'</span>';
-            html += '</div>';
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-            html += '<span style="font-weight:bold;color:#fff;">'+esc(m.awayTeam)+'</span>';
-            var aScore = m.score ? m.score[1] : '-';
-            html += '<span style="font-weight:bold;color:var(--accent);">'+aScore+'</span>';
-            html += '</div>';
+            html += '<div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.2s;" onmouseenter="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseleave="this.style.background=\'rgba(255,255,255,0.03)\'" onclick="openMod(S.matches.find(x=>x.id===\''+escJs(m.id)+'\'))">';
+
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+            html += '<span style="font-size:11px;color:var(--muted);font-weight:bold;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">'+esc(m.startTime)+'</span>';
             if (m.status === 'live') {
-                html += '<div style="color:var(--red);font-size:12px;font-weight:bold;margin-top:4px;">🔴 '+(m.minute?esc(m.minute)+'\'' : 'En Direct')+'</div>';
+                html += '<span style="color:var(--red);font-size:11px;font-weight:bold;background:rgba(255,69,58,0.1);padding:2px 6px;border-radius:4px;">🔴 '+(m.minute?esc(m.minute)+'\'' : 'En Direct')+'</span>';
+            } else if (m.status === 'finished') {
+                html += '<span style="color:var(--muted);font-size:11px;font-weight:bold;background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;">Terminé</span>';
             }
+            html += '</div>';
+
+            html += '<div style="display:flex;align-items:center;gap:8px;">';
+            var isHome = normName(m.homeTeam) === normName(teamName);
+            var opponent = isHome ? m.awayTeam : m.homeTeam;
+            var oppLogo = getLogo(opponent);
+
+            html += '<div style="flex:1;">';
+            html += '<div style="font-size:12px;color:var(--muted);">'+(isHome ? 'vs (Domicile)' : '@ (Extérieur)')+'</div>';
+            html += '<div style="font-size:15px;font-weight:bold;color:#fff;display:flex;align-items:center;gap:8px;">';
+            if(oppLogo) html += '<img src="'+esc(oppLogo)+'" style="width:20px;height:20px;object-fit:contain;">';
+            html += esc(opponent)+'</div>';
+            html += '</div>';
+
+            if(m.score) {
+                var teamScore = isHome ? m.score[0] : m.score[1];
+                var oppScore = isHome ? m.score[1] : m.score[0];
+                var resColor = teamScore > oppScore ? 'var(--accent-green)' : (teamScore < oppScore ? 'var(--red)' : 'var(--muted)');
+                html += '<div style="font-size:20px;font-weight:800;color:'+resColor+';background:rgba(0,0,0,0.4);padding:4px 12px;border-radius:8px;">'+m.score[0]+' - '+m.score[1]+'</div>';
+            }
+
+            html += '</div>';
             html += '</div>';
         });
     } else {
-        html += '<div style="color:var(--muted);font-size:13px;">Aucun match aujourd\'hui pour cette équipe.</div>';
+        html += '<div style="color:var(--muted);font-size:13px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;text-align:center;">Aucun match prévu aujourd\'hui.</div>';
+    }
+    html += '</div>';
+
+    // Placeholder pour Standings / Last 5
+    if (teamMatches.length > 0 && teamMatches[0].league) {
+        var lg = teamMatches[0].league;
+        html += '<div>';
+        html += '<h4 style="color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🏆 Classement '+esc(lg)+'</h4>';
+        html += '<div id="gstats-standings" style="background:rgba(255,255,255,0.02);padding:16px;border-radius:12px;font-size:13px;color:var(--muted);text-align:center;">Recherche des classements...</div>';
+        html += '</div>';
+
+        // Async fetch standings
+        fetchLeagueStandings(lg).then(function(res) {
+            var stDiv = document.getElementById('gstats-standings');
+            if(stDiv) {
+                if(res.source === 'espn' && res.data && res.data.children && res.data.children[0].standings) {
+                    var sData = res.data.children[0].standings.entries;
+                    var tableHtml = '<table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;">';
+                    tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">Pts</th></tr>';
+
+                    var teamFound = false;
+                    sData.forEach(function(row, idx) {
+                        var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName));
+                        if(isTeam) teamFound = true;
+
+                        // Show top 3 + the team itself (+ surrounding)
+                        if(idx < 3 || isTeam) {
+                            var pts = row.stats.find(s => s.name === 'points') ? row.stats.find(s => s.name === 'points').displayValue : '-';
+                            var gp = row.stats.find(s => s.name === 'gamesPlayed') ? row.stats.find(s => s.name === 'gamesPlayed').displayValue : '-';
+
+                            tableHtml += '<tr style="background:'+(isTeam?'rgba(255,255,255,0.1)':'transparent')+'; border-bottom:1px solid rgba(255,255,255,0.05);">';
+                            tableHtml += '<td style="padding:6px 4px;font-weight:bold;">'+(idx+1)+'</td>';
+                            tableHtml += '<td style="padding:6px 4px;color:#fff;">'+esc(row.team.name)+'</td>';
+                            tableHtml += '<td style="padding:6px 4px;">'+gp+'</td>';
+                            tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                            tableHtml += '</tr>';
+                        }
+                    });
+                    tableHtml += '</table>';
+                    if(sData.length > 3 && !teamFound) tableHtml += '<div style="margin-top:8px;font-size:11px;">(Position complète non trouvée dans le top)</div>';
+                    stDiv.innerHTML = tableHtml;
+                } else {
+                    stDiv.innerHTML = 'Données de classement non disponibles via ESPN pour cette ligue.';
+                }
+            }
+        }).catch(function(e){
+            var stDiv = document.getElementById('gstats-standings');
+            if(stDiv) stDiv.innerHTML = 'Erreur de récupération du classement.';
+        });
     }
 
     html += '</div>';
-    html += '<div style="color:var(--muted);font-size:12px;text-align:center;margin-top:20px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;">Statistiques détaillées à venir via API-Sports / ESPN</div>';
     content.innerHTML = html;
 }
 
@@ -4765,15 +4967,7 @@ function cacheLogo(teamName, url) {
     }
 }
 
-function getLogo(teamName) {
-    if(!teamName) return null;
-    var key = normName(teamName);
-    if (logoCache[key]) return logoCache[key];
-    var colors = getTeamColors(teamName) || ['#333333', '#ffffff'];
-    var bg = colors[0].replace('#', '');
-    var fg = colors[1].replace('#', '');
-    return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teamName) + '&background=' + bg + '&color=' + fg + '&size=200';
-}
+// getLogo duplicate removed. It is already defined above with better implementation.
 
 /* ══ DOMAIN PREFS ════════════════════════ */
 function getDomain(url) {
@@ -5188,10 +5382,10 @@ function applyFilter(f){
       }
   }
 
-  // Hide multiview completely if we click on Guide or Live
+  // Auto pip multiview if we click on Guide or Live
   var mvc = document.getElementById('mv-container');
-  if(mvc && mvc.style.display !== 'none') {
-      hideMultivision();
+  if(mvc && mvc.style.display !== 'none' && !mvc.classList.contains('mv-pip')) {
+      toggleMultiviewPip();
   }
 
   buildEPG(S.matches);
@@ -5617,10 +5811,10 @@ function buildEPG(matches){
               var bgCol = tColors ? tColors[0] : 'var(--card-bg, rgba(255,255,255,0.05))';
               var textCol = tColors ? '#ffffff' : 'var(--text)';
 
-              html += '<div style="display:flex; align-items:center; padding:12px; background:'+bgCol+'; border:1px solid '+(isFav?'var(--accent)':'var(--border)')+'; border-radius:8px; cursor:pointer; transition:all 0.2s;" onclick="toggleFavTeam(\''+escJs(t)+'\');">'
-                   + '<button style="background:transparent;border:none;color:'+(isFav?'var(--accent)':'var(--muted)')+';font-size:20px;margin-right:12px;cursor:pointer;flex-shrink:0;text-shadow:0 1px 3px rgba(0,0,0,0.8);">'+(isFav?'★':'☆')+'</button>'
+              html += '<div style="display:flex; align-items:center; padding:12px; background:'+bgCol+'; border:1px solid '+(isFav?'var(--accent)':'var(--border)')+'; border-radius:8px; cursor:pointer; transition:all 0.2s;" onclick="openGlobalStats(\''+escJs(t)+'\');">'
+                   + '<button style="background:transparent;border:none;color:'+(isFav?'var(--accent)':'var(--muted)')+';font-size:20px;margin-right:12px;cursor:pointer;flex-shrink:0;text-shadow:0 1px 3px rgba(0,0,0,0.8);" onclick="toggleFavTeam(\''+escJs(t)+'\'); event.stopPropagation();">'+(isFav?'★':'☆')+'</button>'
                    + logoHtml
-                   + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer;" onclick="openGlobalStats(\''+escJs(t)+'\'); event.stopPropagation();">'
+                   + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;">'
                    + '<span style="font-weight:bold;color:'+textCol+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,0.8);">'+esc(t)+'</span>'
                    + '<span style="font-size:11px;color:'+(tColors?'rgba(255,255,255,0.7)':'var(--muted)')+';text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + esc(allTeams[t]) + '</span>'
                    + '</div>'
@@ -5658,10 +5852,21 @@ function buildEPG(matches){
 
           // Group by league inside this section
           var lgMap = {};
-          var lgOrder = [];
           matchesToRender.forEach(function(m) {
-              if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});lgOrder.push(m.league);}
+              if(!lgMap[m.league]){lgMap[m.league]=Object.assign({},m,{matches:[]});}
               lgMap[m.league].matches.push(m);
+          });
+
+          var lgOrder = Object.keys(lgMap);
+          lgOrder.sort(function(a, b) {
+              if (a === 'Autres Flux') return 1;
+              if (b === 'Autres Flux') return -1;
+              var idxA = customLgOrder.indexOf(a);
+              var idxB = customLgOrder.indexOf(b);
+              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+              if (idxA !== -1) return -1;
+              if (idxB !== -1) return 1;
+              return a.localeCompare(b);
           });
 
           lgOrder.forEach(function(lgName) {
@@ -6595,7 +6800,6 @@ function setupMultivisionUI() {
       + '</select>'
       + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
       + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
-      + '<button class="btn o" onclick="toggleMultiviewPip()" id="mv-pip-btn" aria-label="Réduire" title="Réduire" style="padding: 4px 8px;">◨ <span class="hide-pip hide-mobile">Réduire</span></button>'
       + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip hide-mobile">Fermer</span></button>'
       + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>'
       + '</div>';
@@ -6740,11 +6944,7 @@ function updateMultivisionLayout() {
         emptyMsg.remove();
     }
 
-    // Update PIP button text based on state
-    var pipBtn = document.getElementById('mv-pip-btn');
     var mvc = document.getElementById('mv-container');
-
-
 
     // Ensure we track custom column widths
     if (!grid._customCols) grid._customCols = {};
@@ -6756,14 +6956,12 @@ function updateMultivisionLayout() {
     grid.style.overflowAuto = '';
     grid.style.alignContent = '';
 
-    if (pipBtn && mvc) {
+    if (mvc) {
         if (mvc.classList.contains('mv-pip')) {
-            pipBtn.innerHTML = '◧ Agrandir';
             // Always force vertical layout in PiP mode
             grid.style.gridTemplateColumns = '1fr';
             grid.style.gridTemplateRows = 'repeat(' + Math.max(1, count) + ', 1fr)';
         } else {
-            pipBtn.innerHTML = '◨ Réduire';
             if (mvLayout === 'focus' && count >= 2) {
                 var col1 = grid._customCols[0] ? grid._customCols[0] + 'fr' : '3fr';
                 var col2 = grid._customCols[0] ? (1 - grid._customCols[0]).toFixed(3) + 'fr' : '1fr';
@@ -7042,6 +7240,7 @@ function updateMultivisionLayout() {
         var svgMatch = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg>';
         var svgReload = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c0-5.52 4.48-10 10-10 2.21 0 4.25.71 5.91 1.91L21 6V2h-4"/><path d="M22 12c0 5.52-4.48 10-10 10-2.21 0-4.25-.71-5.91-1.91L3 18v4h4"/></svg>';
         var svgClose = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+        var svgStats = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>';
 
         // Dropdown Toggle
         var ddId = 'mv-dd-' + idx;
@@ -7062,6 +7261,7 @@ function updateMultivisionLayout() {
         }
 
         if (s.mid) {
+             controlsHtml += '<button title="Infos & Stats" aria-label="Infos & Stats" style="' + btnStyle + '" ' + hoverAttr + ' onclick="document.getElementById(\'' + ddId + '\').style.display=\'none\'; openGlobalStatsFromMatch(\'' + escJs(s.mid) + '\');event.stopPropagation();">' + svgStats + ' Infos & Stats</button>';
              controlsHtml += '<button title="Changer de flux" aria-label="Changer de flux" style="' + btnStyle + '" ' + hoverAttr + ' onclick="showFluxSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">' + svgFlux + ' Changer de flux</button>';
         }
         controlsHtml += '<button title="Changer de match" aria-label="Changer de match" style="' + btnStyle + '" ' + hoverAttr + ' onclick="showMatchSelector(event, ' + idx + ');event.stopPropagation();">' + svgMatch + ' Changer de match</button>';
