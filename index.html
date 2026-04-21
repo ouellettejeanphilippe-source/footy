@@ -5549,7 +5549,7 @@ function buildEPG(matches){
           customLgOrder.forEach(function(lg, i) {
               lgHtml += '<div style="display:flex; align-items:center; padding:10px 16px; background:var(--bg3); border:1px solid var(--border); border-radius:8px;">'
                      + '<span style="margin-right:12px; font-size:16px;">'+lgFlag(lg)+'</span>'
-                     + '<span style="flex:1; font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+esc(lg)+'</span>'
+                     + '<span style="flex:1; font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+esc(formatLeagueName(lg))+'</span>'
                      + '<div style="display:flex; flex-direction:column; gap:2px; margin-left:8px;">'
                      + '<button onclick="moveLgOrder(\'up\', '+i+')" style="background:transparent; border:none; color:'+(i===0?'var(--muted2)':'var(--text)')+'; cursor:'+(i===0?'default':'pointer')+'; font-size:14px; padding:2px;">▲</button>'
                      + '<button onclick="moveLgOrder(\'down\', '+i+')" style="background:transparent; border:none; color:'+(i===customLgOrder.length-1?'var(--muted2)':'var(--text)')+'; cursor:'+(i===customLgOrder.length-1?'default':'pointer')+'; font-size:14px; padding:2px;">▼</button>'
@@ -5569,15 +5569,15 @@ function buildEPG(matches){
               STATIC_TEAMS.forEach(function(t) {
                   // Keep the first league encountered (primary domestic leagues are first in STATIC_TEAMS)
                   if (!allTeams[t.name]) {
-                      allTeams[t.name] = t.league.toUpperCase();
+                      allTeams[t.name] = formatLeagueName(t.league);
                   }
               });
           }
 
           // 2. Fill with currently parsed dynamically matched teams (fallback if not in static list)
           S.matches.forEach(function(m) {
-              if (m.homeTeam && m.homeTeam !== 'TBD' && !allTeams[m.homeTeam]) allTeams[m.homeTeam] = (m.league || 'AUTRE').toUpperCase();
-              if (m.awayTeam && m.awayTeam !== 'TBD' && !allTeams[m.awayTeam]) allTeams[m.awayTeam] = (m.league || 'AUTRE').toUpperCase();
+              if (m.homeTeam && m.homeTeam !== 'TBD' && !allTeams[m.homeTeam]) allTeams[m.homeTeam] = formatLeagueName(m.league || 'Autres Flux');
+              if (m.awayTeam && m.awayTeam !== 'TBD' && !allTeams[m.awayTeam]) allTeams[m.awayTeam] = formatLeagueName(m.league || 'Autres Flux');
           });
 
           // Sort teams
@@ -5613,12 +5613,16 @@ function buildEPG(matches){
               var logoUrl = getLogo(t) || '';
               var logoHtml = logoUrl ? '<img src="'+esc(logoUrl)+'" style="width:24px;height:24px;object-fit:contain;margin-right:12px;" onerror="this.style.display=\'none\'">' : '<div style="width:24px;height:24px;margin-right:12px;display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
 
-              html += '<div style="display:flex; align-items:center; padding:12px; background:var(--card-bg); border:1px solid '+(isFav?'var(--accent)':'var(--border)')+'; border-radius:8px; cursor:pointer; transition:all 0.2s;" onclick="toggleFavTeam(\''+escJs(t)+'\');">'
-                   + '<button style="background:transparent;border:none;color:'+(isFav?'var(--accent)':'var(--muted)')+';font-size:20px;margin-right:12px;cursor:pointer;flex-shrink:0;">'+(isFav?'★':'☆')+'</button>'
+              var tColors = getTeamColors(t);
+              var bgCol = tColors ? tColors[0] : 'var(--card-bg, rgba(255,255,255,0.05))';
+              var textCol = tColors ? '#ffffff' : 'var(--text)';
+
+              html += '<div style="display:flex; align-items:center; padding:12px; background:'+bgCol+'; border:1px solid '+(isFav?'var(--accent)':'var(--border)')+'; border-radius:8px; cursor:pointer; transition:all 0.2s;" onclick="toggleFavTeam(\''+escJs(t)+'\');">'
+                   + '<button style="background:transparent;border:none;color:'+(isFav?'var(--accent)':'var(--muted)')+';font-size:20px;margin-right:12px;cursor:pointer;flex-shrink:0;text-shadow:0 1px 3px rgba(0,0,0,0.8);">'+(isFav?'★':'☆')+'</button>'
                    + logoHtml
                    + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer;" onclick="openGlobalStats(\''+escJs(t)+'\'); event.stopPropagation();">'
-                   + '<span style="font-weight:bold;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(t)+'</span>'
-                   + '<span style="font-size:11px;color:var(--muted);">' + esc(allTeams[t]) + '</span>'
+                   + '<span style="font-weight:bold;color:'+textCol+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,0.8);">'+esc(t)+'</span>'
+                   + '<span style="font-size:11px;color:'+(tColors?'rgba(255,255,255,0.7)':'var(--muted)')+';text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + esc(allTeams[t]) + '</span>'
                    + '</div>'
                    + '</div>';
           });
