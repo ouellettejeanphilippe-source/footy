@@ -5630,7 +5630,7 @@ function buildEPG(matches){
       if (a === 'EN DIRECT') return -1;
       if (b === 'EN DIRECT') return 1;
 
-      // Ensure 'Autres Flux' is always sorted last
+      // Ensure 'Autres Flux' is always sorted last globally in the main feed
       if (a === 'Autres Flux') return 1;
       if (b === 'Autres Flux') return -1;
 
@@ -5783,7 +5783,13 @@ function buildEPG(matches){
               // Sort by league
               var lA = allTeams[a];
               var lB = allTeams[b];
-              if (lA !== lB) return lA.localeCompare(lB);
+
+              if (lA !== lB) {
+                  // Ensure 'Autres Flux' is at the bottom
+                  if (lA === 'Autres Flux') return 1;
+                  if (lB === 'Autres Flux') return -1;
+                  return lA.localeCompare(lB);
+              }
 
               // Sort alphabetically
               return a.localeCompare(b);
