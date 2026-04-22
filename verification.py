@@ -1,35 +1,41 @@
 from playwright.sync_api import sync_playwright
+import time
+import os
 
-def run(playwright):
-    browser = playwright.chromium.launch()
-    context = browser.new_context()
-    page = context.new_page()
-    page.goto("http://localhost:8000/index.html")
+def run_cuj(page):
+    # Load local file
+    page.goto("file:///app/index.html")
+    page.wait_for_timeout(2000)
 
-    page.evaluate("""() => {
-        document.getElementById('errbox').classList.remove('show');
+    # Force hide overlay
+    page.evaluate('''
         document.getElementById('ov').style.display = 'none';
 
-        S.matches = [
-             {homeTeam: "Arsenal", awayTeam: "Chelsea", league: "premier league", status: "live"},
-             {homeTeam: "Montréal Victoire", awayTeam: "Boston Fleet", league: "pwhl", status: "upcoming"},
-             {homeTeam: "Québec Remparts", awayTeam: "Halifax Mooseheads", league: "lhjmq", status: "upcoming"},
-             {homeTeam: "France", awayTeam: "Argentina", league: "world cup", status: "upcoming"},
-             {homeTeam: "Real Madrid", awayTeam: "Barcelona", league: "champions league", status: "upcoming"}
-          ];
+        // Switch to Favoris tab directly
+        if(typeof applyFilter === 'function') {
+            applyFilter('fav');
+        } else {
+            var btn = document.getElementById('filter-fav');
+            if(btn) btn.click();
+        }
+    ''')
+    page.wait_for_timeout(2000)
 
-        window.applyFilter('fav');
-    }""")
+    # Take screenshot at the key moment
+    os.makedirs("/home/jules/verification/screenshots", exist_ok=True)
+    page.screenshot(path="/home/jules/verification/screenshots/verification.png")
 
-    page.wait_for_timeout(1000)
-
-    # Click the "Autres Ligues" button to open the accordion
-    page.click("text=Autres Ligues")
-    page.wait_for_timeout(1000)
-
-    page.screenshot(path="favorites_menu_expanded.png")
-    context.close()
-    browser.close()
-
-with sync_playwright() as playwright:
-    run(playwright)
+if __name__ == "__main__":
+    os.makedirs("/home/jules/verification/videos", exist_ok=True)
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            record_video_dir="/home/jules/verification/videos",
+            viewport={'width': 1280, 'height': 800}
+        )
+        page = context.new_page()
+        try:
+            run_cuj(page)
+        finally:
+            context.close()
+            browser.close()
