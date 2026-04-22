@@ -7074,7 +7074,7 @@ function applyMvFocusStyling() {
     cells.forEach(function(cell) {
         var idx = parseInt(cell.dataset.index);
         if (idx === activeMvIdx) {
-            cell.style.boxShadow = 'inset 0 0 0 3px var(--accent)';
+            cell.style.boxShadow = 'inset 0 0 0 2px rgba(150, 150, 150, 0.6)';
         } else {
             cell.style.boxShadow = 'none';
         }
@@ -7381,7 +7381,9 @@ function updateMultivisionLayout() {
         }
         // Make cell clickable for focus logic
         cell.onmousedown = function(e) {
-            focusStream(idx);
+            if (!e.target.closest('.mv-hdr')) {
+                focusStream(idx);
+            }
         };
 
         // Update drag/drop indices as they can change
