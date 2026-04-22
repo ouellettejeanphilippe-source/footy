@@ -1290,17 +1290,23 @@ function parseOnHockey(html) {
 
   for (var i = 0; i < tbodies.length; i++) {
       var tbody = tbodies[i];
+
+      // onhockey structure: first tr in tbody usually contains the league name
+      var firstTr = tbody.querySelector('tr');
+      var leagueName = 'Hockey';
+      if (firstTr && firstTr.textContent.trim() !== '') {
+          leagueName = firstTr.textContent.replace(/standings|draw/gi, '').trim();
+      }
+
       var textContent = tbody.textContent || '';
       var upText = textContent.toUpperCase();
 
-      if (upText.indexOf('PWHL') >= 0 || upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) {
-          var leagueName = 'Hockey';
-          if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
-          if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
+      if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
+      else if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
 
-          var rows = tbody.querySelectorAll('tr.game');
-          for (var r = 0; r < rows.length; r++) {
-              var row = rows[r];
+      var rows = tbody.querySelectorAll('tr.game');
+      for (var r = 0; r < rows.length; r++) {
+          var row = rows[r];
               var tds = row.querySelectorAll('td');
               if (tds.length >= 2) {
                   // The team names are usually in the second td.
@@ -1390,7 +1396,6 @@ function parseOnHockey(html) {
                   });
               }
           }
-      }
   }
 
   lg('OnHockey extraits', matches.length);
