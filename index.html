@@ -2758,6 +2758,27 @@ function getTeamColors(teamName) {
 }
 
 var TEAM_ALIASES = {
+  'tb': 'tampa bay lightning',
+  'tampa bay': 'tampa bay lightning',
+  'lightning': 'tampa bay lightning',
+  'sabres': 'buffalo sabres',
+  'bruins': 'boston bruins',
+  'habs': 'montreal canadiens',
+  'nyr': 'new york rangers',
+  'nyi': 'new york islanders',
+  'lak': 'los angeles kings',
+  'sjs': 'san jose sharks',
+  'njd': 'new jersey devils',
+  'phi': 'philadelphia flyers',
+  'pit': 'pittsburgh penguins',
+  'wsh': 'washington capitals',
+  'wpg': 'winnipeg jets',
+  'cgy': 'calgary flames',
+  'edm': 'edmonton oilers',
+  'van': 'vancouver canucks',
+  'tor': 'toronto maple leafs',
+  'ott': 'ottawa senators',
+  'mtl': 'montreal canadiens',
   // Soccer - France
   'psg': 'parissaintgermain',
   'paris sg': 'parissaintgermain',
@@ -3740,9 +3761,33 @@ function getOfficialTeamName(n) {
     var stripped = lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     stripped = stripped.replace(/\b(fc|afc|sc|cf|de|sporting|cd|racing)\b/g, '').trim();
     stripped = stripped.replace(/[^a-z0-9]/g, '');
+
     if (typeof STATIC_TEAM_MAP !== 'undefined' && STATIC_TEAM_MAP[stripped]) {
         return STATIC_TEAM_MAP[stripped];
     }
+
+    // Fuzzy matching against STATIC_TEAM_MAP keys
+    if (typeof STATIC_TEAM_MAP !== 'undefined' && typeof isMatch === 'function' && typeof stringSimilarity === 'function') {
+        var bestMatch = null;
+        var bestSim = 0;
+
+        for (var key in STATIC_TEAM_MAP) {
+            if (isMatch(stripped, key)) {
+                var sim = stringSimilarity(stripped, key);
+                // If one contains the other, artificially boost similarity so it picks the best substring match
+                if (key.includes(stripped) || stripped.includes(key)) {
+                    sim += 0.5;
+                }
+                if (sim > bestSim) {
+                    bestSim = sim;
+                    bestMatch = STATIC_TEAM_MAP[key];
+                }
+            }
+        }
+
+        if (bestMatch) return bestMatch;
+    }
+
     return n;
 }
 
