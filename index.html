@@ -274,9 +274,9 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   .nav-links::-webkit-scrollbar { display: none; }
   .nav-links .btn { padding: 8px 12px; min-width: max-content; font-size: 12px; flex: 0 0 auto; text-align: center; justify-content: center; }
 
-  .secondary-actions { display: none !important; position: absolute; top: 100%; left: 12px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: stretch; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 1000; gap: 8px; margin-top: 8px; }
-  .secondary-actions.open { display: flex !important; }
-  .secondary-actions.open .btn { width: 100%; justify-content: flex-start; display: flex; text-align: left; }
+  .secondary-actions { display: none !important; position: absolute; top: 100%; left: 12px; width: calc(100vw - 24px); max-width: 300px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: stretch; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 10000; gap: 8px; margin-top: 8px; }
+  .secondary-actions.open { display: flex !important; flex-direction: column !important; }
+  .secondary-actions.open .btn { width: 100%; justify-content: flex-start; display: flex !important; text-align: left; padding: 12px 16px; margin-bottom: 4px; }
 
   #main-hdr { flex-wrap: nowrap; height: 60px; padding: 0 12px; gap: 12px; overflow: visible !important; justify-content: flex-start; align-items: center; position: relative; }
   .logo { font-size: 18px; margin-right: 0; }
@@ -5563,12 +5563,21 @@ function buildEPG(matches){
         }
     }
 
-    // In Live tab: strictly show live matches.
-    // User requested: "Faut que ça doit des matchs lives pour vrai."
-    if(S.filter==='live' && m.status !== 'live') return false;
+    // In Live tab: show live matches and matches starting in <= 30 mins
+    var isUpcomingIn30 = false;
+    if (m.status === 'upcoming' && m.startTime) {
+        var mParts = m.startTime.split(':');
+        var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+        var diff = mMins - currentMins;
+        if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
+        if (diff > 0 && diff <= 30) {
+            isUpcomingIn30 = true;
+        }
+    }
+    if(S.filter==='live' && m.status !== 'live' && !isUpcomingIn30) return false;
 
-    // In Upcoming tab: hide everything that is live or soon, and finished
-    if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished')) return false;
+    // In Upcoming tab: hide everything that is live, soon, finished, or in Live tab (<= 30 mins)
+    if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished' || isUpcomingIn30)) return false;
     if(S.hiddenLg[m.league]) return false;
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
@@ -5978,8 +5987,26 @@ function buildEPG(matches){
           });
       };
 
-      // Render matches normally
-      renderMatches(filtered, epgContainer, "");
+      // Split live and upcoming in 30 mins if filter is live
+      if (S.filter === 'live') {
+          var liveNow = [];
+          var upNext = [];
+          filtered.forEach(function(m) {
+              if (m.status === 'live') {
+                  liveNow.push(m);
+              } else {
+                  upNext.push(m);
+              }
+          });
+          if (liveNow.length > 0) renderMatches(liveNow, epgContainer, "");
+          if (upNext.length > 0) renderMatches(upNext, epgContainer, "À venir dans 30 minutes");
+          if (liveNow.length === 0 && upNext.length === 0) {
+              epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
+          }
+      } else {
+          // Render matches normally for upcoming
+          renderMatches(filtered, epgContainer, "");
+      }
 
   } else { // Timeline EPG
 
