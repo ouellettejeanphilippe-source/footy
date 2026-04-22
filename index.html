@@ -4174,6 +4174,7 @@ function parseOnHockey(html) {
 
   // onhockey.tv groups matches by league inside <tbody> elements in schedule_table.php
   var tbodies = doc.querySelectorAll('tbody');
+  var matchIndex = 0;
 
   for (var i = 0; i < tbodies.length; i++) {
       var tbody = tbodies[i];
@@ -4188,13 +4189,12 @@ function parseOnHockey(html) {
       var textContent = tbody.textContent || '';
       var upText = textContent.toUpperCase();
 
-      if (upText.indexOf('PWHL') >= 0 || upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0 || upText.indexOf('WHL') >= 0 || upText.indexOf('OHL') >= 0) {
-          if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
-          else if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
+      if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
+      else if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
 
-          var rows = tbody.querySelectorAll('tr.game');
-          for (var r = 0; r < rows.length; r++) {
-              var row = rows[r];
+      var rows = tbody.querySelectorAll('tr.game');
+      for (var r = 0; r < rows.length; r++) {
+          var row = rows[r];
               var tds = row.querySelectorAll('td');
               if (tds.length >= 2) {
                   // The team names are usually in the second td.
@@ -4285,7 +4285,6 @@ function parseOnHockey(html) {
                   });
               }
           }
-      }
   }
 
   lg('OnHockey extraits', matches.length);
