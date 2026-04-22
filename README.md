@@ -54,3 +54,4 @@ Vous pouvez l'installer depuis l'interface (dans Paramètres) ou via ce lien:
 ## 📜 Dictionnaire des Fonctions JavaScript
 
 Pour la liste complète et détaillée des fonctions JavaScript utilisées dans `index.html`, veuillez consulter le fichier **[SUIVI_FONCTIONS.md](./SUIVI_FONCTIONS.md)**.
+Consultez le fichier [FEATURES.md](FEATURES.md) pour une documentation détaillée des fonctionnalités par onglet et menu.
