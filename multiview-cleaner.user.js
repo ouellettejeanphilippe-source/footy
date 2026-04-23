@@ -275,6 +275,30 @@
             }
         });
 
+        // Unmute newly added media elements if we are supposed to be unmuted
+        // We handle this by checking if there's a stored 'mv_unmuted_state'
+        window.mvUnmutedState = false;
+        window.addEventListener('message', function(e) {
+            if (e.data === 'mv_mute') {
+                window.mvUnmutedState = false;
+            } else if (e.data === 'mv_unmute') {
+                window.mvUnmutedState = true;
+            }
+        });
+
+        const mediaObserver = new MutationObserver((mutations) => {
+            if (window.mvUnmutedState) {
+                const mediaElements = document.querySelectorAll('video, audio');
+                mediaElements.forEach(el => {
+                    if (el.muted) {
+                        el.muted = false;
+                        el.volume = 1;
+                    }
+                });
+            }
+        });
+        mediaObserver.observe(document.body, { childList: true, subtree: true });
+
         // Detect clicks anywhere in the window to broadcast click to parent
         window.addEventListener('mousedown', function(e) {
             window.parent.postMessage('mv_frame_clicked', '*');
