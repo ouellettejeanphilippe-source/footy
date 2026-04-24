@@ -185,6 +185,110 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .mv-cell::-webkit-resizer { background: rgba(255,255,255,0.2); border-left: 10px solid transparent; border-top: 10px solid transparent; box-shadow: inset -4px -4px 0 rgba(255,255,255,0.8); }
 .mv-cell { border-bottom-right-radius: 8px; }
 
+
+/* Icons System */
+.ic {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  vertical-align: middle;
+}
+
+/* Default / Standard Pack (Thick rounded SVG) */
+body[data-icon-pack="standard"] .ic-close {
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>');
+}
+
+/* Minimal Pack (Square / Sharp edges like the car ad) */
+body[data-icon-pack="minimal"] .ic-close {
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" xmlns="http://www.w3.org/2000/svg"><line x1="19" y1="5" x2="5" y2="19"></line><line x1="5" y1="5" x2="19" y2="19"></line></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" xmlns="http://www.w3.org/2000/svg"><line x1="19" y1="5" x2="5" y2="19"></line><line x1="5" y1="5" x2="19" y2="19"></line></svg>');
+}
+
+/* Rounded Pack (Soft/Playful) */
+body[data-icon-pack="rounded"] .ic-close {
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>');
+}
+
+/* Sharp / Thin Pack */
+body[data-icon-pack="sharp"] .ic-close {
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="4" x2="4" y2="20"></line><line x1="4" y1="4" x2="20" y2="20"></line></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="4" x2="4" y2="20"></line><line x1="4" y1="4" x2="20" y2="20"></line></svg>');
+}
+
+/* Fallback if no pack specified */
+.ic-close {
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>');
+}
+
+/* Metallic Dark Theme Styles */
+body.theme-metallic {
+    --bg-main: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #050608 100%);
+    --bg-overlay: rgba(15, 17, 21, 0.85);
+    background: var(--bg-main);
+    color: #f1f3f6;
+    font-family: 'Avenir', 'Montserrat', 'Helvetica Neue', sans-serif;
+    letter-spacing: 0.5px;
+}
+
+body.theme-metallic .btn {
+    background: linear-gradient(180deg, #2a2e38 0%, #1a1d24 100%);
+    border: 1px solid #3f4652;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.5);
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 0.85em;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    color: #e0e5ea;
+}
+body.theme-metallic .btn:hover {
+    background: linear-gradient(180deg, #323743 0%, #22262e 100%);
+    border-color: #4f5766;
+}
+
+body.theme-metallic .card {
+    background: linear-gradient(145deg, rgba(30, 33, 40, 0.9) 0%, rgba(15, 17, 21, 0.95) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03);
+    border-radius: 6px;
+}
+
+body.theme-metallic .mv-cell {
+    border: 2px solid #22252d;
+    border-radius: 4px;
+    background: #0a0b0d;
+}
+body.theme-metallic .mv-cell.active-focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3), inset 0 0 20px rgba(56, 189, 248, 0.1);
+}
+
+body.theme-metallic h1, body.theme-metallic h2, body.theme-metallic h3, body.theme-metallic .lg-hdr {
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+}
+
+body.theme-metallic #main-hdr {
+    background: linear-gradient(180deg, rgba(20, 22, 28, 0.95) 0%, rgba(10, 11, 14, 0.95) 100%);
+    border-bottom: 1px solid #2a2e38;
+}
+
+body.theme-metallic .ic {
+    opacity: 0.9;
+}
+
 /* OVERLAY */
 .ov { position: absolute; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
 .spinner { width: 56px; height: 56px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--accent); animation: spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite; }
@@ -571,7 +675,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 <div class="dbg" id="dbg">
   <div class="dbg-hd">
     <div class="dbg-title">🔬 Débogage — footybite.to parser</div>
-    <button class="dbg-x" aria-label="Fermer le panneau de débogage" title="Fermer" onclick="closeDbg()">✕</button>
+    <button class="dbg-x" aria-label="Fermer le panneau de débogage" title="Fermer" onclick="closeDbg()"><span class="ic ic-close"></span></button>
   </div>
   <div class="dbg-body" id="dbgbody"><div style="color:var(--muted);font-size:13px">Lance un chargement d'abord.</div></div>
 </div>
@@ -583,7 +687,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
       <div class="mdot" id="mdot"></div>
       <div class="mi"><div class="mn" id="mname"></div><div class="mm" id="mmeta"></div></div>
       <div id="mscore"></div>
-      <button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()">✕</button>
+      <button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()"><span class="ic ic-close"></span></button>
     </div>
     <div class="mbody" id="mbody"></div>
     <div class="mft"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>Liens directs — pub désactivée</div>
@@ -596,7 +700,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   <div class="modal" style="max-width: 500px;">
     <div class="mhd" style="align-items: center;">
       <div class="mi"><div class="mn">⚙️ Paramètres & Personnalisation</div></div>
-      <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeSettings()">✕</button>
+      <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeSettings()"><span class="ic ic-close"></span></button>
     </div>
     <div class="mbody" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
 
@@ -643,6 +747,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="macos">macOS (Glassmorphism)</option>
                 <option value="windows11">Windows 11 (Mica / Bloom)</option>
                 <option value="ocean_glass">Profondeurs (Océan flouté)</option>
+                <option value="metallic">Métallique (Dark Auto)</option>
                 <option value="aurora_mesh">Aurore (Maillage lumineux)</option>
               </select>
             </div>
@@ -724,6 +829,16 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="apple">Apple (Verre Poli)</option>
                 <option value="windows">Windows (Mica/Fluent)</option>
                 <option value="steam">Steam (Interface Sombre)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Pack d'icônes</div>
+              <select id="pref-icon-pack" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="standard">Standard</option>
+                <option value="minimal">Minimaliste (Carré net)</option>
+                <option value="rounded">Arrondi (Doux)</option>
+                <option value="sharp">Fin (Sharp)</option>
               </select>
             </div>
 
@@ -6862,7 +6977,7 @@ function showFluxSelector(idx, mid, event) {
 
     // Add close button for mobile
     var closeBtn = document.createElement('div');
-    closeBtn.innerHTML = '✕';
+    closeBtn.innerHTML = '<span class="ic ic-close"></span>';
     closeBtn.style.cssText = 'position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);border-radius:50%;cursor:pointer;color:#fff;font-size:14px;';
     closeBtn.onclick = function() { selector.remove(); };
     selector.appendChild(closeBtn);
@@ -7053,7 +7168,7 @@ function showMatchSelector(event, replaceIdx) {
 
     var closeBtn = document.createElement('button');
     closeBtn.className = 'btn o';
-    closeBtn.innerHTML = '✕';
+    closeBtn.innerHTML = '<span class="ic ic-close"></span>';
     closeBtn.onclick = function() { selector.remove(); };
     header.appendChild(closeBtn);
 
@@ -7293,7 +7408,7 @@ function setupMultivisionUI() {
       + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
       + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
       + '<button class="btn o hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 4px 8px;">📊 Game Mode</button>'
-      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip hide-mobile">Fermer</span></button>'
+      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;"><span class="ic ic-close"></span> <span class="hide-pip hide-mobile">Fermer</span></button>'
       + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>'
       + '</div>';
 
@@ -7988,7 +8103,7 @@ function toggleTheaterMode(elem) {
           closeBtn = document.createElement('button');
           closeBtn.id = 'mv-close-theater';
           closeBtn.className = 'theater-close-btn';
-          closeBtn.innerHTML = '✕';
+          closeBtn.innerHTML = '<span class="ic ic-close"></span>';
           closeBtn.title = 'Quitter le mode Cinéma';
           closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:1;';
           closeBtn.onclick = function() { toggleTheaterMode(elem); };
@@ -8009,7 +8124,7 @@ function toggleFullscreen(elem) {
         if(!closeFsBtn) {
             closeFsBtn = document.createElement('button');
             closeFsBtn.id = 'mv-close-fs';
-            closeFsBtn.innerHTML = '✕ Quitter plein écran';
+            closeFsBtn.innerHTML = '<span class="ic ic-close" style="margin-right:4px;"></span> Quitter plein écran';
             closeFsBtn.style.cssText = 'position:fixed; top:10px; right:10px; z-index:99999; background:rgba(0,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:8px 16px; cursor:pointer; font-weight:bold; backdrop-filter:blur(5px); box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.3s;';
             closeFsBtn.onclick = function() { toggleFullscreen(); };
             elem.appendChild(closeFsBtn);
@@ -8072,6 +8187,7 @@ document.addEventListener("fullscreenchange", function() {
 var userPrefs = {
   theme: 'custom',
   bgStyle: 'gradient',
+  iconPack: 'standard',
   c1: '#000000',
   c2: '#111111',
   c3: '#222222',
@@ -8121,6 +8237,17 @@ function openFlux(e, eu, en, mid){
 
 function applyBgStyle() {
   var s = userPrefs.bgStyle || 'gradient';
+
+  // Theme styling
+  if(userPrefs.theme === 'metallic') {
+      document.body.classList.add('theme-metallic');
+  } else {
+      document.body.classList.remove('theme-metallic');
+  }
+
+  // Icon Pack
+  document.body.setAttribute('data-icon-pack', userPrefs.iconPack || 'standard');
+
   var c1 = userPrefs.c1 || '#000000';
   var c2 = userPrefs.c2 || '#111111';
   var c3 = userPrefs.c3 || '#222222';
@@ -8515,6 +8642,7 @@ function initPrefs() {
   var selCard = document.getElementById('pref-card-color');
   var selCardStyle = document.getElementById('pref-card-style');
   var selBtn = document.getElementById('pref-btn-shape');
+  var selIconPack = document.getElementById('pref-icon-pack');
   var selAccentColor = document.getElementById('pref-accent-color');
   var selOpacity = document.getElementById('pref-card-opacity');
   var selNavLayout = document.getElementById('pref-nav-layout');
@@ -8540,6 +8668,7 @@ function initPrefs() {
   if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
   if(selNavLayout) selNavLayout.value = userPrefs.navLayout || 'top';
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
+  if(selIconPack) selIconPack.value = userPrefs.iconPack || 'standard';
   if(selAccentColor) {
       selAccentColor.value = userPrefs.accent || '#0a84ff';
       var hexAccent = document.getElementById('hex-accent-color');
@@ -8584,6 +8713,7 @@ function applyUserPrefs() {
   var cardStyleSel = document.getElementById('pref-card-style');
   var navLayoutSel = document.getElementById('pref-nav-layout');
   var btnSel = document.getElementById('pref-btn-shape');
+  var iconPackSel = document.getElementById('pref-icon-pack');
   var accentColorSel = document.getElementById('pref-accent-color');
   var opacSel = document.getElementById('pref-card-opacity');
   var effectsContainer = document.getElementById('pref-ui-effects-container');
@@ -8597,6 +8727,7 @@ function applyUserPrefs() {
   if(cardStyleSel) userPrefs.cardStyle = cardStyleSel.value;
   if(navLayoutSel) userPrefs.navLayout = navLayoutSel.value;
   if(btnSel) userPrefs.btnShape = btnSel.value;
+  if(iconPackSel) userPrefs.iconPack = iconPackSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');
   if(hoverSel) userPrefs.hoverStyle = hoverSel.value;
@@ -8653,21 +8784,22 @@ function applyPredefinedTheme() {
 
   var presets = {
     // Épuré & Minimaliste
-    'midnight': { bgStyle: 'solid', c1: '#0f172a', c2: '#1e293b', c3: '#334155', accent: '#38bdf8', btnShape: 'soft', toggleStyle: 'dot', hdrStyle: 'transparent', uiEffects: [] },
-    'slate': { bgStyle: 'gradient', c1: '#1e293b', c2: '#334155', c3: '#475569', accent: '#cbd5e1', btnShape: 'rounded', toggleStyle: 'default', hdrStyle: 'solid', uiEffects: [] },
-    'minimal_light': { bgStyle: 'solid', c1: '#f8fafc', c2: '#f1f5f9', c3: '#e2e8f0', accent: '#0f172a', btnShape: 'apple', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [] },
-    'nordic': { bgStyle: 'gradient', c1: '#2e3440', c2: '#3b4252', c3: '#434c5e', accent: '#88c0d0', btnShape: 'rounded', toggleStyle: 'dot', hdrStyle: 'solid', uiEffects: [] },
+        'midnight': { bgStyle: 'solid', c1: '#0f172a', c2: '#1e293b', c3: '#334155', accent: '#38bdf8', btnShape: 'soft', toggleStyle: 'dot', hdrStyle: 'transparent', uiEffects: [], iconPack: 'rounded' },
+    'slate': { bgStyle: 'gradient', c1: '#1e293b', c2: '#334155', c3: '#475569', accent: '#cbd5e1', btnShape: 'rounded', toggleStyle: 'default', hdrStyle: 'solid', uiEffects: [], iconPack: 'standard' },
+    'minimal_light': { bgStyle: 'solid', c1: '#f8fafc', c2: '#f1f5f9', c3: '#e2e8f0', accent: '#0f172a', btnShape: 'apple', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [], iconPack: 'sharp' },
+    'nordic': { bgStyle: 'gradient', c1: '#2e3440', c2: '#3b4252', c3: '#434c5e', accent: '#88c0d0', btnShape: 'rounded', toggleStyle: 'dot', hdrStyle: 'solid', uiEffects: [], iconPack: 'standard' },
 
     // Dashboards Pro
-    'steam': { bgStyle: 'gradient', c1: '#171a21', c2: '#1b2838', c3: '#2a475e', accent: '#66c0f4', btnShape: 'steam', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
-    'github': { bgStyle: 'solid', c1: '#0d1117', c2: '#161b22', c3: '#21262d', accent: '#58a6ff', btnShape: 'ghost', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [] },
-    'vercel': { bgStyle: 'solid', c1: '#000000', c2: '#111111', c3: '#333333', accent: '#ffffff', btnShape: 'square', toggleStyle: 'dot', hdrStyle: 'transparent', uiEffects: [] },
+    'steam': { bgStyle: 'gradient', c1: '#171a21', c2: '#1b2838', c3: '#2a475e', accent: '#66c0f4', btnShape: 'steam', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [], iconPack: 'minimal' },
+    'github': { bgStyle: 'solid', c1: '#0d1117', c2: '#161b22', c3: '#21262d', accent: '#58a6ff', btnShape: 'ghost', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [], iconPack: 'sharp' },
+    'vercel': { bgStyle: 'solid', c1: '#000000', c2: '#111111', c3: '#333333', accent: '#ffffff', btnShape: 'square', toggleStyle: 'dot', hdrStyle: 'transparent', uiEffects: [], iconPack: 'minimal' },
 
     // Moderne & Fluide
-    'macos': { bgStyle: 'mesh_flou_1', c1: '#1c1c1e', c2: '#2c2c2e', c3: '#3a3a3c', accent: '#0a84ff', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-    'windows11': { bgStyle: 'glow', c1: '#202020', c2: '#282828', c3: '#333333', accent: '#60cdff', btnShape: 'windows', toggleStyle: 'solid', hdrStyle: 'glass', uiEffects: ['glassmorphism'] },
-    'ocean_glass': { bgStyle: 'glow', c1: '#0c4a6e', c2: '#075985', c3: '#0369a1', accent: '#38bdf8', btnShape: 'soft', toggleStyle: 'dot', hdrStyle: 'floating', uiEffects: ['glassmorphism'] },
-    'aurora_mesh': { bgStyle: 'aurora', c1: '#022c22', c2: '#064e3b', c3: '#065f46', accent: '#10b981', btnShape: 'pill', toggleStyle: 'solid', hdrStyle: 'floating', uiEffects: ['glassmorphism'] }
+    'macos': { bgStyle: 'mesh_flou_1', c1: '#1c1c1e', c2: '#2c2c2e', c3: '#3a3a3c', accent: '#0a84ff', btnShape: 'apple', toggleStyle: 'default', hdrStyle: 'glass', uiEffects: ['glassmorphism'], iconPack: 'rounded' },
+    'windows11': { bgStyle: 'glow', c1: '#202020', c2: '#282828', c3: '#333333', accent: '#60cdff', btnShape: 'windows', toggleStyle: 'solid', hdrStyle: 'glass', uiEffects: ['glassmorphism'], iconPack: 'sharp' },
+    'ocean_glass': { bgStyle: 'glow', c1: '#0c4a6e', c2: '#075985', c3: '#0369a1', accent: '#38bdf8', btnShape: 'soft', toggleStyle: 'dot', hdrStyle: 'floating', uiEffects: ['glassmorphism'], iconPack: 'rounded' },
+    'metallic': { bgStyle: 'gradient', c1: '#0a0b0d', c2: '#1a1d24', c3: '#292d36', accent: '#38bdf8', btnShape: 'square', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [], iconPack: 'minimal' },
+    'aurora_mesh': { bgStyle: 'aurora', c1: '#022c22', c2: '#064e3b', c3: '#065f46', accent: '#10b981', btnShape: 'pill', toggleStyle: 'solid', hdrStyle: 'floating', uiEffects: ['glassmorphism'], iconPack: 'rounded' }
   };
 
   if(presets[theme]) {
@@ -8677,6 +8809,7 @@ function applyPredefinedTheme() {
     userPrefs.c3 = presets[theme].c3;
     userPrefs.accent = presets[theme].accent;
     if(presets[theme].btnShape) userPrefs.btnShape = presets[theme].btnShape;
+    if(presets[theme].iconPack) userPrefs.iconPack = presets[theme].iconPack;
     if(presets[theme].toggleStyle) userPrefs.toggleStyle = presets[theme].toggleStyle;
     if(presets[theme].hdrStyle) userPrefs.hdrStyle = presets[theme].hdrStyle;
 
@@ -8708,6 +8841,9 @@ function applyPredefinedTheme() {
     if(hexC3) hexC3.textContent = userPrefs.c3;
     var hexAccent = document.getElementById('hex-accent-color');
     if(hexAccent) hexAccent.textContent = userPrefs.accent;
+    if(document.getElementById('pref-icon-pack') && presets[theme].iconPack) {
+      document.getElementById('pref-icon-pack').value = presets[theme].iconPack;
+    }
     if(document.getElementById('pref-btn-shape') && presets[theme].btnShape) {
       document.getElementById('pref-btn-shape').value = presets[theme].btnShape;
     }
@@ -8874,7 +9010,7 @@ function installTampermonkey() {
     modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:500px;-webkit-overflow-scrolling:touch;color:#fff;';
 
     var closeBtn = document.createElement('div');
-    closeBtn.innerHTML = '✕';
+    closeBtn.innerHTML = '<span class="ic ic-close"></span>';
     closeBtn.style.cssText = 'position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.1);border-radius:50%;cursor:pointer;color:#fff;font-size:14px;';
     closeBtn.onclick = function() { modal.remove(); };
     modal.appendChild(closeBtn);
@@ -9487,7 +9623,7 @@ var appTheaterTimer;
             <button class="btn o" id="gstats-back-btn" style="display:none; padding:4px 8px;" onclick="gstatsGoBack()">← Retour</button>
             <h3 id="gstats-title" style="margin:0; font-size:18px; color:#fff;">Scores & Stats</h3>
         </div>
-        <button class="btn o" onclick="toggleGlobalStats()" style="padding:4px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">✕</button>
+        <button class="btn o" onclick="toggleGlobalStats()" style="padding:4px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;"><span class="ic ic-close"></span></button>
     </div>
     <div id="gstats-content" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px;">
         <div style="text-align:center; color:var(--muted); margin-top:20px;">Chargement...</div>
