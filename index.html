@@ -487,6 +487,51 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 #gstats-content::-webkit-scrollbar-track { background: transparent; }
 #gstats-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
+
+
+/* Premium Dark Sharp Mode Customizations */
+body.sharp-mode button.mx,
+body.sharp-mode button.dbg-x,
+body.sharp-mode button.theater-close-btn {
+    width: auto !important;
+    height: auto !important;
+    padding: 6px 12px !important;
+    border-radius: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+    color: var(--text) !important;
+    font-family: "Montserrat", "Gotham", "Arial Black", Arial, sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 0 !important; /* Hide original text */
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+    position: static !important;
+}
+
+body.sharp-mode button.mx::before,
+body.sharp-mode button.dbg-x::before,
+body.sharp-mode button.theater-close-btn::before {
+    content: "CLOSE" !important;
+    font-size: 12px !important; /* Restore font size for pseudo element */
+}
+
+body.sharp-mode button.mx:hover,
+body.sharp-mode button.dbg-x:hover,
+body.sharp-mode button.theater-close-btn:hover {
+    background: rgba(255,255,255,0.2) !important;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1) !important;
+}
+
+body.sharp-mode .mhd {
+    justify-content: space-between;
+}
+
+
 </style>
 
 
@@ -499,6 +544,51 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
   .neon-glow-effect .match-card {
       box-shadow: 0 0 15px var(--mc, var(--accent)) !important;
   }
+
+
+/* Premium Dark Sharp Mode Customizations */
+body.sharp-mode button.mx,
+body.sharp-mode button.dbg-x,
+body.sharp-mode button.theater-close-btn {
+    width: auto !important;
+    height: auto !important;
+    padding: 6px 12px !important;
+    border-radius: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+    color: var(--text) !important;
+    font-family: "Montserrat", "Gotham", "Arial Black", Arial, sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 0 !important; /* Hide original text */
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+    position: static !important;
+}
+
+body.sharp-mode button.mx::before,
+body.sharp-mode button.dbg-x::before,
+body.sharp-mode button.theater-close-btn::before {
+    content: "CLOSE" !important;
+    font-size: 12px !important; /* Restore font size for pseudo element */
+}
+
+body.sharp-mode button.mx:hover,
+body.sharp-mode button.dbg-x:hover,
+body.sharp-mode button.theater-close-btn:hover {
+    background: rgba(255,255,255,0.2) !important;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1) !important;
+}
+
+body.sharp-mode .mhd {
+    justify-content: space-between;
+}
+
+
 </style>
 
 
@@ -635,7 +725,8 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="slate">Ardoise (Gris sombre)</option>
                 <option value="minimal_light">Clair (Gris doux)</option>
                 <option value="nordic">Nordique (Bleu/Gris doux)</option>
-                <option disabled>--- Tech & Dashboards ---</option>
+                <option disabled>--- Tech <option disabled>--- Tech & Dashboards ---</option> Dashboards ---</option>
+                <option value="premium_dark">Premium Dark (Auto/Noir mat)</option>
                 <option value="steam">Steam (Sombre classique)</option>
                 <option value="github">Code (Noir et bleu)</option>
                 <option value="vercel">Vercel (Noir et blanc contrasté)</option>
@@ -662,6 +753,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
               <div style="font-size:13px; color:var(--muted);">Style global</div>
               <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
                 <option value="solid">Couleur Unie (Classique)</option>
+                <option value="metallic">Métallique (Premium)</option>
                 <option value="gradient">Dégradé Doux</option>
                 <option disabled>--- Patterns & Grilles ---</option>
                 <option value="grid">Grille Subtile (Pro)</option>
@@ -720,6 +812,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
                 <option value="soft">Doux (Mobile Moderne)</option>
                 <option value="pill">Pilule (Web Moderne)</option>
                 <option value="square">Rectangulaires (Minimal)</option>
+                <option value="sharp">Carrés (Premium/Sharp)</option>
                 <option value="ghost">Ghost (Bordure Lumineuse)</option>
                 <option value="apple">Apple (Verre Poli)</option>
                 <option value="windows">Windows (Mica/Fluent)</option>
@@ -799,6 +892,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
               <select id="pref-card-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
                 <option value="glass">Verre Poli (Défaut)</option>
                 <option value="solid">Couleur Unie (Classique)</option>
+                <option value="metallic">Métallique (Premium)</option>
                 <option value="bordered">Contour Fin (Minimal)</option>
                 <option value="elevated">Surélevé (Ombre Douce)</option>
               </select>
@@ -8264,6 +8358,15 @@ function initPrefs() {
   var cr = '16px';
 
   if(userPrefs.btnShape === 'square') { br = '4px'; cr = '8px'; }
+  else if(userPrefs.btnShape === 'sharp') {
+      br = '0px';
+      cr = '0px';
+      btnBg = 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))';
+      btnBorder = '1px solid rgba(255,255,255,0.4)';
+      btnShadow = '0 4px 15px rgba(0,0,0,0.4)';
+      document.documentElement.style.setProperty('--font-family', '"Montserrat", "Gotham", "Arial Black", Arial, sans-serif');
+      document.body.classList.add('sharp-mode');
+  }
   else if(userPrefs.btnShape === 'pill') br = '24px';
   else if(userPrefs.btnShape === 'soft') {
       br = '16px';
@@ -8324,6 +8427,10 @@ function initPrefs() {
       cardBorder = '1px solid rgba(255,255,255,0.1)';
       cardShadow = 'none';
       document.documentElement.style.setProperty('--card-opacity', Math.min(cardBgOpac, 0.1)); // Very light bg
+  } else if (cStyle === 'metallic') {
+      cardBorder = '1px solid rgba(255,255,255,0.2)';
+      cardShadow = 'inset 0 1px 0 rgba(255,255,255,0.1), 0 8px 20px rgba(0,0,0,0.6)';
+      document.documentElement.style.setProperty('--card-opacity', Math.max(cardBgOpac, 0.4));
   } else if (cStyle === 'elevated') {
       cardBorder = '1px solid rgba(255,255,255,0.05)';
       cardShadow = '0 10px 30px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)';
@@ -8334,6 +8441,7 @@ function initPrefs() {
 
 
   // Nav Layout Styles
+
   var nLayout = userPrefs.navLayout || 'top';
   var hdrElem = document.getElementById('main-hdr');
   var mainAppContainer = document.getElementById('app-container') || document.body;
@@ -8574,7 +8682,11 @@ function initPrefs() {
   }
 }
 
+
 function applyUserPrefs() {
+  document.body.classList.remove('sharp-mode');
+  document.documentElement.style.setProperty('--font-family', 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif');
+
   var themeSel = document.getElementById('pref-theme');
   var bgStyleSel = document.getElementById('pref-bg-style');
   var c1Sel = document.getElementById('pref-c1');
@@ -8659,6 +8771,7 @@ function applyPredefinedTheme() {
     'nordic': { bgStyle: 'gradient', c1: '#2e3440', c2: '#3b4252', c3: '#434c5e', accent: '#88c0d0', btnShape: 'rounded', toggleStyle: 'dot', hdrStyle: 'solid', uiEffects: [] },
 
     // Dashboards Pro
+    'premium_dark': { bgStyle: 'gradient', c1: '#0a0a0a', c2: '#1a1a1a', c3: '#2a2a2a', accent: '#e0e0e0', btnShape: 'sharp', toggleStyle: 'solid', hdrStyle: 'transparent', cardStyle: 'metallic', uiEffects: [] },
     'steam': { bgStyle: 'gradient', c1: '#171a21', c2: '#1b2838', c3: '#2a475e', accent: '#66c0f4', btnShape: 'steam', toggleStyle: 'solid', hdrStyle: 'solid', uiEffects: [] },
     'github': { bgStyle: 'solid', c1: '#0d1117', c2: '#161b22', c3: '#21262d', accent: '#58a6ff', btnShape: 'ghost', toggleStyle: 'underlined', hdrStyle: 'transparent', uiEffects: [] },
     'vercel': { bgStyle: 'solid', c1: '#000000', c2: '#111111', c3: '#333333', accent: '#ffffff', btnShape: 'square', toggleStyle: 'dot', hdrStyle: 'transparent', uiEffects: [] },
@@ -8739,6 +8852,7 @@ function applyPredefinedTheme() {
 
 const PALETTES = [
     // Épuré & Dashboards (Tailwind/Vercel/GitHub inspired)
+    { id: 'premium_dark', name: 'Premium Dark', c1: '#0a0a0a', c2: '#1a1a1a', c3: '#2a2a2a', accent: '#e0e0e0' },
     { id: 'midnight', name: 'Minuit', c1: '#0f172a', c2: '#1e293b', c3: '#334155', accent: '#38bdf8' },
     { id: 'vercel', name: 'Vercel', c1: '#000000', c2: '#111111', c3: '#333333', accent: '#ffffff' },
     { id: 'github_dark', name: 'Code Sombre', c1: '#0d1117', c2: '#161b22', c3: '#21262d', accent: '#58a6ff' },
