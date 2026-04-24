@@ -7670,6 +7670,10 @@ function updateMultivisionLayout() {
                     cell.style.gridColumn = 'auto';
                     colIndex = idx;
                     if (idx === count - 1) cell.style.resize = 'none'; // No need to resize last col
+                } else if (mvLayout === 'vertical') {
+                    cell.style.gridColumn = '1';
+                    colIndex = 0;
+                    cell.style.resize = 'none'; // Only one column, no horizontal resizing
                 } else {
                     // Standard auto mode (usually 2 cols)
                     if (count === 3) {
