@@ -6728,6 +6728,8 @@ function openMod(m,col){
               addToMultivision(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
               closeMod();
           };
+      } else if (mvBtn) {
+          mvBtn.style.display = 'none';
       }
 
       body.innerHTML=sortedLinks.map(function(s,i){
@@ -6739,10 +6741,105 @@ function openMod(m,col){
 function closeMod(){
   document.getElementById('mbg').classList.remove('open');
   window.multiviewPendingAction = null;
-  closePlayer();
+
 }
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
+
+/* ══ MULTIVIEW GAME MODE ═══════════════ */
+var mvGameModeActive = false;
+var mvGameModeInterval = null;
+
+function toggleMvGameMode() {
+    mvGameModeActive = !mvGameModeActive;
+    var mvContainer = document.getElementById('mv-container');
+    var gmBtn = document.getElementById('mv-gm-btn');
+
+    if (mvGameModeActive) {
+        if (gmBtn) {
+            gmBtn.style.background = 'rgba(255,69,58,0.2)';
+            gmBtn.style.borderColor = 'rgba(255,69,58,0.4)';
+            gmBtn.style.color = '#fff';
+        }
+
+        // Add stats sidebar to multiview if not present
+        if (!document.getElementById('mv-stats-sidebar')) {
+            var statsSidebar = document.createElement('div');
+            statsSidebar.id = 'mv-stats-sidebar';
+            statsSidebar.style.cssText = 'width: 350px; background: rgba(20, 20, 20, 0.95); border-left: 1px solid rgba(255,255,255,0.1); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; transition: width 0.3s;';
+            statsSidebar.innerHTML = '<div style="font-weight:bold; color:#fff; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">Statistiques du Match</div><div id="mv-stats-content" style="color:var(--muted); font-size:13px; text-align:center; padding-top:20px;">Chargement...</div>';
+
+            var gridWrapper = document.createElement('div');
+            gridWrapper.id = 'mv-grid-wrapper';
+            gridWrapper.style.cssText = 'display:flex; flex:1; width:100%; height:100%; overflow:hidden;';
+
+            var mvGrid = document.getElementById('mv-grid');
+            var parent = mvGrid.parentNode;
+            parent.insertBefore(gridWrapper, mvGrid);
+            gridWrapper.appendChild(mvGrid);
+            gridWrapper.appendChild(statsSidebar);
+        } else {
+            document.getElementById('mv-stats-sidebar').style.display = 'flex';
+            document.getElementById('mv-stats-sidebar').style.width = '350px';
+        }
+
+        updateMvGameModeStats();
+        mvGameModeInterval = setInterval(updateMvGameModeStats, 30000); // Update every 30s
+    } else {
+        if (gmBtn) {
+            gmBtn.style.background = '';
+            gmBtn.style.borderColor = '';
+            gmBtn.style.color = '';
+        }
+
+        var statsSidebar = document.getElementById('mv-stats-sidebar');
+        if (statsSidebar) {
+            statsSidebar.style.display = 'none';
+            statsSidebar.style.width = '0px';
+        }
+
+        if (mvGameModeInterval) {
+            clearInterval(mvGameModeInterval);
+            mvGameModeInterval = null;
+        }
+    }
+}
+
+function updateMvGameModeStats() {
+    if (!mvGameModeActive) return;
+
+    var content = document.getElementById('mv-stats-content');
+    if (!content) return;
+
+    if (activeMvIdx === null || activeMvIdx >= mvFlux.length) {
+        content.innerHTML = '<div style="padding:20px; text-align:center;">Sélectionnez un match (cliquez sur un écran) pour voir les statistiques.</div>';
+        return;
+    }
+
+    var activeFlux = mvFlux[activeMvIdx];
+    var m = S.matches.find(function(x) { return String(x.id) === String(activeFlux.mid); });
+
+    if (!m) {
+        content.innerHTML = '<div style="padding:20px; text-align:center;">Match non trouvé ou statistiques indisponibles pour ce flux externe.</div>';
+        return;
+    }
+
+    content.innerHTML = '<div style="display:flex; flex-direction:column; gap:10px;">' +
+        '<div style="font-size:16px; font-weight:bold; color:#fff; text-align:center;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>' +
+        (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + m.score[0] + ' - ' + m.score[1] + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>') +
+        '<div style="font-size:12px; color:var(--muted); text-align:center;">' + m.flag + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "'" : '') + '</div>' +
+        '</div>';
+
+    // Fetch detailed stats via existing ESPN API integration if available
+    fetchGameStats(m).then(function(statsHtml) {
+        if (statsHtml && mvGameModeActive) {
+            content.innerHTML += '<div style="margin-top:20px;">' + statsHtml + '</div>';
+        }
+    }).catch(function() {
+        // Fallback or ignore if no stats available
+    });
+}
+
 var mvFlux = [];
 
 
@@ -7195,6 +7292,7 @@ function setupMultivisionUI() {
       + '</select>'
       + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
       + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
+      + '<button class="btn o hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 4px 8px;">📊 Game Mode</button>'
       + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;">✕ <span class="hide-pip hide-mobile">Fermer</span></button>'
       + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>'
       + '</div>';
@@ -7342,6 +7440,10 @@ function focusStream(idx) {
         activeMvIdx = idx;
         applyMvFocusStyling();
         applyMvAudioState();
+    }
+
+    if (typeof updateMvGameModeStats === 'function') {
+        updateMvGameModeStats();
     }
 }
 
@@ -7962,442 +8064,6 @@ document.addEventListener("fullscreenchange", function() {
     }
 });
 
-/* ══ PLAYER (THIRD PAGE EMBED) ═════════ */
-// We pass the match id (mid) so we can fetch alternative streams and suggestions
-function openFlux(e, eu, en, mid){
-  mid = getOriginalMatchId(mid);
-  if(e) e.preventDefault();
-  var url=decodeURIComponent(eu), name=decodeURIComponent(en);
-
-  if (window.multiviewPendingAction) {
-      var action = window.multiviewPendingAction;
-      window.multiviewPendingAction = null;
-      var m = S.matches.find(function(x) { return String(x.id) === String(mid); });
-      var matchName = m ? (m.homeTeam + ' vs ' + m.awayTeam) : name;
-
-      if(action.type === 'replace' && action.replaceIdx !== undefined) {
-          mvFlux[action.replaceIdx].url = url;
-          mvFlux[action.replaceIdx].name = matchName;
-          mvFlux[action.replaceIdx].mid = mid;
-          saveMultivisionState(); updateMultivisionLayout();
-      } else {
-          addToMultivision(url, matchName, mid);
-      }
-      closeMod();
-      return;
-  }
-
-  // Close modal if open
-  document.getElementById('mbg').classList.remove('open');
-
-  var pbg = document.getElementById('player-bg');
-  if(!pbg){
-    pbg = document.createElement('div');
-    pbg.id = 'player-bg';
-    pbg.className = 'mbg';
-    // Style as a full-screen "Prime Video" layout
-    pbg.innerHTML = '<div id="player-container" style="width:100%; height:100%; background:transparent; display:flex; flex-direction:column; position:relative; overflow:hidden;">'
-
-      // Top bar (Header)
-      +'<div id="player-header" style="position:absolute; top:0; left:0; right:0; padding:15px 25px; background:linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index:20; display:flex; justify-content:space-between; align-items:flex-start; transition:opacity 0.3s;"><div style="display:flex; flex-direction:column; gap:5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); pointer-events:none;"><h2 id="p-match-name" style="margin:0; font-size:24px; font-weight:bold; color:#fff;">'+esc(name)+'</h2><div id="p-flux-name" style="font-size:14px; color:#ddd;"></div></div><div style="display:flex; gap:10px;"><button class="btn" id="p-pip-btn" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; backdrop-filter:blur(5px); display:flex; align-items:center; gap:5px;" onclick="minimizePlayer()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zm-10-7h9v6h-9z"/></svg> Réduire</button><button class="btn" id="p-gm-btn" style="background:rgba(255,69,58,0.2); border:1px solid rgba(255,69,58,0.4); color:#fff; backdrop-filter:blur(5px); display:flex; align-items:center; gap:5px;" onclick="toggleGameMode()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/><path d="M7 12h2v5H7zm4-3h2v8h-2zm4-4h2v12h-2z"/></svg> Game Mode</button>'
-          +'<button class="btn g" id="p-ext" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:#fff; backdrop-filter:blur(5px);">Ouvrir ailleurs</button><button class="btn" aria-label="Fermer" title="Fermer" style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.4); color:#fff; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; padding:0; backdrop-filter:blur(5px);" onclick="closePlayer()">✕</button></div></div>'
-
-      // Right sidebar trigger
-      +'<div id="player-sidebar-trigger" style="position:absolute; right:0; top:0; bottom:0; width:50px; z-index:15; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity 0.3s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0"><div style="background:rgba(0,0,0,0.6); padding:20px 5px; border-radius:10px 0 0 10px; color:#fff;"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg></div></div>'
-
-      // Main video area
-      +'<div id="player-video-area" style="flex:1; width:100%; position:relative; z-index:1; display:flex; align-items:center; justify-content:center; transition:width 0.3s cubic-bezier(0.4, 0, 0.2, 1);"><div id="p-loader" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted2); z-index:1;">Chargement du lecteur...</div><iframe id="p-frame" style="width:100%; height:100%; border:none; position:relative; z-index:2; background:transparent;" allowfullscreen></iframe></div>'
-
-      // Right sidebar panel
-      +'<div id="player-bottom-panel" style="display:none; width:100%; height:100%; padding:10px; overflow-x:auto; overflow-y:hidden; align-items:center; gap:15px; flex-wrap:nowrap;"><!-- Ticker / Quick Stats will go here --></div><div id="player-sidebar" style="position:absolute; right:0; top:0; bottom:0; width:350px; background:rgba(20, 20, 20, 0.95); backdrop-filter:blur(10px); z-index:25; border-left:1px solid rgba(255,255,255,0.1); transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display:flex; flex-direction:column;"><div style="padding:15px 20px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;"><h3 style="margin:0; font-size:16px; color:#fff;">Plus de streams</h3><button onclick="togglePlayerSidebar()" aria-label="Fermer" title="Fermer" style="background:none; border:none; color:#fff; cursor:pointer; padding:5px;">✕</button></div><div id="player-sidebar-content" style="flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:20px;"><div id="p-alt-streams-container" style="display:none;"><div style="font-size:12px; font-weight:bold; color:var(--muted); text-transform:uppercase; margin-bottom:10px; letter-spacing:1px;">Autres sources pour ce match</div><div id="p-alt-streams" style="display:flex; flex-direction:column; gap:8px;"></div></div><div id="p-suggestions-container"><div style="font-size:12px; font-weight:bold; color:var(--muted); text-transform:uppercase; margin-bottom:10px; letter-spacing:1px;">En direct maintenant</div><div id="p-suggestions" style="display:flex; flex-direction:column; gap:10px;"></div></div></div></div></div>';
-
-    // Setup interactions
-    document.body.appendChild(pbg);
-
-    // Hover controls for header and idle hide
-    var hideTimeout;
-    pbg.addEventListener('mousemove', function() {
-      if(pbg.classList.contains('pip-mode')) return;
-      var hdr = document.getElementById('player-header');
-      if(hdr) { hdr.style.opacity = '1'; hdr.style.pointerEvents = 'auto'; }
-      pbg.style.cursor = 'default';
-
-      // Also show sidebar trigger if needed
-      var trigger = document.getElementById('player-sidebar-trigger');
-      if(trigger) trigger.style.display = 'flex';
-
-      clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(function() {
-        if(!pbg.classList.contains('pip-mode') && document.getElementById('player-sidebar') && document.getElementById('player-sidebar').style.transform === 'translateX(100%)') {
-           if(hdr) { hdr.style.opacity = '0'; hdr.style.pointerEvents = 'none'; }
-           pbg.style.cursor = 'none';
-           if(trigger) trigger.style.display = 'none';
-        }
-      }, 3000);
-    });
-
-    // Also trigger mouseleave to hide immediately if mouse leaves the player
-    pbg.addEventListener('mouseleave', function() {
-        if(pbg.classList.contains('pip-mode')) return;
-        var hdr = document.getElementById('player-header');
-        if(!pbg.classList.contains('pip-mode') && document.getElementById('player-sidebar') && document.getElementById('player-sidebar').style.transform === 'translateX(100%)') {
-           if(hdr) { hdr.style.opacity = '0'; hdr.style.pointerEvents = 'none'; }
-           var trigger = document.getElementById('player-sidebar-trigger');
-           if(trigger) trigger.style.display = 'none';
-        }
-    });
-
-    // Close on background click only if not in pip
-    pbg.addEventListener('click', function(ev){
-      if(ev.target === pbg) {
-         if(!pbg.classList.contains('pip-mode')) closePlayer();
-      }
-    });
-
-    document.getElementById('player-sidebar-trigger').onclick = togglePlayerSidebar;
-  }
-
-  // Restore from pip if needed
-  if(pbg.classList.contains('pip-mode')) {
-      restorePlayer();
-  }
-
-  pbg.style.display = 'block';
-
-  // Find match context
-  var currentMatch = null;
-  if(mid) {
-      currentMatch = S.matches.find(function(m) { return m.id === mid; });
-  }
-
-  // Update header text
-  var matchNameEl = document.getElementById('p-match-name');
-  if(currentMatch) {
-      matchNameEl.innerHTML = esc(currentMatch.homeTeam) + ' <span style="opacity:0.5;">vs</span> ' + esc(currentMatch.awayTeam);
-      document.getElementById('p-flux-name').textContent = 'Source: ' + name;
-  } else {
-      matchNameEl.textContent = name;
-      document.getElementById('p-flux-name').textContent = 'Flux Externe';
-  }
-
-  // Reset and load iframe
-
-  var iframe = document.getElementById('p-frame');
-  iframe.src = url;
-  iframe.dataset.url = url;
-  iframe.dataset.mid = mid;
-
-
-  // External button
-  var extBtn = document.getElementById('p-ext');
-  extBtn.onclick = function(){
-    window.open(url, '_blank', 'noopener,noreferrer');
-    closePlayer();
-  };
-
-  // Populate Sidebar
-  populatePlayerSidebar(currentMatch, url);
-
-  // Show player, hide EPG for full immersion
-  document.getElementById('epg').style.display = 'none';
-  pbg.classList.add('open');
-
-  // Try native fullscreen on the container
-  var container = document.getElementById('player-container');
-  if(container.requestFullscreen) {
-      container.requestFullscreen().catch(function(e) { console.warn("Plein écran error", e); });
-  }
-
-  showToast('Lancement : '+name);
-}
-
-function togglePlayerSidebar() {
-    var sidebar = document.getElementById('player-sidebar');
-    var videoArea = document.getElementById('player-video-area');
-    var header = document.getElementById('player-header');
-
-    if(sidebar.style.transform === 'translateX(100%)') {
-        sidebar.style.transform = 'translateX(0)';
-        // Shrink video area slightly
-        videoArea.style.width = 'calc(100% - 350px)';
-        if(header) header.style.opacity = '1';
-    } else {
-        sidebar.style.transform = 'translateX(100%)';
-        videoArea.style.width = '100%';
-    }
-}
-
-function populatePlayerSidebar(currentMatch, currentUrl) {
-    var altContainer = document.getElementById('p-alt-streams-container');
-    var altList = document.getElementById('p-alt-streams');
-    var sugList = document.getElementById('p-suggestions');
-
-    altList.innerHTML = '';
-    sugList.innerHTML = '';
-
-    // 1. Alternative Flux
-    if(currentMatch && currentMatch.streamLinks && currentMatch.streamLinks.length > 1) {
-        altContainer.style.display = 'block';
-        var sortedLinks = sortFluxLinks(currentMatch.streamLinks);
-        sortedLinks.forEach(function(s, i) {
-            var isActive = (s.url === currentUrl);
-            var qualityClass = QC[s.quality] || 'bSD';
-
-            var dom = getDomain(s.url);
-            var pref = domainPrefs[dom] || 0;
-            var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(currentMatch.id)+"');event.stopPropagation();event.preventDefault();";
-            var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(currentMatch.id)+"');event.stopPropagation();event.preventDefault();";
-
-            var div = document.createElement('div');
-            div.style.cssText = 'padding:0; border-radius:8px; background:'+(isActive?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.05)')+'; display:flex; align-items:stretch; overflow:hidden; border:1px solid '+(isActive?'rgba(255,255,255,0.3)':'transparent')+'; transition:background 0.2s;';
-
-            var mainClickAttr = isActive ? '' : 'onclick="openFlux(null, \''+escJs(encodeURIComponent(s.url))+'\', \''+escJs(encodeURIComponent(s.name))+'\', \''+escJs(currentMatch.id)+'\')"';
-            var cursorStyle = isActive ? 'default' : 'pointer';
-
-            var hoverLogic = isActive ? '' : 'onmouseenter="this.parentElement.style.background=\'rgba(255,255,255,0.1)\'" onmouseleave="this.parentElement.style.background=\'rgba(255,255,255,0.05)\'"';
-
-            div.innerHTML = '<div '+mainClickAttr+' '+hoverLogic+' style="flex:1;display:flex;align-items:center;gap:10px;padding:10px;cursor:'+cursorStyle+';">'
-                +'<div style="font-size:16px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-                +'<div style="flex:1; overflow:hidden;">'
-                  +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(s.name||'Flux '+(i+1))+'</div>'
-                +'</div>'
-                +(isActive ? '<div style="font-size:10px; background:var(--accent); color:#000; padding:2px 6px; border-radius:4px; font-weight:bold; margin-right:5px;">ACTIF</div>' : '')
-                +'<span class="sbadge '+qualityClass+'" style="font-size:10px; padding:2px 4px; margin-right:5px;">'+(s.quality||'SD')+'</span>'
-                +'</div>'
-                +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);">'
-                  +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'transparent')+';border:none;border-bottom:1px solid rgba(255,255,255,0.1);color:'+(pref===1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">⭐</button>'
-                  +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'transparent')+';border:none;color:'+(pref===-1?'#fff':'var(--text)')+';padding:0 8px;cursor:pointer;font-size:12px;transition:background 0.2s;">👎</button>'
-                +'</div>';
-
-            altList.appendChild(div);
-        });
-    } else {
-        altContainer.style.display = 'none';
-    }
-
-    // 2. Suggestions (Other EN DIRECT matches)
-    var liveMatches = S.matches.filter(function(m) { return m.status === 'live' && (!currentMatch || m.id !== currentMatch.id); });
-
-    liveMatches.sort(function(a,b) {
-        var f1 = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? -1 : 0;
-        var f2 = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? -1 : 0;
-        if(f1 !== f2) return f1 - f2;
-        return a.startTime.localeCompare(b.startTime);
-    });
-
-    if(liveMatches.length === 0) {
-        sugList.innerHTML = '<div style="color:var(--muted); font-size:13px; text-align:center; padding:20px;">Aucun autre match en direct</div>';
-    } else {
-        liveMatches.slice(0, 10).forEach(function(m) { // Top 10 suggestions
-            var div = document.createElement('div');
-            div.style.cssText = 'padding:10px; border-radius:8px; background:rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; transition:background 0.2s;';
-
-            // Thumbnail / Shield (fallback)
-            var thumb = '<div style="width:40px; height:40px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:18px;">⚽</div>';
-            if(m.homeLogo) {
-                thumb = '<div style="width:40px; height:40px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:2px;">'
-                  +'<img src="'+esc(m.homeLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'">'
-                +'</div>';
-            }
-
-            var info = '<div style="flex:1; overflow:hidden; cursor:pointer;" onclick="openModAndLoad(\''+escJs(m.id)+'\')">'
-                +'<div style="font-size:11px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(m.minute?esc(m.minute)+"'":'EN DIRECT')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+m.flag+' '+esc(m.league)+'</span></div>'
-                +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.homeTeam)+'</div>'
-                +'<div style="font-size:13px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(m.awayTeam)+'</div>'
-            +'</div>';
-
-            var score = m.score ? '<div style="font-size:14px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;"><span>'+m.score[0]+'</span><span>'+m.score[1]+'</span></div>' : '';
-
-            // Add to Multivision button (if streams are loaded, otherwise just open modal)
-            var addMv = document.createElement('button');
-            addMv.innerHTML = '⊞';
-            addMv.title = 'Ajouter au Multivision';
-            addMv.setAttribute('aria-label', 'Ajouter au Multivision');
-            addMv.style.cssText = 'background:rgba(255,255,255,0.1); border:none; color:#fff; width:30px; height:30px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:background 0.2s;';
-            addMv.onmouseenter = function(){ this.style.background = 'rgba(255,255,255,0.2)'; };
-            addMv.onmouseleave = function(){ this.style.background = 'rgba(255,255,255,0.1)'; };
-            addMv.onclick = function(ev) {
-                ev.stopPropagation();
-                if(m.streamsLoaded && m.streamLinks && m.streamLinks.length > 0) {
-                    addToMultivision(m.streamLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
-                } else {
-                    // Not loaded yet, open modal to load
-                    showToast('Chargement des streams...');
-                    openModAndLoad(m.id);
-                }
-            };
-
-            div.innerHTML = thumb + info + score;
-            div.appendChild(addMv);
-
-            sugList.appendChild(div);
-        });
-    }
-}
-
-// Helper to open modal from suggestions
-function openModAndLoad(mid) {
-    mid = getOriginalMatchId(mid);
-    var m = S.matches.find(function(x){ return x.id === mid; });
-    if(m) {
-        // We are already inside the player, so opening the modal on top might be weird
-        // Let's close player sidebar if open, and show modal on top
-        var sidebar = document.getElementById('player-sidebar');
-        if(sidebar && sidebar.style.transform === 'translateX(0px)') {
-            togglePlayerSidebar();
-        }
-        openMod(m);
-    }
-}
-
-function minimizePlayer() {
-    var pbg = document.getElementById('player-bg');
-    if(!pbg) return;
-
-    if(document.fullscreenElement) {
-        document.exitFullscreen().catch(function(e){});
-    }
-
-    // Transform into PiP
-    pbg.classList.add('pip-mode');
-
-    // Show EPG again
-    document.getElementById('epg').style.display = 'flex';
-
-    // Add PiP styles dynamically if not present
-    if(!document.getElementById('pip-styles')) {
-        var style = document.createElement('style');
-        style.id = 'pip-styles';
-        style.innerHTML = `
-            .mbg.pip-mode {
-                background: transparent;
-                pointer-events: none;
-                display: block !important;
-                z-index: 999;
-            }
-            .mbg.pip-mode #player-container {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                width: 320px;
-                height: 180px;
-                border-radius: 12px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-                border: 2px solid rgba(255,255,255,0.1);
-                pointer-events: auto;
-                cursor: pointer;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            .mbg.pip-mode #player-container:hover {
-                transform: scale(1.05);
-                border-color: rgba(255,255,255,0.3);
-            }
-            .mbg.pip-mode #player-header,
-            .mbg.pip-mode #player-sidebar-trigger,
-            .mbg.pip-mode #player-sidebar {
-                display: none !important;
-            }
-            /* Add an overlay to click and restore */
-            .mbg.pip-mode #player-video-area::after {
-                content: '';
-                position: absolute;
-                inset: 0;
-                z-index: 10;
-                background: transparent;
-            }
-            .mbg.pip-mode #player-container:hover::after {
-                content: 'Agrandir ⤢';
-                background: rgba(0,0,0,0.5);
-                color: white;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            /* Add close button to PiP */
-            .mbg.pip-mode #pip-close {
-                display: flex !important;
-            }
-            #pip-close { display: none; }
-        `;
-        document.head.appendChild(style);
-
-        // Add close button to container
-        var container = document.getElementById('player-container');
-        var closeBtn = document.createElement('button');
-        closeBtn.id = 'pip-close';
-        closeBtn.innerHTML = '✕';
-        closeBtn.setAttribute('aria-label', 'Fermer le mini-lecteur');
-        closeBtn.title = 'Fermer';
-        closeBtn.style.cssText = 'position:absolute; top:-10px; right:-10px; width:24px; height:24px; background:var(--red); color:white; border:none; border-radius:50%; align-items:center; justify-content:center; font-size:12px; font-weight:bold; cursor:pointer; z-index:20; box-shadow:0 2px 5px rgba(0,0,0,0.5); pointer-events:auto;';
-        closeBtn.onclick = function(e) {
-            e.stopPropagation();
-            closePlayer();
-        };
-        container.appendChild(closeBtn);
-    }
-
-    // Add click event to restore
-    var container = document.getElementById('player-container');
-    container.onclick = function(e) {
-        if(pbg.classList.contains('pip-mode')) {
-            restorePlayer();
-        }
-    };
-
-    showToast('Lecteur réduit. Vous pouvez continuer à naviguer.');
-}
-
-function restorePlayer() {
-    var pbg = document.getElementById('player-bg');
-    if(!pbg) return;
-
-    pbg.classList.remove('pip-mode');
-    document.getElementById('epg').style.display = 'none';
-
-    // Remove restore click event
-    document.getElementById('player-container').onclick = null;
-
-    // Show header briefly
-    var hdr = document.getElementById('player-header');
-    if(hdr) { hdr.style.opacity = '1'; hdr.style.pointerEvents = 'auto'; }
-
-    // Try full screen again
-    var container = document.getElementById('player-container');
-    if(container.requestFullscreen) {
-        container.requestFullscreen().catch(function(e) {});
-    }
-}
-
-function closePlayer(){
-  var pbg = document.getElementById('player-bg');
-  if(pbg){
-    pbg.classList.remove('open');
-    pbg.classList.remove('pip-mode');
-    pbg.style.display = 'none';
-    var iframe = document.getElementById('p-frame');
-    if(iframe) {
-        iframe.src = '';
-        iframe.dataset.url = '';
-        iframe.dataset.mid = '';
-    }
-    document.getElementById('epg').style.display = 'flex';
-
-    if(document.fullscreenElement) {
-        document.exitFullscreen().catch(function(e){});
-    }
-  }
-}
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMod();closeDbg();}});
-
-/* ══ STEPS ══════════════════════════════ */
-var TICK='<svg viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-function stepOk(n){var el=document.getElementById('s'+n);if(!el)return;el.style.opacity='1';var ic=el.querySelector('.sic');ic.innerHTML=TICK;ic.classList.add('ok');var nx=document.getElementById('s'+(n+1));if(nx)nx.style.opacity='1';}
-
-/* ══ DEBUG ══════════════════════════════ */
-
-
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
 var userPrefs = {
   theme: 'custom',
@@ -8415,6 +8081,39 @@ try {
   var storedPrefs = localStorage.getItem('user_prefs');
   if(storedPrefs) userPrefs = Object.assign(userPrefs, JSON.parse(storedPrefs));
 } catch(e) {}
+
+
+/* ══ OPEN FLUX (MULTIVISION) ═══════════ */
+function openFlux(e, eu, en, mid){
+  mid = getOriginalMatchId(mid);
+  if(e) e.preventDefault();
+  var url=decodeURIComponent(eu), name=decodeURIComponent(en);
+
+  var m = S.matches.find(function(x) { return String(x.id) === String(mid); });
+  var matchName = m ? (m.homeTeam + ' vs ' + m.awayTeam) : name;
+
+  if (window.multiviewPendingAction) {
+      var action = window.multiviewPendingAction;
+      window.multiviewPendingAction = null;
+
+      if(action.type === 'replace' && action.replaceIdx !== undefined) {
+          mvFlux[action.replaceIdx].url = url;
+          mvFlux[action.replaceIdx].name = matchName;
+          mvFlux[action.replaceIdx].mid = mid;
+          saveMultivisionState(); updateMultivisionLayout();
+      } else {
+          addToMultivision(url, matchName, mid);
+      }
+      closeMod();
+      return;
+  }
+
+  // Close modal if open
+  var mbg = document.getElementById('mbg');
+  if(mbg) mbg.classList.remove('open');
+
+  addToMultivision(url, matchName, mid);
+}
 
 function applyBgStyle() {
   var s = userPrefs.bgStyle || 'gradient';
