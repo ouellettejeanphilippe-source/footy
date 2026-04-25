@@ -3913,6 +3913,20 @@ function openGlobalStatsFromMatch(mid) {
     var title = document.getElementById('gstats-title');
     var backBtn = document.getElementById('gstats-back-btn');
 
+    if (globalStatsInterval) {
+        clearInterval(globalStatsInterval);
+        globalStatsInterval = null;
+    }
+    if (m.status === 'live') {
+        globalStatsInterval = setInterval(function() {
+            if (document.getElementById('global-stats-sidebar').style.transform === 'translateX(0px)' && document.getElementById('gstats-title').textContent.indexOf(m.homeTeam) > -1) {
+                openGlobalStatsFromMatch(mid); // just call it again quietly to update
+            } else {
+                clearInterval(globalStatsInterval);
+            }
+        }, 60000);
+    }
+
     title.textContent = m.homeTeam + ' vs ' + m.awayTeam;
     backBtn.style.display = 'none';
 
@@ -3925,7 +3939,11 @@ function openGlobalStatsFromMatch(mid) {
         html += '<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:16px; border-radius:12px;">';
         var hLogo = getLogo(m.homeTeam);
         var aLogo = getLogo(m.awayTeam);
-        html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\''+escJs(m.homeTeam)+'\')"><img src="'+esc(hLogo)+'" style="height:40px;object-fit:contain;" onerror="this.style.display=\'none\'"><span style="font-weight:bold;font-size:12px;">'+esc(m.homeTeam)+'</span></div>';
+
+        var hRankFormStr = (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '');
+        html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\''+escJs(m.homeTeam)+'\')">';
+        if (hRankFormStr) html += '<span style="font-size:10px; color:rgba(255,255,255,0.5);">' + hRankFormStr + '</span>';
+        html += '<img src="'+esc(hLogo)+'" style="height:40px;object-fit:contain;" onerror="this.style.display=\'none\'"><span style="font-weight:bold;font-size:12px;">'+esc(m.homeTeam)+'</span></div>';
 
         html += '<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">';
         if(m.score) {
@@ -3935,10 +3953,26 @@ function openGlobalStatsFromMatch(mid) {
         html += '<div style="font-size:12px;color:var(--muted);font-weight:bold;">'+statusStr+'</div>';
         html += '</div>';
 
-        html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\''+escJs(m.awayTeam)+'\')"><img src="'+esc(aLogo)+'" style="height:40px;object-fit:contain;" onerror="this.style.display=\'none\'"><span style="font-weight:bold;font-size:12px;">'+esc(m.awayTeam)+'</span></div>';
+        var aRankFormStr = (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '');
+        html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\''+escJs(m.awayTeam)+'\')">';
+        if (aRankFormStr) html += '<span style="font-size:10px; color:rgba(255,255,255,0.5);">' + aRankFormStr + '</span>';
+        html += '<img src="'+esc(aLogo)+'" style="height:40px;object-fit:contain;" onerror="this.style.display=\'none\'"><span style="font-weight:bold;font-size:12px;">'+esc(m.awayTeam)+'</span></div>';
         html += '</div>';
 
         // Stats section if available
+        var mHomeId = null, mAwayId = null;
+        if (res.data && res.data.header && res.data.header.competitions && res.data.header.competitions[0] && res.data.header.competitions[0].competitors) {
+            var c = res.data.header.competitions[0].competitors;
+            var hC = c.find(function(x) { return x.homeAway === 'home'; });
+            var aC = c.find(function(x) { return x.homeAway === 'away'; });
+            if(hC) mHomeId = hC.id;
+            if(aC) mAwayId = aC.id;
+        }
+
+        if (res.scorers && res.scorers.length > 0) {
+            html += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
+        }
+
         if (res.data) {
             var stats = [];
             // Parse ESPN stats if available
@@ -3975,19 +4009,10 @@ function openGlobalStatsFromMatch(mid) {
                 html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
                 stats.forEach(function(st) {
                     var label = st.label;
-                    if(label === 'possessionTime') label = 'Possession';
-                    if(label === 'shots') label = 'Tirs';
-                    if(label === 'shotsOnTarget') label = 'Tirs Cadrés';
-                    if(label === 'fouls') label = 'Fautes';
-                    if(label === 'yellowCards') label = 'Cartons Jaunes';
-                    if(label === 'redCards') label = 'Cartons Rouges';
-                    if(label === 'cornerKicks') label = 'Corners';
-                    if(label === 'offsides') label = 'Hors-jeux';
-                    if(label === 'saves') label = 'Arrêts';
-
+                    var formattedLabel = formatStatLabel(st.label);
                     html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">';
                     html += '<span style="font-weight:bold;width:40px;text-align:right;">'+st.h+'</span>';
-                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+label+'</span>';
+                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+formattedLabel+'</span>';
                     html += '<span style="font-weight:bold;width:40px;text-align:left;">'+st.a+'</span>';
                     html += '</div>';
                 });
@@ -6796,6 +6821,58 @@ function openMod(m,col){
     +(m.status==='live'?'<span class="mtag" style="color:var(--red);background:rgba(255,59,59,.1)">🔴 '+(m.minute?esc(m.minute)+"'":'EN DIRECT')+'</span>':'');
   document.getElementById('mscore').innerHTML=m.score?'<div class="msc">'+m.score[0]+'–'+m.score[1]+'</div>':'';
 
+  if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
+
+  function fetchAndRenderModalStats() {
+      if (m.id && (m.id.startsWith('espn_') || m.id.startsWith('api_'))) {
+          fetchGameStats(m.id).then(function(res) {
+              var scoreCont = document.getElementById('mscore');
+              if (!scoreCont || document.getElementById('mname').textContent.indexOf(m.homeTeam) === -1) {
+                  if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
+                  return;
+              }
+
+              var mHomeId = null, mAwayId = null;
+              if (res.data && res.data.header && res.data.header.competitions && res.data.header.competitions[0] && res.data.header.competitions[0].competitors) {
+                  var c = res.data.header.competitions[0].competitors;
+                  var hC = c.find(function(x) { return x.homeAway === 'home'; });
+                  var aC = c.find(function(x) { return x.homeAway === 'away'; });
+                  if(hC) mHomeId = hC.id;
+                  if(aC) mAwayId = aC.id;
+              }
+
+              var extraHtml = '';
+              if (res.scorers && res.scorers.length > 0) {
+                  extraHtml += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
+              }
+              if (res.hRank || res.aRank || res.hForm || res.aForm) {
+                  extraHtml += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.5); margin-top:10px;">';
+                  extraHtml += '<div>' + (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '') + '</div>';
+                  extraHtml += '<div>' + (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '') + '</div>';
+                  extraHtml += '</div>';
+              }
+
+              var existingStats = document.getElementById('modal-extra-stats');
+              if (existingStats) existingStats.remove();
+
+              if (extraHtml) {
+                  var stDiv = document.createElement('div');
+                  stDiv.id = 'modal-extra-stats';
+                  stDiv.style.cssText = 'padding:15px; width:100%; background:rgba(0,0,0,0.2); border-bottom:1px solid rgba(255,255,255,0.05);';
+                  stDiv.innerHTML = '<div style="max-width:400px; margin:0 auto;">' + extraHtml + '</div>';
+                  // Prepend inside mbody so it spans full width and looks clean before the links
+                  var mbody = document.getElementById('mbody');
+                  mbody.insertBefore(stDiv, mbody.firstChild);
+              }
+          }).catch(function(e) {});
+      }
+  }
+
+  fetchAndRenderModalStats();
+  if (m.status === 'live') {
+      window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 60000);
+  }
+
   var addMvBtn = document.createElement('button');
   addMvBtn.className = 'btn o';
   addMvBtn.style.marginTop = '12px';
@@ -6856,7 +6933,7 @@ function openMod(m,col){
 function closeMod(){
   document.getElementById('mbg').classList.remove('open');
   window.multiviewPendingAction = null;
-
+  if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
 }
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
@@ -6864,6 +6941,8 @@ function closeMod(){
 /* ══ MULTIVIEW GAME MODE ═══════════════ */
 var mvGameModeActive = false;
 var mvGameModeInterval = null;
+var globalStatsInterval = null;
+var currentGlobalStatsMatchId = null;
 
 function toggleMvGameMode() {
     mvGameModeActive = !mvGameModeActive;
@@ -6940,19 +7019,86 @@ function updateMvGameModeStats() {
     }
 
     content.innerHTML = '<div style="display:flex; flex-direction:column; gap:10px;">' +
-        '<div style="font-size:16px; font-weight:bold; color:#fff; text-align:center;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>' +
+        '<div id="mv-gm-header" style="font-size:16px; font-weight:bold; color:#fff; text-align:center;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>' +
         (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + m.score[0] + ' - ' + m.score[1] + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>') +
-        '<div style="font-size:12px; color:var(--muted); text-align:center;">' + m.flag + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "'" : '') + '</div>' +
+        '<div style="font-size:12px; color:var(--muted); text-align:center;">' + m.flag + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "\'" : '') + '</div>' +
         '</div>';
 
-    // Fetch detailed stats via existing ESPN API integration if available
-    fetchGameStats(m).then(function(statsHtml) {
-        if (statsHtml && mvGameModeActive) {
-            content.innerHTML += '<div style="margin-top:20px;">' + statsHtml + '</div>';
+    fetchGameStats(m.id).then(function(res) {
+        if (!mvGameModeActive || !res.data) return;
+
+        var html = '';
+        var mHomeId = null, mAwayId = null;
+        if (res.data && res.data.header && res.data.header.competitions && res.data.header.competitions[0] && res.data.header.competitions[0].competitors) {
+            var c = res.data.header.competitions[0].competitors;
+            var hC = c.find(function(x) { return x.homeAway === 'home'; });
+            var aC = c.find(function(x) { return x.homeAway === 'away'; });
+            if(hC) mHomeId = hC.id;
+            if(aC) mAwayId = aC.id;
         }
-    }).catch(function() {
-        // Fallback or ignore if no stats available
-    });
+
+        var hRankFormStr = (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '');
+        var aRankFormStr = (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '');
+
+        var hdr = document.getElementById('mv-gm-header');
+        if (hdr && (hRankFormStr || aRankFormStr)) {
+             hdr.innerHTML = '<div style="display:flex; justify-content:space-between; font-size:11px; color:rgba(255,255,255,0.5); font-weight:normal;">' +
+                             '<span>' + hRankFormStr + '</span><span>' + aRankFormStr + '</span></div>' +
+                             '<div>' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
+        }
+
+        if (res.scorers && res.scorers.length > 0) {
+            html += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
+            html += '<div style="height:15px;"></div>';
+        }
+
+        var stats = [];
+        if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
+            var ts = res.data.boxscore.teams;
+            if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
+                var statNames = {};
+                ts[0].statistics.forEach(s => statNames[s.name] = {h: s.displayValue});
+                ts[1].statistics.forEach(s => {
+                    if(statNames[s.name]) statNames[s.name].a = s.displayValue;
+                });
+                for(var k in statNames) {
+                    if(statNames[k].h && statNames[k].a) {
+                        stats.push({label: k, h: statNames[k].h, a: statNames[k].a});
+                    }
+                }
+            }
+        } else if (res.source === 'api-sports' && res.data.statistics) {
+            var sData = res.data.statistics;
+            if(sData.length === 2) {
+                var sHome = sData[0].statistics;
+                var sAway = sData[1].statistics;
+                sHome.forEach(sh => {
+                    var sa = sAway.find(x => x.type === sh.type);
+                    if(sa && sh.value !== null && sa.value !== null) {
+                        stats.push({label: sh.type, h: sh.value, a: sa.value});
+                    }
+                });
+            }
+        }
+
+        if(stats.length > 0) {
+            html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques</h4>';
+            html += '<div style="display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,0.02);padding:10px;border-radius:12px;">';
+            stats.forEach(function(st) {
+                var label = formatStatLabel(st.label);
+                html += '<div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;">';
+                html += '<span style="font-weight:bold;width:30px;text-align:right;">'+st.h+'</span>';
+                html += '<span style="color:var(--muted);flex:1;text-align:center;">'+label+'</span>';
+                html += '<span style="font-weight:bold;width:30px;text-align:left;">'+st.a+'</span>';
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+
+        if (html) {
+            content.innerHTML += '<div style="margin-top:15px;">' + html + '</div>';
+        }
+    }).catch(function() {});
 }
 
 var mvFlux = [];
@@ -9341,6 +9487,74 @@ function mergeFluxToApi(apiMatches, scrapedMatches) {
 
 
 /* ══ EXTENDED API LOGIC FOR STATS & STANDINGS ══════════════ */
+
+function formatStatLabel(key) {
+    if (!key) return '';
+    var map = {
+        'possessionTime': 'Possession',
+        'possession': 'Possession',
+        'shots': 'Tirs',
+        'shotsOnTarget': 'Tirs Cadrés',
+        'fouls': 'Fautes',
+        'yellowCards': 'Cartons Jaunes',
+        'redCards': 'Cartons Rouges',
+        'cornerKicks': 'Corners',
+        'offsides': 'Hors-jeux',
+        'saves': 'Arrêts',
+        'expectedGoals': 'Buts Attendus (xG)',
+        'passes': 'Passes',
+        'passAccuracy': 'Précision Passes',
+        'tackles': 'Tacles',
+        'interceptions': 'Interceptions',
+        'clearances': 'Dégagements',
+        'aerialsWon': 'Duels Aériens Gagnés',
+        'blocks': 'Contres',
+        'freeKicks': 'Coups Francs',
+        'goalKicks': 'Six Mètres',
+        'throwIns': 'Touches'
+    };
+    if (map[key]) return map[key];
+
+    var spaced = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
+    var capitalized = spaced.charAt(0).toUpperCase() + spaced.slice(1);
+    return capitalized.trim();
+}
+
+function renderScorersHtml(scorers, m, hId, aId) {
+    if (!scorers || scorers.length === 0) return '';
+    var hScorers = [], aScorers = [];
+
+    scorers.forEach(function(s) {
+        if (s.isHome !== undefined) {
+            if (s.isHome) hScorers.push(s);
+            else aScorers.push(s);
+        } else if (s.teamId) {
+            if (hId && s.teamId == hId) hScorers.push(s);
+            else if (aId && s.teamId == aId) aScorers.push(s);
+            else aScorers.push(s);
+        } else {
+            aScorers.push(s);
+        }
+    });
+
+    if (hScorers.length === 0 && aScorers.length === 0) return '';
+
+    var html = '<div style="display:flex; justify-content:space-between; width:100%; font-size:12px; color:var(--muted); margin-top:8px;">';
+    html += '<div style="flex:1; text-align:right; padding-right:10px;">';
+    hScorers.forEach(function(s) {
+        html += '<div style="margin-bottom:2px;">' + esc(s.player) + ' ⚽ ' + esc(s.time) + '</div>';
+    });
+    html += '</div>';
+    html += '<div style="width:1px; background:rgba(255,255,255,0.1);"></div>';
+    html += '<div style="flex:1; text-align:left; padding-left:10px;">';
+    aScorers.forEach(function(s) {
+        html += '<div style="margin-bottom:2px;">⚽ ' + esc(s.time) + ' ' + esc(s.player) + '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
 function fetchGameStats(matchId) {
     if(matchId.startsWith('espn_')) {
         var espnId = matchId.split('_')[1];
@@ -9358,7 +9572,47 @@ function fetchGameStats(matchId) {
 
         var url = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/summary?event=' + espnId;
         return fetch(url).then(function(r){ return r.json(); }).then(function(data) {
-            return { source: 'espn', data: data };
+            var scorers = [];
+            var hRank = '', aRank = '', hForm = '', aForm = '';
+            if (data.header && data.header.competitions && data.header.competitions[0]) {
+                var comp = data.header.competitions[0];
+                if (comp.details) {
+                    comp.details.forEach(function(d) {
+                        if (d.scoringPlay && d.participants && d.participants[0] && d.participants[0].athlete) {
+                            var time = d.clock && d.clock.displayValue ? d.clock.displayValue : '';
+                            var player = d.participants[0].athlete.shortName || d.participants[0].athlete.displayName;
+                            var teamId = d.team && d.team.id ? d.team.id : null;
+                            scorers.push({ time: time, player: player, teamId: teamId });
+                        }
+                    });
+                }
+                if (comp.competitors) {
+                    var hComp = comp.competitors.find(function(c) { return c.homeAway === 'home'; });
+                    var aComp = comp.competitors.find(function(c) { return c.homeAway === 'away'; });
+                    if (hComp && hComp.record && hComp.record.length > 0) hForm = hComp.record[0].summary;
+                    if (aComp && aComp.record && aComp.record.length > 0) aForm = aComp.record[0].summary;
+                }
+            }
+            if (data.standings && data.standings.groups && data.standings.groups[0] && data.standings.groups[0].standings) {
+                var entries = data.standings.groups[0].standings.entries;
+                if (entries) {
+                    var mHomeId = null, mAwayId = null;
+                    if (data.header && data.header.competitions && data.header.competitions[0] && data.header.competitions[0].competitors) {
+                        var c = data.header.competitions[0].competitors;
+                        var hComp = c.find(function(x) { return x.homeAway === 'home'; });
+                        var aComp = c.find(function(x) { return x.homeAway === 'away'; });
+                        if(hComp) mHomeId = hComp.id;
+                        if(aComp) mAwayId = aComp.id;
+                    }
+                    entries.forEach(function(e) {
+                        var rankObj = e.stats.find(function(s) { return s.name === 'rank'; });
+                        var rank = rankObj ? rankObj.displayValue : '';
+                        if (mHomeId && e.id === mHomeId) hRank = rank;
+                        if (mAwayId && e.id === mAwayId) aRank = rank;
+                    });
+                }
+            }
+            return { source: 'espn', data: data, scorers: scorers, hRank: hRank, aRank: aRank, hForm: hForm, aForm: aForm };
         }).catch(function(e) {
             return Promise.reject(e);
         });
@@ -9375,7 +9629,19 @@ function fetchGameStats(matchId) {
         return fetch('https://v3.' + sport + '.api-sports.io/fixtures?id=' + apiId, {
             headers: { 'x-rapidapi-key': key }
         }).then(function(r){return r.json();}).then(function(data) {
-            return { source: 'api-sports', data: data.response[0] };
+            var resData = data.response[0];
+            var scorers = [];
+            if (resData && resData.events) {
+                resData.events.forEach(function(e) {
+                    if (e.type === 'Goal') {
+                        var time = e.time.elapsed + (e.time.extra ? '+' + e.time.extra : '') + '\'';
+                        var player = e.player.name;
+                        var isHome = resData.teams && resData.teams.home && resData.teams.home.id === e.team.id;
+                        scorers.push({ time: time, player: player, isHome: isHome });
+                    }
+                });
+            }
+            return { source: 'api-sports', data: resData, scorers: scorers, hRank: '', aRank: '', hForm: '', aForm: '' };
         });
     }
     return Promise.reject('Unsupported source');
