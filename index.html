@@ -6663,17 +6663,17 @@ function buildEPG(matches){
 
             var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
-            b.innerHTML = '<div class="mb-teams">'
-                        +   '<div class="mb-team-row">'
+            b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 12px;">'
+                        +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-end; text-align: right; width: auto;">'
+                        +     '<div class="mb-t" style="text-align: right;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
                         +     homeLogoHtml
-                        +     '<div class="mb-t" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
                         +   '</div>'
-                        +   '<div class="mb-team-row">'
+                        +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-start; text-align: left; width: auto;">'
                         +     awayLogoHtml
                         +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
                         +   '</div>'
                         + '</div>'
-                        + '<div class="mb-m">'+timeBadge+streamsBadge+'</div>';
+                        + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
 
             // Calculate position
             var parts = m.startTime.split(':');
