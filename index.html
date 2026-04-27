@@ -6941,6 +6941,8 @@ function closeMod(){
 /* ══ MULTIVIEW GAME MODE ═══════════════ */
 var mvGameModeActive = false;
 var mvGameModeInterval = null;
+var gmCurrentTab = 'stats'; // 'stats' | 'scores'
+var gmPinnedMatches = JSON.parse(localStorage.getItem('gmPinnedMatches') || '[]');
 var globalStatsInterval = null;
 var currentGlobalStatsMatchId = null;
 
@@ -6960,25 +6962,31 @@ function toggleMvGameMode() {
         if (!document.getElementById('mv-stats-sidebar')) {
             var statsSidebar = document.createElement('div');
             statsSidebar.id = 'mv-stats-sidebar';
-            statsSidebar.style.cssText = 'width: 350px; background: rgba(20, 20, 20, 0.95); border-left: 1px solid rgba(255,255,255,0.1); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; transition: width 0.3s;';
-            statsSidebar.innerHTML = '<div style="font-weight:bold; color:#fff; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">Statistiques du Match</div><div id="mv-stats-content" style="color:var(--muted); font-size:13px; text-align:center; padding-top:20px;">Chargement...</div>';
+            statsSidebar.style.cssText = 'width: 350px; background: rgba(20, 20, 20, 0.95); border-left: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: width 0.3s;';
 
-            var gridWrapper = document.createElement('div');
-            gridWrapper.id = 'mv-grid-wrapper';
-            gridWrapper.style.cssText = 'display:flex; flex:1; width:100%; height:100%; overflow:hidden;';
+            var headerHtml = '<div style="display:flex; border-bottom:1px solid rgba(255,255,255,0.1); padding:0;">' +
+                             '<button id="gm-tab-stats" class="gm-tab active" onclick="switchGmTab(\'stats\')" style="flex:1; background:none; border:none; color:#fff; padding:15px 0; cursor:pointer; font-weight:bold; border-bottom: 2px solid var(--accent);">Stats du Match</button>' +
+                             '<button id="gm-tab-scores" class="gm-tab" onclick="switchGmTab(\'scores\')" style="flex:1; background:none; border:none; color:var(--muted); padding:15px 0; cursor:pointer; font-weight:bold; border-bottom: 2px solid transparent;">Scores Live</button>' +
+                             '</div>';
 
-            var mvGrid = document.getElementById('mv-grid');
-            var parent = mvGrid.parentNode;
-            parent.insertBefore(gridWrapper, mvGrid);
-            gridWrapper.appendChild(mvGrid);
-            gridWrapper.appendChild(statsSidebar);
+            var contentHtml = '<div id="gm-content-wrapper" style="flex:1; overflow-y:auto; padding:15px;">' +
+                              '<div id="mv-stats-content" style="color:var(--muted); font-size:13px; text-align:center; padding-top:20px;">Chargement...</div>' +
+                              '<div id="mv-scores-content" style="display:none; color:var(--muted); font-size:13px; text-align:center; padding-top:20px;">Chargement...</div>' +
+                              '</div>';
+
+            statsSidebar.innerHTML = headerHtml + contentHtml;
+
+            var gridWrapper = document.getElementById('mv-grid-wrapper');
+            if (gridWrapper) {
+                gridWrapper.appendChild(statsSidebar);
+            }
         } else {
             document.getElementById('mv-stats-sidebar').style.display = 'flex';
             document.getElementById('mv-stats-sidebar').style.width = '350px';
         }
 
-        updateMvGameModeStats();
-        mvGameModeInterval = setInterval(updateMvGameModeStats, 30000); // Update every 30s
+        updateGmCurrentTab();
+        mvGameModeInterval = setInterval(updateGmCurrentTab, 30000); // Update every 30s
     } else {
         if (gmBtn) {
             gmBtn.style.background = '';
@@ -6996,6 +7004,112 @@ function toggleMvGameMode() {
             clearInterval(mvGameModeInterval);
             mvGameModeInterval = null;
         }
+    }
+}
+
+function switchGmTab(tab) {
+    gmCurrentTab = tab;
+
+    var tabStats = document.getElementById('gm-tab-stats');
+    var tabScores = document.getElementById('gm-tab-scores');
+    var contentStats = document.getElementById('mv-stats-content');
+    var contentScores = document.getElementById('mv-scores-content');
+
+    if (tab === 'stats') {
+        if(tabStats) { tabStats.style.color = '#fff'; tabStats.style.borderBottomColor = 'var(--accent)'; }
+        if(tabScores) { tabScores.style.color = 'var(--muted)'; tabScores.style.borderBottomColor = 'transparent'; }
+        if(contentStats) contentStats.style.display = 'block';
+        if(contentScores) contentScores.style.display = 'none';
+        updateMvGameModeStats();
+    } else {
+        if(tabScores) { tabScores.style.color = '#fff'; tabScores.style.borderBottomColor = 'var(--accent)'; }
+        if(tabStats) { tabStats.style.color = 'var(--muted)'; tabStats.style.borderBottomColor = 'transparent'; }
+        if(contentScores) contentScores.style.display = 'block';
+        if(contentStats) contentStats.style.display = 'none';
+        updateGmScoresTab();
+    }
+}
+
+function toggleGmPinMatch(matchId, e) {
+    if (e) e.stopPropagation();
+    matchId = String(matchId);
+    var idx = gmPinnedMatches.indexOf(matchId);
+    if (idx > -1) {
+        gmPinnedMatches.splice(idx, 1);
+    } else {
+        gmPinnedMatches.push(matchId);
+    }
+    localStorage.setItem('gmPinnedMatches', JSON.stringify(gmPinnedMatches));
+    updateGmScoresTab();
+}
+
+function updateGmScoresTab() {
+    if (!mvGameModeActive) return;
+
+    var content = document.getElementById('mv-scores-content');
+    if (!content) return;
+
+    var liveMatches = S.matches.filter(function(m) {
+        return m.status === 'live' || gmPinnedMatches.indexOf(String(m.id)) > -1;
+    });
+
+    if (liveMatches.length === 0) {
+        content.innerHTML = '<div style="padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
+        return;
+    }
+
+    // Sort: Pinned first, then by time/league
+    liveMatches.sort(function(a, b) {
+        var aPin = gmPinnedMatches.indexOf(String(a.id)) > -1 ? 1 : 0;
+        var bPin = gmPinnedMatches.indexOf(String(b.id)) > -1 ? 1 : 0;
+        if (aPin !== bPin) return bPin - aPin;
+        if (a.league !== b.league) return a.league.localeCompare(b.league);
+        return a.startTime.localeCompare(b.startTime);
+    });
+
+    var html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+
+    liveMatches.forEach(function(m) {
+        var isPinned = gmPinnedMatches.indexOf(String(m.id)) > -1;
+        var pinIcon = isPinned ? '📌' : '📍';
+        var pinColor = isPinned ? 'var(--accent)' : 'var(--muted)';
+
+        var scoreStr = m.score ? (m.score[0] + ' - ' + m.score[1]) : 'À venir';
+        var timeStr = (m.status === 'live' && m.minute) ? m.minute + "'" : m.startTime;
+        var statusColor = m.status === 'live' ? 'var(--accent)' : 'var(--muted)';
+
+        html += '<div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:10px; display:flex; align-items:center; gap:10px;">';
+
+        html += '<div style="flex:1;">';
+        html += '<div style="font-size:11px; color:var(--muted); margin-bottom:4px;">' + m.flag + ' ' + esc(m.league) + '</div>';
+
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
+        html += '<div style="font-size:13px; font-weight:bold; color:#fff; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.homeTeam) + '</div>';
+        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? m.score[0] : '-') + '</div>';
+        html += '</div>';
+
+        html += '<div style="display:flex; justify-content:space-between; align-items:center;">';
+        html += '<div style="font-size:13px; font-weight:bold; color:#fff; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.awayTeam) + '</div>';
+        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? m.score[1] : '-') + '</div>';
+        html += '</div>';
+
+        html += '<div style="font-size:11px; color:' + statusColor + '; margin-top:4px; text-align:right;">' + timeStr + '</div>';
+        html += '</div>'; // End flex:1
+
+        html += '<button onclick="toggleGmPinMatch(\'' + m.id + '\', event)" style="background:none; border:none; cursor:pointer; font-size:16px; color:' + pinColor + '; padding:5px; transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'none\'" title="Épingler le match">' + pinIcon + '</button>';
+
+        html += '</div>'; // End card
+    });
+
+    html += '</div>';
+    content.innerHTML = html;
+}
+
+function updateGmCurrentTab() {
+    if (gmCurrentTab === 'stats') {
+        updateMvGameModeStats();
+    } else {
+        updateGmScoresTab();
     }
 }
 
@@ -7551,8 +7665,8 @@ function setupMultivisionUI() {
       +   '<option value="vertical">⊟ Vertical</option>'
       +   '<option value="horizontal">⊟ Horizontal</option>'
       + '</select>'
-      + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
-      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
+      + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
+      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
       + '<button class="btn o hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 4px 8px;">📊 Game Mode</button>'
       + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;"><span class="ic ic-close"></span> <span class="hide-pip hide-mobile">Fermer</span></button>'
       + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>'
@@ -7560,9 +7674,15 @@ function setupMultivisionUI() {
 
     mvToolbar.innerHTML = mvToolbarHtml;
 
+    var mvGridWrapper = document.createElement('div');
+    mvGridWrapper.id = 'mv-grid-wrapper';
+    mvGridWrapper.style.cssText = 'display:flex; flex:1; width:100%; overflow:hidden; background:transparent;';
+
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
     mvGrid.style.cssText = 'flex:1;display:grid;gap:2px;background:transparent;';
+
+    mvGridWrapper.appendChild(mvGrid);
 
     var exitTheaterBtn = document.createElement('button');
     exitTheaterBtn.id = 'mv-exit-theater';
@@ -7606,10 +7726,10 @@ function setupMultivisionUI() {
         }
     });
 
-    exitTheaterBtn.onclick = function() { toggleTheaterMode(document.getElementById('mv-grid')); };
+    exitTheaterBtn.onclick = function() { toggleTheaterMode(document.getElementById('mv-grid-wrapper')); };
 
     mvContainer.appendChild(mvToolbar);
-    mvContainer.appendChild(mvGrid);
+    mvContainer.appendChild(mvGridWrapper);
     mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer); restoreMultivisionState();
 
@@ -8226,7 +8346,7 @@ function toggleMultiview() {
 }
 
 function toggleTheaterMode(elem) {
-  elem = elem || document.getElementById('mv-grid');
+  elem = elem || document.getElementById('mv-grid-wrapper');
   if (!elem) return;
 
   var mainHdr = document.getElementById('main-hdr');
@@ -8264,7 +8384,7 @@ function toggleFullscreen(elem) {
     !document.webkitFullscreenElement && !document.msFullscreenElement) {
 
     // Si c'est la grille Multiview qui passe en plein écran, on cache la barre d'outils
-    if (elem.id === 'mv-grid') {
+    if (elem.id === 'mv-grid' || elem.id === 'mv-grid-wrapper') {
         elem.classList.add('mv-fullscreen');
         var closeFsBtn = document.getElementById('mv-close-fs');
         if(!closeFsBtn) {
@@ -8298,7 +8418,9 @@ function toggleFullscreen(elem) {
     }
   } else {
     // Restaurer le state si on quitte le plein écran de la grille
-    var grid = document.getElementById('mv-grid');
+    var grid = document.getElementById('mv-grid-wrapper');
+    if (!grid) grid = document.getElementById('mv-grid'); // Fallback
+
     if (grid && grid.classList.contains('mv-fullscreen')) {
         grid.classList.remove('mv-fullscreen');
         var closeFsBtn = document.getElementById('mv-close-fs');
