@@ -632,7 +632,7 @@ body.theme-metallic .ic {
 
 
       <button class="btn o" onclick="installTampermonkey()" aria-label="Installer le script Tampermonkey" title="Installer le script Multiview Cleaner">🧩 Script</button>
-      <button class="btn g" id="relBtn" onclick="loadAll(window.hasLoadedOnce)" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
+      <button class="btn g" id="relBtn" onclick="loadAll(window.hasLoadedOnce, true)" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
       <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres">⚙️ Paramètres</button>
   </div>
 </div>
@@ -662,7 +662,7 @@ body.theme-metallic .ic {
     <div class="err-msg" id="errmsg"></div>
     <div class="err-code" id="errcode" style="display:none"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">
-      <button class="btn g" onclick="loadAll(window.hasLoadedOnce)">↺ Réessayer</button>
+      <button class="btn g" onclick="loadAll(window.hasLoadedOnce, true)">↺ Réessayer</button>
       </div>
   </div>
 
@@ -6412,8 +6412,8 @@ function buildEPG(matches){
               if (!isCollapsed) {
                   lg.matches.forEach(function(m) {
                       var b = document.createElement('div');
-                      b.id = 'mb-'+m.id;
                       b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
+                      b.id = 'mb-'+m.id;
 
                   var homeTeamName = normName(m.homeTeam) || 'A';
                   var awayTeamName = normName(m.awayTeam) || 'B';
@@ -6440,11 +6440,11 @@ function buildEPG(matches){
 
                   var statusHtml = '';
                   if(m.status === 'live') {
-                      statusHtml = '<div class="live-indicator"><span class="mb-ld"></span>'+(m.minute?esc(m.minute):'LIVE')+'</div>';
+                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
                   } else if(m.status === 'finished') {
-                      statusHtml = '<div>Fin</div>';
+                      statusHtml = '<div class="status-text"><span class="status-minute">Fin</span></div>';
                   } else {
-                      statusHtml = '<div>'+m.startTime+'</div>';
+                      statusHtml = '<div class="status-text"><span class="status-minute">'+m.startTime+'</span></div>';
                   }
 
                   var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
@@ -7493,6 +7493,7 @@ function showMatchSelector(event, replaceIdx) {
 
             var b = document.createElement('div');
             b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
+                  b.id = 'mb-'+m.id;
 
             var homeTeamName = normName(m.homeTeam) || 'A';
             var awayTeamName = normName(m.awayTeam) || 'B';
@@ -9597,8 +9598,10 @@ function getApiFirstMatches(targetDate) {
   });
 }
 
-function mergeFluxToApi(apiMatches, scrapedMatches) {
+function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
   var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
+
+  if (typeof window.streamMissingCounts === 'undefined') window.streamMissingCounts = {};
 
   scrapedMatches.forEach(function(sm) {
       var smHome = normName(sm.homeTeam);
@@ -9646,6 +9649,47 @@ function mergeFluxToApi(apiMatches, scrapedMatches) {
          apiMatches.push(sm);
       }
   });
+
+  // Stream retention logic:
+  // If a stream link from the PREVIOUS state is missing in the NEW state,
+  // increment its missing count. If missing count < 3, add it back to the match.
+  // Reset missing count if the stream is found in the NEW state.
+  apiMatches.forEach(function(am) {
+      if (!am.streamLinks) am.streamLinks = [];
+
+      // Get previous match state if it exists
+      var prevMatch = S.matches ? S.matches.find(function(m) { return m.id === am.id; }) : null;
+      if (prevMatch && prevMatch.streamLinks) {
+          prevMatch.streamLinks.forEach(function(oldSl) {
+              var found = am.streamLinks.find(function(sl) { return sl.url === oldSl.url; });
+              if (found) {
+                  // Link still exists, reset missing count
+                  window.streamMissingCounts[oldSl.url] = 0;
+              } else {
+                  // Link is missing
+                  var count = window.streamMissingCounts[oldSl.url] || 0;
+                  if (!skipScraping) count++;
+                  window.streamMissingCounts[oldSl.url] = count;
+
+                  if (count < 3) {
+                      // Retain the stream if missed less than 3 times
+                      am.streamLinks.push(oldSl);
+                  }
+              }
+          });
+      }
+
+      if (prevMatch) {
+          // Carry over streamsLoaded state if we have streams
+          if (am.streamLinks && am.streamLinks.length > 0) {
+              am.streamsLoaded = prevMatch.streamsLoaded;
+          }
+          if (prevMatch.matchUrl && !am.matchUrl) {
+              am.matchUrl = prevMatch.matchUrl;
+          }
+      }
+  });
+
   return apiMatches;
 }
 
@@ -9846,7 +9890,55 @@ function stepOk(n) {
   }
 }
 
-function loadAll(isBackground){
+function updateLiveScores(matches) {
+    matches.forEach(function(m) {
+        // Update main card, live copy, and fav copy
+        var cardIds = ['mb-' + m.id, 'mb-' + m.id + '_live_copy', 'mb-' + m.id + '_fav_copy'];
+
+        cardIds.forEach(function(cid) {
+            var card = document.getElementById(cid);
+            if (card) {
+                // Update time/status
+                var minEl = card.querySelector('.status-minute');
+                if (minEl) {
+                    if (m.status === 'live') {
+                        minEl.textContent = m.minute || 'LIVE';
+                        var ind = card.querySelector('.live-indicator');
+                        if (!ind) {
+                            minEl.parentElement.className = 'live-indicator status-text';
+                            minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">'+esc(m.minute||'LIVE')+'</span>';
+                        }
+                        card.classList.add('live');
+                        card.classList.remove('finished');
+                    } else if (m.status === 'finished') {
+                        minEl.textContent = 'Fin';
+                        minEl.parentElement.className = 'status-text';
+                        var ld = minEl.parentElement.querySelector('.mb-ld');
+                        if (ld) ld.remove();
+                        card.classList.remove('live');
+                        card.classList.add('finished');
+                    } else {
+                        minEl.textContent = m.startTime || '';
+                    }
+                }
+
+                // Update scores
+                var scoreEls = card.querySelectorAll('.prime-score');
+                if (scoreEls.length === 2) {
+                    if (m.score && m.score.length === 2) {
+                        scoreEls[0].textContent = m.score[0];
+                        scoreEls[1].textContent = m.score[1];
+                    } else {
+                        scoreEls[0].textContent = '';
+                        scoreEls[1].textContent = '';
+                    }
+                }
+            }
+        });
+    });
+}
+
+function loadAll(isBackground, forceScrape){
 const hdrObserver = new ResizeObserver(() => {
   const hdr = document.getElementById('main-hdr');
   if (hdr) {
@@ -9858,6 +9950,7 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
 
   if (!isBackground) window.initialScrollDone = false;
   if (typeof window.hasLoadedOnce === 'undefined') window.hasLoadedOnce = false;
+  if (typeof window.lastScrapeTime === 'undefined') window.lastScrapeTime = 0;
   if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
   setupMultivisionUI();
 
@@ -9884,6 +9977,21 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
 
 
       // Async scrape sites
+      var nowTime = Date.now();
+      var skipScraping = !forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000) && window.hasLoadedOnce;
+
+      if (skipScraping) {
+          // Just merge with existing scrapedMatches and update API
+          var finalMatches = mergeFluxToApi(apiMatches, window.lastScrapedMatches || [], true);
+          var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
+          S.matches = finalMatches.filter(function(m) {
+              return m.matchDate === targetDateStr;
+          });
+          updateLiveScores(S.matches); // New function to update scores smoothly
+          return Promise.resolve();
+      }
+
+      window.lastScrapeTime = nowTime;
       return Promise.allSettled([
           fetchPage(SITE),
           fetchPage(MLBITE_URL),
@@ -9893,6 +10001,7 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
           fetchPage(ONHOCKEY_URL),
           fetchPage(MLBBITE_PLUS_URL)
       ]).then(function(results) {
+          if (!results) return;
           if (!isBackground) { stepOk(2);  }
 
 
@@ -9941,7 +10050,8 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
           }
 
 
-                    var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches);
+                    var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
+          window.lastScrapedMatches = scrapedMatches;
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           S.matches = finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
@@ -10006,14 +10116,28 @@ if ('serviceWorker' in navigator) {
 
 
 (function(){
-  var n=new Date();
+  var n = new Date();
+  var todayStr = getEspnDateStr(TARGET_DATE);
+  var cacheRaw = localStorage.getItem('api_calendar_cache');
+  var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
 
-  loadAll(window.hasLoadedOnce);
+  if (cache && cache.fetchDate === todayStr && cache.matches && cache.matches.length > 0) {
+      window.hasLoadedOnce = true;
+      S.matches = cache.matches.filter(function(m) {
+          return m.matchDate === getEstDateStrFromDate(TARGET_DATE);
+      });
+      if (S.matches.length > 0) {
+          buildEPG(S.matches);
+      }
+      loadAll(true, true); // background update for fresh streams/stats
+  } else {
+      loadAll(window.hasLoadedOnce, true);
+  }
 
   // Background auto-update every 60 seconds
   setInterval(function() {
       if (window.hasLoadedOnce) {
-          loadAll(true);
+          loadAll(true, false);
       }
   }, 60000);
 })();
