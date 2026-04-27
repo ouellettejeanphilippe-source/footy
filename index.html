@@ -632,7 +632,7 @@ body.theme-metallic .ic {
 
 
       <button class="btn o" onclick="installTampermonkey()" aria-label="Installer le script Tampermonkey" title="Installer le script Multiview Cleaner">🧩 Script</button>
-      <button class="btn g" id="relBtn" onclick="loadAll()" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
+      <button class="btn g" id="relBtn" onclick="loadAll(window.hasLoadedOnce)" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
       <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres">⚙️ Paramètres</button>
   </div>
 </div>
@@ -662,7 +662,7 @@ body.theme-metallic .ic {
     <div class="err-msg" id="errmsg"></div>
     <div class="err-code" id="errcode" style="display:none"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">
-      <button class="btn g" onclick="loadAll()">↺ Réessayer</button>
+      <button class="btn g" onclick="loadAll(window.hasLoadedOnce)">↺ Réessayer</button>
       </div>
   </div>
 
@@ -9141,7 +9141,7 @@ function saveApiKey() {
     localStorage.removeItem('apiSportsKey');
     showToast('Clé API supprimée');
   }
-  loadAll(); // Reload to fetch api-sports
+  loadAll(false); // Reload to fetch api-sports
 }
 
 initPrefs(); // Run once on load
@@ -9681,7 +9681,7 @@ function stepOk(n) {
   }
 }
 
-function loadAll(){
+function loadAll(isBackground){
 const hdrObserver = new ResizeObserver(() => {
   const hdr = document.getElementById('main-hdr');
   if (hdr) {
@@ -9691,27 +9691,32 @@ const hdrObserver = new ResizeObserver(() => {
 const mainHdrElement = document.getElementById('main-hdr');
 if (mainHdrElement) hdrObserver.observe(mainHdrElement);
 
-  window.initialScrollDone = false;
-  S.log=[];S.raw='';S.matches=[];S.proxy='';
+  if (!isBackground) window.initialScrollDone = false;
+  if (typeof window.hasLoadedOnce === 'undefined') window.hasLoadedOnce = false;
+  if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
   setupMultivisionUI();
 
   var btn=document.getElementById('relBtn');btn.disabled=true;
   document.getElementById('errbox').classList.remove('show');
-  document.getElementById('ov').style.display='flex';
-  [1,2,3].forEach(function(n){
-    var el=document.getElementById('s'+n);if(!el)return;
-    el.style.opacity=n===1?'1':'.4';el.style.color='';
-    var ic=el.querySelector('.sic');ic.classList.remove('ok');
-    ic.innerHTML='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
-  });
-  document.getElementById('ovmsg').textContent='Connexion au Guide télé (API)...';
-  document.getElementById('s1').querySelector('span').textContent = 'Téléchargement Guide télé Officiel';
-  document.getElementById('s2').querySelector('span').textContent = 'Recherche de streams...';
-  document.getElementById('s3').querySelector('span').textContent = 'Fusion et Affichage';
+  if (!isBackground) {
+      document.getElementById('ov').style.display='flex';
+      [1,2,3].forEach(function(n){
+        var el=document.getElementById('s'+n);if(!el)return;
+        el.style.opacity=n===1?'1':'.4';el.style.color='';
+        var ic=el.querySelector('.sic');ic.classList.remove('ok');
+        ic.innerHTML='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+      });
+      document.getElementById('ovmsg').textContent='Connexion au Guide télé (API)...';
+      document.getElementById('s1').querySelector('span').textContent = 'Téléchargement Guide télé Officiel';
+      document.getElementById('s2').querySelector('span').textContent = 'Recherche de streams...';
+      document.getElementById('s3').querySelector('span').textContent = 'Fusion et Affichage';
+  } else {
+      showToast('Actualisation des matchs en arrière-plan...');
+  }
 
   getApiFirstMatches(TARGET_DATE).then(function(apiMatches) {
-      stepOk(1);
-      document.getElementById('ovmsg').textContent='Recherche de streams...';
+      if (!isBackground) { stepOk(1);  }
+
 
       // Async scrape sites
       return Promise.allSettled([
@@ -9723,8 +9728,8 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
           fetchPage(ONHOCKEY_URL),
           fetchPage(MLBBITE_PLUS_URL)
       ]).then(function(results) {
-          stepOk(2);
-          document.getElementById('ovmsg').textContent='Fusion des données...';
+          if (!isBackground) { stepOk(2);  }
+
 
           // Check for failures and notify user
           var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL];
@@ -9776,7 +9781,7 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
           S.matches = finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
           });
-          document.getElementById('ov').style.display='none';
+          if (!isBackground) { document.getElementById('ov').style.display='none'; }
 
           // Populate sports filter
           var sports = {};
@@ -9812,13 +9817,13 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
           showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
       });
   }).catch(function(err){
-      document.getElementById('ov').style.display='none';
+      if (!isBackground) { document.getElementById('ov').style.display='none'; }
       var lines=(err.message||'Erreur').split('\n');
       document.getElementById('errmsg').textContent=lines[0];
       var ec=document.getElementById('errcode');
       if(lines.length>1){ec.textContent=lines.slice(1).join('\n');ec.style.display='block';}
       document.getElementById('errbox').classList.add('show');
-  }).finally(function(){btn.disabled=false;});
+  }).finally(function(){btn.disabled=false; window.hasLoadedOnce=true;});
 }
 
 
@@ -9834,11 +9839,20 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+
 (function(){
   var n=new Date();
 
-  loadAll();
+  loadAll(window.hasLoadedOnce);
+
+  // Background auto-update every 60 seconds
+  setInterval(function() {
+      if (window.hasLoadedOnce) {
+          loadAll(true);
+      }
+  }, 60000);
 })();
+
 
 
 
