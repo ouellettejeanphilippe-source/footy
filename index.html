@@ -649,11 +649,11 @@ body.theme-metallic .ic {
 <div class="epg" id="epg">
   <div class="ov" id="ov">
     <div class="spinner"></div>
-    <div class="ov-msg" id="ovmsg">Connexion à footybite.to…</div>
+    <div class="ov-msg" id="ovmsg">Connexion au Guide télé (API)...</div>
     <div style="display:flex;flex-direction:column;gap:5px">
-      <div class="step" id="s1"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Fetch footybite.to</span></div>
-      <div class="step" style="opacity:.4" id="s2"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Parsing .div-child-box + .txt-team</span></div>
-      <div class="step" style="opacity:.4" id="s3"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Construction du guide TV</span></div>
+      <div class="step" id="s1"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Téléchargement Guide télé Officiel</span></div>
+      <div class="step" style="opacity:.4" id="s2"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Recherche de streams...</span></div>
+      <div class="step" style="opacity:.4" id="s3"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Fusion et Affichage</span></div>
     </div>
   </div>
 
@@ -1023,8 +1023,8 @@ var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
 var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
 var PROXIES = [
-  function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); },
   function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); },
+  function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); },
   function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); },
 ];
 
@@ -4581,7 +4581,8 @@ function fetchPage(url){
           headers['X-Requested-With'] = 'XMLHttpRequest';
       }
 
-      fetch(pu,{signal:AbortSignal.timeout(12000),headers:headers})
+      // Use a slightly shorter timeout for each proxy try so we don't hang too long on bad proxies
+      fetch(pu,{signal:AbortSignal.timeout(8000),headers:headers})
         .then(function(r){
           if(!r.ok){errs.push('HTTP '+r.status+' p'+i);next();return null;}
           return r.text();
@@ -4589,6 +4590,14 @@ function fetchPage(url){
         .then(function(t){
           if(t===null) return;
           if(!t||t.length<200){errs.push('Vide p'+i+' ('+t.length+'c)');next();return;}
+
+          // API AllOrigins returns a 522/520 as text sometimes but with a 200/502 status, catch it
+          if(t.indexOf('Oops... Request Timeout') >= 0 || t.indexOf('500 Internal Server Error') >= 0 || t.indexOf('502 Bad Gateway') >= 0 || t.indexOf('522 Connection timed out') >= 0) {
+              errs.push('Proxy Error Content p'+i);
+              next();
+              return;
+          }
+
           lg('OK proxy '+i,'len='+t.length);
           S.proxy='proxy '+i;
           resolve(t);
