@@ -4309,7 +4309,7 @@ function parseStreameast(html){
           durationMinutes: getLeagueDuration(l),
           status: 'upcoming', // Streameast doesn't give clear live status in the data attrs directly, rely on API fallback or default to upcoming
           streamLinks: streamLinks,
-          streamsLoaded: true,
+          streamsLoaded: false,
           matchUrl: STREAMEAST_URL,
           source: 'streameast'
       });
@@ -4459,7 +4459,7 @@ function parseOnHockey(html) {
                       durationMinutes: getLeagueDuration('hockey'),
                       status: 'upcoming',
                       streamLinks: streamLinksArr,
-                      streamsLoaded: true,
+                      streamsLoaded: false,
                       matchUrl: ONHOCKEY_URL,
                       source: 'onhockey',
                       matchDate: getEstDateStrFromDate(TARGET_DATE)
@@ -4542,7 +4542,7 @@ function parseBuffstreams(html){
               status: status,
               score: null,
               streamLinks: streamLinks,
-              streamsLoaded: true,
+              streamsLoaded: false,
               matchUrl: BUFFSTREAMS_URL,
               source: 'buffstreams'
           });
@@ -4642,13 +4642,7 @@ function parseNflbite(html) {
         var teamName = match[2].replace(/-/g, " ").trim();
         var logo = match[3];
 
-        var streamLinks = [{
-            name: "NFLBite - Flux",
-            quality: "HD",
-            lang: "MULTI",
-            url: url.indexOf("http") === 0 ? url : "https://nflbite.to" + url,
-            icon: "🏈"
-        }];
+        var streamLinks = [];
 
         matches.push({
             id: "nflbite_" + i,
@@ -4660,7 +4654,7 @@ function parseNflbite(html) {
             startTime: "00:00",
             matchUrl: url.indexOf("http") === 0 ? url : "https://nflbite.to" + url,
             streamLinks: streamLinks,
-            streamsLoaded: true,
+            streamsLoaded: false,
             league: "NFL",
             source: "nflbite"
         });
@@ -4724,13 +4718,7 @@ function parseMlbbite(html) {
                 }
             }
 
-            var streamLinks = [{
-                name: "MLBBite - Flux",
-                quality: "HD",
-                lang: "MULTI",
-                url: matchUrl,
-                icon: "⚾"
-            }];
+            var streamLinks = [];
 
             matches.push({
                 id: "mlbbite_" + i,
@@ -4743,7 +4731,7 @@ function parseMlbbite(html) {
                 startTime: startTime,
                 matchUrl: matchUrl,
                 streamLinks: streamLinks,
-                streamsLoaded: true,
+                streamsLoaded: false,
                 league: "MLB",
                 source: "mlbbite"
             });
