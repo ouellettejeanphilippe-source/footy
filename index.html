@@ -623,7 +623,7 @@ body.theme-metallic .ic {
       <button class="btn" id="filter-live" onclick="applyFilter('live')" style="border-color:var(--accent);color:var(--accent)"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>EN DIRECT</button>
       <button class="btn" id="filter-fav" onclick="applyFilter('fav')">FAVORIS</button>
 
-      <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVISION <span id="mv-count" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
+      <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVISION</button>
   </div>
 
   <div class="sp"></div>
@@ -1052,6 +1052,20 @@ function lgColor(n){
 function lgFlag(n){
   var l=(n||'').toLowerCase();
   for(var k in FLAGS){ if(l.indexOf(k)>=0) return FLAGS[k]; }
+  if(l.indexOf('mlb') >= 0 || l.indexOf('baseball') >= 0) return '⚾';
+  if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0) return '🏈';
+  if(l.indexOf('nba') >= 0 || l.indexOf('basketball') >= 0) return '🏀';
+  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0 || l.indexOf('pwhl') >= 0 || l.indexOf('qmjhl') >= 0) return '🏒';
+  if(l.indexOf('f1') >= 0 || l.indexOf('formula 1') >= 0 || l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0) return '🏎️';
+  if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0 || l.indexOf('ufc') >= 0 || l.indexOf('mma') >= 0 || l.indexOf('boxing') >= 0) return '🥊';
+  if(l.indexOf('tennis') >= 0) return '🎾';
+  if(l.indexOf('rugby') >= 0) return '🏉';
+  if(l.indexOf('golf') >= 0) return '⛳';
+  if(l.indexOf('cricket') >= 0) return '🏏';
+  if(l.indexOf('volleyball') >= 0) return '🏐';
+  if(l.indexOf('darts') >= 0) return '🎯';
+  if(l.indexOf('snooker') >= 0) return '🎱';
+  if(l.indexOf('cycling') >= 0 || l.indexOf('tour de france') >= 0) return '🚴';
   return '⚽';
 }
 
@@ -7451,7 +7465,7 @@ function showFluxSelector(idx, mid, event) {
             btn.onmouseenter = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.1)'; };
             btn.onmouseleave = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.05)'; };
 
-            var thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:16px;">⚽</div>';
+            var thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:16px;">' + (sm.flag || '⚽') + '</div>';
             if(sm.homeLogo) {
                 thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:2px;flex-shrink:0;">'
                   +'<img src="'+esc(sm.homeLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\\\'none\\\'">'
@@ -7990,11 +8004,6 @@ function updateMultivisionLayout() {
     if(!grid) return;
 
     var count = mvFlux.length;
-    var cBtn = document.getElementById('mv-count');
-    if(cBtn) {
-        cBtn.textContent = count;
-        cBtn.style.display = count > 0 ? 'inline-block' : 'none';
-    }
 
     // Assign internal IDs to streams for tracking DOM elements
     mvFlux.forEach(function(s, idx) {
