@@ -2,7 +2,7 @@
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
-## En cours
+## Fait
 - Audit et création des fichiers de suivi et de règles (en phase de finalisation).
 
 ## Blocages
@@ -26,3 +26,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Problèmes connus** :
   - Le code JS/HTML/CSS est fortement entremêlé dans `index.html`, rendant le suivi des fonctions difficile.
   - La racine du projet est extrêmement polluée par des scripts de développement/test non nettoyés.
+
+### 29 April 2026 - Mise à jour des icônes de sport et UI du bouton Multivision
+- **Fichiers touchés** : `index.html`
+- **Résumé** : Modification de `lgFlag()` pour utiliser des icônes spécifiques aux sports (⚾, 🏀, 🏈, etc.) à la place du ⚽ générique. Remplacement de l'icône ⚽ en dur par l'icône de sport adéquate dans la liste Multivision. Suppression du compteur du nombre de flux actifs sur le bouton Multivision pour l'alléger.
