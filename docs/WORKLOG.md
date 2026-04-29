@@ -15,6 +15,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 
+### [Date Courante] — Amélioration du Game Mode : Scores Live et Carrousel de stats
+- **Fichiers touchés** : `index.html`
+- **Résumé** : Exclusion définitive de la catégorie "Autres Flux" de l'onglet Scores Live. Ajout d'une section "Matchs Épinglés" persistante en haut de l'onglet Stats du Match. Transformation du conteneur de statistiques en un carrousel à défilement horizontal (swipe) permettant d'afficher et de comparer simultanément les cartes de statistiques complètes de plusieurs matchs épinglés.
+- **Problèmes résolus** : Le spam visuel de "Autres Flux" est enlevé. L'accès aux stats des autres matchs sans perdre de vue le match principal est maintenant possible grâce au système de carrousel.
+
+
 ### 29 April 2026 — Nettoyage de la dette technique et mise à jour du workflow
 - **Fichiers touchés** : `AGENTS.md`, `docs/WORKLOG.md` (et suppression de nombreux scripts de test)
 - **Résumé** : Suppression de tous les scripts de patchs jetables, des fichiers `.txt`, `.log`, et `.png` à la racine. Ajout d'une règle stricte dans `AGENTS.md` imposant le nettoyage de tout fichier de test avant chaque fin de tâche (étape 5 du Workflow).

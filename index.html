@@ -591,6 +591,9 @@ body.theme-metallic .ic {
 #gstats-content::-webkit-scrollbar-track { background: transparent; }
 #gstats-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
+#mv-stats-carousel::-webkit-scrollbar {
+    display: none;
+}
 </style>
 
 
@@ -603,6 +606,9 @@ body.theme-metallic .ic {
   .neon-glow-effect .match-card {
       box-shadow: 0 0 15px var(--mc, var(--accent)) !important;
   }
+#mv-stats-carousel::-webkit-scrollbar {
+    display: none;
+}
 </style>
 
 
@@ -6963,6 +6969,7 @@ var gmCurrentTab = 'stats'; // 'stats' | 'scores'
 var gmPinnedMatches = JSON.parse(localStorage.getItem('gmPinnedMatches') || '[]');
 var globalStatsInterval = null;
 var currentGlobalStatsMatchId = null;
+var activeMvStatsCards = [];
 
 function toggleMvGameMode() {
     mvGameModeActive = !mvGameModeActive;
@@ -7068,7 +7075,7 @@ function updateGmScoresTab() {
     if (!content) return;
 
     var liveMatches = S.matches.filter(function(m) {
-        return m.status === 'live' || gmPinnedMatches.indexOf(String(m.id)) > -1;
+        return (m.status === 'live' || gmPinnedMatches.indexOf(String(m.id)) > -1) && m.league !== 'Autres Flux';
     });
 
     if (liveMatches.length === 0) {
@@ -7131,106 +7138,188 @@ function updateGmCurrentTab() {
     }
 }
 
+function closePinnedStats(matchId) {
+    var idx = activeMvStatsCards.indexOf(String(matchId));
+    if (idx > -1) {
+        activeMvStatsCards.splice(idx, 1);
+        updateMvGameModeStats();
+    }
+}
+
+function openPinnedStats(matchId) {
+    if (!mvGameModeActive) return;
+    var idx = activeMvStatsCards.indexOf(String(matchId));
+    if (idx === -1) {
+        activeMvStatsCards.push(String(matchId));
+    }
+    updateMvGameModeStats();
+    setTimeout(function() {
+        var container = document.getElementById('mv-stats-carousel');
+        if (container) {
+            container.scrollLeft = container.scrollWidth;
+        }
+    }, 100);
+}
+
 function updateMvGameModeStats() {
     if (!mvGameModeActive) return;
 
     var content = document.getElementById('mv-stats-content');
     if (!content) return;
 
-    if (activeMvIdx === null || activeMvIdx >= mvFlux.length) {
-        content.innerHTML = '<div style="padding:20px; text-align:center;">Sélectionnez un match (cliquez sur un écran) pour voir les statistiques.</div>';
+    var pinnedHtml = '';
+    if (gmPinnedMatches.length > 0) {
+        var pinnedList = S.matches.filter(function(m) { return gmPinnedMatches.indexOf(String(m.id)) > -1; });
+        if (pinnedList.length > 0) {
+            pinnedHtml += '<div style="margin-bottom: 15px;">';
+            pinnedHtml += '<h4 style="color:#fff; margin-bottom:10px; font-size:14px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">Matchs Épinglés</h4>';
+            pinnedHtml += '<div style="display:flex; flex-direction:column; gap:8px;">';
+            pinnedList.forEach(function(pm) {
+                var scoreStr = pm.score ? (pm.score[0] + ' - ' + pm.score[1]) : 'À venir';
+                var timeStr = (pm.status === 'live' && pm.minute) ? pm.minute + "'" : pm.startTime;
+                var statusColor = pm.status === 'live' ? 'var(--accent)' : 'var(--muted)';
+                pinnedHtml += '<div onclick="openPinnedStats(\'' + pm.id + '\')" style="background:rgba(255,255,255,0.05); border-radius:8px; padding:10px; cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">';
+                pinnedHtml += '<div style="font-size:11px; color:var(--muted); margin-bottom:4px;">' + pm.flag + ' ' + esc(pm.league) + '</div>';
+                pinnedHtml += '<div style="display:flex; justify-content:space-between; align-items:center;">';
+                pinnedHtml += '<div style="font-size:13px; font-weight:bold; color:#fff;">' + esc(pm.homeTeam) + ' - ' + esc(pm.awayTeam) + '</div>';
+                pinnedHtml += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + ';">' + scoreStr + '</div>';
+                pinnedHtml += '</div>';
+                pinnedHtml += '<div style="font-size:11px; color:' + statusColor + '; margin-top:4px; text-align:right;">' + timeStr + '</div>';
+                pinnedHtml += '</div>';
+            });
+            pinnedHtml += '</div></div>';
+        }
+    }
+
+    var matchCardsToFetch = [];
+    var mainMatchId = null;
+
+    if (activeMvIdx !== null && activeMvIdx < mvFlux.length) {
+        var activeFlux = mvFlux[activeMvIdx];
+        var mainM = S.matches.find(function(x) { return String(x.id) === String(activeFlux.mid); });
+        if (mainM) {
+            mainMatchId = mainM.id;
+            matchCardsToFetch.push(mainM);
+        }
+    }
+
+    activeMvStatsCards.forEach(function(cid) {
+        if (String(cid) !== String(mainMatchId)) {
+            var cardM = S.matches.find(function(x) { return String(x.id) === String(cid); });
+            if (cardM) {
+                matchCardsToFetch.push(cardM);
+            }
+        }
+    });
+
+    if (matchCardsToFetch.length === 0) {
+        content.innerHTML = pinnedHtml + '<div style="padding:20px; text-align:center;">Sélectionnez un match (cliquez sur un écran) pour voir les statistiques.</div>';
         return;
     }
 
-    var activeFlux = mvFlux[activeMvIdx];
-    var m = S.matches.find(function(x) { return String(x.id) === String(activeFlux.mid); });
+    var carouselHtml = '<div id="mv-stats-carousel" style="display:flex; overflow-x:auto; scroll-snap-type: x mandatory; gap:15px; padding-bottom:10px; scrollbar-width: none;">';
 
-    if (!m) {
-        content.innerHTML = '<div style="padding:20px; text-align:center;">Match non trouvé ou statistiques indisponibles pour ce flux externe.</div>';
-        return;
-    }
+    matchCardsToFetch.forEach(function(m) {
+        var isMain = String(m.id) === String(mainMatchId);
+        carouselHtml += '<div id="mv-stat-card-' + m.id + '" style="min-width: 100%; scroll-snap-align: start; flex: 0 0 100%; position:relative;">';
 
-    content.innerHTML = '<div style="display:flex; flex-direction:column; gap:10px;">' +
-        '<div id="mv-gm-header" style="font-size:16px; font-weight:bold; color:#fff; text-align:center;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>' +
-        (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + m.score[0] + ' - ' + m.score[1] + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>') +
-        '<div style="font-size:12px; color:var(--muted); text-align:center;">' + m.flag + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "\'" : '') + '</div>' +
-        '</div>';
-
-    fetchGameStats(m.id).then(function(res) {
-        if (!mvGameModeActive || !res.data) return;
-
-        var html = '';
-        var mHomeId = null, mAwayId = null;
-        if (res.data && res.data.header && res.data.header.competitions && res.data.header.competitions[0] && res.data.header.competitions[0].competitors) {
-            var c = res.data.header.competitions[0].competitors;
-            var hC = c.find(function(x) { return x.homeAway === 'home'; });
-            var aC = c.find(function(x) { return x.homeAway === 'away'; });
-            if(hC) mHomeId = hC.id;
-            if(aC) mAwayId = aC.id;
+        if (!isMain) {
+            carouselHtml += '<button onclick="closePinnedStats(\'' + m.id + '\')" style="position:absolute; top:0; right:0; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:24px; height:24px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10;" title="Fermer">✕</button>';
         }
 
-        var hRankFormStr = (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '');
-        var aRankFormStr = (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '');
+        carouselHtml += '<div id="mv-gm-header-' + m.id + '" style="font-size:16px; font-weight:bold; color:#fff; text-align:center; padding: 0 25px;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
+        carouselHtml += (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + m.score[0] + ' - ' + m.score[1] + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>');
+        carouselHtml += '<div style="font-size:12px; color:var(--muted); text-align:center;">' + m.flag + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "\'" : '') + '</div>';
 
-        var hdr = document.getElementById('mv-gm-header');
-        if (hdr && (hRankFormStr || aRankFormStr)) {
-             hdr.innerHTML = '<div style="display:flex; justify-content:space-between; font-size:11px; color:rgba(255,255,255,0.5); font-weight:normal;">' +
-                             '<span>' + hRankFormStr + '</span><span>' + aRankFormStr + '</span></div>' +
-                             '<div>' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
-        }
+        carouselHtml += '<div id="mv-stat-body-' + m.id + '"><div style="text-align:center; margin-top:20px; color:var(--muted);">Chargement des stats...</div></div>';
+        carouselHtml += '</div>';
+    });
 
-        if (res.scorers && res.scorers.length > 0) {
-            html += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
-            html += '<div style="height:15px;"></div>';
-        }
+    carouselHtml += '</div>';
+    content.innerHTML = pinnedHtml + carouselHtml;
 
-        var stats = [];
-        if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
-            var ts = res.data.boxscore.teams;
-            if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
-                var statNames = {};
-                ts[0].statistics.forEach(s => statNames[s.name] = {h: s.displayValue});
-                ts[1].statistics.forEach(s => {
-                    if(statNames[s.name]) statNames[s.name].a = s.displayValue;
-                });
-                for(var k in statNames) {
-                    if(statNames[k].h && statNames[k].a) {
-                        stats.push({label: k, h: statNames[k].h, a: statNames[k].a});
+    // Fetch stats for all cards
+    matchCardsToFetch.forEach(function(m) {
+        fetchGameStats(m.id).then(function(res) {
+            if (!mvGameModeActive || !res.data) return;
+
+            var bodyEl = document.getElementById('mv-stat-body-' + m.id);
+            if (!bodyEl) return;
+
+            var html = '';
+            var mHomeId = null, mAwayId = null;
+            if (res.data && res.data.header && res.data.header.competitions && res.data.header.competitions[0] && res.data.header.competitions[0].competitors) {
+                var c = res.data.header.competitions[0].competitors;
+                var hC = c.find(function(x) { return x.homeAway === 'home'; });
+                var aC = c.find(function(x) { return x.homeAway === 'away'; });
+                if(hC) mHomeId = hC.id;
+                if(aC) mAwayId = aC.id;
+            }
+
+            var hRankFormStr = (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '');
+            var aRankFormStr = (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '');
+
+            var hdr = document.getElementById('mv-gm-header-' + m.id);
+            if (hdr && (hRankFormStr || aRankFormStr)) {
+                 hdr.innerHTML = '<div style="display:flex; justify-content:space-between; font-size:11px; color:rgba(255,255,255,0.5); font-weight:normal;">' +
+                                 '<span>' + hRankFormStr + '</span><span>' + aRankFormStr + '</span></div>' +
+                                 '<div>' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
+            }
+
+            if (res.scorers && res.scorers.length > 0) {
+                html += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
+                html += '<div style="height:15px;"></div>';
+            }
+
+            var stats = [];
+            if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
+                var ts = res.data.boxscore.teams;
+                if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
+                    var statNames = {};
+                    ts[0].statistics.forEach(s => statNames[s.name] = {h: s.displayValue});
+                    ts[1].statistics.forEach(s => {
+                        if(statNames[s.name]) statNames[s.name].a = s.displayValue;
+                    });
+                    for(var k in statNames) {
+                        if(statNames[k].h && statNames[k].a) {
+                            stats.push({label: k, h: statNames[k].h, a: statNames[k].a});
+                        }
                     }
                 }
+            } else if (res.source === 'api-sports' && res.data.statistics) {
+                var sData = res.data.statistics;
+                if(sData.length === 2) {
+                    var sHome = sData[0].statistics;
+                    var sAway = sData[1].statistics;
+                    sHome.forEach(sh => {
+                        var sa = sAway.find(x => x.type === sh.type);
+                        if(sa && sh.value !== null && sa.value !== null) {
+                            stats.push({label: sh.type, h: sh.value, a: sa.value});
+                        }
+                    });
+                }
             }
-        } else if (res.source === 'api-sports' && res.data.statistics) {
-            var sData = res.data.statistics;
-            if(sData.length === 2) {
-                var sHome = sData[0].statistics;
-                var sAway = sData[1].statistics;
-                sHome.forEach(sh => {
-                    var sa = sAway.find(x => x.type === sh.type);
-                    if(sa && sh.value !== null && sa.value !== null) {
-                        stats.push({label: sh.type, h: sh.value, a: sa.value});
-                    }
+
+            if(stats.length > 0) {
+                html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques</h4>';
+                html += '<div style="display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,0.02);padding:10px;border-radius:12px;">';
+                stats.forEach(function(st) {
+                    var label = formatStatLabel(st.label);
+                    html += '<div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;">';
+                    html += '<span style="font-weight:bold;width:30px;text-align:right;">'+st.h+'</span>';
+                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+label+'</span>';
+                    html += '<span style="font-weight:bold;width:30px;text-align:left;">'+st.a+'</span>';
+                    html += '</div>';
                 });
-            }
-        }
-
-        if(stats.length > 0) {
-            html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques</h4>';
-            html += '<div style="display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,0.02);padding:10px;border-radius:12px;">';
-            stats.forEach(function(st) {
-                var label = formatStatLabel(st.label);
-                html += '<div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;">';
-                html += '<span style="font-weight:bold;width:30px;text-align:right;">'+st.h+'</span>';
-                html += '<span style="color:var(--muted);flex:1;text-align:center;">'+label+'</span>';
-                html += '<span style="font-weight:bold;width:30px;text-align:left;">'+st.a+'</span>';
                 html += '</div>';
-            });
-            html += '</div>';
-        }
+            }
 
-        if (html) {
-            content.innerHTML += '<div style="margin-top:15px;">' + html + '</div>';
-        }
-    }).catch(function() {});
+            bodyEl.innerHTML = html ? '<div style="margin-top:15px;">' + html + '</div>' : '<div style="margin-top:15px; color:var(--muted); text-align:center;">Aucune statistique détaillée disponible.</div>';
+        }).catch(function() {
+            var bodyEl = document.getElementById('mv-stat-body-' + m.id);
+            if (bodyEl) bodyEl.innerHTML = '<div style="margin-top:15px; color:var(--muted); text-align:center;">Erreur lors du chargement des statistiques.</div>';
+        });
+    });
 }
 
 var mvFlux = [];
