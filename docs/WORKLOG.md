@@ -3,6 +3,11 @@
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
 ## Fait
+
+### 29 April 2026 — Fix du chargement asynchrone des flux pour MLB et NFL
+- **Fichiers touchés** : `index.html`
+- **Résumé** : Correction de `parseMlbbite` et `parseNflbite` pour permettre au scraping asynchrone des sous-pages de s'exécuter correctement. Ces parseurs initialisaient `streamsLoaded: true` dès la page d'accueil avec un lien statique, bloquant ainsi l'extraction des véritables liens de flux dans la sous-page du match.
+- **Problèmes résolus** : Le clic sur un match MLB (ou NFL) recherche et charge désormais correctement les vrais liens (ex. StreamEast, Buffstreams, etc.) plutôt que d'afficher un seul lien statique pointant vers la sous-page originelle.
 - Audit et création des fichiers de suivi et de règles (en phase de finalisation).
 
 ## Blocages
@@ -14,6 +19,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+
+### 29 April 2026 — Fix du chargement asynchrone des flux pour MLB et NFL
+- **Fichiers touchés** : `index.html`
+- **Résumé** : Correction de `parseMlbbite` et `parseNflbite` pour permettre au scraping asynchrone des sous-pages de s'exécuter correctement. Ces parseurs initialisaient `streamsLoaded: true` dès la page d'accueil avec un lien statique, bloquant ainsi l'extraction des véritables liens de flux dans la sous-page du match.
+- **Problèmes résolus** : Le clic sur un match MLB (ou NFL) recherche et charge désormais correctement les vrais liens (ex. StreamEast, Buffstreams, etc.) plutôt que d'afficher un seul lien statique pointant vers la sous-page originelle.
 
 ### 30 April 2026 — Fix parsing logic for mlbbite, nflbite, streameast, onhockey, and buffstreams
 - **Fichiers touchés** : `index.html`
