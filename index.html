@@ -9595,18 +9595,21 @@ function getApiFirstMatches(targetDate) {
 
   return Promise.all(promises).then(function(){
     var filtered = filterBuggyMatches(baseMatches);
-    if (needsFullFetch) {
-        try {
-            var cacheData = filtered.map(function(m) {
-                return Object.assign({}, m, { streamLinks: [], tv: [] });
-            });
-            localStorage.setItem('api_calendar_cache', JSON.stringify({
-                fetchDate: todayStr,
-                matches: cacheData
-            }));
-        } catch (e) {
-            console.error('Failed to cache calendar:', e);
+    try {
+        var fetchDateToSave = todayStr;
+        if (!needsFullFetch && cache && cache.fetchDate) {
+            fetchDateToSave = cache.fetchDate; // Keep original fetch date if not full fetch
         }
+        var cacheData = filtered.map(function(m) {
+            // we no longer want to strip out streams if they exist so they aren't lost on refresh
+            return Object.assign({}, m);
+        });
+        localStorage.setItem('api_calendar_cache', JSON.stringify({
+            fetchDate: fetchDateToSave,
+            matches: cacheData
+        }));
+    } catch (e) {
+        console.error('Failed to cache calendar:', e);
     }
     return filtered;
   });
@@ -9970,7 +9973,7 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
 
   var btn=document.getElementById('relBtn');btn.disabled=true;
   document.getElementById('errbox').classList.remove('show');
-  if (!isBackground) {
+  if (!isBackground && !window.hasLoadedOnce) {
       document.getElementById('ov').style.display='flex';
       [1,2,3].forEach(function(n){
         var el=document.getElementById('s'+n);if(!el)return;
@@ -9984,6 +9987,8 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
       document.getElementById('s3').querySelector('span').textContent = 'Fusion et Affichage';
   } else {
       showToast('Actualisation des matchs en arrière-plan...');
+      // Ensure it is definitely hidden if we've already loaded once
+      document.getElementById('ov').style.display='none';
   }
 
   getApiFirstMatches(TARGET_DATE).then(function(apiMatches) {
@@ -9997,11 +10002,27 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
       if (skipScraping) {
           // Just merge with existing scrapedMatches and update API
           var finalMatches = mergeFluxToApi(apiMatches, window.lastScrapedMatches || [], true);
+
+          // Persist the updated scores/statuses back to cache even when skipping scraping
+          try {
+              var todayStr = getEspnDateStr(TARGET_DATE);
+              var cacheRaw = localStorage.getItem('api_calendar_cache');
+              var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
+              var fetchDateToSave = todayStr;
+              if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
+
+              localStorage.setItem('api_calendar_cache', JSON.stringify({
+                  fetchDate: fetchDateToSave,
+                  matches: finalMatches
+              }));
+          } catch(e) {}
+
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           S.matches = finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
           });
           updateLiveScores(S.matches); // New function to update scores smoothly
+          if (!isBackground) { document.getElementById('ov').style.display='none'; }
           return Promise.resolve();
       }
 
@@ -10064,7 +10085,24 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
           }
 
 
-                    var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
+          var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
+
+          // Persist the merged data (which now includes streams) back to localStorage
+          try {
+              var todayStr = getEspnDateStr(TARGET_DATE);
+              var cacheRaw = localStorage.getItem('api_calendar_cache');
+              var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
+              var fetchDateToSave = todayStr;
+              if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
+
+              localStorage.setItem('api_calendar_cache', JSON.stringify({
+                  fetchDate: fetchDateToSave,
+                  matches: finalMatches
+              }));
+          } catch(e) {
+              console.error('Failed to cache merged calendar:', e);
+          }
+
           window.lastScrapedMatches = scrapedMatches;
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           S.matches = finalMatches.filter(function(m) {
@@ -10112,7 +10150,11 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
       var ec=document.getElementById('errcode');
       if(lines.length>1){ec.textContent=lines.slice(1).join('\n');ec.style.display='block';}
       document.getElementById('errbox').classList.add('show');
-  }).finally(function(){btn.disabled=false; window.hasLoadedOnce=true;});
+  }).finally(function(){
+      btn.disabled=false;
+      window.hasLoadedOnce=true;
+      if (!isBackground) { document.getElementById('ov').style.display='none'; }
+  });
 }
 
 
