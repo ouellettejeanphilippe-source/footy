@@ -1023,9 +1023,9 @@ var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
 var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
 var PROXIES = [
-  function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); },
-  function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); },
-  function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); },
+  function(u){ return 'https://api.allorigins.win/get?url='+encodeURIComponent(u); },
+  function(u){ return 'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u); },
+  function(u){ return 'https://corsproxy.io/?'+encodeURIComponent(u); }
 ];
 
 /* ══ COULEURS ═══════════════════════════ */
@@ -4558,8 +4558,8 @@ function extractFootybiteLogos(doc) {
         var box = teamEl.closest('.row');
         if(!box) return;
         var img = box.querySelector('img.img-icone');
-        if(img && img.src && img.src.indexOf('http') === 0 && img.src.indexOf('default') < 0) {
-            cacheLogo(teamName, img.src);
+        if(img && img.getAttribute('src') && img.getAttribute('src').indexOf('http') === 0 && img.getAttribute('src').indexOf('default') < 0) {
+            cacheLogo(teamName, img.getAttribute('src'));
         }
     });
 }
@@ -4585,7 +4585,17 @@ function fetchPage(url){
       fetch(pu,{signal:AbortSignal.timeout(8000),headers:headers})
         .then(function(r){
           if(!r.ok){errs.push('HTTP '+r.status+' p'+i);next();return null;}
-          return r.text();
+          return r.text().then(t => {
+            if (pu.indexOf('allorigins.win/get') > -1) {
+                try {
+                    let j = JSON.parse(t);
+                    return j.contents;
+                } catch(e) {
+                    return t;
+                }
+            }
+            return t;
+          });
         })
         .then(function(t){
           if(t===null) return;
@@ -4910,12 +4920,7 @@ var ESPN_LEAGUES = {
   'mlb': 'baseball/mlb',
   'baseball': 'baseball/mlb',
   'f1': 'racing/f1',
-  'formula 1': 'racing/f1',
-  'boxe': 'boxing',
-  'boxing': 'boxing',
-  'lhjmq': 'hockey/qmjhl',
-  'qmjhl': 'hockey/qmjhl',
-  'pwhl': 'hockey/pwhl'
+  'formula 1': 'racing/f1'
 };
 
 function getEspnDateStr(d) {
@@ -5104,12 +5109,12 @@ function updateMatchDataFromApi(match, apiFixture, sport) {
 
 /* ══ LOGO CACHE ═══════════════════════════ */
 var STATIC_LOGOS_RAW = {
-  'boston fleet': "https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Boston_Fleet_logo.svg/1024px-Boston_Fleet_logo.svg.png",
-  'minnesota frost': "https://upload.wikimedia.org/wikipedia/en/thumb/1/13/Minnesota_Frost_logo.svg/1024px-Minnesota_Frost_logo.svg.png",
-  'montréal victoire': "https://upload.wikimedia.org/wikipedia/en/thumb/9/90/Montreal_Victoire_logo.svg/1024px-Montreal_Victoire_logo.svg.png",
-  'new york sirens': "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/New_York_Sirens_logo.svg/1024px-New_York_Sirens_logo.svg.png",
-  'ottawa charge': "https://upload.wikimedia.org/wikipedia/en/thumb/e/e6/Ottawa_Charge_logo.svg/1024px-Ottawa_Charge_logo.svg.png",
-  'toronto sceptres': "https://upload.wikimedia.org/wikipedia/en/thumb/1/14/Toronto_Sceptres_logo.svg/1024px-Toronto_Sceptres_logo.svg.png",
+  'boston fleet': "https://upload.wikimedia.org/wikipedia/en/2/27/Boston_Fleet_logo.svg",
+  'minnesota frost': "https://upload.wikimedia.org/wikipedia/en/5/5a/Minnesota_Frost_logo.svg",
+  'montréal victoire': "https://upload.wikimedia.org/wikipedia/en/c/cd/Montreal_Victoire_logo.svg",
+  'new york sirens': "https://upload.wikimedia.org/wikipedia/en/1/1a/New_York_Sirens_logo.svg",
+  'ottawa charge': "https://upload.wikimedia.org/wikipedia/en/a/ad/Ottawa_Charge_logo.svg",
+  'toronto sceptres': "https://upload.wikimedia.org/wikipedia/en/4/4b/Toronto_Sceptres_logo.svg",
   'acadie-bathurst titan': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/acadiebathursttitan.png",
   'baie-comeau drakkar': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/baiecomeaudrakkar.png",
   'blainville-boisbriand armada': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/blainvilleboisbriandarmada.png",
@@ -5128,12 +5133,12 @@ var STATIC_LOGOS_RAW = {
   'sherbrooke phoenix': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/sherbrookephoenix.png",
   'val-d\'or foreurs': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/valdorforeurs.png",
   'victoriaville tigres': "https://chl.ca/lhjmq/wp-content/uploads/sites/2/logos/victoriavilletigres.png",
-  'boston fleet': "https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Boston_Fleet_logo.svg/200px-Boston_Fleet_logo.svg.png",
-  'minnesota frost': "https://upload.wikimedia.org/wikipedia/en/thumb/5/5a/Minnesota_Frost_logo.svg/200px-Minnesota_Frost_logo.svg.png",
-  'montréal victoire': "https://upload.wikimedia.org/wikipedia/en/thumb/c/cd/Montreal_Victoire_logo.svg/200px-Montreal_Victoire_logo.svg.png",
-  'new york sirens': "https://upload.wikimedia.org/wikipedia/en/thumb/1/1a/New_York_Sirens_logo.svg/200px-New_York_Sirens_logo.svg.png",
-  'ottawa charge': "https://upload.wikimedia.org/wikipedia/en/thumb/a/ad/Ottawa_Charge_logo.svg/200px-Ottawa_Charge_logo.svg.png",
-  'toronto sceptres': "https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Toronto_Sceptres_logo.svg/200px-Toronto_Sceptres_logo.svg.png",
+  'boston fleet': "https://upload.wikimedia.org/wikipedia/en/2/27/Boston_Fleet_logo.svg",
+  'minnesota frost': "https://upload.wikimedia.org/wikipedia/en/5/5a/Minnesota_Frost_logo.svg",
+  'montréal victoire': "https://upload.wikimedia.org/wikipedia/en/c/cd/Montreal_Victoire_logo.svg",
+  'new york sirens': "https://upload.wikimedia.org/wikipedia/en/1/1a/New_York_Sirens_logo.svg",
+  'ottawa charge': "https://upload.wikimedia.org/wikipedia/en/a/ad/Ottawa_Charge_logo.svg",
+  'toronto sceptres': "https://upload.wikimedia.org/wikipedia/en/4/4b/Toronto_Sceptres_logo.svg",
 
 
 // premier league
