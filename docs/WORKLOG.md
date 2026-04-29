@@ -19,6 +19,10 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Fichiers touchés** : `index.html`
 - **Résumé** : Created dedicated parsers `parseMlbbite` and `parseNflbite`. Updated existing parsers `parseStreameast`, `parseOnHockey`, and `parseBuffstreams`. Replaced the direct `parseFootybite` calls in `loadAll` with the new specific parsers for those sites.
 - **Problèmes restants** : None for these parsers.
+### [Date Courante] — Amélioration du Game Mode : Scores Live et Carrousel de stats
+- **Fichiers touchés** : `index.html`
+- **Résumé** : Exclusion définitive de la catégorie "Autres Flux" de l'onglet Scores Live. Ajout d'une section "Matchs Épinglés" persistante en haut de l'onglet Stats du Match. Transformation du conteneur de statistiques en un carrousel à défilement horizontal (swipe) permettant d'afficher et de comparer simultanément les cartes de statistiques complètes de plusieurs matchs épinglés.
+- **Problèmes résolus** : Le spam visuel de "Autres Flux" est enlevé. L'accès aux stats des autres matchs sans perdre de vue le match principal est maintenant possible grâce au système de carrousel.
 
 
 ### 29 April 2026 — Nettoyage de la dette technique et mise à jour du workflow
