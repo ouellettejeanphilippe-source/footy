@@ -3,7 +3,7 @@
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
 ## En cours
-- Audit et création des fichiers de suivi et de règles (en phase de finalisation).
+- Rien.
 
 ## Blocages
 *(Aucun pour l'instant)*
@@ -14,6 +14,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+
+### 30 April 2026 — Fix parsing logic for mlbbite, nflbite, streameast, onhockey, and buffstreams
+- **Fichiers touchés** : `index.html`
+- **Résumé** : Created dedicated parsers `parseMlbbite` and `parseNflbite`. Updated existing parsers `parseStreameast`, `parseOnHockey`, and `parseBuffstreams`. Replaced the direct `parseFootybite` calls in `loadAll` with the new specific parsers for those sites.
+- **Problèmes restants** : None for these parsers.
+
 
 ### 29 April 2026 — Nettoyage de la dette technique et mise à jour du workflow
 - **Fichiers touchés** : `AGENTS.md`, `docs/WORKLOG.md` (et suppression de nombreux scripts de test)
