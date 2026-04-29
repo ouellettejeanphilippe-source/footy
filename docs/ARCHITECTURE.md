@@ -33,7 +33,7 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - **UI / Layout** : Fonctions d'affichage des menus (`toggleMenu`, `setupMultivisionUI`), gestion des onglets (Guide, Direct, Favoris).
 - **Multiview / Player** : Création dynamique d'iframes (`openFlux`, `addToMultivision`), gestion de la communication cross-origin via `postMessage`, gestion du focus (Stream audio actif).
 - **Data APIs** : `fetchGameStats()`, `fetchLeagueStandings()`. Polling sur ESPN.
-- **Scrapers** : Fonctions de parsing (`parseOnHockey`, `parseFootybite`, `parseSportsurge`, `parseBuffstreams`, etc.) pour injecter les flux externes dans la liste des matchs de l'API.
+- **Scrapers** : Fonctions de parsing (`parseOnHockey`, `parseFootybite`, `parseSportsurge`, `parseBuffstreams`, `parseMlbbite`, `parseNflbite`, `parseStreameast`, etc.) pour injecter les flux externes dans la liste des matchs de l'API.
 - **Normalisation** : `getOfficialTeamName()`, `formatLeagueName()`, `normName()`. Base de données de couleurs/logos hardcodée.
 - **Notes** : Dette technique majeure. Le fichier est extrêmement volumineux (>9000 lignes) et doit être découpé en différents fichiers (styles.css, app.js, config.js, scrapers.js).
 

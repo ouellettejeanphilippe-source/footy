@@ -4306,7 +4306,7 @@ function parseStreameast(html){
           homeLogo: logo1,
           awayLogo: logo2,
           startTime: startTime,
-              durationMinutes: getLeagueDuration(l),
+          durationMinutes: getLeagueDuration(l),
           status: 'upcoming', // Streameast doesn't give clear live status in the data attrs directly, rely on API fallback or default to upcoming
           streamLinks: streamLinks,
           streamsLoaded: true,
@@ -4434,33 +4434,14 @@ function parseOnHockey(html) {
                           name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux'),
                           url: streamUrl,
                           quality: 'HD',
-                          lang: 'MULTI'
+                          lang: 'MULTI',
+                          icon: '🏒'
                       });
-                  }
-
-                  // If no specific stream links were found, we could try falling back to the row's general links
-                  if (streamLinksArr.length === 0) {
-                      var allRowLinks = row.querySelectorAll('a[href]');
-                      if (allRowLinks.length > 0) {
-                          var firstHref = allRowLinks[0].getAttribute('href');
-                          if (firstHref) {
-                              var fallbackUrl = firstHref;
-                              if (fallbackUrl.indexOf('http') !== 0) {
-                                  fallbackUrl = 'https://onhockey.tv' + (fallbackUrl.charAt(0) === '/' ? '' : '/') + fallbackUrl;
-                              }
-                              streamLinksArr.push({
-                                  name: 'OnHockey Flux',
-                                  url: fallbackUrl,
-                                  quality: 'HD',
-                                  lang: 'MULTI'
-                              });
-                          }
-                      }
                   }
 
                   // Try to extract start time if available
                   var startTimeStr = '00:00';
-                  var hourEl = row.querySelector('.game_hour');
+                  var hourEl = row.querySelector('.game_hour') || tds[0];
                   if (hourEl) {
                        var timeText = tds[0].textContent.trim();
                        var timeParts = timeText.match(/(\d+):(\d+)/);
@@ -4477,7 +4458,7 @@ function parseOnHockey(html) {
                       startTime: startTimeStr,
                       durationMinutes: getLeagueDuration('hockey'),
                       status: 'upcoming',
-                      streamLinks: streamLinksArr.length > 0 ? streamLinksArr : [],
+                      streamLinks: streamLinksArr,
                       streamsLoaded: true,
                       matchUrl: ONHOCKEY_URL,
                       source: 'onhockey',
@@ -4543,26 +4524,30 @@ function parseBuffstreams(html){
               });
           }
 
-          // Use our standard naming
-          var l = category.toLowerCase().replace(/-/g, ' ');
+          // Generate a unique ID using the event ID if available
+          var mId = evObj._id ? 'buff_' + evObj._id : 'buff_' + index;
 
+          var l = category.toLowerCase().replace(/-/g, ' ');
           matches.push({
-              id: 'bs_' + (index++),
+              id: mId,
               league: formatLeagueName(l),
               flag: lgFlag(l),
               color: lgColor(l),
               homeTeam: getOfficialTeamName(home),
               awayTeam: getOfficialTeamName(away),
+              homeLogo: evObj.teamA_logo ? (evObj.teamA_logo.indexOf('http') === 0 ? evObj.teamA_logo : 'https://buffstreams.com.co' + evObj.teamA_logo) : null,
+              awayLogo: evObj.teamB_logo ? (evObj.teamB_logo.indexOf('http') === 0 ? evObj.teamB_logo : 'https://buffstreams.com.co' + evObj.teamB_logo) : null,
               startTime: startTime,
               durationMinutes: getLeagueDuration(l),
               status: status,
+              score: null,
               streamLinks: streamLinks,
-              streamsLoaded: true, // Buffstreams has links directly in the page
+              streamsLoaded: true,
               matchUrl: BUFFSTREAMS_URL,
               source: 'buffstreams'
           });
-
-      } catch (e) {}
+          index++;
+      } catch(e) {}
   }
 
   lg('Buffstreams extraits', matches.length);
@@ -4647,6 +4632,127 @@ function fetchPage(url){
    .text-dark-light → titre de ligue (21x)
    .img-icone      → icône de ligue (20x)
 ═══════════════════════════════════════ */
+function parseNflbite(html) {
+    var matches = [];
+    var regex = /<a class="teams-logo" href="([^"]*\/teams\/([^"]*)-live-stream\/)">[\s\S]*?<img class="team-logo-img" src="([^"]*)"/g;
+    var match;
+    var i = 0;
+    while ((match = regex.exec(html)) !== null) {
+        var url = match[1];
+        var teamName = match[2].replace(/-/g, " ").trim();
+        var logo = match[3];
+
+        var streamLinks = [{
+            name: "NFLBite - Flux",
+            quality: "HD",
+            lang: "MULTI",
+            url: url.indexOf("http") === 0 ? url : "https://nflbite.to" + url,
+            icon: "🏈"
+        }];
+
+        matches.push({
+            id: "nflbite_" + i,
+            homeTeam: getOfficialTeamName(teamName),
+            awayTeam: getOfficialTeamName("TBA"),
+            homeLogo: logo,
+            status: "upcoming",
+            score: null,
+            startTime: "00:00",
+            matchUrl: url.indexOf("http") === 0 ? url : "https://nflbite.to" + url,
+            streamLinks: streamLinks,
+            streamsLoaded: true,
+            league: "NFL",
+            source: "nflbite"
+        });
+        i++;
+    }
+    lg("NFLBite extraits", matches.length);
+    return matches;
+}
+
+function parseMlbbite(html) {
+    var matches = [];
+    try {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var items = doc.querySelectorAll(".inline-match-item");
+        [].forEach.call(items, function(el, i) {
+            var href = el.getAttribute("href");
+            if (!href) return;
+
+            var teams = el.querySelectorAll(".team---item b");
+            if (teams.length < 2) return;
+            var home = teams[0].textContent.trim();
+            var away = teams[1].textContent.trim();
+
+            var matchUrl = href.indexOf("http") === 0 ? href : "https://mlbbite.plus" + href;
+
+            // Find logos
+            var imgs = el.querySelectorAll(".img img");
+            var homeLogo = imgs.length > 0 ? imgs[0].getAttribute("src") : null;
+            var awayLogo = imgs.length > 1 ? imgs[1].getAttribute("src") : null;
+
+            // Find status / score
+            var status = "upcoming";
+            var score = null;
+            var startTime = "00:00";
+
+            var resultWrap = el.querySelector(".result-wrap");
+            if (resultWrap) {
+                var liveEl = resultWrap.querySelector(".result-status-text.live");
+                var finishedEl = resultWrap.querySelector(".result-status-text");
+                if (liveEl && liveEl.textContent.trim().toLowerCase() === "live") {
+                    status = "live";
+                } else if (finishedEl && finishedEl.textContent.trim().toLowerCase() === "finished") {
+                    status = "finished";
+                }
+
+                var scoreEl = resultWrap.querySelector(".first-team-result");
+                if (scoreEl) {
+                    var s = scoreEl.textContent.trim().split("-");
+                    if (s.length === 2) {
+                        score = [parseInt(s[0]), parseInt(s[1])];
+                    }
+                }
+
+                var dateEl = resultWrap.querySelector(".match-date");
+                if (dateEl && !scoreEl) {
+                    var rawTime = dateEl.textContent.trim();
+                    var timeM = rawTime.match(/^(\d{1,2}):(\d{2})$/);
+                    if (timeM) {
+                        startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
+                    }
+                }
+            }
+
+            var streamLinks = [{
+                name: "MLBBite - Flux",
+                quality: "HD",
+                lang: "MULTI",
+                url: matchUrl,
+                icon: "⚾"
+            }];
+
+            matches.push({
+                id: "mlbbite_" + i,
+                homeTeam: getOfficialTeamName(home),
+                awayTeam: getOfficialTeamName(away),
+                homeLogo: homeLogo,
+                awayLogo: awayLogo,
+                status: status,
+                score: score,
+                startTime: startTime,
+                matchUrl: matchUrl,
+                streamLinks: streamLinks,
+                streamsLoaded: true,
+                league: "MLB",
+                source: "mlbbite"
+            });
+        });
+    } catch (e) {}
+    lg("MLBBite extraits", matches.length);
+    return matches;
+}
+
 function parseFootybite(html){
   var doc=new DOMParser().parseFromString(html,'text/html');
   lg('Title',doc.title);
@@ -10158,8 +10264,8 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
               scrapedMatches = mergeMatches(scrapedMatches, fbMatches);
           }
           if(results[1].status === 'fulfilled' && results[1].value) {
-              var mlbMatches = parseFootybite(results[1].value);
-              scrapedMatches = mergeMatches(scrapedMatches, mlbMatches);
+              var nflMatches = parseNflbite(results[1].value);
+              scrapedMatches = mergeMatches(scrapedMatches, nflMatches);
           }
           if(results[2].status === 'fulfilled' && results[2].value) {
               var surgeMatches = parseSportsurge(results[2].value);
@@ -10178,7 +10284,7 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
               scrapedMatches = mergeMatches(scrapedMatches, ohMatches);
           }
           if(results[6].status === 'fulfilled' && results[6].value) {
-              var mlbbMatches = parseFootybite(results[6].value);
+              var mlbbMatches = parseMlbbite(results[6].value);
               scrapedMatches = mergeMatches(scrapedMatches, mlbbMatches);
           }
 
