@@ -9,12 +9,16 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 *(Aucun pour l'instant)*
 
 ## À faire (backlog)
-- **Nettoyage Dette** : Supprimer ou consolider les dizaines de scripts de patchs à la racine (`fix_favorites_rendering.js`, `check_custom_lg.py`, `fix_psg.py`, `test_sort.js`, `update_render.js`, etc.).
 - **Nettoyage Code** : Résoudre le doublon détecté pour la fonction `cacheLogo` (définie deux fois) dans `index.html`.
 - **Refactoring (Long terme)** : Découper le fichier `index.html` monolithique (>9000 lignes) en fichiers externes (`styles.css`, `app.js`, `scrapers.js`, `constants.json`).
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+
+### 29 April 2026 — Nettoyage de la dette technique et mise à jour du workflow
+- **Fichiers touchés** : `AGENTS.md`, `docs/WORKLOG.md` (et suppression de nombreux scripts de test)
+- **Résumé** : Suppression de tous les scripts de patchs jetables, des fichiers `.txt`, `.log`, et `.png` à la racine. Ajout d'une règle stricte dans `AGENTS.md` imposant le nettoyage de tout fichier de test avant chaque fin de tâche (étape 5 du Workflow).
+- **Problèmes restants** : Aucun (nettoyage complet de la racine).
 
 ### 25 Avril 2024 — Bootstrap initial du système de mémoire
 - **Fichiers créés** : `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`
