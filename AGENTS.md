@@ -8,10 +8,11 @@ Avant toute modification : lire `docs/ARCHITECTURE.md`, lire `docs/WORKLOG.md`, 
 2. Écrire l'intention dans `docs/WORKLOG.md` sous la section "## En cours".
 3. Faire le travail en manipulant avec parcimonie `index.html`.
 4. Mettre à jour `docs/ARCHITECTURE.md` si un fichier ou une fonction publique a changé (par exemple, si vous extrayez une fonction de `index.html` vers un nouveau fichier JS).
-5. Déplacer l'entrée du `docs/WORKLOG.md` vers "## Fait" avec date, fichiers touchés, résumé et problèmes restants.
+5. **Nettoyage (OBLIGATOIRE)** : Supprimer absolument TOUS les fichiers temporaires, de test, de log ou de debug que vous avez créés pendant la session de travail.
+6. Déplacer l'entrée du `docs/WORKLOG.md` vers "## Fait" avec date, fichiers touchés, résumé et problèmes restants.
 
 ## Anti-patterns interdits
-- **Patches et scripts jetables en cascade** : La racine du projet est remplie de scripts comme `fix_favorites_rendering.js`, `check_custom_lg.py`, `fix_psg.py`, `test_sort.js`, `update_render.js`, etc. Il est **interdit** de créer de nouveaux fichiers de patch isolés sans plan clair d'intégration ou de suppression. Les utilitaires doivent être placés dans un sous-dossier ou intégrés à la suite de tests.
+- **Patches et scripts jetables en cascade** : La création de scripts jetables (ex: `fix_*.py`, `test_*.js`, etc.) à la racine du projet est tolérée UNIQUEMENT pendant le processus de réflexion. **Vous devez impérativement et systématiquement supprimer TOUS les fichiers temporaires créés (scripts de test, images de debug, fichiers textes) avant de terminer votre tâche.** C'est un prérequis strict pour chaque commit.
 - **Suppression à l'aveugle** : Ne supprimez rien sans faire un grep complet. De nombreuses fonctions dépendent les unes des autres de manière implicite.
 - **Recréation d'une fonction existante** : `index.html` contient plus de 130 fonctions. Par exemple, il existe deux déclarations de `cacheLogo`. Vérifiez toujours si une fonction utilitaire (`getOfficialTeamName`, `normName`, `esc`, `pad`) n'existe pas déjà.
 - **Ajout de logique lourde dans `index.html`** : Le fichier fait plus de 9000 lignes. Toute nouvelle fonctionnalité DOIT être créée dans un fichier externe s'il n'y a pas d'obligation stricte.
