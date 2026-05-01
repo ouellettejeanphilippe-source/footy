@@ -4,6 +4,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 
+### 02 May 2026 — Correction navbar mobile et menu hamburger
+- **Fichiers touchés** : `index.html`, `styles.css`
+- **Résumé** : La `nav-links` (barre de navigation mobile inférieure) a été sortie du conteneur `main-hdr` dans `index.html`. Le `backdrop-filter` du conteneur parent forçait un nouveau contexte de formattage qui bloquait le `position: fixed; bottom: 0;` en haut de l'écran. Ajout de `justify-content: space-between` au `main-hdr` pour placer correctement le bouton de menu hamburger à droite, et restauration du logo manquant dans le header.
+- **Problèmes résolus** : La barre de navigation mobile s'affiche correctement en bas de l'écran, et le bouton hamburger est à nouveau visible et utilisable.
+
 ### 01 May 2026 — Correction modale et menu mobile
 - **Fichiers touchés** : `index.html`, `styles.css`
 - **Résumé** : Ajustements CSS pour corriger le débordement de la modale sur les écrans mobiles (padding revus, max-height et overflow configurés). Le menu de navigation principal a été restauré sous forme de "bottom-bar" fixe en bas de l'écran pour les résolutions mobiles.
@@ -30,6 +35,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+
+### 02 May 2026 — Correction navbar mobile et menu hamburger
+- **Fichiers touchés** : `index.html`, `styles.css`
+- **Résumé** : La `nav-links` (barre de navigation mobile inférieure) a été sortie du conteneur `main-hdr` dans `index.html`. Le `backdrop-filter` du conteneur parent forçait un nouveau contexte de formattage qui bloquait le `position: fixed; bottom: 0;` en haut de l'écran. Ajout de `justify-content: space-between` au `main-hdr` pour placer correctement le bouton de menu hamburger à droite, et restauration du logo manquant dans le header.
+- **Problèmes résolus** : La barre de navigation mobile s'affiche correctement en bas de l'écran, et le bouton hamburger est à nouveau visible et utilisable.
 
 ### 29 April 2026 — Fix du chargement asynchrone des flux pour MLB et NFL
 - **Fichiers touchés** : `index.html`
