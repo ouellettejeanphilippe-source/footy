@@ -4,6 +4,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 
+### 01 May 2026 — Correction modale et menu mobile
+- **Fichiers touchés** : `index.html`, `styles.css`
+- **Résumé** : Ajustements CSS pour corriger le débordement de la modale sur les écrans mobiles (padding revus, max-height et overflow configurés). Le menu de navigation principal a été restauré sous forme de "bottom-bar" fixe en bas de l'écran pour les résolutions mobiles.
+- **Problèmes résolus** : La modale n'est plus déformée et le menu principal est correctement affiché et utilisable sur mobile.
+
+
 ### 1 May 2026 — Refonte complète de l'interface et extraction des fichiers
 - **Fichiers touchés** : `index.html`, `styles.css` (nouveau), `app.js` (nouveau), `sw.js`
 - **Résumé** : Extraction du CSS et du JavaScript depuis `index.html` vers des fichiers séparés (`styles.css` et `app.js`) pour un code plus propre et performant. Refonte esthétique complète (Look "2026 Pro") incluant un flat design moderne, des ombres douces et une navigation responsive repensée (bottom-bar sur mobile, sidebar sur desktop). Simplification du modal de personnalisation.
