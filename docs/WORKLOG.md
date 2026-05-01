@@ -4,6 +4,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 
+### 1 May 2026 — Refonte complète de l'interface et extraction des fichiers
+- **Fichiers touchés** : `index.html`, `styles.css` (nouveau), `app.js` (nouveau), `sw.js`
+- **Résumé** : Extraction du CSS et du JavaScript depuis `index.html` vers des fichiers séparés (`styles.css` et `app.js`) pour un code plus propre et performant. Refonte esthétique complète (Look "2026 Pro") incluant un flat design moderne, des ombres douces et une navigation responsive repensée (bottom-bar sur mobile, sidebar sur desktop). Simplification du modal de personnalisation.
+- **Problèmes résolus** : Le fichier `index.html` n'est plus monolithique. Le design est épuré, plus professionnel et l'adaptation aux écrans mobiles est plus proche d'une vraie application native.
+
 ### 29 April 2026 — Fix du chargement asynchrone des flux pour MLB et NFL
 - **Fichiers touchés** : `index.html`
 - **Résumé** : Correction de `parseMlbbite` et `parseNflbite` pour permettre au scraping asynchrone des sous-pages de s'exécuter correctement. Ces parseurs initialisaient `streamsLoaded: true` dès la page d'accueil avec un lien statique, bloquant ainsi l'extraction des véritables liens de flux dans la sous-page du match.
