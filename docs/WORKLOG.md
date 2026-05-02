@@ -26,7 +26,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Problèmes résolus** : Le clic sur un match MLB (ou NFL) recherche et charge désormais correctement les vrais liens (ex. StreamEast, Buffstreams, etc.) plutôt que d'afficher un seul lien statique pointant vers la sous-page originelle.
 - Audit et création des fichiers de suivi et de règles (en phase de finalisation).
 
-## En cours
+- Rien pour l'instant
 - Rien pour l'instant
 
 ## Fait

@@ -5804,7 +5804,22 @@ function buildEPG(matches){
             var mH = parseInt(parts[0], 10);
             var mM = parseInt(parts[1], 10);
             var leftPx = (mH * hourPx) + (mM * minPx);
-            var widthPx = (m.durationMinutes || 105) * minPx;
+
+            var duration = m.durationMinutes || 105;
+            if (m.status === 'live') {
+                var matchStartMins = mH * 60 + mM;
+                var tempCurrentMins = currentMins;
+                if (tempCurrentMins < matchStartMins && (matchStartMins - tempCurrentMins) > 12 * 60) {
+                    tempCurrentMins += 24 * 60; // wrap around midnight
+                } else if (matchStartMins < tempCurrentMins && (tempCurrentMins - matchStartMins) > 12 * 60) {
+                    matchStartMins += 24 * 60; // match start is near midnight previous day
+                }
+                var matchEndMins = matchStartMins + duration;
+                if (tempCurrentMins > matchEndMins - 15) {
+                    duration = (tempCurrentMins - matchStartMins) + 15;
+                }
+            }
+            var widthPx = duration * minPx;
 
             b.style.left = leftPx + 'px';
             b.style.width = widthPx + 'px';
