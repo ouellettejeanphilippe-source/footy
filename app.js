@@ -3808,31 +3808,38 @@ function parseMlbbite(html) {
             var score = null;
             var startTime = "00:00";
 
-            var resultWrap = el.querySelector(".result-wrap");
-            if (resultWrap) {
-                var liveEl = resultWrap.querySelector(".result-status-text.live");
-                var finishedEl = resultWrap.querySelector(".result-status-text");
-                if (liveEl && liveEl.textContent.trim().toLowerCase() === "live") {
+            var scoreEl = el.querySelector(".first-team-result");
+            if (scoreEl) {
+                var s = scoreEl.textContent.trim().split("-");
+                if (s.length === 2) {
+                    score = [parseInt(s[0]), parseInt(s[1])];
+                }
+            }
+
+            var statusEl = el.querySelector(".result-status-text");
+            if (statusEl) {
+                var sTxt = statusEl.textContent.toLowerCase();
+                if (sTxt.indexOf("live") !== -1 || sTxt.indexOf("in progress") !== -1) {
                     status = "live";
-                } else if (finishedEl && finishedEl.textContent.trim().toLowerCase() === "finished") {
+                } else if (sTxt.indexOf("finished") !== -1 || sTxt.indexOf("ft") !== -1) {
                     status = "finished";
                 }
+            }
 
-                var scoreEl = resultWrap.querySelector(".first-team-result");
-                if (scoreEl) {
-                    var s = scoreEl.textContent.trim().split("-");
-                    if (s.length === 2) {
-                        score = [parseInt(s[0]), parseInt(s[1])];
-                    }
+            // We rely primarily on MLB API for the actual times but we should extract it if it's there
+            var dateEl = el.querySelector(".match-date");
+            if (dateEl && !scoreEl) {
+                var rawTime = dateEl.textContent.trim();
+                var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
+                if (timeM) {
+                    startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
                 }
-
-                var dateEl = resultWrap.querySelector(".match-date");
-                if (dateEl && !scoreEl) {
-                    var rawTime = dateEl.textContent.trim();
-                    var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
-                    if (timeM) {
-                        startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
-                    }
+            } else if (dateEl && dateEl.hasAttribute("title") && status === "upcoming") {
+                // Sometime the text is relative time
+                var rawTime = dateEl.textContent.trim();
+                var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
+                if (timeM) {
+                    startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
                 }
             }
 
@@ -6898,7 +6905,7 @@ function toggleMultiviewPip() {
     if(mvc.classList.contains('mv-pip')) {
         // Restore to full screen multiview
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
         var sf = document.getElementById('sport-filters-container');
@@ -6934,6 +6941,10 @@ function toggleMultiviewPip() {
 // Ensure resize events also apply the correct PIP mode styling if resizing while in PIP
 window.addEventListener('resize', function() {
     var mvc = document.getElementById('mv-container');
+    if (mvc && !mvc.classList.contains('mv-pip') && mvc.style.display !== 'none') {
+        mvc.style.bottom = (window.innerWidth <= 768 ? '60px' : '0');
+    }
+
     var epg = document.getElementById('epg');
     if(mvc && mvc.classList.contains('mv-pip')) {
         if(window.innerWidth <= 768) {
@@ -6964,7 +6975,7 @@ function setupMultivisionUI() {
     // Create Multivision Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
-    mvContainer.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:0;background:transparent;z-index:90;display:none;flex-direction:column;';
+    mvContainer.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
@@ -7639,7 +7650,7 @@ function toggleMultiview() {
     if(mvc.style.display === 'none') {
         // Open Multivision full screen
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:0;background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
