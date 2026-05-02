@@ -3,6 +3,8 @@
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
 ## Fait
+- Fix menu hiding under Multivision on mobile (`app.js`)
+- Fix MLB streams scraper for mlbbite (`app.js`)
 
 ### 02 May 2026 — Correction navbar mobile et menu hamburger
 - **Fichiers touchés** : `index.html`, `styles.css`
@@ -30,6 +32,8 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - Rien pour l'instant
 
 ## Fait
+- Fix menu hiding under Multivision on mobile (`app.js`)
+- Fix MLB streams scraper for mlbbite (`app.js`)
 
 ### 03 May 2026 — Correction des extracteurs de flux OnHockey et MLBBite et Fix du manager de favoris
 - **Fichiers touchés** : `app.js`
@@ -48,6 +52,8 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+- Fix menu hiding under Multivision on mobile (`app.js`)
+- Fix MLB streams scraper for mlbbite (`app.js`)
 
 ### 02 May 2026 — Correction navbar mobile et menu hamburger
 - **Fichiers touchés** : `index.html`, `styles.css`
