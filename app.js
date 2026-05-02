@@ -3432,7 +3432,8 @@ function parseOnHockey(html) {
                   var gamelinksNode = tdClone.querySelector('.gamelinks');
                   if (gamelinksNode) gamelinksNode.remove();
 
-                  var matchText = tdClone.textContent.trim();
+                  // Remove extraneous geo-blocked messages or 'live stream will be available' messages
+                  var matchText = tdClone.textContent.replace(/geo-blocked for[A-Z\/]+:[a-z\s]+|live stream will be available closer to the game time/gi, '').trim();
 
                   var teams = matchText.split(/ vs | v | - /i);
                   var home = 'Team 1';
@@ -3442,7 +3443,7 @@ function parseOnHockey(html) {
                       home = teams[0].trim();
                       away = teams.slice(1).join(' - ').trim();
                   } else {
-                      home = matchText.trim();
+                      home = matchText.trim() || 'TBA';
                       away = 'TBA';
                   }
 
@@ -3460,7 +3461,7 @@ function parseOnHockey(html) {
                       }
 
                       streamLinksArr.push({
-                          name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux'),
+                          name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
                           url: streamUrl,
                           quality: 'HD',
                           lang: 'MULTI',
@@ -3472,10 +3473,10 @@ function parseOnHockey(html) {
                   var startTimeStr = '00:00';
                   var hourEl = row.querySelector('.game_hour') || tds[0];
                   if (hourEl) {
-                       var timeText = tds[0].textContent.trim();
+                       var timeText = hourEl.textContent.trim();
                        var timeParts = timeText.match(/(\d+):(\d+)/);
                        if (timeParts) {
-                           startTimeStr = timeParts[1] + ':' + timeParts[2];
+                           startTimeStr = timeParts[1].padStart(2, '0') + ':' + timeParts[2];
                        }
                   }
 
@@ -3740,7 +3741,7 @@ function parseMlbbite(html) {
                 var dateEl = resultWrap.querySelector(".match-date");
                 if (dateEl && !scoreEl) {
                     var rawTime = dateEl.textContent.trim();
-                    var timeM = rawTime.match(/^(\d{1,2}):(\d{2})$/);
+                    var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
                     if (timeM) {
                         startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
                     }
@@ -5414,11 +5415,11 @@ function buildEPG(matches){
           teamNames.forEach(function(t) {
               if (searchVal && t.toLowerCase().indexOf(searchVal) === -1 && allTeams[t].toLowerCase().indexOf(searchVal) === -1) return;
               var isFav = !!favTeams[t];
-              var lgGroup = isFav ? 'FAVORIS' : allTeams[t];
+              var lgGroup = isFav ? 'FAVORIS' : formatLeagueName(allTeams[t]);
 
               var isMainLeague = false;
               if (lgGroup !== 'FAVORIS') {
-                  isMainLeague = mainLeagues.findIndex(function(l) { return l.toLowerCase() === formatLeagueName(lgGroup).toLowerCase(); }) !== -1;
+                  isMainLeague = mainLeagues.findIndex(function(l) { return l.toLowerCase() === lgGroup.toLowerCase(); }) !== -1;
               }
               var isAllowed = isFav || isMainLeague;
 

@@ -26,6 +26,19 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Problèmes résolus** : Le clic sur un match MLB (ou NFL) recherche et charge désormais correctement les vrais liens (ex. StreamEast, Buffstreams, etc.) plutôt que d'afficher un seul lien statique pointant vers la sous-page originelle.
 - Audit et création des fichiers de suivi et de règles (en phase de finalisation).
 
+## En cours
+- Rien pour l'instant
+
+## Fait
+
+### 03 May 2026 — Correction des extracteurs de flux OnHockey et MLBBite et Fix du manager de favoris
+- **Fichiers touchés** : `app.js`
+- **Résumé** :
+  - **OnHockey** : Amélioration de la résilience du parseur face au texte polluant (`geo-blocked`, etc.) et assouplissement de l'expression régulière extrayant les heures des matchs.
+  - **MLBBite** : Modification de la regex récupérant l'heure du match dans `parseMlbbite` pour ignorer les espaces invisibles et caractères environnants.
+  - **Favoris** : Correction d'un bug où des ligues se dupliquaient dans l'affichage du menu des favoris car le formatage des noms de ligue était incohérent (les noms formatés et bruts étaient mélangés pendant l'affichage et le tri).
+- **Problèmes résolus** : Le calendrier affiche à nouveau les heures et récupère les streams OnHockey et MLBBite. La liste des ligues dans les Favoris est désormais propre et sans doublon.
+
 ## Blocages
 *(Aucun pour l'instant)*
 
