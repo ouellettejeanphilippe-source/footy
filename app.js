@@ -1061,6 +1061,8 @@ var STATIC_TEAMS = [
   { name: 'New York Sirens', league: 'pwhl' },
   { name: 'Ottawa Charge', league: 'pwhl' },
   { name: 'Toronto Sceptres', league: 'pwhl' },
+  { name: 'Seattle', league: 'pwhl' },
+  { name: 'Vancouver', league: 'pwhl' },
   // LHJMQ
   { name: 'Acadie-Bathurst Titan', league: 'lhjmq' },
   { name: 'Baie-Comeau Drakkar', league: 'lhjmq' },
@@ -1876,6 +1878,8 @@ Object.assign(TEAM_COLORS, {
   'new york sirens': ['#195861', '#ECA921'],
   'ottawa charge': ['#C2002F', '#FFC107'],
   'toronto sceptres': ['#0033A0', '#FFC72C'],
+  'seattle': ['#00314A', '#7EC3E4'],
+  'vancouver': ['#450849', '#EC145A'],
   // LHJMQ Colors
   'acadie-bathurst titan': ['#D0202E', '#F6B221'],
   'baie-comeau drakkar': ['#D51820', '#FFCD00'],
@@ -1917,6 +1921,7 @@ function getTeamColors(teamName) {
 }
 
 var TEAM_ALIASES = {
+  'montreal victoire': 'montréal victoire',
   'tb': 'tampa bay lightning',
   'tampa bay': 'tampa bay lightning',
   'lightning': 'tampa bay lightning',
@@ -3352,6 +3357,89 @@ function parseStreameast(html){
 /* ══ PARSE ONHOCKEY ═══════════════════ */
 
 /* ══ PARSE SPORTSURGE ═════════════════ */
+function parsePWHLSchedule(html) {
+  var matches = [];
+  try {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var scripts = doc.querySelectorAll('script');
+      for (var i = 0; i < scripts.length; i++) {
+          var txt = scripts[i].textContent || '';
+          if (txt.indexOf('games') !== -1) {
+              var start = txt.indexOf('{');
+              var end = txt.lastIndexOf('}');
+              if (start !== -1 && end !== -1) {
+                  var jsonStr = txt.substring(start, end + 1);
+                  var data = JSON.parse(jsonStr);
+
+                  var found = false;
+                  var findSchedule = function(obj) {
+                      if (!obj || typeof obj !== 'object') return;
+                      if (obj.games && Array.isArray(obj.games) && obj.games.length > 0 && obj.games[0].home_team) {
+                          obj.games.forEach(function(g) {
+                              if (!g.home_team || !g.visiting_team) return;
+
+                              var home = getOfficialTeamName(g.home_team.home_team_name);
+                              var away = getOfficialTeamName(g.visiting_team.visiting_team_name);
+
+                              var isLive = false;
+                              var status = g.game_status ? g.game_status.toLowerCase() : '';
+                              if (status.indexOf('in progress') >= 0 || status === 'live' || status.indexOf('period') >= 0 || status.indexOf('intermission') >= 0) {
+                                  isLive = true;
+                              }
+
+                              var homeScore = g.home_team.home_goal_count;
+                              var awayScore = g.visiting_team.visiting_goal_count;
+
+                              var timeStr = '';
+                              if (g.date_played) {
+                                  var d = new Date(g.date_played);
+                                  timeStr = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+                              }
+
+                              var homeLogo = g.home_team.home_team_logo && g.home_team.home_team_logo.length > 0 ? g.home_team.home_team_logo[0].secure_url : null;
+                              var awayLogo = g.visiting_team.visiting_team_logo && g.visiting_team.visiting_team_logo.length > 0 ? g.visiting_team.visiting_team_logo[0].secure_url : null;
+
+                              if (homeLogo) cacheLogo(home, homeLogo);
+                              if (awayLogo) cacheLogo(away, awayLogo);
+
+                              var m = {
+                                  id: 'pwhl_' + g.game_id,
+                                  homeTeam: home,
+                                  awayTeam: away,
+                                  homeLogo: homeLogo,
+                                  awayLogo: awayLogo,
+                                  sport: 'hockey',
+                                  league: 'PWHL',
+                                  time: isLive ? "LIVE" : timeStr,
+                                  date: g.date_played,
+                                  streamLinks: []
+                              };
+
+                              if (homeScore !== undefined && awayScore !== undefined) {
+                                  m.homeScore = homeScore.toString();
+                                  m.awayScore = awayScore.toString();
+                              }
+
+                              matches.push(m);
+                          });
+                          found = true;
+                          return;
+                      }
+                      for (var key in obj) {
+                          if (found) break;
+                          findSchedule(obj[key]);
+                      }
+                  };
+
+                  findSchedule(data);
+                  if (found) break;
+              }
+          }
+      }
+  } catch(e) { lg('Error parsing PWHL schedule', e); }
+  return matches;
+}
+
 function parseSportsurge(html) {
   var matches = [];
   try {
@@ -8663,6 +8751,48 @@ function getApiFirstMatches(targetDate) {
       );
       });
     });
+  }
+
+  // Fetch PWHL schedule specifically
+  if (needsFullFetch) {
+      promises.push(
+          fetchPage('https://www.thepwhl.com/en/schedule').then(function(html) {
+              if (html) {
+                  var pwhlMatches = parsePWHLSchedule(html);
+                  pwhlMatches.forEach(function(m) {
+                      m.flag = lgFlag('PWHL');
+                      m.color = lgColor('PWHL');
+                      m.source = 'api';
+
+                      var dateObj = new Date(m.date);
+                      m.matchDate = getEstDateStrFromDate(dateObj);
+                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+
+                      m.status = m.time === 'LIVE' ? 'live' : 'upcoming';
+                      if (m.homeScore && m.awayScore && m.status !== 'live') {
+                           m.status = 'finished';
+                           m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
+                      } else if (m.homeScore && m.awayScore) {
+                           m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
+                      } else {
+                           m.score = null;
+                      }
+
+                      var existingIdx = baseMatches.findIndex(function(existing) {
+                          return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
+                      });
+
+                      if (existingIdx >= 0) {
+                          baseMatches[existingIdx].status = m.status;
+                          baseMatches[existingIdx].score = m.score;
+                          baseMatches[existingIdx].startTime = m.startTime;
+                      } else {
+                          baseMatches.push(m);
+                      }
+                  });
+              }
+          }).catch(function(e) { lg('Error fetching PWHL API schedule', e); })
+      );
   }
 
   return Promise.all(promises).then(function(){
