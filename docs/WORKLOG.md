@@ -116,3 +116,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `app.js`, `index.html`
 - **Résumé** : Remplacement de `Promise.all` par `Promise.allSettled` dans `getApiFirstMatches` pour éviter que l'échec ou le timeout d'une seule requête de données (ESPN, API-Sports, etc.) ne bloque le démarrage complet de l'application sur l'écran de chargement initial. Déplacement des logs de scraping depuis la vue "Options" vers un nouvel onglet dédié "Logs" dans le modal des Paramètres afin de désencombrer l'interface utilisateur.
 - **Problèmes résolus** : L'application ne reste plus figée sur "Connexion au Guide télé..." si un proxy tombe ou qu'une API met trop de temps à répondre. L'interface des paramètres est plus propre.
+
+### $(date '+%d %B %Y') - Fix du parseur Footybite pour MLB et NHL
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Refonte de la logique `findLeagueHeader` dans le parseur Footybite afin de remonter correctement l'arbre DOM pour détecter les ligues utilisant des conteneurs `.my-1` avec `.img-icone` (comme la MLB et la NHL). Modification de la logique de filtrage des "away teams" manquantes pour autoriser spécifiquement les matchs MLB et NHL, en complément des F1 et NASCAR.
+- **Problèmes résolus** : Les liens de matchs de hockey (NHL) et de baseball (MLB) sur Footybite sont désormais correctement extraits, affichés et classés. La reconnaissance des équipes à domicile et à l'extérieur est assurée, et les matchs ne sont plus ignorés silencieusement.
