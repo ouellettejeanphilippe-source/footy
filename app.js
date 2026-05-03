@@ -4813,21 +4813,21 @@ function buildEPG(matches){
         }
     }
 
-    // In Live tab: show live matches and matches starting in <= 30 mins
-    var isUpcomingIn30 = false;
+    // In Live tab: show live matches and matches starting in <= 60 mins
+    var isUpcomingIn60 = false;
     if (m.status === 'upcoming' && m.startTime) {
         var mParts = m.startTime.split(':');
         var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
         var diff = mMins - currentMins;
         if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
-        if (diff > 0 && diff <= 30) {
-            isUpcomingIn30 = true;
+        if (diff > 0 && diff <= 60) {
+            isUpcomingIn60 = true;
         }
     }
-    if(S.filter==='live' && m.status !== 'live' && !isUpcomingIn30) return false;
+    if(S.filter==='live' && m.status !== 'live' && !isUpcomingIn60) return false;
 
-    // In Upcoming tab: hide everything that is live, soon, finished, or in Live tab (<= 30 mins)
-    if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished' || isUpcomingIn30)) return false;
+    // In Upcoming tab: hide everything that is live, soon, finished, or in Live tab (<= 60 mins)
+    if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished' || isUpcomingIn60)) return false;
     if(S.hiddenLg[m.league]) return false;
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
