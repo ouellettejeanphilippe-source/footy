@@ -384,6 +384,10 @@ body.theme-metallic .ic {
 
 .nav-links { display: flex; align-items: center; gap: 16px; }
 
+@media(min-width: 769px) {
+  .nav-links { justify-content: center; padding: 16px 0; }
+}
+
 @media(max-width: 1024px) {
   #menu-btn { display: inline-flex !important; }
   .secondary-actions { display: none !important; position: absolute; top: var(--hdr-height, 70px); right: 24px; background: rgba(28,28,30,0.95); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; }

@@ -8,6 +8,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 - Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
+### 04 May 2026 - Centrage du menu principal sur desktop
+- **Fichiers touchés** : `styles.css`
+- **Résumé** : Ajout d'une media query `@media(min-width: 769px)` pour centrer le menu principal `.nav-links` (`justify-content: center`) et y ajouter un padding léger (`padding: 16px 0`) sur PC, tel que demandé. Le comportement sur mobile n'est pas affecté.
+- **Problèmes résolus** : Menu principal mieux aligné sur les écrans larges sans se superposer trop en haut.
+
+n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
 ### 03 May 2026 - Fix application hanging during API fetches
 - **Fichiers touchés** : `app.js`
