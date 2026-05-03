@@ -8386,7 +8386,7 @@ function getApiFirstMatches(targetDate) {
       );
   }
 
-  return Promise.all(promises).then(function(){
+  return Promise.allSettled(promises).then(function(){
     var filtered = filterBuggyMatches(baseMatches);
     try {
         var fetchDateToSave = todayStr;

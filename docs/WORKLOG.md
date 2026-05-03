@@ -105,3 +105,8 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ### 29 April 2026 - Mise à jour des icônes de sport et UI du bouton Multivision
 - **Fichiers touchés** : `index.html`
 - **Résumé** : Modification de `lgFlag()` pour utiliser des icônes spécifiques aux sports (⚾, 🏀, 🏈, etc.) à la place du ⚽ générique. Remplacement de l'icône ⚽ en dur par l'icône de sport adéquate dans la liste Multivision. Suppression du compteur du nombre de flux actifs sur le bouton Multivision pour l'alléger.
+
+### $(date '+%d %B %Y') - Prévention du blocage au chargement & Création de l'onglet Logs
+- **Fichiers touchés** : `app.js`, `index.html`
+- **Résumé** : Remplacement de `Promise.all` par `Promise.allSettled` dans `getApiFirstMatches` pour éviter que l'échec ou le timeout d'une seule requête de données (ESPN, API-Sports, etc.) ne bloque le démarrage complet de l'application sur l'écran de chargement initial. Déplacement des logs de scraping depuis la vue "Options" vers un nouvel onglet dédié "Logs" dans le modal des Paramètres afin de désencombrer l'interface utilisateur.
+- **Problèmes résolus** : L'application ne reste plus figée sur "Connexion au Guide télé..." si un proxy tombe ou qu'une API met trop de temps à répondre. L'interface des paramètres est plus propre.
