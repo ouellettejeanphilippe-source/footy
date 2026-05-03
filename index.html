@@ -32,7 +32,7 @@
 
 <script>
 function switchSettingsTab(tabName) {
-  ['options', 'favoris'].forEach(t => {
+  ['options', 'favoris', 'logs'].forEach(t => {
     document.getElementById('stab-' + t).style.display = (t === tabName) ? 'flex' : 'none';
     const btn = document.getElementById('st-' + t);
     if(btn) {
@@ -146,6 +146,7 @@ function switchSettingsTab(tabName) {
       <div style="display:flex; gap:16px; border-bottom:1px solid var(--border); padding-bottom:8px; overflow-x:auto;">
         <button class="nav-btn active-toggle" onclick="switchSettingsTab('options')" id="st-options">Options</button>
         <button class="nav-btn" onclick="switchSettingsTab('favoris')" id="st-favoris">Favoris</button>
+        <button class="nav-btn" onclick="switchSettingsTab('logs')" id="st-logs">Logs</button>
         <button class="nav-btn" onclick="loadAll(window.hasLoadedOnce, true); closeSettings();">↺ Actualiser</button>
         <button class="nav-btn" onclick="installTampermonkey(); closeSettings();">🧩 Script</button>
       </div>
@@ -307,23 +308,20 @@ function switchSettingsTab(tabName) {
          </div>
       </div>
 
-      <hr style="border:none; border-top:1px solid var(--border); margin:0;">
-
-      <!-- Logs de Scraping -->
-      <div>
-         <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text); display:flex; justify-content:space-between; align-items:center;">
-            <span>📋 Logs de Scraping</span>
-            <button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
-         </div>
-         <div id="scrape-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
-            <!-- Logs will be populated here -->
-         </div>
-      </div>
-
       </div> <!-- End of Options Tab -->
       <!-- Favoris Tab -->
       <div id="stab-favoris" style="display:none; flex-direction:column; gap:24px;">
          <div id="settings-fav-container"></div>
+      </div>
+      <!-- Logs Tab -->
+      <div id="stab-logs" style="display:none; flex-direction:column; gap:24px;">
+         <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text); display:flex; justify-content:space-between; align-items:center;">
+            <span>📋 Logs de Scraping</span>
+            <button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
+         </div>
+         <div id="scrape-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; min-height: 200px; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Logs will be populated here -->
+         </div>
       </div>
     </div>
   </div>
