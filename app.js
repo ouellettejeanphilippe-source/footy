@@ -6551,7 +6551,7 @@ function toggleMultiviewPip() {
     if(mvc.classList.contains('mv-pip')) {
         // Restore to full screen multiview
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
         var sf = document.getElementById('sport-filters-container');
@@ -6621,7 +6621,7 @@ function setupMultivisionUI() {
     // Create Multivision Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
-    mvContainer.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:none;flex-direction:column;';
+    mvContainer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
@@ -7295,7 +7295,7 @@ function toggleMultiview() {
     if(mvc.style.display === 'none') {
         // Open Multivision full screen
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:var(--hdr-height, 60px);left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
@@ -7315,20 +7315,16 @@ function toggleTheaterMode(elem) {
   elem = elem || document.getElementById('mv-grid-wrapper');
   if (!elem) return;
 
-  var mainHdr = document.getElementById('main-hdr');
-
   if (elem.classList.contains('mv-theater')) {
       elem.classList.remove('mv-theater');
       var closeBtn = document.getElementById('mv-close-theater');
       if(closeBtn) closeBtn.remove();
       // Restore overflow
       document.body.style.overflow = '';
-      if(mainHdr) mainHdr.style.display = '';
   } else {
       elem.classList.add('mv-theater');
       // Hide body overflow to avoid double scrollbars
       document.body.style.overflow = 'hidden';
-      if(mainHdr) mainHdr.style.display = 'none';
 
       var closeBtn = document.getElementById('mv-close-theater');
       if(!closeBtn) {
@@ -8830,15 +8826,6 @@ function updateLiveScores(matches) {
 }
 
 function loadAll(isBackground, forceScrape){
-const hdrObserver = new ResizeObserver(() => {
-  const hdr = document.getElementById('main-hdr');
-  if (hdr) {
-    document.documentElement.style.setProperty('--hdr-height', hdr.offsetHeight + 'px');
-  }
-});
-const mainHdrElement = document.getElementById('main-hdr');
-if (mainHdrElement) hdrObserver.observe(mainHdrElement);
-
   if (!isBackground) window.initialScrollDone = false;
   if (typeof window.hasLoadedOnce === 'undefined') window.hasLoadedOnce = false;
   if (typeof window.lastScrapeTime === 'undefined') window.lastScrapeTime = 0;
@@ -9028,6 +9015,10 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
       if(btn) btn.disabled=false;
       window.hasLoadedOnce=true;
       if (!isBackground) { document.getElementById('ov').style.display='none'; }
+      if (!localStorage.getItem('hasSeenScriptModal')) {
+          localStorage.setItem('hasSeenScriptModal', 'true');
+          setTimeout(function() { installTampermonkey(); }, 500);
+      }
   });
 }
 
@@ -9059,6 +9050,10 @@ if ('serviceWorker' in navigator) {
       if (S.matches.length > 0) {
           buildEPG(S.matches);
       }
+      if (!localStorage.getItem('hasSeenScriptModal')) {
+          localStorage.setItem('hasSeenScriptModal', 'true');
+          setTimeout(function() { installTampermonkey(); }, 500);
+      }
       loadAll(true, true); // background update for fresh streams/stats
   } else {
       loadAll(window.hasLoadedOnce, true);
@@ -9080,12 +9075,6 @@ if ('serviceWorker' in navigator) {
 
 
 
-function toggleMenu(e) {
-    if (e) e.stopPropagation();
-    var sec = document.getElementById('secondary-actions');
-    sec.classList.toggle('open');
-}
-
 function toggleSportFilters(e) {
     if (e) e.stopPropagation();
     var sf = document.getElementById('sport-filters');
@@ -9097,11 +9086,6 @@ function toggleSportFilters(e) {
 
 // Close menus when clicking elsewhere
 document.addEventListener('click', function(e) {
-    var sec = document.getElementById('secondary-actions');
-    if(sec && sec.classList.contains('open') && !sec.contains(e.target) && (!document.getElementById('menu-btn') || !document.getElementById('menu-btn').contains(e.target))) {
-        sec.classList.remove('open');
-    }
-
     var mvActions = document.getElementById('mv-actions-menu');
     var mvBtn = document.getElementById('mv-menu-btn');
     if(mvActions && mvActions.classList.contains('open') && !mvActions.contains(e.target) && (!mvBtn || !mvBtn.contains(e.target))) {
