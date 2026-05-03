@@ -121,3 +121,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Refonte de la logique `findLeagueHeader` dans le parseur Footybite afin de remonter correctement l'arbre DOM pour détecter les ligues utilisant des conteneurs `.my-1` avec `.img-icone` (comme la MLB et la NHL). Modification de la logique de filtrage des "away teams" manquantes pour autoriser spécifiquement les matchs MLB et NHL, en complément des F1 et NASCAR.
 - **Problèmes résolus** : Les liens de matchs de hockey (NHL) et de baseball (MLB) sur Footybite sont désormais correctement extraits, affichés et classés. La reconnaissance des équipes à domicile et à l'extérieur est assurée, et les matchs ne sont plus ignorés silencieusement.
+
+### $(date '+%d %B %Y') - Modal d'installation du script au premier lancement
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Ajout d'une logique basée sur `localStorage` (`hasSeenScriptModal`) pour afficher automatiquement la modale d'installation du script utilisateur Tampermonkey (`installTampermonkey()`) lors du premier chargement réussi de l'application dans un navigateur. Cette logique a été intégrée pour se déclencher soit après le masquage de l'overlay de chargement complet, soit immédiatement après le rendu depuis le cache.
+- **Problèmes résolus** : L'utilisateur est désormais averti activement de l'utilité du script de nettoyage Multivision dès sa première visite.
