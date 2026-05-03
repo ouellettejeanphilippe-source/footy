@@ -121,7 +121,3 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Ajout d'une logique pour afficher automatiquement la modale d'installation du script Tampermonkey lors de la toute première visite d'un utilisateur. La visite est tracée via `localStorage.getItem('scriptModalShown')`. L'affichage attend que l'application ait terminé son chargement initial (`window.hasLoadedOnce`).
 - **Problèmes résolus** : Les nouveaux utilisateurs voient maintenant la modale d'installation du script dès leur première utilisation pour les informer de l'extension nécessaire, ce qui améliore l'adoption du script et l'expérience utilisateur.
-### $(date '+%d %B %Y') - Fix du parseur Footybite pour MLB et NHL
-- **Fichiers touchés** : `app.js`
-- **Résumé** : Refonte de la logique `findLeagueHeader` dans le parseur Footybite afin de remonter correctement l'arbre DOM pour détecter les ligues utilisant des conteneurs `.my-1` avec `.img-icone` (comme la MLB et la NHL). Modification de la logique de filtrage des "away teams" manquantes pour autoriser spécifiquement les matchs MLB et NHL, en complément des F1 et NASCAR.
-- **Problèmes résolus** : Les liens de matchs de hockey (NHL) et de baseball (MLB) sur Footybite sont désormais correctement extraits, affichés et classés. La reconnaissance des équipes à domicile et à l'extérieur est assurée, et les matchs ne sont plus ignorés silencieusement.

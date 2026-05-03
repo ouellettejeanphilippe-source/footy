@@ -3403,7 +3403,7 @@ function parseFootybite(html){
     }
 
     if(!home) return;
-    if(!away && home.toLowerCase().indexOf('f1') === -1 && home.toLowerCase().indexOf('nascar') === -1 && home.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('f1') === -1 && league.toLowerCase().indexOf('nascar') === -1 && league.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('nhl') === -1 && league.toLowerCase().indexOf('mlb') === -1) {
+    if(!away && home.toLowerCase().indexOf('f1') === -1 && home.toLowerCase().indexOf('nascar') === -1 && league.toLowerCase().indexOf('f1') === -1 && league.toLowerCase().indexOf('nascar') === -1) {
        return;
     }
 
@@ -4551,28 +4551,36 @@ function updateMatchUiAfterScrape(m) {
 }
 
 /* Remonte les siblings/parents pour trouver le header de ligue */
-function findLeagueHeader(el) {
-    var curr = el;
-    while (curr && curr !== document.body) {
-        if (curr.classList && curr.classList.contains('my-1') && curr.querySelector('.img-icone')) {
-            var span = curr.querySelector('span');
-            if (span) return span.textContent.trim();
-        }
-        var prev = curr.previousElementSibling;
-        while (prev) {
-            if (prev.classList && prev.classList.contains('my-1') && prev.querySelector('.img-icone')) {
-                var spanPrev = prev.querySelector('span');
-                if (spanPrev) return spanPrev.textContent.trim();
-            }
-            if (prev.classList && prev.classList.contains('league-header')) {
-                var text = prev.textContent.replace(/\s+/g, ' ').trim();
-                return text;
-            }
-            prev = prev.previousElementSibling;
-        }
-        curr = curr.parentElement;
+function findLeagueHeader(el){
+  /* Cherche dans les siblings précédents */
+  var prev=el.previousElementSibling;
+  while(prev){
+    /* .text-dark-light contient le nom de la ligue */
+    var lgEl=prev.querySelector('.text-dark-light,.img-icone')||
+             (prev.classList.contains('text-dark-light')?prev:null)||
+             (prev.classList.contains('my-1')?prev:null);
+    if(lgEl){
+      var txt=lgEl.textContent.replace(/\s+/g,' ').trim();
+      if(txt&&txt.length>1&&txt.length<80) return txt;
     }
-    return null;
+    /* Si on tombe sur un autre .div-child-box → même ligue */
+    if(prev.classList.contains('div-child-box')) break;
+    prev=prev.previousElementSibling;
+  }
+  /* Remonte au parent et cherche heading */
+  var par=el.parentElement;
+  if(par){
+    var hd=par.querySelector('h2,h3,h4,h5,.league-title,.competition-name');
+    if(hd){var t=hd.textContent.trim();if(t&&t.length<80) return t;}
+    /* Cherche dans le parent précédent */
+    var pprev=par.previousElementSibling;
+    if(pprev){
+      var ppEl=pprev.querySelector('.text-dark-light,.img-icone');
+      if(ppEl){var pt=ppEl.textContent.replace(/\s+/g,' ').trim();if(pt) return pt;}
+      if(pprev.textContent.trim().length<80) return pprev.textContent.trim();
+    }
+  }
+  return '';
 }
 
 /* Convert UK time to EST */
