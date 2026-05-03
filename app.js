@@ -2156,7 +2156,7 @@ function fetchAndCacheLogoDynamically(teamName) {
 
     // Essaie d'aller chercher sur TheSportsDB (API publique sans clé)
     var url = 'https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=' + encodeURIComponent(teamName);
-    return fetch(url).then(r => r.json()).then(data => {
+    return fetch(url, { signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(data => {
         if(data && data.teams && data.teams.length > 0) {
             var badge = data.teams[0].strTeamBadge || data.teams[0].strBadge;
             if(badge) {
@@ -3652,7 +3652,7 @@ function getEspnDateStr(d) {
 
 function fetchEspnSchedule(leaguePath, dateStr) {
   var url = 'https://site.api.espn.com/apis/site/v2/sports/' + leaguePath + '/scoreboard?dates=' + dateStr;
-  return fetch(url).then(function(res) { return res.json(); }).catch(function(){ return null; });
+  return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(res) { return res.json(); }).catch(function(){ return null; });
 }
 
 /* ══ API-SPORTS INTEGRATION ════════════ */
@@ -3757,6 +3757,7 @@ function fetchApiSportsFixtures(sportInfo, dateStr) {
 
   lg('API-Sports Req', url);
   return fetch(url, {
+    signal: AbortSignal.timeout(8000),
     headers: {
       'x-apisports-key': key,
       'x-rapidapi-key': key
@@ -8589,7 +8590,7 @@ function fetchGameStats(matchId) {
         }
 
         var url = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/summary?event=' + espnId;
-        return fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+        return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
             var scorers = [];
             var hRank = '', aRank = '', hForm = '', aForm = '';
             if (data.header && data.header.competitions && data.header.competitions[0]) {
@@ -8645,6 +8646,7 @@ function fetchGameStats(matchId) {
         else if(m && m.league.toLowerCase().indexOf('nhl')!==-1) sport = 'hockey';
 
         return fetch('https://v3.' + sport + '.api-sports.io/fixtures?id=' + apiId, {
+            signal: AbortSignal.timeout(8000),
             headers: { 'x-rapidapi-key': key }
         }).then(function(r){return r.json();}).then(function(data) {
             var resData = data.response[0];
@@ -8674,7 +8676,7 @@ function fetchLeagueStandings(leagueName) {
         }
     }
     var url = 'https://site.api.espn.com/apis/v2/sports/' + path + '/standings';
-    return fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+    return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
         return { source: 'espn', data: data };
     }).catch(function(e) {
         return Promise.reject(e);
