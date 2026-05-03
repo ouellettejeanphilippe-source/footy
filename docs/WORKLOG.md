@@ -3,6 +3,7 @@
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
 ## Fait
+- Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
 ### 04 May 2026 — Correction des flux OnHockey et MLB/NFL
 - **Fichiers touchés** : `app.js`
 - **Résumé** :
@@ -39,6 +40,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - Rien pour l'instant
 
 ## Fait
+- Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
 - Fix menu hiding under Multivision on mobile (`app.js`)
 - Fix MLB streams scraper for mlbbite (`app.js`)
 
@@ -59,6 +61,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+- Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
 - Fix menu hiding under Multivision on mobile (`app.js`)
 - Fix MLB streams scraper for mlbbite (`app.js`)
 
