@@ -3,6 +3,13 @@
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
 ## Fait
+### 04 May 2026 — Correction des flux OnHockey et MLB/NFL
+- **Fichiers touchés** : `app.js`
+- **Résumé** :
+  - **OnHockey** : Extraction directe des flux depuis la page d'accueil (`parseOnHockey`) pour éviter les redirections problématiques et les faux appels proxy sur la sous-page, les flux sont maintenant injectés et fonctionnels immédiatement (`streamsLoaded: true`). Support des liens commençant par `//`.
+  - **MLBbite / NFLbite** : Mise à jour des URLs racines (migration de `nflbite.to` à `nflbite.is`). Adaptation de `parseMlbbite` pour cibler les liens mis à jour via une recherche d'URL. Ajout de sélecteurs supplémentaires dans `scrapeMatchFlux` (`table tbody tr a`, boutons avec `stream`) pour extraire efficacement tous les flux finaux à l'intérieur des sous-pages des rencontres.
+- **Problèmes résolus** : Les streams OnHockey (Hockey, PWHL, LHJMQ) se chargent et se lisent correctement dans le Multivision. Les streams MLB (Baseball) et NFL sont de nouveau opérationnels et extraits via la modale.
+
 - Fix menu hiding under Multivision on mobile (`app.js`)
 - Fix MLB streams scraper for mlbbite (`app.js`)
 
