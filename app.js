@@ -2100,6 +2100,7 @@ var LEAGUE_FORMAT_NAMES = {
     'ligue 1': 'Ligue 1',
     'uefa champions league': 'Champions League',
     'uefa europa league': 'Europa League',
+    'f1': 'F1',
     'pwhl': 'PWHL',
     'lhjmq': 'LHJMQ'
 };
@@ -2919,6 +2920,12 @@ var STATIC_TEAM_MAP = {
 
 function getOfficialTeamName(n) {
     if (!n) return n;
+
+    // For F1 Grand Prix events, remove the "F1 " prefix so it looks cleaner
+    if (n.toLowerCase().startsWith('f1 ') && n.toLowerCase().includes('grand prix')) {
+        n = n.substring(3).trim();
+    }
+
     var lower = n.toLowerCase().trim();
     if (typeof TEAM_ALIASES !== 'undefined' && TEAM_ALIASES[lower]) lower = TEAM_ALIASES[lower];
 
@@ -3915,13 +3922,21 @@ function parseFootybite(html){
 
     /* ─ Équipes (.txt-team) ─ */
     var teams=el.querySelectorAll('.txt-team');
-    if(teams.length<2){
-      lg('Skip #'+i,'moins de 2 .txt-team');
+    if(teams.length === 0){
+      lg('Skip #'+i,'0 .txt-team');
       return;
     }
     var home=teams[0].textContent.trim();
-    var away=teams[1].textContent.trim();
-    if(!home||!away) return;
+    var away=teams.length>1 ? teams[1].textContent.trim() : '';
+
+    if(away.toLowerCase() === 'live') {
+      away = '';
+    }
+
+    if(!home) return;
+    if(!away && home.toLowerCase().indexOf('f1') === -1 && home.toLowerCase().indexOf('nascar') === -1 && league.toLowerCase().indexOf('f1') === -1 && league.toLowerCase().indexOf('nascar') === -1) {
+       return;
+    }
 
     /* ─ Heure/score (.time-txt) ─ */
     var timeEl=el.querySelector('.time-txt');
@@ -5412,7 +5427,7 @@ function buildEPG(matches){
           if(!container || !lgContainer) return;
 
           // --- Leagues Sorting Manager ---
-          var mainLeagues = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'NHL', 'NBA', 'NFL', 'MLB', 'PWHL', 'Champions League', 'World Cup', 'LHJMQ'];
+          var mainLeagues = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'NHL', 'NBA', 'NFL', 'MLB', 'F1', 'PWHL', 'Champions League', 'World Cup', 'LHJMQ'];
 
           // Use purely the static mainLeagues definition for the right menu
           var newOrder = [];
@@ -5685,22 +5700,31 @@ function buildEPG(matches){
                   var homeFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>';
                   var awayFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>';
 
+                  var logosHtml = m.awayTeam ?
+                                  '<div class="prime-logo-wrapper home">' + homeLogoHtmlPrime + '</div><div class="prime-logo-wrapper away">' + awayLogoHtmlPrime + '</div>' :
+                                  '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
+
+                  var teamsHtml = m.awayTeam ?
+                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'">'+awayFavBtn+esc(m.awayTeam)+'</div>' :
+                                  '<div class="prime-team-name" style="text-align: center; justify-content: center;" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam)+'</div>';
+
+                  var scoresHtml = m.awayTeam ?
+                                  '<div class="prime-score">'+homeScore+'</div><div class="prime-score">'+awayScore+'</div>' :
+                                  '<div class="prime-score"></div>';
+
                   b.innerHTML = '<div class="prime-thumbnail" style="background:'+cardBg+';">'
                               +   lgBadge
                               +   streamsBadgePrime
                               +   '<div class="prime-logos">'
-                              +     '<div class="prime-logo-wrapper home">' + homeLogoHtmlPrime + '</div>'
-                              +     '<div class="prime-logo-wrapper away">' + awayLogoHtmlPrime + '</div>'
+                              +     logosHtml
                               +   '</div>'
                               + '</div>'
                               + '<div class="prime-info">'
                               +   '<div class="prime-col-teams">'
-                              +     '<div class="prime-team-name" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam)+'</div>'
-                              +     '<div class="prime-team-name" title="'+esc(m.awayTeam)+'">'+awayFavBtn+esc(m.awayTeam)+'</div>'
+                              +     teamsHtml
                               +   '</div>'
                               +   '<div class="prime-col-scores">'
-                              +     '<div class="prime-score">'+homeScore+'</div>'
-                              +     '<div class="prime-score">'+awayScore+'</div>'
+                              +     scoresHtml
                               +   '</div>'
                               +   '<div class="prime-col-status">'
                               +     statusHtml
@@ -5882,17 +5906,27 @@ function buildEPG(matches){
 
             var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
-            b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 12px;">'
-                        +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-end; text-align: right; width: auto;">'
-                        +     '<div class="mb-t" style="text-align: right;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                        +     homeLogoHtml
-                        +   '</div>'
-                        +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-start; text-align: left; width: auto;">'
-                        +     awayLogoHtml
-                        +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
-                        +   '</div>'
-                        + '</div>'
-                        + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
+            if (m.awayTeam) {
+                b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 12px;">'
+                            +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-end; text-align: right; width: auto;">'
+                            +     '<div class="mb-t" style="text-align: right;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
+                            +     homeLogoHtml
+                            +   '</div>'
+                            +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-start; text-align: left; width: auto;">'
+                            +     awayLogoHtml
+                            +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
+                            +   '</div>'
+                            + '</div>'
+                            + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
+            } else {
+                b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: center; align-items: center; gap: 12px;">'
+                            +   '<div class="mb-team-row" style="flex: 1; justify-content: center; text-align: center; width: auto;">'
+                            +     homeLogoHtml
+                            +     '<div class="mb-t" style="text-align: center;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
+                            +   '</div>'
+                            + '</div>'
+                            + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
+            }
 
             // Calculate position
             var parts = m.startTime.split(':');
@@ -6855,22 +6889,31 @@ function showMatchSelector(event, replaceIdx) {
             var streamsBadgePrime = m.streamLinks && m.streamLinks.length>0 ? '<div class="prime-stream-count">'+m.streamLinks.length+' flux</div>' : '';
             var lgBadge = '<div class="prime-league-badge">'+lgFlag(m.league)+'</div>';
 
+            var logosHtml = m.awayTeam ?
+                            '<div class="prime-logo-wrapper home">' + homeLogoHtmlPrime + '</div><div class="prime-logo-wrapper away">' + awayLogoHtmlPrime + '</div>' :
+                            '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
+
+            var teamsHtml = m.awayTeam ?
+                            '<div class="prime-team-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>' :
+                            '<div class="prime-team-name" style="text-align: center; justify-content: center;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>';
+
+            var scoresHtml = m.awayTeam ?
+                            '<div class="prime-score">'+homeScore+'</div><div class="prime-score">'+awayScore+'</div>' :
+                            '<div class="prime-score"></div>';
+
             b.innerHTML = '<div class="prime-thumbnail" style="background:'+cardBg+';">'
                         +   lgBadge
                         +   streamsBadgePrime
                         +   '<div class="prime-logos">'
-                        +     '<div class="prime-logo-wrapper home">' + homeLogoHtmlPrime + '</div>'
-                        +     '<div class="prime-logo-wrapper away">' + awayLogoHtmlPrime + '</div>'
+                        +     logosHtml
                         +   '</div>'
                         + '</div>'
                         + '<div class="prime-info">'
                         +   '<div class="prime-col-teams">'
-                        +     '<div class="prime-team-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                        +     '<div class="prime-team-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
+                        +     teamsHtml
                         +   '</div>'
                         +   '<div class="prime-col-scores">'
-                        +     '<div class="prime-score">'+homeScore+'</div>'
-                        +     '<div class="prime-score">'+awayScore+'</div>'
+                        +     scoresHtml
                         +   '</div>'
                         +   '<div class="prime-col-status">'
                         +     statusHtml
