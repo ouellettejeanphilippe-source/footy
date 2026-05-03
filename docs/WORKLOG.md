@@ -7,7 +7,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
-n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
+- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
 ### 03 May 2026 - Fix application hanging during API fetches
 - **Fichiers touchés** : `app.js`
@@ -51,7 +51,7 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - Rien pour l'instant
 
 ## Fait
-n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
+- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
 - Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
 - Fix menu hiding under Multivision on mobile (`app.js`)
@@ -74,7 +74,7 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
-n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
+- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
 - Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
 - Fix menu hiding under Multivision on mobile (`app.js`)
@@ -133,3 +133,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Ajout d'une logique basée sur `localStorage` (`hasSeenScriptModal`) pour afficher automatiquement la modale d'installation du script utilisateur Tampermonkey (`installTampermonkey()`) lors du premier chargement réussi de l'application dans un navigateur. Cette logique a été intégrée pour se déclencher soit après le masquage de l'overlay de chargement complet, soit immédiatement après le rendu depuis le cache.
 - **Problèmes résolus** : L'utilisateur est désormais averti activement de l'utilité du script de nettoyage Multivision dès sa première visite.
+
+### 03 May 2026 - Fix de l'extraction de streams pour Footybite
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Changement de la condition dans `scrapeMatchFlux` vérifiant le nombre de colonnes d'une table HTML pour extraire un lien de `if(tds.length < 5) return;` à `if(tds.length < 2) return;`.
+- **Problèmes résolus** : Certains matchs Footybite n'affichaient plus de streams car la nouvelle structure HTML des tables de flux ne comporte plus que 2 ou 3 colonnes. Cette vérification bloquait silencieusement l'extraction.
