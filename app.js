@@ -51,7 +51,7 @@ var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', 
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://footybite.to/';
-var MLBITE_URL = 'https://nflbite.to/'; // mlbite.to is dead, using nflbite.to as a working fallback on the same network
+var MLBITE_URL = 'https://nflbite.is/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
 var MLBBITE_PLUS_URL = 'https://mlbbite.plus';
 var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
@@ -3537,24 +3537,29 @@ function parseOnHockey(html) {
 
                   // Find all the stream links for this match
                   var streamLinksArr = [];
-                  var linkElements = row.querySelectorAll('.gamelinks a');
-                  for (var l = 0; l < linkElements.length; l++) {
-                      var linkEl = linkElements[l];
-                      var href = linkEl.getAttribute('href');
-                      if (!href) continue;
+                  var linksContainer = row.querySelector('.gamelinks');
+                  if (linksContainer) {
+                      var links = linksContainer.querySelectorAll('a');
+                      for (var l = 0; l < links.length; l++) {
+                          var linkEl = links[l];
+                          var href = linkEl.getAttribute('href');
+                          if (!href) continue;
 
-                      var streamUrl = href;
-                      if (streamUrl.indexOf('http') !== 0) {
-                          streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                          var streamUrl = href;
+                          if (streamUrl.indexOf('//') === 0) {
+                              streamUrl = 'https:' + streamUrl;
+                          } else if (streamUrl.indexOf('http') !== 0) {
+                              streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                          }
+
+                          streamLinksArr.push({
+                              name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
+                              url: streamUrl,
+                              quality: 'HD',
+                              lang: 'MULTI',
+                              icon: '🏒'
+                          });
                       }
-
-                      streamLinksArr.push({
-                          name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
-                          url: streamUrl,
-                          quality: 'HD',
-                          lang: 'MULTI',
-                          icon: '🏒'
-                      });
                   }
 
                   // Try to extract start time if available
@@ -3577,7 +3582,7 @@ function parseOnHockey(html) {
                       durationMinutes: getLeagueDuration('hockey'),
                       status: 'upcoming',
                       streamLinks: streamLinksArr,
-                      streamsLoaded: false,
+                      streamsLoaded: streamLinksArr.length > 0,
                       matchUrl: ONHOCKEY_URL,
                       source: 'onhockey',
                       matchDate: getEstDateStrFromDate(TARGET_DATE)
@@ -3770,7 +3775,7 @@ function parseNflbite(html) {
             status: "upcoming",
             score: null,
             startTime: "00:00",
-            matchUrl: url.indexOf("http") === 0 ? url : "https://nflbite.to" + url,
+            matchUrl: url.indexOf("http") === 0 ? url : "https://nflbite.is" + url,
             streamLinks: streamLinks,
             streamsLoaded: false,
             league: "NFL",
@@ -3786,29 +3791,56 @@ function parseMlbbite(html) {
     var matches = [];
     try {
         var doc = new DOMParser().parseFromString(html, "text/html");
-        var items = doc.querySelectorAll(".inline-match-item");
-        [].forEach.call(items, function(el, i) {
+
+        // MLBBite new format: <a href="/watch/..." class="inline-match-item"> or similar
+        // Just find any link that looks like a match link if .inline-match-item is missing
+        var items = doc.querySelectorAll(".inline-match-item, a[href*='/watch/live/']");
+
+        // Remove duplicates based on href
+        var uniqueItems = [];
+        var hrefs = new Set();
+        [].forEach.call(items, function(el) {
+            var href = el.getAttribute("href");
+            if (href && !hrefs.has(href)) {
+                hrefs.add(href);
+                uniqueItems.push(el);
+            }
+        });
+
+        uniqueItems.forEach(function(el, i) {
             var href = el.getAttribute("href");
             if (!href) return;
 
-            var teams = el.querySelectorAll(".team---item b");
-            if (teams.length < 2) return;
-            var home = teams[0].textContent.trim();
-            var away = teams[1].textContent.trim();
-
             var matchUrl = href.indexOf("http") === 0 ? href : "https://mlbbite.plus" + href;
 
+            var home = "TBA";
+            var away = "TBA";
+            var score = null;
+            var status = "upcoming";
+            var startTime = "00:00";
+
+            // Try different team selectors depending on mlbbite layout
+            var teams = el.querySelectorAll(".team---item b, .team-name, .name");
+            if (teams.length >= 2) {
+                home = teams[0].textContent.trim();
+                away = teams[1].textContent.trim();
+            } else {
+                // Try parsing from the URL: /watch/live/san-francisco-giants-at-tampa-bay-rays-5-free-live-stream
+                var urlMatch = href.match(/live\/([a-z0-9-]+)-(?:at|vs)-([a-z0-9-]+)/);
+                if (urlMatch) {
+                    away = urlMatch[1].replace(/-/g, ' ');
+                    home = urlMatch[2].replace(/-/g, ' ');
+                }
+            }
+
+            if (home === "TBA" && away === "TBA") return;
+
             // Find logos
-            var imgs = el.querySelectorAll(".img img");
+            var imgs = el.querySelectorAll(".img img, img.logo");
             var homeLogo = imgs.length > 0 ? imgs[0].getAttribute("src") : null;
             var awayLogo = imgs.length > 1 ? imgs[1].getAttribute("src") : null;
 
-            // Find status / score
-            var status = "upcoming";
-            var score = null;
-            var startTime = "00:00";
-
-            var scoreEl = el.querySelector(".first-team-result");
+            var scoreEl = el.querySelector(".first-team-result, .score");
             if (scoreEl) {
                 var s = scoreEl.textContent.trim().split("-");
                 if (s.length === 2) {
@@ -3816,18 +3848,17 @@ function parseMlbbite(html) {
                 }
             }
 
-            var statusEl = el.querySelector(".result-status-text");
+            var statusEl = el.querySelector(".result-status-text, .status");
             if (statusEl) {
                 var sTxt = statusEl.textContent.toLowerCase();
-                if (sTxt.indexOf("live") !== -1 || sTxt.indexOf("in progress") !== -1) {
+                if (sTxt.indexOf("live") !== -1 || sTxt.indexOf("in progress") !== -1 || sTxt.indexOf("top") !== -1 || sTxt.indexOf("bot") !== -1) {
                     status = "live";
-                } else if (sTxt.indexOf("finished") !== -1 || sTxt.indexOf("ft") !== -1) {
+                } else if (sTxt.indexOf("finished") !== -1 || sTxt.indexOf("ft") !== -1 || sTxt.indexOf("final") !== -1) {
                     status = "finished";
                 }
             }
 
-            // We rely primarily on MLB API for the actual times but we should extract it if it's there
-            var dateEl = el.querySelector(".match-date");
+            var dateEl = el.querySelector(".match-date, .time");
             if (dateEl && !scoreEl) {
                 var rawTime = dateEl.textContent.trim();
                 var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
@@ -3835,8 +3866,7 @@ function parseMlbbite(html) {
                     startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
                 }
             } else if (dateEl && dateEl.hasAttribute("title") && status === "upcoming") {
-                // Sometime the text is relative time
-                var rawTime = dateEl.textContent.trim();
+                var rawTime = dateEl.getAttribute("title").trim() || dateEl.textContent.trim();
                 var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
                 if (timeM) {
                     startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
@@ -4829,6 +4859,62 @@ function scrapeMatchFlux(m){
     addScrapeLog(m.matchUrl, 'success', '');
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
+
+
+
+    // MLBBite/NFLbite stream extraction
+    if (m.source === 'mlbbite' || m.source === 'nflbite' || m.matchUrl.indexOf('mlbbite') >= 0 || m.matchUrl.indexOf('nflbite') >= 0) {
+        var iframes = doc.querySelectorAll('iframe');
+        [].forEach.call(iframes, function(ifr) {
+            var src = ifr.src;
+            if(src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
+                links.push({
+                    name: 'Lecteur direct',
+                    quality: 'HD',
+                    lang: 'MULTI',
+                    url: src,
+                    icon: '▶️'
+                });
+            }
+        });
+
+        var btns = doc.querySelectorAll('.stream-button, a[href*="stream"]');
+        [].forEach.call(btns, function(btn) {
+            if (btn.tagName === 'A' && btn.href && btn.href.indexOf('http') === 0) {
+                var url = btn.href;
+                var name = btn.textContent.trim() || 'Stream';
+                if (!url.includes('ads') && !url.includes('bet') && !url.includes('f1streamsi') && !url.includes('soccer-streams100') && !url.includes('streameast100') && url.indexOf('teams') === -1) {
+                    links.push({
+                        name: name,
+                        quality: 'HD',
+                        lang: 'MULTI',
+                        url: url,
+                        icon: '▶️'
+                    });
+                }
+            }
+        });
+
+        // Sometimes streams are in table rows like other sites
+        var tableRows = doc.querySelectorAll('table tbody tr');
+        [].forEach.call(tableRows, function(row) {
+            var a = row.querySelector('a');
+            if (a && a.href && a.href.indexOf('http') === 0) {
+                var url = a.href;
+                var name = a.textContent.trim() || row.cells[0].textContent.trim() || 'Stream';
+                if (!url.includes('ads') && !url.includes('bet')) {
+                    links.push({
+                        name: name,
+                        quality: 'HD',
+                        lang: 'MULTI',
+                        url: url,
+                        icon: '▶️'
+                    });
+                }
+            }
+        });
+    }
+
 
     // Nouveau scraping pour footybite.to
     // Footybite.do utilise principalement des liens directs ou cachés dans des ancres
