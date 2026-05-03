@@ -8765,7 +8765,7 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
   if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
   setupMultivisionUI();
 
-  var btn=document.getElementById('relBtn');btn.disabled=true;
+  var btn=document.getElementById('relBtn');if(btn) btn.disabled=true;
   document.getElementById('errbox').classList.remove('show');
   if (!isBackground && !window.hasLoadedOnce) {
       document.getElementById('ov').style.display='flex';
@@ -8945,7 +8945,7 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
       if(lines.length>1){ec.textContent=lines.slice(1).join('\n');ec.style.display='block';}
       document.getElementById('errbox').classList.add('show');
   }).finally(function(){
-      btn.disabled=false;
+      if(btn) btn.disabled=false;
       window.hasLoadedOnce=true;
       if (!isBackground) { document.getElementById('ov').style.display='none'; }
   });
