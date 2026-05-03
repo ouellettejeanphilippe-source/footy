@@ -8940,6 +8940,10 @@ if (mainHdrElement) hdrObserver.observe(mainHdrElement);
       if(btn) btn.disabled=false;
       window.hasLoadedOnce=true;
       if (!isBackground) { document.getElementById('ov').style.display='none'; }
+      if (!localStorage.getItem('hasSeenScriptModal')) {
+          localStorage.setItem('hasSeenScriptModal', 'true');
+          setTimeout(function() { installTampermonkey(); }, 500);
+      }
   });
 }
 
@@ -8970,6 +8974,10 @@ if ('serviceWorker' in navigator) {
       });
       if (S.matches.length > 0) {
           buildEPG(S.matches);
+      }
+      if (!localStorage.getItem('hasSeenScriptModal')) {
+          localStorage.setItem('hasSeenScriptModal', 'true');
+          setTimeout(function() { installTampermonkey(); }, 500);
       }
       loadAll(true, true); // background update for fresh streams/stats
   } else {
