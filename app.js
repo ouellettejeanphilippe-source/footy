@@ -2066,6 +2066,9 @@ var TEAM_ALIASES = {
 };
 
 var LEAGUE_ALIASES = {
+  'formula 1': 'f1',
+  'formula1': 'f1',
+  'f1': 'f1',
   'nba': 'nba',
   'national basketball association': 'nba',
   'nhl': 'nhl',
@@ -2167,767 +2170,28 @@ function fetchAndCacheLogoDynamically(teamName) {
     });
 }
 
-var STATIC_TEAM_MAP = {
-  "bournemouth": 'AFC Bournemouth',
-  "arsenal": 'Arsenal',
-  "astonvilla": 'Aston Villa',
-  "brentford": 'Brentford',
-  "brightonhovealbion": 'Brighton & Hove Albion',
-  "burnley": 'Burnley',
-  "chelsea": 'Chelsea',
-  "crystalpalace": 'Crystal Palace',
-  "everton": 'Everton',
-  "fulham": 'Fulham',
-  "leedsunited": 'Leeds United',
-  "liverpool": 'Liverpool',
-  "manchestercity": 'Manchester City',
-  "manchesterunited": 'Manchester United',
-  "newcastleunited": 'Newcastle United',
-  "nottinghamforest": 'Nottingham Forest',
-  "sunderland": 'Sunderland',
-  "tottenhamhotspur": 'Tottenham Hotspur',
-  "westhamunited": 'West Ham United',
-  "wolverhamptonwanderers": 'Wolverhampton Wanderers',
-  "alaves": 'Alavés',
-  "athleticclub": 'Athletic Club',
-  "atleticomadrid": 'Atlético Madrid',
-  "barcelona": 'Barcelona',
-  "celtavigo": 'Celta Vigo',
-  "elche": 'Elche',
-  "espanyol": 'Espanyol',
-  "getafe": 'Getafe',
-  "girona": 'Girona',
-  "levante": 'Levante',
-  "mallorca": 'Mallorca',
-  "osasuna": 'Osasuna',
-  "rayovallecano": 'Rayo Vallecano',
-  "realbetis": 'Real Betis',
-  "realmadrid": 'Real Madrid',
-  "realoviedo": 'Real Oviedo',
-  "realsociedad": 'Real Sociedad',
-  "sevilla": 'Sevilla',
-  "valencia": 'Valencia',
-  "villarreal": 'Villarreal',
-  "acmilan": 'AC Milan',
-  "asroma": 'AS Roma',
-  "atalanta": 'Atalanta',
-  "bologna": 'Bologna',
-  "cagliari": 'Cagliari',
-  "como": 'Como',
-  "cremonese": 'Cremonese',
-  "fiorentina": 'Fiorentina',
-  "genoa": 'Genoa',
-  "hellasverona": 'Hellas Verona',
-  "internazionale": 'Internazionale',
-  "juventus": 'Juventus',
-  "lazio": 'Lazio',
-  "lecce": 'Lecce',
-  "napoli": 'Napoli',
-  "parma": 'Parma',
-  "pisa": 'Pisa',
-  "sassuolo": 'Sassuolo',
-  "torino": 'Torino',
-  "udinese": 'Udinese',
-  "1heidenheim1846": '1. FC Heidenheim 1846',
-  "1unionberlin": '1. FC Union Berlin',
-  "bayerleverkusen": 'Bayer Leverkusen',
-  "bayernmunich": 'Bayern Munich',
-  "borussiadortmund": 'Borussia Dortmund',
-  "borussiamonchengladbach": 'Borussia Mönchengladbach',
-  "eintrachtfrankfurt": 'Eintracht Frankfurt',
-  "augsburg": 'FC Augsburg',
-  "cologne": 'FC Cologne',
-  "hamburgsv": 'Hamburg SV',
-  "mainz": 'Mainz',
-  "rbleipzig": 'RB Leipzig',
-  "freiburg": 'SC Freiburg',
-  "stpauli": 'St. Pauli',
-  "tsghoffenheim": 'TSG Hoffenheim',
-  "vfbstuttgart": 'VfB Stuttgart',
-  "vflwolfsburg": 'VfL Wolfsburg',
-  "werderbremen": 'Werder Bremen',
-  "ajauxerre": 'AJ Auxerre',
-  "asmonaco": 'AS Monaco',
-  "angers": 'Angers',
-  "brest": 'Brest',
-  "lehavreac": 'Le Havre AC',
-  "lens": 'Lens',
-  "lille": 'Lille',
-  "lorient": 'Lorient',
-  "lyon": 'Lyon',
-  "marseille": 'Marseille',
-  "metz": 'Metz',
-  "nantes": 'Nantes',
-  "nice": 'Nice',
-  "paris": 'Paris FC',
-  "parissaintgermain": 'Paris Saint-Germain',
-  "staderennais": 'Stade Rennais',
-  "strasbourg": 'Strasbourg',
-  "toulouse": 'Toulouse',
-  "ajaxamsterdam": 'Ajax Amsterdam',
-  "benfica": 'Benfica',
-  "bodoglimt": 'Bodo/Glimt',
-  "clubbrugge": 'Club Brugge',
-  "fckbenhavn": 'F.C. København',
-  "fkqarabag": 'FK Qarabag',
-  "galatasaray": 'Galatasaray',
-  "kairatalmaty": 'Kairat Almaty',
-  "olympiacos": 'Olympiacos',
-  "psveindhoven": 'PSV Eindhoven',
-  "pafos": 'Pafos',
-  "slaviaprague": 'Slavia Prague',
-  "cp": 'Sporting CP',
-  "unionstgilloise": 'Union St.-Gilloise',
-  "braga": 'Braga',
-  "celtic": 'Celtic',
-  "dinamozagreb": 'Dinamo Zagreb',
-  "basel": 'FC Basel',
-  "midtjylland": 'FC Midtjylland',
-  "porto": 'FC Porto',
-  "utrecht": 'FC Utrecht',
-  "fcsb": 'FCSB',
-  "fenerbahce": 'Fenerbahce',
-  "ferencvaros": 'Ferencvaros',
-  "feyenoordrotterdam": 'Feyenoord Rotterdam',
-  "goaheadeagles": 'Go Ahead Eagles',
-  "ludogoretsrazgrad": 'Ludogorets Razgrad',
-  "maccabitelaviv": 'Maccabi Tel-Aviv',
-  "malmoff": 'Malmö FF',
-  "paoksalonika": 'PAOK Salonika',
-  "panathinaikos": 'Panathinaikos',
-  "rbsalzburg": 'RB Salzburg',
-  "genk": 'Racing Genk',
-  "rangers": 'Rangers',
-  "redstarbelgrade": 'Red Star Belgrade',
-  "skbrann": 'SK Brann',
-  "sksturmgraz": 'SK Sturm Graz',
-  "viktoriaplzen": 'Viktoria Plzen',
-  "youngboys": 'Young Boys',
-  "aekathens": 'AEK Athens',
-  "aeklarnaca": 'AEK Larnaca',
-  "azalkmaar": 'AZ Alkmaar',
-  "aberdeen": 'Aberdeen',
-  "bkhacken": 'BK Häcken',
-  "breidablik": 'Breidablik',
-  "csucraiova": 'CSU Craiova',
-  "dritagjilan": 'Drita Gjilan',
-  "dynamokyiv": 'Dynamo Kyiv',
-  "noah": 'FC Noah',
-  "hamrunspartans": 'Hamrun Spartans',
-  "jagielloniabialystok": 'Jagiellonia Bialystok',
-  "kfshkendija": 'KF Shkëndija',
-  "kupskuopio": 'KuPS Kuopio',
-  "lausannesports": 'Lausanne Sports',
-  "lechpoznan": 'Lech Poznan',
-  "legiawarsaw": 'Legia Warsaw',
-  "lincolnredimps": 'Lincoln Red Imps',
-  "nkcelje": 'NK Celje',
-  "omonianicosia": 'Omonia Nicosia',
-  "rakowczestochowa": 'Raków Czestochowa',
-  "rapidvienna": 'Rapid Vienna',
-  "rijeka": 'Rijeka',
-  "samsunspor": 'Samsunspor',
-  "shakhtardonetsk": 'Shakhtar Donetsk',
-  "shamrockrovers": 'Shamrock Rovers',
-  "shelbourne": 'Shelbourne',
-  "sigmaolomouc": 'Sigma Olomouc',
-  "slovanbratislava": 'Slovan Bratislava',
-  "spartaprague": 'Sparta Prague',
-  "zrinjskimostar": 'Zrinjski Mostar',
-  "atlantaunited": 'Atlanta United FC',
-  "austin": 'Austin FC',
-  "montreal": 'CF Montréal',
-  "charlotte": 'Charlotte FC',
-  "chicagofire": 'Chicago Fire FC',
-  "coloradorapids": 'Colorado Rapids',
-  "columbuscrew": 'Columbus Crew',
-  "dcunited": 'D.C. United',
-  "cincinnati": 'FC Cincinnati',
-  "dallas": 'FC Dallas',
-  "houstondynamo": 'Houston Dynamo FC',
-  "intermiami": 'Inter Miami CF',
-  "lagalaxy": 'LA Galaxy',
-  "lafc": 'LAFC',
-  "minnesotaunited": 'Minnesota United FC',
-  "nashville": 'Nashville SC',
-  "newenglandrevolution": 'New England Revolution',
-  "newyorkcity": 'New York City FC',
-  "orlandocity": 'Orlando City SC',
-  "philadelphiaunion": 'Philadelphia Union',
-  "portlandtimbers": 'Portland Timbers',
-  "realsaltlake": 'Real Salt Lake',
-  "redbullnewyork": 'Red Bull New York',
-  "sandiego": 'San Diego FC',
-  "sanjoseearthquakes": 'San Jose Earthquakes',
-  "seattlesounders": 'Seattle Sounders FC',
-  "kansascity": 'Sporting Kansas City',
-  "stlouiscity": 'St. Louis CITY SC',
-  "toronto": 'Toronto FC',
-  "vancouverwhitecaps": 'Vancouver Whitecaps',
-  "excelsior": 'Excelsior',
-  "groningen": 'FC Groningen',
-  "twente": 'FC Twente',
-  "volendam": 'FC Volendam',
-  "fortunasittard": 'Fortuna Sittard',
-  "heerenveen": 'Heerenveen',
-  "heraclesalmelo": 'Heracles Almelo',
-  "nacbreda": 'NAC Breda',
-  "necnijmegen": 'NEC Nijmegen',
-  "peczwolle": 'PEC Zwolle',
-  "spartarotterdam": 'Sparta Rotterdam',
-  "telstar": 'Telstar',
-  "avs": 'AVS',
-  "alverca": 'Alverca',
-  "arouca": 'Arouca',
-  "cdnacional": 'C.D. Nacional',
-  "casapia": 'Casa Pia',
-  "estoril": 'Estoril',
-  "estrela": 'Estrela',
-  "famalicao": 'FC Famalicao',
-  "gilvicente": 'Gil Vicente',
-  "moreirense": 'Moreirense',
-  "rioave": 'Rio Ave',
-  "santaclara": 'Santa Clara',
-  "tondela": 'Tondela',
-  "vitoriaguimaraes": 'Vitória de Guimaraes',
-  "albania": 'Albania',
-  "andorra": 'Andorra',
-  "armenia": 'Armenia',
-  "austria": 'Austria',
-  "azerbaijan": 'Azerbaijan',
-  "belarus": 'Belarus',
-  "belgium": 'Belgium',
-  "bosniaherzegovina": 'Bosnia-Herzegovina',
-  "bulgaria": 'Bulgaria',
-  "croatia": 'Croatia',
-  "cyprus": 'Cyprus',
-  "czechia": 'Czechia',
-  "denmark": 'Denmark',
-  "england": 'England',
-  "estonia": 'Estonia',
-  "faroeislands": 'Faroe Islands',
-  "finland": 'Finland',
-  "france": 'France',
-  "georgia": 'Georgia',
-  "germany": 'Germany',
-  "gibraltar": 'Gibraltar',
-  "greece": 'Greece',
-  "hungary": 'Hungary',
-  "iceland": 'Iceland',
-  "israel": 'Israel',
-  "italy": 'Italy',
-  "kazakhstan": 'Kazakhstan',
-  "kosovo": 'Kosovo',
-  "latvia": 'Latvia',
-  "liechtenstein": 'Liechtenstein',
-  "lithuania": 'Lithuania',
-  "luxembourg": 'Luxembourg',
-  "malta": 'Malta',
-  "moldova": 'Moldova',
-  "montenegro": 'Montenegro',
-  "netherlands": 'Netherlands',
-  "northmacedonia": 'North Macedonia',
-  "northernireland": 'Northern Ireland',
-  "norway": 'Norway',
-  "poland": 'Poland',
-  "portugal": 'Portugal',
-  "republicofireland": 'Republic of Ireland',
-  "romania": 'Romania',
-  "sanmarino": 'San Marino',
-  "scotland": 'Scotland',
-  "serbia": 'Serbia',
-  "slovakia": 'Slovakia',
-  "slovenia": 'Slovenia',
-  "spain": 'Spain',
-  "sweden": 'Sweden',
-  "switzerland": 'Switzerland',
-  "turkiye": 'Türkiye',
-  "ukraine": 'Ukraine',
-  "wales": 'Wales',
-  "telfordunited": 'AFC Telford United',
-  "totton": 'AFC Totton',
-  "wimbledon": 'AFC Wimbledon',
-  "accringtonstanley": 'Accrington Stanley',
-  "aldershottown": 'Aldershot Town',
-  "altrincham": 'Altrincham',
-  "barnet": 'Barnet',
-  "barnsley": 'Barnsley',
-  "barrow": 'Barrow',
-  "birminghamcity": 'Birmingham City',
-  "blackburnrovers": 'Blackburn Rovers',
-  "blackpool": 'Blackpool',
-  "boltonwanderers": 'Bolton Wanderers',
-  "borehamwood": 'Boreham Wood',
-  "brackleytown": 'Brackley Town',
-  "bradfordcity": 'Bradford City',
-  "braintreetown": 'Braintree Town',
-  "bristolcity": 'Bristol City',
-  "bristolrovers": 'Bristol Rovers',
-  "bromley": 'Bromley',
-  "burtonalbion": 'Burton Albion',
-  "buxton": 'Buxton',
-  "cambridgeunited": 'Cambridge United',
-  "cardiffcity": 'Cardiff City',
-  "carlisleunited": 'Carlisle United',
-  "charltonathletic": 'Charlton Athletic',
-  "chathamtown": 'Chatham Town',
-  "chelmsford": 'Chelmsford',
-  "cheltenhamtown": 'Cheltenham Town',
-  "chester": 'Chester FC',
-  "chesterfield": 'Chesterfield',
-  "colchesterunited": 'Colchester United',
-  "coventrycity": 'Coventry City',
-  "crawleytown": 'Crawley Town',
-  "crewealexandra": 'Crewe Alexandra',
-  "derbycounty": 'Derby County',
-  "doncasterrovers": 'Doncaster Rovers',
-  "eastleigh": 'Eastleigh',
-  "ebbsfleetunited": 'Ebbsfleet United',
-  "exetercity": 'Exeter City',
-  "halifaxtown": 'FC Halifax Town',
-  "fleetwoodtown": 'Fleetwood Town',
-  "forestgreenrovers": 'Forest Green Rovers',
-  "gainsboroughtrinity": 'Gainsborough Trinity',
-  "gateshead": 'Gateshead',
-  "gillingham": 'Gillingham',
-  "grimsbytown": 'Grimsby Town',
-  "harrogatetown": 'Harrogate Town',
-  "hemelhempsteadtown": 'Hemel Hempstead Town',
-  "huddersfieldtown": 'Huddersfield Town',
-  "hullcity": 'Hull City',
-  "ipswichtown": 'Ipswich Town',
-  "leicestercity": 'Leicester City',
-  "leytonorient": 'Leyton Orient',
-  "lincolncity": 'Lincoln City',
-  "lutontown": 'Luton Town',
-  "macclesfield": 'Macclesfield FC',
-  "maldontiptree": 'Maldon & Tiptree',
-  "mansfieldtown": 'Mansfield Town',
-  "middlesbrough": 'Middlesbrough',
-  "millwall": 'Millwall',
-  "miltonkeynesdons": 'Milton Keynes Dons',
-  "newportcounty": 'Newport County',
-  "northamptontown": 'Northampton Town',
-  "norwichcity": 'Norwich City',
-  "nottscounty": 'Notts County',
-  "oldhamathletic": 'Oldham Athletic',
-  "oxfordunited": 'Oxford United',
-  "peterboroughunited": 'Peterborough United',
-  "plymouthargyle": 'Plymouth Argyle',
-  "portvale": 'Port Vale',
-  "portsmouth": 'Portsmouth',
-  "prestonnorthend": 'Preston North End',
-  "queensparkrangers": 'Queens Park Rangers',
-  "reading": 'Reading',
-  "rotherhamunited": 'Rotherham United',
-  "salfordcity": 'Salford City',
-  "scunthorpeunited": 'Scunthorpe United',
-  "sheffieldunited": 'Sheffield United',
-  "sheffieldwednesday": 'Sheffield Wednesday',
-  "shrewsburytown": 'Shrewsbury Town',
-  "sloughtown": 'Slough Town',
-  "southshields": 'South Shields',
-  "southampton": 'Southampton',
-  "southendunited": 'Southend United',
-  "spennymoortown": 'Spennymoor Town',
-  "stalbanscity": 'St Albans City',
-  "stevenage": 'Stevenage',
-  "stockportcounty": 'Stockport County',
-  "stokecity": 'Stoke City',
-  "suttonunited": 'Sutton United',
-  "swanseacity": 'Swansea City',
-  "swindontown": 'Swindon Town',
-  "tamworth": 'Tamworth',
-  "tranmererovers": 'Tranmere Rovers',
-  "walsall": 'Walsall',
-  "watford": 'Watford',
-  "wealdstone": 'Wealdstone',
-  "westbromwichalbion": 'West Bromwich Albion',
-  "westonsupermare": 'Weston-super-Mare',
-  "wiganathletic": 'Wigan Athletic',
-  "wrexham": 'Wrexham',
-  "wycombewanderers": 'Wycombe Wanderers',
-  "yorkcity": 'York City',
-  "albacete": 'Albacete',
-  "alberite": 'Alberite',
-  "alcala": 'Alcalá',
-  "almeria": 'Almería',
-  "antequera": 'Antequera CF',
-  "arenasclub": 'Arenas Club',
-  "atleticoastorga": 'Atletico Astorga',
-  "atleticlleida": 'Atlètic Lleida',
-  "atleticsantjust": 'Atlètic Sant Just',
-  "atleticobaleares": 'Atlético Baleares',
-  "atleticocalatayud": 'Atlético Calatayud',
-  "atleticomelilla": 'Atlético Melilla',
-  "atleticotordesillas": 'Atlético Tordesillas',
-  "azuaga": 'Azuaga',
-  "betis": 'Betis CF',
-  "burgos": 'Burgos',
-  "artisticonavalcarnero": 'CD Artistico Navalcarnero',
-  "ebro": 'CD Ebro',
-  "estepona": 'CD Estepona',
-  "extremadura": 'CD Extremadura',
-  "guadalajara": 'CD Guadalajara',
-  "sabadell": 'CD Sabadell',
-  "ceeuropa": 'CE Europa',
-  "cesantjordi": 'CE Sant Jordi',
-  "cacereno": 'Cacereno',
-  "campanario": 'Campanario',
-  "castellon": 'Castellón',
-  "caudaldeportivo": 'Caudal Deportivo',
-  "ceuta": 'Ceuta',
-  "cieza": 'Cieza',
-  "clubatleticoantoniano": 'Club Atlético Antoniano',
-  "constancia": 'Constancia',
-  "culturalleonesa": 'Cultural Leonesa',
-  "cadiz": 'Cádiz',
-  "cordoba": 'Córdoba',
-  "deportivolacoruna": 'Deportivo La Coruña',
-  "egues": 'Egüés',
-  "eibar": 'Eibar',
-  "eldense": 'Eldense',
-  "cartagena": 'FC Cartagena',
-  "getxo": 'Getxo',
-  "gimnastictarragona": 'Gimnàstic de Tarragona',
-  "granada": 'Granada',
-  "huesca": 'Huesca',
-  "intervaldemoro": 'Inter de Valdemoro',
-  "juventudtorremolinos": 'Juventud Torremolinos',
-  "launionatletico": 'La Unión Atlético',
-  "langreo": 'Langreo',
-  "laspalmas": 'Las Palmas',
-  "leganes": 'Leganés',
-  "lorcadeportiva": 'Lorca Deportiva',
-  "lourdes": 'Lourdes',
-  "lucena": 'Lucena CF',
-  "manises": 'Manises CF',
-  "maracena": 'Maracena',
-  "mirandes": 'Mirandés',
-  "mutilvera": 'Mutilvera',
-  "malaga": 'Málaga',
-  "merida": 'Mérida',
-  "naxara": 'Naxara',
-  "negreira": 'Negreira',
-  "numancia": 'Numancia',
-  "orihuela": 'Orihuela',
-  "ourense": 'Ourense CF',
-  "palmadelrio": 'Palma del Río',
-  "poblense": 'Poblense',
-  "ponferradina": 'Ponferradina',
-  "pontevedra": 'Pontevedra',
-  "portugalete": 'Portugalete',
-  "puentegenil": 'Puente Genil',
-  "puertovega": 'Puerto De Vega',
-  "quintanardelrey": 'Quintanar del Rey',
-  "ferrol": 'Racing Ferrol',
-  "santander": 'Racing Santander',
-  "rayomajadahonda": 'Rayo Majadahonda',
-  "realavilesindustrial": 'Real Aviles Industrial',
-  "realjaen": 'Real Jaen CF',
-  "realmurcia": 'Real Murcia',
-  "realvalladolid": 'Real Valladolid',
-  "realzaragoza": 'Real Zaragoza',
-  "realavila": 'Real Ávila',
-  "reddis": 'Reddis',
-  "roda": 'Roda',
-  "sdlogrones": 'SD Logroñés',
-  "santandreu": 'Sant Andreu',
-  "gijon": 'Sporting Gijón',
-  "samano": 'Sámano',
-  "talavera": 'Talavera',
-  "tarazona": 'Tarazona',
-  "tenerife": 'Tenerife',
-  "teruel": 'Teruel',
-  "textilescudo": 'Textil Escudo',
-  "toledo": 'Toledo',
-  "torrent": 'Torrent',
-  "tropezon": 'Tropezón',
-  "ucammurcia": 'UCAM Murcia',
-  "udibiza": 'UD Ibiza',
-  "udlogrones": 'UD Logroñés',
-  "udourense": 'UD Ourense',
-  "udsanfernando": 'UD San Fernando',
-  "universitario": 'Universitario FC',
-  "uniondeportivalosgarres": 'Unión Deportiva Los Garres',
-  "utebo": 'Utebo',
-  "yuncos": 'Yuncos',
-  "aslegosier": 'AS Le Gosier',
-  "asnancylorraine": 'AS Nancy Lorraine',
-  "arcachon": 'Arcachon',
-  "avranches": 'Avranches',
-  "bastia": 'Bastia',
-  "bayeux": 'Bayeux',
-  "biesheim": 'Biesheim',
-  "bloisfoot41": 'Blois Foot 41',
-  "bordeaux": 'Bordeaux',
-  "bourgperonnas": 'Bourg-Peronnas',
-  "canetroussillon": 'Canet Roussillon FC',
-  "chantilly": 'Chantilly',
-  "concarneau": 'Concarneau',
-  "dieppe": 'Dieppe',
-  "dunkerque": 'Dunkerque',
-  "freyming": 'FC Freyming',
-  "istres": 'FC Istres',
-  "perigny": 'FC Périgny',
-  "feignies": 'Feignies',
-  "fontenayfoot": 'Fontenay Foot',
-  "gsipontivy": 'GSI Pontivy',
-  "grenoble": 'Grenoble',
-  "guingamp": 'Guingamp',
-  "hautslyonnais": 'Hauts Lyonnais',
-  "iccroix": 'IC Croix',
-  "lemans": 'Le Mans',
-  "lepuy": 'Le Puy',
-  "lesherbiers": 'Les Herbiers',
-  "lessables": 'Les Sables',
-  "lyonduchere": 'Lyon-Duchère',
-  "montpellier": 'Montpellier',
-  "montreuil": 'Montreuil FC',
-  "olympiquemarcquois": 'Olympique Marcquois',
-  "orleans": 'Orléans',
-  "raonletape": "Raon-l'Etape",
-  "amiens": 'SC Amiens',
-  "saintcyrcollonges": 'Saint-Cyr Collonges',
-  "saintetienne": 'Saint-Étienne',
-  "sochaux": 'Sochaux',
-  "sportathletiquemerignacais": 'Sport Athlétique Mérignacais',
-  "stadebethunois": 'Stade Béthunois',
-  "stadelaval": 'Stade Laval',
-  "stadereims": 'Stade de Reims',
-  "tbdaway": 'TBD Away',
-  "troyes": 'Troyes',
-  "uschauvigny": 'US Chauvigny',
-  "uslusitanossaintmaur": 'US Lusitanos Saint-Maur',
-  "1lokomotiveleipzig": '1. FC Lokomotive Leipzig',
-  "1magdeburg": '1. FC Magdeburg',
-  "1nurnberg": '1. FC Nürnberg',
-  "1schweinfurt05": '1. FC Schweinfurt 05',
-  "arminiabielefeld": 'Arminia Bielefeld',
-  "bfcdynamoberlin": 'BFC Dynamo Berlin',
-  "bahlinger1929": 'Bahlinger SC 1929',
-  "dynamodresden": 'Dynamo Dresden',
-  "energiecottbus": 'Energie Cottbus',
-  "08homburg": 'FC 08 Homburg',
-  "eintrachtnorderstedt": 'FC Eintracht Norderstedt',
-  "gutersloh2000": 'FC Gütersloh 2000',
-  "fkpirmasens": 'FK Pirmasens',
-  "fvengers07": 'FV Engers 07',
-  "fvillertissen": 'FV Illertissen',
-  "fortunadusseldorf": 'Fortuna Düsseldorf',
-  "hallescher": 'Hallescher FC',
-  "hannover96": 'Hannover 96',
-  "hansarostock": 'Hansa Rostock',
-  "hemelingen": 'Hemelingen',
-  "herthaberlin": 'Hertha Berlin',
-  "holsteinkiel": 'Holstein Kiel',
-  "kaiserslautern": 'Kaiserslautern',
-  "karlsruher": 'Karlsruher SC',
-  "lohne": 'Lohne',
-  "preuenmunster": 'Preußen Münster',
-  "rsveintracht": 'RSV Eintracht',
-  "rotweissessen": 'Rot-Weiss Essen',
-  "paderborn07": 'SC Paderborn 07',
-  "sgsonnenhofgroaspach": 'SG Sonnenhof Großaspach',
-  "ssvjahnregensburg": 'SSV Jahn Regensburg',
-  "ssvulm1846": 'SSV Ulm 1846',
-  "sv07elversberg": 'SV 07 Elversberg',
-  "svatlasdelmenhorst": 'SV Atlas Delmenhorst',
-  "svdarmstadt98": 'SV Darmstadt 98',
-  "svsandhausen": 'SV Sandhausen',
-  "svwehenwiesbaden": 'SV Wehen Wiesbaden',
-  "saarbrucken": 'Saarbrücken',
-  "schalke04": 'Schalke 04',
-  "spvgggreutherfurth": 'SpVgg Greuther Fürth',
-  "sportfreundelotte": 'Sportfreunde Lotte',
-  "tsveintrachtbraunschweig": 'TSV Eintracht Braunschweig',
-  "vfblubeck": 'VfB Lübeck',
-  "vflbochum": 'VfL Bochum',
-  "viktoriakoln": 'Viktoria Köln',
-  "zfcmeuselwitz": 'ZFC Meuselwitz',
-  "alahli": 'Al Ahli',
-  "alettifaq": 'Al Ettifaq',
-  "alfateh": 'Al Fateh',
-  "alfayha": 'Al Fayha',
-  "alhazem": 'Al Hazem',
-  "alhilal": 'Al Hilal',
-  "alittihad": 'Al Ittihad',
-  "alkhaleej": 'Al Khaleej',
-  "alkholood": 'Al Kholood',
-  "alnajma": 'Al Najma',
-  "alnassr": 'Al Nassr',
-  "alokhdood": 'Al Okhdood',
-  "alqadsiah": 'Al Qadsiah',
-  "alriyadh": 'Al Riyadh',
-  "alshabab": 'Al Shabab',
-  "altaawoun": 'Al Taawoun',
-  "damac": 'Damac',
-  "neom": 'Neom SC',
-  "atlantahawks": 'Atlanta Hawks',
-  "bostonceltics": 'Boston Celtics',
-  "brooklynnets": 'Brooklyn Nets',
-  "charlottehornets": 'Charlotte Hornets',
-  "chicagobulls": 'Chicago Bulls',
-  "clevelandcavaliers": 'Cleveland Cavaliers',
-  "dallasmavericks": 'Dallas Mavericks',
-  "denvernuggets": 'Denver Nuggets',
-  "detroitpistons": 'Detroit Pistons',
-  "goldenstatewarriors": 'Golden State Warriors',
-  "houstonrockets": 'Houston Rockets',
-  "indianapacers": 'Indiana Pacers',
-  "laclippers": 'LA Clippers',
-  "losangeleslakers": 'Los Angeles Lakers',
-  "memphisgrizzlies": 'Memphis Grizzlies',
-  "miamiheat": 'Miami Heat',
-  "milwaukeebucks": 'Milwaukee Bucks',
-  "minnesotatimberwolves": 'Minnesota Timberwolves',
-  "neworleanspelicans": 'New Orleans Pelicans',
-  "newyorkknicks": 'New York Knicks',
-  "oklahomacitythunder": 'Oklahoma City Thunder',
-  "orlandomagic": 'Orlando Magic',
-  "philadelphia76ers": 'Philadelphia 76ers',
-  "phoenixsuns": 'Phoenix Suns',
-  "portlandtrailblazers": 'Portland Trail Blazers',
-  "sacramentokings": 'Sacramento Kings',
-  "sanantoniospurs": 'San Antonio Spurs',
-  "torontoraptors": 'Toronto Raptors',
-  "utahjazz": 'Utah Jazz',
-  "washingtonwizards": 'Washington Wizards',
-  "anaheimducks": 'Anaheim Ducks',
-  "bostonbruins": 'Boston Bruins',
-  "buffalosabres": 'Buffalo Sabres',
-  "calgaryflames": 'Calgary Flames',
-  "carolinahurricanes": 'Carolina Hurricanes',
-  "chicagoblackhawks": 'Chicago Blackhawks',
-  "coloradoavalanche": 'Colorado Avalanche',
-  "columbusbluejackets": 'Columbus Blue Jackets',
-  "dallasstars": 'Dallas Stars',
-  "detroitredwings": 'Detroit Red Wings',
-  "edmontonoilers": 'Edmonton Oilers',
-  "floridapanthers": 'Florida Panthers',
-  "losangeleskings": 'Los Angeles Kings',
-  "minnesotawild": 'Minnesota Wild',
-  "montrealcanadiens": 'Montreal Canadiens',
-  "nashvillepredators": 'Nashville Predators',
-  "newjerseydevils": 'New Jersey Devils',
-  "newyorkislanders": 'New York Islanders',
-  "newyorkrangers": 'New York Rangers',
-  "ottawasenators": 'Ottawa Senators',
-  "philadelphiaflyers": 'Philadelphia Flyers',
-  "pittsburghpenguins": 'Pittsburgh Penguins',
-  "sanjosesharks": 'San Jose Sharks',
-  "seattlekraken": 'Seattle Kraken',
-  "stlouisblues": 'St. Louis Blues',
-  "tampabaylightning": 'Tampa Bay Lightning',
-  "torontomapleleafs": 'Toronto Maple Leafs',
-  "utahmammoth": 'Utah Mammoth',
-  "vancouvercanucks": 'Vancouver Canucks',
-  "vegasgoldenknights": 'Vegas Golden Knights',
-  "washingtoncapitals": 'Washington Capitals',
-  "winnipegjets": 'Winnipeg Jets',
-  "arizonacardinals": 'Arizona Cardinals',
-  "atlantafalcons": 'Atlanta Falcons',
-  "baltimoreravens": 'Baltimore Ravens',
-  "buffalobills": 'Buffalo Bills',
-  "carolinapanthers": 'Carolina Panthers',
-  "chicagobears": 'Chicago Bears',
-  "cincinnatibengals": 'Cincinnati Bengals',
-  "clevelandbrowns": 'Cleveland Browns',
-  "dallascowboys": 'Dallas Cowboys',
-  "denverbroncos": 'Denver Broncos',
-  "detroitlions": 'Detroit Lions',
-  "greenbaypackers": 'Green Bay Packers',
-  "houstontexans": 'Houston Texans',
-  "indianapoliscolts": 'Indianapolis Colts',
-  "jacksonvillejaguars": 'Jacksonville Jaguars',
-  "kansascitychiefs": 'Kansas City Chiefs',
-  "lasvegasraiders": 'Las Vegas Raiders',
-  "losangeleschargers": 'Los Angeles Chargers',
-  "losangelesrams": 'Los Angeles Rams',
-  "miamidolphins": 'Miami Dolphins',
-  "minnesotavikings": 'Minnesota Vikings',
-  "newenglandpatriots": 'New England Patriots',
-  "neworleanssaints": 'New Orleans Saints',
-  "newyorkgiants": 'New York Giants',
-  "newyorkjets": 'New York Jets',
-  "philadelphiaeagles": 'Philadelphia Eagles',
-  "pittsburghsteelers": 'Pittsburgh Steelers',
-  "sanfrancisco49ers": 'San Francisco 49ers',
-  "seattleseahawks": 'Seattle Seahawks',
-  "tampabaybuccaneers": 'Tampa Bay Buccaneers',
-  "tennesseetitans": 'Tennessee Titans',
-  "washingtoncommanders": 'Washington Commanders',
-  "arizonadiamondbacks": 'Arizona Diamondbacks',
-  "athletics": 'Athletics',
-  "atlantabraves": 'Atlanta Braves',
-  "baltimoreorioles": 'Baltimore Orioles',
-  "bostonredsox": 'Boston Red Sox',
-  "chicagocubs": 'Chicago Cubs',
-  "chicagowhitesox": 'Chicago White Sox',
-  "cincinnatireds": 'Cincinnati Reds',
-  "clevelandguardians": 'Cleveland Guardians',
-  "coloradorockies": 'Colorado Rockies',
-  "detroittigers": 'Detroit Tigers',
-  "houstonastros": 'Houston Astros',
-  "kansascityroyals": 'Kansas City Royals',
-  "losangelesangels": 'Los Angeles Angels',
-  "losangelesdodgers": 'Los Angeles Dodgers',
-  "miamimarlins": 'Miami Marlins',
-  "milwaukeebrewers": 'Milwaukee Brewers',
-  "minnesotatwins": 'Minnesota Twins',
-  "newyorkmets": 'New York Mets',
-  "newyorkyankees": 'New York Yankees',
-  "philadelphiaphillies": 'Philadelphia Phillies',
-  "pittsburghpirates": 'Pittsburgh Pirates',
-  "sandiegopadres": 'San Diego Padres',
-  "sanfranciscogiants": 'San Francisco Giants',
-  "seattlemariners": 'Seattle Mariners',
-  "stlouiscardinals": 'St. Louis Cardinals',
-  "tampabayrays": 'Tampa Bay Rays',
-  "texasrangers": 'Texas Rangers',
-  "torontobluejays": 'Toronto Blue Jays',
-  "washingtonnationals": 'Washington Nationals',
-  "alpine": 'Alpine',
-  "astonmartin": 'Aston Martin',
-  "ferrari": 'Ferrari',
-  "haas": 'Haas',
-  "mclaren": 'McLaren',
-  "mercedes": 'Mercedes',
-  "bulls": 'Racing Bulls',
-  "redbull": 'Red Bull',
-  "williams": 'Williams',
-  "bostonfleet": 'Boston Fleet',
-  "minnesotafrost": 'Minnesota Frost',
-  "montrealvictoire": 'Montréal Victoire',
-  "newyorksirens": 'New York Sirens',
-  "ottawacharge": 'Ottawa Charge',
-  "torontosceptres": 'Toronto Sceptres',
-  "acadiebathursttitan": 'Acadie-Bathurst Titan',
-  "baiecomeaudrakkar": 'Baie-Comeau Drakkar',
-  "blainvilleboisbriandarmada": 'Blainville-Boisbriand Armada',
-  "capebretoneagles": 'Cape Breton Eagles',
-  "charlottetownislanders": 'Charlottetown Islanders',
-  "chicoutimisagueneens": 'Chicoutimi Saguenéens',
-  "drummondvillevoltigeurs": 'Drummondville Voltigeurs',
-  "gatineauolympiques": 'Gatineau Olympiques',
-  "halifaxmooseheads": 'Halifax Mooseheads',
-  "monctonwildcats": 'Moncton Wildcats',
-  "quebecremparts": 'Québec Remparts',
-  "rimouskioceanic": 'Rimouski Océanic',
-  "rouynnorandahuskies": 'Rouyn-Noranda Huskies',
-  "saintjohnseadogs": 'Saint John Sea Dogs',
-  "shawinigancataractes": 'Shawinigan Cataractes',
-  "sherbrookephoenix": 'Sherbrooke Phoenix',
-  "valdorforeurs": "Val-d'Or Foreurs",
-  "victoriavilletigres": 'Victoriaville Tigres',
-};
+
+var STATIC_TEAM_MAP = {};
+if (typeof STATIC_TEAMS !== 'undefined') {
+    STATIC_TEAMS.forEach(function(t) {
+        var lower = t.name.toLowerCase().trim();
+        var stripped = lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(fc|afc|sc|cf|de|sporting|cd|racing)\b/g, '').trim().replace(/[^a-z0-9]/g, '');
+        if (stripped) {
+            STATIC_TEAM_MAP[stripped] = t.name;
+        }
+    });
+}
+// Manually add some important overrides that might not map perfectly via the simple stripping
+STATIC_TEAM_MAP["abudhabigrandprix"] = "Abu Dhabi Grand Prix";
+STATIC_TEAM_MAP["bahraingrandprix"] = "Bahrain Grand Prix";
+STATIC_TEAM_MAP["saudiarabiangrandprix"] = "Saudi Arabian Grand Prix";
 
 function getOfficialTeamName(n) {
     if (!n) return n;
 
     // For F1 Grand Prix events, remove the "F1 " prefix so it looks cleaner
-    if (n.toLowerCase().startsWith('f1 ') && n.toLowerCase().includes('grand prix')) {
-        n = n.substring(3).trim();
+    if (n.toLowerCase().startsWith('f1 ') || n.toLowerCase().includes('grand prix') || n.toLowerCase().includes('formula 1') || n.toLowerCase().includes('f1 - ')) {
+        n = n.replace(/f1\s*[-–]?\s*/i, '').replace(/formula 1\s*[-–]?\s*/i, '').trim();
     }
 
     var lower = n.toLowerCase().trim();
@@ -3303,62 +2567,117 @@ function parseStreameast(html){
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var cards = doc.querySelectorAll('.match-card');
 
-  [].forEach.call(cards, function(card, index) {
-      var home = card.getAttribute('data-team1');
-      var away = card.getAttribute('data-team2');
-      var category = card.getAttribute('data-league') || 'Sports';
-      var timeStr = card.getAttribute('data-time2'); // format "ET 08:50 PM"
-      var playerLink = card.getAttribute('data-player');
-      var logo1 = card.getAttribute('data-logo1');
-      var logo2 = card.getAttribute('data-logo2');
+  if (cards.length > 0) {
+      [].forEach.call(cards, function(card, index) {
+          var home = card.getAttribute('data-team1');
+          var away = card.getAttribute('data-team2');
+          var category = card.getAttribute('data-league') || 'Sports';
+          var timeStr = card.getAttribute('data-time2'); // format "ET 08:50 PM"
+          var playerLink = card.getAttribute('data-player');
+          var logo1 = card.getAttribute('data-logo1');
+          var logo2 = card.getAttribute('data-logo2');
 
-      if(!home || !away || !playerLink) return;
+          if(!home || !away || !playerLink) return;
 
-      var startTime = '00:00';
-      if(timeStr) {
-          // Convert "ET 08:50 PM" to "HH:MM"
-          var matchTime = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-          if(matchTime) {
-              var h = parseInt(matchTime[1], 10);
-              var m = matchTime[2];
-              var ampm = matchTime[3] ? matchTime[3].toUpperCase() : '';
+          var startTime = '00:00';
+          if(timeStr) {
+              // Convert "ET 08:50 PM" to "HH:MM"
+              var matchTime = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+              if(matchTime) {
+                  var h = parseInt(matchTime[1], 10);
+                  var m = matchTime[2];
+                  var ampm = matchTime[3] ? matchTime[3].toUpperCase() : '';
 
-              if(ampm === 'PM' && h < 12) h += 12;
-              if(ampm === 'AM' && h === 12) h = 0;
+                  if(ampm === 'PM' && h < 12) h += 12;
+                  if(ampm === 'AM' && h === 12) h = 0;
 
-              // It's ET time, we keep it as is (or convert based on logic if needed, but our standard seems to accept local/ET depending on source)
-              startTime = pad(h) + ':' + pad(m);
+                  // It's ET time, we keep it as is (or convert based on logic if needed, but our standard seems to accept local/ET depending on source)
+                  startTime = pad(h) + ':' + pad(m);
+              }
           }
-      }
 
-      var streamLinks = [{
-          name: 'Streameast - Flux',
-          quality: 'HD',
-          lang: 'MULTI',
-          url: playerLink,
-          icon: '📺'
-      }];
+          var streamLinks = [{
+              name: 'Streameast - Flux',
+              quality: 'HD',
+              lang: 'MULTI',
+              url: playerLink,
+              icon: '📺'
+          }];
 
-      var l = category.toLowerCase().replace(/-/g, ' ');
+          var l = category.toLowerCase().replace(/-/g, ' ');
 
-      matches.push({
-          id: 'se_' + index,
-          league: formatLeagueName(l),
-          flag: lgFlag(l),
-          color: lgColor(l),
-          homeTeam: getOfficialTeamName(home),
-          awayTeam: getOfficialTeamName(away),
-          homeLogo: logo1,
-          awayLogo: logo2,
-          startTime: startTime,
-          durationMinutes: getLeagueDuration(l),
-          status: 'upcoming', // Streameast doesn't give clear live status in the data attrs directly, rely on API fallback or default to upcoming
-          streamLinks: streamLinks,
-          streamsLoaded: false,
-          matchUrl: STREAMEAST_URL,
-          source: 'streameast'
+          matches.push({
+              id: 'se_' + index,
+              league: formatLeagueName(l),
+              flag: lgFlag(l),
+              color: lgColor(l),
+              homeTeam: getOfficialTeamName(home),
+              awayTeam: getOfficialTeamName(away),
+              homeLogo: logo1,
+              awayLogo: logo2,
+              startTime: startTime,
+              durationMinutes: getLeagueDuration(l),
+              status: 'upcoming', // Streameast doesn't give clear live status in the data attrs directly, rely on API fallback or default to upcoming
+              streamLinks: streamLinks,
+              streamsLoaded: false,
+              matchUrl: STREAMEAST_URL,
+              source: 'streameast'
+          });
       });
-  });
+  } else {
+      // Fallback
+      var possibleMatches = doc.querySelectorAll('li, .match-row, a[href*="/player/"], a[href*="/live/"]');
+      var added = {};
+      [].forEach.call(possibleMatches, function(el, index) {
+          var text = el.textContent.replace(/\s+/g, ' ').trim();
+          var link = el.tagName.toLowerCase() === 'a' ? el : el.querySelector('a');
+          if (link && text) {
+              var href = link.getAttribute('href');
+              if (!href || added[href]) return;
+
+              var textToParse = (link.textContent || text).trim();
+              var teams = textToParse.split(/ vs | v | - /i);
+              if (teams.length >= 2 && textToParse.length < 80) {
+                  var home = teams[0].trim();
+                  var away = teams.slice(1).join(' - ').trim();
+
+                  var startTimeStr = '00:00';
+                  var matchTime = text.match(/(\d{1,2}):(\d{2})/);
+                  if (matchTime) {
+                      startTimeStr = pad(parseInt(matchTime[1], 10)) + ':' + matchTime[2];
+                  }
+
+                  var streamUrl = href;
+                  if (!streamUrl.startsWith('http')) {
+                      streamUrl = STREAMEAST_URL.slice(0, -1) + (streamUrl.startsWith('/') ? streamUrl : '/' + streamUrl);
+                  }
+
+                  matches.push({
+                      id: 'se_fb_' + index,
+                      league: formatLeagueName('Sports'),
+                      flag: lgFlag('Sports'),
+                      color: lgColor('Sports'),
+                      homeTeam: getOfficialTeamName(home),
+                      awayTeam: getOfficialTeamName(away),
+                      startTime: startTimeStr,
+                      durationMinutes: getLeagueDuration('Sports'),
+                      status: 'upcoming',
+                      streamLinks: [{
+                          name: 'Streameast - Flux',
+                          quality: 'HD',
+                          lang: 'MULTI',
+                          url: streamUrl,
+                          icon: '📺'
+                      }],
+                      streamsLoaded: false,
+                      matchUrl: STREAMEAST_URL,
+                      source: 'streameast'
+                  });
+                  added[href] = true;
+              }
+          }
+      });
+  }
 
   lg('Streameast extraits', matches.length);
   return matches;
@@ -3458,12 +2777,12 @@ function parseSportsurge(html) {
 
       // Sportsurge v2 uses .MatchListItem or similar, but often it's rendered.
       // Sometimes it has direct <a> links.
-      var matchLinks = doc.querySelectorAll('a[href*="/live/"]');
+      var matchLinks = doc.querySelectorAll('a[href*="/live/"], .MatchListItem a, a.match-link');
 
       [].forEach.call(matchLinks, function(a) {
           var titleEl = a.querySelector('.MatchTitle') || a;
           var titleText = titleEl.textContent.trim();
-          var url = a.href;
+          var url = a.getAttribute('href');
 
           if(titleText && url) {
               var home = titleText;
@@ -3504,102 +2823,171 @@ function parseOnHockey(html) {
   var tbodies = doc.querySelectorAll('tbody');
   var matchIndex = 0;
 
-  for (var i = 0; i < tbodies.length; i++) {
-      var tbody = tbodies[i];
+  if (tbodies.length > 0) {
+      for (var i = 0; i < tbodies.length; i++) {
+          var tbody = tbodies[i];
 
-      // onhockey structure: first tr in tbody usually contains the league name
-      var firstTr = tbody.querySelector('tr');
-      var leagueName = 'Hockey';
-      if (firstTr && firstTr.textContent.trim() !== '') {
-          leagueName = firstTr.textContent.replace(/standings|draw/gi, '').trim();
-      }
+          // onhockey structure: first tr in tbody usually contains the league name
+          var firstTr = tbody.querySelector('tr');
+          var leagueName = 'Hockey';
+          if (firstTr && firstTr.textContent.trim() !== '') {
+              leagueName = firstTr.textContent.replace(/standings|draw/gi, '').trim();
+          }
 
-      var textContent = tbody.textContent || '';
-      var upText = textContent.toUpperCase();
+          var textContent = tbody.textContent || '';
+          var upText = textContent.toUpperCase();
 
-      if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
-      else if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
+          if (upText.indexOf('PWHL') >= 0) leagueName = 'PWHL';
+          else if (upText.indexOf('LHJMQ') >= 0 || upText.indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
 
-      var rows = tbody.querySelectorAll('tr.game');
-      for (var r = 0; r < rows.length; r++) {
-          var row = rows[r];
-              var tds = row.querySelectorAll('td');
-              if (tds.length >= 2) {
-                  // The team names are usually in the second td.
-                  // We clone it and remove .gamelinks to just get the text.
-                  var tdClone = tds[1].cloneNode(true);
-                  var gamelinksNode = tdClone.querySelector('.gamelinks');
-                  if (gamelinksNode) gamelinksNode.remove();
+          var rows = tbody.querySelectorAll('tr.game');
+          for (var r = 0; r < rows.length; r++) {
+              var row = rows[r];
+                  var tds = row.querySelectorAll('td');
+                  if (tds.length >= 2) {
+                      // The team names are usually in the second td.
+                      // We clone it and remove .gamelinks to just get the text.
+                      var tdClone = tds[1].cloneNode(true);
+                      var gamelinksNode = tdClone.querySelector('.gamelinks');
+                      if (gamelinksNode) gamelinksNode.remove();
 
-                  // Remove extraneous geo-blocked messages or 'live stream will be available' messages
-                  var matchText = tdClone.textContent.replace(/geo-blocked for[A-Z\/]+:[a-z\s]+|live stream will be available closer to the game time/gi, '').trim();
+                      // Remove extraneous geo-blocked messages or 'live stream will be available' messages
+                      var matchText = tdClone.textContent.replace(/geo-blocked for[A-Z\/]+:[a-z\s]+|live stream will be available closer to the game time/gi, '').trim();
 
-                  var teams = matchText.split(/ vs | v | - /i);
-                  var home = 'Team 1';
-                  var away = 'Team 2';
+                      var teams = matchText.split(/ vs | v | - /i);
+                      var home = 'Team 1';
+                      var away = 'Team 2';
 
-                  if (teams.length >= 2) {
-                      home = teams[0].trim();
-                      away = teams.slice(1).join(' - ').trim();
-                  } else {
-                      home = matchText.trim() || 'TBA';
-                      away = 'TBA';
-                  }
-
-                  // Find all the stream links for this match
-                  var streamLinksArr = [];
-                  var linksContainer = row.querySelector('.gamelinks');
-                  if (linksContainer) {
-                      var links = linksContainer.querySelectorAll('a');
-                      for (var l = 0; l < links.length; l++) {
-                          var linkEl = links[l];
-                          var href = linkEl.getAttribute('href');
-                          if (!href) continue;
-
-                          var streamUrl = href;
-                          if (streamUrl.indexOf('//') === 0) {
-                              streamUrl = 'https:' + streamUrl;
-                          } else if (streamUrl.indexOf('http') !== 0) {
-                              streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
-                          }
-
-                          streamLinksArr.push({
-                              name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
-                              url: streamUrl,
-                              quality: 'HD',
-                              lang: 'MULTI',
-                              icon: '🏒'
-                          });
+                      if (teams.length >= 2) {
+                          home = teams[0].trim();
+                          away = teams.slice(1).join(' - ').trim();
+                      } else {
+                          home = matchText.trim() || 'TBA';
+                          away = 'TBA';
                       }
+
+                      // Find all the stream links for this match
+                      var streamLinksArr = [];
+                      var linksContainer = row.querySelector('.gamelinks') || row; // fallback to entire row if .gamelinks is missing
+                      if (linksContainer) {
+                          var links = linksContainer.querySelectorAll('a');
+                          for (var l = 0; l < links.length; l++) {
+                              var linkEl = links[l];
+                              var href = linkEl.getAttribute('href');
+                              if (!href) continue;
+
+                              var streamUrl = href;
+                              if (streamUrl.indexOf('//') === 0) {
+                                  streamUrl = 'https:' + streamUrl;
+                              } else if (streamUrl.indexOf('http') !== 0) {
+                                  streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                              }
+
+                              streamLinksArr.push({
+                                  name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
+                                  url: streamUrl,
+                                  quality: 'HD',
+                                  lang: 'MULTI',
+                                  icon: '🏒'
+                              });
+                          }
+                      }
+
+                      // Try to extract start time if available
+                      var startTimeStr = '00:00';
+                      var hourEl = row.querySelector('.game_hour') || tds[0];
+                      if (hourEl) {
+                           var timeText = hourEl.textContent.trim();
+                           var timeParts = timeText.match(/(\d+):(\d+)/);
+                           if (timeParts) {
+                               startTimeStr = timeParts[1].padStart(2, '0') + ':' + timeParts[2];
+                           }
+                      }
+
+                      matches.push({
+                          id: 'onhockey_' + Date.now() + '_' + matchIndex++,
+                          league: formatLeagueName(leagueName),
+                          homeTeam: getOfficialTeamName(home),
+                          awayTeam: getOfficialTeamName(away),
+                          startTime: startTimeStr,
+                          durationMinutes: getLeagueDuration('hockey'),
+                          status: 'upcoming',
+                          streamLinks: streamLinksArr,
+                          streamsLoaded: streamLinksArr.length > 0,
+                          matchUrl: ONHOCKEY_URL,
+                          source: 'onhockey',
+                          matchDate: getEstDateStrFromDate(TARGET_DATE)
+                      });
+                  }
+              }
+      }
+  } else {
+      // Fallback: If tbodies are not found, look for general list items or div blocks containing links
+      var lists = doc.querySelectorAll('li, .match-row, .event');
+      for (var i = 0; i < lists.length; i++) {
+          var item = lists[i];
+          var links = item.querySelectorAll('a');
+          if (links.length > 0) {
+              var text = item.textContent.replace(/\s+/g, ' ').trim();
+
+              var teams = text.split(/ vs | v | - /i);
+              var home = 'Team 1';
+              var away = 'Team 2';
+              if (teams.length >= 2) {
+                  home = teams[0].trim();
+                  away = teams.slice(1).join(' - ').trim();
+              } else {
+                  home = text.trim();
+              }
+
+              var streamLinksArr = [];
+              for (var l = 0; l < links.length; l++) {
+                  var linkEl = links[l];
+                  var href = linkEl.getAttribute('href');
+                  if (!href) continue;
+
+                  var streamUrl = href;
+                  if (streamUrl.indexOf('//') === 0) {
+                      streamUrl = 'https:' + streamUrl;
+                  } else if (streamUrl.indexOf('http') !== 0) {
+                      streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
                   }
 
-                  // Try to extract start time if available
-                  var startTimeStr = '00:00';
-                  var hourEl = row.querySelector('.game_hour') || tds[0];
-                  if (hourEl) {
-                       var timeText = hourEl.textContent.trim();
-                       var timeParts = timeText.match(/(\d+):(\d+)/);
-                       if (timeParts) {
-                           startTimeStr = timeParts[1].padStart(2, '0') + ':' + timeParts[2];
-                       }
-                  }
-
-                  matches.push({
-                      id: 'onhockey_' + Date.now() + '_' + matchIndex++,
-                      league: formatLeagueName(leagueName),
-                      homeTeam: getOfficialTeamName(home),
-                      awayTeam: getOfficialTeamName(away),
-                      startTime: startTimeStr,
-                      durationMinutes: getLeagueDuration('hockey'),
-                      status: 'upcoming',
-                      streamLinks: streamLinksArr,
-                      streamsLoaded: streamLinksArr.length > 0,
-                      matchUrl: ONHOCKEY_URL,
-                      source: 'onhockey',
-                      matchDate: getEstDateStrFromDate(TARGET_DATE)
+                  streamLinksArr.push({
+                      name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
+                      url: streamUrl,
+                      quality: 'HD',
+                      lang: 'MULTI',
+                      icon: '🏒'
                   });
               }
+
+              var startTimeStr = '00:00';
+              var timeParts = text.match(/(\d+):(\d+)/);
+              if (timeParts) {
+                   startTimeStr = timeParts[1].padStart(2, '0') + ':' + timeParts[2];
+              }
+
+              var leagueName = 'Hockey';
+              if (text.toUpperCase().indexOf('PWHL') >= 0) leagueName = 'PWHL';
+              else if (text.toUpperCase().indexOf('LHJMQ') >= 0 || text.toUpperCase().indexOf('QMJHL') >= 0) leagueName = 'LHJMQ';
+
+              matches.push({
+                  id: 'onhockey_' + Date.now() + '_' + matchIndex++,
+                  league: formatLeagueName(leagueName),
+                  homeTeam: getOfficialTeamName(home),
+                  awayTeam: getOfficialTeamName(away),
+                  startTime: startTimeStr,
+                  durationMinutes: getLeagueDuration('hockey'),
+                  status: 'upcoming',
+                  streamLinks: streamLinksArr,
+                  streamsLoaded: streamLinksArr.length > 0,
+                  matchUrl: ONHOCKEY_URL,
+                  source: 'onhockey',
+                  matchDate: getEstDateStrFromDate(TARGET_DATE)
+              });
           }
+      }
   }
 
   lg('OnHockey extraits', matches.length);
@@ -3931,7 +3319,57 @@ function parseFootybite(html){
 
   /* Si aucun .div-child-box → page différente */
   var matchEls=doc.querySelectorAll('.div-child-box');
+  var matches=[];
+  var currentLeague='Football';
+
   if(matchEls.length===0){
+    // Fallback: If strict classes are missing, find typical match containers (e.g. ones with two teams and a time)
+    var possibleMatches = doc.querySelectorAll('a[href*="/"], .match-row, .event-block, li');
+    [].forEach.call(possibleMatches, function(el, i) {
+        var text = el.textContent.replace(/\s+/g, ' ').trim();
+        var teams = text.split(/ vs | v | - /i);
+        if (teams.length >= 2 && text.length < 100) {
+            var home = teams[0].trim();
+            var away = teams.slice(1).join(' - ').trim();
+            var timeM = text.match(/(\d{1,2}):(\d{2})/);
+            var startTime = '00:00';
+            if (timeM) {
+                startTime = pad(parseInt(timeM[1])) + ':' + timeM[2];
+                startTime = getEstTime(startTime);
+            }
+
+            var matchUrl = '';
+            if (el.tagName.toLowerCase() === 'a') {
+                matchUrl = el.getAttribute('href') || '';
+            } else {
+                var a = el.querySelector('a');
+                if (a) matchUrl = a.getAttribute('href') || '';
+            }
+            if (matchUrl && !matchUrl.startsWith('http')) {
+                matchUrl = SITE.slice(0, -1) + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
+            }
+
+            matches.push({
+                id: 'fb_fb_' + i,
+                league: formatLeagueName('Football'),
+                flag: lgFlag('Football'),
+                color: lgColor('Football'),
+                homeTeam: getOfficialTeamName(home),
+                awayTeam: getOfficialTeamName(away),
+                startTime: startTime,
+                durationMinutes: getLeagueDuration('Football'),
+                status: 'upcoming',
+                score: null,
+                minute: null,
+                matchUrl: matchUrl,
+                streamLinks: [],
+                streamsLoaded: false
+            });
+        }
+    });
+
+    if (matches.length > 0) return matches;
+
     /* Fallback: scan toutes les classes présentes */
     var cls={};
     [].forEach.call(doc.querySelectorAll('[class]'),function(el){
@@ -3942,9 +3380,6 @@ function parseFootybite(html){
     lg('IDs',[].map.call(doc.querySelectorAll('[id]'),function(e){return e.id;}).filter(Boolean).slice(0,20).join(', '));
     return [];
   }
-
-  var matches=[];
-  var currentLeague='Football';
 
   [].forEach.call(matchEls,function(el,i){
     /* ─ Cherche le titre de ligue courant ─
