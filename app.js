@@ -8990,6 +8990,17 @@ if ('serviceWorker' in navigator) {
           loadAll(true, false);
       }
   }, 60000);
+
+  // Show script installation modal on first visit
+  if (!localStorage.getItem('scriptModalShown')) {
+      var checkLoaded = setInterval(function() {
+          if (window.hasLoadedOnce) {
+              clearInterval(checkLoaded);
+              installTampermonkey();
+              localStorage.setItem('scriptModalShown', 'true');
+          }
+      }, 500);
+  }
 })();
 
 
