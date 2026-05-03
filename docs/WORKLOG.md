@@ -3,6 +3,11 @@
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
 ## Fait
+### 03 May 2026 - Fix application hanging during API fetches
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Added timeouts (`AbortSignal.timeout(8000)`) to multiple raw `fetch` calls across `app.js` (ESPN, API-Sports, TheSportsDB, etc.).
+- **Problèmes résolus** : Prevents the application from getting permanently stuck on the "Connexion au Guide télé (API)..." spinner if an external server or proxy hangs indefinitely without rejecting the connection.
+
 - Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
 ### 04 May 2026 — Correction des flux OnHockey et MLB/NFL
 - **Fichiers touchés** : `app.js`
