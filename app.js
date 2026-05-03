@@ -2063,6 +2063,77 @@ var TEAM_ALIASES = {
   'bvb': 'borussia dortmund',
   'dortmund': 'borussia dortmund',
 
+
+  // --- NHL COMPREHENSIVE ALIASES ---
+  'bos bruins': 'boston bruins',
+  'buf sabres': 'buffalo sabres',
+  'car hurricanes': 'carolina hurricanes',
+  'col avalanche': 'colorado avalanche',
+  'dal stars': 'dallas stars',
+  'det red wings': 'detroit red wings',
+  'edm oilers': 'edmonton oilers',
+  'fla panthers': 'florida panthers',
+  'la kings': 'los angeles kings',
+  'min wild': 'minnesota wild',
+  'nj devils': 'new jersey devils',
+  'nsh predators': 'nashville predators',
+  'ny islanders': 'new york islanders',
+  'ny rangers': 'new york rangers',
+  'phi flyers': 'philadelphia flyers',
+  'pit penguins': 'pittsburgh penguins',
+  'sj sharks': 'san jose sharks',
+  'tb lightning': 'tampa bay lightning',
+  'tor maple leafs': 'toronto maple leafs',
+  'van canucks': 'vancouver canucks',
+  'vgk': 'vegas golden knights',
+  'wsh capitals': 'washington capitals',
+
+  'avs': 'colorado avalanche',
+  'caps': 'washington capitals',
+  'pens': 'pittsburgh penguins',
+  'preds': 'nashville predators',
+  'canes': 'carolina hurricanes',
+  'jackets': 'columbus blue jackets',
+  'leafs': 'toronto maple leafs',
+  'wings': 'detroit red wings',
+  'habs': 'montreal canadiens',
+  'canadiens de montreal': 'montreal canadiens',
+
+  // --- MLB COMPREHENSIVE ALIASES ---
+  'ari diamondbacks': 'arizona diamondbacks',
+  'atl braves': 'atlanta braves',
+  'bal orioles': 'baltimore orioles',
+  'bos red sox': 'boston red sox',
+  'chi cubs': 'chicago cubs',
+  'chi white sox': 'chicago white sox',
+  'cin reds': 'cincinnati reds',
+  'cle guardians': 'cleveland guardians',
+  'col rockies': 'colorado rockies',
+  'det tigers': 'detroit tigers',
+  'hou astros': 'houston astros',
+  'kc royals': 'kansas city royals',
+  'la angels': 'los angeles angels',
+  'la dodgers': 'los angeles dodgers',
+  'mia marlins': 'miami marlins',
+  'mil brewers': 'milwaukee brewers',
+  'min twins': 'minnesota twins',
+  'ny mets': 'new york mets',
+  'ny yankees': 'new york yankees',
+  'oak athletics': 'oakland athletics',
+  'phi phillies': 'philadelphia phillies',
+  'pit pirates': 'pittsburgh pirates',
+  'sd padres': 'san diego padres',
+  'sf giants': 'san francisco giants',
+  'sea mariners': 'seattle mariners',
+  'stl cardinals': 'st. louis cardinals',
+  'tb rays': 'tampa bay rays',
+  'tex rangers': 'texas rangers',
+  'tor blue jays': 'toronto blue jays',
+  'wsh nationals': 'washington nationals',
+
+  'd-backs': 'arizona diamondbacks',
+  'dbacks': 'arizona diamondbacks',
+  'yanks': 'new york yankees',
 };
 
 var LEAGUE_ALIASES = {
@@ -2195,6 +2266,11 @@ function getOfficialTeamName(n) {
     }
 
     var lower = n.toLowerCase().trim();
+
+    // Custom replaces for cities with common abbreviations before aliases
+    lower = lower.replace(/\bny\b/g, 'new york');
+    lower = lower.replace(/l\.a\./g, 'los angeles');
+
     if (typeof TEAM_ALIASES !== 'undefined' && TEAM_ALIASES[lower]) lower = TEAM_ALIASES[lower];
 
     var stripped = lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -2510,6 +2586,18 @@ function normName(n) {
   if (cached) return cached;
 
   var lower = n.toLowerCase().trim();
+
+  // Custom replaces for cities with common abbreviations before aliases
+  // Using very specific replacements to avoid breaking 'la liga' or 'deportivo la coruna'
+  lower = lower.replace(/\bny\b/g, 'new york');
+  lower = lower.replace(/l\.a\./g, 'los angeles');
+
+  if (lower.startsWith('la ')) {
+      // Only replace 'la' if it's followed by a known LA team name to avoid breaking 'la coruna' etc.
+      // But actually, we already added 'la kings', 'la dodgers', etc. in TEAM_ALIASES.
+      // So we don't even need to replace 'la' directly here if we map them in TEAM_ALIASES!
+  }
+
   // Apply aliases before stripping characters
   if (TEAM_ALIASES[lower]) {
       lower = TEAM_ALIASES[lower];

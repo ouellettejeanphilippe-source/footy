@@ -122,7 +122,10 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Problèmes résolus** : L'application ne reste plus figée sur "Connexion au Guide télé..." si un proxy tombe ou qu'une API met trop de temps à répondre. L'interface des paramètres est plus propre.
 
 ### $(date '+%d %B %Y') - Fix du parseur Footybite pour MLB et NHL
+### 03 May 2026 - Amélioration du matching des noms d'équipe (MLB, NHL)
 - **Fichiers touchés** : `app.js`
+- **Résumé** : Ajout de remplacements personnalisés sécurisés (ex. `NY` -> `New York`, `L.A.` -> `Los Angeles`) et élargissement considérable du dictionnaire d'alias (`TEAM_ALIASES`) pour y inclure les noms abrégés (ex. `LA Kings`, `LA Dodgers`, `D-Backs`) de l'ensemble des équipes de la NHL et de la MLB sans utiliser de remplacements globaux risqués (comme `la`).
+- **Problèmes résolus** : Certains matchs de la MLB et de la NHL (ex: `NY Rangers` vs `New York Rangers`, ou `L.A. Dodgers` vs `Los Angeles Dodgers`) ne se connectaient pas avec leurs matchs officiels provenant de l'API car leurs abréviations ne s'alignaient pas. Désormais, le rapprochement de ces flux est extrêmement robuste et exhaustif sans corrompre d'autres ligues comme le soccer (ex. `La Liga`).
 - **Résumé** : Refonte de la logique `findLeagueHeader` dans le parseur Footybite afin de remonter correctement l'arbre DOM pour détecter les ligues utilisant des conteneurs `.my-1` avec `.img-icone` (comme la MLB et la NHL). Modification de la logique de filtrage des "away teams" manquantes pour autoriser spécifiquement les matchs MLB et NHL, en complément des F1 et NASCAR.
 - **Problèmes résolus** : Les liens de matchs de hockey (NHL) et de baseball (MLB) sur Footybite sont désormais correctement extraits, affichés et classés. La reconnaissance des équipes à domicile et à l'extérieur est assurée, et les matchs ne sont plus ignorés silencieusement.
 
