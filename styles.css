@@ -400,9 +400,9 @@ body.theme-metallic .ic {
 
 @media(max-width: 768px) {
   body { padding-bottom: 60px; }
-  .nav-links { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; justify-content: space-around; gap: 8px; width: 100%; flex: 1; scrollbar-width: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); padding: 8px 12px; z-index: 1000; border-top: 1px solid var(--border); box-shadow: 0 -4px 12px rgba(0,0,0,0.2); }
+  .nav-links { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; justify-content: space-around; align-items: center; gap: 8px; width: 100%; flex: 1; scrollbar-width: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); padding: 12px 8px; z-index: 1000; border-top: 1px solid var(--border); box-shadow: 0 -4px 12px rgba(0,0,0,0.2); }
   .nav-links::-webkit-scrollbar { display: none; }
-  .nav-links .btn { padding: 8px 12px; min-width: auto; font-size: 11px; flex: 1 1 auto; text-align: center; justify-content: center; flex-direction: column; }
+  .nav-links .nav-btn { min-width: auto; font-size: 11px; flex: 1 1 auto; text-align: center; justify-content: center; }
 
   .secondary-actions { display: none !important; position: absolute; top: 100%; left: 12px; width: calc(100vw - 24px); max-width: 300px; background: rgba(28,28,30,0.95); border: 1px solid var(--border); border-radius: 12px; padding: 12px; flex-direction: column; align-items: stretch; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 10000; gap: 8px; margin-top: 8px; }
   .secondary-actions.open { display: flex !important; flex-direction: column !important; }
@@ -629,4 +629,73 @@ body.theme-metallic .ic {
 
 #mv-stats-carousel::-webkit-scrollbar {
     display: none;
+}
+
+/* Text-only Navigation Styles */
+.nav-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 4px 8px;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--muted2);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nav-btn:hover {
+    color: var(--text);
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.nav-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--accent);
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-btn:hover::after {
+    width: 80%;
+}
+
+.nav-btn.active-toggle {
+    font-weight: 800 !important;
+    font-size: 15px !important;
+    color: var(--text) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+}
+
+.nav-btn.active-toggle::after {
+    width: 100%;
+}
+
+#sport-filters-container {
+    display: none !important;
+}
+
+#secondary-actions {
+    display: none !important;
+}
+
+#sport-filters-container {
+    display: none !important;
+}
+
+#secondary-actions {
+    display: none !important;
 }

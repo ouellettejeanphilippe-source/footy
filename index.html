@@ -29,6 +29,24 @@
 
 
 
+
+<script>
+function switchSettingsTab(tabName) {
+  ['options', 'favoris'].forEach(t => {
+    document.getElementById('stab-' + t).style.display = (t === tabName) ? 'flex' : 'none';
+    const btn = document.getElementById('st-' + t);
+    if(btn) {
+      if(t === tabName) btn.classList.add('active-toggle');
+      else btn.classList.remove('active-toggle');
+    }
+  });
+  if(tabName === 'favoris' && typeof renderFavTeams === 'function') {
+      // In app.js favoris rendering expects #fav-list-container inside #epg normally.
+      // We will mount it inside #settings-fav-container
+      renderFavTeamsInModal();
+  }
+}
+</script>
 </head>
 <body>
 
@@ -45,21 +63,14 @@
 
   <div class="sp"></div>
 
-  <div class="secondary-actions" id="secondary-actions" style="display:flex; align-items:center; gap:8px;">
 
-
-      <button class="btn o" onclick="installTampermonkey()" aria-label="Installer le script Tampermonkey" title="Installer le script Multiview Cleaner">🧩 Script</button>
-      <button class="btn g" id="relBtn" onclick="loadAll(window.hasLoadedOnce, true)" aria-label="Actualiser" title="Actualiser">↺ Actualiser</button>
-      <button class="btn" onclick="openSettings()" aria-label="Paramètres" title="Paramètres">⚙️ Paramètres</button>
-  </div>
 </div>
 
 <div class="nav-links" id="nav-links">
-      <button class="btn" id="filter-all" onclick="applyFilter('all')">GUIDE</button>
-      <button class="btn" id="filter-live" onclick="applyFilter('live')" style="border-color:var(--accent);color:var(--accent)"><span class="ldot" style="display:inline-block;margin-right:4px;"></span>EN DIRECT</button>
-      <button class="btn" id="filter-fav" onclick="applyFilter('fav')">FAVORIS</button>
-
-      <button class="btn o mv-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">⊞ MULTIVISION</button>
+      <button class="nav-btn" id="filter-live" onclick="applyFilter('live')">En direct</button>
+      <button class="nav-btn" id="filter-all" onclick="applyFilter('all')">Guide</button>
+      <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">Multiview</button>
+      <button class="nav-btn" onclick="openSettings()">☰ Paramètres</button>
 </div>
 
 
@@ -128,19 +139,31 @@
       <div class="mi"><div class="mn">⚙️ Paramètres & Personnalisation</div></div>
       <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeSettings()"><span class="ic ic-close"></span></button>
     </div>
+
     <div class="mbody" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
 
-      <!-- API Settings -->
-      <div>
-        <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text);">API-Sports</div>
-        <label for="apiKeyInput" style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.4;">
-          Entrez votre clé API-Sports pour obtenir les scores en direct et le calendrier mis à jour automatiquement.
-        </label>
-        <div style="display:flex; gap:10px;">
-          <input type="text" id="apiKeyInput" placeholder="Clé API (ex: 3a9...)" style="flex:1; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; outline: none; font-family: monospace;">
-          <button class="btn" style="padding: 10px 16px; background: var(--accent); color: #fff; border: none;" onclick="saveApiKey()">Sauvegarder</button>
-        </div>
+      <!-- Custom Tabs -->
+      <div style="display:flex; gap:16px; border-bottom:1px solid var(--border); padding-bottom:8px; overflow-x:auto;">
+        <button class="nav-btn active-toggle" onclick="switchSettingsTab('options')" id="st-options">Options</button>
+        <button class="nav-btn" onclick="switchSettingsTab('favoris')" id="st-favoris">Favoris</button>
+        <button class="nav-btn" onclick="loadAll(window.hasLoadedOnce, true); closeSettings();">↺ Actualiser</button>
+        <button class="nav-btn" onclick="installTampermonkey(); closeSettings();">🧩 Script</button>
       </div>
+
+      <!-- Options Tab -->
+      <div id="stab-options" style="display:flex; flex-direction:column; gap:24px;">
+        <!-- API Settings -->
+        <div>
+          <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text);">API-Sports</div>
+          <label for="apiKeyInput" style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.4;">
+            Entrez votre clé API-Sports pour obtenir les scores en direct et le calendrier mis à jour automatiquement.
+          </label>
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="apiKeyInput" placeholder="Clé API (ex: 3a9...)" style="flex:1; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; outline: none; font-family: monospace;">
+            <button class="btn" style="padding: 10px 16px; background: var(--accent); color: #fff; border: none;" onclick="saveApiKey()">Sauvegarder</button>
+          </div>
+        </div>
+
 
       <hr style="border:none; border-top:1px solid var(--border); margin:0;">
 
@@ -297,9 +320,13 @@
          </div>
       </div>
 
+      </div> <!-- End of Options Tab -->
+      <!-- Favoris Tab -->
+      <div id="stab-favoris" style="display:none; flex-direction:column; gap:24px;">
+         <div id="settings-fav-container"></div>
+      </div>
     </div>
   </div>
-</div>
 </div>
 
 <div class="toast" id="toast"><span id="toasttxt"></span></div>
