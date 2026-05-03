@@ -1,6 +1,10 @@
 # WORKLOG
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
+### 04 May 2026 - Remove Top Header and Logo
+- **Fichiers touchés** : `index.html`, `app.js`, `styles.css`
+- **Résumé** : Removed the top header completely including the logo and "Sports Guide" text to free up screen real estate. The bottom/main navigation bar (`.nav-links`) remains as the primary navigation. Removed related CSS and JavaScript DOM logic (e.g., `ResizeObserver`, `--hdr-height`).
+
 
 ## Fait
 n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
