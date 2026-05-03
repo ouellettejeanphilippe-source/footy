@@ -4482,7 +4482,7 @@ function scrapeMatchFlux(m){
     var rows = doc.querySelectorAll('tr');
     [].forEach.call(rows, function(row){
         var tds = row.querySelectorAll('td');
-        if(tds.length < 5) return; // Ignore les rows qui ne ressemblent pas à notre table
+        if(tds.length < 2) return; // Ignore les rows qui ne ressemblent pas à notre table
 
         // Chercher une balise input cachée qui contient l'URL du flux
         var input = row.querySelector('input');
