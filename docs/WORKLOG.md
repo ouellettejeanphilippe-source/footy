@@ -2,6 +2,10 @@
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
 
+### 04 May 2026 - Performance Optimization: DOM Query Caching
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Optimized `updateLiveScores` by implementing a global `matchCardCache` (Map) to store DOM references for match cards and their sub-elements (`.status-minute`, `.prime-score`). Added cache invalidation in `buildEPG`.
+- **Problèmes résolus** : Reduced redundant DOM lookups during high-frequency live score updates, improving CPU efficiency and UI responsiveness during matches.
 ## En cours
 
 ## Fait
