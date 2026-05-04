@@ -47,6 +47,7 @@ function toggleFavTeam(teamName) {
 }
 
 var logoCache = {};
+var matchCardCache = new Map();
 var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{} };
 
 /* ══ CONFIG ═════════════════════════════ */
@@ -5097,6 +5098,7 @@ function buildEPG(matches){
   });
 
   var epgContainer = document.getElementById('marea');
+  matchCardCache.clear();
   epgContainer.style.cssText = '';
   epgContainer.style.display = 'flex';
   epgContainer.style.flexDirection = 'column';
@@ -8902,10 +8904,23 @@ function updateLiveScores(matches) {
         var cardIds = ['mb-' + m.id, 'mb-' + m.id + '_live_copy', 'mb-' + m.id + '_fav_copy'];
 
         cardIds.forEach(function(cid) {
-            var card = document.getElementById(cid);
-            if (card) {
+            var cached = matchCardCache.get(cid);
+            if (!cached) {
+                var card = document.getElementById(cid);
+                if (card) {
+                    cached = {
+                        el: card,
+                        minEl: card.querySelector('.status-minute'),
+                        scoreEls: card.querySelectorAll('.prime-score')
+                    };
+                    matchCardCache.set(cid, cached);
+                }
+            }
+
+            if (cached) {
+                var card = cached.el;
+                var minEl = cached.minEl;
                 // Update time/status
-                var minEl = card.querySelector('.status-minute');
                 if (minEl) {
                     if (m.status === 'live') {
                         minEl.textContent = m.minute || 'LIVE';
@@ -8913,6 +8928,8 @@ function updateLiveScores(matches) {
                         if (!ind) {
                             minEl.parentElement.className = 'live-indicator status-text';
                             minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">'+esc(m.minute||'LIVE')+'</span>';
+                            // Re-cache minEl because innerHTML replacement
+                            cached.minEl = card.querySelector('.status-minute');
                         }
                         card.classList.add('live');
                         card.classList.remove('finished');
@@ -8929,8 +8946,8 @@ function updateLiveScores(matches) {
                 }
 
                 // Update scores
-                var scoreEls = card.querySelectorAll('.prime-score');
-                if (scoreEls.length === 2) {
+                var scoreEls = cached.scoreEls;
+                if (scoreEls && scoreEls.length === 2) {
                     if (m.score && m.score.length === 2) {
                         scoreEls[0].textContent = m.score[0];
                         scoreEls[1].textContent = m.score[1];
