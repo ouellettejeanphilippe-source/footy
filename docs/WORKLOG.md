@@ -1,6 +1,9 @@
 # WORKLOG
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
+### 04 May 2026 - Ajout de tests unitaires pour escJs
+- **Fichiers touchés** : `tests/unit_escJs.test.js`, `package.json`, `docs/WORKLOG.md`
+- **Résumé** : Implémentation d'une suite de tests unitaires pour la fonction utilitaire `escJs` afin d'assurer la robustesse de l'échappement des caractères spéciaux dans les attributs HTML. La suite de tests couvre les cas limites (null, undefined, vide) ainsi que les caractères spéciaux (guillemets, apostrophes, backslashes, HTML).
 ### 04 May 2026 - Multiview UI Refinements
 - **Fichiers touchés** : `app.js`, `index.html`, `styles.css`
 - **Résumé** : Adjusted Multiview container (`#mv-container`) CSS to prevent it from overlapping the top main navigation menu on desktop devices. Updated Multiview toolbar buttons to strictly use icons without text labels. Changed the hamburger menu button text from "☰" to "Menu" to align with other primary navigation links.
