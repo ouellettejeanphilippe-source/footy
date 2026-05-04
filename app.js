@@ -39,10 +39,6 @@ function toggleFavTeam(teamName) {
   }
   localStorage.setItem('fav_teams', JSON.stringify(favTeams));
 
-  if (document.getElementById('stab-favoris') && document.getElementById('stab-favoris').style.display === 'flex' && typeof window.renderFavTeams === 'function') {
-      window.renderFavTeams();
-  }
-
   if (S.filter === 'fav') {
       buildEPG(S.matches);
   } else {
@@ -8246,16 +8242,24 @@ function renderScrapeLogs() {
     container.innerHTML = html;
 }
 
-function openSettings() {
+function openOptions() {
   buildSwatches();
   document.getElementById('apiKeyInput').value = localStorage.getItem('apiSportsKey') || '';
   initPrefs();
-  renderScrapeLogs();
   document.getElementById('setbg').classList.add('open');
 }
 
-function closeSettings() {
+function closeOptions() {
   document.getElementById('setbg').classList.remove('open');
+}
+
+function openLogs() {
+  renderScrapeLogs();
+  document.getElementById('logsbg').classList.add('open');
+}
+
+function closeLogs() {
+  document.getElementById('logsbg').classList.remove('open');
 }
 
 function saveApiKey() {
@@ -9210,21 +9214,27 @@ document.addEventListener('click', function(e) {
 
 var appTheaterTimer;
 
-window.renderFavTeamsInModal = function() {
-  var epgContainer = document.getElementById('settings-fav-container');
-  if(!epgContainer) return;
+// Menu toggle logic
+function toggleMenu(e) {
+  if (e) e.stopPropagation();
+  var menu = document.getElementById('main-menu');
+  if (menu) {
+      if (menu.style.display === 'none' || menu.style.display === '') {
+          menu.style.display = 'flex';
+          menu.classList.add('open');
+      } else {
+          menu.style.display = 'none';
+          menu.classList.remove('open');
+      }
+  }
+}
 
-  var searchInput = '<input type="text" id="fav-search-input" placeholder="Rechercher une équipe..." oninput="renderFavTeams()" style="padding:12px; border-radius:8px; border:1px solid var(--border); background:rgba(0,0,0,0.3); color:var(--text); font-size:16px; width:100%; max-width:400px; margin-bottom:16px;">';
-
-  epgContainer.innerHTML = '<div style="display:flex; gap: 24px; flex-wrap: wrap;">'
-                         + '<div style="flex: 2; min-width: 300px;">'
-                         + '<h2>Gestion des Équipes</h2><p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Sélectionnez vos équipes favorites. Leurs matchs s\'afficheront en haut de la liste.</p>' + searchInput + '<div id="fav-list-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px;"></div>'
-                         + '</div>'
-                         + '<div style="flex: 1; min-width: 250px;">'
-                         + '<h2>Ordre des Ligues</h2><p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Glissez pour modifier l\'ordre ou utilisez les flèches.</p><div id="fav-lg-container" style="display:flex; flex-direction:column; gap:8px;"></div>'
-                         + '</div>'
-                         + '</div>';
-
-  window.renderFavTeams();
-  window.renderFavLg();
-};
+// Close menu when clicking outside
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('main-menu');
+  var btn = document.getElementById('menu-btn');
+  if (menu && menu.style.display === 'flex' && e.target !== btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+      menu.style.display = 'none';
+      menu.classList.remove('open');
+  }
+});

@@ -159,3 +159,12 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Remplacement de la simple comparaison `Home==Home && Away==Away` par une fonction avancée `isMatchPair` dans la logique de fusion des streams. Cette fonction utilise une validation croisée en combinant les noms des équipes à domicile et à l'extérieur. Si une équipe est incomplète (ex. "Tigers" au lieu de "Detroit Tigers"), la fonction valide le match si les deux noms du scrape se retrouvent avec une grande similitude dans le match officiel.
 - **Problèmes résolus** : Résout les problèmes où "zéro liens" étaient trouvés pour des matchs ayant des noms partiels ou très imparfaits (comme "Tigers" vs "Rangers" sur MLBBite) qui ne fusionnaient pas avec les noms de l'API (Detroit Tigers vs Texas Rangers).
+
+### $(date +'%d %B %Y') - Refonte de la navigation, Menu Hamburger et Modales Options/Logs
+- **Fichiers touchés** : `index.html`, `app.js`
+- **Résumé** :
+  - Renommage des boutons de navigation : "En direct" devient "Live" et "Multiview" devient "Lecteur".
+  - Remplacement du bouton "☰ Paramètres" par un véritable bouton hamburger "☰" ouvrant un menu déroulant (`.secondary-actions`) avec les options (Favoris, Options, Logs, Script).
+  - Division de l'ancienne modale monolithique des paramètres en deux modales distinctes : `#setbg` pour les "Options" et `#logsbg` pour les "Logs".
+  - Émancipation de la section "Favoris" (Gestion des équipes) : ce n'est plus un onglet dans les paramètres mais un écran principal à part entière (similaire à "Live" ou "Guide"), accessible via le menu hamburger. Les fonctions associées au modal (`renderFavTeamsInModal`) ont été supprimées.
+- **Problèmes résolus** : L'interface est plus propre et logique, réduisant la surcharge cognitive dans les paramètres. La gestion des favoris prend désormais tout l'écran, ce qui est plus confortable à utiliser, et le menu supérieur est épuré grâce au système déroulant.
