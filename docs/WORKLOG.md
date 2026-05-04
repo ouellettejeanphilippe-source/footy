@@ -1,3 +1,8 @@
+### 04 May 2026 - Uniformisation des liens du menu hamburger
+- **Fichiers touchés** : `index.html`, `styles.css`
+- **Résumé** : Changement des classes des boutons du menu déroulant ("Favoris", "Options", "Logs", "Script") de `.btn` à `.nav-btn` et ajustement du CSS pour harmoniser l'apparence visuelle avec les liens de la barre de navigation principale (sans fond, lettres en majuscules, trait de soulignement au survol).
+- **Problèmes résolus** : Incohérence visuelle dans le menu hamburger ; tous les liens utilisent désormais le même composant de style.
+
 # WORKLOG
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
