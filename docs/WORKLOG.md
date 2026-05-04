@@ -1,6 +1,16 @@
 # WORKLOG
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
+
+## En cours
+
+## Fait
+
+### 04 May 2026 - Security Fix in run_checks.py
+- **Fichiers touchés** : `run_checks.py`
+- **Résumé** : Suppression de `shell=True` dans les appels `subprocess.run` pour prévenir les injections de commandes. Refactorisation de `run_cmd` pour accepter des listes d'arguments. Utilisation de `glob.glob` pour l'expansion des chemins et `sys.executable` pour l'exécution sécurisée du compilateur Python.
+- **Problèmes résolus** : Vulnérabilité d'injection de commande (Security Vulnerability).
+
 ### 04 May 2026 - Remove Top Header and Logo
 - **Fichiers touchés** : `index.html`, `app.js`, `styles.css`
 - **Résumé** : Removed the top header completely including the logo and "Sports Guide" text to free up screen real estate. The bottom/main navigation bar (`.nav-links`) remains as the primary navigation. Removed related CSS and JavaScript DOM logic (e.g., `ResizeObserver`, `--hdr-height`).
