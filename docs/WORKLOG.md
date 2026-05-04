@@ -1,6 +1,10 @@
 # WORKLOG
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
+### 04 May 2026 - Multiview UI Refinements
+- **Fichiers touchés** : `app.js`, `index.html`, `styles.css`
+- **Résumé** : Adjusted Multiview container (`#mv-container`) CSS to prevent it from overlapping the top main navigation menu on desktop devices. Updated Multiview toolbar buttons to strictly use icons without text labels. Changed the hamburger menu button text from "☰" to "Menu" to align with other primary navigation links.
+
 ### 04 May 2026 - Remove Top Header and Logo
 - **Fichiers touchés** : `index.html`, `app.js`, `styles.css`
 - **Résumé** : Removed the top header completely including the logo and "Sports Guide" text to free up screen real estate. The bottom/main navigation bar (`.nav-links`) remains as the primary navigation. Removed related CSS and JavaScript DOM logic (e.g., `ResizeObserver`, `--hdr-height`).

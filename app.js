@@ -6666,7 +6666,7 @@ function toggleMultiviewPip() {
     if(mvc.classList.contains('mv-pip')) {
         // Restore to full screen multiview
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
         var sf = document.getElementById('sport-filters-container');
@@ -6736,7 +6736,7 @@ function setupMultivisionUI() {
     // Create Multivision Container
     var mvContainer = document.createElement('div');
     mvContainer.id = 'mv-container';
-    mvContainer.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:none;flex-direction:column;';
+    mvContainer.style.cssText = 'position:fixed;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
@@ -6745,17 +6745,17 @@ function setupMultivisionUI() {
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="btn o" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px 16px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
       + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
-      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕ <span class="hide-pip hide-mobile">Ajouter</span></button>'
+      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕</button>'
       + '<select class="btn o hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 4px 36px 4px 12px; min-width: 130px;" id="mv-layout-select">'
       +   '<option value="auto">⊞ Auto</option>'
       +   '<option value="focus">⭐ Focus</option>'
       +   '<option value="vertical">⊟ Vertical</option>'
       +   '<option value="horizontal">⊟ Horizontal</option>'
       + '</select>'
-      + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬 Cinéma</button>'
-      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶ Plein écran</button>'
-      + '<button class="btn o hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 4px 8px;">📊 Game Mode</button>'
-      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;"><span class="ic ic-close"></span> <span class="hide-pip hide-mobile">Fermer</span></button>'
+      + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬</button>'
+      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶</button>'
+      + '<button class="btn o hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 4px 8px;">📊</button>'
+      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;"><span class="ic ic-close"></span></button>'
       + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>'
       + '</div>';
 
@@ -7410,7 +7410,7 @@ function toggleMultiview() {
     if(mvc.style.display === 'none') {
         // Open Multivision full screen
         mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
+        mvc.style.cssText = 'position:fixed;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:transparent;z-index:90;display:flex;flex-direction:column;';
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
