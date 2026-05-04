@@ -1926,6 +1926,8 @@ function getTeamColors(teamName) {
 
 var TEAM_ALIASES = {
   'montreal victoire': 'montréal victoire',
+  'canadeins': 'montreal canadiens',
+  'wild': 'minnesota wild',
   'tb': 'tampa bay lightning',
   'tampa bay': 'tampa bay lightning',
   'lightning': 'tampa bay lightning',
@@ -3690,15 +3692,42 @@ function isMatch(name1, name2) {
   // Check if one contains the other (e.g. 'manchester' in 'manchesterunited')
   if (name1.includes(name2) || name2.includes(name1)) return true;
 
-  // Lower threshold slightly to catch typos, or cases where prefixes differ
   var sim = stringSimilarity(name1, name2);
 
   // Specific fallback for short names
   if (name1.length <= 4 || name2.length <= 4) {
-      return sim > 0.8;
+      if (sim > 0.8) return true;
+  } else {
+      if (sim > 0.65) return true;
   }
 
-  return sim > 0.65;
+  // Sliding window substring similarity
+  // This allows catching scraped names like "tampa" within "tampabaylightning" even with typos (e.g., "tanpa")
+  var shorter = name1.length < name2.length ? name1 : name2;
+  var longer = name1.length < name2.length ? name2 : name1;
+
+  if (longer.length > shorter.length) {
+      // Window size accounts for possible missing or extra characters
+      var maxWindow = Math.min(longer.length, shorter.length + 2);
+      var minWindow = Math.max(1, shorter.length - 2);
+
+      var bestSubSim = 0;
+      for (var w = minWindow; w <= maxWindow; w++) {
+          for (var i = 0; i <= longer.length - w; i++) {
+              var sub = longer.substring(i, i + w);
+              var subSim = stringSimilarity(sub, shorter);
+              if (subSim > bestSubSim) bestSubSim = subSim;
+          }
+      }
+
+      // Since isMatch is usually called for BOTH home and away teams concurrently,
+      // a loose match (70% on a substring) is very safe here.
+      if (bestSubSim > 0.70) {
+          return true;
+      }
+  }
+
+  return false;
 }
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */

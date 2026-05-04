@@ -7,6 +7,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+
+- Amélioration de la fonction `isMatch` dans `app.js` :
+  - Ajout d'alias explicites (ex: canadeins, wild) dans `TEAM_ALIASES`.
+  - Implémentation d'un algorithme de "sliding window fuzzy match" pour les correspondances d'équipes partielles et mal orthographiées.
+  - La logique s'appuie sur la vérification double (Domicile ET Extérieur) pour garantir la sécurité de l'assignation des flux tout en étant très "lousse" sur les noms individuels.
 - Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 ### 04 May 2026 - Centrage du menu principal sur desktop
 - **Fichiers touchés** : `styles.css`
