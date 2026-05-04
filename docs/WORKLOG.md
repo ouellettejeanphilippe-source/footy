@@ -1,6 +1,15 @@
 # WORKLOG
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
+
+## En cours
+
+## Fait
+
+### 04 May 2026 - Security Fix in run_checks.py
+- **Fichiers touchés** : `run_checks.py`
+- **Résumé** : Suppression de `shell=True` dans les appels `subprocess.run` pour prévenir les injections de commandes. Refactorisation de `run_cmd` pour accepter des listes d'arguments. Utilisation de `glob.glob` pour l'expansion des chemins et `sys.executable` pour l'exécution sécurisée du compilateur Python.
+- **Problèmes résolus** : Vulnérabilité d'injection de commande (Security Vulnerability).
 ### 04 May 2026 - Ajout de tests unitaires pour escJs
 - **Fichiers touchés** : `tests/unit_escJs.test.js`, `package.json`, `docs/WORKLOG.md`
 - **Résumé** : Implémentation d'une suite de tests unitaires pour la fonction utilitaire `escJs` afin d'assurer la robustesse de l'échappement des caractères spéciaux dans les attributs HTML. La suite de tests couvre les cas limites (null, undefined, vide) ainsi que les caractères spéciaux (guillemets, apostrophes, backslashes, HTML).
