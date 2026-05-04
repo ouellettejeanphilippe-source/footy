@@ -154,3 +154,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Mise à jour de la regex dans `parseMlbbite` pour ignorer les suffixes du type `-5-free-live-stream` (et autres variantes) lors de l'extraction des noms d'équipes depuis l'URL en cas de fallback.
 - **Problèmes résolus** : L'équipe "away" incluait parfois des éléments indésirables de l'URL, causant un échec du rapprochement (`isMatch`) avec l'équipe officielle correspondante, ce qui empêchait les liens de streams de s'afficher pour certains matchs MLB.
+
+### $(date +'%d %B %Y') - Amélioration du matching cross-validation (isMatchPair)
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Remplacement de la simple comparaison `Home==Home && Away==Away` par une fonction avancée `isMatchPair` dans la logique de fusion des streams. Cette fonction utilise une validation croisée en combinant les noms des équipes à domicile et à l'extérieur. Si une équipe est incomplète (ex. "Tigers" au lieu de "Detroit Tigers"), la fonction valide le match si les deux noms du scrape se retrouvent avec une grande similitude dans le match officiel.
+- **Problèmes résolus** : Résout les problèmes où "zéro liens" étaient trouvés pour des matchs ayant des noms partiels ou très imparfaits (comme "Tigers" vs "Rangers" sur MLBBite) qui ne fusionnaient pas avec les noms de l'API (Detroit Tigers vs Texas Rangers).

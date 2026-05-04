@@ -3601,16 +3601,10 @@ function mergeMatches(mainList, newList) {
   newList.forEach(function(nm) {
     var merged = false;
 
-    // Clean names for better fuzzy matching
-    var nmHome = normName(nm.homeTeam);
-    var nmAway = normName(nm.awayTeam);
-
     for (var i = 0; i < mainList.length; i++) {
       var mm = mainList[i];
-      var mmHome = normName(mm.homeTeam);
-      var mmAway = normName(mm.awayTeam);
 
-      if (isMatch(nmHome, mmHome) && isMatch(nmAway, mmAway)) {
+      if (isMatchPair(mm, nm)) {
         // It's the same match. Merge streams.
         mm.streamLinks = mm.streamLinks || [];
         nm.streamLinks = nm.streamLinks || [];
@@ -3680,6 +3674,102 @@ function stringSimilarity(s1, s2) {
   if (maxLen === 0) return 1.0;
   var dist = levenshtein(s1, s2);
   return (maxLen - dist) / maxLen;
+}
+
+function isMatchPair(m1, m2) {
+  if (!m1 || !m2) return false;
+
+  // League strict check if both have leagues defined and aren't generic
+  var l1 = (m1.league || '').toLowerCase();
+  var l2 = (m2.league || '').toLowerCase();
+
+  // Some basic sport/league exclusions (only exclude if we are absolutely sure they mismatch)
+  if (l1 && l2 && l1 !== l2) {
+      var is1Hockey = l1.includes('nhl') || l1.includes('hockey') || l1.includes('pwhl') || l1.includes('lhjmq');
+      var is2Hockey = l2.includes('nhl') || l2.includes('hockey') || l2.includes('pwhl') || l2.includes('lhjmq');
+      var is1Bball = l1.includes('nba') || l1.includes('basketball');
+      var is2Bball = l2.includes('nba') || l2.includes('basketball');
+      var is1Base = l1.includes('mlb') || l1.includes('baseball');
+      var is2Base = l2.includes('mlb') || l2.includes('baseball');
+      var is1Football = l1.includes('nfl') || l1.includes('american');
+      var is2Football = l2.includes('nfl') || l2.includes('american');
+
+      if ((is1Hockey && (is2Bball || is2Base || is2Football)) ||
+          (is1Bball && (is2Hockey || is2Base || is2Football)) ||
+          (is1Base && (is2Hockey || is2Bball || is2Football)) ||
+          (is1Football && (is2Hockey || is2Bball || is2Base))) {
+          return false;
+      }
+  }
+
+  var m1H = normName(m1.homeTeam);
+  var m1A = normName(m1.awayTeam);
+  var m2H = normName(m2.homeTeam);
+  var m2A = normName(m2.awayTeam);
+
+  // Standard direct match
+  if (isMatch(m1H, m2H) && isMatch(m1A, m2A)) {
+      return true;
+  }
+
+  // Advanced Cross-Validation Match
+  // Create combined strings for both matches
+  var combined1 = m1H + " " + m1A;
+  var combined2 = m2H + " " + m2A;
+
+  // We check if the smaller combo is essentially contained in the larger combo
+  // by comparing words or high substring overlap.
+  var shorterCombo = combined1.length < combined2.length ? combined1 : combined2;
+  var longerCombo = combined1.length < combined2.length ? combined2 : combined1;
+
+  // Let's break the original shorter names (from the object, not normalized) into words
+  var rawShortH = m1H.length + m1A.length < m2H.length + m2A.length ? m1.homeTeam : m2.homeTeam;
+  var rawShortA = m1H.length + m1A.length < m2H.length + m2A.length ? m1.awayTeam : m2.awayTeam;
+
+  // Use normName on parts to match how the longer string is built
+  var shortWordsRaw = (rawShortH + " " + rawShortA).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/);
+  var shortWords = [];
+  shortWordsRaw.forEach(function(w) {
+      var nw = normName(w);
+      if (nw.length >= 3) shortWords.push(nw);
+      else if (w.length >= 3) shortWords.push(w);
+  });
+
+  // Remove duplicates
+  shortWords = shortWords.filter(function(item, pos) { return shortWords.indexOf(item) == pos; });
+
+  if (shortWords.length === 0) return false;
+
+  var matchedWords = 0;
+  for (var i = 0; i < shortWords.length; i++) {
+      var word = shortWords[i];
+      if (longerCombo.includes(word)) {
+          matchedWords++;
+      } else {
+          // Last resort sliding window for this word on the entire longer combo
+          var maxW = Math.min(longerCombo.length, word.length + 2);
+          var minW = Math.max(1, word.length - 2);
+          var bestSubSim = 0;
+          for (var w = minW; w <= maxW; w++) {
+              for (var k = 0; k <= longerCombo.length - w; k++) {
+                  var sub = longerCombo.substring(k, k + w);
+                  var subSim = stringSimilarity(sub, word);
+                  if (subSim > bestSubSim) bestSubSim = subSim;
+              }
+          }
+          if (bestSubSim > 0.80) {
+              matchedWords++;
+          }
+      }
+  }
+
+  // If a significant portion of words match, consider it the same matchup
+  // (e.g. if we have "tigers" and "rangers", that's 2 words. If both match, it's 100%)
+  if (matchedWords >= shortWords.length * 0.75 && matchedWords >= 2) {
+      return true;
+  }
+
+  return false;
 }
 
 function isMatch(name1, name2) {
@@ -8519,16 +8609,12 @@ function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
   if (typeof window.streamMissingCounts === 'undefined') window.streamMissingCounts = {};
 
   scrapedMatches.forEach(function(sm) {
-      var smHome = normName(sm.homeTeam);
-      var smAway = normName(sm.awayTeam);
 
       var matched = false;
       for(var i=0; i<apiMatches.length; i++) {
          var am = apiMatches[i];
-         var amHome = normName(am.homeTeam);
-         var amAway = normName(am.awayTeam);
 
-         if(isMatch(amHome, smHome) && isMatch(amAway, smAway)) {
+         if(isMatchPair(am, sm)) {
             if(!am.streamLinks) am.streamLinks = [];
             if(sm.streamLinks) {
                 sm.streamLinks.forEach(function(sl) {
