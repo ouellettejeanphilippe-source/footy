@@ -1,6 +1,10 @@
 # WORKLOG
 
 Journal append-only. Format strict : entrées datées, du plus récent au plus ancien.
+### 04 May 2026 - Ajout de tests unitaires pour escJs
+- **Fichiers touchés** : `tests/unit_escJs.test.js`, `package.json`, `docs/WORKLOG.md`
+- **Résumé** : Implémentation d'une suite de tests unitaires pour la fonction utilitaire `escJs` afin d'assurer la robustesse de l'échappement des caractères spéciaux dans les attributs HTML. La suite de tests couvre les cas limites (null, undefined, vide) ainsi que les caractères spéciaux (guillemets, apostrophes, backslashes, HTML).
+
 ### 04 May 2026 - Remove Top Header and Logo
 - **Fichiers touchés** : `index.html`, `app.js`, `styles.css`
 - **Résumé** : Removed the top header completely including the logo and "Sports Guide" text to free up screen real estate. The bottom/main navigation bar (`.nav-links`) remains as the primary navigation. Removed related CSS and JavaScript DOM logic (e.g., `ResizeObserver`, `--hdr-height`).
