@@ -127,12 +127,12 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `index.html`
 - **Résumé** : Modification de `lgFlag()` pour utiliser des icônes spécifiques aux sports (⚾, 🏀, 🏈, etc.) à la place du ⚽ générique. Remplacement de l'icône ⚽ en dur par l'icône de sport adéquate dans la liste Multivision. Suppression du compteur du nombre de flux actifs sur le bouton Multivision pour l'alléger.
 
-### $(date '+%d %B %Y') - Prévention du blocage au chargement & Création de l'onglet Logs
+### 04 May 2026 - Prévention du blocage au chargement & Création de l'onglet Logs
 - **Fichiers touchés** : `app.js`, `index.html`
 - **Résumé** : Remplacement de `Promise.all` par `Promise.allSettled` dans `getApiFirstMatches` pour éviter que l'échec ou le timeout d'une seule requête de données (ESPN, API-Sports, etc.) ne bloque le démarrage complet de l'application sur l'écran de chargement initial. Déplacement des logs de scraping depuis la vue "Options" vers un nouvel onglet dédié "Logs" dans le modal des Paramètres afin de désencombrer l'interface utilisateur.
 - **Problèmes résolus** : L'application ne reste plus figée sur "Connexion au Guide télé..." si un proxy tombe ou qu'une API met trop de temps à répondre. L'interface des paramètres est plus propre.
 
-### $(date '+%d %B %Y') - Fix du parseur Footybite pour MLB et NHL
+### 04 May 2026 - Fix du parseur Footybite pour MLB et NHL
 ### 03 May 2026 - Amélioration du matching des noms d'équipe (MLB, NHL)
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Ajout de remplacements personnalisés sécurisés (ex. `NY` -> `New York`, `L.A.` -> `Los Angeles`) et élargissement considérable du dictionnaire d'alias (`TEAM_ALIASES`) pour y inclure les noms abrégés (ex. `LA Kings`, `LA Dodgers`, `D-Backs`) de l'ensemble des équipes de la NHL et de la MLB sans utiliser de remplacements globaux risqués (comme `la`).
@@ -140,7 +140,7 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Résumé** : Refonte de la logique `findLeagueHeader` dans le parseur Footybite afin de remonter correctement l'arbre DOM pour détecter les ligues utilisant des conteneurs `.my-1` avec `.img-icone` (comme la MLB et la NHL). Modification de la logique de filtrage des "away teams" manquantes pour autoriser spécifiquement les matchs MLB et NHL, en complément des F1 et NASCAR.
 - **Problèmes résolus** : Les liens de matchs de hockey (NHL) et de baseball (MLB) sur Footybite sont désormais correctement extraits, affichés et classés. La reconnaissance des équipes à domicile et à l'extérieur est assurée, et les matchs ne sont plus ignorés silencieusement.
 
-### $(date '+%d %B %Y') - Modal d'installation du script au premier lancement
+### 04 May 2026 - Modal d'installation du script au premier lancement
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Ajout d'une logique basée sur `localStorage` (`hasSeenScriptModal`) pour afficher automatiquement la modale d'installation du script utilisateur Tampermonkey (`installTampermonkey()`) lors du premier chargement réussi de l'application dans un navigateur. Cette logique a été intégrée pour se déclencher soit après le masquage de l'overlay de chargement complet, soit immédiatement après le rendu depuis le cache.
 - **Problèmes résolus** : L'utilisateur est désormais averti activement de l'utilité du script de nettoyage Multivision dès sa première visite.
@@ -149,3 +149,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Changement de la condition dans `scrapeMatchFlux` vérifiant le nombre de colonnes d'une table HTML pour extraire un lien de `if(tds.length < 5) return;` à `if(tds.length < 2) return;`.
 - **Problèmes résolus** : Certains matchs Footybite n'affichaient plus de streams car la nouvelle structure HTML des tables de flux ne comporte plus que 2 ou 3 colonnes. Cette vérification bloquait silencieusement l'extraction.
+
+### 04 May 2026 - Correction du parseur MLBBite
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Mise à jour de la regex dans `parseMlbbite` pour ignorer les suffixes du type `-5-free-live-stream` (et autres variantes) lors de l'extraction des noms d'équipes depuis l'URL en cas de fallback.
+- **Problèmes résolus** : L'équipe "away" incluait parfois des éléments indésirables de l'URL, causant un échec du rapprochement (`isMatch`) avec l'équipe officielle correspondante, ce qui empêchait les liens de streams de s'afficher pour certains matchs MLB.

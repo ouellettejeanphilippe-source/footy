@@ -3315,7 +3315,7 @@ function parseMlbbite(html) {
                 away = teams[1].textContent.trim();
             } else {
                 // Try parsing from the URL: /watch/live/san-francisco-giants-at-tampa-bay-rays-5-free-live-stream
-                var urlMatch = href.match(/live\/([a-z0-9-]+)-(?:at|vs)-([a-z0-9-]+)/);
+                var urlMatch = href.match(/live\/([a-z0-9-]+)-(?:at|vs)-([a-z0-9-]+?)(?:-\d*-?free-live-stream(?:s)?|-live-stream)?(?:\.html|\/)?$/);
                 if (urlMatch) {
                     away = urlMatch[1].replace(/-/g, ' ');
                     home = urlMatch[2].replace(/-/g, ' ');
