@@ -172,3 +172,10 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
   - Division de l'ancienne modale monolithique des paramètres en deux modales distinctes : `#setbg` pour les "Options" et `#logsbg` pour les "Logs".
   - Émancipation de la section "Favoris" (Gestion des équipes) : ce n'est plus un onglet dans les paramètres mais un écran principal à part entière (similaire à "Live" ou "Guide"), accessible via le menu hamburger. Les fonctions associées au modal (`renderFavTeamsInModal`) ont été supprimées.
 - **Problèmes résolus** : L'interface est plus propre et logique, réduisant la surcharge cognitive dans les paramètres. La gestion des favoris prend désormais tout l'écran, ce qui est plus confortable à utiliser, et le menu supérieur est épuré grâce au système déroulant.
+
+### $(date +'%d %B %Y') - Fix du "Deep Scraping" (liens spécifiques de match)
+- **Fichiers touchés** : `app.js`
+- **Résumé** :
+  - Modification des parseurs (`parseStreameast`, `parseBuffstreams`, `parseOnHockey`, `parseSportsurge`, `parseFootybite`) pour que `matchUrl` pointe vers la page spécifique de l'événement plutôt que la constante de la page d'accueil du site.
+  - Ajustement de `scrapeMatchFlux` pour détecter les liens de stream (boutons, hrefs) en s'assurant que les URLs relatives soient correctement converties en URLs absolues via `new URL()`.
+- **Problèmes résolus** : Empêche le scraper de s'arrêter à la page principale pour certains sites. `scrapeMatchFlux` se rend maintenant sur la bonne page intermédiaire ou de lecteur.
