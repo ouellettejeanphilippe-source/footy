@@ -9012,7 +9012,7 @@ function loadAll(isBackground, forceScrape){
           });
           updateLiveScores(S.matches); // New function to update scores smoothly
           if (!isBackground) { document.getElementById('ov').style.display='none'; }
-          return Promise.resolve();
+          return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
       }
 
       window.lastScrapeTime = nowTime;
@@ -9133,6 +9133,7 @@ function loadAll(isBackground, forceScrape){
           showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
       });
   }).catch(function(err){
+      if (err === 'SKIP_SCRAPING_SUCCESS') return; // Smooth update finished, no errors to show
       if (!isBackground) { document.getElementById('ov').style.display='none'; }
       var lines=(err.message||'Erreur').split('\n');
       document.getElementById('errmsg').textContent=lines[0];

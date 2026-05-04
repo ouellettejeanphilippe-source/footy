@@ -5,6 +5,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+- Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 
 ### 04 May 2026 - Security Fix in run_checks.py
 - **Fichiers touchés** : `run_checks.py`
@@ -23,6 +24,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 
 - Amélioration de la fonction `isMatch` dans `app.js` :
   - Ajout d'alias explicites (ex: canadeins, wild) dans `TEAM_ALIASES`.
@@ -78,6 +80,7 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - Rien pour l'instant
 
 ## Fait
+- Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 - Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
 - Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
@@ -101,6 +104,7 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+- Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 - Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
 - Refonte du menu principal et des menus secondaires (multiview, filtres) pour un fonctionnement plus moderne, style app (bottom nav sur mobile, header épuré sur desktop).
