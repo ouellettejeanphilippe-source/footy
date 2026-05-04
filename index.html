@@ -30,32 +30,24 @@
 
 
 
-<script>
-function switchSettingsTab(tabName) {
-  ['options', 'favoris', 'logs'].forEach(t => {
-    document.getElementById('stab-' + t).style.display = (t === tabName) ? 'flex' : 'none';
-    const btn = document.getElementById('st-' + t);
-    if(btn) {
-      if(t === tabName) btn.classList.add('active-toggle');
-      else btn.classList.remove('active-toggle');
-    }
-  });
-  if(tabName === 'favoris' && typeof renderFavTeams === 'function') {
-      // In app.js favoris rendering expects #fav-list-container inside #epg normally.
-      // We will mount it inside #settings-fav-container
-      renderFavTeamsInModal();
-  }
-}
-</script>
 </head>
 <body>
 
 
 <div class="nav-links" id="nav-links">
-      <button class="nav-btn" id="filter-live" onclick="applyFilter('live')">En direct</button>
+      <button class="nav-btn" id="filter-live" onclick="applyFilter('live')">Live</button>
       <button class="nav-btn" id="filter-all" onclick="applyFilter('all')">Guide</button>
-      <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">Multiview</button>
-      <button class="nav-btn" onclick="openSettings()">☰ Paramètres</button>
+      <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">Lecteur</button>
+
+      <div style="position: relative; display: inline-block;">
+          <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)" style="font-size: 20px; padding: 0 12px;">☰</button>
+          <div class="secondary-actions" id="main-menu" style="display: none; position: absolute; top: 100%; right: 0; background: rgba(28,28,30,0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000; min-width: 150px; margin-top: 10px;">
+              <button class="btn" onclick="applyFilter('fav'); toggleMenu(event);" style="width: 100%; text-align: left; padding: 10px 16px;">Favoris</button>
+              <button class="btn" onclick="openOptions(); toggleMenu(event);" style="width: 100%; text-align: left; padding: 10px 16px;">Options</button>
+              <button class="btn" onclick="openLogs(); toggleMenu(event);" style="width: 100%; text-align: left; padding: 10px 16px;">Logs</button>
+              <button class="btn" onclick="installTampermonkey(); toggleMenu(event);" style="width: 100%; text-align: left; padding: 10px 16px;">Script</button>
+          </div>
+      </div>
 </div>
 
 
@@ -118,23 +110,14 @@ function switchSettingsTab(tabName) {
 
 
 <!-- SETTINGS MODAL -->
-<div class="mbg" id="setbg" onclick="if(event.target===this)closeSettings()">
+<div class="mbg" id="setbg" onclick="if(event.target===this)closeOptions()">
   <div class="modal" style="max-width: 500px;">
     <div class="mhd" style="align-items: center;">
       <div class="mi"><div class="mn">⚙️ Paramètres & Personnalisation</div></div>
-      <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeSettings()"><span class="ic ic-close"></span></button>
+      <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeOptions()"><span class="ic ic-close"></span></button>
     </div>
 
     <div class="mbody" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
-
-      <!-- Custom Tabs -->
-      <div style="display:flex; gap:16px; border-bottom:1px solid var(--border); padding-bottom:8px; overflow-x:auto;">
-        <button class="nav-btn active-toggle" onclick="switchSettingsTab('options')" id="st-options">Options</button>
-        <button class="nav-btn" onclick="switchSettingsTab('favoris')" id="st-favoris">Favoris</button>
-        <button class="nav-btn" onclick="switchSettingsTab('logs')" id="st-logs">Logs</button>
-        <button class="nav-btn" onclick="loadAll(window.hasLoadedOnce, true); closeSettings();">↺ Actualiser</button>
-        <button class="nav-btn" onclick="installTampermonkey(); closeSettings();">🧩 Script</button>
-      </div>
 
       <!-- Options Tab -->
       <div id="stab-options" style="display:flex; flex-direction:column; gap:24px;">
@@ -294,20 +277,25 @@ function switchSettingsTab(tabName) {
       </div>
 
       </div> <!-- End of Options Tab -->
-      <!-- Favoris Tab -->
-      <div id="stab-favoris" style="display:none; flex-direction:column; gap:24px;">
-         <div id="settings-fav-container"></div>
-      </div>
-      <!-- Logs Tab -->
-      <div id="stab-logs" style="display:none; flex-direction:column; gap:24px;">
-         <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text); display:flex; justify-content:space-between; align-items:center;">
-            <span>📋 Logs de Scraping</span>
-            <button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
-         </div>
-         <div id="scrape-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; min-height: 200px; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
-            <!-- Logs will be populated here -->
-         </div>
-      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGS MODAL -->
+<div class="mbg" id="logsbg" onclick="if(event.target===this)closeLogs()">
+  <div class="modal" style="max-width: 600px;">
+    <div class="mhd" style="align-items: center;">
+      <div class="mi"><div class="mn">📋 Logs de Scraping</div></div>
+      <button class="mx" aria-label="Fermer les logs" title="Fermer" onclick="closeLogs()"><span class="ic ic-close"></span></button>
+    </div>
+    <div class="mbody" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+       <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="color:var(--muted); font-size: 14px;">Historique des requêtes</span>
+          <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
+       </div>
+       <div id="scrape-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; min-height: 300px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Logs will be populated here -->
+       </div>
     </div>
   </div>
 </div>
