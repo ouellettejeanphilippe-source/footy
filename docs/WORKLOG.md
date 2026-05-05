@@ -20,6 +20,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- Lister tous les sites qu'on parse et les ajouter dans une zone sources dans les logs, avant ou après les logs, avec Fonctionel ou brisé
 ### 05 May 2026 - Conversion Options/Logs/Script en pages complètes et Hamburger Menu
 - **Fichiers touchés** : `index.html`, `app.js`
 - **Résumé** : Changement du bouton "Menu" pour afficher l'icône hamburger `☰` (et `✕` quand ouvert). Remplacement des modales superposées pour "Options", "Logs", et "Script" par des vues "pleine page" gérées de la même manière que "Favoris" dans la fonction `applyFilter`. Le modal de premier démarrage pour Tampermonkey reste actif au chargement initial.

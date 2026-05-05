@@ -75,3 +75,7 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - **Doublons potentiels** : Fonctions `cacheLogo` présentes deux fois dans `index.html`. Présence de fonctions internes s'appelant de manière quasi-identique.
 - **Dette de Patchs (Fichiers poubelles)** : Nombre énorme de scripts de "fix/test" à la racine (e.g., `fix_favorites_rendering.js`, `update_render.js`, `test_sort.js`, `fix_psg.py`, `check_custom_lg.py`). À classer, supprimer ou déplacer dans un sous-dossier de tests.
 - **Fichier monstrueux** : `index.html` nécessite un découpage modulaire d'urgence.
+### Source Status Tracking
+- `sourcesStatus`: Global array storing the latest status of each scraped source domain (`name`, `status`, `matchCount`, `message`, `time`).
+- `updateSourceStatus()`: Updates or inserts a source tracking entry.
+- `renderSourcesStatus()`: Populates the UI container `#sources-status-container` with source statistics before the generic request logs.
