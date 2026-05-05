@@ -59,9 +59,9 @@ function toggleFavTeam(teamName) {
   localStorage.setItem('fav_teams', JSON.stringify(favTeams));
 
   if (S.filter === 'fav') {
-      buildEPG(S.matches);
+      setTimeout(function() { buildEPG(S.matches); }, 0);
   } else {
-      buildEPG(S.matches);
+      setTimeout(function() { buildEPG(S.matches); }, 0);
   }
 }
 
@@ -4882,16 +4882,20 @@ function applyFilter(f){
       if (errbox && errbox.classList.contains('show')) {
           // Do not overwrite errbox if it has a real error
       } else {
-          document.getElementById('marea').style.display = 'flex';
+          var epgContainer = document.getElementById('epg');
+          if (epgContainer) epgContainer.style.display = 'flex';
+          var mareaContainer = document.getElementById('marea');
+          if (mareaContainer) mareaContainer.style.display = 'flex';
           var sportFiltersContainer = document.getElementById('sport-filters-container');
           if (sportFiltersContainer) sportFiltersContainer.style.display = 'flex';
       }
 
-      buildEPG(S.matches);
-
-      if(f === 'all') {
-          setTimeout(scrollToNow, 100);
-      }
+      setTimeout(function() {
+          buildEPG(S.matches);
+          if(f === 'all') {
+              setTimeout(scrollToNow, 100);
+          }
+      }, 0);
   }
 }
 
@@ -4977,7 +4981,7 @@ function applySportFilter(sport){
           }
       });
   }
-  buildEPG(S.matches);
+  setTimeout(function() { buildEPG(S.matches); }, 0);
 }
 
 /* ══ TOGGLE ET ACCORDÉON ════════════════ */
@@ -5008,7 +5012,7 @@ function toggleLeague(lgName) {
           }
       });
   }
-  buildEPG(S.matches);
+  setTimeout(function() { buildEPG(S.matches); }, 0);
 }
 
 function toggleAutresFlux() {
@@ -5018,12 +5022,12 @@ function toggleAutresFlux() {
         if (!S.hiddenLg['Autres Flux']) btn.classList.add('active-toggle');
         else btn.classList.remove('active-toggle');
     }
-    buildEPG(S.matches);
+    setTimeout(function() { buildEPG(S.matches); }, 0);
 }
 
 function toggleAccordion(lgName) {
   S.collapsedLg[lgName] = !S.collapsedLg[lgName];
-  buildEPG(S.matches);
+  setTimeout(function() { buildEPG(S.matches); }, 0);
 }
 
 /* ══ EPG / LISTE ════════════════════════ */
@@ -5912,6 +5916,7 @@ function openMod(m,col){
   }
 
   fetchAndRenderModalStats();
+  if (window.modalStatsInterval) clearInterval(window.modalStatsInterval);
   if (m.status === 'live') {
       window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 60000);
   }
@@ -6030,6 +6035,7 @@ function toggleMvGameMode() {
         }
 
         updateGmCurrentTab();
+        if (typeof mvGameModeInterval !== 'undefined' && mvGameModeInterval) clearInterval(mvGameModeInterval);
         mvGameModeInterval = setInterval(updateGmCurrentTab, 30000); // Update every 30s
     } else {
         if (gmBtn) {
@@ -8086,7 +8092,7 @@ function applyUserPrefs() {
 
   localStorage.setItem('user_prefs', JSON.stringify(userPrefs));
   initPrefs();
-  buildEPG(S.matches); // Rebuild to apply card colors
+  setTimeout(function() { buildEPG(S.matches); }, 0); // Rebuild to apply card colors
   showToast('Préférences sauvegardées');
 }
 
@@ -8339,8 +8345,10 @@ function renderScrapeLogs() {
 }
 
 function openOptionsPage() {
-    var epgContainer = document.getElementById('marea');
+    var epgContainer = document.getElementById('epg');
     if (epgContainer) epgContainer.style.display = 'none';
+    var mareaContainer = document.getElementById('marea');
+    if (mareaContainer) mareaContainer.style.display = 'none';
     var sportFiltersContainer = document.getElementById('sport-filters-container');
     if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
 
@@ -8362,8 +8370,10 @@ function openOptionsPage() {
 }
 
 function openLogsPage() {
-    var epgContainer = document.getElementById('marea');
+    var epgContainer = document.getElementById('epg');
     if (epgContainer) epgContainer.style.display = 'none';
+    var mareaContainer = document.getElementById('marea');
+    if (mareaContainer) mareaContainer.style.display = 'none';
     var sportFiltersContainer = document.getElementById('sport-filters-container');
     if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
 
@@ -8380,8 +8390,10 @@ function openLogsPage() {
 }
 
 function openScriptPage() {
-    var epgContainer = document.getElementById('marea');
+    var epgContainer = document.getElementById('epg');
     if (epgContainer) epgContainer.style.display = 'none';
+    var mareaContainer = document.getElementById('marea');
+    if (mareaContainer) mareaContainer.style.display = 'none';
     var sportFiltersContainer = document.getElementById('sport-filters-container');
     if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
 
@@ -9293,8 +9305,10 @@ function loadAll(isBackground, forceScrape){
               sf.innerHTML = optionsHtml;
           }
 
-          buildEPG(S.matches);
-          fetchSubPages(S.matches);
+          setTimeout(function() {
+              buildEPG(S.matches);
+              fetchSubPages(S.matches);
+          }, 0);
           var live=S.matches.filter(function(m){return m.status==='live';}).length;
           showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
       });
@@ -9343,7 +9357,7 @@ if ('serviceWorker' in navigator) {
           return m.matchDate === getEstDateStrFromDate(TARGET_DATE);
       });
       if (S.matches.length > 0) {
-          buildEPG(S.matches);
+          setTimeout(function() { buildEPG(S.matches); }, 0);
       }
       if (!localStorage.getItem('hasSeenScriptModal')) {
           localStorage.setItem('hasSeenScriptModal', 'true');
