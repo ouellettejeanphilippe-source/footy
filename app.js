@@ -6754,20 +6754,20 @@ function setupMultivisionUI() {
     mvToolbar.style.cssText = 'position:relative;min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;';
     var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
-      + '<button class="btn o" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px 16px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
+      + '<button class="nav-btn" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
       + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
-      + '<button class="btn g" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 4px 8px;">➕</button>'
-      + '<select class="btn o hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 4px 36px 4px 12px; min-width: 130px;" id="mv-layout-select">'
+      + '<button class="nav-btn" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 8px; min-width: auto; font-size: 16px;">➕</button>'
+      + '<select class="nav-btn hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 8px 32px 8px 12px; min-width: auto; height: 38px; -webkit-appearance: none; appearance: none; background: url(\'data:image/svg+xml;utf8,<svg fill=%22white%22 height=%2224%22 viewBox=%220 0 24 24%22 width=%2224%22 xmlns=%22http://www.w3.org/2000/svg%22><path d=%22M7 10l5 5 5-5z%22/><path d=%22M0 0h24v24H0z%22 fill=%22none%22/></svg>\') no-repeat right 4px center; background-size: 16px;" id="mv-layout-select">'
       +   '<option value="auto">⊞ Auto</option>'
       +   '<option value="focus">⭐ Focus</option>'
       +   '<option value="vertical">⊟ Vertical</option>'
       +   '<option value="horizontal">⊟ Horizontal</option>'
       + '</select>'
-      + '<button class="btn o hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 4px 8px;">🎬</button>'
-      + '<button class="btn o hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 4px 8px;">⛶</button>'
-      + '<button class="btn o hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 4px 8px;">📊</button>'
-      + '<button class="btn o" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 4px 8px;"><span class="ic ic-close"></span></button>'
-      + '<button class="btn" style="color:var(--red);border-color:rgba(255,69,58,0.3);background:rgba(255,69,58,0.1);padding: 4px 8px;" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider">🗑️</button>'
+      + '<button class="nav-btn hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 8px; min-width: auto; font-size: 16px;">🎬</button>'
+      + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
+      + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
+      + '<button class="nav-btn" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 8px; min-width: auto; font-size: 16px;">❌</button>'
+      + '<button class="nav-btn" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider" style="padding: 8px; min-width: auto; font-size: 16px;">🗑️</button>'
       + '</div>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
@@ -9247,13 +9247,9 @@ function toggleMenu(e) {
   if (e) e.stopPropagation();
   var menu = document.getElementById('main-menu');
   if (menu) {
-      if (menu.style.display === 'none' || menu.style.display === '') {
-          menu.style.display = 'flex';
-          menu.classList.add('open');
-      } else {
-          menu.style.display = 'none';
-          menu.classList.remove('open');
-      }
+      menu.classList.toggle('open');
+      // Remove inline display style to let CSS handle it via !important
+      menu.style.display = '';
   }
 }
 
