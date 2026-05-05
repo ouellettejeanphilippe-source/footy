@@ -9306,7 +9306,11 @@ function loadAll(isBackground, forceScrape){
           }
 
           setTimeout(function() {
-              buildEPG(S.matches);
+              if (isBackground) {
+                  updateLiveScores(S.matches);
+              } else {
+                  buildEPG(S.matches);
+              }
               fetchSubPages(S.matches);
           }, 0);
           var live=S.matches.filter(function(m){return m.status==='live';}).length;

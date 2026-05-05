@@ -14,6 +14,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+
+### 05 May 2026 - Prévention du freeze pendant l'actualisation en arrière-plan
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Remplacement de l'appel bloquant `buildEPG(S.matches)` par `updateLiveScores(S.matches)` lors des mises à jour en arrière-plan (quand `isBackground` est vrai). Les nouveaux flux ajoutés lors du scraping continuent d'être mis à jour dynamiquement et sans freeze sur les cartes existantes via `fetchSubPages` et `updateMatchUiAfterScrape`.
+- **Problèmes résolus** : L'interface utilisateur ne "gèle" plus (ne bloque plus le navigateur) toutes les 15 minutes lors de l'actualisation périodique des streams.
 - Lister tous les sites qu'on parse et les ajouter dans une zone sources dans les logs, avant ou après les logs, avec Fonctionel ou brisé
 ### 05 May 2026 - Conversion Options/Logs/Script en pages complètes et Hamburger Menu
 - **Fichiers touchés** : `index.html`, `app.js`
