@@ -9300,7 +9300,9 @@ function loadAll(isBackground, forceScrape){
               if (r.status === 'rejected') {
                   var domain = new URL(sources[idx]).hostname;
                   console.error('Failed to fetch:', sources[idx], r.reason);
-                  addScrapeLog(sources[idx], 'error', (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion'));
+                  var errMsg = (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion');
+                  addScrapeLog(sources[idx], 'error', errMsg);
+                  updateSourceStatus(domain, 'error', 0, errMsg);
                   setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
               } else {
                   addScrapeLog(sources[idx], 'success', '');
@@ -9312,54 +9314,54 @@ function loadAll(isBackground, forceScrape){
           if(results[0].status === 'fulfilled' && results[0].value) {
               S.raw = results[0].value;
               var fbMatches = parseFootybite(results[0].value);
-              parsedMatchesCounts[0] = fbMatches.length;
+              updateSourceStatus(new URL(SITE).hostname, 'success', fbMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, fbMatches);
           }
           if(results[1].status === 'fulfilled' && results[1].value) {
               var nflMatches = parseNflbite(results[1].value);
-              parsedMatchesCounts[1] = nflMatches.length;
+              updateSourceStatus(new URL(MLBITE_URL).hostname, 'success', nflMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, nflMatches);
           }
           if(results[2].status === 'fulfilled' && results[2].value) {
               var surgeMatches = parseSportsurge(results[2].value);
-              parsedMatchesCounts[2] = surgeMatches.length;
+              updateSourceStatus(new URL(SPORTSURGE_URL).hostname, 'success', surgeMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, surgeMatches);
           }
           if(results[3].status === 'fulfilled' && results[3].value) {
               var bsMatches = parseBuffstreams(results[3].value);
-              parsedMatchesCounts[3] = bsMatches.length;
+              updateSourceStatus(new URL(BUFFSTREAMS_URL).hostname, 'success', bsMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, bsMatches);
           }
           if(results[4].status === 'fulfilled' && results[4].value) {
               var seMatches = parseStreameast(results[4].value);
-              parsedMatchesCounts[4] = seMatches.length;
+              updateSourceStatus(new URL(STREAMEAST_URL).hostname, 'success', seMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, seMatches);
           }
           if(results[5].status === 'fulfilled' && results[5].value) {
               var ohMatches = parseOnHockey(results[5].value);
-              parsedMatchesCounts[5] = ohMatches.length;
+              updateSourceStatus(new URL(ONHOCKEY_URL).hostname, 'success', ohMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, ohMatches);
           }
           if(results[6].status === 'fulfilled' && results[6].value) {
               var mlbbMatches = parseMlbbite(results[6].value);
-              parsedMatchesCounts[6] = mlbbMatches.length;
+              updateSourceStatus(new URL(MLBBITE_PLUS_URL).hostname, 'success', mlbbMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, mlbbMatches);
           }
-
           if(results[7] && results[7].status === 'fulfilled' && results[7].value) {
               var vipMatches = parseVipleague(results[7].value);
+              updateSourceStatus(new URL(VIPLEAGUE_URL).hostname, 'success', vipMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, vipMatches);
           }
           if(results[8] && results[8].status === 'fulfilled' && results[8].value) {
               var methMatches = parseMethstreams(results[8].value);
+              updateSourceStatus(new URL(METHSTREAMS_URL).hostname, 'success', methMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, methMatches);
           }
           if(results[9] && results[9].status === 'fulfilled' && results[9].value) {
               var totMatches = parseTotalsportek(results[9].value);
+              updateSourceStatus(new URL(TOTALSPORTEK_URL).hostname, 'success', totMatches.length, 'OK');
               scrapedMatches = mergeMatches(scrapedMatches, totMatches);
           }
-
-
 
           var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
 
