@@ -121,20 +121,6 @@
 
       <!-- Options Tab -->
       <div id="stab-options" style="display:flex; flex-direction:column; gap:24px;">
-        <!-- API Settings -->
-        <div>
-          <div style="font-weight:bold; font-size:16px; margin-bottom:12px; color:var(--text);">API-Sports</div>
-          <label for="apiKeyInput" style="display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.4;">
-            Entrez votre clé API-Sports pour obtenir les scores en direct et le calendrier mis à jour automatiquement.
-          </label>
-          <div style="display:flex; gap:10px;">
-            <input type="text" id="apiKeyInput" placeholder="Clé API (ex: 3a9...)" style="flex:1; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; outline: none; font-family: monospace;">
-            <button class="btn" style="padding: 10px 16px; background: var(--accent); color: #fff; border: none;" onclick="saveApiKey()">Sauvegarder</button>
-          </div>
-        </div>
-
-
-      <hr style="border:none; border-top:1px solid var(--border); margin:0;">
 
       <!-- Personalization Settings -->
       <div>
@@ -145,9 +131,9 @@
 
         <div style="display:flex; flex-direction:column; gap:24px;">
 
-          <!-- 1. Thème Général -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
-            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">✨ Thème Général</div>
+          <!-- 1. Thème & Arrière-plan -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">✨ Thème & Arrière-plan</div>
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Thème prédéfini</div>
               <select id="pref-theme" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyPredefinedTheme()">
@@ -159,17 +145,13 @@
               </select>
             </div>
 
-            <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px; margin-bottom:16px;">
               <div style="font-size:13px; color:var(--muted); margin-bottom:4px;">Palettes rapides (Swatches)</div>
               <div style="display:flex; flex-wrap:wrap; gap:8px; max-height:120px; overflow-y:auto; padding-bottom:4px; padding-right:4px;" class="swatches-container">
                 <!-- Swatches generated in JS -->
               </div>
             </div>
-          </div>
 
-          <!-- 2. Arrière-plan -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
-            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🖼️ Arrière-plan</div>
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Style global</div>
               <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
@@ -177,6 +159,7 @@
                 <option value="gradient">Dégradé Doux</option>
                 <option disabled>--- Patterns & Grilles ---</option>
                 <option value="grid">Grille Subtile (Pro)</option>
+                <option value="mesh_random">Maillage Aléatoire</option>
               </select>
             </div>
 
@@ -231,49 +214,7 @@
             </div>
           </div>
 
-          <!-- 4. Textures UI & Composants -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
-            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🎨 Textures UI & Composants</div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Couleurs des cartes de matchs</div>
-              <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-                <option value="gradient-45">Dégradé (Haut → Bas, 45°)</option>
-                <option value="league">Couleur de la Ligue</option>
-                <option value="home">Équipe Domicile seulement</option>
-                <option value="dark">Sombre (Désactivé)</option>
-              </select>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Style des Cartes</div>
-              <select id="pref-card-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
-                <option value="glass">Verre Poli (Défaut)</option>
-                <option value="solid">Couleur Unie (Classique)</option>
-                <option value="bordered">Contour Fin (Minimal)</option>
-                <option value="elevated">Surélevé (Ombre Douce)</option>
-              </select>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted);">Opacité des cartes (Glass/Solid)</div>
-              <input type="range" id="pref-card-opacity" min="0" max="100" value="15" onchange="applyUserPrefs()" style="width: 140px;">
-            </div>
-          </div>
-
         </div>
-      </div>
-
-      <hr style="border:none; border-top:1px solid var(--border); margin:0;">
-
-      <div>
-         <div style="font-weight:bold; font-size:16px; margin-bottom:16px; color:var(--text);">🔧 Avancé</div>
-         <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:14px;">Script d'installation (Multiview cleaner)</div>
-              <a href="multiview-cleaner.user.js" target="_blank" class="btn" style="text-decoration:none; display:inline-block;">Installer le script</a>
-            </div>
-         </div>
       </div>
 
       </div> <!-- End of Options Tab -->
