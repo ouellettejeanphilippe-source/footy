@@ -13,6 +13,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Problèmes résolus** : Reduced redundant DOM lookups during high-frequency live score updates, improving CPU efficiency and UI responsiveness during matches.
 ## En cours
 
+### 05 May 2026 - Update Scraper Sources & Parsers
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Mise à jour du domaine principal de Footybite de `.to` vers `.do` (`var SITE`). Ajout de l'extraction de trois nouvelles sources fiables (Totalsportek, VIPLeague, Methstreams) pour étendre les capacités du scraper via de nouvelles fonctions de parsing dédiées. Correction de l'extraction relative des URLs via `getAttribute('href')`.
+- **Problèmes résolus** : Fixe l'impossibilité de parser le planning de Footybite due au changement de domaine. Augmente le volume et la diversité des streams disponibles avec des sources réputées.
+
+
 ## Fait
 - Lister tous les sites qu'on parse et les ajouter dans une zone sources dans les logs, avant ou après les logs, avec Fonctionel ou brisé
 ### 05 May 2026 - Conversion Options/Logs/Script en pages complètes et Hamburger Menu

@@ -70,13 +70,16 @@ var matchCardCache = new Map();
 var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{} };
 
 /* ══ CONFIG ═════════════════════════════ */
-var SITE = 'https://footybite.to/';
+var SITE = 'https://www.footybite.do/';
 var MLBITE_URL = 'https://nflbite.is/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
 var MLBBITE_PLUS_URL = 'https://mlbbite.plus';
 var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
 var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
+var VIPLEAGUE_URL = 'https://www.vipleague.st/';
+var METHSTREAMS_URL = 'https://methstreams.com/';
+var TOTALSPORTEK_URL = 'https://www.totalsportek.to/';
 var PROXIES = [
   function(u){ return 'https://api.allorigins.win/get?url='+encodeURIComponent(u); },
   function(u){ return 'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u); },
@@ -3197,6 +3200,107 @@ function extractFootybiteLogos(doc) {
     });
 }
 
+
+
+/* ══ PARSE TOTALSPORTEK ════════════════ */
+function parseTotalsportek(html) {
+    var matches = [];
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var links = doc.querySelectorAll('a[href]');
+    [].forEach.call(links, function(a) {
+        if(a.href && (a.href.includes('-vs-') || a.href.includes('-v-') || a.href.includes('stream'))) {
+            var text = a.textContent.replace(/\s+/g, ' ').trim();
+            var teams = text.split(/ vs | v | - /i);
+            if(teams.length >= 2 && text.length < 100) {
+                var home = teams[0].trim();
+                var away = teams.slice(1).join(' - ').trim();
+                if(home && away) {
+                    var matchUrl = a.getAttribute('href');
+                    if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
+                        try { matchUrl = new URL(matchUrl, 'https://www.totalsportek.to/').href; } catch(e) {}
+                    }
+                    if(matchUrl.startsWith('http')) {
+                        matches.push({
+                            id: 'ts_' + matches.length,
+                            homeTeam: home,
+                            awayTeam: away,
+                            matchUrl: matchUrl,
+                            source: 'totalsportek'
+                        });
+                    }
+                }
+            }
+        }
+    });
+    return matches;
+}
+
+/* ══ PARSE VIPLEAGUE ════════════════ */
+function parseVipleague(html) {
+    var matches = [];
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var links = doc.querySelectorAll('a[href]');
+    [].forEach.call(links, function(a) {
+        if(a.href && a.href.includes('-streaming')) {
+            var text = a.textContent.replace(/\s+/g, ' ').trim();
+            var teams = text.split(/ vs | v | - /i);
+            if(teams.length >= 2 && text.length < 100) {
+                var home = teams[0].trim();
+                var away = teams.slice(1).join(' - ').trim();
+                if(home && away) {
+                    var matchUrl = a.getAttribute('href');
+                    if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
+                        try { matchUrl = new URL(matchUrl, 'https://www.vipleague.st/').href; } catch(e) {}
+                    }
+                    if(matchUrl.startsWith('http')) {
+                        matches.push({
+                            id: 'vip_' + matches.length,
+                            homeTeam: home,
+                            awayTeam: away,
+                            matchUrl: matchUrl,
+                            source: 'vipleague'
+                        });
+                    }
+                }
+            }
+        }
+    });
+    return matches;
+}
+
+/* ══ PARSE METHSTREAMS ════════════════ */
+function parseMethstreams(html) {
+    var matches = [];
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var links = doc.querySelectorAll('a[href]');
+    [].forEach.call(links, function(a) {
+        if(a.href && a.href.includes('stream')) {
+            var text = a.textContent.replace(/\s+/g, ' ').trim();
+            var teams = text.split(/ vs | v | - /i);
+            if(teams.length >= 2 && text.length < 100) {
+                var home = teams[0].trim();
+                var away = teams.slice(1).join(' - ').trim();
+                if(home && away) {
+                    var matchUrl = a.getAttribute('href');
+                    if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
+                        try { matchUrl = new URL(matchUrl, 'https://methstreams.com/').href; } catch(e) {}
+                    }
+                    if(matchUrl.startsWith('http')) {
+                        matches.push({
+                            id: 'meth_' + matches.length,
+                            homeTeam: home,
+                            awayTeam: away,
+                            matchUrl: matchUrl,
+                            source: 'methstreams'
+                        });
+                    }
+                }
+            }
+        }
+    });
+    return matches;
+}
+
 /* ══ FETCH ══════════════════════════════ */
 
 function fetchPage(url){
@@ -4600,7 +4704,7 @@ function scrapeMatchFlux(m){
     }
 
 
-    // Nouveau scraping pour footybite.to
+    // Nouveau scraping pour footybite.do
     // Footybite.do utilise principalement des liens directs ou cachés dans des ancres
 
     // Nouveau scraping pour les tables de streams sur footybite.do/.to
@@ -9181,16 +9285,27 @@ function loadAll(isBackground, forceScrape){
           fetchPage(BUFFSTREAMS_URL),
           fetchPage(STREAMEAST_URL),
           fetchPage(ONHOCKEY_URL),
-          fetchPage(MLBBITE_PLUS_URL)
+          fetchPage(MLBBITE_PLUS_URL),
+          fetchPage(VIPLEAGUE_URL),
+          fetchPage(METHSTREAMS_URL),
+          fetchPage(TOTALSPORTEK_URL)
       ]).then(function(results) {
           if (!results) return;
           if (!isBackground) { stepOk(2);  }
 
 
           // Check for failures and notify user
-          var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL];
-          var sourceNames = ['Footybite', 'NFLbite', 'Sportsurge', 'Buffstreams', 'Streameast', 'OnHockey', 'MLBBite'];
-          var parsedMatchesCounts = [0, 0, 0, 0, 0, 0, 0];
+          var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL];
+          results.forEach(function(r, idx) {
+              if (r.status === 'rejected') {
+                  var domain = new URL(sources[idx]).hostname;
+                  console.error('Failed to fetch:', sources[idx], r.reason);
+                  addScrapeLog(sources[idx], 'error', (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion'));
+                  setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
+              } else {
+                  addScrapeLog(sources[idx], 'success', '');
+              }
+          });
 
           var scrapedMatches = [];
 
@@ -9231,25 +9346,19 @@ function loadAll(isBackground, forceScrape){
               scrapedMatches = mergeMatches(scrapedMatches, mlbbMatches);
           }
 
-          results.forEach(function(r, idx) {
-              var name = sourceNames[idx];
-              if (r.status === 'rejected') {
-                  var domain = new URL(sources[idx]).hostname;
-                  var errMsg = r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion';
-                  console.error('Failed to fetch:', sources[idx], r.reason);
-                  addScrapeLog(sources[idx], 'error', errMsg);
-                  updateSourceStatus(name, 'error', 0, errMsg);
-                  setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
-              } else {
-                  addScrapeLog(sources[idx], 'success', '');
-                  var count = parsedMatchesCounts[idx];
-                  if (count > 0) {
-                      updateSourceStatus(name, 'success', count, 'Fonctionnel');
-                  } else {
-                      updateSourceStatus(name, 'warning', 0, '0 match trouvé (Format changé?)');
-                  }
-              }
-          });
+          if(results[7] && results[7].status === 'fulfilled' && results[7].value) {
+              var vipMatches = parseVipleague(results[7].value);
+              scrapedMatches = mergeMatches(scrapedMatches, vipMatches);
+          }
+          if(results[8] && results[8].status === 'fulfilled' && results[8].value) {
+              var methMatches = parseMethstreams(results[8].value);
+              scrapedMatches = mergeMatches(scrapedMatches, methMatches);
+          }
+          if(results[9] && results[9].status === 'fulfilled' && results[9].value) {
+              var totMatches = parseTotalsportek(results[9].value);
+              scrapedMatches = mergeMatches(scrapedMatches, totMatches);
+          }
+
 
 
           var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
