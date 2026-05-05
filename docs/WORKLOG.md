@@ -20,6 +20,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+### $(date +'%d %B %Y') - Fix du status de scraping (logs)
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Remplacement de l'utilisation d'une variable non définie `parsedMatchesCounts` par l'appel à la fonction `updateSourceStatus()` après chaque scrape. Le script remonte désormais correctement le nombre de matchs parsés pour chaque source de streaming, ainsi que les statuts d'erreur en cas de timeout.
+- **Problèmes résolus** : L'erreur JS `parsedMatchesCounts is not defined` qui bloquait potentiellement l'interface lors d'un échec et empêchait d'afficher le statut correct des sources dans l'onglet des logs.
+
 - Lister tous les sites qu'on parse et les ajouter dans une zone sources dans les logs, avant ou après les logs, avec Fonctionel ou brisé
 ### 05 May 2026 - Conversion Options/Logs/Script en pages complètes et Hamburger Menu
 - **Fichiers touchés** : `index.html`, `app.js`
