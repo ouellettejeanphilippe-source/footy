@@ -4846,10 +4846,33 @@ function applyFilter(f){
       toggleMultiviewPip();
   }
 
-  buildEPG(S.matches);
+  if (f === 'options') {
+      openOptionsPage();
+  } else if (f === 'logs') {
+      openLogsPage();
+  } else if (f === 'script') {
+      openScriptPage();
+  } else {
+      var optionsPage = document.getElementById('options-page');
+      if (optionsPage) optionsPage.style.display = 'none';
+      var logsPage = document.getElementById('logs-page');
+      if (logsPage) logsPage.style.display = 'none';
+      var scriptPage = document.getElementById('script-page');
+      if (scriptPage) scriptPage.style.display = 'none';
+      var errbox = document.getElementById('errbox');
+      if (errbox && errbox.classList.contains('show')) {
+          // Do not overwrite errbox if it has a real error
+      } else {
+          document.getElementById('marea').style.display = 'flex';
+          var sportFiltersContainer = document.getElementById('sport-filters-container');
+          if (sportFiltersContainer) sportFiltersContainer.style.display = 'flex';
+      }
 
-  if(f === 'all') {
-      setTimeout(scrollToNow, 100);
+      buildEPG(S.matches);
+
+      if(f === 'all') {
+          setTimeout(scrollToNow, 100);
+      }
   }
 }
 
@@ -6682,6 +6705,14 @@ function toggleMultiviewPip() {
         epg.style.paddingRight = '0';
         var sf = document.getElementById('sport-filters-container');
         if(sf) sf.style.display = 'none';
+
+        var optionsPage = document.getElementById('options-page');
+        if (optionsPage) optionsPage.style.display = 'none';
+        var logsPage = document.getElementById('logs-page');
+        if (logsPage) logsPage.style.display = 'none';
+        var scriptPage = document.getElementById('script-page');
+        if (scriptPage) scriptPage.style.display = 'none';
+
         updateMultivisionLayout();
     } else {
         // Switch to PIP mode
@@ -7427,6 +7458,14 @@ function toggleMultiview() {
         epg.style.display = 'none';
         var sf = document.getElementById('sport-filters-container');
         if(sf) sf.style.display = 'none';
+
+        var optionsPage = document.getElementById('options-page');
+        if (optionsPage) optionsPage.style.display = 'none';
+        var logsPage = document.getElementById('logs-page');
+        if (logsPage) logsPage.style.display = 'none';
+        var scriptPage = document.getElementById('script-page');
+        if (scriptPage) scriptPage.style.display = 'none';
+
         updateMultivisionLayout();
     } else if (!mvc.classList.contains('mv-pip')) {
         // Full screen -> Switch to PiP
@@ -8251,28 +8290,69 @@ function renderScrapeLogs() {
     container.innerHTML = html;
 }
 
-function openOptions() {
-  buildSwatches();
-  var apiKeyInput = document.getElementById('apiKeyInput');
-  if (apiKeyInput) {
-    apiKeyInput.value = localStorage.getItem('apiSportsKey') || '';
-  }
-  initPrefs();
-  document.getElementById('setbg').classList.add('open');
+function openOptionsPage() {
+    var epgContainer = document.getElementById('marea');
+    if (epgContainer) epgContainer.style.display = 'none';
+    var sportFiltersContainer = document.getElementById('sport-filters-container');
+    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
+
+    var logsPage = document.getElementById('logs-page');
+    if (logsPage) logsPage.style.display = 'none';
+    var scriptPage = document.getElementById('script-page');
+    if (scriptPage) scriptPage.style.display = 'none';
+
+    var optionsPage = document.getElementById('options-page');
+    if (optionsPage) {
+        optionsPage.style.display = 'flex';
+        buildSwatches();
+        var apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) {
+            apiKeyInput.value = localStorage.getItem('apiSportsKey') || '';
+        }
+        initPrefs();
+    }
 }
 
-function closeOptions() {
-  document.getElementById('setbg').classList.remove('open');
+function openLogsPage() {
+    var epgContainer = document.getElementById('marea');
+    if (epgContainer) epgContainer.style.display = 'none';
+    var sportFiltersContainer = document.getElementById('sport-filters-container');
+    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
+
+    var optionsPage = document.getElementById('options-page');
+    if (optionsPage) optionsPage.style.display = 'none';
+    var scriptPage = document.getElementById('script-page');
+    if (scriptPage) scriptPage.style.display = 'none';
+
+    var logsPage = document.getElementById('logs-page');
+    if (logsPage) {
+        logsPage.style.display = 'flex';
+        renderScrapeLogs();
+    }
 }
 
-function openLogs() {
-  renderScrapeLogs();
-  document.getElementById('logsbg').classList.add('open');
+function openScriptPage() {
+    var epgContainer = document.getElementById('marea');
+    if (epgContainer) epgContainer.style.display = 'none';
+    var sportFiltersContainer = document.getElementById('sport-filters-container');
+    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
+
+    var optionsPage = document.getElementById('options-page');
+    if (optionsPage) optionsPage.style.display = 'none';
+    var logsPage = document.getElementById('logs-page');
+    if (logsPage) logsPage.style.display = 'none';
+
+    var scriptPage = document.getElementById('script-page');
+    if (scriptPage) {
+        scriptPage.style.display = 'flex';
+    }
 }
 
-function closeLogs() {
-  document.getElementById('logsbg').classList.remove('open');
-}
+// Kept for backward compatibility if called elsewhere, though shouldn't be needed
+function openOptions() { openOptionsPage(); }
+function closeOptions() { /* no-op now */ }
+function openLogs() { openLogsPage(); }
+function closeLogs() { /* no-op now */ }
 
 function saveApiKey() {
   var key = document.getElementById('apiKeyInput').value.trim();
@@ -9246,10 +9326,16 @@ var appTheaterTimer;
 function toggleMenu(e) {
   if (e) e.stopPropagation();
   var menu = document.getElementById('main-menu');
+  var btn = document.getElementById('menu-btn');
   if (menu) {
       menu.classList.toggle('open');
       // Remove inline display style to let CSS handle it via !important
       menu.style.display = '';
+      if (menu.classList.contains('open')) {
+          if (btn) btn.innerHTML = '✕';
+      } else {
+          if (btn) btn.innerHTML = '☰';
+      }
   }
 }
 
@@ -9257,8 +9343,9 @@ function toggleMenu(e) {
 document.addEventListener('click', function(e) {
   var menu = document.getElementById('main-menu');
   var btn = document.getElementById('menu-btn');
-  if (menu && menu.style.display === 'flex' && e.target !== btn && !btn.contains(e.target) && !menu.contains(e.target)) {
-      menu.style.display = 'none';
+  if (menu && menu.classList.contains('open') && e.target !== btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+      menu.style.display = '';
       menu.classList.remove('open');
+      if (btn) btn.innerHTML = '☰';
   }
 });

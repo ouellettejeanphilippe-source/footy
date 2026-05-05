@@ -14,6 +14,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+### 05 May 2026 - Conversion Options/Logs/Script en pages complètes et Hamburger Menu
+- **Fichiers touchés** : `index.html`, `app.js`
+- **Résumé** : Changement du bouton "Menu" pour afficher l'icône hamburger `☰` (et `✕` quand ouvert). Remplacement des modales superposées pour "Options", "Logs", et "Script" par des vues "pleine page" gérées de la même manière que "Favoris" dans la fonction `applyFilter`. Le modal de premier démarrage pour Tampermonkey reste actif au chargement initial.
+- **Problèmes résolus** : Uniformisation de la navigation et de l'expérience utilisateur, suppression de l'encombrement causé par les popups.
+
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 
 ### 04 May 2026 - Security Fix in run_checks.py

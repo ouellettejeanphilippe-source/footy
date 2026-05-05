@@ -40,12 +40,12 @@
       <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">Lecteur</button>
 
       <div style="position: relative; display: inline-block;">
-          <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)">Menu</button>
+          <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)" style="font-size: 20px; padding: 0 12px;">☰</button>
           <div class="secondary-actions" id="main-menu">
               <button class="nav-btn" onclick="applyFilter('fav'); toggleMenu(event);" style="padding: 10px 16px;">Favoris</button>
-              <button class="nav-btn" onclick="openOptions(); toggleMenu(event);" style="padding: 10px 16px;">Options</button>
-              <button class="nav-btn" onclick="openLogs(); toggleMenu(event);" style="padding: 10px 16px;">Logs</button>
-              <button class="nav-btn" onclick="installTampermonkey(); toggleMenu(event);" style="padding: 10px 16px;">Script</button>
+              <button class="nav-btn" onclick="applyFilter('options'); toggleMenu(event);" style="padding: 10px 16px;">Options</button>
+              <button class="nav-btn" onclick="applyFilter('logs'); toggleMenu(event);" style="padding: 10px 16px;">Logs</button>
+              <button class="nav-btn" onclick="applyFilter('script'); toggleMenu(event);" style="padding: 10px 16px;">Script</button>
           </div>
       </div>
 </div>
@@ -109,15 +109,13 @@
 </div>
 
 
-<!-- SETTINGS MODAL -->
-<div class="mbg" id="setbg" onclick="if(event.target===this)closeOptions()">
-  <div class="modal" style="max-width: 500px;">
-    <div class="mhd" style="align-items: center;">
-      <div class="mi"><div class="mn">⚙️ Paramètres & Personnalisation</div></div>
-      <button class="mx" aria-label="Fermer les paramètres" title="Fermer" onclick="closeOptions()"><span class="ic ic-close"></span></button>
+<!-- OPTIONS PAGE -->
+<div id="options-page" style="display:none; flex-direction:column; gap:24px; max-width:600px; margin:0 auto; padding:20px; width:100%;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0;">⚙️ Paramètres & Personnalisation</h2>
     </div>
 
-    <div class="mbody" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+    <div style="display: flex; flex-direction: column; gap: 24px;">
 
       <!-- Options Tab -->
       <div id="stab-options" style="display:flex; flex-direction:column; gap:24px;">
@@ -219,17 +217,14 @@
 
       </div> <!-- End of Options Tab -->
     </div>
-  </div>
 </div>
 
-<!-- LOGS MODAL -->
-<div class="mbg" id="logsbg" onclick="if(event.target===this)closeLogs()">
-  <div class="modal" style="max-width: 600px;">
-    <div class="mhd" style="align-items: center;">
-      <div class="mi"><div class="mn">📋 Logs de Scraping</div></div>
-      <button class="mx" aria-label="Fermer les logs" title="Fermer" onclick="closeLogs()"><span class="ic ic-close"></span></button>
+<!-- LOGS PAGE -->
+<div id="logs-page" style="display:none; flex-direction:column; gap:16px; max-width:800px; margin:0 auto; padding:20px; width:100%;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0;">📋 Logs de Scraping</h2>
     </div>
-    <div class="mbody" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 16px;">
        <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="color:var(--muted); font-size: 14px;">Historique des requêtes</span>
           <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
@@ -238,7 +233,37 @@
           <!-- Logs will be populated here -->
        </div>
     </div>
-  </div>
+</div>
+
+<!-- SCRIPT PAGE -->
+<div id="script-page" style="display:none; flex-direction:column; gap:16px; max-width:800px; margin:0 auto; padding:20px; width:100%;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0; font-size: 18px;">🧩 Installation des Scripts</h2>
+    </div>
+    <div style="font-size:14px; line-height:1.5; color:#ddd; display:flex; flex-direction:column; gap:12px;">
+        <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1); margin-bottom: 8px;">
+            <strong style="color:var(--accent);">🦊 Recommandation : Firefox + uBlock Origin</strong>
+            <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser Firefox. Bien que le script fonctionne sur Chrome, le bloqueur de publicités uBlock Origin y est beaucoup moins efficace en raison des récentes restrictions de Manifest V3 par Google.</p>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 1 : Installer le gestionnaire de scripts</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Choisissez l'extension selon votre navigateur :</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="https://addons.mozilla.org/fr/firefox/addon/tampermonkey/" target="_blank" style="background:#ff7139;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Firefox</a>
+                <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" style="background:#4285f4;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Chrome</a>
+                <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" style="background:#0078d7;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Edge</a>
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 2 : Installer le Script</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Une fois l'extension installée, cliquez sur le bouton ci-dessous pour ajouter le script :</p>
+            <a href="https://raw.githubusercontent.com/jules-cesar/Sports_Hub/refs/heads/main/userscript.user.js" target="_blank" style="background:var(--accent);color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;text-align:center;">Installer le script</a>
+        </div>
+    </div>
 </div>
 
 <div class="toast" id="toast"><span id="toasttxt"></span></div>
