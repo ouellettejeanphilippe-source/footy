@@ -6,7 +6,26 @@
 
 /* ══ STATE ══════════════════════════════ */
 
+var sourcesStatus = [];
 var scrapeLogs = [];
+function updateSourceStatus(name, status, matchCount, message) {
+    var existing = sourcesStatus.find(function(s) { return s.name === name; });
+    if (existing) {
+        existing.status = status;
+        existing.matchCount = matchCount;
+        existing.message = message || '';
+        existing.time = new Date().toLocaleTimeString('fr-CA', {hour12: false});
+    } else {
+        sourcesStatus.push({
+            name: name,
+            status: status,
+            matchCount: matchCount,
+            message: message || '',
+            time: new Date().toLocaleTimeString('fr-CA', {hour12: false})
+        });
+    }
+}
+
 function addScrapeLog(url, status, errorMsg) {
     var entry = {
         time: new Date().toLocaleTimeString('fr-CA', {hour12: false}),
@@ -8267,7 +8286,36 @@ function buildSwatches() {
 }
 
 
+function renderSourcesStatus() {
+    var container = document.getElementById('sources-status-container');
+    if (!container) return;
+    if (sourcesStatus.length === 0) {
+        container.innerHTML = '<div style="color: var(--muted2); text-align: center;">Aucune donnée (Scraping en attente...)</div>';
+        return;
+    }
+
+    var html = '';
+    sourcesStatus.forEach(function(s) {
+        var icon = s.status === 'success' ? '✅' : (s.status === 'warning' ? '⚠️' : '❌');
+        var color = s.status === 'success' ? '#34c759' : (s.status === 'warning' ? '#ffcc00' : 'var(--red)');
+
+        html += '<div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0;">' +
+                  '<div style="display:flex; align-items:center; gap: 8px;">' +
+                      '<span style="font-size: 14px;">' + icon + '</span>' +
+                      '<span style="font-weight: bold; color: var(--text);">' + s.name + '</span>' +
+                  '</div>' +
+                  '<div style="display:flex; align-items:center; gap: 10px; font-size: 12px;">' +
+                      '<span style="color: ' + color + ';">' + s.message + '</span>' +
+                      '<span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; color: var(--muted);">' + s.matchCount + ' matchs</span>' +
+                      '<span style="color: var(--muted2); font-size: 10px; width: 50px; text-align:right;">' + s.time + '</span>' +
+                  '</div>' +
+                '</div>';
+    });
+    container.innerHTML = html;
+}
+
 function renderScrapeLogs() {
+    renderSourcesStatus();
     var container = document.getElementById('scrape-logs-container');
     if(!container) return;
     if(scrapeLogs.length === 0) {
@@ -9129,47 +9177,67 @@ function loadAll(isBackground, forceScrape){
 
           // Check for failures and notify user
           var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL];
-          results.forEach(function(r, idx) {
-              if (r.status === 'rejected') {
-                  var domain = new URL(sources[idx]).hostname;
-                  console.error('Failed to fetch:', sources[idx], r.reason);
-                  addScrapeLog(sources[idx], 'error', (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion'));
-                  setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
-              } else {
-                  addScrapeLog(sources[idx], 'success', '');
-              }
-          });
+          var sourceNames = ['Footybite', 'NFLbite', 'Sportsurge', 'Buffstreams', 'Streameast', 'OnHockey', 'MLBBite'];
+          var parsedMatchesCounts = [0, 0, 0, 0, 0, 0, 0];
 
           var scrapedMatches = [];
+
           if(results[0].status === 'fulfilled' && results[0].value) {
               S.raw = results[0].value;
               var fbMatches = parseFootybite(results[0].value);
+              parsedMatchesCounts[0] = fbMatches.length;
               scrapedMatches = mergeMatches(scrapedMatches, fbMatches);
           }
           if(results[1].status === 'fulfilled' && results[1].value) {
               var nflMatches = parseNflbite(results[1].value);
+              parsedMatchesCounts[1] = nflMatches.length;
               scrapedMatches = mergeMatches(scrapedMatches, nflMatches);
           }
           if(results[2].status === 'fulfilled' && results[2].value) {
               var surgeMatches = parseSportsurge(results[2].value);
+              parsedMatchesCounts[2] = surgeMatches.length;
               scrapedMatches = mergeMatches(scrapedMatches, surgeMatches);
           }
           if(results[3].status === 'fulfilled' && results[3].value) {
               var bsMatches = parseBuffstreams(results[3].value);
+              parsedMatchesCounts[3] = bsMatches.length;
               scrapedMatches = mergeMatches(scrapedMatches, bsMatches);
           }
           if(results[4].status === 'fulfilled' && results[4].value) {
               var seMatches = parseStreameast(results[4].value);
+              parsedMatchesCounts[4] = seMatches.length;
               scrapedMatches = mergeMatches(scrapedMatches, seMatches);
           }
           if(results[5].status === 'fulfilled' && results[5].value) {
               var ohMatches = parseOnHockey(results[5].value);
+              parsedMatchesCounts[5] = ohMatches.length;
               scrapedMatches = mergeMatches(scrapedMatches, ohMatches);
           }
           if(results[6].status === 'fulfilled' && results[6].value) {
               var mlbbMatches = parseMlbbite(results[6].value);
+              parsedMatchesCounts[6] = mlbbMatches.length;
               scrapedMatches = mergeMatches(scrapedMatches, mlbbMatches);
           }
+
+          results.forEach(function(r, idx) {
+              var name = sourceNames[idx];
+              if (r.status === 'rejected') {
+                  var domain = new URL(sources[idx]).hostname;
+                  var errMsg = r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion';
+                  console.error('Failed to fetch:', sources[idx], r.reason);
+                  addScrapeLog(sources[idx], 'error', errMsg);
+                  updateSourceStatus(name, 'error', 0, errMsg);
+                  setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
+              } else {
+                  addScrapeLog(sources[idx], 'success', '');
+                  var count = parsedMatchesCounts[idx];
+                  if (count > 0) {
+                      updateSourceStatus(name, 'success', count, 'Fonctionnel');
+                  } else {
+                      updateSourceStatus(name, 'warning', 0, '0 match trouvé (Format changé?)');
+                  }
+              }
+          });
 
 
           var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
