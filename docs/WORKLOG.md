@@ -199,6 +199,17 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Problèmes résolus** : L'interface est plus propre et logique, réduisant la surcharge cognitive dans les paramètres. La gestion des favoris prend désormais tout l'écran, ce qui est plus confortable à utiliser, et le menu supérieur est épuré grâce au système déroulant.
 
 ### $(date +'%d %B %Y') - Fix du "Deep Scraping" (liens spécifiques de match)
+
+### 04 May 2026 - Simplification des Paramètres et Amélioration des Thèmes
+- **Fichiers touchés** : `index.html`, `app.js`
+- **Résumé** :
+  - Suppression de la section API-Sports et de l'intégration script Multiview Cleaner dans la modale Options.
+  - Fusion des contrôles de Thème et Arrière-plan dans une même section cohérente de l'interface.
+  - Ajout du style d'arrière-plan "Maillage Aléatoire" (`mesh_random`).
+  - Amélioration visuelle des swatches de couleur : leur couleur de bordure reflète désormais la couleur d'accentuation sélectionnée (avec effet d'ombre).
+  - Suppression de la personnalisation manuelle des styles de cartes. Les cartes sont désormais fixées à un dégradé à 45° (`gradient-45`), avec un style en verre (`glass`) et une opacité de 15.
+- **Problèmes résolus** : Simplification de l'interface utilisateur pour réduire les options superflues et se concentrer sur les éléments les plus utilisés.
+
 - **Fichiers touchés** : `app.js`
 - **Résumé** :
   - Modification des parseurs (`parseStreameast`, `parseBuffstreams`, `parseOnHockey`, `parseSportsurge`, `parseFootybite`) pour que `matchUrl` pointe vers la page spécifique de l'événement plutôt que la constante de la page d'accueil du site.

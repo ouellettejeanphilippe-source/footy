@@ -7994,8 +7994,8 @@ function applyUserPrefs() {
   if(c1Sel) userPrefs.c1 = c1Sel.value;
   if(c2Sel) userPrefs.c2 = c2Sel.value;
   if(c3Sel) userPrefs.c3 = c3Sel.value;
-  if(cardSel) userPrefs.cardColor = cardSel.value;
-  if(cardStyleSel) userPrefs.cardStyle = cardStyleSel.value;
+  userPrefs.cardColor = 'gradient-45';
+  userPrefs.cardStyle = 'glass';
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');
@@ -8004,7 +8004,7 @@ function applyUserPrefs() {
   if(toggleSel) userPrefs.toggleStyle = toggleSel.value;
   var hdrSel = document.getElementById('pref-hdr-style');
   if(hdrSel) userPrefs.hdrStyle = hdrSel.value;
-  if(opacSel) userPrefs.cardOpacity = opacSel.value;
+  userPrefs.cardOpacity = '15';
 
   var blurSel = document.getElementById('pref-bg-blur');
   if(blurSel) userPrefs.bgBlur = blurSel.value;
@@ -8191,19 +8191,17 @@ function buildSwatches() {
         swatch.style.height = '32px';
         swatch.style.borderRadius = '50%';
         swatch.style.cursor = 'pointer';
-        swatch.style.border = '2px solid rgba(255,255,255,0.2)';
+        swatch.style.border = '2px solid ' + p.accent;
         swatch.style.background = 'linear-gradient(135deg, ' + p.c1 + ' 0%, ' + p.c2 + ' 50%, ' + p.c3 + ' 100%)';
         swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
-        swatch.style.transition = 'transform 0.2s, border-color 0.2s';
+        swatch.style.transition = 'transform 0.2s, box-shadow 0.2s';
 
         swatch.onmouseenter = function() {
             swatch.style.transform = 'scale(1.15)';
-            swatch.style.borderColor = p.accent;
             swatch.style.boxShadow = '0 0 8px ' + p.accent;
         };
         swatch.onmouseleave = function() {
             swatch.style.transform = 'scale(1)';
-            swatch.style.borderColor = 'rgba(255,255,255,0.2)';
             swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
         };
 
@@ -8255,7 +8253,10 @@ function renderScrapeLogs() {
 
 function openOptions() {
   buildSwatches();
-  document.getElementById('apiKeyInput').value = localStorage.getItem('apiSportsKey') || '';
+  var apiKeyInput = document.getElementById('apiKeyInput');
+  if (apiKeyInput) {
+    apiKeyInput.value = localStorage.getItem('apiSportsKey') || '';
+  }
   initPrefs();
   document.getElementById('setbg').classList.add('open');
 }
