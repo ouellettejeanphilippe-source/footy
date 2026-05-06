@@ -1968,6 +1968,12 @@ var TEAM_ALIASES = {
   'tor': 'toronto maple leafs',
   'ott': 'ottawa senators',
   'mtl': 'montreal canadiens',
+  // Common Sports general
+  'psg': 'parissaintgermain',
+  'paris sg': 'parissaintgermain',
+  'bayern': 'bayernmunich',
+  'munchen': 'bayernmunich',
+  'bayern munchen': 'bayernmunich',
   // Soccer - France
   'psg': 'parissaintgermain',
   'paris sg': 'parissaintgermain',
@@ -2617,12 +2623,7 @@ function normName(n) {
   // Using very specific replacements to avoid breaking 'la liga' or 'deportivo la coruna'
   lower = lower.replace(/\bny\b/g, 'new york');
   lower = lower.replace(/l\.a\./g, 'los angeles');
-
-  if (lower.startsWith('la ')) {
-      // Only replace 'la' if it's followed by a known LA team name to avoid breaking 'la coruna' etc.
-      // But actually, we already added 'la kings', 'la dodgers', etc. in TEAM_ALIASES.
-      // So we don't even need to replace 'la' directly here if we map them in TEAM_ALIASES!
-  }
+  lower = lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   // Apply aliases before stripping characters
   if (TEAM_ALIASES[lower]) {
@@ -2632,7 +2633,7 @@ function normName(n) {
   }
 
   // Basic fallback replacements (e.g. fc, afc, sc, cf, united, city)
-  lower = lower.replace(/\b(fc|afc|sc|cf|de|sporting|cd|racing)\b/g, '').trim();
+  lower = lower.replace(/\b(fc|afc|sc|cf|de|sporting|cd|racing|club|athletic|united|city|rovers|wanderers)\b/gi, '').trim();
 
   var norm = lower.replace(/[^a-z0-9]/g, '');
   _normCache[n] = norm;
@@ -2788,6 +2789,25 @@ function parseStreameast(html){
                       source: 'streameast'
                   });
                   added[href] = true;
+              } else if (textToParse.length > 3 && textToParse.length < 40) {
+                  var streamUrl2 = href;
+                  if (!streamUrl2.startsWith('http')) streamUrl2 = STREAMEAST_URL.slice(0, -1) + (streamUrl2.startsWith('/') ? streamUrl2 : '/' + streamUrl2);
+                  matches.push({
+                      id: 'se_fb_' + index,
+                      league: formatLeagueName('Sports'),
+                      flag: lgFlag('Sports'),
+                      color: lgColor('Sports'),
+                      homeTeam: getOfficialTeamName(textToParse),
+                      awayTeam: 'TBD',
+                      startTime: '00:00',
+                      durationMinutes: getLeagueDuration('Sports'),
+                      status: 'upcoming',
+                      streamLinks: [{ name: 'Streameast - Flux', quality: 'HD', lang: 'MULTI', url: streamUrl2, icon: '📺' }],
+                      streamsLoaded: false,
+                      matchUrl: streamUrl2,
+                      source: 'streameast'
+                  });
+                  added[href] = true;
               }
           }
       });
@@ -2916,12 +2936,18 @@ function parseSportsurge(html) {
                   homeTeam: getOfficialTeamName(home),
                   awayTeam: getOfficialTeamName(away),
                   league: 'Sports',
+                  flag: lgFlag('Sports'),
+                  color: lgColor('Sports'),
+                  startTime: '00:00',
+                  status: 'upcoming',
                   matchUrl: url.indexOf('http') === 0 ? url : (SPORTSURGE_URL.slice(0, -1) + (url.startsWith('/') ? url : '/' + url)),
                   streamLinks: [],
                   streamsLoaded: false,
                   source: 'sportsurge'
               };
-              matches.push(m);
+              if (!matches.find(ex => ex.matchUrl === m.matchUrl)) {
+                  matches.push(m);
+              }
           }
       });
   } catch(e) {}
@@ -3112,6 +3138,11 @@ function parseOnHockey(html) {
 /* ══ PARSE BUFFSTREAMS ════════════════ */
 function parseBuffstreams(html){
   var matches=[];
+  var index = 0;
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // New Buffstreams doesn't load all data in home page JSON always, but it often does list categories
+  // Let's try to extract what we can from React chunks
   var scriptRegex = /self\.__next_f\.push\(\[1,"(.*)"\]\)/g;
   var match;
   var concatenatedData = "";
@@ -3124,10 +3155,10 @@ function parseBuffstreams(html){
       concatenatedData += chunk;
   }
 
+  // 1. First attempt: Full event objects
   var eventRegex = /"event":({(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*})/g;
   var evMatch;
 
-  var index = 0;
   while ((evMatch = eventRegex.exec(concatenatedData)) !== null) {
       try {
           var evObj = JSON.parse(evMatch[1]);
@@ -3213,22 +3244,30 @@ function parseTotalsportek(html) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
     [].forEach.call(links, function(a) {
-        if(a.href && a.href.includes('/game/') && a.href.includes('-vs-')) {
-            var urlParts = a.href.split('/game/')[1].split('/')[0].split('-vs-');
+        var href = a.getAttribute('href');
+        if(href && href.includes('/game/') && href.includes('-vs-')) {
+            var urlParts = href.split('/game/')[1].split('/')[0].split('-vs-');
             if(urlParts.length === 2) {
                 var home = urlParts[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                 var away = urlParts[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                 if(home && away) {
-                    var matchUrl = a.getAttribute('href');
+                    var matchUrl = href;
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        try { matchUrl = new URL(matchUrl, 'https://totalsportek-real.com/').href; } catch(e) {}
+                        matchUrl = 'https://www.totalsportek-real.com' + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
                     }
-                    if(matchUrl && !matchUrl.startsWith('javascript')) {
+                    if(matchUrl && !matchUrl.startsWith('javascript') && !matches.find(m => m.matchUrl === matchUrl)) {
                         matches.push({
                             id: 'ts_' + matches.length,
-                            homeTeam: home,
-                            awayTeam: away,
+                            league: 'Sports',
+                            flag: lgFlag('Sports'),
+                            color: lgColor('Sports'),
+                            homeTeam: getOfficialTeamName(home),
+                            awayTeam: getOfficialTeamName(away),
                             matchUrl: matchUrl,
+                            startTime: '00:00',
+                            status: 'upcoming',
+                            streamLinks: [],
+                            streamsLoaded: false,
                             source: 'totalsportek'
                         });
                     }
@@ -3245,22 +3284,30 @@ function parseVipleague(html) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
     [].forEach.call(links, function(a) {
-        if(a.href && a.href.includes('-streaming') && !a.href.includes('-links')) {
-            var urlParts = a.href.split('/').pop().split('-streaming')[0].split('-vs-');
+        var href = a.getAttribute('href');
+        if(href && href.includes('-streaming') && !href.includes('-links')) {
+            var urlParts = href.split('/').pop().split('-streaming')[0].split('-vs-');
             if(urlParts.length >= 2) {
                 var home = urlParts[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                 var away = urlParts.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                 if(home && away) {
-                    var matchUrl = a.getAttribute('href');
+                    var matchUrl = href;
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        try { matchUrl = new URL(matchUrl, 'https://vipleague.im').href; } catch(e) {}
+                        matchUrl = 'https://vipleague.io' + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
                     }
-                    if(matchUrl.startsWith('http')) {
+                    if(matchUrl.startsWith('http') && !matches.find(m => m.matchUrl === matchUrl)) {
                         matches.push({
                             id: 'vip_' + matches.length,
-                            homeTeam: home,
-                            awayTeam: away,
+                            league: 'Sports',
+                            flag: lgFlag('Sports'),
+                            color: lgColor('Sports'),
+                            homeTeam: getOfficialTeamName(home),
+                            awayTeam: getOfficialTeamName(away),
                             matchUrl: matchUrl,
+                            startTime: '00:00',
+                            status: 'upcoming',
+                            streamLinks: [],
+                            streamsLoaded: false,
                             source: 'vipleague'
                         });
                     }
@@ -3389,7 +3436,7 @@ function parseNflbite(html) {
         matches.push({
             id: "nflbite_" + i,
             homeTeam: getOfficialTeamName(teamName),
-            awayTeam: getOfficialTeamName("TBA"),
+            awayTeam: 'TBD',
             homeLogo: logo,
             status: "upcoming",
             score: null,
@@ -3401,6 +3448,34 @@ function parseNflbite(html) {
             source: "nflbite"
         });
         i++;
+    }
+
+    // Fallback: Just parse any team-like link
+    if (matches.length === 0) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var links = doc.querySelectorAll('a[href*="/teams/"]');
+        [].forEach.call(links, function(a) {
+             var href = a.getAttribute('href');
+             if(href.includes('-live-stream')) {
+                 var teamPart = href.split('/teams/')[1].split('-live-stream')[0];
+                 var teamN = teamPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
+                 if (teamN && !matches.find(m => m.homeTeam === teamN)) {
+                     var matchUrl = href.startsWith('http') ? href : MLBITE_URL.replace(/\/$/, '') + (href.startsWith('/') ? href : '/' + href);
+                     matches.push({
+                        id: "nflbite_fb_" + i++,
+                        homeTeam: getOfficialTeamName(teamN),
+                        awayTeam: 'TBD',
+                        status: "upcoming",
+                        startTime: "00:00",
+                        matchUrl: matchUrl,
+                        streamLinks: [],
+                        streamsLoaded: false,
+                        league: "NFL",
+                        source: "nflbite"
+                     });
+                 }
+             }
+        });
     }
     lg("NFLBite extraits", matches.length);
     return matches;
@@ -3432,8 +3507,8 @@ function parseMlbbite(html) {
 
             var matchUrl = href.indexOf("http") === 0 ? href : "https://mlbbite.plus" + href;
 
-            var home = "TBA";
-            var away = "TBA";
+            var home = "TBD";
+            var away = "TBD";
             var score = null;
             var status = "upcoming";
             var startTime = "00:00";
@@ -3842,8 +3917,27 @@ function isMatchPair(m1, m2) {
       return false;
   }
 
+  // Check for TBD or missing teams (some scrapers only provide one team from URL)
+  var is1HomeTbd = m1.homeTeam === 'TBD' || m1.homeTeam === 'tbd' || m1H === '';
+  var is1AwayTbd = m1.awayTeam === 'TBD' || m1.awayTeam === 'tbd' || m1A === '';
+  var is2HomeTbd = m2.homeTeam === 'TBD' || m2.homeTeam === 'tbd' || m2H === '';
+  var is2AwayTbd = m2.awayTeam === 'TBD' || m2.awayTeam === 'tbd' || m2A === '';
+
+  if (is1AwayTbd || is2AwayTbd || is1HomeTbd || is2HomeTbd) {
+      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2H)) return true;
+      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2A)) return true; // Could be reversed
+      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2A)) return true;
+      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2H)) return true;
+      return false;
+  }
+
   // Standard direct match
   if (isMatch(m1H, m2H) && isMatch(m1A, m2A)) {
+      return true;
+  }
+
+  // Reversed match (away vs home)
+  if (isMatch(m1H, m2A) && isMatch(m1A, m2H)) {
       return true;
   }
 
@@ -3940,6 +4034,9 @@ function isMatch(name1, name2) {
   } else {
       if (sim > 0.65) return true;
   }
+
+  // If one name is significantly longer but contains a typo-version of the shorter one
+  // Handled by sliding window below...
 
   // Sliding window substring similarity
   // This allows catching scraped names like "tampa" within "tampabaylightning" even with typos (e.g., "tanpa")
@@ -6142,11 +6239,12 @@ function openMod(m,col){
   } else if(!m.streamsLoaded){
       body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams...</div>';
       document.getElementById('mbg').classList.add('open');
-  } else if(!m.streamLinks || m.streamLinks.length===0){
-      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.<br><a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a></div>';
-      document.getElementById('mbg').classList.add('open');
   } else {
-      var sortedLinks = sortFluxLinks(m.streamLinks);
+      var sortedLinks = [];
+      if (m.streamLinks && m.streamLinks.length > 0) {
+          sortedLinks = sortFluxLinks(m.streamLinks);
+      }
+
       var mvBtn = document.getElementById('mv-add-btn');
       if(mvBtn && sortedLinks.length > 0) {
           mvBtn.disabled = false;
@@ -6159,9 +6257,84 @@ function openMod(m,col){
           mvBtn.style.display = 'none';
       }
 
-      body.innerHTML=sortedLinks.map(function(s,i){
-          return renderFluxItem(s, i, m);
-      }).join('');
+      var contentHtml = '';
+      if (sortedLinks.length === 0) {
+          contentHtml = '<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.<br>';
+          if (m.matchUrl) {
+              contentHtml += '<a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a>';
+          }
+          contentHtml += '</div>';
+      } else {
+          contentHtml = sortedLinks.map(function(s,i){
+              return renderFluxItem(s, i, m);
+          }).join('');
+      }
+
+      // Fallback manual links search
+      contentHtml += '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">';
+      contentHtml += '<details style="color: var(--muted); cursor: pointer;"><summary style="outline:none; font-weight: 500;">Recherche manuelle & Sites de base (Fallback)</summary>';
+      contentHtml += '<div style="padding: 10px 0; display: flex; flex-wrap: wrap; gap: 8px;">';
+
+      var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
+      var singleTeam = encodeURIComponent(m.homeTeam);
+
+      var baseSites = [
+          { name: 'Buffstreams', url: 'https://buffstreams.com.co/' },
+          { name: 'Footybite', url: 'https://footybite.to/' },
+          { name: 'Streameast', url: 'https://naturallyyou.fit/' },
+          { name: 'VIPLeague', url: 'https://vipleague.io/' },
+          { name: 'Totalsportek', url: 'https://www.totalsportek-real.com/' },
+          { name: 'Sportsurge', url: 'https://v2.sportsurge.net/home5/' }
+      ];
+
+      baseSites.forEach(function(site) {
+          contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none;">'+site.name+' 🔗</a>';
+      });
+      contentHtml += '</div>';
+
+      contentHtml += '<div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
+      contentHtml += '<div style="font-size: 12px; margin-bottom: 8px;">Ajouter un flux manuellement au Multiview (m3u8, iframe, url):</div>';
+      contentHtml += '<div style="display:flex; gap: 8px;">';
+      contentHtml += '<input type="text" id="manual-flux-input" placeholder="https://..." style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px;">';
+      contentHtml += '<button class="btn o" onclick="var v=document.getElementById(\'manual-flux-input\').value; if(v){ addToMultivision(v, \''+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+'\', \''+escJs(m.id)+'\'); closeMod(); }">Ajouter ⊞</button>';
+      contentHtml += '</div></div>';
+
+      // Look for scraped links that didn't merge
+      var unmerged = (S.matches || []).filter(function(x) {
+          return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
+      });
+      var possibleMatches = [];
+      var mH = normName(m.homeTeam);
+      var mA = normName(m.awayTeam);
+
+      unmerged.forEach(function(u) {
+          if (u.id === m.id || u.league !== 'Autres Flux') return; // ignore self or already merged ones
+          var uH = normName(u.homeTeam);
+          var uA = normName(u.awayTeam);
+          // Very loose fuzzy match for suggestions
+          if (isMatch(mH, uH) || isMatch(mH, uA) || isMatch(mA, uH) || isMatch(mA, uA)) {
+              possibleMatches.push(u);
+          }
+      });
+
+      if (possibleMatches.length > 0) {
+          contentHtml += '<div style="margin-top: 15px;">';
+          contentHtml += '<div style="font-size: 12px; margin-bottom: 8px; color: var(--accent);">Flux isolés pouvant correspondre :</div>';
+          contentHtml += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+          possibleMatches.forEach(function(pm) {
+              contentHtml += '<div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">';
+              contentHtml += '<div style="font-size: 12px;">' + esc(pm.homeTeam) + ' vs ' + esc(pm.awayTeam) + ' <span style="opacity:0.5;">('+esc(pm.source)+')</span></div>';
+              if (pm.matchUrl) {
+                  contentHtml += '<button class="btn o" style="padding: 4px 8px; font-size: 11px;" onclick="addToMultivision(\''+escJs(pm.matchUrl)+'\', \''+escJs(pm.homeTeam)+' vs '+escJs(pm.awayTeam)+'\', \''+escJs(pm.id)+'\'); closeMod();">Lancer ⊞</button>';
+              }
+              contentHtml += '</div>';
+          });
+          contentHtml += '</div></div>';
+      }
+
+      contentHtml += '</details></div>';
+
+      body.innerHTML = contentHtml;
       document.getElementById('mbg').classList.add('open');
   }
 }
@@ -8991,6 +9164,10 @@ function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          sm.color = '#555555';
 
          apiMatches.push(sm);
+
+         if (!skipScraping) {
+             addScrapeLog('Merge Failure', 'error', 'Unmerged: ' + sm.homeTeam + ' vs ' + sm.awayTeam + ' (' + (sm.source || 'unknown') + ')');
+         }
       }
   });
 

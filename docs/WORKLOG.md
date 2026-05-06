@@ -1,3 +1,8 @@
+
+### 06 May 2026 - Robustesse du scraping et Matching avancé (TBD)
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Amélioration drastique de `isMatchPair` et `stringSimilarity` pour gérer les correspondances lâches et les équipes incomplètes (fallbacks). Les parseurs (Buffstreams, Streameast, NFLBite, MLBBite, Totalsportek, VIPLeague) ont été réécrits ou ajustés pour tolérer l'absence de la deuxième équipe en utilisant `TBD`. Ajout d'une section "Fallback et Scrape Manuel" dynamique dans la modale d'un match permettant de lancer manuellement un lien ou de suggérer des streams non fusionnés. Ajout d'une journalisation intelligente (`addScrapeLog`) des échecs de fusion.
+- **Problèmes résolus** : Résout les problèmes de récupération des liens pour les sites qui ont changé leur structure et simplifient fortement la résilience des scrapers. La modale permet un fallback manuel puissant et intelligent, comme pour Plex.
 ### 06 May 2026 - Amélioration de l'affichage des matchs dans l'onglet Live
 - **Fichiers touchés** : `app.js`, `FEATURES.md`
 - **Résumé** : Modification de la logique de filtrage dans `buildEPG` pour inclure tous les matchs non terminés de la journée lorsque le filtre 'live' est actif. Les matchs sont divisés en trois sections : les matchs en direct, "À venir dans l'heure" (<= 60 minutes) et "Plus tard aujourd'hui" (> 60 minutes). Ajout d'une fonctionnalité "accordéon" (collapsible) à la fonction `renderMatches` pour permettre de réduire/développer la section "Plus tard aujourd'hui" avec une icône de triangle cliquable.
