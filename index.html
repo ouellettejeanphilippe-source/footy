@@ -42,10 +42,10 @@
       <div style="position: relative; display: inline-block;">
           <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)" style="font-size: 20px; padding: 0 12px;">☰</button>
           <div class="secondary-actions" id="main-menu">
-              <button class="nav-btn" onclick="applyFilter('fav'); toggleMenu(event);" style="padding: 10px 16px;">Favoris</button>
-              <button class="nav-btn" onclick="applyFilter('options'); toggleMenu(event);" style="padding: 10px 16px;">Options</button>
-              <button class="nav-btn" onclick="applyFilter('logs'); toggleMenu(event);" style="padding: 10px 16px;">Logs</button>
-              <button class="nav-btn" onclick="applyFilter('script'); toggleMenu(event);" style="padding: 10px 16px;">Script</button>
+              <button class="nav-btn" id="filter-fav" onclick="applyFilter('fav'); toggleMenu(event);" style="padding: 10px 16px;">Favoris</button>
+              <button class="nav-btn" id="filter-options" onclick="applyFilter('options'); toggleMenu(event);" style="padding: 10px 16px;">Options</button>
+              <button class="nav-btn" id="filter-logs" onclick="applyFilter('logs'); toggleMenu(event);" style="padding: 10px 16px;">Logs</button>
+              <button class="nav-btn" id="filter-script" onclick="applyFilter('script'); toggleMenu(event);" style="padding: 10px 16px;">Script</button>
           </div>
       </div>
 </div>

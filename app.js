@@ -4956,7 +4956,7 @@ function getEstTime(ukTimeStr){
 
 function applyFilter(f){
   S.filter=f;
-  ['all','live','upcoming','fav'].forEach(function(k){
+  ['all','live','upcoming','fav','options','logs','script'].forEach(function(k){
     var el=document.getElementById('filter-'+k);
     if(el){
         if (k===f) {
@@ -5029,11 +5029,14 @@ function applyFilter(f){
 }
 
 function openMultiviewTab() {
-    ['all','live','upcoming','fav'].forEach(function(k){
+    ['all','live','upcoming','fav','options','logs','script'].forEach(function(k){
       var el=document.getElementById('filter-'+k);
       if(el){
-          el.style.borderColor = 'var(--border2)';
+          el.classList.remove('active-toggle');
           el.style.color = 'var(--muted2)';
+          el.style.borderColor = 'var(--border2)';
+          el.style.background = 'var(--btn-bg)';
+          el.style.boxShadow = 'var(--btn-shadow)';
       }
     });
 

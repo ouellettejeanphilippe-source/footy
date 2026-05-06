@@ -14,6 +14,8 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+- Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
+
 - Correction d'un bug majeur où l'actualisation en arrière-plan gelait l'interface. Le problème était causé par un appel inconditionnel à `buildEPG` après le scrape des streams. Désormais, l'application utilise `updateLiveScores` et `updateMatchUiAfterScrape` pour mettre à jour l'interface dynamiquement et sans bloquer le thread principal lorsque `isBackground` est vrai et `window.hasLoadedOnce` est vrai.
 
 ### 05 May 2026 - Update Scraper Sources & Parsers
@@ -24,6 +26,8 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
+
 - Fix game link matching failures by adding permissive bidirectional substring fallbacks in `isMatchPair`.
 - Add mapping in `TEAM_ALIASES` for MLB team shorthands (e.g., 'rangers', 'athletics', 'twins', 'orioles', 'marlins', 'nationals') to ensure accurate parsing of scraped stream data.
 - Ensure date validation within the matching fallback to prevent double-header/series overlap errors.
@@ -58,6 +62,8 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
+
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 
 - Amélioration de la fonction `isMatch` dans `app.js` :
@@ -114,6 +120,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - Rien pour l'instant
 
 ## Fait
+- Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
+
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 - Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
@@ -138,6 +146,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+- Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
+
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
 - Identifié la cause du blocage sur la page de chargement (TypeError `Cannot set properties of null` lors de `btn.disabled=true`)
 - Ajouté des vérifications d'existence pour le bouton `relBtn` dans `app.js`
