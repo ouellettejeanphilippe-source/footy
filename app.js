@@ -5723,66 +5723,42 @@ function buildEPG(matches){
 
   } else { // Timeline EPG
 
-  epgContainer.style.display = 'flex';
-  epgContainer.style.flexDirection = 'row';
+  epgContainer.style.display = 'block';
+  epgContainer.style.flexDirection = '';
   epgContainer.style.maxWidth = 'none';
   epgContainer.style.margin = '0';
   epgContainer.style.width = '100%';
   epgContainer.style.height = '100%';
-  epgContainer.style.overflowY = 'hidden';
+  epgContainer.style.overflow = 'auto'; // allow natural scrolling
+  epgContainer.style.position = 'relative';
 
-  var chanCol = document.createElement('div');
-  chanCol.className = 'chan-col';
-  chanCol.innerHTML = '<div class="corner">Compétition</div><div class="chan-list" id="chanList"></div>';
-  epgContainer.appendChild(chanCol);
+  var epgWrapper = document.createElement('div');
+  epgWrapper.className = 'epg-wrapper';
+  epgWrapper.id = 'epg-wrapper';
 
-  var tl = document.createElement('div');
-  tl.className = 'tl';
-  tl.id = 'tl';
+  // Ruler Row
+  var rulerRow = document.createElement('div');
+  rulerRow.className = 'ruler-row';
 
-  var ruler = document.createElement('div');
-  ruler.className = 'ruler';
+  var corner = document.createElement('div');
+  corner.className = 'corner';
+  corner.textContent = 'Compétition';
+  rulerRow.appendChild(corner);
+
+  var rulerTimes = document.createElement('div');
+  rulerTimes.className = 'ruler-times';
   var hhtml = '';
-  // Start from 00:00 to 24:00 (to give padding at the end)
   for(var h=0; h<=24; h++){
       hhtml += '<div class="tc">' + pad(h) + ':00</div>';
   }
-  ruler.innerHTML = hhtml;
-  tl.appendChild(ruler);
+  rulerTimes.innerHTML = hhtml;
+  rulerRow.appendChild(rulerTimes);
 
-  var mareaDiv = document.createElement('div');
-  mareaDiv.className = 'marea';
-  mareaDiv.id = 'innerMarea';
+  epgWrapper.appendChild(rulerRow);
 
-  // Grid lines
-  // Read scale from CSS variable or default to 220
-  var hourPx = 220;
-  if(window.innerWidth <= 680) hourPx = 160;
-  var minPx = hourPx / 60;
-
-  for(var h=0; h<=24; h++){
-      var gl = document.createElement('div');
-      gl.className = 'gl';
-      gl.style.left = (h*hourPx) + 'px';
-      mareaDiv.appendChild(gl);
-      var glh = document.createElement('div');
-      glh.className = 'gl h';
-      glh.style.left = (h*hourPx + (hourPx/2)) + 'px'; // Half hour mark
-      mareaDiv.appendChild(glh);
-  }
-
-  // Make sure the marea expands to full width even if no matches
-  mareaDiv.style.width = (25 * hourPx) + 'px';
-
-  var nowLine = document.createElement('div');
-  nowLine.className = 'now-line';
-  nowLine.id = 'nowline';
-  mareaDiv.appendChild(nowLine);
-
-  tl.appendChild(mareaDiv);
-  epgContainer.appendChild(tl);
-
-  var chanList = chanCol.querySelector('#chanList');
+  // Now Line element will be appended to the first marea so it spans down
+  var nowLineAdded = false;
+  var nowLineHtml = '<div class="now-line" id="nowline"></div>';
 
   leagues.forEach(function(lg){
     if(!lg || lg.matches.length === 0) return;
@@ -5790,40 +5766,54 @@ function buildEPG(matches){
     var isCollapsed = S.collapsedLg[lg.league];
     var lgCol = lg.color||lgColor(lg.league);
 
-    // League Header in Channel Col
-    var lHdr = document.createElement('div');
-    lHdr.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
-    lHdr.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
+    // League Header Row
+    var lHdrRow = document.createElement('div');
+    lHdrRow.className = 'marea-row';
+
+    var lHdrCell = document.createElement('div');
+    lHdrCell.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
+    lHdrCell.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
       + '<span class="ch-flag">'+lg.flag+'</span>'
       + '<span class="lg-title">'+esc(lg.league)+'</span>'
       + '<span class="lg-cnt">'+lg.matches.length+'</span>';
-    lHdr.addEventListener('click', function(){ toggleAccordion(lg.league); });
-    chanList.appendChild(lHdr);
+    lHdrCell.addEventListener('click', function(){ toggleAccordion(lg.league); });
 
+    var lHdrMarea = document.createElement('div');
+    lHdrMarea.className = 'marea';
+    // Add grid background to header marea as well to match
+    lHdrRow.appendChild(lHdrCell);
+    lHdrRow.appendChild(lHdrMarea);
+    epgWrapper.appendChild(lHdrRow);
+
+    if(!nowLineAdded) {
+        lHdrMarea.innerHTML += nowLineHtml;
+        nowLineAdded = true;
+    }
 
     if(!isCollapsed) {
         lg.matches.forEach(function(m){
+            var row = document.createElement('div');
+            row.className = 'mrow';
+
             // Channel cell
             var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
             var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
-            var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
-            var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+            var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\x27none\x27">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+            var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\x27none\x27">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
 
             var cCell = document.createElement('div');
             cCell.className = 'chan-cell';
             cCell.innerHTML = '<div class="chan-team">'
-                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</button>'
+                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick=\"toggleFavTeam(\'"+escJs(m.homeTeam)+"\')\">★</button>'
                             + homeLogoHtml
                             + '<span class="ch-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span></div>'
                             + '<div class="chan-team">'
-                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\')">★</button>'
+                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick=\"toggleFavTeam(\'"+escJs(m.awayTeam)+"\')\">★</button>'
                             + awayLogoHtml
                             + '<span class="ch-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span></div>';
-            chanList.appendChild(cCell);
 
-            // Timeline row
-            var tRow = document.createElement('div');
-            tRow.className = 'mrow';
+            var marea = document.createElement('div');
+            marea.className = 'marea';
 
             var b = document.createElement('div');
             b.id = 'mb-'+m.id;
@@ -5860,12 +5850,6 @@ function buildEPG(matches){
                 timeBadge = '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + m.startTime + '</div>';
             }
 
-            var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
-            var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
-
-            var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
-            var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="mb-logo" onerror="this.style.display=\'none\'">' : '<div class="mb-logo" style="display:flex;align-items:center;justify-content:center;font-size:10px;">🛡️</div>';
-
             var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
             if (m.awayTeam) {
@@ -5890,11 +5874,10 @@ function buildEPG(matches){
                             + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
             }
 
-            // Calculate position
+            // Calculate position via CSS vars
             var parts = m.startTime.split(':');
             var mH = parseInt(parts[0], 10);
             var mM = parseInt(parts[1], 10);
-            var leftPx = (mH * hourPx) + (mM * minPx);
 
             var duration = m.durationMinutes || 105;
             if (m.status === 'live') {
@@ -5910,18 +5893,27 @@ function buildEPG(matches){
                     duration = (tempCurrentMins - matchStartMins) + 15;
                 }
             }
-            var widthPx = duration * minPx;
 
-            b.style.left = leftPx + 'px';
-            b.style.width = widthPx + 'px';
+            b.style.setProperty('--start-h', mH);
+            b.style.setProperty('--start-m', mM);
+            b.style.setProperty('--duration-m', duration);
+            // Fallback for older browsers
+            b.style.left = 'calc((var(--start-h) * var(--hour-px)) + (var(--start-m) * var(--min-px)))';
+            b.style.width = 'calc(var(--duration-m) * var(--min-px))';
 
             b.addEventListener('click', function(){ openMod(m, lgCol); });
-            tRow.appendChild(b);
-            mareaDiv.appendChild(tRow);
+            marea.appendChild(b);
+
+            row.appendChild(cCell);
+            row.appendChild(marea);
+            epgWrapper.appendChild(row);
         });
     }
   });
 
+  epgContainer.appendChild(epgWrapper);
+
+  // Note: we can remove the old gl/glh DOM grid lines because we added repeating-linear-gradient in CSS!
   } // End of else block for timeline EPG
 
   /* Legend Toggle Bar */
@@ -5945,11 +5937,7 @@ function buildEPG(matches){
     bar.appendChild(ch);
   });
 
-  // Sync scroll
-  if(chanList && tl) {
-      chanList.onscroll = function() { tl.scrollTop = chanList.scrollTop; };
-      tl.onscroll = function() { chanList.scrollTop = tl.scrollTop; };
-  }
+
 
   updateNowLine();
 
@@ -5964,21 +5952,17 @@ function updateNowLine() {
     var line = document.getElementById('nowline');
     if(!line) return;
 
-    // Check if target date is today
     var now = new Date();
     var isToday = (TARGET_DATE.toDateString() === now.toDateString());
 
     if(isToday) {
-        var hourPx = window.innerWidth <= 680 ? 160 : 220;
-        var minPx = hourPx / 60;
-        // On récupère l'heure EST courante
         var estStr = getEstTimeStrFromDate(now);
         var parts = estStr.split(':');
         var h = parseInt(parts[0], 10);
         var m = parseInt(parts[1], 10);
 
-        var leftPx = (h * hourPx) + (m * minPx);
-        line.style.left = leftPx + 'px';
+        line.style.setProperty('--now-h', h);
+        line.style.setProperty('--now-m', m);
         line.style.display = 'block';
         line.setAttribute('data-t', estStr);
     } else {
@@ -5989,24 +5973,27 @@ function updateNowLine() {
 setInterval(updateNowLine, 60000);
 
 function scrollToNow(){
-    var tl = document.getElementById('tl');
-    if(!tl) return;
-    var now = new Date();
-    if(TARGET_DATE.toDateString() !== now.toDateString()) return;
+    var epgContainer = document.getElementById('epg');
+    if(!epgContainer || S.view !== 'epg' || epgContainer.style.display === 'none') return;
 
-    var hourPx = window.innerWidth <= 680 ? 160 : 220;
+    var now = new Date();
+    var isToday = (TARGET_DATE.toDateString() === now.toDateString());
+    if(!isToday) return;
+
+    var rootStyles = getComputedStyle(document.documentElement);
+    var hourPx = parseFloat(rootStyles.getPropertyValue('--hour-px')) || (window.innerWidth <= 768 ? 140 : 220);
     var minPx = hourPx / 60;
-    // On centre sur l'heure EST
+
     var estStr = getEstTimeStrFromDate(now);
     var parts = estStr.split(':');
     var h = parseInt(parts[0], 10);
     var m = parseInt(parts[1], 10);
 
-    var leftPx = (h * hourPx) + (m * minPx);
+    var w = epgContainer.clientWidth;
+    var chanW = parseFloat(rootStyles.getPropertyValue('--chan-w')) || (window.innerWidth <= 768 ? 100 : 240);
+    var leftPx = (h * hourPx) + (m * minPx) + chanW;
 
-    // Scroll to position
-    var w = tl.clientWidth;
-    tl.scrollLeft = Math.max(0, leftPx - (w / 2));
+    epgContainer.scrollLeft = Math.max(0, leftPx - (w / 2));
 }
 
 
@@ -9634,3 +9621,36 @@ document.addEventListener('click', function(e) {
       if (btn) btn.innerHTML = '☰';
   }
 });
+
+
+
+// --- ZOOM SYSTEM ---
+var currentZoomLevel = 1.0;
+
+function updateZoomDisplay() {
+    var display = document.getElementById('zoom-level-display');
+    if (display) {
+        display.textContent = Math.round(currentZoomLevel * 100) + '%';
+    }
+}
+
+function zoomIn() {
+    if (currentZoomLevel < 3.0) {
+        currentZoomLevel += 0.2;
+        document.documentElement.style.setProperty('--zoom-level', currentZoomLevel);
+        updateZoomDisplay();
+        scrollToNow(); // Re-center
+    }
+}
+
+function zoomOut() {
+    if (currentZoomLevel > 0.4) {
+        currentZoomLevel -= 0.2;
+        document.documentElement.style.setProperty('--zoom-level', currentZoomLevel);
+        updateZoomDisplay();
+        scrollToNow(); // Re-center
+    }
+}
+
+// Ensure the initial zoom displays correctly
+document.addEventListener('DOMContentLoaded', updateZoomDisplay);
