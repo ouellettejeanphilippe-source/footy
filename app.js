@@ -67,7 +67,7 @@ function toggleFavTeam(teamName) {
 
 var logoCache = {};
 var matchCardCache = new Map();
-var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{} };
+var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{}, collapsedSections:{} };
 
 /* ══ CONFIG ═════════════════════════════ */
 var SITE = 'https://www.footybite.do/';
@@ -5207,7 +5207,7 @@ function buildEPG(matches){
             isUpcomingIn60 = true;
         }
     }
-    if(S.filter==='live' && m.status !== 'live' && !isUpcomingIn60) return false;
+    if(S.filter==='live' && m.status === 'finished') return false;
 
     // In Upcoming tab: hide everything that is live, soon, finished, or in Live tab (<= 60 mins)
     if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished' || isUpcomingIn60)) return false;
@@ -5502,18 +5502,47 @@ function buildEPG(matches){
       epgContainer.style.height = '100%';
       epgContainer.style.WebkitOverflowScrolling = 'touch';
 
-      var renderMatches = function(matchesToRender, container, titleStr) {
+      var renderMatches = function(matchesToRender, container, titleStr, isCollapsible, sectionId) {
           if (!matchesToRender || matchesToRender.length === 0) return;
-
-          if (titleStr) {
-              var secTitle = document.createElement('div');
-              secTitle.style.cssText = 'padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px;';
-              secTitle.innerHTML = titleStr;
-              container.appendChild(secTitle);
-          }
 
           var grid = document.createElement('div');
           grid.className = 'match-grid';
+
+          if (titleStr) {
+              var secTitle = document.createElement('div');
+              secTitle.style.cssText = 'padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;';
+
+              if (isCollapsible) {
+                  secTitle.style.cursor = 'pointer';
+                  var isCollapsed = S.collapsedSections[sectionId] || false;
+
+                  var icon = document.createElement('span');
+                  icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+                  icon.style.transition = 'transform 0.2s';
+                  if (isCollapsed) {
+                      icon.style.transform = 'rotate(-90deg)';
+                      grid.style.display = 'none';
+                  }
+                  secTitle.appendChild(icon);
+
+                  secTitle.addEventListener('click', function() {
+                      S.collapsedSections[sectionId] = !S.collapsedSections[sectionId];
+                      if (S.collapsedSections[sectionId]) {
+                          icon.style.transform = 'rotate(-90deg)';
+                          grid.style.display = 'none';
+                      } else {
+                          icon.style.transform = '';
+                          grid.style.display = '';
+                      }
+                  });
+              }
+
+              var textSpan = document.createElement('span');
+              textSpan.textContent = titleStr;
+              secTitle.appendChild(textSpan);
+              container.appendChild(secTitle);
+          }
+
           container.appendChild(grid);
 
           // Group by league inside this section
@@ -5645,20 +5674,41 @@ function buildEPG(matches){
           });
       };
 
-      // Split live and upcoming in 30 mins if filter is live
+      // Split live and upcoming in 60 mins and later today if filter is live
       if (S.filter === 'live') {
           var liveNow = [];
           var upNext = [];
+          var laterToday = [];
+
+          var now = new Date();
+          var currentEst = getEstTimeStrFromDate(now);
+          var currentParts = currentEst.split(':');
+          var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
+
           filtered.forEach(function(m) {
               if (m.status === 'live') {
                   liveNow.push(m);
               } else {
-                  upNext.push(m);
+                  if (m.startTime) {
+                      var mParts = m.startTime.split(':');
+                      var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+                      var diff = mMins - currentMins;
+                      if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
+
+                      if (diff <= 60) {
+                          upNext.push(m);
+                      } else {
+                          laterToday.push(m);
+                      }
+                  } else {
+                      laterToday.push(m);
+                  }
               }
           });
           if (liveNow.length > 0) renderMatches(liveNow, epgContainer, "");
-          if (upNext.length > 0) renderMatches(upNext, epgContainer, "À venir dans 30 minutes");
-          if (liveNow.length === 0 && upNext.length === 0) {
+          if (upNext.length > 0) renderMatches(upNext, epgContainer, "À venir dans l'heure");
+          if (laterToday.length > 0) renderMatches(laterToday, epgContainer, "Plus tard aujourd'hui", true, 'laterToday');
+          if (liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0) {
               epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
           }
       } else {

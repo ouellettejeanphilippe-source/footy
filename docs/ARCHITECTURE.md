@@ -29,7 +29,7 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 ### `index.html` (Sous-modules virtuels)
 *Ce fichier contient l'intégralité du code front-end (HTML, CSS, JS). En voici les grands blocs logiques :*
 - **Rôle** : Interface utilisateur complète, gestion du routage (onglets), logique de scrapping, et player vidéo (Multiview).
-- **Core / Stockage** : Gestion globale de l'état (objet `S`), `loadAll()`, lecture/écriture dans le localStorage (`userPrefs`, cache API).
+- **Core / Stockage** : Gestion globale de l'état (objet `S`, incluant `S.collapsedSections` pour l'état de l'UI accordéon), `loadAll()`, lecture/écriture dans le localStorage (`userPrefs`, cache API).
 - **UI / Layout** : Fonctions d'affichage des menus (`toggleMenu`, `setupMultivisionUI`), gestion des onglets (Guide, Direct, Favoris).
 - **Multiview / Player** : Création dynamique d'iframes (`openFlux`, `addToMultivision`), gestion de la communication cross-origin via `postMessage`, gestion du focus (Stream audio actif).
 - **Data APIs** : `fetchGameStats()`, `fetchLeagueStandings()`. Polling sur ESPN. `updateLiveScores()` optimized with `matchCardCache`.

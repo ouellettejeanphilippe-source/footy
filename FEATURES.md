@@ -13,12 +13,12 @@ Ce fichier liste les fonctionnalités disponibles dans chaque onglet et menu de 
   - Regroupe les matchs par ligues.
 
 ## Onglet: EN DIRECT
-- **Description** : Affiche les matchs actuellement en direct et ceux qui commencent imminemment (dans les 30 prochaines minutes).
+- **Description** : Affiche les matchs actuellement en direct et ceux qui commencent dans la journée.
 - **Fonctionnalités** :
   - **Grille de matchs** : Affichage sous forme de cartes ("Match Cards").
   - **Indicateur de statut** : Badge "LIVE" ou minute de jeu (si disponible via l'API).
   - **Score en temps réel** : Affiche le score si le match a commencé.
-  - **Séparation temporelle** : Les matchs qui vont commencer dans les 30 prochaines minutes sont listés en dessous sous la mention "À venir dans 30 minutes".
+  - **Séparation temporelle** : Les matchs qui vont commencer dans la prochaine heure sont listés en dessous sous la mention "À venir dans l'heure", suivis d'une section "Plus tard aujourd'hui" pour le reste de la journée (avec un affichage accordéon).
   - Tri par heure de début et par importance de la ligue.
 
 ## Onglet: FAVORIS

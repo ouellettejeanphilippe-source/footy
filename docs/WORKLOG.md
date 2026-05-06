@@ -1,3 +1,8 @@
+### 06 May 2026 - Amélioration de l'affichage des matchs dans l'onglet Live
+- **Fichiers touchés** : `app.js`, `FEATURES.md`
+- **Résumé** : Modification de la logique de filtrage dans `buildEPG` pour inclure tous les matchs non terminés de la journée lorsque le filtre 'live' est actif. Les matchs sont divisés en trois sections : les matchs en direct, "À venir dans l'heure" (<= 60 minutes) et "Plus tard aujourd'hui" (> 60 minutes). Ajout d'une fonctionnalité "accordéon" (collapsible) à la fonction `renderMatches` pour permettre de réduire/développer la section "Plus tard aujourd'hui" avec une icône de triangle cliquable.
+- **Problèmes résolus** : Permet de voir non seulement les matchs imminents, mais aussi le reste du programme de la journée sans changer d'onglet, avec une vue propre et condensable pour les événements lointains.
+
 ### 04 May 2026 - Uniformisation des liens du menu hamburger
 - **Fichiers touchés** : `index.html`, `styles.css`
 - **Résumé** : Changement des classes des boutons du menu déroulant ("Favoris", "Options", "Logs", "Script") de `.btn` à `.nav-btn` et ajustement du CSS pour harmoniser l'apparence visuelle avec les liens de la barre de navigation principale (sans fond, lettres en majuscules, trait de soulignement au survol).
