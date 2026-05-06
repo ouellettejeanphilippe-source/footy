@@ -9276,6 +9276,7 @@ function loadAll(isBackground, forceScrape){
       var skipScraping = !forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000) && window.hasLoadedOnce;
 
       if (skipScraping) {
+          window.hasLoadedOnce = true;
           // Just merge with existing scrapedMatches and update API
           var finalMatches = mergeFluxToApi(apiMatches, window.lastScrapedMatches || [], true);
 
@@ -9442,8 +9443,16 @@ function loadAll(isBackground, forceScrape){
           }
 
           setTimeout(function() {
-              buildEPG(S.matches);
+              if (isBackground && window.hasLoadedOnce) {
+                  updateLiveScores(S.matches);
+                  S.matches.forEach(function(m) {
+                      updateMatchUiAfterScrape(m);
+                  });
+              } else {
+                  buildEPG(S.matches);
+              }
               fetchSubPages(S.matches);
+              window.hasLoadedOnce = true;
           }, 0);
           var live=S.matches.filter(function(m){return m.status==='live';}).length;
           showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
