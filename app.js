@@ -77,9 +77,9 @@ var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 var STREAMEAST_URL = 'https://naturallyyou.fit/';
 var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
-var VIPLEAGUE_URL = 'https://www.vipleague.st/';
+var VIPLEAGUE_URL = 'https://vipleague.im/top-streaming';
 var METHSTREAMS_URL = 'https://methstreams.com/';
-var TOTALSPORTEK_URL = 'https://www.totalsportek.to/';
+var TOTALSPORTEK_URL = 'https://totalsportek-real.com/';
 var PROXIES = [
   function(u){ return 'https://api.allorigins.win/get?url='+encodeURIComponent(u); },
   function(u){ return 'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u); },
@@ -3213,18 +3213,17 @@ function parseTotalsportek(html) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
     [].forEach.call(links, function(a) {
-        if(a.href && (a.href.includes('-vs-') || a.href.includes('-v-') || a.href.includes('stream'))) {
-            var text = a.textContent.replace(/\s+/g, ' ').trim();
-            var teams = text.split(/ vs | v | - /i);
-            if(teams.length >= 2 && text.length < 100) {
-                var home = teams[0].trim();
-                var away = teams.slice(1).join(' - ').trim();
+        if(a.href && a.href.includes('/game/') && a.href.includes('-vs-')) {
+            var urlParts = a.href.split('/game/')[1].split('/')[0].split('-vs-');
+            if(urlParts.length === 2) {
+                var home = urlParts[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
+                var away = urlParts[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                 if(home && away) {
                     var matchUrl = a.getAttribute('href');
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        try { matchUrl = new URL(matchUrl, 'https://www.totalsportek.to/').href; } catch(e) {}
+                        try { matchUrl = new URL(matchUrl, 'https://totalsportek-real.com/').href; } catch(e) {}
                     }
-                    if(matchUrl.startsWith('http')) {
+                    if(matchUrl && !matchUrl.startsWith('javascript')) {
                         matches.push({
                             id: 'ts_' + matches.length,
                             homeTeam: home,
@@ -3246,16 +3245,15 @@ function parseVipleague(html) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
     [].forEach.call(links, function(a) {
-        if(a.href && a.href.includes('-streaming')) {
-            var text = a.textContent.replace(/\s+/g, ' ').trim();
-            var teams = text.split(/ vs | v | - /i);
-            if(teams.length >= 2 && text.length < 100) {
-                var home = teams[0].trim();
-                var away = teams.slice(1).join(' - ').trim();
+        if(a.href && a.href.includes('-streaming') && !a.href.includes('-links')) {
+            var urlParts = a.href.split('/').pop().split('-streaming')[0].split('-vs-');
+            if(urlParts.length >= 2) {
+                var home = urlParts[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
+                var away = urlParts.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                 if(home && away) {
                     var matchUrl = a.getAttribute('href');
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        try { matchUrl = new URL(matchUrl, 'https://www.vipleague.st/').href; } catch(e) {}
+                        try { matchUrl = new URL(matchUrl, 'https://vipleague.im').href; } catch(e) {}
                     }
                     if(matchUrl.startsWith('http')) {
                         matches.push({
@@ -3312,6 +3310,12 @@ function fetchPage(url){
   return new Promise(function(resolve,reject){
     var i=0,errs=[];
     var maxTries = 3; // Try a maximum of 3 proxies to avoid long hangs
+
+    // OnHockey specific: skip allorigins since it strips headers and fails/timeouts for schedule_table.php
+    if (url.indexOf('onhockey.tv') >= 0) {
+        i = 1;
+    }
+
     function next(){
       if(i>=PROXIES.length || i>=maxTries){reject(new Error(errs.join('\n')));return;}
       var pu=PROXIES[i++](url);
@@ -3321,6 +3325,7 @@ function fetchPage(url){
       // OnHockey specific headers to trick the API/Proxy into thinking it's an AJAX request
       if(url.indexOf('onhockey.tv') >= 0) {
           headers['X-Requested-With'] = 'XMLHttpRequest';
+          headers['Referer'] = 'https://onhockey.tv/';
       }
 
       // Use a slightly shorter timeout for each proxy try so we don't hang too long on bad proxies
