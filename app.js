@@ -58,11 +58,27 @@ function toggleFavTeam(teamName) {
   }
   localStorage.setItem('fav_teams', JSON.stringify(favTeams));
 
-  if (S.filter === 'fav') {
-      setTimeout(function() { buildEPG(S.matches); }, 0);
-  } else {
-      setTimeout(function() { buildEPG(S.matches); }, 0);
-  }
+  // Update DOM directly instead of rebuilding EPG
+  var allCards = document.querySelectorAll('.mb');
+  allCards.forEach(function(c) {
+      var h = c.getAttribute('data-home');
+      var a = c.getAttribute('data-away');
+      if (h && a) {
+          if (favTeams[h] || favTeams[a]) {
+              c.classList.add('is-fav');
+              var starH = c.querySelector('.chan-team:first-child button');
+              var starA = c.querySelector('.chan-team:last-child button');
+              if (starH) starH.style.color = favTeams[h] ? 'var(--accent)' : 'var(--muted)';
+              if (starA) starA.style.color = favTeams[a] ? 'var(--accent)' : 'var(--muted)';
+          } else {
+              c.classList.remove('is-fav');
+              var starH = c.querySelector('.chan-team:first-child button');
+              var starA = c.querySelector('.chan-team:last-child button');
+              if (starH) starH.style.color = 'var(--muted)';
+              if (starA) starA.style.color = 'var(--muted)';
+          }
+      }
+  });
 }
 
 var logoCache = {};
@@ -5024,12 +5040,11 @@ function applyFilter(f){
           if (sportFiltersContainer) sportFiltersContainer.style.display = 'flex';
       }
 
-      setTimeout(function() {
-          buildEPG(S.matches);
-          if(f === 'all') {
-              setTimeout(scrollToNow, 100);
-          }
-      }, 0);
+          document.body.setAttribute('data-filter', f);
+    if(f === 'all') {
+        setTimeout(scrollToNow, 100);
+    }
+
   }
 }
 
@@ -5129,27 +5144,31 @@ function toggleLeague(lgName) {
   if(sfContainer) {
       var anyHidden = false;
       Object.keys(S.hiddenLg).forEach(function(k) {
-          if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+          if (S.hiddenLg[k]) anyHidden = true;
       });
 
-      var buttons = sfContainer.querySelectorAll('.sport-btn');
-      buttons.forEach(function(b) {
-          if (b.id === 'btn-autres-flux') return;
+      var btns = sfContainer.querySelectorAll('.sport-filter-btn');
+      btns.forEach(function(b) {
           var onClickStr = b.getAttribute('onclick') || '';
-          if (onClickStr.indexOf("'all'") !== -1) {
-              if (!anyHidden) b.classList.add('active-toggle');
-              else b.classList.remove('active-toggle');
-          } else {
-              var m = onClickStr.match(/applySportFilter\('([^']+)'\)/);
+          if (onClickStr.indexOf("toggleLeague('") > -1) {
+              var m = onClickStr.match(/toggleLeague\('([^']+)'\)/);
               if (m && m[1]) {
-                  var spName = m[1];
-                  if (!S.hiddenLg[spName]) b.classList.add('active-toggle');
+                  var lName = m[1];
+                  if (!S.hiddenLg[lName]) b.classList.add('active-toggle');
                   else b.classList.remove('active-toggle');
               }
           }
       });
   }
-  setTimeout(function() { buildEPG(S.matches); }, 0);
+
+  // Hide/Show elements using CSS based on data attribute
+  var containers = document.querySelectorAll('.marea-row, .mrow, .lg-container');
+  containers.forEach(function(c) {
+      var lg = c.getAttribute('data-lg');
+      if (lg === lgName) {
+          c.style.display = S.hiddenLg[lgName] ? 'none' : (c.classList.contains('mrow') || c.classList.contains('marea-row') ? 'flex' : 'block');
+      }
+  });
 }
 
 function toggleAutresFlux() {
@@ -5159,12 +5178,26 @@ function toggleAutresFlux() {
         if (!S.hiddenLg['Autres Flux']) btn.classList.add('active-toggle');
         else btn.classList.remove('active-toggle');
     }
-    setTimeout(function() { buildEPG(S.matches); }, 0);
+    var containers = document.querySelectorAll('[data-lg="Autres Flux"]');
+    containers.forEach(function(c) {
+        c.style.display = S.hiddenLg['Autres Flux'] ? 'none' : (c.classList.contains('mrow') || c.classList.contains('marea-row') ? 'flex' : 'block');
+    });
 }
 
 function toggleAccordion(lgName) {
   S.collapsedLg[lgName] = !S.collapsedLg[lgName];
-  setTimeout(function() { buildEPG(S.matches); }, 0);
+  var isC = S.collapsedLg[lgName];
+
+  var hdrs = document.querySelectorAll('.lg-hdr[data-lg-hdr="' + lgName + '"]');
+  hdrs.forEach(function(h) {
+      if(isC) h.classList.add('collapsed');
+      else h.classList.remove('collapsed');
+  });
+
+  var rows = document.querySelectorAll('.mrow[data-lg="' + lgName + '"]');
+  rows.forEach(function(r) {
+      r.style.display = isC ? 'none' : 'flex';
+  });
 }
 
 /* ══ EPG / LISTE ════════════════════════ */
@@ -5212,11 +5245,7 @@ function buildEPG(matches){
             isUpcomingIn60 = true;
         }
     }
-    if(S.filter==='live' && m.status === 'finished') return false;
-
-    // In Upcoming tab: hide everything that is live, soon, finished, or in Live tab (<= 60 mins)
-    if(S.filter==='upcoming' && (isLiveOrSoon || m.status==='finished' || isUpcomingIn60)) return false;
-    if(S.hiddenLg[m.league]) return false;
+    // REMOVED JS FILTERING: CSS will handle visibility via data-filter attribute instead!
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
         var hN = normName(m.homeTeam);
@@ -5300,7 +5329,7 @@ function buildEPG(matches){
   epgContainer.style.width = '100%';
   epgContainer.innerHTML = '';
 
-  if (S.filter === 'fav') {
+  if (S.filter === 'fav' && false) { // DISABLE THE SEPARATE FAV VIEW RENDER
       epgContainer.style.display = 'flex';
       epgContainer.style.flexDirection = 'column';
       epgContainer.style.gap = '16px';
@@ -5769,9 +5798,11 @@ function buildEPG(matches){
     // League Header Row
     var lHdrRow = document.createElement('div');
     lHdrRow.className = 'marea-row';
+    lHdrRow.setAttribute('data-lg', lg.league);
 
     var lHdrCell = document.createElement('div');
     lHdrCell.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
+    lHdrCell.setAttribute('data-lg-hdr', lg.league);
     lHdrCell.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
       + '<span class="ch-flag">'+lg.flag+'</span>'
       + '<span class="lg-title">'+esc(lg.league)+'</span>'
@@ -5793,7 +5824,8 @@ function buildEPG(matches){
     if(!isCollapsed) {
         lg.matches.forEach(function(m){
             var row = document.createElement('div');
-            row.className = 'mrow';
+            row.className = 'mrow' + (isCollapsed ? ' hidden-lg' : '');
+            row.setAttribute('data-lg', lg.league);
 
             // Channel cell
             var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
@@ -5817,7 +5849,22 @@ function buildEPG(matches){
 
             var b = document.createElement('div');
             b.id = 'mb-'+m.id;
+
+            var isLiveOrSoonLoc = m.status === 'live';
+            if(m.status === 'upcoming' && m.startTime) {
+                var mParts = m.startTime.split(':');
+                var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+                var diff = mMins - currentMins;
+                if (currentMins >= 1380 && mMins <= 60) diff += 1440;
+                if(diff <= 15 && diff > -1440) isLiveOrSoonLoc = true;
+            }
+
             b.className = 'mb' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
+            b.setAttribute('data-home', m.homeTeam);
+            b.setAttribute('data-away', m.awayTeam);
+            b.setAttribute('data-lg', lg.league);
+            if (isLiveOrSoonLoc) b.classList.add('is-live');
+            if (favTeams[m.homeTeam] || favTeams[m.awayTeam]) b.classList.add('is-fav');
 
             var homeTeamName = normName(m.homeTeam) || 'A';
             var awayTeamName = normName(m.awayTeam) || 'B';
