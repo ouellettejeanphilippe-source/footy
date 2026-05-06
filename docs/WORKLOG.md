@@ -13,6 +13,9 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Problèmes résolus** : Reduced redundant DOM lookups during high-frequency live score updates, improving CPU efficiency and UI responsiveness during matches.
 ## En cours
 
+## Fait
+- Correction d'un bug majeur où l'actualisation en arrière-plan gelait l'interface. Le problème était causé par un appel inconditionnel à `buildEPG` après le scrape des streams. Désormais, l'application utilise `updateLiveScores` et `updateMatchUiAfterScrape` pour mettre à jour l'interface dynamiquement et sans bloquer le thread principal lorsque `isBackground` est vrai et `window.hasLoadedOnce` est vrai.
+
 ### 05 May 2026 - Update Scraper Sources & Parsers
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Mise à jour du domaine principal de Footybite de `.to` vers `.do` (`var SITE`). Ajout de l'extraction de trois nouvelles sources fiables (Totalsportek, VIPLeague, Methstreams) pour étendre les capacités du scraper via de nouvelles fonctions de parsing dédiées. Correction de l'extraction relative des URLs via `getAttribute('href')`.
