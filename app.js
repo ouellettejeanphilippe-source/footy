@@ -4785,77 +4785,12 @@ function scrapeMatchFlux(m){
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
 
+    // === TOUTES SOURCES : RECHERCHE LARGE DE FLUX ===
 
-
-    // MLBBite/NFLbite stream extraction
-    if (m.source === 'mlbbite' || m.source === 'nflbite' || m.matchUrl.indexOf('mlbbite') >= 0 || m.matchUrl.indexOf('nflbite') >= 0) {
-        var iframes = doc.querySelectorAll('iframe');
-        [].forEach.call(iframes, function(ifr) {
-            var src = ifr.src;
-            if(src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
-                links.push({
-                    name: 'Lecteur direct',
-                    quality: 'HD',
-                    lang: 'MULTI',
-                    url: src,
-                    icon: '▶️'
-                });
-            }
-        });
-
-        var btns = doc.querySelectorAll('.stream-button, a[href*="stream"]');
-        [].forEach.call(btns, function(btn) {
-            if (btn.tagName === 'A' && btn.href) {
-                if(!btn.href.startsWith('http') && !btn.href.startsWith('javascript')) { try { btn.href = new URL(btn.href, m.matchUrl).href; } catch(e) {} }
-                if(btn.href.indexOf('http') === 0) {
-                var url = btn.href;
-                var name = btn.textContent.trim() || 'Stream';
-                if (!url.includes('ads') && !url.includes('bet') && !url.includes('f1streamsi') && !url.includes('soccer-streams100') && !url.includes('streameast100') && url.indexOf('teams') === -1) {
-                    links.push({
-                        name: name,
-                        quality: 'HD',
-                        lang: 'MULTI',
-                        url: url,
-                        icon: '▶️'
-                    });
-                }
-            }
-            }
-        });
-
-        // Sometimes streams are in table rows like other sites
-        var tableRows = doc.querySelectorAll('table tbody tr');
-        [].forEach.call(tableRows, function(row) {
-            var a = row.querySelector('a');
-            if (a && a.href) {
-                if(!a.href.startsWith('http') && !a.href.startsWith('javascript')) { try { a.href = new URL(a.href, m.matchUrl).href; } catch(e) {} }
-                if(a.href.indexOf('http') === 0) {
-                var url = a.href;
-                var name = a.textContent.trim() || row.cells[0].textContent.trim() || 'Stream';
-                if (!url.includes('ads') && !url.includes('bet')) {
-                    links.push({
-                        name: name,
-                        quality: 'HD',
-                        lang: 'MULTI',
-                        url: url,
-                        icon: '▶️'
-                    });
-                }
-            }
-            }
-        });
-    }
-
-
-    // Nouveau scraping pour footybite.do
-    // Footybite.do utilise principalement des liens directs ou cachés dans des ancres
-
-    // Nouveau scraping pour les tables de streams sur footybite.do/.to
-
-    // Try to find iframes directly if available (rare but possible)
+    // 1. Chercher des iframes directs
     var iframes = doc.querySelectorAll('iframe');
     [].forEach.call(iframes, function(ifr) {
-        var src = ifr.src;
+        var src = ifr.getAttribute('src');
         if(src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
             links.push({
                 name: 'Lecteur direct',
@@ -4867,47 +4802,41 @@ function scrapeMatchFlux(m){
         }
     });
 
+    // 2. Chercher dans les tables (Footybite, etc.)
     var rows = doc.querySelectorAll('tr');
     [].forEach.call(rows, function(row){
         var tds = row.querySelectorAll('td');
-        if(tds.length < 2) return; // Ignore les rows qui ne ressemblent pas à notre table
+        if(tds.length < 2) return;
 
-        // Chercher une balise input cachée qui contient l'URL du flux
-        var input = row.querySelector('input');
         var url = '';
+        var input = row.querySelector('input');
         if(input && input.value && input.value.indexOf('http') === 0) {
             url = input.value;
         } else {
-            // Check dans les href ou onClick s'il n'y a pas d'input (rare mais possible)
             var as = row.querySelectorAll('a[href]');
             for(var i=0; i<as.length; i++) {
-                 if(!as[i].href.startsWith('http') && !as[i].href.startsWith('javascript')) { try { as[i].href = new URL(as[i].href, m.matchUrl).href; } catch(e) {} }
-                 if(as[i].href.indexOf('http')===0) {
-                     url = as[i].href;
+                 var href = as[i].getAttribute('href');
+                 if(href && !href.startsWith('http') && !href.startsWith('javascript')) { try { href = new URL(href, m.matchUrl).href; } catch(e) {} }
+                 if(href && href.indexOf('http')===0) {
+                     url = href;
                      break;
                  }
             }
         }
 
         if(url && typeof url === 'string') {
-            // Filter out ad/betting domains and empty urls
             var lowerUrl = url.toLowerCase();
-            if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.length < 5) {
-                return;
-            }
+            if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.length < 5) return;
 
-            // Le nom est généralement dans la deuxième ou troisième colonne
             var name = tds[1] ? tds[1].textContent.replace(/\s+/g, ' ').trim() : 'Flux externe';
             if(!name && tds[2]) name = tds[2].textContent.replace(/\s+/g, ' ').trim();
             if(!name) name = 'Flux';
             if(name.length > 50) name = name.substring(0, 47) + '...';
 
-            // Chercher la qualité et la langue dans le texte des tds
             var rowText = row.textContent.toLowerCase();
             var qual = 'SD';
             if(rowText.indexOf('hd') >= 0 || rowText.indexOf('1080') >= 0 || rowText.indexOf('720') >= 0) qual = 'HD';
             if(rowText.indexOf('4k') >= 0) qual = '4K';
-
 
             links.push({
                 name: name,
@@ -4917,57 +4846,52 @@ function scrapeMatchFlux(m){
         }
     });
 
-    // Fallback limité aux boutons de flux si pas de table trouvée
-    if(links.length===0){
-       var btns=doc.querySelectorAll('.btn-danger, a.nav-link2, a.btn-3d, a.stream-button, a[href*="/watch/"], a[href*="/live/"], a[href*="stream"]');
-       [].forEach.call(btns,function(btn){
-          if(btn.tagName==='A' && btn.href){
-             var url=btn.href;
-             if(url && !url.startsWith('http') && !url.startsWith('javascript')) { try { url = new URL(url, m.matchUrl).href; } catch(e) {} }
-             if(url && url.indexOf('http')===0) {
-                 var lowerUrl = url.toLowerCase();
-                 if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.length < 5) return;
-                 var name = btn.textContent.replace(/\s+/g, ' ').trim() || 'Flux externe';
-                 if(name.length > 50) name = name.substring(0, 47) + '...';
-                 links.push({
-                    name:name,
-                    quality:'HD',
-                    lang:'MULTI',
-                    url:url
-                 });
-             }
+    // 3. Fallback: boutons ou liens génériques
+    var btns = doc.querySelectorAll('.btn-danger, a.nav-link2, a.btn-3d, a.stream-button, a[href*="/watch/"], a[href*="/live/"], a[href*="stream"], a[target="_blank"]');
+    [].forEach.call(btns,function(btn){
+       if(btn.tagName==='A' && btn.getAttribute('href')){
+          var url=btn.getAttribute('href');
+          if(url && !url.startsWith('http') && !url.startsWith('javascript')) { try { url = new URL(url, m.matchUrl).href; } catch(e) {} }
+          if(url && url.indexOf('http')===0) {
+              var lowerUrl = url.toLowerCase();
+              if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.includes('f1streamsi') || lowerUrl.length < 5) return;
+              var name = btn.textContent.replace(/\s+/g, ' ').trim() || 'Flux externe';
+              if(name.length > 50) name = name.substring(0, 47) + '...';
+              links.push({
+                 name:name,
+                 quality:'HD',
+                 lang:'MULTI',
+                 url:url
+              });
           }
-       });
-    }
+       }
+    });
 
-    // fallback: search for data- attributes that might contain links or base64 streams
-    if(links.length===0) {
-        var elementsWithData = doc.querySelectorAll('[data-stream], [data-url], [data-src], [data-link]');
-        [].forEach.call(elementsWithData, function(el) {
-            var url = el.getAttribute('data-stream') || el.getAttribute('data-url') || el.getAttribute('data-src') || el.getAttribute('data-link');
-            if(url) {
-                // Check if it's base64 encoded
-                if (url.startsWith('aHR0c')) {
-                    try { url = atob(url); } catch(e) {}
-                }
-                if(!url.startsWith('http') && !url.startsWith('javascript')) { try { url = new URL(url, m.matchUrl).href; } catch(e) {} }
-                if(url.indexOf('http') === 0) {
-                    var lowerUrl = url.toLowerCase();
-                    if (!lowerUrl.includes('1xbet') && !lowerUrl.includes('bet365') && !lowerUrl.includes('ads') && lowerUrl.length >= 5) {
-                        links.push({
-                            name: 'Lecteur caché',
-                            quality: 'HD',
-                            lang: 'MULTI',
-                            url: url,
-                            icon: '▶️'
-                        });
-                    }
+    // 4. Fallback: attributs de données cachées (data-stream, etc)
+    var elementsWithData = doc.querySelectorAll('[data-stream], [data-url], [data-src], [data-link]');
+    [].forEach.call(elementsWithData, function(el) {
+        var url = el.getAttribute('data-stream') || el.getAttribute('data-url') || el.getAttribute('data-src') || el.getAttribute('data-link');
+        if(url) {
+            if (url.startsWith('aHR0c')) {
+                try { url = atob(url); } catch(e) {}
+            }
+            if(!url.startsWith('http') && !url.startsWith('javascript')) { try { url = new URL(url, m.matchUrl).href; } catch(e) {} }
+            if(url.indexOf('http') === 0) {
+                var lowerUrl = url.toLowerCase();
+                if (!lowerUrl.includes('1xbet') && !lowerUrl.includes('bet365') && !lowerUrl.includes('ads') && lowerUrl.length >= 5) {
+                    links.push({
+                        name: 'Lecteur caché',
+                        quality: 'HD',
+                        lang: 'MULTI',
+                        url: url,
+                        icon: '▶️'
+                    });
                 }
             }
-        });
-    }
+        }
+    });
 
-    // fallback: si aucun flux externe, ajouter juste un lien vers la page
+    // 5. Ultime fallback : Si la source ne donne vraiment aucun autre flux et qu'on a le matchUrl.
     if(links.length===0 && m.matchUrl){
         links.push({name:'Voir streams sur le site', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
     }
@@ -4985,7 +4909,7 @@ function scrapeMatchFlux(m){
         }
     });
 
-    // Limit to 40 streams maximum to prevent UI overload, allow more streams since we are combining
+    // S'assurer qu'on affiche un maximum de streams (40)
     m.streamLinks = combinedLinks.slice(0, 40);
     m.streamsLoaded=true;
     saveStreamCache(m.id, m.streamLinks);

@@ -24,6 +24,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+
+### $(date +'%d %B %Y') - Amélioration de l'extraction des liens de streams dans scrapeMatchFlux
+- **Fichiers touchés** : `app.js`
+- **Résumé** : Refonte de la fonction `scrapeMatchFlux` pour extraire massivement un nombre de flux adéquat pour chaque match (environ 40 par match), en particulier pour les sources qui masquent leurs liens, en utilisant une stratégie de recherche élargie : `a[target="_blank"]`, `iframe`, attributs de données (`data-stream`, `data-src`), et validation des URLs relatives.
+- **Problèmes résolus** : Certains matchs provenant de sources comme Streameast, Methstreams, ou Totalsportek étaient vides ou renvoyaient uniquement le lien générique "Voir streams sur le site" car les anciens sélecteurs étaient trop spécifiques (ex. `tr td input`). Les liens externes sont désormais correctement trouvés, augmentant le volume de flux valides par match.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Correction d'un bug majeur où l'actualisation en arrière-plan gelait l'interface. Le problème était causé par un appel inconditionnel à `buildEPG` après le scrape des streams. Désormais, l'application utilise `updateLiveScores` et `updateMatchUiAfterScrape` pour mettre à jour l'interface dynamiquement et sans bloquer le thread principal lorsque `isBackground` est vrai et `window.hasLoadedOnce` est vrai.
