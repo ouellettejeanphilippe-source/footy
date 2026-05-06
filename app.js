@@ -2151,6 +2151,11 @@ var TEAM_ALIASES = {
   'tex rangers': 'texas rangers',
   'tor blue jays': 'toronto blue jays',
   'wsh nationals': 'washington nationals',
+  'athletics': 'oakland athletics',
+  'twins': 'minnesota twins',
+  'orioles': 'baltimore orioles',
+  'marlins': 'miami marlins',
+  'nationals': 'washington nationals',
 
   'd-backs': 'arizona diamondbacks',
   'dbacks': 'arizona diamondbacks',
@@ -3827,6 +3832,11 @@ function isMatchPair(m1, m2) {
   var m2H = normName(m2.homeTeam);
   var m2A = normName(m2.awayTeam);
 
+  // Check explicitly for different dates before ANY matching
+  if (m1.matchDate && m2.matchDate && m1.matchDate !== m2.matchDate) {
+      return false;
+  }
+
   // Standard direct match
   if (isMatch(m1H, m2H) && isMatch(m1A, m2A)) {
       return true;
@@ -3888,6 +3898,21 @@ function isMatchPair(m1, m2) {
   if (matchedWords >= shortWords.length * 0.75 && matchedWords >= 2) {
       return true;
   }
+
+  // Final permissive fallback: pure substring overlap for extreme abbreviations (e.g. 'Rangers' vs 'Texas Rangers')
+  if (m1H && m1A && m2H && m2A) {
+      var hMatch = m1H.includes(m2H) || m2H.includes(m1H);
+      var aMatch = m1A.includes(m2A) || m2A.includes(m1A);
+      if (hMatch && aMatch) return true;
+
+      // Check reversed teams with subset matching
+      var crossHMatch = m1H.includes(m2A) || m2A.includes(m1H);
+      var crossAMatch = m1A.includes(m2H) || m2H.includes(m1A);
+      if (crossHMatch && crossAMatch) return true;
+  }
+
+  // Cross-check dates and exact matches (already handled by early return, so we can just return true here)
+  if (m1H === m2H && m1A === m2A) return true;
 
   return false;
 }

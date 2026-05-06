@@ -19,7 +19,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Problèmes résolus** : Fixe l'impossibilité de parser le planning de Footybite due au changement de domaine. Augmente le volume et la diversité des streams disponibles avec des sources réputées.
 
 
+
 ## Fait
+- Fix game link matching failures by adding permissive bidirectional substring fallbacks in `isMatchPair`.
+- Add mapping in `TEAM_ALIASES` for MLB team shorthands (e.g., 'rangers', 'athletics', 'twins', 'orioles', 'marlins', 'nationals') to ensure accurate parsing of scraped stream data.
+- Ensure date validation within the matching fallback to prevent double-header/series overlap errors.
+
 ### $(date +'%d %B %Y') - Fix du status de scraping (logs)
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Remplacement de l'utilisation d'une variable non définie `parsedMatchesCounts` par l'appel à la fonction `updateSourceStatus()` après chaque scrape. Le script remonte désormais correctement le nombre de matchs parsés pour chaque source de streaming, ainsi que les statuts d'erreur en cas de timeout.
