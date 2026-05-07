@@ -774,35 +774,6 @@ body.theme-metallic .ic {
   }
 }
 
-/* CSS classes for filtering in EPG mode */
-body[data-filter="live"] .mrow:not(:has(.mb.live)) {
-    display: none !important;
-}
-
-body[data-filter="live"] .marea-row:not(:has(+ .mrow .mb.live)) {
-    display: none !important;
-}
-body[data-filter="live"] .marea-row:has(+ .mrow .mb.live),
-body[data-filter="live"] .marea-row:has(+ .mrow.hidden-lg + .mrow .mb.live) {
-    display: flex !important;
-}
-
-body[data-filter="fav"] .mrow:not(:has(.mb.is-fav)) {
-    display: none !important;
-}
-
-body[data-filter="fav"] .marea-row {
-     display: none !important;
-}
-
-body[data-filter="live"] .mb:not(.is-live) {
-    display: none !important;
-}
-
-body[data-filter="fav"] .mb:not(.is-fav) {
-    display: none !important;
-}
-
 .mrow.hidden-lg {
     display: none !important;
 }

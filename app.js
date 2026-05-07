@@ -5062,11 +5062,18 @@ function applyFilter(f){
           if (sportFiltersContainer) sportFiltersContainer.style.display = 'flex';
       }
 
-          document.body.setAttribute('data-filter', f);
-    if(f === 'all') {
-        setTimeout(scrollToNow, 100);
-    }
+      document.body.setAttribute('data-filter', f);
 
+      // Rebuild the UI to only contain the elements for the active filter
+      if (typeof S !== 'undefined' && S.matches && S.matches.length > 0) {
+          if (f === 'all' || f === 'live' || f === 'fav' || f === 'upcoming') {
+              buildEPG(S.matches);
+          }
+      }
+
+      if(f === 'all') {
+          setTimeout(scrollToNow, 100);
+      }
   }
 }
 
@@ -5269,7 +5276,14 @@ function buildEPG(matches){
             isUpcomingIn60 = true;
         }
     }
-    // REMOVED JS FILTERING: CSS will handle visibility via data-filter attribute instead!
+    if (S.filter === 'fav') {
+        if (!favTeams[m.homeTeam] && !favTeams[m.awayTeam]) return false;
+    }
+
+    if (S.filter === 'live') {
+        if (!isLiveOrSoon && !isUpcomingIn60 && m.status !== 'live') return false;
+    }
+
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
         var hN = normName(m.homeTeam);
@@ -5352,206 +5366,6 @@ function buildEPG(matches){
   epgContainer.style.margin = '0 auto';
   epgContainer.style.width = '100%';
   epgContainer.innerHTML = '';
-
-  if (S.filter === 'fav' && false) { // DISABLE THE SEPARATE FAV VIEW RENDER
-      epgContainer.style.display = 'flex';
-      epgContainer.style.flexDirection = 'column';
-      epgContainer.style.gap = '16px';
-      epgContainer.style.padding = '20px';
-      epgContainer.style.overflowY = 'auto';
-      epgContainer.style.height = '100%';
-
-      var searchInput = '<input type="text" id="fav-search-input" placeholder="Rechercher une équipe..." oninput="renderFavTeams()" style="padding:12px; border-radius:8px; border:1px solid var(--border); background:rgba(0,0,0,0.3); color:var(--text); font-size:16px; width:100%; max-width:400px; margin-bottom:16px;">';
-
-      epgContainer.innerHTML = '<div style="display:flex; gap: 24px; flex-wrap: wrap;">'
-                             + '<div style="flex: 2; min-width: 300px;">'
-                             + '<h2>Gestion des Équipes</h2><p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Sélectionnez vos équipes favorites. Leurs matchs s\'afficheront en haut de la liste.</p>' + searchInput + '<div id="fav-list-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px;"></div>'
-                             + '</div>'
-                             + '<div style="flex: 1; min-width: 250px;">'
-                             + '<h2>Ordre des Ligues</h2><p style="color:var(--muted); font-size:13px; margin-bottom:16px;">Glissez pour modifier l\'ordre ou utilisez les flèches.</p><div id="fav-lg-container" style="display:flex; flex-direction:column; gap:8px;"></div>'
-                             + '</div>'
-                             + '</div>';
-
-      window.moveLgOrder = function(dir, idx) {
-          if (dir === 'up' && idx > 0) {
-              var temp = customLgOrder[idx];
-              customLgOrder[idx] = customLgOrder[idx-1];
-              customLgOrder[idx-1] = temp;
-          } else if (dir === 'down' && idx < customLgOrder.length - 1) {
-              var temp = customLgOrder[idx];
-              customLgOrder[idx] = customLgOrder[idx+1];
-              customLgOrder[idx+1] = temp;
-          }
-          saveCustomLgOrder();
-          window.renderFavTeams();
-      };
-
-      window.renderFavTeams = function() {
-          var container = document.getElementById('fav-list-container');
-          var lgContainer = document.getElementById('fav-lg-container');
-          if(!container || !lgContainer) return;
-
-          // --- Leagues Sorting Manager ---
-          var mainLeagues = ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'NHL', 'NBA', 'NFL', 'MLB', 'F1', 'PWHL', 'Champions League', 'World Cup', 'LHJMQ'];
-
-          // Use purely the static mainLeagues definition for the right menu
-          var newOrder = [];
-
-          // Retain user order if it exists, but strictly filter out non-main leagues
-          customLgOrder.forEach(function(lg) {
-              var fmtLg = formatLeagueName(lg);
-              if (mainLeagues.findIndex(l => l.toLowerCase() === fmtLg.toLowerCase()) !== -1) {
-                  newOrder.push(fmtLg);
-              }
-          });
-
-          // Add any missing mainLeagues to the end
-          mainLeagues.forEach(function(lg) {
-              if (newOrder.findIndex(l => l.toLowerCase() === lg.toLowerCase()) === -1) {
-                  newOrder.push(lg);
-              }
-          });
-
-          // If it's a completely fresh load, start with mainLeagues as default order
-          if (newOrder.length === 0) {
-              newOrder = mainLeagues.slice();
-          }
-
-          customLgOrder = newOrder;
-          saveCustomLgOrder();
-
-          var lgHtml = '';
-          customLgOrder.forEach(function(lg, i) {
-              lgHtml += '<div style="display:flex; align-items:center; padding:10px 16px; background:var(--bg3); border:1px solid var(--border); border-radius:8px;">'
-                     + '<span style="margin-right:12px; font-size:16px;">'+lgFlag(lg)+'</span>'
-                     + '<span style="flex:1; font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+esc(formatLeagueName(lg))+'</span>'
-                     + '<div style="display:flex; flex-direction:column; gap:2px; margin-left:8px;">'
-                     + '<button onclick="moveLgOrder(\'up\', '+i+')" style="background:transparent; border:none; color:'+(i===0?'var(--muted2)':'var(--text)')+'; cursor:'+(i===0?'default':'pointer')+'; font-size:14px; padding:2px;">▲</button>'
-                     + '<button onclick="moveLgOrder(\'down\', '+i+')" style="background:transparent; border:none; color:'+(i===customLgOrder.length-1?'var(--muted2)':'var(--text)')+'; cursor:'+(i===customLgOrder.length-1?'default':'pointer')+'; font-size:14px; padding:2px;">▼</button>'
-                     + '</div></div>';
-          });
-          lgContainer.innerHTML = lgHtml;
-
-
-          // --- Teams Manager ---
-          var searchVal = (document.getElementById('fav-search-input').value || '').toLowerCase();
-
-          // Get unique teams
-          var allTeams = {};
-
-          // 1. Fill with static API teams ONLY (pure static db approach)
-          if (typeof STATIC_TEAMS !== 'undefined') {
-              STATIC_TEAMS.forEach(function(t) {
-                  // Keep the first league encountered (primary domestic leagues are first in STATIC_TEAMS)
-                  if (!allTeams[t.name]) {
-                      allTeams[t.name] = formatLeagueName(t.league);
-                  }
-              });
-          }
-
-          // 2. No dynamic extraction from S.matches anymore to keep database clean.
-
-          // Sort teams
-          var teamNames = Object.keys(allTeams).sort(function(a,b) {
-              // Favorites first
-              if (favTeams[a] && !favTeams[b]) return -1;
-              if (!favTeams[a] && favTeams[b]) return 1;
-
-              // Sort by league
-              var lA = formatLeagueName(allTeams[a]);
-              var lB = formatLeagueName(allTeams[b]);
-
-              if (lA !== lB) {
-                  var idxA = customLgOrder.indexOf(lA);
-                  var idxB = customLgOrder.indexOf(lB);
-
-                  var mainLgMatchA = mainLeagues.findIndex(l => l.toLowerCase() === lA.toLowerCase()) !== -1;
-                  var mainLgMatchB = mainLeagues.findIndex(l => l.toLowerCase() === lB.toLowerCase()) !== -1;
-
-                  if (mainLgMatchA && mainLgMatchB) return idxA - idxB;
-                  if (mainLgMatchA && !mainLgMatchB) return -1;
-                  if (!mainLgMatchA && mainLgMatchB) return 1;
-
-                  // Ensure 'Autres Flux' is at the bottom
-                  if (lA === 'Autres Flux') return 1;
-                  if (lB === 'Autres Flux') return -1;
-                  return lA.localeCompare(lB);
-              }
-
-              // Sort alphabetically
-              return a.localeCompare(b);
-          });
-
-          var html = '';
-          var htmlAutres = '';
-          var currentGroup = null;
-          var inAutresAccordion = false;
-
-          teamNames.forEach(function(t) {
-              if (searchVal && t.toLowerCase().indexOf(searchVal) === -1 && allTeams[t].toLowerCase().indexOf(searchVal) === -1) return;
-              var isFav = !!favTeams[t];
-              var lgGroup = isFav ? 'FAVORIS' : formatLeagueName(allTeams[t]);
-
-              var isMainLeague = false;
-              if (lgGroup !== 'FAVORIS') {
-                  isMainLeague = mainLeagues.findIndex(function(l) { return l.toLowerCase() === lgGroup.toLowerCase(); }) !== -1;
-              }
-              var isAllowed = isFav || isMainLeague;
-
-              var strHtml = '';
-
-              if (lgGroup !== currentGroup) {
-                  strHtml += '<div style="grid-column: 1 / -1; margin-top:16px; margin-bottom:8px; font-weight:bold; font-size:14px; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:4px; display:flex; align-items:center;">';
-                  strHtml += '<span style="margin-right:8px;">' + (isFav ? '⭐' : lgFlag(lgGroup)) + '</span> ' + esc(lgGroup);
-                  strHtml += '</div>';
-                  currentGroup = lgGroup;
-              }
-
-              var logoUrl = getLogo(t) || '';
-              var logoHtml = logoUrl ? '<img src="'+esc(logoUrl)+'" style="width:24px;height:24px;object-fit:contain;margin-right:12px;" onerror="this.style.display=\'none\'">' : '<div style="width:24px;height:24px;margin-right:12px;display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
-
-              var tColors = getTeamColors(t);
-              var bgCol = tColors ? tColors[0] : 'var(--card-bg, rgba(255,255,255,0.05))';
-              var textCol = tColors ? '#ffffff' : 'var(--text)';
-
-              strHtml += '<div style="display:flex; align-items:center; padding:12px; background:'+bgCol+'; border:1px solid '+(isFav?'var(--accent)':'var(--border)')+'; border-radius:8px; cursor:pointer; transition:all 0.2s;" onclick="openGlobalStats(\''+escJs(t)+'\');">'
-                   + '<button style="background:transparent;border:none;color:'+(isFav?'var(--accent)':'var(--muted)')+';font-size:20px;margin-right:12px;cursor:pointer;flex-shrink:0;text-shadow:0 1px 3px rgba(0,0,0,0.8);" onclick="toggleFavTeam(\''+escJs(t)+'\'); event.stopPropagation();">'+(isFav?'★':'☆')+'</button>'
-                   + logoHtml
-                   + '<div style="flex:1;min-width:0;display:flex;flex-direction:column;">'
-                   + '<span style="font-weight:bold;color:'+textCol+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,0.8);">'+esc(t)+'</span>'
-                   + '<span style="font-size:11px;color:'+(tColors?'rgba(255,255,255,0.7)':'var(--muted)')+';text-shadow:0 1px 2px rgba(0,0,0,0.8);">' + esc(allTeams[t]) + '</span>'
-                   + '</div>'
-                   + '</div>';
-
-              if (isAllowed || searchVal !== '') {
-                  html += strHtml;
-              } else {
-                  htmlAutres += strHtml;
-              }
-          });
-
-          if (html === '' && htmlAutres === '') {
-              html = '<div style="color:var(--muted); padding:20px; grid-column: 1 / -1;">Aucune équipe trouvée.</div>';
-          }
-
-          if (htmlAutres !== '' && searchVal === '') {
-              var accordionHtml = '<div style="grid-column: 1 / -1; margin-top:24px;">'
-                  + '<button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'grid\' : \'none\'; this.querySelector(\'span.chev\').innerHTML = this.nextElementSibling.style.display === \'none\' ? \'▼\' : \'▲\';" style="width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--border); padding:12px 16px; border-radius:8px; color:var(--text); font-weight:bold; font-size:15px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">'
-                  + '<span style="display:flex; align-items:center; gap:8px;"><span style="font-size:18px;">🌍</span> Autres Ligues</span>'
-                  + '<span class="chev" style="font-size:12px; color:var(--muted);">▼</span>'
-                  + '</button>'
-                  + '<div style="display:none; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px; margin-top:16px;">'
-                  + htmlAutres
-                  + '</div></div>';
-              html += accordionHtml;
-          }
-
-          container.innerHTML = html;
-      };
-
-      window.renderFavTeams();
-      return;
-  }
 
   if (S.filter === 'live' || S.filter === 'upcoming') {
       epgContainer.style.display = 'block';
