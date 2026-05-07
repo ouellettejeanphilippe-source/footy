@@ -5016,12 +5016,13 @@ function applyFilter(f){
   var mvBtn = document.getElementById('mv-toggle-btn');
   if(mvBtn) {
       mvBtn.classList.remove('active-toggle');
+      mvBtn.classList.remove('has-streams');
       mvBtn.style = '';
       mvBtn.style.boxShadow = 'var(--btn-shadow)';
 
       // Keep it red if streams are active
       if(mvFlux.length > 0) {
-          mvBtn.classList.add('active-toggle');
+          mvBtn.classList.add('has-streams');
           if (userPrefs.toggleStyle === 'default' || !userPrefs.toggleStyle) {
               mvBtn.style.background = 'rgba(255, 69, 58, 0.2)';
               mvBtn.style.borderColor = 'var(--red)';
@@ -5083,7 +5084,9 @@ function openMultiviewTab() {
 
     var mvBtn = document.getElementById('mv-toggle-btn');
     if(mvBtn) {
-        mvBtn.classList.add('active-toggle'); mvBtn.style = '';
+        mvBtn.classList.add('active-toggle');
+        mvBtn.classList.remove('has-streams');
+        mvBtn.style = '';
     }
 
     var mvc = document.getElementById('mv-container');
@@ -7782,7 +7785,8 @@ function hideMultivision() {
 
     var mvBtn = document.getElementById('mv-toggle-btn');
     if(mvBtn) {
-        mvBtn.classList.remove('active-toggle'); mvBtn.style = '';
+        mvBtn.classList.remove('active-toggle');
+        mvBtn.style = '';
     }
     applyFilter(S.filter); // Re-apply current tab style
 }

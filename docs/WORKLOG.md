@@ -1,4 +1,12 @@
 
+### 06 May 2026 - Centrage du menu et déplacement du Zoom
+- **Fichiers touchés** : `index.html`, `styles.css`, `app.js`
+- **Résumé** :
+  - Déplacement des contrôles de zoom (`.zoom-controls`) en dehors de la barre de navigation principale (`.nav-links`) pour les intégrer directement à l'intérieur du conteneur de l'EPG (`#epg`). Les contrôles s'affichent désormais de manière fixe (absolute) en bas à droite uniquement lorsque la vue Guide est active.
+  - Centrage horizontal du menu de navigation principal (Live, Guide, Lecteur, ☰) dans `.nav-links` via `justify-content: center`.
+  - Correction du bug du Lecteur (Multiview) qui restait souligné de façon erronée comme onglet "actif" lorsqu'il était fermé tout en contenant des flux. Utilisation d'une nouvelle classe `.has-streams` pour préserver le fond rouge indicateur sans l'underline d'onglet actif.
+- **Problèmes résolus** : Menu principal asymétrique, affichage intempestif des boutons de zoom en dehors du guide, et indicateur trompeur de l'onglet actif "Lecteur".
+
 ### 06 May 2026 - Robustesse du scraping et Matching avancé (TBD)
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Amélioration drastique de `isMatchPair` et `stringSimilarity` pour gérer les correspondances lâches et les équipes incomplètes (fallbacks). Les parseurs (Buffstreams, Streameast, NFLBite, MLBBite, Totalsportek, VIPLeague) ont été réécrits ou ajustés pour tolérer l'absence de la deuxième équipe en utilisant `TBD`. Ajout d'une section "Fallback et Scrape Manuel" dynamique dans la modale d'un match permettant de lancer manuellement un lien ou de suggérer des streams non fusionnés. Ajout d'une journalisation intelligente (`addScrapeLog`) des échecs de fusion.
