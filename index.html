@@ -115,6 +115,42 @@
 </div>
 
 
+
+<!-- FAV PAGE -->
+<div id="fav-page" style="display:none; flex-direction:column; gap:16px; max-width:1200px; margin:0 auto; padding:20px; width:100%;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0;">⭐ Gestion des Favoris</h2>
+    </div>
+
+    <div class="fav-container" style="display: flex; gap: 24px; flex-wrap: wrap;">
+        <!-- Colonne de gauche: Équipes -->
+        <div style="flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 16px;">
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
+                <h3 style="margin-top:0; margin-bottom:16px; font-size:16px; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:8px;">Équipes Favorites</h3>
+                <div id="fav-teams-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
+                    <!-- Rempli par app.js -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne de droite: Ordre des ligues -->
+        <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 16px;">
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
+                <h3 style="margin-top:0; margin-bottom:8px; font-size:16px; color:var(--text); display:flex; justify-content:space-between; align-items:center;">
+                    Ordre des Ligues
+                    <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="resetLgOrder()">Réinitialiser</button>
+                </h3>
+                <p style="font-size:12px; color:var(--muted); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+                    Réorganisez l'ordre d'affichage des ligues dans le Live et le Guide.
+                </p>
+                <div id="fav-leagues-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Rempli par app.js -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- OPTIONS PAGE -->
 <div id="options-page" style="display:none; flex-direction:column; gap:24px; max-width:1200px; margin:0 auto; padding:20px; width:100%;">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">

@@ -5043,7 +5043,11 @@ function applyFilter(f){
       openLogsPage();
   } else if (f === 'script') {
       openScriptPage();
+  } else if (f === 'fav') {
+      openFavPage();
   } else {
+      var favPage = document.getElementById('fav-page');
+      if (favPage) favPage.style.display = 'none';
       var optionsPage = document.getElementById('options-page');
       if (optionsPage) optionsPage.style.display = 'none';
       var logsPage = document.getElementById('logs-page');
@@ -5066,7 +5070,7 @@ function applyFilter(f){
 
       // Rebuild the UI to only contain the elements for the active filter
       if (typeof S !== 'undefined' && S.matches && S.matches.length > 0) {
-          if (f === 'all' || f === 'live' || f === 'fav' || f === 'upcoming') {
+          if (f === 'all' || f === 'live' || f === 'upcoming') {
               buildEPG(S.matches);
           }
       }
@@ -5078,6 +5082,8 @@ function applyFilter(f){
 }
 
 function openMultiviewTab() {
+    var favPage = document.getElementById('fav-page');
+    if (favPage) favPage.style.display = 'none';
     ['all','live','upcoming','fav','options','logs','script'].forEach(function(k){
       var el=document.getElementById('filter-'+k);
       if(el){
@@ -5276,9 +5282,7 @@ function buildEPG(matches){
             isUpcomingIn60 = true;
         }
     }
-    if (S.filter === 'fav') {
-        if (!favTeams[m.homeTeam] && !favTeams[m.awayTeam]) return false;
-    }
+
 
     if (S.filter === 'live') {
         if (!isLiveOrSoon && !isUpcomingIn60 && m.status !== 'live') return false;
@@ -8481,6 +8485,8 @@ function renderScrapeLogs() {
 }
 
 function openOptionsPage() {
+    var favPage = document.getElementById('fav-page');
+    if (favPage) favPage.style.display = 'none';
     var epgContainer = document.getElementById('epg');
     if (epgContainer) epgContainer.style.display = 'none';
     var mareaContainer = document.getElementById('marea');
@@ -8506,6 +8512,8 @@ function openOptionsPage() {
 }
 
 function openLogsPage() {
+    var favPage = document.getElementById('fav-page');
+    if (favPage) favPage.style.display = 'none';
     var epgContainer = document.getElementById('epg');
     if (epgContainer) epgContainer.style.display = 'none';
     var mareaContainer = document.getElementById('marea');
@@ -8526,6 +8534,8 @@ function openLogsPage() {
 }
 
 function openScriptPage() {
+    var favPage = document.getElementById('fav-page');
+    if (favPage) favPage.style.display = 'none';
     var epgContainer = document.getElementById('epg');
     if (epgContainer) epgContainer.style.display = 'none';
     var mareaContainer = document.getElementById('marea');
@@ -9620,3 +9630,207 @@ function zoomOut() {
 
 // Ensure the initial zoom displays correctly
 document.addEventListener('DOMContentLoaded', updateZoomDisplay);
+
+
+function openFavPage() {
+    var epgContainer = document.getElementById('epg');
+    if (epgContainer) epgContainer.style.display = 'none';
+    var mareaContainer = document.getElementById('marea');
+    if (mareaContainer) mareaContainer.style.display = 'none';
+    var sportFiltersContainer = document.getElementById('sport-filters-container');
+    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
+
+    var optionsPage = document.getElementById('options-page');
+    if (optionsPage) optionsPage.style.display = 'none';
+    var logsPage = document.getElementById('logs-page');
+    if (logsPage) logsPage.style.display = 'none';
+    var scriptPage = document.getElementById('script-page');
+    if (scriptPage) scriptPage.style.display = 'none';
+
+    var favPage = document.getElementById('fav-page');
+    if (favPage) {
+        favPage.style.display = 'flex';
+        renderFavPage();
+    }
+}
+
+
+var DEFAULT_LEAGUES = {
+    'NHL': { icon: '🏒' },
+    'NFL': { icon: '🏈' },
+    'MLB': { icon: '⚾' },
+    'NBA': { icon: '🏀' },
+    'PREMIER LEAGUE': { icon: '⚽' },
+    'CHAMPIONS LEAGUE': { icon: '⚽' },
+    'F1': { icon: '🏎️' },
+    'LIGUE 1': { icon: '⚽' },
+    'LA LIGA': { icon: '⚽' },
+    'SERIE A': { icon: '⚽' },
+    'BUNDESLIGA': { icon: '⚽' },
+    'MLS': { icon: '⚽' },
+    'PWHL': { icon: '🏒' },
+    'LHJMQ': { icon: '🏒' },
+    'AHL': { icon: '🏒' }
+};
+
+function getLeagueIcon(lgName) {
+    if(!lgName) return '🏆';
+    var norm = lgName.toUpperCase();
+    if(DEFAULT_LEAGUES[norm]) return DEFAULT_LEAGUES[norm].icon;
+    if(norm.indexOf('HOCKEY') > -1 || norm === 'PWHL' || norm === 'LHJMQ' || norm === 'AHL') return '🏒';
+    if(norm.indexOf('FOOTBALL') > -1 || norm.indexOf('LIGUE') > -1 || norm.indexOf('SOCCER') > -1) return '⚽';
+    if(norm.indexOf('BASKETBALL') > -1) return '🏀';
+    if(norm.indexOf('BASEBALL') > -1) return '⚾';
+    if(norm.indexOf('F1') > -1 || norm.indexOf('FORMULA 1') > -1) return '🏎️';
+    if(norm.indexOf('TENNIS') > -1) return '🎾';
+    if(norm.indexOf('RUGBY') > -1) return '🏉';
+    return '🏆';
+}
+
+function renderFavPage() {
+    // Render leagues
+    var leaguesContainer = document.getElementById('fav-leagues-list');
+    if (leaguesContainer) {
+        var lgHtml = '';
+        var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+
+        // Ensure all mainLeagues are in the list
+        var allLgs = Object.keys(DEFAULT_LEAGUES);
+        allLgs.forEach(function(l) {
+            if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
+        });
+
+        displayOrder.forEach(function(lgKey, idx) {
+            var lgIcon = getLeagueIcon(lgKey);
+            var isFirst = idx === 0;
+            var isLast = idx === displayOrder.length - 1;
+
+            lgHtml += '<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">'
+                   + '<div style="display:flex; align-items:center; gap:8px;">'
+                   + '<span style="font-size:16px;">' + lgIcon + '</span>'
+                   + '<span style="font-size:14px; font-weight:bold;">' + esc(lgKey) + '</span>'
+                   + '</div>'
+                   + '<div style="display:flex; gap:4px;">'
+                   + '<button class="btn o" style="padding:4px; font-size:12px; opacity:' + (isFirst ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', -1)" ' + (isFirst ? 'disabled' : '') + '>▲</button>'
+                   + '<button class="btn o" style="padding:4px; font-size:12px; opacity:' + (isLast ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', 1)" ' + (isLast ? 'disabled' : '') + '>▼</button>'
+                   + '</div>'
+                   + '</div>';
+        });
+        leaguesContainer.innerHTML = lgHtml;
+    }
+
+    // Render teams
+    var teamsContainer = document.getElementById('fav-teams-list');
+    if (teamsContainer) {
+        var teamsByLeague = {};
+
+        // Populate from STATIC_TEAMS
+        if (typeof STATIC_TEAMS !== 'undefined') {
+            STATIC_TEAMS.forEach(function(t) {
+                var lg = t.league ? t.league.toUpperCase() : 'AUTRES';
+                if (!teamsByLeague[lg]) teamsByLeague[lg] = [];
+                if (!teamsByLeague[lg].find(function(x) { return x.name === t.name; })) {
+                    teamsByLeague[lg].push({ name: t.name, source: 'static' });
+                }
+            });
+        }
+
+        // Also populate from matches currently in memory to catch unlisted teams
+        if (typeof S !== 'undefined' && S.matches) {
+            S.matches.forEach(function(m) {
+                var lg = m.league || 'AUTRES';
+                if (!teamsByLeague[lg]) teamsByLeague[lg] = [];
+
+                [m.homeTeam, m.awayTeam].forEach(function(tName) {
+                    if (tName && !teamsByLeague[lg].find(function(x) { return x.name === tName; })) {
+                        teamsByLeague[lg].push({ name: tName, source: 'live' });
+                    }
+                });
+            });
+        }
+
+        var tHtml = '';
+        var sortedLeagues = Object.keys(teamsByLeague).sort(function(a,b) {
+            var idxA = customLgOrder.indexOf(a);
+            var idxB = customLgOrder.indexOf(b);
+            if(idxA > -1 && idxB > -1) return idxA - idxB;
+            if(idxA > -1) return -1;
+            if(idxB > -1) return 1;
+            return a.localeCompare(b);
+        });
+
+        sortedLeagues.forEach(function(lg) {
+            tHtml += '<div style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--muted); text-transform:uppercase;">' + esc(lg) + '</div>';
+
+            var sortedTeams = teamsByLeague[lg].sort(function(a, b) {
+                return a.name.localeCompare(b.name);
+            });
+
+            sortedTeams.forEach(function(t) {
+                var isFav = favTeams[t.name] === 1;
+                var logoUrl = getLogo(t.name);
+                var logoHtml = logoUrl ? '<img src="'+esc(logoUrl)+'" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display=\'none\'">' : '<div style="font-size:16px;">🛡️</div>';
+
+                // Find aliases
+                var aliases = [];
+                var nName = normName(t.name);
+                if (typeof TEAM_ALIASES !== 'undefined') {
+                    for (var key in TEAM_ALIASES) {
+                        if (TEAM_ALIASES[key] === nName) {
+                            aliases.push(key);
+                        }
+                    }
+                }
+
+                var aliasText = aliases.length > 0 ? ('<div style="font-size:11px; color:var(--muted2); margin-top:2px; font-family:monospace;">Alias: ' + esc(aliases.join(', ')) + '</div>') : '';
+
+                tHtml += '<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleFavPageTeam(\'' + escJs(t.name) + '\')">'
+                       + '<div style="display:flex; align-items:center; gap:12px;">'
+                       + '<div style="width:24px; display:flex; justify-content:center;">' + logoHtml + '</div>'
+                       + '<div>'
+                       + '<div style="font-size:14px; font-weight:bold; color:' + (isFav ? 'var(--text)' : 'var(--muted)') + ';">' + esc(t.name) + '</div>'
+                       + aliasText
+                       + '</div>'
+                       + '</div>'
+                       + '<button style="background:none; border:none; color:' + (isFav ? 'var(--accent)' : 'var(--border2)') + '; font-size:20px; cursor:pointer;">★</button>'
+                       + '</div>';
+            });
+        });
+
+        teamsContainer.innerHTML = tHtml;
+    }
+}
+
+function toggleFavPageTeam(teamName) {
+    toggleFavTeam(teamName); // Re-uses existing function which sets localStorage
+    renderFavPage(); // Re-render to update UI (star color)
+}
+
+function moveLeagueOrder(lgKey, direction) {
+    var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+    var allLgs = Object.keys(DEFAULT_LEAGUES);
+    allLgs.forEach(function(l) {
+        if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
+    });
+
+    var idx = displayOrder.indexOf(lgKey);
+    if (idx === -1) return;
+
+    var newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= displayOrder.length) return;
+
+    // Swap
+    var temp = displayOrder[idx];
+    displayOrder[idx] = displayOrder[newIdx];
+    displayOrder[newIdx] = temp;
+
+    customLgOrder = displayOrder;
+    saveCustomLgOrder();
+    renderFavPage();
+}
+
+function resetLgOrder() {
+    customLgOrder = [];
+    saveCustomLgOrder();
+    renderFavPage();
+}

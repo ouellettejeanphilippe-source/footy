@@ -1,4 +1,14 @@
 
+
+### 07 May 2026 - Restauration et Émancipation de la page Favoris
+- **Fichiers touchés** : `index.html`, `app.js`
+- **Résumé** :
+  - Création d'une véritable page complète pour les Favoris (`#fav-page`) en remplacement de l'ancienne modale.
+  - La page affiche à gauche la liste des équipes (avec leurs logos et alias) regroupées par ligues pour faciliter la sélection des favoris.
+  - La page affiche à droite l'ordre des ligues (`customLgOrder`), avec la possibilité de les réorganiser via des boutons Haut/Bas.
+  - Correction de la fonction `applyFilter('fav')` qui ouvre désormais cette page dédiée au lieu de rediriger erronément vers la vue de l'EPG.
+- **Problèmes résolus** : L'interface de configuration des favoris était manquante depuis sa suppression (l'utilisateur ne pouvait plus choisir ses équipes ni l'ordre des ligues). L'onglet Favoris fonctionne maintenant comme une vraie page de réglage.
+
 ### 06 May 2026 - Centrage du menu et déplacement du Zoom
 - **Fichiers touchés** : `index.html`, `styles.css`, `app.js`
 - **Résumé** :
