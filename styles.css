@@ -388,10 +388,10 @@ body.theme-metallic .ic {
 .dbg-sect-title { font-size: 14px; font-weight: 800; padding: 12px 20px; background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border); color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase; }
 .dbg-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; padding: 20px; white-space: pre-wrap; word-break: break-all; color: var(--muted2); max-height: 400px; overflow-y: auto; line-height: 1.6; }
 
-.nav-links { display: flex; align-items: center; gap: 16px; }
+.nav-links { display: flex; align-items: center; gap: 16px; justify-content: center; }
 
 @media(min-width: 769px) {
-  .nav-links { justify-content: center; padding: 16px 0; }
+  .nav-links { padding: 16px 0; }
 }
 
 #menu-btn { display: inline-flex !important; }
@@ -684,6 +684,14 @@ body.theme-metallic .ic {
     width: 100%;
 }
 
+.nav-btn.has-streams {
+    color: #fff !important;
+}
+
+.nav-btn.has-streams::after {
+    background: var(--red) !important;
+}
+
 #sport-filters-container {
     display: none !important;
 }
@@ -726,13 +734,17 @@ body.theme-metallic .ic {
 
 /* Zoom Controls */
 .zoom-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
   display: flex;
   align-items: center;
-  background: rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.8);
   border-radius: 8px;
   overflow: hidden;
-  margin-left: auto;
-  margin-right: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
 }
 .zoom-btn {
   background: transparent;
@@ -759,10 +771,6 @@ body.theme-metallic .ic {
     position: fixed;
     bottom: 80px;
     right: 15px;
-    z-index: 100;
-    background: rgba(0,0,0,0.8);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.2);
   }
 }
 
