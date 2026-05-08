@@ -597,9 +597,8 @@ export function buildEPG(matches){
   updateNowLine();
 
   // Center to current time on first load if applicable
-  if(!window.initialScrollDone) {
+
       setTimeout(scrollToNow, 100);
-        }
 }
 
 export function updateNowLine() {
@@ -628,7 +627,7 @@ setInterval(updateNowLine, 60000);
 
 export function scrollToNow(){
     var epgContainer = document.getElementById('epg');
-    if(!epgContainer || S.view !== 'epg' || epgContainer.style.display === 'none') return;
+    if(!epgContainer || epgContainer.style.display === 'none') return;
 
     var now = new Date();
     var isToday = (TARGET_DATE.toDateString() === now.toDateString());

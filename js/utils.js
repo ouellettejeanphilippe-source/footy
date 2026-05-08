@@ -174,8 +174,8 @@ export function applyFilter(f){
           }
       }
 
-      if(f === 'all') {
-          setTimeout(scrollToNow, 100);
+      if(f === 'all' || f === 'live') {
+          setTimeout(scrollToNow, 10);
       }
   }
 }
