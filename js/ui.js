@@ -555,9 +555,6 @@ export function buildEPG(matches){
             b.style.setProperty('--start-h', mH);
             b.style.setProperty('--start-m', mM);
             b.style.setProperty('--duration-m', duration);
-            // Fallback for older browsers
-            b.style.left = 'calc((var(--start-h) * var(--hour-px)) + (var(--start-m) * var(--min-px)))';
-            b.style.width = 'calc(var(--duration-m) * var(--min-px))';
 
             b.addEventListener('click', function(){ openMod(m, lgCol); });
             marea.appendChild(b);
@@ -647,10 +644,15 @@ export function scrollToNow(){
     var m = parseInt(parts[1], 10);
 
     var w = epgContainer.clientWidth;
+    var hClient = epgContainer.clientHeight;
     var chanW = parseFloat(rootStyles.getPropertyValue('--chan-w')) || (window.innerWidth <= 768 ? 100 : 240);
-    var leftPx = (h * hourPx) + (m * minPx) + chanW;
+    var offsetPx = (h * hourPx) + (m * minPx) + chanW; // using chanW as offset for the ruler height/width
 
-    epgContainer.scrollLeft = Math.max(0, leftPx - (w / 2));
+    if (window.innerWidth <= 768) {
+        epgContainer.scrollTop = Math.max(0, offsetPx - (hClient / 2));
+    } else {
+        epgContainer.scrollLeft = Math.max(0, offsetPx - (w / 2));
+    }
 }
 
 
