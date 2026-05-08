@@ -52,6 +52,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
 - Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 
 ### $(date +'%d %B %Y') - Amélioration de l'extraction des liens de streams dans scrapeMatchFlux
@@ -70,6 +75,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
 - Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
@@ -107,6 +117,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
 - Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
@@ -166,6 +181,11 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - Rien pour l'instant
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
 - Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
@@ -193,6 +213,11 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
 - Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
