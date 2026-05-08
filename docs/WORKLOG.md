@@ -1,5 +1,12 @@
 
 
+### 08 May 2026 - Accessibilité du Menu Pendant le Chargement
+- **Fichiers touchés** : `index.html`, `styles.css`, `js/main.js`, `js/ui.js`
+- **Résumé** :
+  - Modification de l'overlay de chargement (`#ov`) et du message d'erreur (`#errbox`) pour qu'ils soient encapsulés dans le flux de la zone des matchs (`#marea`) au lieu d'occuper tout l'écran en position `absolute`.
+  - Ajustement des fonctions `loadAll` et `buildEPG` afin que ces éléments ne soient pas écrasés lors du rafraîchissement dynamique (`innerHTML = ''`).
+- **Problèmes résolus** : L'écran de chargement et l'écran d'erreur bloquaient l'utilisation du menu de navigation (notamment sur mobile, où il se trouve en bas). Le menu est désormais toujours cliquable même si l'application charge.
+
 ### 07 May 2026 - Restauration et Émancipation de la page Favoris
 - **Fichiers touchés** : `index.html`, `app.js`
 - **Résumé** :
