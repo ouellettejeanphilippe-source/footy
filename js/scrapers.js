@@ -1190,6 +1190,12 @@ export function scrapeMatchFlux(m){
             if(!name) name = 'Flux';
             if(name.length > 50) name = name.substring(0, 47) + '...';
 
+            var upperName = name.toUpperCase();
+            var isPartnerSite = ['FOOTYBITE', 'NFLBITE', 'NBABITE', 'SPORTSURGE', 'HESGOAL', 'SOCCER STREAMS', 'DISCORD', 'TWITTER', 'TELEGRAM', 'REDDIT'].some(function(partner) {
+                return upperName.includes(partner);
+            });
+            if (isPartnerSite) return;
+
             var rowText = row.textContent.toLowerCase();
             var qual = 'SD';
             if(rowText.indexOf('hd') >= 0 || rowText.indexOf('1080') >= 0 || rowText.indexOf('720') >= 0) qual = 'HD';
@@ -1214,6 +1220,13 @@ export function scrapeMatchFlux(m){
               if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.includes('f1streamsi') || lowerUrl.length < 5) return;
               var name = btn.textContent.replace(/\s+/g, ' ').trim() || 'Flux externe';
               if(name.length > 50) name = name.substring(0, 47) + '...';
+
+              var upperName = name.toUpperCase();
+              var isPartnerSite = ['FOOTYBITE', 'NFLBITE', 'NBABITE', 'SPORTSURGE', 'HESGOAL', 'SOCCER STREAMS', 'DISCORD', 'TWITTER', 'TELEGRAM', 'REDDIT'].some(function(partner) {
+                  return upperName.includes(partner);
+              });
+              if (isPartnerSite) return;
+
               links.push({
                  name:name,
                  quality:'HD',
