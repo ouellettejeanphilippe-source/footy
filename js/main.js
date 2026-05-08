@@ -95,7 +95,12 @@ export function loadAll(isBackground, forceScrape){
   var btn=document.getElementById('relBtn');if(btn) btn.disabled=true;
   document.getElementById('errbox').classList.remove('show');
   if (!isBackground && !window.hasLoadedOnce) {
-      document.getElementById('ov').style.display='flex';
+      var ovElement = document.getElementById('ov');
+      var errBoxElement = document.getElementById('errbox');
+      document.getElementById('marea').innerHTML = ''; // Clear marea when initially loading
+      if (ovElement) document.getElementById('marea').appendChild(ovElement); // Move ov to marea
+      if (errBoxElement) document.getElementById('marea').appendChild(errBoxElement); // Move errbox to marea
+      if (ovElement) ovElement.style.display='flex';
       [1,2,3].forEach(function(n){
         var el=document.getElementById('s'+n);if(!el)return;
         el.style.opacity=n===1?'1':'.4';el.style.color='';

@@ -67,7 +67,8 @@
     <span class="zoom-level" id="zoom-level-display">100%</span>
     <button class="zoom-btn" onclick="zoomIn()" aria-label="Zoomer" title="Zoomer">+</button>
   </div>
-  <div class="ov" id="ov">
+  <div id="marea" style="display:flex; flex-direction:column; gap:24px; max-width:1200px; margin:0 auto; width:100%;">
+    <div class="ov" id="ov" style="display:none;">
     <div class="spinner"></div>
     <div class="ov-msg" id="ovmsg">Connexion au Guide télé (API)...</div>
     <div style="display:flex;flex-direction:column;gap:5px">
@@ -77,16 +78,14 @@
     </div>
   </div>
 
-  <div class="err" id="errbox">
-    <div style="font-size:36px">📡</div>
-    <div class="err-msg" id="errmsg"></div>
-    <div class="err-code" id="errcode" style="display:none"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">
-      <button class="btn g" onclick="loadAll(window.hasLoadedOnce, true)">↺ Réessayer</button>
-      </div>
-  </div>
-
-  <div id="marea" style="display:flex; flex-direction:column; gap:24px; max-width:1200px; margin:0 auto; width:100%;">
+    <div class="err" id="errbox">
+      <div style="font-size:36px">📡</div>
+      <div class="err-msg" id="errmsg"></div>
+      <div class="err-code" id="errcode" style="display:none"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">
+        <button class="btn g" onclick="loadAll(window.hasLoadedOnce, true)">↺ Réessayer</button>
+        </div>
+    </div>
     <!-- Les matchs seront insérés ici -->
   </div>
 </div>

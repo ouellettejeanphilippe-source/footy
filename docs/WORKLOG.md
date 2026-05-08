@@ -4,6 +4,19 @@
 - **Problèmes résolus** : La page Favoris était coupée et difficile à utiliser sur mobile. La recherche accélère la gestion des équipes. Les utilisateurs peuvent maintenant utiliser les couleurs de leurs équipes comme thème de l'application.
 
 
+### 08 May 2026 - Redesign du Guide Vertical sur Mobile
+- **Fichiers touchés** : `styles.css`, `js/ui.js`
+- **Résumé** : Changement complet de la disposition de la vue "Guide" (EPG timeline) sur les appareils mobiles (`max-width: 768px`). La timeline défile dorénavant verticalement de haut en bas (comme l'application Google Calendar en vue Journalière), en intervertissant l'axe temporel (maintenant vertical) et l'axe des chaînes/ligues (maintenant horizontal). Le JS a été simplifié pour utiliser les custom properties CSS, ce qui permet à `styles.css` de contrôler la position absolue et les hauteurs avec flexbox. La fonction de scrolling automatique (`scrollToNow`) a également été modifiée pour contrôler le `scrollTop` au lieu de `scrollLeft` sur mobile.
+- **Problèmes résolus** : La lisibilité de la timeline sur de très petits écrans était complexe. Ce nouveau design de calendrier mobile est plus intuitif.
+
+
+### 08 May 2026 - Accessibilité du Menu Pendant le Chargement
+- **Fichiers touchés** : `index.html`, `styles.css`, `js/main.js`, `js/ui.js`
+- **Résumé** :
+  - Modification de l'overlay de chargement (`#ov`) et du message d'erreur (`#errbox`) pour qu'ils soient encapsulés dans le flux de la zone des matchs (`#marea`) au lieu d'occuper tout l'écran en position `absolute`.
+  - Ajustement des fonctions `loadAll` et `buildEPG` afin que ces éléments ne soient pas écrasés lors du rafraîchissement dynamique (`innerHTML = ''`).
+- **Problèmes résolus** : L'écran de chargement et l'écran d'erreur bloquaient l'utilisation du menu de navigation (notamment sur mobile, où il se trouve en bas). Le menu est désormais toujours cliquable même si l'application charge.
+
 ### 07 May 2026 - Restauration et Émancipation de la page Favoris
 - **Fichiers touchés** : `index.html`, `app.js`
 - **Résumé** :
@@ -46,6 +59,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 
 ### 08 May 2026 - Favorite Teams Search & Defaults UX Improvements
 - **Fichiers touchés** : `js/state.js`, `js/main.js`
@@ -68,6 +87,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Fix game link matching failures by adding permissive bidirectional substring fallbacks in `isMatchPair`.
@@ -104,6 +129,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
@@ -162,6 +193,12 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - Rien pour l'instant
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
@@ -188,6 +225,12 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+- **Ajout ligues & Glow logos** :
+  - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
+  - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
+  - Ajout d'un effet `drop-shadow` blanc CSS global sur les classes de logos (`.prime-logo`, `.chan-logo`, `.mb-logo`) pour assurer la visibilité sur les fonds de la même couleur.
+
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
