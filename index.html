@@ -122,11 +122,14 @@
         <h2 style="margin:0;">⭐ Gestion des Favoris</h2>
     </div>
 
-    <div class="fav-container" style="display: flex; gap: 24px; flex-wrap: wrap;">
+    <div class="fav-container" style="display: flex; gap: 24px; flex-wrap: wrap; flex-direction: row;">
         <!-- Colonne de gauche: Équipes -->
-        <div style="flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="fav-col-left" style="flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 16px;">
             <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
-                <h3 style="margin-top:0; margin-bottom:16px; font-size:16px; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:8px;">Équipes Favorites</h3>
+                <h3 style="margin-top:0; margin-bottom:16px; font-size:16px; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <span>Équipes Favorites</span>
+                    <input type="text" id="fav-team-search" placeholder="Rechercher une équipe..." oninput="filterFavTeams(this.value)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px 10px; font-size:13px; max-width:250px; flex:1; min-width:150px;">
+                </h3>
                 <div id="fav-teams-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
                     <!-- Rempli par app.js -->
                 </div>
@@ -134,7 +137,7 @@
         </div>
 
         <!-- Colonne de droite: Ordre des ligues -->
-        <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="fav-col-right" style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 16px;">
             <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
                 <h3 style="margin-top:0; margin-bottom:8px; font-size:16px; color:var(--text); display:flex; justify-content:space-between; align-items:center;">
                     Ordre des Ligues
@@ -219,11 +222,6 @@
                   <span id="hex-c3" style="font-family:monospace; font-size:10px; color:var(--muted);">#222222</span>
                 </div>
               </div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="font-size:13px; color:var(--muted); display:flex; flex-direction:column;">Flou d'arrière-plan <span style="font-size:10px; opacity:0.6;">(Blur)</span></div>
-              <input type="range" id="pref-bg-blur" min="0" max="100" value="0" onchange="applyUserPrefs()" style="width: 140px;">
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">

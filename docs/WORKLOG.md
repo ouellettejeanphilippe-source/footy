@@ -1,3 +1,7 @@
+### 08 May 2026 - Ajout des favoris en haut de page, recherche et swatches
+- **Fichiers touchés** : `index.html`, `styles.css`, `js/main.js`, `js/multiview.js`
+- **Résumé** : Refonte de la page Favoris avec les équipes favorites épinglées en haut, l'affichage des ligues sous forme d'accordéons, une barre de recherche en temps réel et un meilleur support mobile. Ajout d'une fonctionnalité pour générer dynamiquement des palettes de couleurs depuis les équipes favorites dans les Paramètres. Retrait du paramètre obsolète de flou d'arrière-plan (`pref-bg-blur`).
+- **Problèmes résolus** : La page Favoris était coupée et difficile à utiliser sur mobile. La recherche accélère la gestion des équipes. Les utilisateurs peuvent maintenant utiliser les couleurs de leurs équipes comme thème de l'application.
 
 
 ### 07 May 2026 - Restauration et Émancipation de la page Favoris
