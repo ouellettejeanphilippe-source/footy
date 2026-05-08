@@ -125,114 +125,86 @@ export function getApiFirstMatches(targetDate) {
 
   var needsFullFetch = !cache || cache.fetchDate !== todayStr;
 
-  var baseMatches = [];
   var promises = [];
+  var baseMatches = [];
 
-  if (!needsFullFetch) {
-      baseMatches = cache.matches || [];
-  }
-
-  var yesterday = new Date(targetDate); yesterday.setDate(yesterday.getDate() - 1);
-  var tomorrow = new Date(targetDate); tomorrow.setDate(tomorrow.getDate() + 1);
-
-  var espnDatesToFetch = [];
-  var apiDatesToFetch = [];
-
-  if (needsFullFetch) {
-      var nextMonth = new Date(targetDate); nextMonth.setDate(nextMonth.getDate() + 30);
-      var espnDateRange = getEspnDateStr(yesterday) + '-' + getEspnDateStr(nextMonth);
-      espnDatesToFetch.push(espnDateRange);
-
-      for(var i=-1; i<=7; i++) {
-          var d = new Date(targetDate);
-          d.setDate(d.getDate() + i);
-          apiDatesToFetch.push(d.toISOString().split('T')[0]);
-      }
-  } else {
-      espnDatesToFetch.push(getEspnDateStr(targetDate));
-      apiDatesToFetch.push(targetDate.toISOString().split('T')[0]);
+  if (!needsFullFetch && cache && cache.matches) {
+      baseMatches = cache.matches;
   }
 
   var espnPaths = [];
   for(var key in ESPN_LEAGUES) { if(espnPaths.indexOf(ESPN_LEAGUES[key])===-1) espnPaths.push(ESPN_LEAGUES[key]); }
 
-  espnPaths.forEach(function(path) {
-    espnDatesToFetch.forEach(function(dateStr) {
-      promises.push(
-        fetchEspnSchedule(path, dateStr).then(function(data) {
-        if(!data || !data.events) return;
-        data.events.forEach(function(ev) {
-          var comp = ev.competitions[0];
-          if(!comp || !comp.competitors) return;
-          var home = comp.competitors.find(function(c){return c.homeAway==='home';});
-          var away = comp.competitors.find(function(c){return c.homeAway==='away';});
-          if(!home || !away) return;
+  if (needsFullFetch || baseMatches.length === 0) {
+      espnPaths.forEach(function(path) {
+          promises.push(
+            fetchEspnSchedule(path, todayStr).then(function(data) {
+              if(!data || !data.events) return;
+              var leagueName = data.leagues && data.leagues[0] ? data.leagues[0].name : path;
 
-          var leagueName = data.leagues && data.leagues[0] ? data.leagues[0].name : path;
+              data.events.forEach(function(ev) {
+                var comp = ev.competitions[0];
+                if(!comp || !comp.competitors) return;
+                var home = comp.competitors.find(function(c){return c.homeAway==='home';});
+                var away = comp.competitors.find(function(c){return c.homeAway==='away';});
+                if(!home || !away) return;
 
-          var status = 'upcoming';
-          if(ev.status.type.state === 'in') status = 'live';
-          if(ev.status.type.state === 'post') status = 'finished';
+                var status = 'upcoming';
+                if(ev.status.type.state === 'in') status = 'live';
+                if(ev.status.type.state === 'post') status = 'finished';
 
-          var score = null;
-          if(status !== 'upcoming') {
-            score = [parseInt(home.score), parseInt(away.score)];
-          }
-
-          var minute = null;
-          if(status === 'live' && ev.status.displayClock) {
-            minute = ev.status.displayClock;
-          } else if(status === 'live' && ev.status.period) {
-            minute = 'P' + ev.status.period;
-          }
-
-          var dateObj = new Date(ev.date);
-          var startTime = getEstTimeStrFromDate(dateObj);
-          var matchDate = getEstDateStrFromDate(dateObj);
-
-          var matchObj = {
-            id: 'espn_'+ev.id,
-            league: formatLeagueName(leagueName),
-            flag: lgFlag(leagueName),
-            color: lgColor(leagueName),
-            homeTeam: getOfficialTeamName(home.team.name),
-            awayTeam: getOfficialTeamName(away.team.name),
-            matchDate: matchDate,
-            homeLogo: home.team.logo || null,
-            awayLogo: away.team.logo || null,
-            startTime: startTime,
-            durationMinutes: getLeagueDuration(leagueName),
-            status: status,
-            score: score,
-            minute: minute,
-            streamLinks: [],
-            streamsLoaded: false,
-            source: 'api'
-          };
-
-          var existingIdx = baseMatches.findIndex(function(m) { return m.id === matchObj.id; });
-          if (existingIdx >= 0) {
-              baseMatches[existingIdx].status = matchObj.status;
-              baseMatches[existingIdx].score = matchObj.score;
-              baseMatches[existingIdx].minute = matchObj.minute;
-              baseMatches[existingIdx].startTime = matchObj.startTime;
-              baseMatches[existingIdx].matchDate = matchObj.matchDate;
-          } else {
-              baseMatches.push(matchObj);
-          }
-
-          if(home.team.logo) cacheLogo(home.team.name, home.team.logo);
-          if(away.team.logo) cacheLogo(away.team.name, away.team.logo);
-        });
-      })
-    );
-    });
-  });
+                var score = null;
+                if(status !== 'upcoming') {
+                  score = [parseInt(home.score), parseInt(away.score)];
+                }
 
 
+                var minute = null;
+                if(status === 'live' && ev.status.displayClock) {
+                  minute = ev.status.displayClock;
+                } else if(status === 'live' && ev.status.period) {
+                  minute = 'P' + ev.status.period;
+                }
 
-  // Fetch PWHL schedule specifically
-  if (needsFullFetch) {
+                var dateObj = new Date(ev.date);
+                var startTime = getEstTimeStrFromDate(dateObj);
+                var matchDate = getEstDateStrFromDate(dateObj);
+
+                var matchObj = {
+                  id: 'espn_' + ev.id,
+                  league: formatLeagueName(leagueName),
+                  flag: lgFlag(leagueName),
+                  color: lgColor(leagueName),
+                  homeTeam: getOfficialTeamName(home.team.name),
+                  awayTeam: getOfficialTeamName(away.team.name),
+                  matchDate: matchDate,
+                  homeLogo: home.team.logo || null,
+                  awayLogo: away.team.logo || null,
+                  startTime: startTime,
+                  durationMinutes: getLeagueDuration(leagueName),
+                  status: status,
+                  score: score,
+                  minute: minute,
+                  streamLinks: [],
+                  streamsLoaded: false,
+                  source: 'api'
+                };
+
+                var existingIdx = baseMatches.findIndex(function(m) { return m.id === matchObj.id; });
+                if (existingIdx >= 0) {
+                  baseMatches[existingIdx].status = matchObj.status;
+                  baseMatches[existingIdx].score = matchObj.score;
+                  baseMatches[existingIdx].minute = matchObj.minute;
+                  baseMatches[existingIdx].startTime = matchObj.startTime;
+                  baseMatches[existingIdx].matchDate = matchObj.matchDate;
+                } else {
+                  baseMatches.push(matchObj);
+                }
+              });
+            })
+          );
+      });
+
       promises.push(
           fetchPage('https://www.thepwhl.com/en/schedule').then(function(html) {
               if (html) {
@@ -271,6 +243,45 @@ export function getApiFirstMatches(targetDate) {
               }
           }).catch(function(e) { lg('Error fetching PWHL API schedule', e); })
       );
+  } else {
+      espnPaths.forEach(function(path) {
+          promises.push(
+            fetchEspnSchedule(path, todayStr).then(function(data) {
+            if(!data || !data.events) return;
+            data.events.forEach(function(ev) {
+              var comp = ev.competitions[0];
+              if(!comp || !comp.competitors) return;
+              var home = comp.competitors.find(function(c){return c.homeAway==='home';});
+              var away = comp.competitors.find(function(c){return c.homeAway==='away';});
+              if(!home || !away) return;
+
+              var status = 'upcoming';
+              if(ev.status.type.state === 'in') status = 'live';
+              if(ev.status.type.state === 'post') status = 'finished';
+
+              var score = null;
+              if(status !== 'upcoming') {
+                score = [parseInt(home.score), parseInt(away.score)];
+              }
+
+              var minute = null;
+              if(status === 'live' && ev.status.displayClock) {
+                minute = ev.status.displayClock;
+              } else if(status === 'live' && ev.status.period) {
+                minute = 'P' + ev.status.period;
+              }
+
+              var matchId = 'espn_' + ev.id;
+              var existingIdx = baseMatches.findIndex(function(m) { return m.id === matchId; });
+              if (existingIdx >= 0) {
+                  baseMatches[existingIdx].status = status;
+                  baseMatches[existingIdx].score = score;
+                  baseMatches[existingIdx].minute = minute;
+              }
+            });
+          })
+        );
+      });
   }
 
   return Promise.allSettled(promises).then(function(){

@@ -37,7 +37,18 @@ export var favTeams = {};
 export var customLgOrder = [];
 try {
   var storedFavs = localStorage.getItem('fav_teams');
-  if (storedFavs) favTeams = JSON.parse(storedFavs);
+  if (storedFavs) {
+      favTeams = JSON.parse(storedFavs);
+  } else {
+      favTeams = {
+          "Toronto Blue Jays": 1,
+          "Montreal Canadiens": 1,
+          "CF Montréal": 1,
+          "Toronto Raptors": 1,
+          "Montréal Victoire": 1
+      };
+      localStorage.setItem('fav_teams', JSON.stringify(favTeams));
+  }
   var storedLgOrder = localStorage.getItem('custom_lg_order');
   if (storedLgOrder) customLgOrder = JSON.parse(storedLgOrder);
 } catch(e) {}
