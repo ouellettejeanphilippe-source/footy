@@ -148,7 +148,7 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .gl.h { background: rgba(255,255,255,0.04); }
 
 /* Match Blocks */
-.mb { position: absolute; top: 6px; bottom: 6px; border-radius: var(--radius-card, 8px); cursor: pointer; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: center; padding: 8px 12px; min-width: 100px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); border: 1px solid var(--border); background-size: 200% 200% !important; background-position: center !important; }
+.mb { position: absolute; top: 6px; bottom: 6px; left: calc((var(--start-h) * var(--hour-px)) + (var(--start-m) * var(--min-px))); width: calc(var(--duration-m) * var(--min-px)); border-radius: var(--radius-card, 8px); cursor: pointer; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: center; padding: 8px 12px; min-width: 100px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); border: 1px solid var(--border); background-size: 200% 200% !important; background-position: center !important; }
 /* Subtle gradient overlay for depth */
 .mb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; }
 .mb:hover { filter: brightness(1.1); transform: translateY(-2px); z-index: 5; box-shadow: 0 8px 16px rgba(0,0,0,0.4); background-position: top left !important; }
@@ -728,6 +728,24 @@ body.theme-metallic .ic {
 .marea { position: relative; width: calc(25 * var(--hour-px)); min-width: calc(25 * var(--hour-px)); }
 
 @media (max-width: 768px) {
+  .epg-wrapper { flex-direction: row; }
+  .ruler-row { flex-direction: column; width: var(--chan-w); left: 0; position: sticky; z-index: 45; border-right: 1px solid var(--border); background: var(--bg); }
+  .corner { width: 100%; border-right: none; }
+  .ruler-times { flex-direction: column; flex: 1; }
+  .tc { width: 100%; height: var(--hour-px); border-right: none; border-bottom: 1px solid var(--border); padding-left: 0; justify-content: center; }
+
+  .marea-row { flex-direction: column; width: var(--row-h); min-width: var(--row-h); flex: none; border-right: 1px solid var(--border); }
+  .chan-cell { position: sticky; top: var(--ruler-h); z-index: 35; width: 100%; height: var(--ruler-h); border-bottom: 1px solid var(--border); border-right: none; }
+  .mrow { display: contents; }
+
+  .marea { width: 100%; min-width: 100%; height: calc(25 * var(--hour-px)); min-height: calc(25 * var(--hour-px)); background: repeating-linear-gradient(0deg, transparent, transparent calc(var(--hour-px) - 1px), var(--border) calc(var(--hour-px) - 1px), var(--border) var(--hour-px)); }
+
+  .mb { left: 4px; right: 4px; width: auto; min-width: 0; top: calc((var(--start-h) * var(--hour-px)) + (var(--start-m) * var(--min-px))); height: calc(var(--duration-m) * var(--min-px)); bottom: auto; }
+
+  .now-line { top: calc((var(--now-h) * var(--hour-px)) + (var(--now-m) * var(--min-px))); left: 0; right: 0; width: 100%; height: 2px; bottom: auto; }
+  .now-line::before { left: 0; top: -6px; }
+  .now-line::after { top: -10px; left: 20px; }
+
   .lg-hdr { padding: 8px 6px; gap: 6px; }
   .lg-title { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
   .ch-flag { font-size: 12px; }
