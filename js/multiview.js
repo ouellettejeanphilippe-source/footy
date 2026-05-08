@@ -2401,10 +2401,7 @@ export function openOptionsPage() {
     if (optionsPage) {
         optionsPage.style.display = 'flex';
         buildSwatches();
-        var apiKeyInput = document.getElementById('apiKeyInput');
-        if (apiKeyInput) {
-            apiKeyInput.value = localStorage.getItem('apiSportsKey') || '';
-        }
+
         initPrefs();
     }
 }
@@ -2458,17 +2455,7 @@ export function closeOptions() { /* no-op now */ }
 export function openLogs() { openLogsPage(); }
 export function closeLogs() { /* no-op now */ }
 
-export function saveApiKey() {
-  var key = document.getElementById('apiKeyInput').value.trim();
-  if (key) {
-    localStorage.setItem('apiSportsKey', key);
-    showToast('Clé API sauvegardée');
-  } else {
-    localStorage.removeItem('apiSportsKey');
-    showToast('Clé API supprimée');
-  }
-  loadAll(false); // Reload to fetch api-sports
-}
+
 
 initPrefs(); // Run once on load
 
@@ -2602,5 +2589,4 @@ window.openOptions = openOptions;
 window.closeOptions = closeOptions;
 window.openLogs = openLogs;
 window.closeLogs = closeLogs;
-window.saveApiKey = saveApiKey;
 window.installTampermonkey = installTampermonkey;
