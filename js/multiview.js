@@ -1764,7 +1764,6 @@ export function initPrefs() {
     try { Object.assign(userPrefs, JSON.parse(saved)); } catch(e){}
   }
 
-  if(document.getElementById('pref-bg-blur')) document.getElementById('pref-bg-blur').value = userPrefs.bgBlur || 0;
   if(document.getElementById('pref-bg-darken')) document.getElementById('pref-bg-darken').value = userPrefs.bgDarken || 0;
 
   applyBgStyle();
@@ -2072,8 +2071,6 @@ export function applyUserPrefs() {
   if(hdrSel) userPrefs.hdrStyle = hdrSel.value;
   userPrefs.cardOpacity = '15';
 
-  var blurSel = document.getElementById('pref-bg-blur');
-  if(blurSel) userPrefs.bgBlur = blurSel.value;
   var darkenSel = document.getElementById('pref-bg-darken');
   if(darkenSel) userPrefs.bgDarken = darkenSel.value;
 
@@ -2142,12 +2139,10 @@ export function applyPredefinedTheme() {
     }
     userPrefs.theme = theme;
 
-    // Reset blur and darken when applying predefined theme
-    userPrefs.bgBlur = 0;
+    // Reset darken when applying predefined theme
     userPrefs.bgDarken = 0;
 
     // Update inputs
-    if(document.getElementById('pref-bg-blur')) document.getElementById('pref-bg-blur').value = userPrefs.bgBlur || 0;
     if(document.getElementById('pref-bg-darken')) document.getElementById('pref-bg-darken').value = userPrefs.bgDarken || 0;
     document.getElementById('pref-bg-style').value = userPrefs.bgStyle;
     document.getElementById('pref-c1').value = userPrefs.c1;
@@ -2249,7 +2244,48 @@ export function buildSwatches() {
     if (!container) return;
 
     container.innerHTML = '';
-    PALETTES.forEach(function(p) {
+
+    // Convert PALETTES object to an array and add favTeams
+    var palettesToRender = [];
+
+    // Add dynamic palettes for favorite teams
+    if (typeof favTeams !== 'undefined') {
+        Object.keys(favTeams).forEach(function(teamName) {
+            if (favTeams[teamName] === 1) {
+                var colors = getTeamColors(teamName); // from config.js
+                if (colors && colors.length >= 2) {
+                    var c1 = colors[0];
+                    var accent = colors[1];
+                    // Create darker shades for gradient from c1
+                    var c2 = c1;
+                    var c3 = c1;
+
+                    // Simple heuristic to create gradients if they are hex
+                    if (c1.startsWith('#') && c1.length === 7) {
+                        var r = parseInt(c1.substring(1,3), 16);
+                        var g = parseInt(c1.substring(3,5), 16);
+                        var b = parseInt(c1.substring(5,7), 16);
+
+                        c2 = '#' + Math.max(0, r-30).toString(16).padStart(2,'0') + Math.max(0, g-30).toString(16).padStart(2,'0') + Math.max(0, b-30).toString(16).padStart(2,'0');
+                        c3 = '#' + Math.max(0, r-60).toString(16).padStart(2,'0') + Math.max(0, g-60).toString(16).padStart(2,'0') + Math.max(0, b-60).toString(16).padStart(2,'0');
+                    }
+
+                    palettesToRender.push({
+                        name: '⭐️ ' + esc(teamName),
+                        c1: c1,
+                        c2: c2,
+                        c3: c3,
+                        accent: accent
+                    });
+                }
+            }
+        });
+    }
+
+    // Add predefined palettes
+    PALETTES.forEach(function(p) { palettesToRender.push(p); });
+
+    palettesToRender.forEach(function(p) {
         var swatch = document.createElement('div');
         swatch.className = 'swatch-item';
         swatch.title = p.name;
@@ -2272,10 +2308,10 @@ export function buildSwatches() {
         };
 
         swatch.onclick = function() {
-            document.getElementById('pref-c1').value = p.c1;
-            document.getElementById('pref-c2').value = p.c2;
-            document.getElementById('pref-c3').value = p.c3;
-            document.getElementById('pref-accent-color').value = p.accent;
+            document.getElementById('pref-c1').value = p.c1.length === 7 ? p.c1 : '#000000';
+            document.getElementById('pref-c2').value = p.c2.length === 7 ? p.c2 : '#111111';
+            document.getElementById('pref-c3').value = p.c3.length === 7 ? p.c3 : '#222222';
+            document.getElementById('pref-accent-color').value = p.accent.length === 7 ? p.accent : '#0a84ff';
 
             var hexC1 = document.getElementById('hex-c1');
             if(hexC1) hexC1.textContent = p.c1;

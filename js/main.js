@@ -568,6 +568,63 @@ export function renderFavPage() {
         }
 
         var tHtml = '';
+
+        // Helper to render a team item
+        function renderTeam(t) {
+            var isFav = favTeams[t.name] === 1;
+            var logoUrl = getLogo(t.name);
+            var logoHtml = logoUrl ? '<img src="'+esc(logoUrl)+'" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display=\'none\'">' : '<div style="font-size:16px;">🛡️</div>';
+
+            // Find aliases
+            var aliases = [];
+            var nName = normName(t.name);
+            if (typeof TEAM_ALIASES !== 'undefined') {
+                for (var key in TEAM_ALIASES) {
+                    if (TEAM_ALIASES[key] === nName) {
+                        aliases.push(key);
+                    }
+                }
+            }
+
+            var aliasText = aliases.length > 0 ? ('<div style="font-size:11px; color:var(--muted2); margin-top:2px; font-family:monospace;">Alias: ' + esc(aliases.join(', ')) + '</div>') : '';
+
+            return '<div class="team-item" data-team-name="'+esc(t.name)+'" data-aliases="'+esc(aliases.join(' '))+'" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleFavPageTeam(\'' + escJs(t.name) + '\')">'
+                   + '<div style="display:flex; align-items:center; gap:12px;">'
+                   + '<div style="width:24px; display:flex; justify-content:center;">' + logoHtml + '</div>'
+                   + '<div>'
+                   + '<div style="font-size:14px; font-weight:bold; color:' + (isFav ? 'var(--text)' : 'var(--muted)') + ';">' + esc(t.name) + '</div>'
+                   + aliasText
+                   + '</div>'
+                   + '</div>'
+                   + '<button style="background:none; border:none; color:' + (isFav ? 'var(--accent)' : 'var(--border2)') + '; font-size:20px; cursor:pointer;">★</button>'
+                   + '</div>';
+        }
+
+        // Render Favoris section
+        var favorisList = [];
+        var allTeams = [];
+        for (var lg in teamsByLeague) {
+            teamsByLeague[lg].forEach(function(t) {
+                if (!allTeams.find(function(x) { return x.name === t.name; })) {
+                    allTeams.push(t);
+                    if (favTeams[t.name] === 1) {
+                        favorisList.push(t);
+                    }
+                }
+            });
+        }
+
+        if (favorisList.length > 0) {
+            tHtml += '<div style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--accent); text-transform:uppercase;">⭐️ MES FAVORIS</div>';
+            favorisList.sort(function(a, b) {
+                return a.name.localeCompare(b.name);
+            });
+            favorisList.forEach(function(t) {
+                tHtml += renderTeam(t);
+            });
+            tHtml += '<div style="height: 16px;"></div>'; // padding before leagues
+        }
+
         var sortedLeagues = Object.keys(teamsByLeague).sort(function(a,b) {
             var idxA = customLgOrder.indexOf(a);
             var idxB = customLgOrder.indexOf(b);
@@ -578,44 +635,48 @@ export function renderFavPage() {
         });
 
         sortedLeagues.forEach(function(lg) {
-            tHtml += '<div style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--muted); text-transform:uppercase;">' + esc(lg) + '</div>';
+            var lgId = 'fav-lg-' + lg.replace(/[^a-zA-Z0-9]/g, '-');
+            var isCollapsed = S.collapsedFavLg && S.collapsedFavLg[lg];
+            var chevTransform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+
+            tHtml += '<div class="lg-header" data-target="'+lgId+'" style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--muted); text-transform:uppercase; display:flex; align-items:center; cursor:pointer;" onclick="toggleFavPageAccordion(\''+escJs(lg)+'\')">';
+            tHtml += '<svg id="chev-'+lgId+'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; transition:transform 0.2s; transform:'+chevTransform+';"><path d="M6 9l6 6 6-6"/></svg>';
+            tHtml += esc(lg);
+            tHtml += '</div>';
+
+            var displayStyle = isCollapsed ? 'none' : 'flex';
+            tHtml += '<div id="'+lgId+'" class="lg-container" style="display:'+displayStyle+'; flex-direction:column; gap:0;">';
 
             var sortedTeams = teamsByLeague[lg].sort(function(a, b) {
                 return a.name.localeCompare(b.name);
             });
 
             sortedTeams.forEach(function(t) {
-                var isFav = favTeams[t.name] === 1;
-                var logoUrl = getLogo(t.name);
-                var logoHtml = logoUrl ? '<img src="'+esc(logoUrl)+'" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display=\'none\'">' : '<div style="font-size:16px;">🛡️</div>';
-
-                // Find aliases
-                var aliases = [];
-                var nName = normName(t.name);
-                if (typeof TEAM_ALIASES !== 'undefined') {
-                    for (var key in TEAM_ALIASES) {
-                        if (TEAM_ALIASES[key] === nName) {
-                            aliases.push(key);
-                        }
-                    }
-                }
-
-                var aliasText = aliases.length > 0 ? ('<div style="font-size:11px; color:var(--muted2); margin-top:2px; font-family:monospace;">Alias: ' + esc(aliases.join(', ')) + '</div>') : '';
-
-                tHtml += '<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleFavPageTeam(\'' + escJs(t.name) + '\')">'
-                       + '<div style="display:flex; align-items:center; gap:12px;">'
-                       + '<div style="width:24px; display:flex; justify-content:center;">' + logoHtml + '</div>'
-                       + '<div>'
-                       + '<div style="font-size:14px; font-weight:bold; color:' + (isFav ? 'var(--text)' : 'var(--muted)') + ';">' + esc(t.name) + '</div>'
-                       + aliasText
-                       + '</div>'
-                       + '</div>'
-                       + '<button style="background:none; border:none; color:' + (isFav ? 'var(--accent)' : 'var(--border2)') + '; font-size:20px; cursor:pointer;">★</button>'
-                       + '</div>';
+                tHtml += renderTeam(t);
             });
+            tHtml += '</div>';
         });
 
         teamsContainer.innerHTML = tHtml;
+    }
+}
+
+export function toggleFavPageAccordion(lgName) {
+    if (!S.collapsedFavLg) S.collapsedFavLg = {};
+    S.collapsedFavLg[lgName] = !S.collapsedFavLg[lgName];
+
+    var lgId = 'fav-lg-' + lgName.replace(/[^a-zA-Z0-9]/g, '-');
+    var container = document.getElementById(lgId);
+    var chev = document.getElementById('chev-' + lgId);
+
+    if (container) {
+        if (S.collapsedFavLg[lgName]) {
+            container.style.display = 'none';
+            if(chev) chev.style.transform = 'rotate(-90deg)';
+        } else {
+            container.style.display = 'flex';
+            if(chev) chev.style.transform = 'rotate(0deg)';
+        }
     }
 }
 
@@ -653,6 +714,61 @@ export function resetLgOrder() {
     renderFavPage();
 }
 
+export function filterFavTeams(query) {
+    var q = normName(query);
+    var teamsContainer = document.getElementById('fav-teams-list');
+    if (!teamsContainer) return;
+
+    // Si la recherche est vide, on affiche tout et on ferme les accordéons
+    if (!q) {
+        var teamEls = teamsContainer.querySelectorAll('.team-item');
+        teamEls.forEach(function(el) { el.style.display = 'flex'; });
+
+        var lgHeaders = teamsContainer.querySelectorAll('.lg-header');
+        lgHeaders.forEach(function(el) { el.style.display = 'flex'; });
+
+        var lgContainers = teamsContainer.querySelectorAll('.lg-container');
+        lgContainers.forEach(function(c) {
+            var lgName = c.id.replace('fav-lg-', '').replace(/-/g, ' ');
+            // Utiliser toggleFavPageAccordion pour restaurer l'état (ou on force fermé)
+            c.style.display = (S.collapsedFavLg && S.collapsedFavLg[lgName]) ? 'none' : 'flex';
+        });
+        return;
+    }
+
+    // On parcourt d'abord les favoris "MES FAVORIS" s'il y en a
+    var allTeamEls = teamsContainer.querySelectorAll('.team-item');
+    allTeamEls.forEach(function(el) {
+        var teamName = el.getAttribute('data-team-name');
+        var nName = normName(teamName);
+        var aliasesStr = el.getAttribute('data-aliases') || '';
+
+        if (nName.indexOf(q) > -1 || aliasesStr.indexOf(q) > -1) {
+            el.style.display = 'flex';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+
+    // Ensuite, on ouvre les accordéons qui contiennent des résultats et on cache les en-têtes vides
+    var lgContainers = teamsContainer.querySelectorAll('.lg-container');
+    lgContainers.forEach(function(c) {
+        var lgId = c.id;
+        var header = teamsContainer.querySelector('.lg-header[data-target="'+lgId+'"]');
+        var visibleTeams = c.querySelectorAll('.team-item[style="display: flex;"]');
+
+        if (visibleTeams.length > 0) {
+            c.style.display = 'flex'; // Forcer l'ouverture pendant la recherche
+            if(header) header.style.display = 'flex';
+            var chev = document.getElementById('chev-' + lgId);
+            if(chev) chev.style.transform = 'rotate(0deg)';
+        } else {
+            c.style.display = 'none';
+            if(header) header.style.display = 'none';
+        }
+    });
+}
+
 
 
 // Global bindings for HTML compatibility
@@ -670,6 +786,8 @@ window.openFavPage = openFavPage;
 window.DEFAULT_LEAGUES = DEFAULT_LEAGUES;
 window.getLeagueIcon = getLeagueIcon;
 window.renderFavPage = renderFavPage;
+window.toggleFavPageAccordion = toggleFavPageAccordion;
 window.toggleFavPageTeam = toggleFavPageTeam;
 window.moveLeagueOrder = moveLeagueOrder;
 window.resetLgOrder = resetLgOrder;
+window.filterFavTeams = filterFavTeams;
