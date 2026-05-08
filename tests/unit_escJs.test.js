@@ -4,14 +4,14 @@ const path = require('path');
 const assert = require('assert');
 
 // Load app.js and extract escJs function
-const appJsPath = path.join(__dirname, '../app.js');
+const appJsPath = path.join(__dirname, '../js/utils.js');
 const appJsContent = fs.readFileSync(appJsPath, 'utf8');
 
 // Use a regex to extract the function body.
 // function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 const escJsMatch = appJsContent.match(/function\s+escJs\s*\(s\)\s*\{[\s\S]*?\}/);
 if (!escJsMatch) {
-    console.error("Could not find escJs function in app.js");
+    console.error("Could not find escJs function in js/utils.js");
     process.exit(1);
 }
 
