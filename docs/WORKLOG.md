@@ -47,7 +47,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 
-### $(date +'%d %B %Y') - Amélioration de l'extraction des liens de streams dans scrapeMatchFlux
+### 08 May 2026 - Favorite Teams Search & Defaults UX Improvements
+- **Fichiers touchés** : `js/state.js`, `js/main.js`
+- **Résumé** : Initialized default favorite teams ('Toronto Blue Jays', 'Montreal Canadiens', 'CF Montréal', 'Toronto Raptors', 'Montréal Victoire') for new users. Overhauled `filterFavTeams` to collapse section headers during searches, displaying results as a unified flat list for improved discoverability across both favorite and non-favorite lists.
+- **Problèmes résolus** : Fixed issue where users had to navigate through closed league accordions to find a team during a search.
+
+### 05 May 2026 - Amélioration de l'extraction des liens de streams dans scrapeMatchFlux
 - **Fichiers touchés** : `app.js`
 - **Résumé** : Refonte de la fonction `scrapeMatchFlux` pour extraire massivement un nombre de flux adéquat pour chaque match (environ 40 par match), en particulier pour les sources qui masquent leurs liens, en utilisant une stratégie de recherche élargie : `a[target="_blank"]`, `iframe`, attributs de données (`data-stream`, `data-src`), et validation des URLs relatives.
 - **Problèmes résolus** : Certains matchs provenant de sources comme Streameast, Methstreams, ou Totalsportek étaient vides ou renvoyaient uniquement le lien générique "Voir streams sur le site" car les anciens sélecteurs étaient trop spécifiques (ex. `tr td input`). Les liens externes sont désormais correctement trouvés, augmentant le volume de flux valides par match.

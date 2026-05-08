@@ -615,14 +615,14 @@ export function renderFavPage() {
         }
 
         if (favorisList.length > 0) {
-            tHtml += '<div style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--accent); text-transform:uppercase;">⭐️ MES FAVORIS</div>';
+            tHtml += '<div class="fav-section-header" style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--accent); text-transform:uppercase;">⭐️ MES FAVORIS</div>';
             favorisList.sort(function(a, b) {
                 return a.name.localeCompare(b.name);
             });
             favorisList.forEach(function(t) {
                 tHtml += renderTeam(t);
             });
-            tHtml += '<div style="height: 16px;"></div>'; // padding before leagues
+            tHtml += '<div class="fav-section-padding" style="height: 16px;"></div>'; // padding before leagues
         }
 
         var sortedLeagues = Object.keys(teamsByLeague).sort(function(a,b) {
@@ -721,6 +721,9 @@ export function filterFavTeams(query) {
 
     // Si la recherche est vide, on affiche tout et on ferme les accordéons
     if (!q) {
+        var favHeaders = teamsContainer.querySelectorAll('.fav-section-header, .fav-section-padding');
+        favHeaders.forEach(function(el) { el.style.display = 'block'; });
+
         var teamEls = teamsContainer.querySelectorAll('.team-item');
         teamEls.forEach(function(el) { el.style.display = 'flex'; });
 
@@ -736,35 +739,37 @@ export function filterFavTeams(query) {
         return;
     }
 
-    // On parcourt d'abord les favoris "MES FAVORIS" s'il y en a
+    // On parcourt toutes les équipes et on masque les en-têtes pour une liste simple
+    var favHeaders = teamsContainer.querySelectorAll('.fav-section-header, .fav-section-padding');
+    favHeaders.forEach(function(el) { el.style.display = 'none'; });
+
+    var lgHeaders = teamsContainer.querySelectorAll('.lg-header');
+    lgHeaders.forEach(function(el) { el.style.display = 'none'; });
+
     var allTeamEls = teamsContainer.querySelectorAll('.team-item');
+    // Set for keeping track of already displayed names to avoid duplicates since teams might be in favorites and league
+    var displayedNames = {};
     allTeamEls.forEach(function(el) {
         var teamName = el.getAttribute('data-team-name');
         var nName = normName(teamName);
         var aliasesStr = el.getAttribute('data-aliases') || '';
 
-        if (nName.indexOf(q) > -1 || aliasesStr.indexOf(q) > -1) {
+        if (!displayedNames[teamName] && (nName.indexOf(q) > -1 || aliasesStr.indexOf(q) > -1)) {
             el.style.display = 'flex';
+            displayedNames[teamName] = true;
         } else {
             el.style.display = 'none';
         }
     });
 
-    // Ensuite, on ouvre les accordéons qui contiennent des résultats et on cache les en-têtes vides
+    // Force open the containers that have visible results
     var lgContainers = teamsContainer.querySelectorAll('.lg-container');
     lgContainers.forEach(function(c) {
-        var lgId = c.id;
-        var header = teamsContainer.querySelector('.lg-header[data-target="'+lgId+'"]');
         var visibleTeams = c.querySelectorAll('.team-item[style="display: flex;"]');
-
         if (visibleTeams.length > 0) {
             c.style.display = 'flex'; // Forcer l'ouverture pendant la recherche
-            if(header) header.style.display = 'flex';
-            var chev = document.getElementById('chev-' + lgId);
-            if(chev) chev.style.transform = 'rotate(0deg)';
         } else {
             c.style.display = 'none';
-            if(header) header.style.display = 'none';
         }
     });
 }
