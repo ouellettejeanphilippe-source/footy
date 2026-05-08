@@ -692,7 +692,24 @@ export function renderFluxItem(s, i, m) {
 
 export function openMod(m,col){
   document.getElementById('mdot').style.background=col||'#888';
-  document.getElementById('mname').textContent=m.homeTeam+' — '+m.awayTeam;
+
+  var hLogo = getLogo(m.homeTeam);
+  var aLogo = getLogo(m.awayTeam);
+  var mnameHtml = '';
+
+  mnameHtml += '<div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
+  if(hLogo) mnameHtml += '<img src="'+esc(hLogo)+'" style="width:24px;height:24px;object-fit:contain;" onerror="this.style.display=\'none\'">';
+  mnameHtml += '<span>' + esc(m.homeTeam) + '</span></div>';
+
+  mnameHtml += '<span style="color:var(--muted); font-size: 16px; margin: 0 4px;">—</span>';
+
+  mnameHtml += '<div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
+  if(aLogo) mnameHtml += '<img src="'+esc(aLogo)+'" style="width:24px;height:24px;object-fit:contain;" onerror="this.style.display=\'none\'">';
+  mnameHtml += '<span>' + esc(m.awayTeam) + '</span></div>';
+
+  document.getElementById('mname').innerHTML = '<div style="display:flex; align-items:center; flex-wrap:wrap;">' + mnameHtml + '</div>';
+  document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam; // for the stats checker
+
   document.getElementById('mmeta').innerHTML=
     '<span class="mtag">'+m.flag+' '+esc(m.league)+'</span>'
     +'<span class="mtag">'+esc(m.startTime)+'</span>'
@@ -702,10 +719,10 @@ export function openMod(m,col){
   if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
 
   function fetchAndRenderModalStats() {
-      if (m.id && (m.id.startsWith('espn_') || m.id.startsWith('api_'))) {
+      if (m.id && m.id.startsWith('espn_')) {
           fetchGameStats(m.id).then(function(res) {
               var scoreCont = document.getElementById('mscore');
-              if (!scoreCont || document.getElementById('mname').textContent.indexOf(m.homeTeam) === -1) {
+              if (!scoreCont || document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) === -1) {
                   if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
                   return;
               }
@@ -736,8 +753,11 @@ export function openMod(m,col){
               if (extraHtml) {
                   var stDiv = document.createElement('div');
                   stDiv.id = 'modal-extra-stats';
-                  stDiv.style.cssText = 'padding:15px; width:100%; background:rgba(0,0,0,0.2); border-bottom:1px solid rgba(255,255,255,0.05);';
-                  stDiv.innerHTML = '<div style="max-width:400px; margin:0 auto;">' + extraHtml + '</div>';
+                  stDiv.style.cssText = 'padding:15px; width:100%; background:rgba(0,0,0,0.2); border-bottom:1px solid rgba(255,255,255,0.05); cursor:pointer; transition: background 0.2s;';
+                  stDiv.onmouseover = function() { this.style.background = 'rgba(0,0,0,0.3)'; };
+                  stDiv.onmouseout = function() { this.style.background = 'rgba(0,0,0,0.2)'; };
+                  stDiv.onclick = function() { closeMod(); openGlobalStatsFromMatch(m.id); };
+                  stDiv.innerHTML = '<div style="max-width:400px; margin:0 auto;">' + extraHtml + '<div style="text-align:center; margin-top:8px; font-size:11px; color:var(--accent);">🔍 Voir toutes les stats</div></div>';
                   // Prepend inside mbody so it spans full width and looks clean before the links
                   var mbody = document.getElementById('mbody');
                   mbody.insertBefore(stDiv, mbody.firstChild);
@@ -773,13 +793,13 @@ export function openMod(m,col){
       scrapeMatchFlux(m).then(function() {
           lg('Force loaded flux ok', m.homeTeam);
           m.streamsLoaded = true;
-          if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').textContent.indexOf(m.homeTeam) >= 0) {
+          if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {
               openMod(m, col); // Re-render modal only if still open and matching
           }
       }).catch(function(e) {
           lg('Force loaded flux failed', e.message);
           m.streamsLoaded = true;
-          if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').textContent.indexOf(m.homeTeam) >= 0) {
+          if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {
               openMod(m, col); // Re-render modal only if still open and matching
           }
       });

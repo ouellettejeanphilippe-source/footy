@@ -114,113 +114,6 @@ export function filterBuggyMatches(matches) {
     });
 }
 
-export function fetchApiSportsFixtures(sportInfo, dateStr) {
-  var key = localStorage.getItem('apiSportsKey');
-  if (!key) return Promise.resolve(null);
-
-  var cacheKey = 'apisports_' + sportInfo.sport + '_' + (sportInfo.leagueId || 'all') + '_' + dateStr;
-  var cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    try {
-      var data = JSON.parse(cached);
-      // Cache expires after 4 hours for non-live sync
-      if (Date.now() - data.ts < 4 * 3600 * 1000) {
-        lg('API-Sports Cache Hit', cacheKey);
-        return Promise.resolve(data.response);
-      }
-    } catch(e){}
-  }
-
-  var url = 'https://' + sportInfo.api + '/fixtures?date=' + dateStr;
-  if (sportInfo.sport !== 'football') {
-      url = 'https://' + sportInfo.api + '/games?date=' + dateStr;
-  }
-  if (sportInfo.leagueId) {
-    var season = new Date().getFullYear();
-    // Some logic for season year overlap (e.g. 2023-2024 usually uses 2023 for football)
-    if (new Date().getMonth() < 6 && sportInfo.sport === 'football') season -= 1;
-    if (sportInfo.sport === 'football') {
-        url += '&league=' + sportInfo.leagueId + '&season=' + season;
-    } else {
-        url += '&league=' + sportInfo.leagueId + '&season=' + season;
-    }
-  }
-
-  lg('API-Sports Req', url);
-  return fetch(url, {
-    signal: AbortSignal.timeout(8000),
-    headers: {
-      'x-apisports-key': key,
-      'x-rapidapi-key': key
-    }
-  }).then(function(res) { return res.json(); }).then(function(data) {
-    if (data && data.response) {
-      localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), response: data.response }));
-      return data.response;
-    }
-    return null;
-  }).catch(function(e) {
-    lg('API-Sports Err', e.message);
-    return null;
-  });
-}
-
-
-
-export function updateMatchDataFromApi(match, apiFixture, sport) {
-  if (sport === 'football') {
-    var fixture = apiFixture.fixture;
-    var goals = apiFixture.goals;
-    var status = fixture.status.short; // NS, 1H, HT, 2H, FT, etc.
-
-    // Convert API status to our status
-    if (['1H', '2H', 'HT', 'ET', 'P', 'LIVE'].includes(status)) {
-      match.status = 'live';
-      match.minute = fixture.status.elapsed ? fixture.status.elapsed + "'" : 'HT';
-      if(status === 'HT') match.minute = 'HT';
-      match.score = [goals.home !== null ? goals.home : 0, goals.away !== null ? goals.away : 0];
-    } else if (['FT', 'AET', 'PEN'].includes(status)) {
-      match.status = 'finished';
-      match.minute = 'FT';
-      match.score = [goals.home !== null ? goals.home : 0, goals.away !== null ? goals.away : 0];
-    } else {
-      // NS (Not Started), TBD
-      match.status = 'upcoming';
-      // Time is usually correct from footybite, but we can override it
-      var d = new Date(fixture.date);
-      match.startTime = getEstTimeStrFromDate(d);
-    }
-  } else {
-    // Basketball / Hockey / NFL (v1 APIs)
-    var status = apiFixture.status.short;
-    var scores = apiFixture.scores;
-    if (['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT', 'LIVE', 'P1', 'P2', 'P3'].includes(status)) {
-       match.status = 'live';
-       match.minute = apiFixture.status.timer ? apiFixture.status.timer : status;
-       match.score = [scores.home.total !== null ? scores.home.total : 0, scores.away.total !== null ? scores.away.total : 0];
-    } else if (['FT', 'AOT'].includes(status)) {
-       match.status = 'finished';
-       match.minute = 'FT';
-       match.score = [scores.home.total !== null ? scores.home.total : 0, scores.away.total !== null ? scores.away.total : 0];
-    } else {
-       match.status = 'upcoming';
-       var d = new Date(apiFixture.date);
-       match.startTime = getEstTimeStrFromDate(d);
-    }
-  }
-
-  // Update logos from API-Sports if available
-  if(apiFixture.teams) {
-      if(apiFixture.teams.home && apiFixture.teams.home.logo) {
-          match.homeLogo = apiFixture.teams.home.logo;
-          cacheLogo(match.homeTeam, match.homeLogo);
-      }
-      if(apiFixture.teams.away && apiFixture.teams.away.logo) {
-          match.awayLogo = apiFixture.teams.away.logo;
-          cacheLogo(match.awayTeam, match.awayLogo);
-      }
-  }
-}
 
 /* ══ API FIRST LOGIC ══════════════════ */
 export var TARGET_DATE = new Date();
@@ -336,81 +229,7 @@ export function getApiFirstMatches(targetDate) {
     });
   });
 
-  // 2. Fetch API-Sports if key exists
-  var key = localStorage.getItem('apiSportsKey');
-  if (key) {
-    var sportsToFetch = [];
-    var sportIds = {};
-    for(var k in SPORT_MAP) {
-      var s = SPORT_MAP[k];
-      var sid = s.sport + '_' + s.leagueId;
-      if(!sportIds[sid]) {
-        sportIds[sid] = true;
-        sportsToFetch.push(s);
-      }
-    }
 
-    sportsToFetch.forEach(function(s) {
-      apiDatesToFetch.forEach(function(apiDateStr) {
-        promises.push(
-          fetchApiSportsFixtures(s, apiDateStr).then(function(apiData) {
-          if (!apiData) return;
-          apiData.forEach(function(f) {
-             var fHome = getOfficialTeamName(f.teams.home.name);
-             var fAway = getOfficialTeamName(f.teams.away.name);
-
-             var espnMatchIdx = baseMatches.findIndex(function(m) {
-                 return isMatch(m.homeTeam, fHome) && isMatch(m.awayTeam, fAway) && m.source==='api';
-             });
-
-             if(espnMatchIdx !== -1) {
-                var espnMatch = baseMatches[espnMatchIdx];
-                espnMatch.apiSportsId = f.fixture.id;
-                espnMatch.apiSportsSport = s.sport;
-                updateMatchDataFromApi(espnMatch, f, s.sport);
-             } else {
-                var newMatch = {
-                  id: 'apisports_'+f.fixture.id,
-                  apiSportsId: f.fixture.id,
-                  apiSportsSport: s.sport,
-                  league: formatLeagueName(f.league.name),
-                  flag: lgFlag(f.league.name),
-                  color: lgColor(f.league.name),
-                  homeTeam: getOfficialTeamName(f.teams.home.name),
-                  awayTeam: getOfficialTeamName(f.teams.away.name),
-                  homeLogo: f.teams.home.logo,
-                  awayLogo: f.teams.away.logo,
-                  startTime: '00:00',
-                  durationMinutes: getLeagueDuration(f.league.name),
-                  status: 'upcoming',
-                  score: null,
-                  streamLinks: [],
-                  streamsLoaded: false,
-                  source: 'api'
-                };
-                newMatch.matchDate = getEstDateStrFromDate(new Date(f.fixture.date));
-                updateMatchDataFromApi(newMatch, f, s.sport);
-
-                var existingIdx = baseMatches.findIndex(function(m) { return m.id === newMatch.id; });
-                if (existingIdx >= 0) {
-                      baseMatches[existingIdx].status = newMatch.status;
-                      baseMatches[existingIdx].score = newMatch.score;
-                      baseMatches[existingIdx].minute = newMatch.minute;
-                      baseMatches[existingIdx].startTime = newMatch.startTime;
-                      baseMatches[existingIdx].matchDate = newMatch.matchDate;
-                } else {
-                      baseMatches.push(newMatch);
-                }
-
-                if(f.teams.home.logo) cacheLogo(f.teams.home.name, f.teams.home.logo);
-                if(f.teams.away.logo) cacheLogo(f.teams.away.name, f.teams.away.logo);
-             }
-          });
-        })
-      );
-      });
-    });
-  }
 
   // Fetch PWHL schedule specifically
   if (needsFullFetch) {
@@ -703,35 +522,7 @@ export function fetchGameStats(matchId) {
         }).catch(function(e) {
             return Promise.reject(e);
         });
-    } else if (matchId.startsWith('api_')) {
-        var apiId = matchId.split('_')[1];
-        var key = localStorage.getItem('apiSportsKey');
-        if (!key) return Promise.reject('No API key');
 
-        var m = S.matches.find(function(x) { return x.id === matchId; });
-        var sport = 'football'; // default api-sports
-        if(m && m.league.toLowerCase().indexOf('nba')!==-1) sport = 'basketball';
-        else if(m && m.league.toLowerCase().indexOf('nhl')!==-1) sport = 'hockey';
-
-        return fetch('https://v3.' + sport + '.api-sports.io/fixtures?id=' + apiId, {
-            signal: AbortSignal.timeout(8000),
-            headers: { 'x-rapidapi-key': key }
-        }).then(function(r){return r.json();}).then(function(data) {
-            var resData = data.response[0];
-            var scorers = [];
-            if (resData && resData.events) {
-                resData.events.forEach(function(e) {
-                    if (e.type === 'Goal') {
-                        var time = e.time.elapsed + (e.time.extra ? '+' + e.time.extra : '') + '\'';
-                        var player = e.player.name;
-                        var isHome = resData.teams && resData.teams.home && resData.teams.home.id === e.team.id;
-                        scorers.push({ time: time, player: player, isHome: isHome });
-                    }
-                });
-            }
-            return { source: 'api-sports', data: resData, scorers: scorers, hRank: '', aRank: '', hForm: '', aForm: '' };
-        });
-    }
     return Promise.reject('Unsupported source');
 }
 
@@ -760,8 +551,6 @@ window.fetchEspnSchedule = fetchEspnSchedule;
 window.SPORT_MAP = SPORT_MAP;
 window.getLeagueInfo = getLeagueInfo;
 window.filterBuggyMatches = filterBuggyMatches;
-window.fetchApiSportsFixtures = fetchApiSportsFixtures;
-window.updateMatchDataFromApi = updateMatchDataFromApi;
 window.TARGET_DATE = TARGET_DATE;
 window.getApiFirstMatches = getApiFirstMatches;
 window.mergeFluxToApi = mergeFluxToApi;
