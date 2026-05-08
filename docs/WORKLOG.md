@@ -42,6 +42,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 
 ### $(date +'%d %B %Y') - Amélioration de l'extraction des liens de streams dans scrapeMatchFlux
 - **Fichiers touchés** : `app.js`
@@ -59,6 +60,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Fix game link matching failures by adding permissive bidirectional substring fallbacks in `isMatchPair`.
@@ -95,6 +97,7 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
@@ -153,6 +156,7 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - Rien pour l'instant
 
 ## Fait
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.
@@ -179,6 +183,7 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+- Implement a JAMstack architecture by generating a static schedule.json using GitHub Actions to improve initial load performance while preserving live score updates client-side.
 - Uniformisation de la sélection des onglets : l'onglet sélectionné est désormais le seul à avoir la classe `.active-toggle`, que ce soit un onglet principal (Guide, Live, Lecteur) ou secondaire (Options, Logs, Favoris, Script). Ajout d'IDs sur les boutons du menu pour cibler et désélectionner correctement.
 
 - Correction des saccades/clignotements lors de la mise à jour en arrière-plan en modifiant le chaînage de promesses dans `loadAll` et `updateLiveScores`.

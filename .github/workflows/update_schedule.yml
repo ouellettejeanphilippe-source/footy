@@ -1,0 +1,36 @@
+name: Update Schedule
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Run at 08:00 UTC every day
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: write
+
+jobs:
+  update-schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install node-fetch jsdom dotenv
+
+      - name: Generate Schedule
+        run: node scripts/generate_schedule.js
+
+      - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add schedule.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: daily schedule update [skip ci]" && git push)

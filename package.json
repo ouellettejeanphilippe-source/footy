@@ -6,7 +6,28 @@
     "jsdom": "^29.1.1"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "node-fetch": "^2.7.0",
     "playwright": "^1.59.1"
-  }
+  },
+  "name": "app",
+  "version": "1.0.0",
+  "description": "Ce document décrit l'architecture complète, la philosophie et les éléments clés de l'application **Guide des Sports**. Il sert de référence exhaustive pour comprendre comment l'application est construite.",
+  "main": "multiview-cleaner.user.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ouellettejeanphilippe-source/footy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ouellettejeanphilippe-source/footy/issues"
+  },
+  "homepage": "https://github.com/ouellettejeanphilippe-source/footy#readme"
 }

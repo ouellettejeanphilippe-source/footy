@@ -79,3 +79,6 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - `sourcesStatus`: Global array storing the latest status of each scraped source domain (`name`, `status`, `matchCount`, `message`, `time`).
 - `updateSourceStatus()`: Updates or inserts a source tracking entry.
 - `renderSourcesStatus()`: Populates the UI container `#sources-status-container` with source statistics before the generic request logs.
+
+### Backend Schedule Generation
+- `scripts/generate_schedule.js`: A Node.js script run by GitHub Actions to statically generate the match schedule for the next 30 days.
