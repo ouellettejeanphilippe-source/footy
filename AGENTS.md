@@ -1,5 +1,3 @@
-Architecture/Logic: The application relies on a JAMstack architecture for schedule data. A GitHub Action runs a Node.js script (`scripts/generate_schedule.js`) daily to generate a static `schedule.json` file from external APIs. The PWA frontend fetches this static file to improve load times and avoid client-side API rate limits.
-Architecture/Logic: While the future and past match schedules are served via a statically generated `schedule.json`, the frontend continues to fetch live scores dynamically for the current day directly from the ESPN API to keep the dashboard up-to-date.
 # AGENTS.md
 
 ## Règle d'or
