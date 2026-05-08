@@ -138,7 +138,16 @@ export function buildEPG(matches){
   epgContainer.style.maxWidth = '1200px';
   epgContainer.style.margin = '0 auto';
   epgContainer.style.width = '100%';
+
+  var ovElement = document.getElementById('ov');
+  var errBoxElement = document.getElementById('errbox');
   epgContainer.innerHTML = '';
+  if (ovElement) {
+      epgContainer.appendChild(ovElement);
+  }
+  if (errBoxElement) {
+      epgContainer.appendChild(errBoxElement);
+  }
 
   if (S.filter === 'live' || S.filter === 'upcoming') {
       epgContainer.style.display = 'block';
