@@ -1,3 +1,9 @@
+
+
+### 08 May 2026 - Redesign du Guide Vertical sur Mobile
+- **Fichiers touchés** : `styles.css`, `js/ui.js`
+- **Résumé** : Changement complet de la disposition de la vue "Guide" (EPG timeline) sur les appareils mobiles (`max-width: 768px`). La timeline défile dorénavant verticalement de haut en bas (comme l'application Google Calendar en vue Journalière), en intervertissant l'axe temporel (maintenant vertical) et l'axe des chaînes/ligues (maintenant horizontal). Le JS a été simplifié pour utiliser les custom properties CSS, ce qui permet à `styles.css` de contrôler la position absolue et les hauteurs avec flexbox. La fonction de scrolling automatique (`scrollToNow`) a également été modifiée pour contrôler le `scrollTop` au lieu de `scrollLeft` sur mobile.
+- **Problèmes résolus** : La lisibilité de la timeline sur de très petits écrans était complexe. Ce nouveau design de calendrier mobile est plus intuitif.
 ### 08 May 2026 - Ajout des favoris en haut de page, recherche et swatches
 - **Fichiers touchés** : `index.html`, `styles.css`, `js/main.js`, `js/multiview.js`
 - **Résumé** : Refonte de la page Favoris avec les équipes favorites épinglées en haut, l'affichage des ligues sous forme d'accordéons, une barre de recherche en temps réel et un meilleur support mobile. Ajout d'une fonctionnalité pour générer dynamiquement des palettes de couleurs depuis les équipes favorites dans les Paramètres. Retrait du paramètre obsolète de flou d'arrière-plan (`pref-bg-blur`).

@@ -51,19 +51,41 @@ const FLAGS = {
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
+function getEstDateStrFromDate(dateObj) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(dateObj);
+}
+
 function getEspnDateStr(d) {
-  return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
+  return getEstDateStrFromDate(d).replace(/-/g, '');
 }
 
 function getEstTimeStrFromDate(dateObj) {
-  return ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
-}
+  const estTimeFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  });
+  const str = estTimeFormatter.format(dateObj);
+  const m = str.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/i);
+  if(m) {
+      let h = parseInt(m[1], 10);
+      const mins = m[2];
+      const ampm = m[3] ? m[3].toUpperCase() : '';
 
-function getEstDateStrFromDate(dateObj) {
-  const y = dateObj.getFullYear();
-  const m = pad(dateObj.getMonth() + 1);
-  const d = pad(dateObj.getDate());
-  return `${y}-${m}-${d}`;
+      if (ampm === 'PM' && h < 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
+
+      const finalH = (h < 10 ? '0' : '') + h;
+      return finalH + ':' + mins;
+  }
+  return ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
 }
 
 function lgColor(n) {
@@ -232,7 +254,7 @@ function parsePWHLSchedule(html) {
 
                               var dateObj = new Date(dateStr);
                               var mDate = getEstDateStrFromDate(dateObj);
-                              var startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+                              var startTime = getEstTimeStrFromDate(dateObj);
 
                               var mStatus = isLive ? 'live' : 'upcoming';
                               var score = null;
