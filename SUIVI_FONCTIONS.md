@@ -38,7 +38,6 @@ Ces fonctions ont été trouvées dans le code mais n'étaient pas documentées 
 * `getDomain`
 * `getEspnDateStr`
 * `getLeagueDuration`
-* `getLeagueInfo`
 * `getLogo`
 * `getOfficialTeamName`
 * `getOriginalMatchId`
@@ -304,13 +303,6 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelée par :** `openMod`
 
-### `fetchApiSportsFixtures`
-**Description:** Appel à API-Sports (nécessite la clé API locale). Met en cache pour 4 heures.
-
-**Appelle :** `lg`
-
-**Appelée par :** `getApiFirstMatches`
-
 ### `fetchEspnSchedule`
 **Description:** Appel à l'API gratuite d'ESPN.
 
@@ -396,9 +388,9 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 **Appelée par :** `openGlobalStatsFromMatch`, `updateMvGameModeStats`
 
 ### `getApiFirstMatches`
-**Description:** Fonction orchestratrice. Récupère le calendrier depuis ESPN et API-Sports pour la date cible (en incluant la veille et le lendemain pour les fuseaux horaires) et construit le tableau de base `matches`.
+**Description:** Fonction orchestratrice. Récupère le calendrier depuis ESPN pour la date cible (en incluant la veille et le lendemain pour les fuseaux horaires) et construit le tableau de base `matches`.
 
-**Appelle :** `getEspnDateStr`, `fetchEspnSchedule`, `getEstTimeStrFromDate`, `getEstDateStrFromDate`, `formatLeagueName`, `lgFlag`, `lgColor`, `getOfficialTeamName`, `getLeagueDuration`, `cacheLogo`, `fetchApiSportsFixtures`, `isMatch`, `updateMatchDataFromApi`, `fetchPage`, `parsePWHLSchedule`, `lg`, `filterBuggyMatches`
+**Appelle :** `getEspnDateStr`, `fetchEspnSchedule`, `getEstTimeStrFromDate`, `getEstDateStrFromDate`, `formatLeagueName`, `lgFlag`, `lgColor`, `getOfficialTeamName`, `getLeagueDuration`, `cacheLogo`, `isMatch`, `updateMatchDataFromApi`, `fetchPage`, `parsePWHLSchedule`, `lg`, `filterBuggyMatches`
 
 **Appelée par :** `loadAll`
 
@@ -443,13 +435,6 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 **Appelle :** *(Aucune fonction interne)*
 
 **Appelée par :** `parseStreameast`, `parseOnHockey`, `parseBuffstreams`, `parseFootybite`, `getApiFirstMatches`
-
-### `getLeagueInfo`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** *(Aucune fonction interne)*
-
-**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
 
 ### `getLogo`
 **Description:** *(Nouvelle fonction non documentée)*
