@@ -287,27 +287,37 @@
         <h2 style="margin:0; font-size: 18px;">🧩 Installation des Scripts</h2>
     </div>
     <div style="font-size:14px; line-height:1.5; color:#ddd; display:flex; flex-direction:column; gap:12px;">
-        <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
+        <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez configurer votre navigateur correctement. Suivez ces étapes :</p>
 
         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1); margin-bottom: 8px;">
             <strong style="color:var(--accent);">🦊 Recommandation : Firefox + uBlock Origin</strong>
-            <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser Firefox. Bien que le script fonctionne sur Chrome, le bloqueur de publicités uBlock Origin y est beaucoup moins efficace en raison des récentes restrictions de Manifest V3 par Google.</p>
+            <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser <strong>Firefox</strong>. Bien que l'application fonctionne sur Chrome ou Edge, le bloqueur de publicités (uBlock Origin) y est beaucoup moins efficace en raison des récentes restrictions de Google (Manifest V3).</p>
         </div>
 
         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
-            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 1 : Installer le gestionnaire de scripts</div>
-            <p style="margin-bottom:12px;color:var(--muted);">Choisissez l'extension selon votre navigateur :</p>
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 1 : Installer le bloqueur de publicités (uBlock Origin)</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Ceci est essentiel pour bloquer les publicités intrusives des sites de streaming.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <a href="https://addons.mozilla.org/fr/firefox/addon/tampermonkey/" target="_blank" style="background:#ff7139;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Firefox</a>
-                <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" style="background:#4285f4;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Chrome</a>
-                <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" style="background:#0078d7;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Edge</a>
+                <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" style="background:#ff7139;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Firefox (uBlock)</a>
+                <a href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" style="background:#4285f4;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Chrome (uBlock)</a>
+                <a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin/odfafepnkmbhccpbejgmiehpchacaeak" target="_blank" style="background:#0078d7;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Edge (uBlock)</a>
             </div>
         </div>
 
         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
-            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 2 : Installer le Script</div>
-            <p style="margin-bottom:12px;color:var(--muted);">Une fois l'extension installée, cliquez sur le bouton ci-dessous pour ajouter le script :</p>
-            <a href="https://raw.githubusercontent.com/jules-cesar/Sports_Hub/refs/heads/main/userscript.user.js" target="_blank" style="background:var(--accent);color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;text-align:center;">Installer le script</a>
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 2 : Installer le gestionnaire de scripts (Tampermonkey)</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Cette extension permet de faire fonctionner notre script de nettoyage vidéo.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="https://addons.mozilla.org/fr/firefox/addon/tampermonkey/" target="_blank" style="background:#ff7139;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Firefox (Tampermonkey)</a>
+                <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" style="background:#4285f4;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Chrome (Tampermonkey)</a>
+                <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" style="background:#0078d7;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Edge (Tampermonkey)</a>
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 3 : Installer le Script de nettoyage</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Une fois Tampermonkey installé, cliquez sur le bouton ci-dessous. Tampermonkey s'ouvrira, cliquez alors sur "Installer" ou "Mettre à jour".</p>
+            <a href="https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/multiview-cleaner.user.js" target="_blank" style="background:var(--accent);color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;text-align:center;">Installer le script</a>
         </div>
     </div>
 </div>
