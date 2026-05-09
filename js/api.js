@@ -46,41 +46,6 @@ export function fetchEspnSchedule(leaguePath, dateStr) {
   return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(res) { return res.json(); }).catch(function(){ return null; });
 }
 
-/* ══ API-SPORTS INTEGRATION ════════════ */
-export var SPORT_MAP = {
-  'nba': { sport: 'basketball', api: 'v1.basketball.api-sports.io', leagueId: 12 },
-  'basketball': { sport: 'basketball', api: 'v1.basketball.api-sports.io', leagueId: 12 },
-  'nhl': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
-  'hockey': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
-  'ice hockey': { sport: 'hockey', api: 'v1.hockey.api-sports.io', leagueId: 57 },
-  'nfl': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
-  'american football': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
-  'american-football': { sport: 'american-football', api: 'v1.american-football.api-sports.io', leagueId: 1 },
-  'mlb': { sport: 'baseball', api: 'v1.baseball.api-sports.io', leagueId: 1 },
-  'baseball': { sport: 'baseball', api: 'v1.baseball.api-sports.io', leagueId: 1 },
-  'premier league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 39 },
-  'la liga': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 140 },
-  'serie a': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 135 },
-  'bundesliga': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 78 },
-  'ligue 1': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 61 },
-  'champions league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 2 },
-  'europa league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 3 },
-  'conference league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 848 },
-  'mls': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 253 },
-  'saudi pro league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 307 },
-  'eredivisie': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 88 },
-  'primeira liga': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 94 },
-  'fa cup': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 45 },
-  'copa del rey': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 143 },
-  'dfb pokal': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 81 },
-  'coppa italia': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 137 },
-  'nations league': { sport: 'football', api: 'v3.football.api-sports.io', leagueId: 5 },
-  'f1': { sport: 'formula-1', api: 'v1.formula-1.api-sports.io', leagueId: 1 },
-  'formula 1': { sport: 'formula-1', api: 'v1.formula-1.api-sports.io', leagueId: 1 }
-};
-
-
-
 export function filterBuggyMatches(matches) {
     var today = new Date();
     var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
@@ -568,7 +533,6 @@ export function fetchLeagueStandings(leagueName) {
 window.ESPN_LEAGUES = ESPN_LEAGUES;
 window.getEspnDateStr = getEspnDateStr;
 window.fetchEspnSchedule = fetchEspnSchedule;
-window.SPORT_MAP = SPORT_MAP;
 window.filterBuggyMatches = filterBuggyMatches;
 window.TARGET_DATE = TARGET_DATE;
 window.getApiFirstMatches = getApiFirstMatches;
