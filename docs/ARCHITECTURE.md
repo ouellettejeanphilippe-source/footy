@@ -81,3 +81,6 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - `renderSourcesStatus()`: Populates the UI container `#sources-status-container` with source statistics before the generic request logs.
 
 ### Backend Schedule Generation
+
+### Changements $(date +'%d %B %Y') - Gestion de la dépendance du cache des logos
+- `ensureLogoCache()` ajoutée à `js/utils.js` pour éviter une dépendance cyclique au moment de l'initialisation de `STATIC_LOGOS_RAW` qui bloquait l'appel à `normName()` exporté depuis `js/config.js`. `getLogo` effectue désormais un appel "lazy" vers ce cache pour sécuriser le retour des URLs.
