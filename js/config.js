@@ -2924,18 +2924,6 @@ export function openGlobalStatsFromMatch(mid) {
                         }
                     }
                 }
-            } else if (res.source === 'api-sports' && res.data.statistics) {
-                var sData = res.data.statistics;
-                if(sData.length === 2) {
-                    var sHome = sData[0].statistics;
-                    var sAway = sData[1].statistics;
-                    sHome.forEach(sh => {
-                        var sa = sAway.find(x => x.type === sh.type);
-                        if(sa && sh.value !== null && sa.value !== null) {
-                            stats.push({label: sh.type, h: sh.value, a: sa.value});
-                        }
-                    });
-                }
             }
 
             if(stats.length > 0) {

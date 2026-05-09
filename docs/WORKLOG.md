@@ -1,5 +1,9 @@
 
 
+### 08 May 2026 - Clean up unused API-Sports logic
+- **Fichiers touchés** : `js/api.js`, `js/multiview.js`, `js/config.js`, `SUIVI_FONCTIONS.md`, `README.md`
+- **Résumé** : Removed the unused `SPORT_MAP` definition from `js/api.js` and cleaned up the residual logic that still expected or checked `res.source === 'api-sports'` when formatting statistics in both `js/multiview.js` and `js/config.js`. Updated documentation files to remove mentions of API-Sports. All schedule and statistics are strictly sourced from the ESPN API.
+
 ### 08 May 2026 - Revert JAMstack architecture for schedule data
 - **Fichiers touchés** : `js/api.js`, `.github/workflows/update_schedule.yml`, `scripts/generate_schedule.js`, `AGENTS.md`, `docs/ARCHITECTURE.md`
 - **Résumé** : Reverted the JAMstack architecture that relied on a GitHub action generating a static `schedule.json` file. Schedule data is now fully fetched on the client side directly from the ESPN API, ensuring all schedule generation happens in the browser as requested by user.
