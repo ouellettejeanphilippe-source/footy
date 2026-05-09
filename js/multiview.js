@@ -570,7 +570,6 @@ export function showMatchSelector(event, replaceIdx) {
     var mvc = document.getElementById('mv-container');
     if (mvc && !mvc.classList.contains('mv-pip') && mvc.style.display !== 'none') {
         toggleMultiviewPip();
-
     }
 
     applyFilter('live');

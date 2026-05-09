@@ -2717,7 +2717,7 @@ export function getLogo(teamName) {
                      // Trigger a re-render or update elements if needed
                      var imgs = document.querySelectorAll('img[alt="'+esc(teamName)+'"], img.prime-logo, img.chan-logo');
                      imgs.forEach(function(img) {
-                         if (img.src && img.src.indexOf('ui-avatars') !== -1 && (img.alt === teamName || img.parentElement.textContent.trim() === teamName)) {
+                         if (img.src && img.src.indexOf('ui-avatars') !== -1 && (img.alt === teamName || (img.parentElement && img.parentElement.textContent.trim() === teamName))) {
                              img.src = url;
                          }
                      });

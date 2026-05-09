@@ -1,11 +1,3 @@
-### 09 May 2026 - Uniformisation des logos et retrait du noir dans les dégradés
-- **Fichiers touchés** : `index.html`, `js/ui.js`, `js/multiview.js`, `js/config.js`, `js/utils.js`
-- **Résumé** :
-  - La logique de cache des logos a été migrée de `localStorage` vers un stockage mémoire temporaire (`logoCache`).
-  - La fonction `getLogo` ne bloque plus le rendu initial et déclenche une requête asynchrone non-bloquante (`fetchAndCacheLogoDynamically`) pour mettre à jour les éléments de l'interface en temps réel.
-  - Ajout d'une option globale (checkbox `Retirer le noir`) dans les options permettant à l'utilisateur de générer des maillages ou des cartes d'arrière-plan exempts de couleur noire, basculant au besoin sur un dégradé simple ou l'opacité native des équipes.
-- **Problèmes résolus** : Empêche la surcharge du navigateur avec des centaines de chaînes Base64/URLs et évite le crash du client avec le localStorage overflow. Corrige l'aspect "trop sombre" que certains utilisateurs constataient sur les cartes de matchs.
-
 
 
 ### 08 May 2026 - Revert JAMstack architecture for schedule data
