@@ -69,6 +69,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 ## En cours
 
 ## Fait
+
+### 09 May 2026 - Bugfix: Application failing to load
+- **Fichiers touchés** : `js/api.js`
+- **Résumé** : Fixed a syntax error (missing closing brace) in `fetchGameStats` that caused an "Unexpected token 'export'" error, preventing the application from loading.
+- **Problèmes résolus** : Fixed the black/blank screen issue on application startup.
 - **Ajout ligues & Glow logos** :
   - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
   - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.

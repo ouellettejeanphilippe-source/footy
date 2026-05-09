@@ -533,6 +533,7 @@ export function fetchGameStats(matchId) {
         }).catch(function(e) {
             return Promise.reject(e);
         });
+    }
 
     return Promise.reject('Unsupported source');
 }
