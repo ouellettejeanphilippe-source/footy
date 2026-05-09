@@ -650,10 +650,20 @@ export var STATIC_LOGOS_RAW = {
 
 
 export var logoCache = {};
-if (typeof STATIC_LOGOS_RAW !== 'undefined') {
-    for (var k in STATIC_LOGOS_RAW) {
-        logoCache[normName(k)] = STATIC_LOGOS_RAW[k];
+var logoCacheInitialized = false;
+
+export function ensureLogoCache() {
+    if (logoCacheInitialized) return;
+    logoCacheInitialized = true;
+    if (typeof STATIC_LOGOS_RAW !== 'undefined') {
+        for (var k in STATIC_LOGOS_RAW) {
+            logoCache[normName(k)] = STATIC_LOGOS_RAW[k];
+        }
     }
+    try {
+        var stored = localStorage.getItem('sports_logos');
+        if(stored) Object.assign(logoCache, JSON.parse(stored));
+    } catch(e) {}
 }
 
 export function cacheLogo(teamName, url) {

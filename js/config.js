@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { cacheLogo, logoCache, escJs, esc, lg, pad } from './utils.js';
+import { cacheLogo, logoCache, ensureLogoCache, escJs, esc, lg, pad } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
 import { globalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings } from './api.js';
@@ -2702,6 +2702,7 @@ var pendingLogos = {};
 var failedLogos = {};
 
 export function getLogo(teamName) {
+    ensureLogoCache();
     if(!teamName) return null;
     var key = normName(teamName);
 
@@ -2745,6 +2746,7 @@ export function getLogo(teamName) {
 }
 
 export function fetchAndCacheLogoDynamically(teamName) {
+    ensureLogoCache();
     var key = normName(teamName);
     if(logoCache[key] && logoCache[key].indexOf('ui-avatars') === -1) return Promise.resolve(logoCache[key]);
 
