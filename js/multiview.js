@@ -2,7 +2,7 @@ import { S, favTeams, sourcesStatus, scrapeLogs } from './state.js';
 import { esc, showToast, escJs, applyFilter } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
-import { sortFluxLinks, getDomain, getEstTimeStrFromDate, normName, lgColor, getTeamColors, getLogo, lgFlag, openGlobalStatsFromMatch } from './config.js';
+import { sortFluxLinks, getDomain, openGlobalStatsFromMatch } from './config.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { loadAll } from './main.js';
 
@@ -560,187 +560,24 @@ export function showMatchSelector(event, replaceIdx) {
         event.preventDefault();
     }
 
-    var existing = document.getElementById('mv-match-selector');
-    if (existing) {
-        existing.remove();
-        return;
-    }
-
-    if (replaceIdx === undefined && mvFlux.length >= 9) {
-        showToast('Maximum 9 streams en Multivision.');
-        return;
-    }
-
     var isReplace = replaceIdx !== undefined;
 
-    var selector = document.createElement('div');
-    selector.id = 'mv-match-selector';
-    selector.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;';
+    window.multiviewPendingAction = {
+        type: isReplace ? 'replace' : 'add',
+        replaceIdx: replaceIdx
+    };
 
-    var header = document.createElement('div');
-    header.style.cssText = 'display:flex;align-items:center;padding:16px;background:rgba(20,20,20,0.95);border-bottom:1px solid rgba(255,255,255,0.1);position:sticky;top:0;z-index:10;';
+    var mvc = document.getElementById('mv-container');
+    if (mvc && !mvc.classList.contains('mv-pip') && mvc.style.display !== 'none') {
+        toggleMultiviewPip();
 
-    var closeBtn = document.createElement('button');
-    closeBtn.className = 'btn o';
-    closeBtn.innerHTML = '<span class="ic ic-close"></span>';
-    closeBtn.onclick = function() { selector.remove(); };
-    header.appendChild(closeBtn);
-
-    var title = document.createElement('div');
-    title.style.cssText = 'flex:1;text-align:center;font-weight:bold;font-size:18px;color:var(--text);';
-    title.textContent = isReplace ? 'Remplacer le stream' : 'Ajouter un match';
-    header.appendChild(title);
-
-    var spacer = document.createElement('div');
-    spacer.style.width = '40px';
-    header.appendChild(spacer);
-
-    selector.appendChild(header);
-
-    var scrollArea = document.createElement('div');
-    scrollArea.style.cssText = 'flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;';
-
-    var now = new Date();
-    var currentEst = getEstTimeStrFromDate(now);
-    var currentParts = currentEst.split(':');
-    var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
-
-    var availableMatches = S.matches.filter(function(m) {
-        if (!m.streamsLoaded || !m.streamLinks || m.streamLinks.length === 0) return false;
-
-        var isLiveOrSoon = m.status === 'live';
-        if(m.status === 'upcoming' && m.startTime) {
-            var mParts = m.startTime.split(':');
-            var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-            var diff = mMins - currentMins;
-            if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
-            if (diff <= 60 && diff > -1440) {
-                isLiveOrSoon = true;
-            }
-        }
-        return isLiveOrSoon;
-    });
-
-    availableMatches.sort(function(a, b) {
-        if (a.status === 'live' && b.status !== 'live') return -1;
-        if (a.status !== 'live' && b.status === 'live') return 1;
-        return a.startTime.localeCompare(b.startTime);
-    });
-
-    if (availableMatches.length === 0) {
-        var empty = document.createElement('div');
-        empty.style.cssText = 'padding:20px;text-align:center;color:var(--muted);font-size:14px;';
-        empty.innerHTML = 'Aucun flux disponible pour le moment.<br><br>Astuce: Ouvrez un match dans le guide TV pour charger ses streams.';
-        scrollArea.appendChild(empty);
-    } else {
-        var grid = document.createElement('div');
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px;';
-
-        availableMatches.forEach(function(m) {
-            var alreadyIn = mvFlux.some(function(s) { return String(s.mid) === String(m.id); });
-            if (alreadyIn && !isReplace) return;
-            if (alreadyIn && isReplace && String(mvFlux[replaceIdx].mid) === String(m.id)) return;
-
-            var b = document.createElement('div');
-            b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
-                  b.id = 'mb-'+m.id;
-
-            var homeTeamName = normName(m.homeTeam) || 'A';
-            var awayTeamName = normName(m.awayTeam) || 'B';
-            var homeColor = lgColor(homeTeamName);
-            var awayColor = lgColor(awayTeamName);
-            var lgCol = lgColor(m.league);
-
-            var tColorsH = getTeamColors(m.homeTeam);
-            var tColorsA = getTeamColors(m.awayTeam);
-            if (tColorsH) homeColor = tColorsH[0];
-            if (tColorsA) awayColor = tColorsA[0];
-
-            var cardBg = '';
-            if (userPrefs.cardColor === 'home') {
-                cardBg = homeColor;
-            } else if (userPrefs.cardColor === 'league') {
-                cardBg = lgCol;
-            } else if (userPrefs.cardColor === 'dark') {
-                cardBg = 'rgba(255,255,255,0.05)';
-            } else {
-                if (userPrefs.removeBlack) {
-                    cardBg = 'linear-gradient(105deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-                } else {
-                    cardBg = 'linear-gradient(105deg, ' + homeColor + ' 40%, rgba(0,0,0,0.5) 50%, ' + awayColor + ' 60%)';
-                }
-            }
-
-            var statusHtml = '';
-            if(m.status === 'live') {
-                statusHtml = '<div class="live-indicator"><span class="mb-ld"></span>'+(m.minute?esc(m.minute):'LIVE')+'</div>';
-            } else if(m.status === 'finished') {
-                statusHtml = '<div>Fin</div>';
-            } else {
-                statusHtml = '<div>'+m.startTime+'</div>';
-            }
-
-            var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
-            var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
-
-            var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
-            var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
-
-            var homeLogoHtmlPrime = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
-            var awayLogoHtmlPrime = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
-
-            var streamsBadgePrime = m.streamLinks && m.streamLinks.length>0 ? '<div class="prime-stream-count">'+m.streamLinks.length+' flux</div>' : '';
-            var lgBadge = '<div class="prime-league-badge">'+lgFlag(m.league)+'</div>';
-
-            var logosHtml = m.awayTeam ?
-                            '<div class="prime-logo-wrapper home">' + homeLogoHtmlPrime + '</div><div class="prime-logo-wrapper away">' + awayLogoHtmlPrime + '</div>' :
-                            '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
-
-            var teamsHtml = m.awayTeam ?
-                            '<div class="prime-team-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>' :
-                            '<div class="prime-team-name" style="text-align: center; justify-content: center;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>';
-
-            var scoresHtml = m.awayTeam ?
-                            '<div class="prime-score">'+homeScore+'</div><div class="prime-score">'+awayScore+'</div>' :
-                            '<div class="prime-score"></div>';
-
-            b.innerHTML = '<div class="prime-thumbnail" style="background:'+cardBg+';">'
-                        +   lgBadge
-                        +   streamsBadgePrime
-                        +   '<div class="prime-logos">'
-                        +     logosHtml
-                        +   '</div>'
-                        + '</div>'
-                        + '<div class="prime-info">'
-                        +   '<div class="prime-col-teams">'
-                        +     teamsHtml
-                        +   '</div>'
-                        +   '<div class="prime-col-scores">'
-                        +     scoresHtml
-                        +   '</div>'
-                        +   '<div class="prime-col-status">'
-                        +     statusHtml
-                        +   '</div>'
-                        + '</div>';
-
-            b.addEventListener('click', function(e) {
-                e.stopPropagation();
-                selector.remove();
-                window.multiviewPendingAction = {
-                    type: isReplace ? 'replace' : 'add',
-                    replaceIdx: replaceIdx
-                };
-                openMod(m, lgCol);
-            });
-            grid.appendChild(b);
-        });
-        scrollArea.appendChild(grid);
     }
 
-    selector.appendChild(scrollArea);
-    document.body.appendChild(selector);
-}
+    applyFilter('live');
 
+    // Show a toast to instruct the user
+    showToast(isReplace ? 'Sélectionnez un match en direct pour remplacer' : 'Sélectionnez un match en direct pour ajouter');
+}
 
 
 export function toggleMultiviewPip() {
@@ -1479,6 +1316,9 @@ export function clearMultivision() {
 export function hideMultivision() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
+
+    // Clear pending actions when closing multiview
+    window.multiviewPendingAction = null;
     if(!mvc || !epg) return;
 
     mvc.style.display = 'none';
@@ -1499,6 +1339,9 @@ export function hideMultivision() {
 export function toggleMultiview() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
+
+    // Clear pending actions when manually toggling multiview state
+    window.multiviewPendingAction = null;
     if(!mvc || !epg) return;
 
     if(mvc.style.display === 'none') {
@@ -1650,7 +1493,12 @@ export function openFlux(e, eu, en, mid){
       } else {
           addToMultivision(url, matchName, mid);
       }
+
+      window.multiviewPendingAction = null;
       closeMod();
+      if(document.getElementById('mv-container') && document.getElementById('mv-container').classList.contains('mv-pip')){
+          toggleMultiviewPip();
+      }
       return;
   }
 
@@ -2463,10 +2311,6 @@ export function openScriptPage() {
 }
 
 // Kept for backward compatibility if called elsewhere, though shouldn't be needed
-export function openOptions() { openOptionsPage(); }
-export function closeOptions() { /* no-op now */ }
-export function openLogs() { openLogsPage(); }
-export function closeLogs() { /* no-op now */ }
 
 
 
@@ -2598,8 +2442,4 @@ window.renderScrapeLogs = renderScrapeLogs;
 window.openOptionsPage = openOptionsPage;
 window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
-window.openOptions = openOptions;
-window.closeOptions = closeOptions;
-window.openLogs = openLogs;
-window.closeLogs = closeLogs;
 window.installTampermonkey = installTampermonkey;
