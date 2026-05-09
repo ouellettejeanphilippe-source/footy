@@ -79,14 +79,6 @@ export var SPORT_MAP = {
   'formula 1': { sport: 'formula-1', api: 'v1.formula-1.api-sports.io', leagueId: 1 }
 };
 
-export function getLeagueInfo(leagueName) {
-  var l = leagueName.toLowerCase();
-  for (var key in SPORT_MAP) {
-    if (l.indexOf(key) >= 0) return SPORT_MAP[key];
-  }
-  // Default to football if unknown, though it might fail
-  return { sport: 'football', api: 'v3.football.api-sports.io', leagueId: null };
-}
 
 
 export function filterBuggyMatches(matches) {
@@ -561,7 +553,6 @@ window.ESPN_LEAGUES = ESPN_LEAGUES;
 window.getEspnDateStr = getEspnDateStr;
 window.fetchEspnSchedule = fetchEspnSchedule;
 window.SPORT_MAP = SPORT_MAP;
-window.getLeagueInfo = getLeagueInfo;
 window.filterBuggyMatches = filterBuggyMatches;
 window.TARGET_DATE = TARGET_DATE;
 window.getApiFirstMatches = getApiFirstMatches;
