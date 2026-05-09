@@ -1,3 +1,8 @@
+### 09 May 2026 - Base de données des équipes et correction des couleurs
+- **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
+- **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
+- **Problèmes résolus** : La majorité des équipes qui n'avaient pas de couleurs définies (affichant un vert "aléatoire" par défaut ou se connectant à d'autres équipes sans rapport) affichent désormais correctement leurs couleurs (ex: Athletic Club, CF Montréal).
+
 
 
 ### 08 May 2026 - Revert JAMstack architecture for schedule data
@@ -70,6 +75,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 
+### 09 May 2026 - Base de données des équipes et correction des couleurs
+- **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
+- **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
+- **Problèmes résolus** : La majorité des équipes qui n'avaient pas de couleurs définies (affichant un vert "aléatoire" par défaut ou se connectant à d'autres équipes sans rapport) affichent désormais correctement leurs couleurs (ex: Athletic Club, CF Montréal).
+
+
 ### 09 May 2026 - Bugfix: Application failing to load
 - **Fichiers touchés** : `js/api.js`
 - **Résumé** : Fixed a syntax error (missing closing brace) in `fetchGameStats` that caused an "Unexpected token 'export'" error, preventing the application from loading.
@@ -101,6 +112,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+
+### 09 May 2026 - Base de données des équipes et correction des couleurs
+- **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
+- **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
+- **Problèmes résolus** : La majorité des équipes qui n'avaient pas de couleurs définies (affichant un vert "aléatoire" par défaut ou se connectant à d'autres équipes sans rapport) affichent désormais correctement leurs couleurs (ex: Athletic Club, CF Montréal).
+
 - **Ajout ligues & Glow logos** :
   - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
   - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
@@ -142,6 +159,12 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 
 ## Fait
+
+### 09 May 2026 - Base de données des équipes et correction des couleurs
+- **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
+- **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
+- **Problèmes résolus** : La majorité des équipes qui n'avaient pas de couleurs définies (affichant un vert "aléatoire" par défaut ou se connectant à d'autres équipes sans rapport) affichent désormais correctement leurs couleurs (ex: Athletic Club, CF Montréal).
+
 - **Ajout ligues & Glow logos** :
   - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
   - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
@@ -205,6 +228,12 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - Rien pour l'instant
 
 ## Fait
+
+### 09 May 2026 - Base de données des équipes et correction des couleurs
+- **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
+- **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
+- **Problèmes résolus** : La majorité des équipes qui n'avaient pas de couleurs définies (affichant un vert "aléatoire" par défaut ou se connectant à d'autres équipes sans rapport) affichent désormais correctement leurs couleurs (ex: Athletic Club, CF Montréal).
+
 - **Ajout ligues & Glow logos** :
   - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
   - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.
@@ -236,6 +265,12 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **PWA** : Améliorer `sw.js` (actuellement très basique avec uniquement un cache de base) pour implémenter une vraie stratégie de cache dynamique.
 
 ## Fait
+
+### 09 May 2026 - Base de données des équipes et correction des couleurs
+- **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
+- **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
+- **Problèmes résolus** : La majorité des équipes qui n'avaient pas de couleurs définies (affichant un vert "aléatoire" par défaut ou se connectant à d'autres équipes sans rapport) affichent désormais correctement leurs couleurs (ex: Athletic Club, CF Montréal).
+
 - **Ajout ligues & Glow logos** :
   - Restauration des équipes de TOUTES les ligues (Europa League, Serie A, etc.) supprimées par erreur.
   - Ajout des équipes de la CFL (Canadian Football League) dans `STATIC_TEAMS`, `TEAM_COLORS`, et `TEAM_ALIASES`.

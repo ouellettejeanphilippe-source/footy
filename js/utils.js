@@ -1,5 +1,6 @@
 import { S } from './state.js';
-import { PROXIES, normName, getLogo } from './config.js';
+import { PROXIES } from './config.js';
+import { normName, getLogo } from './db.js';
 import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
 import { userPrefs, buildEPG, scrollToNow } from './ui.js';
 import { openFavPage } from './main.js';

@@ -1,4 +1,5 @@
-import { getEstTimeStrFromDate, normName, lgColor, getTeamColors, getLogo, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks } from './config.js';
+import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks } from './config.js';
+import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague } from './utils.js';
 import { TARGET_DATE, fetchGameStats, renderScorersHtml } from './api.js';

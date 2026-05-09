@@ -1,5 +1,6 @@
 import { pad, lg, cacheLogo, getLeagueDuration, fetchPage, esc } from './utils.js';
-import { getEstTimeStrFromDate, getEstDateStrFromDate, formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './config.js';
+import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
+import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
 import { parsePWHLSchedule } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
