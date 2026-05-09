@@ -345,3 +345,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
   - Modification des parseurs (`parseStreameast`, `parseBuffstreams`, `parseOnHockey`, `parseSportsurge`, `parseFootybite`) pour que `matchUrl` pointe vers la page spécifique de l'événement plutôt que la constante de la page d'accueil du site.
   - Ajustement de `scrapeMatchFlux` pour détecter les liens de stream (boutons, hrefs) en s'assurant que les URLs relatives soient correctement converties en URLs absolues via `new URL()`.
 - **Problèmes résolus** : Empêche le scraper de s'arrêter à la page principale pour certains sites. `scrapeMatchFlux` se rend maintenant sur la bonne page intermédiaire ou de lecteur.
+
+### $(date +'%d %B %Y') - Correction de l'affichage des logos dans la section Favoris
+- **Fichiers touchés** : `js/config.js`, `js/utils.js`
+- **Résumé** : Résolution d'un problème de dépendance cyclique entre `utils.js` et `config.js` lors de l'initialisation du cache de logos. Ajout de la fonction `ensureLogoCache()` appelée paresseusement par `getLogo()` plutôt que d'exécuter l'initialisation de `STATIC_LOGOS_RAW` au moment de l'import, garantissant que `normName` est pleinement évaluée.
+- **Problèmes résolus** : Le logo des Blue Jays (et des autres équipes) s'affiche désormais correctement dans la vue "Favoris" et non plus uniquement dans la vue "Live" grâce à ce cache pleinement fonctionnel et synchronisé.

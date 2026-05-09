@@ -89,15 +89,15 @@ export function updateLiveScores(matches) {
 }
 
 export function loadAll(isBackground, forceScrape){
-  if (!isBackground)   if (typeof window.hasLoadedOnce === 'undefined')   if (typeof window.lastScrapeTime === 'undefined')   if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
+  if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
   setupMultivisionUI();
 
   var btn=document.getElementById('relBtn');if(btn) btn.disabled=true;
-  document.getElementById('errbox').classList.remove('show');
+  var errbox = document.getElementById('errbox'); if(errbox) errbox.classList.remove('show');
   if (!isBackground && !window.hasLoadedOnce) {
       var ovElement = document.getElementById('ov');
       var errBoxElement = document.getElementById('errbox');
-      document.getElementById('marea').innerHTML = ''; // Clear marea when initially loading
+      var marea2 = document.getElementById('marea'); if(marea2) marea2.innerHTML = '';
       if (ovElement) document.getElementById('marea').appendChild(ovElement); // Move ov to marea
       if (errBoxElement) document.getElementById('marea').appendChild(errBoxElement); // Move errbox to marea
       if (ovElement) ovElement.style.display='flex';
@@ -107,10 +107,10 @@ export function loadAll(isBackground, forceScrape){
         var ic=el.querySelector('.sic');ic.classList.remove('ok');
         ic.innerHTML='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
       });
-      document.getElementById('ovmsg').textContent='Connexion au Guide télé (API)...';
-      document.getElementById('s1').querySelector('span').textContent = 'Téléchargement Guide télé Officiel';
-      document.getElementById('s2').querySelector('span').textContent = 'Recherche de streams...';
-      document.getElementById('s3').querySelector('span').textContent = 'Fusion et Affichage';
+      var ovmsg = document.getElementById('ovmsg'); if(ovmsg) ovmsg.textContent='Connexion au Guide télé (API)...';
+      var s1 = document.getElementById('s1'); if(s1 && s1.querySelector('span')) s1.querySelector('span').textContent = 'Téléchargement Guide télé Officiel';
+      var s2 = document.getElementById('s2'); if(s2 && s2.querySelector('span')) s2.querySelector('span').textContent = 'Recherche de streams...';
+      var s3 = document.getElementById('s3'); if(s3 && s3.querySelector('span')) s3.querySelector('span').textContent = 'Fusion et Affichage';
   } else {
       showToast('Actualisation des matchs en arrière-plan...');
       // Ensure it is definitely hidden if we've already loaded once

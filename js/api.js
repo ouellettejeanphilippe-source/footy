@@ -4,7 +4,7 @@ import { isMatch, isMatchPair } from './match.js';
 import { parsePWHLSchedule } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 
-/* ══ ESPN API FALLBACK ════════════ */
+/* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 export var ESPN_LEAGUES = {
   'premier league': 'soccer/eng.1',
   'la liga': 'soccer/esp.1',
@@ -46,11 +46,6 @@ export function fetchEspnSchedule(leaguePath, dateStr) {
   return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(res) { return res.json(); }).catch(function(){ return null; });
 }
 
-
-
-export function filterBuggyMatches(matches) {
-    var today = new Date();
-    var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
 
     return matches.filter(function(m) {
         var lowerHome = m.homeTeam.toLowerCase();
@@ -500,10 +495,6 @@ export function fetchGameStats(matchId) {
 export function fetchTeamSchedule(leagueName, teamId) {
     var path = 'soccer/eng.1'; // fallback
     for (var k in ESPN_LEAGUES) {
-        if (k.toLowerCase() === leagueName.toLowerCase() || leagueName.toLowerCase().indexOf(k.toLowerCase()) > -1) {
-            path = ESPN_LEAGUES[k];
-            break;
-        }
     }
     var url = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId + '/schedule';
     return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
