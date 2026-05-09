@@ -264,11 +264,7 @@ export function buildEPG(matches){
                   } else if (userPrefs.cardColor === 'dark') {
                       cardBg = 'rgba(255,255,255,0.05)';
                   } else {
-                      if (userPrefs.removeBlack) {
-                          cardBg = 'linear-gradient(105deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-                      } else {
-                          cardBg = 'linear-gradient(105deg, ' + homeColor + ' 40%, rgba(0,0,0,0.5) 50%, ' + awayColor + ' 60%)';
-                      }
+                      cardBg = 'linear-gradient(105deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
                   }
 
                   var statusHtml = '';
@@ -505,11 +501,7 @@ export function buildEPG(matches){
             } else if (userPrefs.cardColor === 'league') {
                 b.style.background = lgCol;
             } else {
-                if (userPrefs.removeBlack) {
-                    b.style.background = 'linear-gradient(105deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-                } else {
-                    b.style.background = 'linear-gradient(105deg, ' + homeColor + ' 40%, rgba(0,0,0,0.5) 50%, ' + awayColor + ' 60%)';
-                }
+                b.style.background = 'linear-gradient(105deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
             }
 
             var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
