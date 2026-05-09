@@ -1558,6 +1558,8 @@ export function applyBgStyle() {
   bgModifier.style.webkitBackdropFilter = blurVal > 0 ? 'blur(' + (blurVal / 5) + 'px)' : 'none';
   bgModifier.style.backgroundColor = darkenVal > 0 ? 'rgba(0, 0, 0, ' + (darkenVal / 100) + ')' : 'transparent';
 
+  var fallbackBaseColor = userPrefs.removeBlack ? c1 : '#000';
+
   if (s === 'solid') {
     appBg.style.background = c1;
   } else if (s === 'gradient') {
@@ -1569,23 +1571,23 @@ export function applyBgStyle() {
     appBg.style.backgroundPosition = '0 0';
   } else if (s === 'mesh_flou_1') {
     appBg.style.background = 'radial-gradient(at 20% 20%, '+c1+' 0, transparent 40%), radial-gradient(at 80% 10%, '+c2+' 0, transparent 40%), radial-gradient(at 90% 80%, '+c3+' 0, transparent 50%), radial-gradient(at 10% 90%, '+c1+' 0, transparent 40%)';
-    appBg.style.backgroundColor = '#000';
+    appBg.style.backgroundColor = fallbackBaseColor;
   } else if (s === 'mesh_random') {
     var p1x = Math.floor(Math.random() * 100); var p1y = Math.floor(Math.random() * 100);
     var p2x = Math.floor(Math.random() * 100); var p2y = Math.floor(Math.random() * 100);
     var p3x = Math.floor(Math.random() * 100); var p3y = Math.floor(Math.random() * 100);
     var p4x = Math.floor(Math.random() * 100); var p4y = Math.floor(Math.random() * 100);
     appBg.style.background = 'radial-gradient(at '+p1x+'% '+p1y+'%, '+c1+' 0, transparent 50%), radial-gradient(at '+p2x+'% '+p2y+'%, '+c2+' 0, transparent 50%), radial-gradient(at '+p3x+'% '+p3y+'%, '+c3+' 0, transparent 50%), radial-gradient(at '+p4x+'% '+p4y+'%, '+c1+' 0, transparent 50%)';
-    appBg.style.backgroundColor = '#000';
+    appBg.style.backgroundColor = fallbackBaseColor;
   } else if (s === 'mesh_diagonal') {
     appBg.style.background = 'radial-gradient(at 0% 0%, '+c1+' 0, transparent 60%), radial-gradient(at 50% 50%, '+c2+' 0, transparent 60%), radial-gradient(at 100% 100%, '+c3+' 0, transparent 60%), radial-gradient(at 100% 0%, '+c2+' 0, transparent 50%)';
-    appBg.style.backgroundColor = '#000';
+    appBg.style.backgroundColor = fallbackBaseColor;
   } else if (s === 'mesh_center') {
     appBg.style.background = 'radial-gradient(at 50% 50%, '+c1+' 0, transparent 40%), radial-gradient(at 30% 70%, '+c2+' 0, transparent 50%), radial-gradient(at 70% 30%, '+c3+' 0, transparent 50%), radial-gradient(at 10% 10%, '+c1+' 0, transparent 20%)';
-    appBg.style.backgroundColor = '#000';
+    appBg.style.backgroundColor = fallbackBaseColor;
   } else if (s === 'mesh_corner') {
     appBg.style.background = 'radial-gradient(at 0% 0%, '+c1+' 0, transparent 30%), radial-gradient(at 100% 0%, '+c2+' 0, transparent 30%), radial-gradient(at 100% 100%, '+c3+' 0, transparent 30%), radial-gradient(at 0% 100%, '+c1+' 0, transparent 30%)';
-    appBg.style.backgroundColor = '#000';
+    appBg.style.backgroundColor = fallbackBaseColor;
   } else if (s === 'glow') {
     appBg.style.background = 'radial-gradient(circle at top left, '+c2+' 0%, transparent 40%), radial-gradient(circle at bottom right, '+c3+' 0%, transparent 40%), '+c1;
   } else if (s === 'aurora') {
@@ -1852,6 +1854,10 @@ export function initPrefs() {
       if(hexAccent) hexAccent.textContent = selAccentColor.value;
   }
   if(selOpacity) selOpacity.value = userPrefs.cardOpacity || 15;
+
+  var cbRemoveBlack = document.getElementById('pref-remove-black');
+  if(cbRemoveBlack) cbRemoveBlack.checked = !!userPrefs.removeBlack;
+
   var selHover = document.getElementById('pref-hover-style');
   if(selHover) selHover.value = userPrefs.hoverStyle || 'default';
   var selToggle = document.getElementById('pref-toggle-style');
@@ -1892,6 +1898,7 @@ export function applyUserPrefs() {
   var accentColorSel = document.getElementById('pref-accent-color');
   var opacSel = document.getElementById('pref-card-opacity');
   var effectsContainer = document.getElementById('pref-ui-effects-container');
+  var removeBlackCb = document.getElementById('pref-remove-black');
 
   if(themeSel) userPrefs.theme = themeSel.value;
   if(bgStyleSel) userPrefs.bgStyle = bgStyleSel.value;
@@ -1912,6 +1919,8 @@ export function applyUserPrefs() {
 
   var darkenSel = document.getElementById('pref-bg-darken');
   if(darkenSel) userPrefs.bgDarken = darkenSel.value;
+
+  if(removeBlackCb) userPrefs.removeBlack = removeBlackCb.checked;
 
   if(effectsContainer) {
       var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
