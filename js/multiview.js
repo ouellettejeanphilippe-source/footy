@@ -2289,10 +2289,6 @@ export function openScriptPage() {
 }
 
 // Kept for backward compatibility if called elsewhere, though shouldn't be needed
-export function openOptions() { openOptionsPage(); }
-export function closeOptions() { /* no-op now */ }
-export function openLogs() { openLogsPage(); }
-export function closeLogs() { /* no-op now */ }
 
 
 
@@ -2424,8 +2420,4 @@ window.renderScrapeLogs = renderScrapeLogs;
 window.openOptionsPage = openOptionsPage;
 window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
-window.openOptions = openOptions;
-window.closeOptions = closeOptions;
-window.openLogs = openLogs;
-window.closeLogs = closeLogs;
 window.installTampermonkey = installTampermonkey;

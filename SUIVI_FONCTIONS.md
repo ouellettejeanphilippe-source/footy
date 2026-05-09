@@ -20,8 +20,6 @@ Ces fonctions ont été trouvées dans le code mais n'étaient pas documentées 
 * `cacheLogo`
 * `clearMultivision`
 * `closeListener`
-* `closeLogs`
-* `closeOptions`
 * `closePinnedStats`
 * `fallbackToIframe`
 * `fetchAndCacheLogoDynamically`
@@ -58,10 +56,8 @@ Ces fonctions ont été trouvées dans le code mais n'étaient pas documentées 
 * `openFlux`
 * `openGlobalStats`
 * `openGlobalStatsFromMatch`
-* `openLogs`
 * `openLogsPage`
 * `openMultiviewTab`
-* `openOptions`
 * `openOptionsPage`
 * `openPinnedStats`
 * `openScriptPage`
@@ -115,6 +111,11 @@ Ces fonctions ont été trouvées dans le code mais n'étaient pas documentées 
 
 ### Fonctions obsolètes ou renommées (supprimées du code)
 Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel :
+* `getLeagueInfo`
+* `openOptions`
+* `openLogs`
+* `closeOptions`
+* `closeLogs`
 * `closePlayer`
 * `mergeStreamsToApi`
 * `openStream`
@@ -233,26 +234,12 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelée par :** *(Événement DOM, callback externe, ou Script global)*
 
-### `closeLogs`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** *(Aucune fonction interne)*
-
-**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
-
 ### `closeMod`
 **Description:** Ferme la modale.
 
 **Appelle :** *(Aucune fonction interne)*
 
 **Appelée par :** `openMod`, `openFlux`
-
-### `closeOptions`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** *(Aucune fonction interne)*
-
-**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
 
 ### `closePinnedStats`
 **Description:** *(Nouvelle fonction non documentée)*
@@ -611,19 +598,12 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelée par :** `openGlobalStatsFromMatch`
 
-### `openLogs`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** `openLogsPage`
-
-**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
-
 ### `openLogsPage`
 **Description:** *(Nouvelle fonction non documentée)*
 
 **Appelle :** `renderScrapeLogs`
 
-**Appelée par :** `applyFilter`, `openLogs`
+**Appelée par :** `applyFilter`
 
 ### `openMod`
 **Description:** Ouvre la modale listant les flux disponibles pour un match. Lance le moissonnage si non fait.
@@ -639,19 +619,12 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelée par :** *(Événement DOM, callback externe, ou Script global)*
 
-### `openOptions`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** `openOptionsPage`
-
-**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
-
 ### `openOptionsPage`
 **Description:** *(Nouvelle fonction non documentée)*
 
 **Appelle :** `buildSwatches`, `initPrefs`
 
-**Appelée par :** `applyFilter`, `openOptions`
+**Appelée par :** `applyFilter`
 
 ### `openPinnedStats`
 **Description:** *(Nouvelle fonction non documentée)*
