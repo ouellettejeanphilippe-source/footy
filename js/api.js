@@ -4,7 +4,7 @@ import { isMatch, isMatchPair } from './match.js';
 import { parsePWHLSchedule } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 
-/* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
+/* ══ ESPN API FALLBACK ════════════ */
 export var ESPN_LEAGUES = {
   'premier league': 'soccer/eng.1',
   'la liga': 'soccer/esp.1',
@@ -46,7 +46,6 @@ export function fetchEspnSchedule(leaguePath, dateStr) {
   return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(res) { return res.json(); }).catch(function(){ return null; });
 }
 
-/* ══ API-SPORTS INTEGRATION ════════════ */
 
 
 export function filterBuggyMatches(matches) {
