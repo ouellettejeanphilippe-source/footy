@@ -2697,10 +2697,41 @@ export function formatLeagueName(league) {
 export var _normCache = {};
 
 
+// Global to track which logos we're already fetching
+var pendingLogos = {};
+var failedLogos = {};
+
 export function getLogo(teamName) {
     if(!teamName) return null;
     var key = normName(teamName);
-    if (logoCache[key]) return logoCache[key];
+
+    // Asynchronously fetch logo if it is missing or is just a fallback, without blocking render
+    if (!logoCache[key] || logoCache[key].indexOf('ui-avatars') !== -1) {
+        // Only trigger fetch if we haven't already marked it as pending or failed
+        if (!pendingLogos[key] && !failedLogos[key]) {
+             pendingLogos[key] = true;
+             fetchAndCacheLogoDynamically(teamName).then(function(url) {
+                 delete pendingLogos[key];
+                 if(url && url.indexOf('ui-avatars') === -1) {
+                     logoCache[key] = url;
+                     // Trigger a re-render or update elements if needed
+                     var imgs = document.querySelectorAll('img[alt="'+esc(teamName)+'"], img.prime-logo, img.chan-logo');
+                     imgs.forEach(function(img) {
+                         if (img.src && img.src.indexOf('ui-avatars') !== -1 && (img.alt === teamName || (img.parentElement && img.parentElement.textContent.trim() === teamName))) {
+                             img.src = url;
+                         }
+                     });
+                 } else {
+                     failedLogos[key] = true;
+                 }
+             }).catch(e=>{
+                 delete pendingLogos[key];
+                 failedLogos[key] = true;
+             });
+        }
+    }
+
+    if (logoCache[key] && logoCache[key].indexOf('ui-avatars') === -1) return logoCache[key];
 
     var colors = getTeamColors(teamName);
     var bg = colors[0].replace('#', '');
@@ -2708,7 +2739,8 @@ export function getLogo(teamName) {
     var fg = colors[1].replace('#', '');
     if (fg.startsWith('hsl')) fg = 'ffffff';
 
-    // UI Avatars as ultimate fallback
+    // Return UI Avatars as fallback temporarily until dynamically fetched
+    // Do not save it permanently to cache so it keeps trying until failedLogos is hit
     return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(teamName) + '&background=' + bg + '&color=' + fg + '&size=200&font-size=0.4';
 }
 
@@ -2726,9 +2758,9 @@ export function fetchAndCacheLogoDynamically(teamName) {
                 return badge;
             }
         }
-        return getLogo(teamName);
+        return null;
     }).catch(e => {
-        return getLogo(teamName);
+        return null;
     });
 }
 

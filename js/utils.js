@@ -655,19 +655,12 @@ if (typeof STATIC_LOGOS_RAW !== 'undefined') {
         logoCache[normName(k)] = STATIC_LOGOS_RAW[k];
     }
 }
-try {
-    var stored = localStorage.getItem('sports_logos');
-    if(stored) Object.assign(logoCache, JSON.parse(stored));
-} catch(e) {}
 
 export function cacheLogo(teamName, url) {
     if(!teamName || !url) return;
     var key = normName(teamName);
     if(logoCache[key] !== url) {
         logoCache[key] = url;
-        try {
-            localStorage.setItem('sports_logos', JSON.stringify(logoCache));
-        } catch(e) {}
     }
 }
 
