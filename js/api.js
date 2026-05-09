@@ -530,6 +530,22 @@ export function fetchGameStats(matchId) {
     return Promise.reject('Unsupported source');
 }
 
+export function fetchTeamSchedule(leagueName, teamId) {
+    var path = 'soccer/eng.1'; // fallback
+    for (var k in ESPN_LEAGUES) {
+        if (k.toLowerCase() === leagueName.toLowerCase() || leagueName.toLowerCase().indexOf(k.toLowerCase()) > -1) {
+            path = ESPN_LEAGUES[k];
+            break;
+        }
+    }
+    var url = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId + '/schedule';
+    return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
+        return { source: 'espn', data: data };
+    }).catch(function(e) {
+        return Promise.reject(e);
+    });
+}
+
 export function fetchLeagueStandings(leagueName) {
     var path = 'soccer/eng.1'; // fallback
     for (var k in ESPN_LEAGUES) {
@@ -561,3 +577,4 @@ window.formatStatLabel = formatStatLabel;
 window.renderScorersHtml = renderScorersHtml;
 window.fetchGameStats = fetchGameStats;
 window.fetchLeagueStandings = fetchLeagueStandings;
+window.fetchTeamSchedule = fetchTeamSchedule;

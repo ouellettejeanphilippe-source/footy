@@ -2975,61 +2975,39 @@ export function fetchTeamStats(teamName) {
     html += '</div>';
     html += '</div>';
 
-    // Calendrier d'aujourd'hui
+    // Calendrier à venir
     html += '<div>';
-    html += '<h4 style="color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📅 Matchs (Aujourd\'hui)</h4>';
-
-    if (teamMatches.length > 0) {
-        teamMatches.forEach(function(m) {
-            html += '<div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background 0.2s;" onmouseenter="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseleave="this.style.background=\'rgba(255,255,255,0.03)\'" onclick="openMod(S.matches.find(x=>x.id===\''+escJs(m.id)+'\'))">';
-
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-            html += '<span style="font-size:11px;color:var(--muted);font-weight:bold;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">'+esc(m.startTime)+'</span>';
-            if (m.status === 'live') {
-                html += '<span style="color:var(--red);font-size:11px;font-weight:bold;background:rgba(255,69,58,0.1);padding:2px 6px;border-radius:4px;">🔴 '+(m.minute?esc(m.minute)+'\'' : 'En Direct')+'</span>';
-            } else if (m.status === 'finished') {
-                html += '<span style="color:var(--muted);font-size:11px;font-weight:bold;background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;">Terminé</span>';
-            }
-            html += '</div>';
-
-            html += '<div style="display:flex;align-items:center;gap:8px;">';
-            var isHome = normName(m.homeTeam) === normName(teamName);
-            var opponent = isHome ? m.awayTeam : m.homeTeam;
-            var oppLogo = getLogo(opponent);
-
-            html += '<div style="flex:1;">';
-            html += '<div style="font-size:12px;color:var(--muted);">'+(isHome ? 'vs (Domicile)' : '@ (Extérieur)')+'</div>';
-            html += '<div style="font-size:15px;font-weight:bold;color:#fff;display:flex;align-items:center;gap:8px;">';
-            if(oppLogo) html += '<img src="'+esc(oppLogo)+'" style="width:20px;height:20px;object-fit:contain;">';
-            html += esc(opponent)+'</div>';
-            html += '</div>';
-
-            if(m.score) {
-                var teamScore = isHome ? m.score[0] : m.score[1];
-                var oppScore = isHome ? m.score[1] : m.score[0];
-                var resColor = teamScore > oppScore ? 'var(--accent-green)' : (teamScore < oppScore ? 'var(--red)' : 'var(--muted)');
-                html += '<div style="font-size:20px;font-weight:800;color:'+resColor+';background:rgba(0,0,0,0.4);padding:4px 12px;border-radius:8px;">'+m.score[0]+' - '+m.score[1]+'</div>';
-            }
-
-            html += '</div>';
-            html += '</div>';
-        });
-    } else {
-        html += '<div style="color:var(--muted);font-size:13px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;text-align:center;">Aucun match prévu aujourd\'hui.</div>';
-    }
+    html += '<h4 style="color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📅 Matchs à venir</h4>';
+    html += '<div id="gstats-upcoming" style="color:var(--muted);font-size:13px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;text-align:center;">Recherche des matchs à venir...</div>';
     html += '</div>';
 
     // Placeholder pour Standings / Last 5
-    if (teamMatches.length > 0 && teamMatches[0].league) {
-        var lg = teamMatches[0].league;
+    var lg = teamMatches.length > 0 ? teamMatches[0].league : '';
+    // Try to find league from team name if teamMatches is empty
+    if (!lg) {
+        for (var k in STATIC_TEAMS) {
+            var teams = STATIC_TEAMS[k];
+            for (var t in teams) {
+                if (normName(teams[t]) === normName(teamName)) {
+                    lg = k;
+                    break;
+                }
+            }
+            if (lg) break;
+        }
+    }
+
+    if (lg) {
         html += '<div>';
         html += '<h4 style="color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🏆 Classement '+esc(lg)+'</h4>';
         html += '<div id="gstats-standings" style="background:rgba(255,255,255,0.02);padding:16px;border-radius:12px;font-size:13px;color:var(--muted);text-align:center;">Recherche des classements...</div>';
         html += '</div>';
 
-        // Async fetch standings
+        // Async fetch standings and upcoming matches
         fetchLeagueStandings(lg).then(function(res) {
             var stDiv = document.getElementById('gstats-standings');
+            var foundTeamId = null;
+
             if(stDiv) {
                 if(res.source === 'espn' && res.data && res.data.children && res.data.children[0].standings) {
                     var sData = res.data.children[0].standings.entries;
@@ -3038,8 +3016,11 @@ export function fetchTeamStats(teamName) {
 
                     var teamFound = false;
                     sData.forEach(function(row, idx) {
-                        var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName));
-                        if(isTeam) teamFound = true;
+                        var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
+                        if(isTeam) {
+                            teamFound = true;
+                            foundTeamId = row.team.id;
+                        }
 
                         // Show top 3 + the team itself (+ surrounding)
                         if(idx < 3 || isTeam) {
@@ -3061,10 +3042,90 @@ export function fetchTeamStats(teamName) {
                     stDiv.innerHTML = 'Données de classement non disponibles via ESPN pour cette ligue.';
                 }
             }
+
+            // Fetch upcoming schedule if team ID is found
+            var upcDiv = document.getElementById('gstats-upcoming');
+            if(foundTeamId && upcDiv) {
+                fetchTeamSchedule(lg, foundTeamId).then(function(schedRes) {
+                    if(schedRes.source === 'espn' && schedRes.data && schedRes.data.events) {
+                        var events = schedRes.data.events;
+                        // Filter events from today onwards
+                        var now = new Date();
+                        now.setHours(0,0,0,0);
+                        var futureEvents = events.filter(function(e) {
+                            var eDate = new Date(e.date);
+                            return eDate >= now;
+                        }).slice(0, 5); // take next 5
+
+                        if(futureEvents.length > 0) {
+                            var uHtml = '';
+                            futureEvents.forEach(function(ev) {
+                                var comp = ev.competitions[0];
+                                var hComp = comp.competitors.find(function(c){return c.homeAway==='home';});
+                                var aComp = comp.competitors.find(function(c){return c.homeAway==='away';});
+
+                                var dateObj = new Date(ev.date);
+                                var timeStr = getEstTimeStrFromDate(dateObj);
+                                var dateStr = getEstDateStrFromDate(dateObj); // YYYY-MM-DD
+
+                                var isHome = hComp.team.id === foundTeamId || (hComp.team.id === undefined && normName(hComp.team.name) === normName(teamName));
+                                var oppComp = isHome ? aComp : hComp;
+                                var opponentName = oppComp.team ? (oppComp.team.displayName || oppComp.team.name || 'TBD') : 'TBD';
+                                var oppLogo = oppComp.team && oppComp.team.logos && oppComp.team.logos.length > 0 ? oppComp.team.logos[0].href : getLogo(opponentName);
+
+                                uHtml += '<div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);">';
+                                uHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+                                uHtml += '<span style="font-size:11px;color:var(--muted);font-weight:bold;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">'+esc(dateStr)+' ' + esc(timeStr)+'</span>';
+                                if (ev.status.type.state === 'in') {
+                                    uHtml += '<span style="color:var(--red);font-size:11px;font-weight:bold;background:rgba(255,69,58,0.1);padding:2px 6px;border-radius:4px;">🔴 En Direct</span>';
+                                }
+                                uHtml += '</div>';
+
+                                uHtml += '<div style="display:flex;align-items:center;gap:8px;">';
+                                uHtml += '<div style="flex:1;">';
+                                uHtml += '<div style="font-size:12px;color:var(--muted);">'+(isHome ? 'vs (Domicile)' : '@ (Extérieur)')+'</div>';
+                                uHtml += '<div style="font-size:15px;font-weight:bold;color:#fff;display:flex;align-items:center;gap:8px;">';
+                                if(oppLogo) uHtml += '<img src="'+esc(oppLogo)+'" style="width:20px;height:20px;object-fit:contain;background:#fff;border-radius:50%;padding:2px;">';
+                                uHtml += esc(opponentName)+'</div>';
+                                uHtml += '</div>';
+
+                                if(ev.status.type.state !== 'pre') {
+                                    var hScore = hComp.score ? hComp.score.displayValue : '0';
+                                    var aScore = aComp.score ? aComp.score.displayValue : '0';
+                                    var tScore = isHome ? parseInt(hScore) : parseInt(aScore);
+                                    var oScore = isHome ? parseInt(aScore) : parseInt(hScore);
+                                    var resColor = tScore > oScore ? 'var(--accent-green)' : (tScore < oScore ? 'var(--red)' : 'var(--muted)');
+                                    uHtml += '<div style="font-size:20px;font-weight:800;color:'+resColor+';background:rgba(0,0,0,0.4);padding:4px 12px;border-radius:8px;">'+hScore+' - '+aScore+'</div>';
+                                }
+
+                                uHtml += '</div></div>';
+                            });
+                            upcDiv.innerHTML = uHtml;
+                            upcDiv.style.background = 'transparent';
+                            upcDiv.style.padding = '0';
+                        } else {
+                            upcDiv.innerHTML = 'Aucun match prévu trouvé dans le calendrier.';
+                        }
+                    } else {
+                        upcDiv.innerHTML = 'Calendrier non disponible.';
+                    }
+                }).catch(function() {
+                    upcDiv.innerHTML = 'Erreur de récupération du calendrier.';
+                });
+            } else if (upcDiv) {
+                 upcDiv.innerHTML = 'Impossible de lier l\'équipe pour le calendrier.';
+            }
+
         }).catch(function(e){
             var stDiv = document.getElementById('gstats-standings');
             if(stDiv) stDiv.innerHTML = 'Erreur de récupération du classement.';
+            var upcDiv = document.getElementById('gstats-upcoming');
+            if(upcDiv) upcDiv.innerHTML = 'Erreur lors de l\'initialisation.';
         });
+    } else {
+        // Hide upcoming if no league
+        var upcDiv = document.getElementById('gstats-upcoming');
+        if(upcDiv) upcDiv.innerHTML = 'Ligue introuvable pour afficher le calendrier.';
     }
 
     html += '</div>';
