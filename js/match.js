@@ -1,5 +1,5 @@
 import { cacheLogo } from './utils.js';
-import { normName } from './config.js';
+import { normName } from './db.js';
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
 export function mergeMatches(mainList, newList) {
