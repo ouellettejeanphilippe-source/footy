@@ -389,3 +389,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `js/config.js`, `js/utils.js`
 - **Résumé** : Résolution d'un problème de dépendance cyclique entre `utils.js` et `config.js` lors de l'initialisation du cache de logos. Ajout de la fonction `ensureLogoCache()` appelée paresseusement par `getLogo()` plutôt que d'exécuter l'initialisation de `STATIC_LOGOS_RAW` au moment de l'import, garantissant que `normName` est pleinement évaluée.
 - **Problèmes résolus** : Le logo des Blue Jays (et des autres équipes) s'affiche désormais correctement dans la vue "Favoris" et non plus uniquement dans la vue "Live" grâce à ce cache pleinement fonctionnel et synchronisé.
+
+### $(date +'%d %B %Y') - Optimisation de la performance de l'interface utilisateur pendant le scraping
+- **Fichiers touchés** : `js/scrapers.js`
+- **Résumé** : Modification de la logique de `scrapeMatchFlux` pour utiliser une Promise avec `setTimeout(..., 0)` enveloppant le code lourd de parsing DOM (`new DOMParser()`, `querySelectorAll()`). Cela permet au thread principal de respirer et évite de bloquer (freezing) l'interface utilisateur lors de l'arrivée simultanée de multiples requêtes de streams. Ajout de `try/catch` pour ne pas perdre les erreurs de parsing.
+- **Problèmes résolus** : Résout les fréquents ralentissements, freezes de scroll, et blocages de rendu UI causés par l'accumulation de microtâches synchrones lors de la récupération des streams de dizaines de matchs en arrière-plan.
