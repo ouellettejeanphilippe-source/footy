@@ -995,8 +995,7 @@ export function updateMultivisionLayout() {
             cell.setAttribute('data-internal-id', cellId);
             cell.classList.add('mv-cell');
             cell.dataset.index = idx;
-            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:grab;overflow:hidden;resize:both;';
-            cell.draggable = true;
+            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:default;overflow:hidden;resize:both;';
 
             var hdr = document.createElement('div');
             hdr.className = 'mv-hdr';
@@ -1194,6 +1193,7 @@ export function updateMultivisionLayout() {
         };
         cell.ondragend = function(e) {
             cell.style.opacity = '1';
+            cell.draggable = false;
         };
         cell.ondragover = function(e) {
             e.preventDefault();
@@ -1225,7 +1225,10 @@ export function updateMultivisionLayout() {
         hdr.onmouseleave = function() { this.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)'; };
 
         var domain = s.url ? getDomain(s.url) : 'Flux';
+        var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
+
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
+            '<div class="mv-drag-handle" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" onmouseup="this.closest(\'.mv-cell\').draggable=false;" onmouseleave="this.closest(\'.mv-cell\').draggable=false;" title="Déplacer">' + svgDrag + '</div>' +
             '<span style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);padding:4px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);">' + esc(domain) + '</span>' +
             '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;text-shadow:0 1px 2px #000;color:rgba(255,255,255,0.8);" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
             '</div>';
