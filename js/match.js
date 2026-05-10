@@ -1,4 +1,3 @@
-import { cacheLogo } from './utils.js';
 import { normName } from './db.js';
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
@@ -24,11 +23,9 @@ export function mergeMatches(mainList, newList) {
         // Update logos if the new source has them and we don't
         if(!mm.homeLogo && nm.homeLogo && nm.homeLogo.indexOf('default') === -1) {
             mm.homeLogo = nm.homeLogo;
-            cacheLogo(mm.homeTeam, nm.homeLogo);
         }
         if(!mm.awayLogo && nm.awayLogo && nm.awayLogo.indexOf('default') === -1) {
             mm.awayLogo = nm.awayLogo;
-            cacheLogo(mm.awayTeam, nm.awayLogo);
         }
 
         // Status resolution: if one says live and other says upcoming, prioritize live

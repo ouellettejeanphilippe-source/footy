@@ -1,4 +1,4 @@
-import { pad, getLeagueDuration, lg, cacheLogo, fetchPage } from './utils.js';
+import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
 import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, SITE, sortFluxLinks } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
@@ -191,9 +191,6 @@ export function parsePWHLSchedule(html) {
 
                               var homeLogo = g.home_team.home_team_logo && g.home_team.home_team_logo.length > 0 ? g.home_team.home_team_logo[0].secure_url : null;
                               var awayLogo = g.visiting_team.visiting_team_logo && g.visiting_team.visiting_team_logo.length > 0 ? g.visiting_team.visiting_team_logo[0].secure_url : null;
-
-                              if (homeLogo) cacheLogo(home, homeLogo);
-                              if (awayLogo) cacheLogo(away, awayLogo);
 
                               var m = {
                                   id: 'pwhl_' + g.game_id,
@@ -560,7 +557,7 @@ export function extractFootybiteLogos(doc) {
         if(!box) return;
         var img = box.querySelector('img.img-icone');
         if(img && img.getAttribute('src') && img.getAttribute('src').indexOf('http') === 0 && img.getAttribute('src').indexOf('default') < 0) {
-            cacheLogo(teamName, img.getAttribute('src'));
+            // Logos are no longer cached
         }
     });
 }

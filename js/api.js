@@ -1,4 +1,4 @@
-import { pad, lg, cacheLogo, getLeagueDuration, fetchPage, esc } from './utils.js';
+import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
