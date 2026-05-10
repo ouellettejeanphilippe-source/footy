@@ -704,8 +704,8 @@ export function renderFluxItem(s, i, m) {
 export function openMod(m,col){
   document.getElementById('mdot').style.background=col||'#888';
 
-  var hLogo = getLogo(m.homeTeam);
-  var aLogo = getLogo(m.awayTeam);
+  var hLogo = m.homeLogo || getLogo(m.homeTeam);
+  var aLogo = m.awayLogo || getLogo(m.awayTeam);
   var mnameHtml = '';
 
   mnameHtml += '<div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
