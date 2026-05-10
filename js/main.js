@@ -186,59 +186,43 @@ export function loadAll(isBackground, forceScrape){
 
           var scrapedMatches = [];
 
-          if(results[0].status === 'fulfilled' && results[0].value) {
-              S.raw = results[0].value;
-              var fbMatches = parseFootybite(results[0].value);
-              updateSourceStatus(new URL(SITE).hostname, 'success', fbMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, fbMatches);
-          }
-          if(results[1].status === 'fulfilled' && results[1].value) {
-              var nflMatches = parseNflbite(results[1].value);
-              updateSourceStatus(new URL(MLBITE_URL).hostname, 'success', nflMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, nflMatches);
-          }
-          if(results[2].status === 'fulfilled' && results[2].value) {
-              var surgeMatches = parseSportsurge(results[2].value);
-              updateSourceStatus(new URL(SPORTSURGE_URL).hostname, 'success', surgeMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, surgeMatches);
-          }
-          if(results[3].status === 'fulfilled' && results[3].value) {
-              var bsMatches = parseBuffstreams(results[3].value);
-              updateSourceStatus(new URL(BUFFSTREAMS_URL).hostname, 'success', bsMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, bsMatches);
-          }
-          if(results[4].status === 'fulfilled' && results[4].value) {
-              var seMatches = parseStreameast(results[4].value);
-              updateSourceStatus(new URL(STREAMEAST_URL).hostname, 'success', seMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, seMatches);
-          }
-          if(results[5].status === 'fulfilled' && results[5].value) {
-              var ohMatches = parseOnHockey(results[5].value);
-              updateSourceStatus(new URL(ONHOCKEY_URL).hostname, 'success', ohMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, ohMatches);
-          }
-          if(results[6].status === 'fulfilled' && results[6].value) {
-              var mlbbMatches = parseMlbbite(results[6].value);
-              updateSourceStatus(new URL(MLBBITE_PLUS_URL).hostname, 'success', mlbbMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, mlbbMatches);
-          }
-          if(results[7] && results[7].status === 'fulfilled' && results[7].value) {
-              var vipMatches = parseVipleague(results[7].value);
-              updateSourceStatus(new URL(VIPLEAGUE_URL).hostname, 'success', vipMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, vipMatches);
-          }
-          if(results[8] && results[8].status === 'fulfilled' && results[8].value) {
-              var methMatches = parseMethstreams(results[8].value);
-              updateSourceStatus(new URL(METHSTREAMS_URL).hostname, 'success', methMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, methMatches);
-          }
-          if(results[9] && results[9].status === 'fulfilled' && results[9].value) {
-              var totMatches = parseTotalsportek(results[9].value);
-              updateSourceStatus(new URL(TOTALSPORTEK_URL).hostname, 'success', totMatches.length, 'OK');
-              scrapedMatches = mergeMatches(scrapedMatches, totMatches);
-          }
+          var tasks = [
+              { fn: parseFootybite, url: SITE, setRaw: true },
+              { fn: parseNflbite, url: MLBITE_URL },
+              { fn: parseSportsurge, url: SPORTSURGE_URL },
+              { fn: parseBuffstreams, url: BUFFSTREAMS_URL },
+              { fn: parseStreameast, url: STREAMEAST_URL },
+              { fn: parseOnHockey, url: ONHOCKEY_URL },
+              { fn: parseMlbbite, url: MLBBITE_PLUS_URL },
+              { fn: parseVipleague, url: VIPLEAGUE_URL },
+              { fn: parseMethstreams, url: METHSTREAMS_URL },
+              { fn: parseTotalsportek, url: TOTALSPORTEK_URL }
+          ];
 
-          var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
+          var p = Promise.resolve();
+
+          tasks.forEach(function(task, idx) {
+              p = p.then(function() {
+                  return new Promise(function(resolve) {
+                      setTimeout(function() {
+                          if (results[idx] && results[idx].status === 'fulfilled' && results[idx].value) {
+                              if (task.setRaw) S.raw = results[idx].value;
+                              try {
+                                  var m = task.fn(results[idx].value);
+                                  updateSourceStatus(new URL(task.url).hostname, 'success', m.length, 'OK');
+                                  scrapedMatches = mergeMatches(scrapedMatches, m);
+                              } catch(e) {
+                                  console.error('Error parsing ' + task.url, e);
+                              }
+                          }
+                          resolve();
+                      }, 0);
+                  });
+              });
+          });
+
+          return p.then(function() {
+              var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
 
           window.lastScrapeTime = Date.now();
           window.lastScrapedMatches = scrapedMatches;
@@ -296,16 +280,30 @@ export function loadAll(isBackground, forceScrape){
           setTimeout(function() {
               if (isBackground && window.hasLoadedOnce) {
                   updateLiveScores(S.matches);
-                  S.matches.forEach(function(m) {
-                      updateMatchUiAfterScrape(m);
-                  });
+
+                  // Process UI updates asynchronously in chunks to prevent blocking the UI thread
+                  var i = 0;
+                  function processChunk() {
+                      var chunkEnd = Math.min(i + 20, S.matches.length);
+                      for (; i < chunkEnd; i++) {
+                          updateMatchUiAfterScrape(S.matches[i]);
+                      }
+                      if (i < S.matches.length) {
+                          setTimeout(processChunk, 0);
+                      } else {
+                          fetchSubPages(S.matches);
+                      }
+                  }
+                  processChunk();
+
               } else {
                   buildEPG(S.matches);
+                  fetchSubPages(S.matches);
               }
-              fetchSubPages(S.matches);
                         }, 0);
           var live=S.matches.filter(function(m){return m.status==='live';}).length;
           showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
+          });
       });
   }).catch(function(err){
       if (err === 'SKIP_SCRAPING_SUCCESS') return; // Smooth update finished, no errors to show
