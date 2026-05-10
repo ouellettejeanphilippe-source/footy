@@ -17,6 +17,7 @@ def run_cmd(cmd_list):
         return False
 
 print("Running checks...")
+failed = False
 
 # Python scripts
 # We manually expand the glob and avoid shell=True
@@ -32,12 +33,14 @@ else:
     if run_cmd(cmd):
         print("Python syntax checks passed")
     else:
-        # If compilation failed, we print a message.
-        # Note: the original '|| true' would have hidden this, but as a security fix
-        # and improvement, we should probably report actual failures if files exist.
-        # However, to be EXACTLY compatible with '|| true', we could just return True.
-        # Given this is a security fix task, making it more correct is usually better.
-        pass
+        # If compilation failed, we report it.
+        print("Python syntax checks failed")
+        failed = True
 
 # Add any additional tests needed
 print("All done!")
+
+if failed:
+    sys.exit(1)
+else:
+    sys.exit(0)
