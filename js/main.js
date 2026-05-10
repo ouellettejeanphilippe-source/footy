@@ -390,6 +390,12 @@ document.addEventListener('click', function(e) {
     if(mvActions && mvActions.classList.contains('open') && !mvActions.contains(e.target) && (!mvBtn || !mvBtn.contains(e.target))) {
         mvActions.classList.remove('open');
     }
+
+    var layoutDropdown = document.getElementById('mv-layout-dropdown');
+    var layoutToggleBtn = document.getElementById('mv-layout-toggle-btn');
+    if(layoutDropdown && layoutDropdown.style.display === 'flex' && !layoutDropdown.contains(e.target) && (!layoutToggleBtn || !layoutToggleBtn.contains(e.target))) {
+        layoutDropdown.style.display = 'none';
+    }
 });
 
 export var appTheaterTimer;

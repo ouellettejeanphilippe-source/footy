@@ -661,10 +661,15 @@ export function setupMultivisionUI() {
       + '<button class="nav-btn" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
       + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
       + '<button class="nav-btn" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 8px; min-width: auto; font-size: 16px;">➕</button>'
-      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'auto\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="auto" aria-label="Auto Layout" title="Auto Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⊞</button>'
-      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'focus\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="focus" aria-label="Focus Layout" title="Focus Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⭐</button>'
-      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'vertical\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="vertical" aria-label="Vertical Layout" title="Vertical Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⊟</button>'
-      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'horizontal\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="horizontal" aria-label="Horizontal Layout" title="Horizontal Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⊟</button>'
+      + '<div style="position:relative; display:flex; align-items:center;" class="hide-pip">'
+      +   '<button id="mv-layout-toggle-btn" class="nav-btn" onclick="var d=document.getElementById(\'mv-layout-dropdown\'); d.style.display = d.style.display === \'flex\' ? \'none\' : \'flex\'; event.stopPropagation();" aria-label="Choisir la disposition" title="Layouts" style="padding: 8px; min-width: auto; font-size: 16px;">⊞</button>'
+      +   '<div id="mv-layout-dropdown" style="display:none; position:absolute; top:100%; right:0; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:4px; z-index:100; flex-direction:column; gap:4px; margin-top:4px; min-width:130px;">'
+      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'auto\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="auto" aria-label="Auto Layout" title="Auto Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⊞</span> Auto</button>'
+      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'focus\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="focus" aria-label="Focus Layout" title="Focus Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⭐</span> Focus</button>'
+      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'vertical\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="vertical" aria-label="Vertical Layout" title="Vertical Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⊟</span> Vertical</button>'
+      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'horizontal\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="horizontal" aria-label="Horizontal Layout" title="Horizontal Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⊟</span> Horizontal</button>'
+      +   '</div>'
+      + '</div>'
       + '<button class="nav-btn hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 8px; min-width: auto; font-size: 16px;">🎬</button>'
       + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
       + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
@@ -826,6 +831,11 @@ export function restoreMultivisionState() {
 
 // Layout state
 export var mvLayout = 'auto'; // auto, focus, vertical, horizontal, custom
+
+export function setMvLayout(l) {
+    mvLayout = l;
+    window.mvLayout = l;
+}
 export var activeMvIdx = null;
 
 export function focusStream(idx) {
@@ -888,6 +898,13 @@ export function updateMultivisionLayout() {
             btn.classList.remove('active-toggle');
         }
     });
+
+    // Update toggle button icon to reflect active layout
+    var icons = { 'auto': '⊞', 'focus': '⭐', 'vertical': '⊟', 'horizontal': '⊟' };
+    var toggleBtn = document.getElementById('mv-layout-toggle-btn');
+    if (toggleBtn && icons[mvLayout]) {
+        toggleBtn.innerHTML = icons[mvLayout];
+    }
 
     var grid = document.getElementById('mv-grid');
     if(!grid) return;
@@ -2446,6 +2463,7 @@ window.moveMultiviewStream = moveMultiviewStream;
 window.saveMultivisionState = saveMultivisionState;
 window.restoreMultivisionState = restoreMultivisionState;
 window.mvLayout = mvLayout;
+window.setMvLayout = setMvLayout;
 window.activeMvIdx = activeMvIdx;
 window.focusStream = focusStream;
 window.applyMvFocusStyling = applyMvFocusStyling;
