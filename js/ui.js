@@ -716,26 +716,48 @@ export function openMod(m,col){
 
   var hLogo = m.homeLogo || getLogo(m.homeTeam);
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
-  var mnameHtml = '';
 
-  mnameHtml += '<div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
-  if(hLogo) mnameHtml += '<img src="'+esc(hLogo)+'" style="width:24px;height:24px;object-fit:contain;" onerror="this.style.display=\'none\'">';
-  mnameHtml += '<span>' + esc(m.homeTeam) + '</span></div>';
+  // Create a layout inspired by "The Score" scoreboard
+  var html = '<div style="display:flex; flex-direction:column; width: 100%; gap: 16px;">';
 
-  mnameHtml += '<span style="color:var(--muted); font-size: 16px; margin: 0 4px;">—</span>';
+  // Top: League & Metadata centered
+  var liveBadge = m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : '';
+  html += '<div style="text-align:center; font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">';
+  html += m.flag + ' ' + esc(m.league) + ' <span style="margin:0 8px; opacity:0.5;">•</span> ' + esc(m.startTime) + liveBadge;
+  html += '</div>';
 
-  mnameHtml += '<div style="display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
-  if(aLogo) mnameHtml += '<img src="'+esc(aLogo)+'" style="width:24px;height:24px;object-fit:contain;" onerror="this.style.display=\'none\'">';
-  mnameHtml += '<span>' + esc(m.awayTeam) + '</span></div>';
+  // Middle: Home Team | Score | Away Team
+  html += '<div style="display:flex; justify-content:space-between; align-items:center; width: 100%; padding: 0 10px;">';
 
-  document.getElementById('mname').innerHTML = '<div style="display:flex; align-items:center; flex-wrap:wrap;">' + mnameHtml + '</div>';
+  // Home Team
+  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; flex: 1;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
+  if(hLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(hLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
+  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + esc(m.homeTeam) + '</span>';
+  html += '</div>';
+
+  // Score
+  html += '<div style="flex: 0.8; display:flex; justify-content:center; align-items:center; flex-direction:column;">';
+  if(m.score) {
+      html += '<div style="font-weight:800; font-size:32px; color:var(--text); letter-spacing:1px; line-height:1;">' + m.score[0] + ' <span style="color:var(--muted); font-size:24px;">-</span> ' + m.score[1] + '</div>';
+  } else {
+      html += '<div style="font-weight:700; font-size:20px; color:var(--muted); line-height:1;">VS</div>';
+  }
+  html += '</div>';
+
+  // Away Team
+  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; flex: 1;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
+  if(aLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(aLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
+  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + esc(m.awayTeam) + '</span>';
+  html += '</div>';
+
+  html += '</div></div>';
+
+  document.getElementById('mname').innerHTML = html;
   document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam; // for the stats checker
 
-  document.getElementById('mmeta').innerHTML=
-    '<span class="mtag">'+m.flag+' '+esc(m.league)+'</span>'
-    +'<span class="mtag">'+esc(m.startTime)+'</span>'
-    +(m.status==='live'?'<span class="mtag" style="color:var(--red);background:rgba(255,59,59,.1)">🔴 '+(m.minute?esc(m.minute)+"'":'EN DIRECT')+'</span>':'');
-  document.getElementById('mscore').innerHTML=m.score?'<div class="msc">'+m.score[0]+'–'+m.score[1]+'</div>':'';
+  // Clear the original elements since we combined them
+  document.getElementById('mmeta').innerHTML = '';
+  document.getElementById('mscore').innerHTML = '';
 
   if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
 
@@ -758,14 +780,16 @@ export function openMod(m,col){
               }
 
               var extraHtml = '';
+              if (res.hRank || res.aRank || res.hForm || res.aForm) {
+                  extraHtml += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.5); margin-bottom:10px; padding: 0 10px;">';
+                  extraHtml += '<div style="flex:1; text-align:center;">' + (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '') + '</div>';
+                  extraHtml += '<div style="flex:0.8;"></div>'; // Spacer for score
+                  extraHtml += '<div style="flex:1; text-align:center;">' + (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '') + '</div>';
+                  extraHtml += '</div>';
+              }
+
               if (res.scorers && res.scorers.length > 0) {
                   extraHtml += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
-              }
-              if (res.hRank || res.aRank || res.hForm || res.aForm) {
-                  extraHtml += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.5); margin-top:10px;">';
-                  extraHtml += '<div>' + (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '') + '</div>';
-                  extraHtml += '<div>' + (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '') + '</div>';
-                  extraHtml += '</div>';
               }
 
               var existingStats = document.getElementById('modal-extra-stats');
@@ -774,11 +798,11 @@ export function openMod(m,col){
               if (extraHtml) {
                   var stDiv = document.createElement('div');
                   stDiv.id = 'modal-extra-stats';
-                  stDiv.style.cssText = 'padding:15px; width:100%; background:rgba(0,0,0,0.2); border-bottom:1px solid rgba(255,255,255,0.05); cursor:pointer; transition: background 0.2s;';
-                  stDiv.onmouseover = function() { this.style.background = 'rgba(0,0,0,0.3)'; };
-                  stDiv.onmouseout = function() { this.style.background = 'rgba(0,0,0,0.2)'; };
+                  stDiv.style.cssText = 'padding:12px 16px; width:100%; background:rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 16px; cursor:pointer; transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.05);';
+                  stDiv.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.06)'; this.style.borderColor = 'rgba(255,255,255,0.1)'; };
+                  stDiv.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.03)'; this.style.borderColor = 'rgba(255,255,255,0.05)'; };
                   stDiv.onclick = function() { closeMod(); openGlobalStatsFromMatch(m.id); };
-                  stDiv.innerHTML = '<div style="max-width:400px; margin:0 auto;">' + extraHtml + '<div style="text-align:center; margin-top:8px; font-size:11px; color:var(--accent);">🔍 Voir toutes les stats</div></div>';
+                  stDiv.innerHTML = '<div style="max-width:100%; margin:0 auto;">' + extraHtml + '<div style="text-align:center; margin-top:12px; font-size:12px; font-weight:600; color:var(--accent);">Analyses du match <span style="font-size:10px;">➔</span></div></div>';
                   // Prepend inside mbody so it spans full width and looks clean before the links
                   var mbody = document.getElementById('mbody');
                   mbody.insertBefore(stDiv, mbody.firstChild);
@@ -795,12 +819,14 @@ export function openMod(m,col){
 
   var addMvBtn = document.createElement('button');
   addMvBtn.className = 'btn o';
-  addMvBtn.style.marginTop = '12px';
-  addMvBtn.style.alignSelf = 'flex-start';
+  addMvBtn.style.marginTop = '16px';
+  addMvBtn.style.alignSelf = 'center';
+  addMvBtn.style.width = '100%';
   addMvBtn.innerHTML = '⊞ Ajouter au Multivision (Attente du flux)';
   addMvBtn.id = 'mv-add-btn';
   addMvBtn.disabled = true;
-  document.getElementById('mmeta').appendChild(addMvBtn);
+  // Since mmeta is cleared, append to mname which is our unified header
+  document.getElementById('mname').appendChild(addMvBtn);
 
   var body=document.getElementById('mbody');
 
