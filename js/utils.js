@@ -135,6 +135,15 @@ export function applyFilter(f){
       toggleMultiviewPip();
   }
 
+  var zoomEpg = document.querySelector('.zoom-controls');
+  if (zoomEpg) {
+      if (f === 'all') {
+          zoomEpg.style.display = 'flex';
+      } else {
+          zoomEpg.style.display = 'none';
+      }
+  }
+
   if (f === 'options') {
       openOptionsPage();
   } else if (f === 'logs') {
