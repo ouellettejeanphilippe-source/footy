@@ -637,8 +637,6 @@ window.addEventListener('resize', function() {
     if (mvc && mvc.style.display !== 'none' && !mvc.classList.contains('mv-pip')) {
         if (window.innerHeight > window.innerWidth && mvLayout !== 'vertical' && mvFlux.length > 0) {
             mvLayout = 'vertical';
-            var ls = document.getElementById('mv-layout-select');
-            if (ls) ls.value = 'vertical';
             saveMultivisionState();
             updateMultivisionLayout();
         }
@@ -663,12 +661,10 @@ export function setupMultivisionUI() {
       + '<button class="nav-btn" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
       + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
       + '<button class="nav-btn" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 8px; min-width: auto; font-size: 16px;">➕</button>'
-      + '<select class="nav-btn hide-pip" onchange="mvLayout=this.value; saveMultivisionState(); updateMultivisionLayout();" style="padding: 8px 32px 8px 12px; min-width: auto; height: 38px; -webkit-appearance: none; appearance: none; background: url(\'data:image/svg+xml;utf8,<svg fill=%22white%22 height=%2224%22 viewBox=%220 0 24 24%22 width=%2224%22 xmlns=%22http://www.w3.org/2000/svg%22><path d=%22M7 10l5 5 5-5z%22/><path d=%22M0 0h24v24H0z%22 fill=%22none%22/></svg>\') no-repeat right 4px center; background-size: 16px;" id="mv-layout-select">'
-      +   '<option value="auto">⊞ Auto</option>'
-      +   '<option value="focus">⭐ Focus</option>'
-      +   '<option value="vertical">⊟ Vertical</option>'
-      +   '<option value="horizontal">⊟ Horizontal</option>'
-      + '</select>'
+      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'auto\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="auto" aria-label="Auto Layout" title="Auto Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⊞</button>'
+      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'focus\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="focus" aria-label="Focus Layout" title="Focus Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⭐</button>'
+      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'vertical\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="vertical" aria-label="Vertical Layout" title="Vertical Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⊟</button>'
+      + '<button class="nav-btn hide-pip mv-layout-btn" onclick="mvLayout=\'horizontal\'; saveMultivisionState(); updateMultivisionLayout();" data-layout="horizontal" aria-label="Horizontal Layout" title="Horizontal Layout" style="padding: 8px; min-width: auto; font-size: 16px;">⊟</button>'
       + '<button class="nav-btn hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 8px; min-width: auto; font-size: 16px;">🎬</button>'
       + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
       + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
@@ -863,8 +859,14 @@ export function applyMvAudioState() {
 
 
 export function updateMultivisionLayout() {
-    var ls = document.getElementById('mv-layout-select');
-    if(ls) ls.value = mvLayout;
+    document.querySelectorAll('.mv-layout-btn').forEach(function(btn) {
+        if(btn.getAttribute('data-layout') === mvLayout) {
+            btn.classList.add('active-toggle');
+        } else {
+            btn.classList.remove('active-toggle');
+        }
+    });
+
     var grid = document.getElementById('mv-grid');
     if(!grid) return;
 
