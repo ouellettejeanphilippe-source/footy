@@ -1147,6 +1147,9 @@ export function scrapeMatchFlux(m){
     fetchPage(m.matchUrl),
     new Promise(function(_, reject) { setTimeout(function() { reject(new Error('Timeout match streams')); }, 10000); })
   ]).then(function(html){
+    return new Promise(function(resolve, reject) {
+      setTimeout(function() {
+        try {
     addScrapeLog(m.matchUrl, 'success', '');
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
@@ -1293,6 +1296,12 @@ export function scrapeMatchFlux(m){
     m.streamsLoaded=true;
     saveStreamCache(m.id, m.streamLinks);
     updateMatchUiAfterScrape(m);
+        resolve();
+        } catch(e) {
+            reject(e);
+        }
+      }, 0);
+    });
   });
 }
 
