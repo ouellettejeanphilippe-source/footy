@@ -45,11 +45,9 @@ export function fetchPage(url){
       lg('Proxy '+i,pu.slice(0,70)+'…');
 
       var headers = {'Accept':'text/html,*/*'};
-      // OnHockey specific headers to trick the API/Proxy into thinking it's an AJAX request
-      if(url.indexOf('onhockey.tv') >= 0) {
-          headers['X-Requested-With'] = 'XMLHttpRequest';
-          headers['Referer'] = 'https://onhockey.tv/';
-      }
+      // Note: Custom headers (X-Requested-With, Referer) were previously injected for onhockey.tv,
+      // but they now cause CORS preflight OPTIONS requests to fail on api.codetabs.com with 400 Bad Request.
+      // Removing them allows the proxy GET request to succeed normally.
 
       // Use a slightly shorter timeout for each proxy try so we don't hang too long on bad proxies
       fetch(pu,{signal:AbortSignal.timeout(8000),headers:headers})
