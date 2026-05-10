@@ -604,9 +604,9 @@ export function toggleMultiviewPip() {
             if(sf) sf.style.display = 'flex';
         } else {
             // On tablet/desktop, show column
-            mvc.style.cssText = 'position:fixed;top:70px;right:0;bottom:0;width:350px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);z-index:90;display:flex;flex-direction:column;border-left:1px solid var(--border);box-shadow:-5px 0 20px rgba(0,0,0,0.5);';
+            mvc.style.cssText = 'position:fixed;right:20px;bottom:20px;width:350px;max-height:500px;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);z-index:999;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.8);border-radius:12px;overflow:hidden;';
             epg.style.display = 'flex';
-            epg.style.paddingRight = '350px';
+            epg.style.paddingRight = '0';
             var sf = document.getElementById('sport-filters-container');
             if(sf) sf.style.display = 'flex';
 
