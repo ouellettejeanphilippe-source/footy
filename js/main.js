@@ -596,7 +596,7 @@ export function renderFavPage() {
 
             var aliasText = aliases.length > 0 ? ('<div style="font-size:11px; color:var(--muted2); margin-top:2px; font-family:monospace;">Alias: ' + esc(aliases.join(', ')) + '</div>') : '';
 
-            return '<div class="team-item" data-team-name="'+esc(t.name)+'" data-aliases="'+esc(aliases.join(' '))+'" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleFavPageTeam(\'' + escJs(t.name) + '\')">'
+            return '<div class="team-item" data-team-name="'+esc(t.name)+'" data-aliases="'+esc(aliases.join(' '))+'" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="openGlobalStats(\'' + escJs(t.name) + '\')">'
                    + '<div style="display:flex; align-items:center; gap:12px;">'
                    + '<div style="width:24px; display:flex; justify-content:center;">' + logoHtml + '</div>'
                    + '<div>'
@@ -604,7 +604,7 @@ export function renderFavPage() {
                    + aliasText
                    + '</div>'
                    + '</div>'
-                   + '<button style="background:none; border:none; color:' + (isFav ? 'var(--accent)' : 'var(--border2)') + '; font-size:20px; cursor:pointer;">★</button>'
+                   + '<button style="background:none; border:none; color:' + (isFav ? 'var(--accent)' : 'var(--border2)') + '; font-size:20px; cursor:pointer;" onclick="toggleFavPageTeam(\'' + escJs(t.name) + '\'); event.stopPropagation();">★</button>'
                    + '</div>';
         }
 
