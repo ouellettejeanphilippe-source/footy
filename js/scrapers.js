@@ -1092,7 +1092,14 @@ export function saveStreamCache(mid, streams) {
 export function fetchSubPages(matches){
   // We use a limited concurrency pool so we don't spam the proxy/network
   var concurrency=3;
-  var queue=matches.filter(function(m){return m.matchUrl&&!m.streamsLoaded;});
+  var queue=matches.filter(function(m){
+      // if it has >= 20 streams, skip
+      if (m.streamLinks && m.streamLinks.length >= 20) {
+          m.streamsLoaded = true;
+          return false;
+      }
+      return m.matchUrl&&!m.streamsLoaded;
+  });
   queue.sort(function(a, b) {
     var aFav = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? 1 : 0;
     var bFav = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? 1 : 0;
@@ -1131,15 +1138,23 @@ export function fetchSubPages(matches){
   next();
 }
 
-export function scrapeMatchFlux(m){
-  // Check cache first
-  var cachedStreams = getStreamCache(m.id);
-  if (cachedStreams) {
-      lg('Scrape streams cached', m.homeTeam);
-      m.streamLinks = cachedStreams;
+export function scrapeMatchFlux(m, forceRefresh){
+  if (!forceRefresh && m.streamLinks && m.streamLinks.length >= 20) {
+      lg('Scrape skipped, already has >= 20 streams', m.homeTeam);
       m.streamsLoaded = true;
-      updateMatchUiAfterScrape(m);
       return Promise.resolve();
+  }
+
+  // Check cache first
+  if (!forceRefresh) {
+      var cachedStreams = getStreamCache(m.id);
+      if (cachedStreams) {
+          lg('Scrape streams cached', m.homeTeam);
+          m.streamLinks = cachedStreams;
+          m.streamsLoaded = true;
+          updateMatchUiAfterScrape(m);
+          return Promise.resolve();
+      }
   }
 
   // Timeout for individual match scrape
