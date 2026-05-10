@@ -1105,7 +1105,7 @@ export function fetchSubPages(matches){
       var m=queue.shift();
       scrapeMatchFlux(m).then(function(){
         active--;
-        next();
+        setTimeout(next, 0);
       }).catch(function(e){
         lg('Err scrape '+m.homeTeam,e.message);
         addScrapeLog(m.matchUrl, 'error', 'Match scrape failed: ' + e.message);
@@ -1113,7 +1113,7 @@ export function fetchSubPages(matches){
         m.streamLinks = m.streamLinks || [];
         updateMatchUiAfterScrape(m);
         active--;
-        next();
+        setTimeout(next, 0);
       });
     }
   }
