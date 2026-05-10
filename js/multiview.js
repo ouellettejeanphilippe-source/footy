@@ -146,23 +146,23 @@ export function updateGmScoresTab() {
         var pinIcon = isPinned ? '📌' : '📍';
         var pinColor = isPinned ? 'var(--accent)' : 'var(--muted)';
 
-        var scoreStr = m.score ? (m.score[0] + ' - ' + m.score[1]) : 'À venir';
-        var timeStr = (m.status === 'live' && m.minute) ? m.minute + "'" : m.startTime;
+        var scoreStr = m.score ? (esc(m.score[0]) + ' - ' + esc(m.score[1])) : 'À venir';
+        var timeStr = (m.status === 'live' && m.minute) ? esc(m.minute) + "'" : esc(m.startTime);
         var statusColor = m.status === 'live' ? 'var(--accent)' : 'var(--muted)';
 
         html += '<div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:10px; display:flex; align-items:center; gap:10px;">';
 
         html += '<div style="flex:1;">';
-        html += '<div style="font-size:11px; color:var(--muted); margin-bottom:4px;">' + m.flag + ' ' + esc(m.league) + '</div>';
+        html += '<div style="font-size:11px; color:var(--muted); margin-bottom:4px;">' + esc(m.flag) + ' ' + esc(m.league) + '</div>';
 
         html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
         html += '<div style="font-size:13px; font-weight:bold; color:#fff; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.homeTeam) + '</div>';
-        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? m.score[0] : '-') + '</div>';
+        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? esc(m.score[0]) : '-') + '</div>';
         html += '</div>';
 
         html += '<div style="display:flex; justify-content:space-between; align-items:center;">';
         html += '<div style="font-size:13px; font-weight:bold; color:#fff; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.awayTeam) + '</div>';
-        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? m.score[1] : '-') + '</div>';
+        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? esc(m.score[1]) : '-') + '</div>';
         html += '</div>';
 
         html += '<div style="font-size:11px; color:' + statusColor + '; margin-top:4px; text-align:right;">' + timeStr + '</div>';
@@ -222,11 +222,11 @@ export function updateMvGameModeStats() {
             pinnedHtml += '<h4 style="color:#fff; margin-bottom:10px; font-size:14px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">Matchs Épinglés</h4>';
             pinnedHtml += '<div style="display:flex; flex-direction:column; gap:8px;">';
             pinnedList.forEach(function(pm) {
-                var scoreStr = pm.score ? (pm.score[0] + ' - ' + pm.score[1]) : 'À venir';
-                var timeStr = (pm.status === 'live' && pm.minute) ? pm.minute + "'" : pm.startTime;
+                var scoreStr = pm.score ? (esc(pm.score[0]) + ' - ' + esc(pm.score[1])) : 'À venir';
+                var timeStr = (pm.status === 'live' && pm.minute) ? esc(pm.minute) + "'" : esc(pm.startTime);
                 var statusColor = pm.status === 'live' ? 'var(--accent)' : 'var(--muted)';
                 pinnedHtml += '<div onclick="openPinnedStats(\'' + pm.id + '\')" style="background:rgba(255,255,255,0.05); border-radius:8px; padding:10px; cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">';
-                pinnedHtml += '<div style="font-size:11px; color:var(--muted); margin-bottom:4px;">' + pm.flag + ' ' + esc(pm.league) + '</div>';
+                pinnedHtml += '<div style="font-size:11px; color:var(--muted); margin-bottom:4px;">' + esc(pm.flag) + ' ' + esc(pm.league) + '</div>';
                 pinnedHtml += '<div style="display:flex; justify-content:space-between; align-items:center;">';
                 pinnedHtml += '<div style="font-size:13px; font-weight:bold; color:#fff;">' + esc(pm.homeTeam) + ' - ' + esc(pm.awayTeam) + '</div>';
                 pinnedHtml += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + ';">' + scoreStr + '</div>';
@@ -275,8 +275,8 @@ export function updateMvGameModeStats() {
         }
 
         carouselHtml += '<div id="mv-gm-header-' + m.id + '" style="font-size:16px; font-weight:bold; color:#fff; text-align:center; padding: 0 25px;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
-        carouselHtml += (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + m.score[0] + ' - ' + m.score[1] + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>');
-        carouselHtml += '<div style="font-size:12px; color:var(--muted); text-align:center;">' + m.flag + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "\'" : '') + '</div>';
+        carouselHtml += (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + esc(m.score[0]) + ' - ' + esc(m.score[1]) + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>');
+        carouselHtml += '<div style="font-size:12px; color:var(--muted); text-align:center;">' + esc(m.flag) + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "\'" : '') + '</div>';
 
         carouselHtml += '<div id="mv-stat-body-' + m.id + '"><div style="text-align:center; margin-top:20px; color:var(--muted);">Chargement des stats...</div></div>';
         carouselHtml += '</div>';
@@ -309,7 +309,7 @@ export function updateMvGameModeStats() {
             var hdr = document.getElementById('mv-gm-header-' + m.id);
             if (hdr && (hRankFormStr || aRankFormStr)) {
                  hdr.innerHTML = '<div style="display:flex; justify-content:space-between; font-size:11px; color:rgba(255,255,255,0.5); font-weight:normal;">' +
-                                 '<span>' + hRankFormStr + '</span><span>' + aRankFormStr + '</span></div>' +
+                                 '<span>' + esc(hRankFormStr) + '</span><span>' + esc(aRankFormStr) + '</span></div>' +
                                  '<div>' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
             }
 
@@ -341,9 +341,9 @@ export function updateMvGameModeStats() {
                 stats.forEach(function(st) {
                     var label = formatStatLabel(st.label);
                     html += '<div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;">';
-                    html += '<span style="font-weight:bold;width:30px;text-align:right;">'+st.h+'</span>';
-                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+label+'</span>';
-                    html += '<span style="font-weight:bold;width:30px;text-align:left;">'+st.a+'</span>';
+                    html += '<span style="font-weight:bold;width:30px;text-align:right;">'+esc(st.h)+'</span>';
+                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+esc(label)+'</span>';
+                    html += '<span style="font-weight:bold;width:30px;text-align:left;">'+esc(st.a)+'</span>';
                     html += '</div>';
                 });
                 html += '</div>';
@@ -476,11 +476,11 @@ export function showFluxSelector(idx, mid, event) {
                 +'</div>';
             }
 
-            var score = sm.score ? '<div style="font-size:13px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;flex-shrink:0;"><span>'+sm.score[0]+'</span><span>'+sm.score[1]+'</span></div>' : '';
+            var score = sm.score ? '<div style="font-size:13px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;flex-shrink:0;"><span>'+esc(sm.score[0])+'</span><span>'+esc(sm.score[1])+'</span></div>' : '';
 
             btn.innerHTML = thumb +
                 '<div style="flex:1; overflow:hidden;">' +
-                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(sm.minute?esc(sm.minute)+"'":'EN DIRECT')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+sm.flag+' '+esc(sm.league)+'</span></div>' +
+                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(sm.minute?esc(sm.minute)+"'":'EN DIRECT')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+esc(sm.flag)+' '+esc(sm.league)+'</span></div>' +
                     '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.homeTeam)+'</div>' +
                     '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.awayTeam)+'</div>' +
                 '</div>' + score + (alreadyIn ? '<div style="font-size:10px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 4px;border-radius:4px;margin-left:4px;">AJOUTÉ</div>' : '');
@@ -2194,12 +2194,12 @@ export function renderSourcesStatus() {
         html += '<div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0;">' +
                   '<div style="display:flex; align-items:center; gap: 8px;">' +
                       '<span style="font-size: 14px;">' + icon + '</span>' +
-                      '<span style="font-weight: bold; color: var(--text);">' + s.name + '</span>' +
+                      '<span style="font-weight: bold; color: var(--text);">' + esc(s.name) + '</span>' +
                   '</div>' +
                   '<div style="display:flex; align-items:center; gap: 10px; font-size: 12px;">' +
-                      '<span style="color: ' + color + ';">' + s.message + '</span>' +
-                      '<span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; color: var(--muted);">' + s.matchCount + ' matchs</span>' +
-                      '<span style="color: var(--muted2); font-size: 10px; width: 50px; text-align:right;">' + s.time + '</span>' +
+                      '<span style="color: ' + color + ';">' + esc(s.message) + '</span>' +
+                      '<span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; color: var(--muted);">' + esc(s.matchCount) + ' matchs</span>' +
+                      '<span style="color: var(--muted2); font-size: 10px; width: 50px; text-align:right;">' + esc(s.time) + '</span>' +
                   '</div>' +
                 '</div>';
     });
@@ -2220,11 +2220,11 @@ export function renderScrapeLogs() {
         var icon = log.status === 'error' ? '❌' : (log.status === 'success' ? '✅' : 'ℹ️');
         html += '<div style="display:flex; flex-direction:column; gap:2px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;">' +
                   '<div style="display:flex; justify-content:space-between;">' +
-                      '<span style="color:var(--muted);">' + log.time + '</span>' +
-                      '<span style="color:' + color + ';">' + icon + ' ' + log.status.toUpperCase() + '</span>' +
+                      '<span style="color:var(--muted);">' + esc(log.time) + '</span>' +
+                      '<span style="color:' + color + ';">' + icon + ' ' + esc(log.status.toUpperCase()) + '</span>' +
                   '</div>' +
-                  '<div style="word-break: break-all; color: #a1a1aa;">' + log.url + '</div>' +
-                  (log.error ? '<div style="color:var(--red); font-size: 11px;">' + log.error + '</div>' : '') +
+                  '<div style="word-break: break-all; color: #a1a1aa;">' + esc(log.url) + '</div>' +
+                  (log.error ? '<div style="color:var(--red); font-size: 11px;">' + esc(log.error) + '</div>' : '') +
                 '</div>';
     });
     container.innerHTML = html;
