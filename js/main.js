@@ -240,6 +240,9 @@ export function loadAll(isBackground, forceScrape){
 
           var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
 
+          window.lastScrapeTime = Date.now();
+          window.lastScrapedMatches = scrapedMatches;
+
           // Persist the merged data (which now includes streams) back to localStorage
           try {
               var todayStr = getEspnDateStr(TARGET_DATE);
@@ -319,6 +322,7 @@ export function loadAll(isBackground, forceScrape){
           localStorage.setItem('hasSeenScriptModal', 'true');
           setTimeout(function() { installTampermonkey(); }, 500);
       }
+      window.hasLoadedOnce = true;
   });
 }
 
