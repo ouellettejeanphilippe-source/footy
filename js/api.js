@@ -496,6 +496,29 @@ export function fetchGameStats(matchId) {
     return Promise.reject('Unsupported source');
 }
 
+
+export function fetchTeamInfo(leagueName, teamId) {
+    var path = 'soccer/eng.1'; // fallback
+    for (var k in ESPN_LEAGUES) {
+        if (k.toLowerCase() === leagueName.toLowerCase() || leagueName.toLowerCase().indexOf(k.toLowerCase()) > -1) {
+            path = ESPN_LEAGUES[k];
+            break;
+        }
+    }
+    // Fetch base team info and roster info in parallel
+    var teamUrl = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId;
+    var rosterUrl = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId + '/roster';
+
+    return Promise.all([
+        fetch(teamUrl, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }),
+        fetch(rosterUrl, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).catch(function(){ return null; }) // Roster might 404 for some sports
+    ]).then(function(results) {
+        return { source: 'espn', team: results[0], roster: results[1] };
+    }).catch(function(e) {
+        return Promise.reject(e);
+    });
+}
+
 export function fetchTeamSchedule(leagueName, teamId) {
     var path = 'soccer/eng.1'; // fallback
     for (var k in ESPN_LEAGUES) {
@@ -506,6 +529,13 @@ export function fetchTeamSchedule(leagueName, teamId) {
     }
     var url = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId + '/schedule';
     return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
+        if (data && data.events && data.events.length === 0) {
+            // If empty, try regular season (seasontype=2)
+            var rsUrl = url + '?seasontype=2';
+            return fetch(rsUrl, { signal: AbortSignal.timeout(8000) }).then(function(rs){ return rs.json(); }).then(function(rsData) {
+                return { source: 'espn', data: rsData };
+            });
+        }
         return { source: 'espn', data: data };
     }).catch(function(e) {
         return Promise.reject(e);

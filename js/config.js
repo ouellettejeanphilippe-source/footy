@@ -2,7 +2,7 @@ import { S } from './state.js';
 import { cacheLogo, logoCache, ensureLogoCache, escJs, esc, lg, pad } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
 import { globalStatsInterval } from './multiview.js';
-import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings } from './api.js';
+import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';
 
 /* ══ CONFIG ═════════════════════════════ */
@@ -244,11 +244,42 @@ export function fetchTeamStats(teamName) {
             if(stDiv) {
                 if(res.source === 'espn' && res.data && res.data.children && res.data.children[0].standings) {
                     var sData = res.data.children[0].standings.entries;
-                    var tableHtml = '<table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;">';
-                    tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">Pts</th></tr>';
+                    var tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;white-space:nowrap;">';
+                    var lgLower = lg.toLowerCase();
+                    var isSoccer = lgLower.indexOf('premier') > -1 || lgLower.indexOf('ligue 1') > -1 || lgLower.indexOf('liga') > -1 || lgLower.indexOf('serie a') > -1 || lgLower.indexOf('bundesliga') > -1 || lgLower.indexOf('mls') > -1 || lgLower.indexOf('champions league') > -1 || lgLower.indexOf('europa') > -1;
+                    var isHockey = lgLower.indexOf('nhl') > -1 || lgLower.indexOf('lhjmq') > -1;
+                    var isBaseball = lgLower.indexOf('mlb') > -1;
+
+                    if(isSoccer) {
+                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">N</th><th style="padding:4px;">D</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+                    } else if (isHockey) {
+                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">DP</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+                    } else if (isBaseball) {
+                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">Pct</th><th style="padding:4px;">GB</th></tr>';
+                    } else {
+                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">N</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+                    }
 
                     var teamFound = false;
-                    sData.forEach(function(row, idx) {
+                    var allEntries = [];
+                    // Flatten if divisions exist (like NHL)
+                    if (res.data.children && res.data.children.length > 1) {
+                         res.data.children.forEach(function(c) {
+                             if(c.standings && c.standings.entries) {
+                                 c.standings.entries.forEach(function(e) { allEntries.push(e); });
+                             }
+                         });
+                         // Re-sort by points if possible
+                         allEntries.sort(function(a, b) {
+                             var ptsA = a.stats.find(s => s.name === 'points') ? parseInt(a.stats.find(s => s.name === 'points').value) : 0;
+                             var ptsB = b.stats.find(s => s.name === 'points') ? parseInt(b.stats.find(s => s.name === 'points').value) : 0;
+                             return ptsB - ptsA;
+                         });
+                    } else {
+                         allEntries = sData;
+                    }
+
+                    allEntries.forEach(function(row, idx) {
                         var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
                         if(isTeam) {
                             teamFound = true;
@@ -257,28 +288,143 @@ export function fetchTeamStats(teamName) {
 
                         // Show top 3 + the team itself (+ surrounding)
                         if(idx < 3 || isTeam) {
-                            var pts = row.stats.find(s => s.name === 'points') ? row.stats.find(s => s.name === 'points').displayValue : '-';
-                            var gp = row.stats.find(s => s.name === 'gamesPlayed') ? row.stats.find(s => s.name === 'gamesPlayed').displayValue : '-';
+                            var getStat = function(n) { var st = row.stats.find(s => s.name === n); return st ? st.displayValue : '0'; };
+                            var pts = getStat('points');
+                            var gp = getStat('gamesPlayed');
+                            var wins = getStat('wins');
+                            var losses = getStat('losses');
+                            var ties = getStat('ties');
+                            var otl = getStat('otLosses'); // Hockey
+                            var pf = getStat('pointsFor');
+                            var pa = getStat('pointsAgainst');
+                            var diff = getStat('pointDifferential');
+                            var pct = getStat('winPercent'); // Baseball
+                            var gb = getStat('gamesBehind'); // Baseball
 
                             tableHtml += '<tr style="background:'+(isTeam?'rgba(255,255,255,0.1)':'transparent')+'; border-bottom:1px solid rgba(255,255,255,0.05);">';
                             tableHtml += '<td style="padding:6px 4px;font-weight:bold;">'+(idx+1)+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;color:#fff;">'+esc(row.team.name)+'</td>';
+                            tableHtml += '<td style="padding:6px 4px;color:#fff;">'+esc(row.team.shortDisplayName || row.team.name)+'</td>';
                             tableHtml += '<td style="padding:6px 4px;">'+gp+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                            tableHtml += '<td style="padding:6px 4px;">'+wins+'</td>';
+
+                            if (isBaseball) {
+                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+pct+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+gb+'</td>';
+                            } else if (isHockey) {
+                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+otl+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                            } else {
+                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+ties+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
+                                tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                            }
                             tableHtml += '</tr>';
                         }
                     });
-                    tableHtml += '</table>';
-                    if(sData.length > 3 && !teamFound) tableHtml += '<div style="margin-top:8px;font-size:11px;">(Position complète non trouvée dans le top)</div>';
+                    tableHtml += '</table></div>';
+                    if(allEntries.length > 3 && !teamFound) tableHtml += '<div style="margin-top:8px;font-size:11px;">(Position complète non trouvée dans le top)</div>';
                     stDiv.innerHTML = tableHtml;
                 } else {
                     stDiv.innerHTML = 'Données de classement non disponibles via ESPN pour cette ligue.';
                 }
             }
 
-            // Fetch upcoming schedule if team ID is found
+            // Fetch upcoming schedule and team info if team ID is found
             var upcDiv = document.getElementById('gstats-upcoming');
             if(foundTeamId && upcDiv) {
+                // Fetch Team Info (roster & stats)
+                fetchTeamInfo(lg, foundTeamId).then(function(infoRes) {
+                    var statsContainer = document.createElement('div');
+                    var tHtml = '';
+                    var teamObj = infoRes.team && infoRes.team.team ? infoRes.team.team : infoRes.team;
+                    if (teamObj && teamObj.record && teamObj.record.items) {
+                        var totalRec = teamObj.record.items.find(function(r) { return r.type === 'total'; });
+                        if (totalRec && totalRec.summary) {
+                            tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📊 Statistiques de l\'équipe (' + esc(totalRec.summary) + ')</h4>';
+                            tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
+                            totalRec.stats.forEach(function(s) {
+                                // Skip boring stats or repetitive ones
+                                if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties') return;
+                                tHtml += '<div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:8px;flex:1;min-width:100px;text-align:center;">';
+                                tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">'+esc(s.shortDisplayName || s.displayName)+'</div>';
+                                tHtml += '<div style="font-size:16px;font-weight:bold;color:#fff;">'+esc(s.displayValue || s.value)+'</div>';
+                                tHtml += '</div>';
+                            });
+                            tHtml += '</div></div>';
+                        }
+                    }
+
+                    // Render Leaders directly from team roster if available
+                    if (infoRes.roster && infoRes.roster.team && infoRes.roster.team.athletes) {
+                        var athletes = infoRes.roster.team.athletes;
+
+                        // We will group leaders by primary stats if no explicit leaders object is given
+                        // For simplicity, we just check if teamObj.leaders exists first
+                        if (teamObj && teamObj.leaders && teamObj.leaders.length > 0) {
+                             tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs</h4>';
+                             tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
+                             teamObj.leaders.forEach(function(l) {
+                                 if(l.leaders && l.leaders.length > 0) {
+                                     var lead = l.leaders[0];
+                                     tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
+                                     var headshot = lead.athlete && lead.athlete.headshot ? lead.athlete.headshot.href : '';
+                                     if(headshot) {
+                                         tHtml += '<img src="'+esc(headshot)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#111;">';
+                                     } else {
+                                         tHtml += '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;">'+(lead.athlete?lead.athlete.shortName.charAt(0):'')+'</div>';
+                                     }
+                                     tHtml += '<div>';
+                                     tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">'+esc(l.displayName)+'</div>';
+                                     tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;">'+(lead.athlete?esc(lead.athlete.shortName):'')+'</div>';
+                                     tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
+                                     tHtml += '</div></div>';
+                                 }
+                             });
+                             tHtml += '</div></div>';
+                        } else if (teamObj && teamObj.nextEvent && teamObj.nextEvent[0] && teamObj.nextEvent[0].competitions[0].competitors) {
+                             // Fallback to next match leaders if team roster leaders are missing
+                             var myC = teamObj.nextEvent[0].competitions[0].competitors.find(function(c) { return String(c.id) === String(foundTeamId); }) || teamObj.nextEvent[0].competitions[0].competitors[0];
+                             if (myC.leaders && myC.leaders.length > 0) {
+                                 tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs (Match)</h4>';
+                                 tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
+                                 myC.leaders.forEach(function(l) {
+                                     if(l.leaders && l.leaders.length > 0) {
+                                         var lead = l.leaders[0];
+                                         tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
+                                         var headshot = lead.athlete && lead.athlete.headshot ? lead.athlete.headshot.href : '';
+                                         if(headshot) {
+                                             tHtml += '<img src="'+esc(headshot)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#111;">';
+                                         } else {
+                                             tHtml += '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;">'+(lead.athlete?lead.athlete.shortName.charAt(0):'')+'</div>';
+                                         }
+                                         tHtml += '<div>';
+                                         tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">'+esc(l.displayName)+'</div>';
+                                         tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;">'+(lead.athlete?esc(lead.athlete.shortName):'')+'</div>';
+                                         tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
+                                         tHtml += '</div></div>';
+                                     }
+                                 });
+                                 tHtml += '</div></div>';
+                             }
+                        }
+                    }
+
+                    if(tHtml) {
+                        statsContainer.innerHTML = tHtml;
+                        stDiv.parentNode.insertBefore(statsContainer, stDiv.nextSibling);
+                    }
+                }).catch(function(e) {
+                    console.log('Stats not available', e);
+                });
+
                 fetchTeamSchedule(lg, foundTeamId).then(function(schedRes) {
                     if(schedRes.source === 'espn' && schedRes.data && schedRes.data.events) {
                         var events = schedRes.data.events;
@@ -294,14 +440,14 @@ export function fetchTeamStats(teamName) {
                             var uHtml = '';
                             futureEvents.forEach(function(ev) {
                                 var comp = ev.competitions[0];
-                                var hComp = comp.competitors.find(function(c){return c.homeAway==='home';});
-                                var aComp = comp.competitors.find(function(c){return c.homeAway==='away';});
+                                var hComp = comp.competitors.find(function(c){return c.homeAway==='home';}) || comp.competitors[0];
+                                var aComp = comp.competitors.find(function(c){return c.homeAway==='away';}) || comp.competitors[1];
 
                                 var dateObj = new Date(ev.date);
                                 var timeStr = getEstTimeStrFromDate(dateObj);
                                 var dateStr = getEstDateStrFromDate(dateObj); // YYYY-MM-DD
 
-                                var isHome = hComp.team.id === foundTeamId || (hComp.team.id === undefined && normName(hComp.team.name) === normName(teamName));
+                                var isHome = String(hComp.team.id) === String(foundTeamId) || (hComp.team.id === undefined && normName(hComp.team.name) === normName(teamName));
                                 var oppComp = isHome ? aComp : hComp;
                                 var opponentName = oppComp.team ? (oppComp.team.displayName || oppComp.team.name || 'TBD') : 'TBD';
                                 var oppLogo = oppComp.team && oppComp.team.logos && oppComp.team.logos.length > 0 ? oppComp.team.logos[0].href : getLogo(opponentName);
@@ -309,7 +455,7 @@ export function fetchTeamStats(teamName) {
                                 uHtml += '<div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);">';
                                 uHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
                                 uHtml += '<span style="font-size:11px;color:var(--muted);font-weight:bold;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">'+esc(dateStr)+' ' + esc(timeStr)+'</span>';
-                                if (ev.status.type.state === 'in') {
+                                if (ev.status && ev.status.type && ev.status.type.state === 'in') {
                                     uHtml += '<span style="color:var(--red);font-size:11px;font-weight:bold;background:rgba(255,69,58,0.1);padding:2px 6px;border-radius:4px;">🔴 En Direct</span>';
                                 }
                                 uHtml += '</div>';
@@ -322,7 +468,7 @@ export function fetchTeamStats(teamName) {
                                 uHtml += esc(opponentName)+'</div>';
                                 uHtml += '</div>';
 
-                                if(ev.status.type.state !== 'pre') {
+                                if(ev.status && ev.status.type && ev.status.type.state !== 'pre') {
                                     var hScore = hComp.score ? hComp.score.displayValue : '0';
                                     var aScore = aComp.score ? aComp.score.displayValue : '0';
                                     var tScore = isHome ? parseInt(hScore) : parseInt(aScore);
