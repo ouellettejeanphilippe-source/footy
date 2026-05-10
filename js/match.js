@@ -162,7 +162,7 @@ export function isMatchPair(m1, m2) {
   });
 
   // Remove duplicates
-  shortWords = shortWords.filter(function(item, pos) { return shortWords.indexOf(item) == pos; });
+  shortWords = Array.from(new Set(shortWords));
 
   if (shortWords.length === 0) return false;
 
