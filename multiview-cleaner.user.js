@@ -208,8 +208,18 @@
             current = parent;
         }
 
+
         // Maximiser le conteneur du lecteur
         mainPlayerBase.classList.add('mv-cleaner-maximized');
+
+        // Ajouter le bouton Cast si c'est une video
+
+        // Ajouter le bouton Cast si c'est une video
+        if (target.tagName === 'VIDEO') {
+            addMobileCastSupport(target);
+        }
+
+
 
         // Si la cible est une vidéo ou iframe, s'assurer qu'elle prend tout l'espace
         if (target.tagName === 'VIDEO' || target.tagName === 'IFRAME') {
@@ -305,10 +315,103 @@
         }, true);
     }
 
+
+    // --- CHROMECAST INJECTION ---
+
+    function extractM3u8Url() {
+        // Method 1: Check for standard global player objects
+        if (window.player && window.player.options && window.player.options.sources) {
+            const source = window.player.options.sources.find(s => s.file && s.file.includes('.m3u8'));
+            if (source) return source.file;
+        }
+
+        // Method 2: Check standard Clappr instances
+        if (window.clappr && window.clappr.options && window.clappr.options.source) {
+            return window.clappr.options.source;
+        }
+
+        // Method 3: Check generic configuration objects often injected by scrapers
+        if (window.config && window.config.file) {
+             return window.config.file;
+        }
+
+        // Method 4: Scan all script tags for .m3u8 strings
+        const scripts = document.querySelectorAll('script');
+        for (let i = 0; i < scripts.length; i++) {
+            const text = scripts[i].innerText;
+            if (text && text.includes('.m3u8')) {
+                const match = text.match(/(https?:\/\/[^\s"'<>]+?\.m3u8[^\s"'<>]*)/i);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    function addMobileCastSupport(videoElement) {
+        if (!videoElement || videoElement.dataset.mobileCastHandled) return;
+        videoElement.dataset.mobileCastHandled = 'true';
+
+        // Sur mobile, le fait d'injecter directement l'URL m3u8 dans le tag <video>
+        // ou d'offrir un lien d'ouverture externe permet au lecteur natif de gérer le Cast.
+
+        // On attend que la page soit bien chargée pour tenter l'extraction
+        setTimeout(() => {
+            let videoUrl = videoElement.src;
+            if (!videoUrl && videoElement.querySelector('source')) {
+                videoUrl = videoElement.querySelector('source').src;
+            }
+
+            if (!videoUrl || videoUrl.startsWith('blob:')) {
+                const m3u8 = extractM3u8Url();
+                if (m3u8) {
+                    console.log('[Multiview Cleaner] M3U8 trouvé pour support mobile :', m3u8);
+
+                    // Créer un bouton d'action rapide pour Mobile
+                    const btnContainer = document.createElement('div');
+                    btnContainer.style.cssText = 'position:absolute; top:50px; right:10px; z-index:9999999; display:flex; flex-direction:column; gap:8px;';
+
+                    // Bouton 1: Tenter de forcer le lecteur natif (permet le Cast iOS/Android)
+                    const forceNativeBtn = document.createElement('button');
+                    forceNativeBtn.innerText = '📱 Force Native Player (Cast)';
+                    forceNativeBtn.style.cssText = 'background:rgba(0,122,255,0.8); color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.5);';
+                    forceNativeBtn.onclick = () => {
+                        videoElement.src = m3u8;
+                        videoElement.load();
+                        videoElement.play().catch(e => console.log(e));
+                        forceNativeBtn.style.display = 'none';
+                    };
+
+                    // Bouton 2: Ouvrir dans une app de Cast tierce (ex: Web Video Caster, VLC)
+                    const openExternalBtn = document.createElement('button');
+                    openExternalBtn.innerText = '📺 Open in Cast App';
+                    openExternalBtn.style.cssText = 'background:rgba(255,149,0,0.8); color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.5);';
+                    openExternalBtn.onclick = () => {
+                        window.location.href = m3u8;
+                    };
+
+                    btnContainer.appendChild(forceNativeBtn);
+                    btnContainer.appendChild(openExternalBtn);
+
+                    const parent = videoElement.parentElement;
+                    if (parent) {
+                        parent.appendChild(btnContainer);
+                    }
+                }
+            }
+        }, 2000);
+    }
+// ----------------------------
+
     function findAndClean() {
         if (cleaned) return;
 
+
         injectPopupBlocker();
+
+
 
         // Chercher une vidéo
         const videos = Array.from(document.querySelectorAll('video')).filter(v => v.offsetWidth > 50 || v.offsetHeight > 50);
