@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "node tests/unit_escJs.test.js"
+    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",
