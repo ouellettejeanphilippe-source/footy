@@ -90,8 +90,7 @@ export function getApiFirstMatches(targetDate) {
       baseMatches = cache.matches;
   }
 
-  var espnPaths = [];
-  for(var key in ESPN_LEAGUES) { if(espnPaths.indexOf(ESPN_LEAGUES[key])===-1) espnPaths.push(ESPN_LEAGUES[key]); }
+  var espnPaths = Array.from(new Set(Object.values(ESPN_LEAGUES)));
 
   if (needsFullFetch || baseMatches.length === 0) {
       espnPaths.forEach(function(path) {
