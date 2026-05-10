@@ -227,6 +227,11 @@ export function loadAll(isBackground, forceScrape){
           window.lastScrapeTime = Date.now();
           window.lastScrapedMatches = scrapedMatches;
 
+          try {
+              localStorage.setItem('last_scrape_time', window.lastScrapeTime.toString());
+              localStorage.setItem('last_scraped_matches', JSON.stringify(window.lastScrapedMatches));
+          } catch(e) {}
+
           // Persist the merged data (which now includes streams) back to localStorage
           try {
               var todayStr = getEspnDateStr(TARGET_DATE);
@@ -339,6 +344,14 @@ if ('serviceWorker' in navigator) {
 (function(){
   var n = new Date();
   var todayStr = getEspnDateStr(TARGET_DATE);
+
+  try {
+      var lst = localStorage.getItem('last_scrape_time');
+      var lsm = localStorage.getItem('last_scraped_matches');
+      if (lst) window.lastScrapeTime = parseInt(lst, 10);
+      if (lsm) window.lastScrapedMatches = JSON.parse(lsm);
+  } catch(e) {}
+
   var cacheRaw = localStorage.getItem('api_calendar_cache');
   var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
 

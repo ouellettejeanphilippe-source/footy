@@ -817,16 +817,43 @@ export function openMod(m,col){
       window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 60000);
   }
 
+  var btnContainer = document.createElement('div');
+  btnContainer.style.display = 'flex';
+  btnContainer.style.gap = '8px';
+  btnContainer.style.width = '100%';
+  btnContainer.style.marginTop = '16px';
+
   var addMvBtn = document.createElement('button');
   addMvBtn.className = 'btn o';
-  addMvBtn.style.marginTop = '16px';
+  addMvBtn.style.flex = '1';
   addMvBtn.style.alignSelf = 'center';
-  addMvBtn.style.width = '100%';
   addMvBtn.innerHTML = '⊞ Ajouter au Multivision (Attente du flux)';
   addMvBtn.id = 'mv-add-btn';
   addMvBtn.disabled = true;
+
+  var refreshBtn = document.createElement('button');
+  refreshBtn.className = 'btn o';
+  refreshBtn.style.flex = '1';
+  refreshBtn.style.alignSelf = 'center';
+  refreshBtn.innerHTML = '🔄 Rafraîchir les flux';
+  refreshBtn.id = 'mv-refresh-btn';
+  refreshBtn.onclick = function() {
+      refreshBtn.innerHTML = 'Chargement...';
+      refreshBtn.disabled = true;
+      scrapeMatchFlux(m, true).finally(function() {
+          openMod(m, col);
+      });
+  };
+
+  if (!m.matchUrl) {
+      refreshBtn.disabled = true;
+  }
+
+  btnContainer.appendChild(addMvBtn);
+  btnContainer.appendChild(refreshBtn);
+
   // Since mmeta is cleared, append to mname which is our unified header
-  document.getElementById('mname').appendChild(addMvBtn);
+  document.getElementById('mname').appendChild(btnContainer);
 
   var body=document.getElementById('mbody');
 
