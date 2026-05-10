@@ -2,8 +2,9 @@ import { S } from './state.js';
 import { escJs, esc, lg, pad } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
 import { globalStatsInterval } from './multiview.js';
-import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo } from './api.js';
-import { openMod, getOriginalMatchId } from './ui.js';
+import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
+import { openMod, getOriginalMatchId, populatePlayerSidebar } from './ui.js';
+import { getLogo, normName, STATIC_TEAMS } from './db.js';
 
 /* ══ CONFIG ═════════════════════════════ */
 export var SITE = 'https://www.footybite.do/';
@@ -188,12 +189,6 @@ export function fetchTeamStats(teamName) {
     });
 
     var html = '<div style="display:flex;flex-direction:column;gap:20px;">';
-
-    // Fetch real logo dynamically if not in cache (or if fallback)
-    fetchAndCacheLogoDynamically(teamName).then(function(realLogo) {
-        var imgEl = document.getElementById('gstats-team-logo');
-        if(imgEl && realLogo) imgEl.src = realLogo;
-    });
 
     // Header Equipe
     html += '<div style="display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.05);padding:20px;border-radius:16px;">';
