@@ -124,7 +124,7 @@ export function loadAll(isBackground, forceScrape){
 
       // Async scrape sites
       var nowTime = Date.now();
-      var skipScraping = !forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000) && window.hasLoadedOnce;
+      var skipScraping = !forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000) && window.lastScrapedMatches && window.lastScrapedMatches.length > 0;
 
       if (skipScraping) {
                     // Just merge with existing scrapedMatches and update API

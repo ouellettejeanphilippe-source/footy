@@ -673,8 +673,6 @@ export function setupMultivisionUI() {
       + '<button class="nav-btn hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 8px; min-width: auto; font-size: 16px;">🎬</button>'
       + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
       + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
-      + '<button class="nav-btn" onclick="hideMultivision()" aria-label="Fermer le Multivision" title="Fermer le Multivision" style="padding: 8px; min-width: auto; font-size: 16px;">❌</button>'
-      + '<button class="nav-btn" onclick="clearMultivision()" aria-label="Tout vider" title="Tout vider" style="padding: 8px; min-width: auto; font-size: 16px;">🗑️</button>'
       + '</div>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
@@ -737,6 +735,41 @@ export function setupMultivisionUI() {
     mvContainer.appendChild(mvGridWrapper);
     mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer); restoreMultivisionState();
+
+    if (window.ResizeObserver) {
+        var ro = new ResizeObserver(function(entries) {
+            for (var entry of entries) {
+                var toolbar = entry.target;
+                var actionsMenu = document.getElementById('mv-actions-menu');
+                var menuBtn = document.getElementById('mv-menu-btn');
+                if (!actionsMenu || !menuBtn) continue;
+
+                // If it's wrapping, the height will typically jump above ~55-60px depending on padding.
+                if (toolbar.scrollHeight > 60 || toolbar.offsetHeight > 60) {
+                    if (!actionsMenu.classList.contains('collapsed-by-ro')) {
+                        actionsMenu.classList.add('collapsed-by-ro');
+                        actionsMenu.style.cssText = 'display:none;position:absolute;top:100%;right:16px;background:rgba(28,28,30,0.95);border:1px solid var(--border);border-radius:12px;padding:12px;flex-direction:column;align-items:stretch;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:1000;margin-top:8px;';
+                        menuBtn.style.display = 'inline-flex';
+                    }
+                } else if (window.innerWidth > 768) {
+                    // Try to restore original flex layout
+                    if (actionsMenu.classList.contains('collapsed-by-ro')) {
+                        actionsMenu.classList.remove('collapsed-by-ro');
+                        actionsMenu.style.cssText = 'display:flex;gap:8px;align-items:center;';
+                        menuBtn.style.display = 'none';
+
+                        // Check again if it immediately wrapped
+                        if (toolbar.scrollHeight > 60) {
+                            actionsMenu.classList.add('collapsed-by-ro');
+                            actionsMenu.style.cssText = 'display:none;position:absolute;top:100%;right:16px;background:rgba(28,28,30,0.95);border:1px solid var(--border);border-radius:12px;padding:12px;flex-direction:column;align-items:stretch;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:1000;margin-top:8px;';
+                            menuBtn.style.display = 'inline-flex';
+                        }
+                    }
+                }
+            }
+        });
+        ro.observe(mvToolbar);
+    }
 
 window.mvIdleTimer = null;
 window.resetMvIdleTimer = function() {
@@ -1246,8 +1279,6 @@ export function updateMultivisionLayout() {
 
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
             '<div class="mv-drag-handle" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" title="Déplacer">' + svgDrag + '</div>' +
-            '<span style="background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);padding:4px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);">' + esc(domain) + '</span>' +
-            '<span style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;text-shadow:0 1px 2px #000;color:rgba(255,255,255,0.8);" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);position:relative;">';

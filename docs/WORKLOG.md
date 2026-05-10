@@ -400,3 +400,9 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `js/scrapers.js`
 - **Résumé** : Modification de la logique de `scrapeMatchFlux` pour utiliser une Promise avec `setTimeout(..., 0)` enveloppant le code lourd de parsing DOM (`new DOMParser()`, `querySelectorAll()`). Cela permet au thread principal de respirer et évite de bloquer (freezing) l'interface utilisateur lors de l'arrivée simultanée de multiples requêtes de streams. Ajout de `try/catch` pour ne pas perdre les erreurs de parsing.
 - **Problèmes résolus** : Résout les fréquents ralentissements, freezes de scroll, et blocages de rendu UI causés par l'accumulation de microtâches synchrones lors de la récupération des streams de dizaines de matchs en arrière-plan.
+
+- **Résumé** : Removed the URL/domain and team names from the Multiview video player interfaces, keeping only the drag handle. Removed the "Clear" (🗑️) and "Close" (❌) buttons from the Multiview toolbar, allowing the remaining options to fit cleanly inside the existing mobile hamburger dropdown menu to address overflow issues. Verified visually with local Playwright tests.
+
+- **Résumé (Update)** : Added a `ResizeObserver` to the Multiview toolbar to dynamically collapse the buttons into the hamburger menu if the intrinsic width of the controls causes the flex container to wrap (e.g. height exceeds 60px). This ensures that the menu robustly handles overflow on devices of any width, fully addressing the user's requirement.
+
+- **Résumé (Update 2)** : Improved scraper resource efficiency by allowing the app to skip top-level scraping on page reloads if the `last_scrape_time` from `localStorage` is within the 15-minute cooldown window. Removed the restrictive `window.hasLoadedOnce` condition which previously forced a full scrape on every page refresh regardless of cache freshness.
