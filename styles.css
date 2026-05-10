@@ -99,14 +99,17 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 
 
 /* MATCH GRID */
+body.card-size-small .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)) !important; gap: 12px; padding: 16px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
+body.card-size-large .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)) !important; gap: 20px; padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
+
 .match-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 16px; padding: 20px; width: 100%; max-width: 1400px; margin: 0 auto; align-content: start; }
 
 @media (min-width: 768px) {
-  .match-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+  body:not(.card-size-small):not(.card-size-large) .match-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 }
 
 @media (min-width: 1200px) {
-  .match-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+  body:not(.card-size-small):not(.card-size-large) .match-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
 }
 .match-card { display: flex; flex-direction: column; gap: 8px; cursor: pointer; position: relative; transition: transform 0.2s ease, opacity 0.2s ease; }
 .match-card:hover .prime-thumbnail { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
