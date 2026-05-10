@@ -458,7 +458,7 @@ export function fetchTeamStats(teamName) {
                         stDiv.parentNode.insertBefore(statsContainer, stDiv.nextSibling);
                     }
                 }).catch(function(e) {
-                    console.log('Stats not available', e);
+                    console.error('Stats not available', e);
                 });
 
                 fetchTeamSchedule(lg, foundTeamId).then(function(schedRes) {
