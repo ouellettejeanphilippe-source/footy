@@ -2,7 +2,7 @@ import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
 import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, SITE, sortFluxLinks } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
-import { S, addScrapeLog } from './state.js';
+import { S, addScrapeLog, favTeams } from './state.js';
 import { renderFluxItem } from './ui.js';
 
 /* ══ PARSE STREAMEAST ════════════════ */
@@ -1093,6 +1093,17 @@ export function fetchSubPages(matches){
   // We use a limited concurrency pool so we don't spam the proxy/network
   var concurrency=3;
   var queue=matches.filter(function(m){return m.matchUrl&&!m.streamsLoaded;});
+  queue.sort(function(a, b) {
+    var aFav = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? 1 : 0;
+    var bFav = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? 1 : 0;
+    if (aFav !== bFav) return bFav - aFav;
+
+    var aNhl = (a.league && a.league.toLowerCase() === 'nhl') ? 1 : 0;
+    var bNhl = (b.league && b.league.toLowerCase() === 'nhl') ? 1 : 0;
+    if (aNhl !== bNhl) return bNhl - aNhl;
+
+    return 0;
+  });
   var active=0;
 
   function next(){
