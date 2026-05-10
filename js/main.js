@@ -124,7 +124,7 @@ export function loadAll(isBackground, forceScrape){
 
       // Async scrape sites
       var nowTime = Date.now();
-      var skipScraping = !forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000) && window.hasLoadedOnce;
+      var skipScraping = !forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000);
 
       if (skipScraping) {
                     // Just merge with existing scrapedMatches and update API
@@ -148,7 +148,15 @@ export function loadAll(isBackground, forceScrape){
           S.matches = finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
           });
-          updateLiveScores(S.matches); // New function to update scores smoothly
+
+          if (!window.hasLoadedOnce) {
+              buildEPG(S.matches);
+              window.hasLoadedOnce = true;
+          } else {
+              updateLiveScores(S.matches); // New function to update scores smoothly
+          }
+          fetchSubPages(S.matches);
+
           if (!isBackground) { document.getElementById('ov').style.display='none'; }
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
       }
@@ -366,9 +374,9 @@ if ('serviceWorker' in navigator) {
           localStorage.setItem('hasSeenScriptModal', 'true');
           setTimeout(function() { installTampermonkey(); }, 500);
       }
-      loadAll(true, true); // background update for fresh streams/stats
+      loadAll(true, false); // background update for fresh streams/stats
   } else {
-      loadAll(window.hasLoadedOnce, true);
+      loadAll(window.hasLoadedOnce, false);
   }
 
   // Background auto-update every 60 seconds
