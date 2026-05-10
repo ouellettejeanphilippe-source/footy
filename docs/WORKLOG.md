@@ -390,6 +390,12 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Résumé** : Résolution d'un problème de dépendance cyclique entre `utils.js` et `config.js` lors de l'initialisation du cache de logos. Ajout de la fonction `ensureLogoCache()` appelée paresseusement par `getLogo()` plutôt que d'exécuter l'initialisation de `STATIC_LOGOS_RAW` au moment de l'import, garantissant que `normName` est pleinement évaluée.
 - **Problèmes résolus** : Le logo des Blue Jays (et des autres équipes) s'affiche désormais correctement dans la vue "Favoris" et non plus uniquement dans la vue "Live" grâce à ce cache pleinement fonctionnel et synchronisé.
 
+### $(date +'%d %B %Y') - Correction du Drag and Drop Multivision et Ajout de l'option Chromecast
+- **Fichiers touchés** : `js/multiview.js`
+- **Résumé** :
+  - **Drag and Drop :** Suppression de l'attribut inline `onmouseleave="this.closest('.mv-cell').draggable=false;"` sur le conteneur de la poignée de déplacement (`.mv-drag-handle`) dans le lecteur Multivision. Cet attribut causait l'interruption inopinée de l'action de drag natif d'HTML5 lorsque le curseur de la souris quittait la poignée. Le glisser-déposer fonctionne désormais de manière fluide.
+  - **Caster :** Ajout d'une option `Caster (Chromecast)` directement dans le menu déroulant (`dropdown`) de chaque flux du Multivision. Ce bouton ouvre l'URL du flux dans une nouvelle fenêtre contextuelle pour permettre à l'utilisateur de caster ce flux via la fonctionnalité native "Caster l'onglet" de son navigateur.
+- **Problèmes résolus** : Le glisser-déposer pour intervertir les flux vidéos fonctionne correctement. Les utilisateurs ont maintenant une option explicite pour utiliser le Chromecast.
 ### $(date +'%d %B %Y') - Optimisation de la performance de l'interface utilisateur pendant le scraping
 - **Fichiers touchés** : `js/scrapers.js`
 - **Résumé** : Modification de la logique de `scrapeMatchFlux` pour utiliser une Promise avec `setTimeout(..., 0)` enveloppant le code lourd de parsing DOM (`new DOMParser()`, `querySelectorAll()`). Cela permet au thread principal de respirer et évite de bloquer (freezing) l'interface utilisateur lors de l'arrivée simultanée de multiples requêtes de streams. Ajout de `try/catch` pour ne pas perdre les erreurs de parsing.
