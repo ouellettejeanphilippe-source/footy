@@ -57,6 +57,12 @@ export function saveCustomLgOrder() {
     localStorage.setItem('custom_lg_order', JSON.stringify(customLgOrder));
 }
 
+export function setCustomLgOrder(newOrder) {
+    customLgOrder = newOrder;
+    window.customLgOrder = customLgOrder;
+    saveCustomLgOrder();
+}
+
 export function toggleFavTeam(teamName) {
   if (favTeams[teamName]) {
     delete favTeams[teamName];
@@ -100,6 +106,7 @@ window.updateSourceStatus = updateSourceStatus;
 window.addScrapeLog = addScrapeLog;
 window.favTeams = favTeams;
 window.customLgOrder = customLgOrder;
+window.setCustomLgOrder = setCustomLgOrder;
 window.saveCustomLgOrder = saveCustomLgOrder;
 window.toggleFavTeam = toggleFavTeam;
 window.matchCardCache = matchCardCache;
