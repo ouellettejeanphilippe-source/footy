@@ -456,6 +456,9 @@ body.theme-metallic .ic {
 }
 
 @media (max-width: 768px) {
+  .fav-mobile-tabs { display: flex !important; }
+  .fav-container:not(.show-leagues) .fav-col-right { display: none !important; }
+  .fav-container.show-leagues .fav-col-left { display: none !important; }
   .fav-container { flex-direction: column !important; }
   .fav-col-left, .fav-col-right { flex: none !important; width: 100% !important; min-width: 0 !important; }
   #fav-page { padding: 10px; }

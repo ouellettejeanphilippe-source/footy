@@ -722,6 +722,22 @@ export function resetLgOrder() {
     renderFavPage();
 }
 
+export function switchFavTab(tab) {
+    var container = document.getElementById('fav-container');
+    var tabTeams = document.getElementById('fav-tab-teams');
+    var tabLeagues = document.getElementById('fav-tab-leagues');
+
+    if (tab === 'leagues') {
+        container.classList.add('show-leagues');
+        tabTeams.classList.remove('active-toggle');
+        tabLeagues.classList.add('active-toggle');
+    } else {
+        container.classList.remove('show-leagues');
+        tabLeagues.classList.remove('active-toggle');
+        tabTeams.classList.add('active-toggle');
+    }
+}
+
 export function filterFavTeams(query) {
     var q = normName(query);
     var teamsContainer = document.getElementById('fav-teams-list');
@@ -804,3 +820,4 @@ window.toggleFavPageTeam = toggleFavPageTeam;
 window.moveLeagueOrder = moveLeagueOrder;
 window.resetLgOrder = resetLgOrder;
 window.filterFavTeams = filterFavTeams;
+window.switchFavTab = switchFavTab;

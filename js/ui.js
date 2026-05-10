@@ -264,7 +264,7 @@ export function buildEPG(matches){
                   } else if (userPrefs.cardColor === 'dark') {
                       cardBg = 'rgba(255,255,255,0.05)';
                   } else if (userPrefs.cardColor === 'split') {
-                      cardBg = 'linear-gradient(90deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
+                      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
                   } else if (userPrefs.cardColor === 'gradient') {
                       cardBg = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
                   } else {
@@ -507,7 +507,7 @@ export function buildEPG(matches){
             } else if (userPrefs.cardColor === 'dark') {
                 b.style.background = 'rgba(255,255,255,0.05)';
             } else if (userPrefs.cardColor === 'split') {
-                b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
+                b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
             } else if (userPrefs.cardColor === 'gradient') {
                 b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
             } else {
