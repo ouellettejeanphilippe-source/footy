@@ -3,7 +3,7 @@ import { escJs, esc, lg, pad } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
 import { globalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
-import { openMod, getOriginalMatchId, populatePlayerSidebar } from './ui.js';
+import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS } from './db.js';
 
 /* ══ CONFIG ═════════════════════════════ */
@@ -619,11 +619,6 @@ export function toggleDomainPref(domain, type, mid) {
     if(m) {
       if (document.getElementById('mbg').classList.contains('open')) {
         openMod(m);
-      }
-      var pbg = document.getElementById('player-bg');
-      if (pbg && pbg.classList.contains('open')) {
-          var iframe = document.getElementById('p-frame');
-          populatePlayerSidebar(m, iframe ? iframe.dataset.url : null);
       }
     }
   }
