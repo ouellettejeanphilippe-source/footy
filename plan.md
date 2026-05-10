@@ -1,20 +1,18 @@
-1. **Refonte de l'entête principal (`#main-hdr`) et du sous-menu (`.nav-links`) dans `index.html`**
-   - Remplacer l'organisation actuelle par une structure de navigation plus moderne.
-   - Intégrer les filtres de ligues (actuellement dans `#sport-filters-container`) directement en tant que liste défilante horizontale ancrée sous l'en-tête, style "app" moderne.
-   - Adapter les boutons "Guide", "En direct", "Favoris" dans une barre de navigation persistante en bas sur mobile (Bottom Navigation Bar) et dans l'en-tête sur desktop.
-
-2. **Modification des styles CSS pour la nouvelle disposition**
-   - Modifier `.hdr`, `.nav-links`, `.secondary-actions` dans `styles.css`.
-   - Créer un `.bottom-nav` pour la version mobile.
-   - Supprimer l'aspect "bouton flottant" basique du menu hamburger et le remplacer par des icônes de profil/paramètres directes.
-
-3. **Modernisation du Multiview (`openMultiviewTab`, `setupMultivisionUI`)**
-   - Retravailler la barre d'outils du Multiview (`#mv-toolbar`) pour qu'elle s'intègre plus proprement à la nouvelle UI (style minimaliste, regroupement des contrôles dans un menu déroulant clair au lieu d'une ligne saturée).
-
-4. **Vérification et Tests (Playwright / Live Preview)**
-   - Vérifier le rendu sur bureau et mobile (responsive).
-   - S'assurer que les filtres de sport restent fonctionnels.
-   - S'assurer que le Multiview s'ouvre et s'affiche correctement sans chevaucher les nouveaux menus.
-
-5. **Pre-commit et Soumission**
-   - Exécuter le script pre-commit pour s'assurer que les vérifications passent.
+1.  **Consolidate Team Data**: Use `run_in_bash_session` to execute a Python script that parses `js/db.js` and `js/utils.js` to extract all currently available team data (`STATIC_TEAMS`, `TEAM_COLORS`, `TEAM_ALIASES`, `STATIC_LOGOS_RAW`) and merge them into a single `TEAM_DATA` dictionary mapping exported from a new file `js/teams.js`.
+2.  **Scrape Missing Logos**: Use `run_in_bash_session` to run a Python script that searches the ESPN APIs generally for logos of teams that do not have one. If not found on ESPN, fallback to TheSportsDB.
+3.  **Ensure ALL Teams have ALL info**: Use `run_in_bash_session` to execute a Python script that iterates over the generated `TEAM_DATA` mapping. If a team lacks a `logo`, default it to the standard `ui-avatars` URL. If it lacks `colors`, apply the default hashing color function previously found in `js/db.js`. If it lacks `aliases`, set it to an empty array. Write this final data structure back to `js/teams.js`.
+4.  **Update `js/db.js`**:
+    - Remove `STATIC_TEAMS`, `TEAM_COLORS`, `TEAM_ALIASES` variables.
+    - Import `TEAM_DATA` from `js/teams.js`.
+    - Dynamically map `TEAM_DATA` to recreate the `STATIC_TEAMS`, `TEAM_COLORS`, and `TEAM_ALIASES` constants in `js/db.js` for backward compatibility.
+    - Refactor `getTeamColors()`, `normName()`, and `STATIC_TEAM_MAP` building loop to use `TEAM_DATA`.
+    - Change `getLogo()` to primarily look up `TEAM_DATA[key].logo`, falling back to ui-avatars.
+    - Remove the dynamic `fetchAndCacheLogoDynamically` function, as all logos should be statically available.
+5.  **Update `js/utils.js`**:
+    - Remove `STATIC_LOGOS_RAW`.
+    - Remove `cacheLogo` and `ensureLogoCache` functions as caching dynamically fetched logos is no longer needed.
+6.  **Verify Code syntax**: Run a bash script leveraging `acorn` to check for JS syntax errors on `js/db.js`, `js/utils.js` and `js/teams.js`.
+7.  **Refactor Imports**: Use `grep` to identify references, and then use `run_in_bash_session` with Python to cleanly remove obsolete imports. Update imports in `js/main.js` to ensure the recreated `STATIC_TEAMS` and `TEAM_ALIASES` are still imported correctly from `js/db.js`.
+8.  **Run Tests**: Run `npm test` and `python3 run_checks.py` to ensure all functionality is preserved.
+9.  **Pre-commit Steps**: Complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.
+10. **Submit Changes**: Submit code.

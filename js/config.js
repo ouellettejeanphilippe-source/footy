@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { cacheLogo, logoCache, ensureLogoCache, escJs, esc, lg, pad } from './utils.js';
+import { escJs, esc, lg, pad } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
 import { globalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings } from './api.js';
