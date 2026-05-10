@@ -1303,6 +1303,19 @@ export function updateMatchUiAfterScrape(m) {
                     mbM.appendChild(span);
                 }
             }
+
+            var primeSnEl=mb.querySelector('.prime-stream-count');
+            if(primeSnEl){
+                primeSnEl.textContent=sn+' flux';
+            }else if(sn>0){
+                var primeThumb=mb.querySelector('.prime-thumbnail');
+                if(primeThumb){
+                    var div=document.createElement('div');
+                    div.className='prime-stream-count';
+                    div.textContent=sn+' flux';
+                    primeThumb.appendChild(div);
+                }
+            }
         }
     });
 
