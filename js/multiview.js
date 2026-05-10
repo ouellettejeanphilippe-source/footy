@@ -737,16 +737,38 @@ export function setupMultivisionUI() {
     mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer); restoreMultivisionState();
 
-    // Removed Multivision Idle Timer for Auto-Hide (keep toolbar and headers visible)
-    mvContainer.addEventListener('mousemove', function() {
+window.mvIdleTimer = null;
+window.resetMvIdleTimer = function() {
         var tb = document.getElementById('mv-toolbar');
         if (tb) { tb.style.opacity = '1'; tb.style.pointerEvents = 'auto'; }
         mvContainer.style.cursor = 'default';
 
-        // Show all cell headers
         var hdrs = mvContainer.querySelectorAll('.mv-hdr');
         hdrs.forEach(function(h) { h.style.opacity = '1'; h.style.pointerEvents = 'auto'; });
-    });
+
+        var overlays = mvContainer.querySelectorAll('.mv-idle-overlay');
+        overlays.forEach(function(o) { o.style.display = 'none'; });
+
+        clearTimeout(window.mvIdleTimer);
+        window.mvIdleTimer = setTimeout(function() {
+            var mvc = document.getElementById('mv-container');
+            if (mvc && !mvc.classList.contains('mv-pip')) {
+                var tb = document.getElementById('mv-toolbar');
+                if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
+                mvc.style.cursor = 'none';
+
+                var latestHdrs = mvc.querySelectorAll('.mv-hdr');
+                latestHdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
+
+                var latestOverlays = mvc.querySelectorAll('.mv-idle-overlay');
+                latestOverlays.forEach(function(o) { o.style.display = 'block'; o.style.pointerEvents = 'auto'; });
+            }
+        }, 3000);
+    }
+
+    mvContainer.addEventListener('mousemove', window.resetMvIdleTimer);
+    mvContainer.addEventListener('click', window.resetMvIdleTimer);
+    mvContainer.addEventListener('touchstart', window.resetMvIdleTimer, {passive: true});
 
 }
 
@@ -982,9 +1004,24 @@ export function updateMultivisionLayout() {
             videoContainer.className = 'mv-video-container';
             videoContainer.style.cssText = 'flex:1;position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:transparent;';
 
+            var overlay = document.createElement('div');
+            overlay.className = 'mv-idle-overlay';
+            overlay.style.cssText = 'position:absolute;inset:0;z-index:5;display:none;';
+
             cell.appendChild(hdr);
             cell.appendChild(videoContainer);
+            cell.appendChild(overlay);
             grid.appendChild(cell);
+
+            overlay.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                window.resetMvIdleTimer();
+            });
+            overlay.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+                window.resetMvIdleTimer();
+            }, {passive: true});
 
             fallbackToIframe(s.url, videoContainer, cell, s);
         }
