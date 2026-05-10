@@ -349,13 +349,49 @@ export function fetchTeamStats(teamName) {
                         var totalRec = teamObj.record.items.find(function(r) { return r.type === 'total'; });
                         if (totalRec && totalRec.summary) {
                             tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📊 Statistiques de l\'équipe (' + esc(totalRec.summary) + ')</h4>';
-                            tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
+                            tHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));gap:8px;margin-bottom:16px;">';
+                            var statTranslations = {
+                                'otLosses': 'Défaites (Prol.)', 'OTLosses': 'Défaites (Prol.)',
+                                'otWins': 'Victoires (Prol.)', 'OTWins': 'Victoires (Prol.)',
+                                'overtimeLosses': 'Défaites (Prol.)', 'overtimeWins': 'Victoires (Prol.)',
+                                'shootoutLosses': 'Défaites (Fus.)', 'shootoutWins': 'Victoires (Fus.)',
+                                'avgPointsAgainst': 'Moy. Pts Contre', 'avgPointsFor': 'Moy. Pts Pour',
+                                'differential': 'Différentiel', 'gamesBehind': 'Retard',
+                                'divisionGamesBehind': 'Retard (Div.)', 'pointDifferential': 'Diff. Points',
+                                'pointsAgainst': 'Points Contre', 'pointsFor': 'Points Pour',
+                                'streak': 'Séquence', 'winPercent': '% Victoire',
+                                'leagueWinPercent': '% Vict. (Ligue)', 'divisionWinPercent': '% Vict. (Div.)',
+                                'playoffPercent': '% Séries', 'wildCardPercent': '% Quatrième',
+                                'penaltyKillPct': '% Infériorité', 'powerPlayPct': '% Avantage',
+                                'powerPlayGoals': 'Buts (Avantage)', 'powerPlayGoalsAgainst': 'Buts Contre (Avantage)',
+                                'powerPlayOpportunities': 'Occasions (Avantage)',
+                                'regLosses': 'Défaites (Rég.)', 'regWins': 'Victoires (Rég.)',
+                                'rotLosses': 'Défaites (T.R./Prol.)', 'rotWins': 'Victoires (T.R./Prol.)',
+                                'timesShortHanded': 'Fois en Inf.', 'pointsDiff': 'Diff. Points',
+                                'homeLosses': 'Défaites (Dom.)', 'homeWins': 'Victoires (Dom.)', 'homeTies': 'Nuls (Dom.)',
+                                'roadLosses': 'Défaites (Ext.)', 'roadWins': 'Victoires (Ext.)', 'roadTies': 'Nuls (Ext.)',
+                                'divisionLosses': 'Défaites (Div.)', 'divisionWins': 'Victoires (Div.)', 'divisionTies': 'Nuls (Div.)',
+                                'divisionRecord': 'Fiche (Div.)', 'divisionPercent': '% Vict. (Div.)',
+                                'gamesAhead': 'Avance'
+                            };
                             totalRec.stats.forEach(function(s) {
                                 // Skip boring stats or repetitive ones
-                                if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties') return;
-                                tHtml += '<div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:8px;flex:1;min-width:100px;text-align:center;">';
-                                tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">'+esc(s.shortDisplayName || s.displayName)+'</div>';
-                                tHtml += '<div style="font-size:16px;font-weight:bold;color:#fff;">'+esc(s.displayValue || s.value)+'</div>';
+                                if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties' || s.name === 'playoffSeed' || s.name === 'clincher' || s.name === 'magicNumberDivision' || s.name === 'magicNumberWildcard') return;
+
+                                var rawName = s.shortDisplayName || s.displayName || s.name || '';
+                                var statName = statTranslations[rawName] || statTranslations[s.name] || rawName.replace(/([A-Z])/g, " $1").trim();
+                                statName = statName.charAt(0).toUpperCase() + statName.slice(1);
+
+                                var displayVal = s.displayValue !== undefined ? s.displayValue : s.value;
+                                if (typeof displayVal === 'number' && !Number.isInteger(displayVal)) {
+                                    displayVal = displayVal.toFixed(2);
+                                } else if (typeof displayVal === 'string' && !isNaN(Number(displayVal)) && displayVal.indexOf('.') > -1) {
+                                    displayVal = Number(displayVal).toFixed(2);
+                                }
+
+                                tHtml += '<div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:8px;text-align:center;display:flex;flex-direction:column;justify-content:center;">';
+                                tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(statName)+'">'+esc(statName)+'</div>';
+                                tHtml += '<div style="font-size:16px;font-weight:bold;color:#fff;">'+esc(displayVal)+'</div>';
                                 tHtml += '</div>';
                             });
                             tHtml += '</div></div>';
