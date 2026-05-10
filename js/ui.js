@@ -263,8 +263,12 @@ export function buildEPG(matches){
                       cardBg = lgCol;
                   } else if (userPrefs.cardColor === 'dark') {
                       cardBg = 'rgba(255,255,255,0.05)';
+                  } else if (userPrefs.cardColor === 'split') {
+                      cardBg = 'linear-gradient(90deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
+                  } else if (userPrefs.cardColor === 'gradient') {
+                      cardBg = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
                   } else {
-                      cardBg = 'linear-gradient(105deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+                      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
                   }
 
                   var statusHtml = '';
@@ -500,8 +504,14 @@ export function buildEPG(matches){
                 b.style.background = homeColor;
             } else if (userPrefs.cardColor === 'league') {
                 b.style.background = lgCol;
+            } else if (userPrefs.cardColor === 'dark') {
+                b.style.background = 'rgba(255,255,255,0.05)';
+            } else if (userPrefs.cardColor === 'split') {
+                b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
+            } else if (userPrefs.cardColor === 'gradient') {
+                b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
             } else {
-                b.style.background = 'linear-gradient(105deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+                b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
             }
 
             var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';

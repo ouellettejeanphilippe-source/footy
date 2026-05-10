@@ -1840,12 +1840,13 @@ export function initPrefs() {
       var hexC2 = document.getElementById('hex-c2');
       if(hexC2) hexC2.textContent = selC2.value;
   }
+  if(selCard) selCard.value = userPrefs.cardColor || 'gradient-45';
   if(selC3) {
       selC3.value = userPrefs.c3 || '#222222';
       var hexC3 = document.getElementById('hex-c3');
       if(hexC3) hexC3.textContent = selC3.value;
   }
-  if(selCard) selCard.value = userPrefs.cardColor || 'gradient-45';
+
   if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
@@ -1905,7 +1906,7 @@ export function applyUserPrefs() {
   if(c1Sel) userPrefs.c1 = c1Sel.value;
   if(c2Sel) userPrefs.c2 = c2Sel.value;
   if(c3Sel) userPrefs.c3 = c3Sel.value;
-  userPrefs.cardColor = 'gradient-45';
+  if(cardSel) userPrefs.cardColor = cardSel.value;
   userPrefs.cardStyle = 'glass';
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
