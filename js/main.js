@@ -1,4 +1,4 @@
-import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder } from './state.js';
+import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, toggleAutresFlux, lg } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, mergeFluxToApi, getEspnDateStr } from './api.js';
@@ -531,10 +531,10 @@ export function renderFavPage() {
             var isFirst = idx === 0;
             var isLast = idx === displayOrder.length - 1;
 
-            lgHtml += '<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">'
-                   + '<div style="display:flex; align-items:center; gap:8px;">'
-                   + '<span style="font-size:16px;">' + lgIcon + '</span>'
-                   + '<span style="font-size:14px; font-weight:bold;">' + esc(lgKey) + '</span>'
+            lgHtml += '<div draggable="true" ondragstart="handleDragStartLg(event, \'' + escJs(lgKey) + '\')" ondragend="handleDragEndLg(event)" ondragover="handleDragOverLg(event)" ondrop="handleDropLg(event, \'' + escJs(lgKey) + '\')" ondragenter="handleDragEnterLg(event)" ondragleave="handleDragLeaveLg(event)" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); cursor: grab;">'
+                   + '<div style="display:flex; align-items:center; gap:8px; pointer-events:none;">'
+                   + '<span style="font-size:16px; pointer-events:none;">' + lgIcon + '</span>'
+                   + '<span style="font-size:14px; font-weight:bold; pointer-events:none;">' + esc(lgKey) + '</span>'
                    + '</div>'
                    + '<div style="display:flex; gap:4px;">'
                    + '<button class="btn o" style="padding:4px; font-size:12px; opacity:' + (isFirst ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', -1)" ' + (isFirst ? 'disabled' : '') + '>▲</button>'
@@ -693,6 +693,70 @@ export function toggleFavPageTeam(teamName) {
     renderFavPage(); // Re-render to update UI (star color)
 }
 
+var draggedLgKey = null;
+
+export function handleDragStartLg(event, lgKey) {
+    draggedLgKey = lgKey;
+    event.dataTransfer.effectAllowed = 'move';
+    event.target.style.opacity = '0.5';
+}
+
+export function handleDragEndLg(event) {
+    event.target.style.opacity = '1';
+    draggedLgKey = null;
+}
+
+export function handleDragOverLg(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+export function handleDragEnterLg(event) {
+    event.preventDefault();
+    var target = event.currentTarget;
+    if (target) {
+        target.style.border = '1px dashed var(--accent)';
+        target.style.background = 'rgba(255,255,255,0.1)';
+    }
+}
+
+export function handleDragLeaveLg(event) {
+    var target = event.currentTarget;
+    if (target) {
+        target.style.border = '1px solid rgba(255,255,255,0.05)';
+        target.style.background = 'rgba(0,0,0,0.3)';
+    }
+}
+
+export function handleDropLg(event, dropLgKey) {
+    event.stopPropagation();
+    var target = event.currentTarget;
+    if (target) {
+        target.style.border = '1px solid rgba(255,255,255,0.05)';
+        target.style.background = 'rgba(0,0,0,0.3)';
+    }
+    if (draggedLgKey && draggedLgKey !== dropLgKey) {
+        var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+        var allLgs = Object.keys(DEFAULT_LEAGUES);
+        allLgs.forEach(function(l) {
+            if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
+        });
+
+        var draggedIdx = displayOrder.indexOf(draggedLgKey);
+        var dropIdx = displayOrder.indexOf(dropLgKey);
+
+        if (draggedIdx > -1 && dropIdx > -1) {
+            displayOrder.splice(draggedIdx, 1);
+            displayOrder.splice(dropIdx, 0, draggedLgKey);
+            setCustomLgOrder(displayOrder);
+            renderFavPage();
+        }
+    }
+    draggedLgKey = null;
+    return false;
+}
+
 export function moveLeagueOrder(lgKey, direction) {
     var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
     var allLgs = Object.keys(DEFAULT_LEAGUES);
@@ -711,14 +775,12 @@ export function moveLeagueOrder(lgKey, direction) {
     displayOrder[idx] = displayOrder[newIdx];
     displayOrder[newIdx] = temp;
 
-    customLgOrder = displayOrder;
-    saveCustomLgOrder();
+    setCustomLgOrder(displayOrder);
     renderFavPage();
 }
 
 export function resetLgOrder() {
-    customLgOrder = [];
-    saveCustomLgOrder();
+    setCustomLgOrder([]);
     renderFavPage();
 }
 
@@ -817,6 +879,12 @@ window.getLeagueIcon = getLeagueIcon;
 window.renderFavPage = renderFavPage;
 window.toggleFavPageAccordion = toggleFavPageAccordion;
 window.toggleFavPageTeam = toggleFavPageTeam;
+window.handleDragStartLg = handleDragStartLg;
+window.handleDragEndLg = handleDragEndLg;
+window.handleDragOverLg = handleDragOverLg;
+window.handleDragEnterLg = handleDragEnterLg;
+window.handleDragLeaveLg = handleDragLeaveLg;
+window.handleDropLg = handleDropLg;
 window.moveLeagueOrder = moveLeagueOrder;
 window.resetLgOrder = resetLgOrder;
 window.filterFavTeams = filterFavTeams;
