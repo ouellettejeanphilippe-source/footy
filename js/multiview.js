@@ -1,5 +1,5 @@
 import { S, favTeams, sourcesStatus, scrapeLogs } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch } from './config.js';
@@ -12,7 +12,7 @@ import { loadAll } from './main.js';
 export var mvGameModeActive = false;
 export var mvGameModeInterval = null;
 export var gmCurrentTab = 'stats'; // 'stats' | 'scores'
-export var gmPinnedMatches = JSON.parse(localStorage.getItem('gmPinnedMatches') || '[]');
+export var gmPinnedMatches = safeStorageGetJSON('gmPinnedMatches', []);
 export var globalStatsInterval = null;
 export var currentGlobalStatsMatchId = null;
 export var activeMvStatsCards = [];
@@ -111,7 +111,7 @@ export function toggleGmPinMatch(matchId, e) {
     } else {
         gmPinnedMatches.push(matchId);
     }
-    localStorage.setItem('gmPinnedMatches', JSON.stringify(gmPinnedMatches));
+    safeStorageSetJSON('gmPinnedMatches', gmPinnedMatches);
     updateGmScoresTab();
 }
 
@@ -216,7 +216,7 @@ export function updateMvGameModeStats() {
 
     var pinnedHtml = '';
     if (gmPinnedMatches.length > 0) {
-        var pinnedList = S.matches.filter(function(m) { return gmPinnedMatches.indexOf(String(m.id)) > -1; });
+        var pinnedList = gmPinnedMatches.map(function(id) { return S.matchMap.get(String(id)); }).filter(Boolean);
         if (pinnedList.length > 0) {
             pinnedHtml += '<div style="margin-bottom: 15px;">';
             pinnedHtml += '<h4 style="color:#fff; margin-bottom:10px; font-size:14px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">Matchs Épinglés</h4>';
@@ -243,7 +243,7 @@ export function updateMvGameModeStats() {
 
     if (activeMvIdx !== null && activeMvIdx < mvFlux.length) {
         var activeFlux = mvFlux[activeMvIdx];
-        var mainM = S.matches.find(function(x) { return String(x.id) === String(activeFlux.mid); });
+        var mainM = S.matchMap.get(String(activeFlux.mid));
         if (mainM) {
             mainMatchId = mainM.id;
             matchCardsToFetch.push(mainM);
@@ -252,7 +252,7 @@ export function updateMvGameModeStats() {
 
     activeMvStatsCards.forEach(function(cid) {
         if (String(cid) !== String(mainMatchId)) {
-            var cardM = S.matches.find(function(x) { return String(x.id) === String(cid); });
+            var cardM = S.matchMap.get(String(cid));
             if (cardM) {
                 matchCardsToFetch.push(cardM);
             }
@@ -368,7 +368,7 @@ export function showFluxSelector(idx, mid, event) {
         event.preventDefault();
     }
 
-    var m = S.matches.find(function(x) { return String(x.id) === String(mid); });
+    var m = S.matchMap.get(String(mid));
 
     var existing = document.getElementById('mv-flux-selector');
     if (existing) existing.remove();
@@ -831,19 +831,12 @@ export function moveMultiviewStream(idx, direction) {
 
 /* ══ PERSISTENCE MULTIVISION ═══════════ */
 export function saveMultivisionState() {
-    try {
-        localStorage.setItem('mv_state', JSON.stringify({
-            flux: mvFlux,
-            layout: mvLayout
-        }));
-    } catch(e) {}
+    safeStorageSetJSON('mv_state', { flux: mvFlux, layout: mvLayout });
 }
 
 export function restoreMultivisionState() {
-    try {
-        var saved = localStorage.getItem('mv_state');
-        if(saved) {
-            var parsed = JSON.parse(saved);
+    var parsed = safeStorageGetJSON('mv_state');
+        if(parsed) {
 
             // Backward compatibility with just array
             if(Array.isArray(parsed) && parsed.length > 0) {
@@ -1564,7 +1557,7 @@ export function openFlux(e, eu, en, mid){
   if(e) e.preventDefault();
   var url=decodeURIComponent(eu), name=decodeURIComponent(en);
 
-  var m = S.matches.find(function(x) { return String(x.id) === String(mid); });
+  var m = S.matchMap.get(String(mid));
   var matchName = m ? (m.homeTeam + ' vs ' + m.awayTeam) : name;
 
   if (window.multiviewPendingAction) {
@@ -1691,10 +1684,8 @@ export function applyBgStyle() {
 }
 
 export function initPrefs() {
-  var saved = localStorage.getItem('user_prefs');
-  if(saved) {
-    try { Object.assign(userPrefs, JSON.parse(saved)); } catch(e){}
-  }
+  var saved = safeStorageGetJSON('user_prefs');
+  if (saved) { Object.assign(userPrefs, saved); }
 
   if(document.getElementById('pref-bg-darken')) document.getElementById('pref-bg-darken').value = userPrefs.bgDarken || 0;
 
@@ -2025,7 +2016,7 @@ export function applyUserPrefs() {
       userPrefs.uiEffects = activeEffects;
   }
 
-  localStorage.setItem('user_prefs', JSON.stringify(userPrefs));
+  safeStorageSetJSON('user_prefs', userPrefs);
   initPrefs();
   setTimeout(function() { buildEPG(S.matches); }, 0); // Rebuild to apply card colors
   showToast('Préférences sauvegardées');

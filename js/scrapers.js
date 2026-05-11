@@ -1131,24 +1131,36 @@ export function parseFootybite(html){
 
 /* ══ CACHE STREAMS (2 hours) ══════════════ */
 export function getStreamCache(mid) {
-    try {
-        var cached = localStorage.getItem('streams_' + mid);
-        if (cached) {
-            var data = JSON.parse(cached);
-            if (Date.now() - data.ts < 2 * 60 * 60 * 1000) {
-                return data.streams;
-            } else {
-                localStorage.removeItem('streams_' + mid);
-            }
+    var globalCache = safeStorageGetJSON('stream_cache', {});
+    var matchCache = globalCache[mid];
+
+    if (matchCache) {
+        if (Date.now() - matchCache.ts < 2 * 60 * 60 * 1000) {
+            return matchCache.streams;
+        } else {
+            // Delete expired cache entry
+            delete globalCache[mid];
+            safeStorageSetJSON('stream_cache', globalCache);
         }
-    } catch(e) {}
+    }
     return null;
 }
 
 export function saveStreamCache(mid, streams) {
-    try {
-        localStorage.setItem('streams_' + mid, JSON.stringify({ ts: Date.now(), streams: streams }));
-    } catch(e) {}
+    var globalCache = safeStorageGetJSON('stream_cache', {});
+
+    // Purge logic: remove anything older than 2 hours to keep cache small
+    var now = Date.now();
+    var hasDeletes = false;
+    for (var k in globalCache) {
+        if (now - globalCache[k].ts >= 2 * 60 * 60 * 1000) {
+            delete globalCache[k];
+            hasDeletes = true;
+        }
+    }
+
+    globalCache[mid] = { ts: now, streams: streams };
+    safeStorageSetJSON('stream_cache', globalCache);
 }
 
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */

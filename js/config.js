@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { escJs, esc, lg, pad } from './utils.js';
+import { escJs, esc, lg, pad, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
 import { globalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
@@ -52,7 +52,7 @@ export function toggleGlobalStats() {
 }
 
 export function openGlobalStatsFromMatch(mid) {
-    var m = S.matches.find(function(x) { return x.id === mid; });
+    var m = S.matchMap.get(String(mid));
     if (!m) return;
     var sidebar = document.getElementById('global-stats-sidebar');
     sidebar.style.transform = 'translateX(0px)';
@@ -683,14 +683,11 @@ export function getDomain(url) {
 }
 
 export var domainPrefs = {};
-try {
-  var storedPrefs = localStorage.getItem('domain_prefs');
-  if (storedPrefs) domainPrefs = JSON.parse(storedPrefs);
-} catch(e) {}
+domainPrefs = safeStorageGetJSON('domain_prefs', {});
 
 export function saveDomainPrefs() {
   try {
-    localStorage.setItem('domain_prefs', JSON.stringify(domainPrefs));
+    safeStorageSetJSON('domain_prefs', domainPrefs);
   } catch(e) {}
 }
 
@@ -708,7 +705,7 @@ export function toggleDomainPref(domain, type, mid) {
 
   // Refresh the UI if necessary
   if (mid) {
-    var m = S.matches.find(function(x){ return x.id === mid; });
+    var m = S.matchMap.get(String(mid));
     if(m) {
       if (document.getElementById('mbg').classList.contains('open')) {
         openMod(m);

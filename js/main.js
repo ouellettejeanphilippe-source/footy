@@ -1,5 +1,5 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, toggleAutresFlux, lg } from './utils.js';
+import { esc, showToast, fetchPage, applySportFilter, escJs, toggleAutresFlux, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
@@ -7,6 +7,7 @@ import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
+import { setMatches } from './state.js';
 
 /* ══ MAIN ═══════════════════════════════ */
 
@@ -131,23 +132,17 @@ export function loadAll(isBackground, forceScrape){
           var finalMatches = mergeFluxToApi(apiMatches, window.lastScrapedMatches || [], true);
 
           // Persist the updated scores/statuses back to cache even when skipping scraping
-          try {
-              var todayStr = getEspnDateStr(TARGET_DATE);
-              var cacheRaw = localStorage.getItem('api_calendar_cache');
-              var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
+          var todayStr = getEspnDateStr(TARGET_DATE);
+              var cache = safeStorageGetJSON('api_calendar_cache');
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              localStorage.setItem('api_calendar_cache', JSON.stringify({
-                  fetchDate: fetchDateToSave,
-                  matches: finalMatches
-              }));
-          } catch(e) {}
+              safeStorageSetJSON('api_calendar_cache', { fetchDate: fetchDateToSave, matches: finalMatches });
 
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
-          S.matches = finalMatches.filter(function(m) {
+          setMatches(finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
-          });
+          }));
 
           if (!window.hasLoadedOnce) {
               buildEPG(S.matches);
@@ -238,31 +233,21 @@ export function loadAll(isBackground, forceScrape){
           window.lastScrapeTime = Date.now();
           window.lastScrapedMatches = scrapedMatches;
 
-          try {
-              localStorage.setItem('last_scrape_time', window.lastScrapeTime.toString());
-              localStorage.setItem('last_scraped_matches', JSON.stringify(window.lastScrapedMatches));
-          } catch(e) {}
+          safeStorageSet('last_scrape_time', window.lastScrapeTime.toString());
+              safeStorageSetJSON('last_scraped_matches', window.lastScrapedMatches);
 
           // Persist the merged data (which now includes streams) back to localStorage
-          try {
-              var todayStr = getEspnDateStr(TARGET_DATE);
-              var cacheRaw = localStorage.getItem('api_calendar_cache');
-              var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
+          var todayStr = getEspnDateStr(TARGET_DATE);
+              var cache = safeStorageGetJSON('api_calendar_cache');
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              localStorage.setItem('api_calendar_cache', JSON.stringify({
-                  fetchDate: fetchDateToSave,
-                  matches: finalMatches
-              }));
-          } catch(e) {
-              console.error('Failed to cache merged calendar:', e);
-          }
+              safeStorageSetJSON('api_calendar_cache', { fetchDate: fetchDateToSave, matches: finalMatches });
 
                     var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
-          S.matches = finalMatches.filter(function(m) {
+          setMatches(finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
-          });
+          }));
           if (!isBackground) { document.getElementById('ov').style.display='none'; }
 
           // Populate sports filter
@@ -332,8 +317,8 @@ export function loadAll(isBackground, forceScrape){
   }).finally(function(){
       if(btn) btn.disabled=false;
             if (!isBackground) { document.getElementById('ov').style.display='none'; }
-      if (!localStorage.getItem('hasSeenScriptModal')) {
-          localStorage.setItem('hasSeenScriptModal', 'true');
+      if (!safeStorageGet('hasSeenScriptModal')) {
+          safeStorageSet('hasSeenScriptModal', 'true');
           setTimeout(function() { installTampermonkey(); }, 500);
       }
       window.hasLoadedOnce = true;
@@ -358,25 +343,22 @@ if ('serviceWorker' in navigator) {
   var n = new Date();
   var todayStr = getEspnDateStr(TARGET_DATE);
 
-  try {
-      var lst = localStorage.getItem('last_scrape_time');
-      var lsm = localStorage.getItem('last_scraped_matches');
-      if (lst) window.lastScrapeTime = parseInt(lst, 10);
-      if (lsm) window.lastScrapedMatches = JSON.parse(lsm);
-  } catch(e) {}
+  var lst = safeStorageGet('last_scrape_time');
+  var lsm = safeStorageGetJSON('last_scraped_matches');
+  if (lst) window.lastScrapeTime = parseInt(lst, 10);
+  if (lsm) window.lastScrapedMatches = lsm;
 
-  var cacheRaw = localStorage.getItem('api_calendar_cache');
-  var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
+  var cache = safeStorageGetJSON('api_calendar_cache');
 
   if (cache && cache.fetchDate === todayStr && cache.matches && cache.matches.length > 0) {
-            S.matches = cache.matches.filter(function(m) {
+            setMatches(cache.matches.filter(function(m) {
           return m.matchDate === getEstDateStrFromDate(TARGET_DATE);
-      });
+      }));
       if (S.matches.length > 0) {
           setTimeout(function() { buildEPG(S.matches); }, 0);
       }
-      if (!localStorage.getItem('hasSeenScriptModal')) {
-          localStorage.setItem('hasSeenScriptModal', 'true');
+      if (!safeStorageGet('hasSeenScriptModal')) {
+          safeStorageSet('hasSeenScriptModal', 'true');
           setTimeout(function() { installTampermonkey(); }, 500);
       }
       loadAll(true, false); // background update for fresh streams/stats

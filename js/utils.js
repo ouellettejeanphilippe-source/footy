@@ -6,6 +6,44 @@ import { userPrefs, buildEPG, scrollToNow } from './ui.js';
 import { openFavPage } from './main.js';
 
 /* ══ HELPERS ═══════════════════════════ */
+
+/* ══ LOCALSTORAGE UTILS ═════════════════ */
+export function safeStorageGet(key, fallback = null) {
+    try {
+        var val = localStorage.getItem(key);
+        return val !== null ? val : fallback;
+    } catch(e) {
+        return fallback;
+    }
+}
+
+export function safeStorageSet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch(e) {}
+}
+
+export function safeStorageGetJSON(key, fallback = null) {
+    var val = safeStorageGet(key);
+    if (val !== null) {
+        try {
+            return JSON.parse(val);
+        } catch(e) {}
+    }
+    return fallback;
+}
+
+export function safeStorageRemove(key) {
+    try {
+        localStorage.removeItem(key);
+    } catch(e) {}
+}
+
+export function safeStorageSetJSON(key, value) {
+    safeStorageSet(key, JSON.stringify(value));
+}
+
+
 export function pad(n){return String(n).padStart(2,'0');}
 export function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -372,6 +410,11 @@ export function toggleAccordion(lgName) {
 }
 
 // Global bindings for HTML compatibility
+window.safeStorageGet = safeStorageGet;
+window.safeStorageSet = safeStorageSet;
+window.safeStorageGetJSON = safeStorageGetJSON;
+window.safeStorageSetJSON = safeStorageSetJSON;
+window.safeStorageRemove = safeStorageRemove;
 window.getLeagueDuration = getLeagueDuration;
 window.escJs = escJs;
 window.lg = lg;
