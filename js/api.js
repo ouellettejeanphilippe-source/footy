@@ -92,6 +92,13 @@ export function getApiFirstMatches(targetDate) {
       baseMatches = cache.matches;
   }
 
+  var baseMatchesById = {};
+  for (var i = 0; i < baseMatches.length; i++) {
+      if (baseMatches[i].id) {
+          baseMatchesById[baseMatches[i].id] = baseMatches[i];
+      }
+  }
+
   var espnPaths = Array.from(new Set(Object.values(ESPN_LEAGUES)));
 
   if (needsFullFetch || baseMatches.length === 0) {
@@ -149,15 +156,16 @@ export function getApiFirstMatches(targetDate) {
                   source: 'api'
                 };
 
-                var existingIdx = baseMatches.findIndex(function(m) { return m.id === matchObj.id; });
-                if (existingIdx >= 0) {
-                  baseMatches[existingIdx].status = matchObj.status;
-                  baseMatches[existingIdx].score = matchObj.score;
-                  baseMatches[existingIdx].minute = matchObj.minute;
-                  baseMatches[existingIdx].startTime = matchObj.startTime;
-                  baseMatches[existingIdx].matchDate = matchObj.matchDate;
+                var existingMatch = baseMatchesById[matchObj.id];
+                if (existingMatch) {
+                  existingMatch.status = matchObj.status;
+                  existingMatch.score = matchObj.score;
+                  existingMatch.minute = matchObj.minute;
+                  existingMatch.startTime = matchObj.startTime;
+                  existingMatch.matchDate = matchObj.matchDate;
                 } else {
                   baseMatches.push(matchObj);
+                  baseMatchesById[matchObj.id] = matchObj;
                 }
               });
             })
@@ -231,11 +239,11 @@ export function getApiFirstMatches(targetDate) {
               }
 
               var matchId = 'espn_' + ev.id;
-              var existingIdx = baseMatches.findIndex(function(m) { return m.id === matchId; });
-              if (existingIdx >= 0) {
-                  baseMatches[existingIdx].status = status;
-                  baseMatches[existingIdx].score = score;
-                  baseMatches[existingIdx].minute = minute;
+              var existingMatch = baseMatchesById[matchId];
+              if (existingMatch) {
+                  existingMatch.status = status;
+                  existingMatch.score = score;
+                  existingMatch.minute = minute;
               }
             });
           })
