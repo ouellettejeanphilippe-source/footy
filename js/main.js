@@ -519,6 +519,10 @@ export var DEFAULT_LEAGUES = {
     'SERIE A': { icon: '⚽' },
     'BUNDESLIGA': { icon: '⚽' },
     'MLS': { icon: '⚽' },
+    'CFL': { icon: '🏈' },
+    'INDYCAR': { icon: '🏎️' },
+    'MOTOGP': { icon: '🏍️' },
+    'WWE': { icon: '🥊' },
     'PWHL': { icon: '🏒' },
     'LHJMQ': { icon: '🏒' },
     'AHL': { icon: '🏒' }
