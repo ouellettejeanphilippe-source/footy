@@ -158,17 +158,48 @@ export function openGlobalStatsFromMatch(mid) {
 
             if(stats.length > 0) {
                 html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques du match</h4>';
-                html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
-                stats.forEach(function(st) {
-                    var label = st.label;
-                    var formattedLabel = formatStatLabel(st.label);
-                    html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">';
-                    html += '<span style="font-weight:bold;width:40px;text-align:right;">'+st.h+'</span>';
-                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+formattedLabel+'</span>';
-                    html += '<span style="font-weight:bold;width:40px;text-align:left;">'+st.a+'</span>';
-                    html += '</div>';
-                });
-                html += '</div>';
+
+                var STAT_CATEGORIES = {
+                    'Possession & Passes': ['possession', 'possessionTime', 'passes', 'passAccuracy'],
+                    'Attaque': ['shots', 'shotsOnTarget', 'expectedGoals'],
+                    'Défense': ['tackles', 'interceptions', 'clearances', 'blocks', 'saves'],
+                    'Discipline & Coups de pied arrêtés': ['fouls', 'yellowCards', 'redCards', 'offsides', 'cornerKicks', 'freeKicks', 'goalKicks', 'throwIns']
+                };
+
+                var groupedStats = {};
+                var usedKeys = new Set();
+
+                for (var cat in STAT_CATEGORIES) {
+                    groupedStats[cat] = [];
+                    STAT_CATEGORIES[cat].forEach(function(key) {
+                        var st = stats.find(function(s) { return s.label === key; });
+                        if (st) {
+                            groupedStats[cat].push(st);
+                            usedKeys.add(key);
+                        }
+                    });
+                }
+
+                var autres = stats.filter(function(st) { return !usedKeys.has(st.label); });
+                if (autres.length > 0) {
+                    groupedStats['Autres'] = autres;
+                }
+
+                for (var cat in groupedStats) {
+                    if (groupedStats[cat].length > 0) {
+                        html += '<div style="margin-top:12px; margin-bottom: 4px; font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px;">' + esc(cat) + '</div>';
+                        html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
+                        groupedStats[cat].forEach(function(st) {
+                            var formattedLabel = formatStatLabel(st.label);
+                            html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;gap:8px;">';
+                            html += '<span style="font-weight:bold;min-width:30px;text-align:right;white-space:nowrap;">'+st.h+'</span>';
+                            html += '<span style="color:var(--muted);flex:1;text-align:center;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(formattedLabel)+'">'+formattedLabel+'</span>';
+                            html += '<span style="font-weight:bold;min-width:30px;text-align:left;white-space:nowrap;">'+st.a+'</span>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    }
+                }
             } else {
                 html += '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Statistiques détaillées non disponibles.</div>';
             }
@@ -221,12 +252,6 @@ export function fetchTeamStats(teamName) {
     html += '</div>';
     html += '</div>';
 
-    // Calendrier à venir
-    html += '<div>';
-    html += '<h4 style="color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📅 Matchs à venir</h4>';
-    html += '<div id="gstats-upcoming" style="color:var(--muted);font-size:13px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;text-align:center;">Recherche des matchs à venir...</div>';
-    html += '</div>';
-
     // Placeholder pour Standings / Last 5
     var lg = teamMatches.length > 0 ? teamMatches[0].league : '';
     // Try to find league from team name if teamMatches is empty
@@ -247,6 +272,12 @@ export function fetchTeamStats(teamName) {
         html += '<div>';
         html += '<h4 style="color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🏆 Classement '+esc(lg)+'</h4>';
         html += '<div id="gstats-standings" style="background:rgba(255,255,255,0.02);padding:16px;border-radius:12px;font-size:13px;color:var(--muted);text-align:center;">Recherche des classements...</div>';
+        html += '</div>';
+
+        // Calendrier à venir
+        html += '<div>';
+        html += '<h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📅 Matchs à venir</h4>';
+        html += '<div id="gstats-upcoming" style="color:var(--muted);font-size:13px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;text-align:center;">Recherche des matchs à venir...</div>';
         html += '</div>';
 
         // Async fetch standings and upcoming matches
@@ -387,6 +418,23 @@ export function fetchTeamStats(teamName) {
                                 'divisionRecord': 'Fiche (Div.)', 'divisionPercent': '% Vict. (Div.)',
                                 'gamesAhead': 'Avance'
                             };
+                            var TEAM_STAT_CATEGORIES = {
+                                'Général': ['streak', 'winPercent', 'differential', 'pointDifferential', 'pointsDiff', 'gamesBehind', 'gamesAhead', 'leagueWinPercent', 'playoffPercent', 'wildCardPercent'],
+                                'Offensive / Défensive': ['avgPointsFor', 'avgPointsAgainst', 'pointsFor', 'pointsAgainst'],
+                                'Domicile': ['homeWins', 'homeLosses', 'homeTies'],
+                                'Extérieur': ['roadWins', 'roadLosses', 'roadTies'],
+                                'Division': ['divisionWins', 'divisionLosses', 'divisionTies', 'divisionRecord', 'divisionPercent', 'divisionWinPercent', 'divisionGamesBehind'],
+                                'Spécialité (Prol. / Infériorité)': ['otWins', 'otLosses', 'OTWins', 'OTLosses', 'overtimeWins', 'overtimeLosses', 'shootoutWins', 'shootoutLosses', 'regWins', 'regLosses', 'rotWins', 'rotLosses', 'powerPlayPct', 'penaltyKillPct', 'powerPlayGoals', 'powerPlayGoalsAgainst', 'powerPlayOpportunities', 'timesShortHanded']
+                            };
+
+                            var groupedTeamStats = {};
+                            var usedTeamKeys = new Set();
+
+                            for (var cat in TEAM_STAT_CATEGORIES) {
+                                groupedTeamStats[cat] = [];
+                            }
+                            groupedTeamStats['Autres'] = [];
+
                             totalRec.stats.forEach(function(s) {
                                 // Skip boring stats or repetitive ones
                                 if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties' || s.name === 'playoffSeed' || s.name === 'clincher' || s.name === 'magicNumberDivision' || s.name === 'magicNumberWildcard') return;
@@ -402,12 +450,38 @@ export function fetchTeamStats(teamName) {
                                     displayVal = Number(displayVal).toFixed(2);
                                 }
 
-                                tHtml += '<div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:8px;text-align:center;display:flex;flex-direction:column;justify-content:center;">';
-                                tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(statName)+'">'+esc(statName)+'</div>';
-                                tHtml += '<div style="font-size:16px;font-weight:bold;color:#fff;">'+esc(displayVal)+'</div>';
-                                tHtml += '</div>';
+                                var statObj = { name: statName, val: displayVal };
+                                var foundCat = false;
+
+                                for (var cat in TEAM_STAT_CATEGORIES) {
+                                    if (TEAM_STAT_CATEGORIES[cat].indexOf(s.name) > -1 || TEAM_STAT_CATEGORIES[cat].indexOf(rawName) > -1) {
+                                        groupedTeamStats[cat].push(statObj);
+                                        foundCat = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!foundCat) {
+                                    groupedTeamStats['Autres'].push(statObj);
+                                }
                             });
-                            tHtml += '</div></div>';
+
+                            tHtml = '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📊 Statistiques de l\'équipe (' + esc(totalRec.summary) + ')</h4>';
+
+                            for (var cat in groupedTeamStats) {
+                                if (groupedTeamStats[cat].length > 0) {
+                                    tHtml += '<div style="margin-top:16px; margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px;">' + esc(cat) + '</div>';
+                                    tHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(90px, 1fr));gap:6px;margin-bottom:8px;">';
+                                    groupedTeamStats[cat].forEach(function(st) {
+                                        tHtml += '<div style="background:rgba(255,255,255,0.05);padding:6px;border-radius:8px;text-align:center;display:flex;flex-direction:column;justify-content:center;">';
+                                        tHtml += '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(st.name)+'">'+esc(st.name)+'</div>';
+                                        tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(st.val)+'">'+esc(st.val)+'</div>';
+                                        tHtml += '</div>';
+                                    });
+                                    tHtml += '</div>';
+                                }
+                            }
+                            tHtml += '</div>';
                         }
                     }
 
