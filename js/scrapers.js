@@ -1363,6 +1363,23 @@ export function scrapeMatchFlux(m, forceRefresh){
               });
               if (isPartnerSite) return;
 
+              var isOtherMatch = false;
+              if (lowerUrl.indexOf('match') >= 0 || lowerName.indexOf('match') >= 0 || lowerName.indexOf('started') >= 0 || lowerName.indexOf(' vs ') >= 0) {
+                  var hName = (m.homeTeam || '').toLowerCase();
+                  var aName = (m.awayTeam || '').toLowerCase();
+                  var hasHome = hName.split(' ').some(function(w) { return w.length >= 3 && lowerName.indexOf(w) >= 0; });
+                  var hasAway = aName.split(' ').some(function(w) { return w.length >= 3 && lowerName.indexOf(w) >= 0; });
+
+                  // Also check against URL just in case name is generic but URL reveals it's a different match
+                  var urlHasHome = hName.split(' ').some(function(w) { return w.length >= 3 && lowerUrl.indexOf(w) >= 0; });
+                  var urlHasAway = aName.split(' ').some(function(w) { return w.length >= 3 && lowerUrl.indexOf(w) >= 0; });
+
+                  if (!hasHome && !hasAway && !urlHasHome && !urlHasAway && (lowerName.length > 10 || lowerUrl.indexOf('match') >= 0)) {
+                      isOtherMatch = true;
+                  }
+              }
+              if (isOtherMatch) return;
+
               links.push({
                  name:name,
                  quality:'HD',
