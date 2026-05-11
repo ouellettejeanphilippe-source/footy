@@ -70,7 +70,7 @@ export function openGlobalStatsFromMatch(mid) {
             } else {
                 clearInterval(globalStatsInterval);
             }
-        }, 60000);
+        }, 300000);
     }
 
     title.textContent = m.homeTeam + ' vs ' + m.awayTeam;

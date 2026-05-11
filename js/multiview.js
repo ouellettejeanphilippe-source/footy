@@ -58,7 +58,7 @@ export function toggleMvGameMode() {
 
         updateGmCurrentTab();
         if (typeof mvGameModeInterval !== 'undefined' && mvGameModeInterval) clearInterval(mvGameModeInterval);
-        mvGameModeInterval = setInterval(updateGmCurrentTab, 30000); // Update every 30s
+        mvGameModeInterval = setInterval(updateGmCurrentTab, 300000); // Update every 5m
     } else {
         if (gmBtn) {
             gmBtn.style.background = '';

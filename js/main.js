@@ -384,7 +384,7 @@ if ('serviceWorker' in navigator) {
       if (window.hasLoadedOnce) {
           loadAll(true, false);
       }
-  }, 60000);
+  }, 300000);
 })();
 
 
