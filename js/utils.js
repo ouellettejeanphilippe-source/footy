@@ -371,25 +371,7 @@ export function toggleAccordion(lgName) {
   });
 }
 
-/* ══ LOGO CACHE ═══════════════════════════ */
-
-
-
-
-
-var logoCacheInitialized = false;
-
-
-
-
-
-// getLogo duplicate removed. It is already defined above with better implementation.
-
-
-
 // Global bindings for HTML compatibility
-
-
 window.getLeagueDuration = getLeagueDuration;
 window.escJs = escJs;
 window.lg = lg;
