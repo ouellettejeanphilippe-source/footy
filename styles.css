@@ -233,59 +233,6 @@ body[data-icon-pack="sharp"] .ic-close {
   mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>');
 }
 
-/* Metallic Dark Theme Styles */
-body.theme-metallic {
-    --bg-main: linear-gradient(135deg, #0a0b0d 0%, #12141a 50%, #050608 100%);
-    --bg-overlay: rgba(15, 17, 21, 0.85);
-    background: var(--bg-main);
-    color: #f1f3f6;
-    font-family: 'Avenir', 'Montserrat', 'Helvetica Neue', sans-serif;
-    letter-spacing: 0.5px;
-}
-
-body.theme-metallic .btn {
-    background: linear-gradient(180deg, #2a2e38 0%, #1a1d24 100%);
-    border: 1px solid #3f4652;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.5);
-    text-transform: uppercase;
-    font-weight: 600;
-    font-size: 0.85em;
-    letter-spacing: 1px;
-    border-radius: 4px;
-    color: #e0e5ea;
-}
-body.theme-metallic .btn:hover {
-    background: linear-gradient(180deg, #323743 0%, #22262e 100%);
-    border-color: #4f5766;
-}
-
-body.theme-metallic .card {
-    background: linear-gradient(145deg, rgba(30, 33, 40, 0.9) 0%, rgba(15, 17, 21, 0.95) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03);
-    border-radius: 6px;
-}
-
-body.theme-metallic .mv-cell {
-    border: 2px solid #22252d;
-    border-radius: 4px;
-    background: #0a0b0d;
-}
-body.theme-metallic .mv-cell.active-focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3), inset 0 0 20px rgba(56, 189, 248, 0.1);
-}
-
-body.theme-metallic h1, body.theme-metallic h2, body.theme-metallic h3, body.theme-metallic .lg-hdr {
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 700;
-}
-
-body.theme-metallic .ic {
-    opacity: 0.9;
-}
-
 /* OVERLAY */
 .ov { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 40px; }
 .spinner { width: 56px; height: 56px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--accent); animation: spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite; }

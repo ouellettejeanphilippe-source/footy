@@ -986,7 +986,6 @@ export function closeMod(){
 
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
 export var userPrefs = {
-  theme: 'custom',
   bgStyle: 'gradient',
   iconPack: 'standard',
   c1: '#000000',
