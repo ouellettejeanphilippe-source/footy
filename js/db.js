@@ -4,6 +4,7 @@ import { TEAM_DATA } from './teams.js';
 export var STATIC_TEAMS = [];
 export var TEAM_COLORS = {};
 export var TEAM_ALIASES = {};
+export var NORM_TEAM_KEYS = {};
 
 for (var key in TEAM_DATA) {
     var data = TEAM_DATA[key];
@@ -64,10 +65,22 @@ export function lgFlag(n){
 
 export function getTeamColors(teamName) {
     if (!teamName) return ['#333333', '#ffffff'];
-    var norm = normName(teamName);
+    var lowerName = teamName.toLowerCase().trim();
+    if (TEAM_DATA[lowerName] && TEAM_DATA[lowerName].colors) {
+        return TEAM_DATA[lowerName].colors;
+    }
 
-    if (TEAM_DATA[norm] && TEAM_DATA[norm].colors) {
-        return TEAM_DATA[norm].colors;
+    var norm = normName(teamName);
+    if (NORM_TEAM_KEYS[norm]) {
+        var realKey = NORM_TEAM_KEYS[norm];
+        if (TEAM_DATA[realKey] && TEAM_DATA[realKey].colors) {
+            return TEAM_DATA[realKey].colors;
+        }
+    }
+
+    var aliasKey = TEAM_ALIASES[lowerName] || TEAM_ALIASES[norm];
+    if (aliasKey && TEAM_DATA[aliasKey] && TEAM_DATA[aliasKey].colors) {
+        return TEAM_DATA[aliasKey].colors;
     }
 
     for (var key in TEAM_DATA) {
@@ -156,17 +169,22 @@ export var _normCache = {};
 
 export function getLogo(teamName) {
     if(!teamName) return null;
-    var key = normName(teamName);
-
-    if (TEAM_DATA[key] && TEAM_DATA[key].logo) {
-        return TEAM_DATA[key].logo;
+    var lowerName = teamName.toLowerCase().trim();
+    if (TEAM_DATA[lowerName] && TEAM_DATA[lowerName].logo) {
+        return TEAM_DATA[lowerName].logo;
     }
 
-    // Try finding by alias if normName wasn't exact
-    for (var k in TEAM_DATA) {
-        if (TEAM_DATA[k].aliases && TEAM_DATA[k].aliases.includes(key) && TEAM_DATA[k].logo) {
-            return TEAM_DATA[k].logo;
+    var key = normName(teamName);
+    if (NORM_TEAM_KEYS[key]) {
+        var realKey = NORM_TEAM_KEYS[key];
+        if (TEAM_DATA[realKey] && TEAM_DATA[realKey].logo) {
+            return TEAM_DATA[realKey].logo;
         }
+    }
+
+    var aliasKey = TEAM_ALIASES[lowerName] || TEAM_ALIASES[key];
+    if (aliasKey && TEAM_DATA[aliasKey] && TEAM_DATA[aliasKey].logo) {
+        return TEAM_DATA[aliasKey].logo;
     }
 
     var colors = getTeamColors(teamName);
@@ -285,3 +303,8 @@ window.getLogo = getLogo;
 window.STATIC_TEAM_MAP = STATIC_TEAM_MAP;
 window.getOfficialTeamName = getOfficialTeamName;
 window.normName = normName;
+
+for (var key in TEAM_DATA) {
+    NORM_TEAM_KEYS[normName(key)] = key;
+}
+window.NORM_TEAM_KEYS = NORM_TEAM_KEYS;
