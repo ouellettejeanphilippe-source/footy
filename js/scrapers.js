@@ -564,6 +564,69 @@ export function extractFootybiteLogos(doc) {
 
 
 
+/* ══ PARSE STREAMONSPORT ═══════════════ */
+export function parseStreamonsport(html) {
+    var matches = [];
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var cards = doc.querySelectorAll('.match-card');
+
+    [].forEach.call(cards, function(card) {
+        var href = card.getAttribute('href');
+        var homeEl = card.querySelectorAll('.team-name')[0];
+        var awayEl = card.querySelectorAll('.team-name')[1];
+        var timeEl = card.querySelector('.match-time');
+        var lgEl = card.querySelector('.date-label');
+        var matchUrl = href;
+
+        if (href && homeEl && awayEl && timeEl && matchUrl) {
+            var home = homeEl.textContent.trim();
+            var away = awayEl.textContent.trim();
+            var utcTime = timeEl.getAttribute('data-utc');
+            var startTimeStr = '00:00';
+
+            if (utcTime) {
+                var d = new Date(utcTime);
+                if(!isNaN(d.getTime())){
+                    startTimeStr = pad(d.getHours()) + ':' + pad(d.getMinutes());
+                    startTimeStr = getEstTime(startTimeStr);
+                }
+            } else {
+                 var tEl = timeEl.querySelector('.time');
+                 if(tEl) {
+                     startTimeStr = getEstTime(tEl.textContent.trim());
+                 }
+            }
+
+            var league = lgEl ? lgEl.textContent.trim() : 'Football';
+
+            if(!matchUrl.startsWith('http')) {
+                matchUrl = 'https://www.stremonsport.net' + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
+            }
+
+            if (home && away) {
+                matches.push({
+                    id: 'sos_' + matches.length,
+                    league: formatLeagueName(league),
+                    flag: lgFlag(league),
+                    color: lgColor(league),
+                    homeTeam: getOfficialTeamName(home),
+                    awayTeam: getOfficialTeamName(away),
+                    matchUrl: matchUrl,
+                    startTime: startTimeStr,
+                    status: 'upcoming',
+                    streamLinks: [],
+                    streamsLoaded: false,
+                    source: 'streamonsport'
+                });
+            }
+        }
+    });
+
+    lg('Streamonsport extraits', matches.length);
+    return matches;
+}
+
+
 /* ══ PARSE TOTALSPORTEK ════════════════ */
 export function parseTotalsportek(html) {
     var matches = [];
@@ -1171,6 +1234,40 @@ export function scrapeMatchFlux(m, forceRefresh){
 
     // === TOUTES SOURCES : RECHERCHE LARGE DE FLUX ===
 
+    // StreamOnSport specific logic
+    if (m.source === 'streamonsport') {
+        var panels = doc.querySelectorAll('.player-panel');
+        [].forEach.call(panels, function(panel) {
+            var dataEmbed = panel.getAttribute('data-embed');
+            if (dataEmbed) {
+                var txt = document.createElement('textarea');
+                txt.innerHTML = dataEmbed;
+                var decoded = txt.value;
+
+                var iframeMatch = decoded.match(/<iframe.*?src=["'](.*?)["']/i);
+                if (iframeMatch && iframeMatch[1]) {
+                    var src = iframeMatch[1];
+                    var nameText = 'StreamOnSport Flux';
+                    var lang = 'MULTI';
+                    var span = panel.querySelector('span'); // based on the structure where span is inside .player-panel
+                    if (span) {
+                        nameText = span.textContent.replace('En direct:', '').trim();
+                        if (nameText.toLowerCase().indexOf('fra') >= 0 || nameText.toLowerCase().indexOf('fr') >= 0) {
+                            lang = 'FR';
+                        }
+                    }
+                    links.push({
+                        name: nameText,
+                        quality: 'HD',
+                        lang: lang,
+                        url: src,
+                        icon: '▶️'
+                    });
+                }
+            }
+        });
+    }
+
     // 1. Chercher des iframes directs
     var iframes = doc.querySelectorAll('iframe');
     [].forEach.call(iframes, function(ifr) {
@@ -1423,6 +1520,7 @@ window.parseMethstreams = parseMethstreams;
 window.parseNflbite = parseNflbite;
 window.parseMlbbite = parseMlbbite;
 window.parseFootybite = parseFootybite;
+window.parseStreamonsport = parseStreamonsport;
 window.getStreamCache = getStreamCache;
 window.saveStreamCache = saveStreamCache;
 window.fetchSubPages = fetchSubPages;

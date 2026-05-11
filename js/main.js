@@ -2,9 +2,9 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, toggleAutresFlux, lg } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, mergeFluxToApi, getEspnDateStr } from './api.js';
-import { getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL } from './config.js';
+import { getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES } from './db.js';
-import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
+import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
 
@@ -171,14 +171,15 @@ export function loadAll(isBackground, forceScrape){
           fetchPage(MLBBITE_PLUS_URL),
           fetchPage(VIPLEAGUE_URL),
           fetchPage(METHSTREAMS_URL),
-          fetchPage(TOTALSPORTEK_URL)
+          fetchPage(TOTALSPORTEK_URL),
+          fetchPage(STREAMONSPORT_URL)
       ]).then(function(results) {
           if (!results) return;
           if (!isBackground) { stepOk(2);  }
 
 
           // Check for failures and notify user
-          var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL];
+          var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL];
           results.forEach(function(r, idx) {
               if (r.status === 'rejected') {
                   var domain = new URL(sources[idx]).hostname;
@@ -204,7 +205,8 @@ export function loadAll(isBackground, forceScrape){
               { fn: parseMlbbite, url: MLBBITE_PLUS_URL },
               { fn: parseVipleague, url: VIPLEAGUE_URL },
               { fn: parseMethstreams, url: METHSTREAMS_URL },
-              { fn: parseTotalsportek, url: TOTALSPORTEK_URL }
+              { fn: parseTotalsportek, url: TOTALSPORTEK_URL },
+              { fn: parseStreamonsport, url: STREAMONSPORT_URL }
           ];
 
           var p = Promise.resolve();
