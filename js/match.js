@@ -217,6 +217,14 @@ export function isMatchPair(m1, m2) {
       if (crossHMatch && crossAMatch) return true;
   }
 
+  // Prevent specific city-only mismatches in the fallback
+  if (m1H && m1A && m2H && m2A) {
+      if ((m1H.includes('manchester') && m2H.includes('manchester') && !isMatch(m1H, m2H)) ||
+          (m1A.includes('manchester') && m2A.includes('manchester') && !isMatch(m1A, m2A))) {
+          return false;
+      }
+  }
+
   // Cross-check dates and exact matches (already handled by early return, so we can just return true here)
   if (m1H === m2H && m1A === m2A) return true;
 
@@ -230,6 +238,22 @@ export function isMatch(name1, name2) {
   // Clean empty strings might happen after normName replacements
   if (name1.length < 3 || name2.length < 3) return name1 === name2;
 
+  // If they share a common city prefix/suffix but are distinct teams, do not match.
+  // For example: 'manchestercity' and 'manchesterunited'
+  var knownDistinctPairs = [
+      ['manchestercity', 'manchesterunited'],
+      ['milan', 'intermilan'],
+      ['acmilan', 'intermilan'],
+      ['realmadrid', 'atleticomadrid']
+  ];
+  for (var i = 0; i < knownDistinctPairs.length; i++) {
+      var pair = knownDistinctPairs[i];
+      if ((name1.includes(pair[0]) && name2.includes(pair[1])) ||
+          (name1.includes(pair[1]) && name2.includes(pair[0]))) {
+          return false;
+      }
+  }
+
   // Check if one contains the other (e.g. 'manchester' in 'manchesterunited')
   if (name1.includes(name2) || name2.includes(name1)) return true;
 
@@ -239,7 +263,7 @@ export function isMatch(name1, name2) {
   if (name1.length <= 4 || name2.length <= 4) {
       if (sim > 0.8) return true;
   } else {
-      if (sim > 0.65) return true;
+      if (sim > 0.75) return true; // increased threshold from 0.65
   }
 
   // If one name is significantly longer but contains a typo-version of the shorter one
