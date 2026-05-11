@@ -641,9 +641,11 @@ export function renderFavPage() {
         // Render Favoris section
         var favorisList = [];
         var allTeams = [];
+        var seenTeams = new Set();
         for (var lg in teamsByLeague) {
             teamsByLeague[lg].forEach(function(t) {
-                if (!allTeams.find(function(x) { return x.name === t.name; })) {
+                if (!seenTeams.has(t.name)) {
+                    seenTeams.add(t.name);
                     allTeams.push(t);
                     if (favTeams[t.name] === 1) {
                         favorisList.push(t);
