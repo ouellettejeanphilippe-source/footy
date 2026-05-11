@@ -814,7 +814,7 @@ export function openMod(m,col){
   fetchAndRenderModalStats();
   if (window.modalStatsInterval) clearInterval(window.modalStatsInterval);
   if (m.status === 'live') {
-      window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 60000);
+      window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 300000);
   }
 
   var btnContainer = document.createElement('div');
