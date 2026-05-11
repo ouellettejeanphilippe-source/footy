@@ -615,11 +615,20 @@ export function buildEPG(matches){
 
 
   updateNowLine();
-
-  // Center to current time on first load if applicable
-
-      setTimeout(scrollToNow, 100);
 }
+
+// Event listeners for automatic scrolling based on the load sequence and filter changes
+window.addEventListener('loadSequenceComplete', function() {
+    requestAnimationFrame(function() {
+        scrollToNow();
+    });
+});
+
+window.addEventListener('filterChanged', function() {
+    requestAnimationFrame(function() {
+        scrollToNow();
+    });
+});
 
 export function updateNowLine() {
     var line = document.getElementById('nowline');
