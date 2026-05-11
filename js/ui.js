@@ -1,7 +1,7 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
-import { lg, esc, toggleAccordion, escJs, pad, toggleLeague } from './utils.js';
+import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { TARGET_DATE, fetchGameStats, renderScorersHtml } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
@@ -1007,10 +1007,8 @@ export var userPrefs = {
   removeBlack: false
 };
 
-try {
-  var storedPrefs = localStorage.getItem('user_prefs');
-  if(storedPrefs) userPrefs = Object.assign(userPrefs, JSON.parse(storedPrefs));
-} catch(e) {}
+var storedPrefs = safeStorageGetJSON('user_prefs');
+if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
 
 
 

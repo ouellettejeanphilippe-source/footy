@@ -2,6 +2,8 @@
 
 /* ══ STATE ══════════════════════════════ */
 
+import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON, safeStorageRemove } from './utils.js';
+
 export var sourcesStatus = [];
 export var scrapeLogs = [];
 export function updateSourceStatus(name, status, matchCount, message) {
@@ -35,37 +37,27 @@ export function addScrapeLog(url, status, errorMsg) {
 
 export var favTeams = {};
 export var customLgOrder = [];
-try {
-  var storedFavs = localStorage.getItem('fav_teams');
-  if (storedFavs) {
-      favTeams = JSON.parse(storedFavs);
-  } else {
-      favTeams = {
-          "Toronto Blue Jays": 1,
-          "Montreal Canadiens": 1,
-          "CF Montréal": 1,
-          "Toronto Raptors": 1,
-          "Montréal Victoire": 1
-      };
-      localStorage.setItem('fav_teams', JSON.stringify(favTeams));
-  }
-  var storedLgOrder = localStorage.getItem('custom_lg_order');
-  if (storedLgOrder) {
-      customLgOrder = JSON.parse(storedLgOrder);
-      // Migration: Ensure the user gets the new default order if they never explicitly reordered
-      var v2Migrated = localStorage.getItem('lg_order_migrated_v2');
-      if (!v2Migrated) {
-          customLgOrder = [];
-          localStorage.removeItem('custom_lg_order');
-          localStorage.setItem('lg_order_migrated_v2', '1');
-      }
-  } else {
-      localStorage.setItem('lg_order_migrated_v2', '1');
-  }
-} catch(e) {}
+
+var defaultFavs = { "Toronto Blue Jays": 1, "Montreal Canadiens": 1, "CF Montréal": 1, "Toronto Raptors": 1, "Montréal Victoire": 1 };
+favTeams = safeStorageGetJSON('fav_teams');
+if (!favTeams) {
+    favTeams = defaultFavs;
+    safeStorageSetJSON('fav_teams', favTeams);
+}
+
+customLgOrder = safeStorageGetJSON('custom_lg_order', []);
+var v2Migrated = safeStorageGet('lg_order_migrated_v2');
+if (customLgOrder.length > 0 && !v2Migrated) {
+    customLgOrder = [];
+    safeStorageRemove('custom_lg_order'); // direct remove is fine here since it's one-off
+    safeStorageSet('lg_order_migrated_v2', '1');
+} else if (!v2Migrated) {
+    safeStorageSet('lg_order_migrated_v2', '1');
+}
+
 
 export function saveCustomLgOrder() {
-    localStorage.setItem('custom_lg_order', JSON.stringify(customLgOrder));
+    safeStorageSetJSON('custom_lg_order', customLgOrder);
 }
 
 export function setCustomLgOrder(newOrder) {
@@ -80,7 +72,7 @@ export function toggleFavTeam(teamName) {
   } else {
     favTeams[teamName] = 1;
   }
-  localStorage.setItem('fav_teams', JSON.stringify(favTeams));
+  safeStorageSetJSON('fav_teams', favTeams);
 
   // Update DOM directly instead of rebuilding EPG
   var allCards = document.querySelectorAll('.mb');
@@ -106,7 +98,14 @@ export function toggleFavTeam(teamName) {
 }
 
 export var matchCardCache = new Map();
-export var S = { searchQuery:'',  log:[], raw:'', matches:[], proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{}, collapsedSections:{} };
+export function setMatches(newMatches) {
+    S.matches = newMatches;
+    S.matchMap.clear();
+    for (var i = 0; i < newMatches.length; i++) {
+        S.matchMap.set(String(newMatches[i].id), newMatches[i]);
+    }
+}
+export var S = { searchQuery:'',  log:[], raw:'', matches:[], matchMap: new Map(), proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{}, collapsedSections:{} };
 
 
 
@@ -122,3 +121,4 @@ window.saveCustomLgOrder = saveCustomLgOrder;
 window.toggleFavTeam = toggleFavTeam;
 window.matchCardCache = matchCardCache;
 window.S = S;
+window.setMatches = setMatches;

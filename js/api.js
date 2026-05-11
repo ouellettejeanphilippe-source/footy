@@ -4,6 +4,7 @@ import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js'
 import { isMatch, isMatchPair } from './match.js';
 import { parsePWHLSchedule } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
+import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 export var ESPN_LEAGUES = {
@@ -80,8 +81,7 @@ export var TARGET_DATE = new Date();
 
 export function getApiFirstMatches(targetDate) {
   var todayStr = getEspnDateStr(targetDate);
-  var cacheRaw = localStorage.getItem('api_calendar_cache');
-  var cache = cacheRaw ? JSON.parse(cacheRaw) : null;
+  var cache = safeStorageGetJSON('api_calendar_cache');
 
   var needsFullFetch = !cache || cache.fetchDate !== todayStr;
 
@@ -280,10 +280,7 @@ export function getApiFirstMatches(targetDate) {
             // we no longer want to strip out streams if they exist so they aren't lost on refresh
             return Object.assign({}, m);
         });
-        localStorage.setItem('api_calendar_cache', JSON.stringify({
-            fetchDate: fetchDateToSave,
-            matches: cacheData
-        }));
+        safeStorageSetJSON('api_calendar_cache', { fetchDate: fetchDateToSave, matches: cacheData });
     } catch (e) {
         console.error('Failed to cache calendar:', e);
     }
@@ -351,7 +348,7 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
       if (!am.streamLinks) am.streamLinks = [];
 
       // Get previous match state if it exists
-      var prevMatch = S.matches ? S.matches.find(function(m) { return m.id === am.id; }) : null;
+      var prevMatch = S.matchMap ? S.matchMap.get(String(am.id)) : null;
       if (prevMatch && prevMatch.streamLinks) {
           prevMatch.streamLinks.forEach(function(oldSl) {
               var found = am.streamLinks.find(function(sl) { return sl.url === oldSl.url; });
@@ -460,7 +457,7 @@ export function renderScorersHtml(scorers, m, hId, aId) {
 export function fetchGameStats(matchId) {
     if(matchId.startsWith('espn_')) {
         var espnId = matchId.split('_')[1];
-        var m = S.matches.find(function(x) { return x.id === matchId; });
+        var m = S.matchMap.get(String(matchId));
         var path = 'soccer/eng.1'; // fallback
 
         if (m) {
