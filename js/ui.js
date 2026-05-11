@@ -1,5 +1,5 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks } from './config.js';
-import { normName, lgColor, getTeamColors, getLogo } from './db.js';
+import { normName, lgColor, getTeamColors, getLogo, DEFAULT_LEAGUES } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague } from './utils.js';
 import { TARGET_DATE, fetchGameStats, renderScorersHtml } from './api.js';
@@ -95,8 +95,9 @@ export function buildEPG(matches){
       if (b === 'Autres Flux') return -1;
 
       // Custom League Order User Preference
-      var idxA = customLgOrder.indexOf(a);
-      var idxB = customLgOrder.indexOf(b);
+      var orderList = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+      var idxA = orderList.indexOf(a);
+      var idxB = orderList.indexOf(b);
 
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
       if (idxA !== -1) return -1;
@@ -211,8 +212,9 @@ export function buildEPG(matches){
           lgOrder.sort(function(a, b) {
               if (a === 'Autres Flux') return 1;
               if (b === 'Autres Flux') return -1;
-              var idxA = customLgOrder.indexOf(a);
-              var idxB = customLgOrder.indexOf(b);
+              var orderList = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+              var idxA = orderList.indexOf(a);
+              var idxB = orderList.indexOf(b);
               if (idxA !== -1 && idxB !== -1) return idxA - idxB;
               if (idxA !== -1) return -1;
               if (idxB !== -1) return 1;
