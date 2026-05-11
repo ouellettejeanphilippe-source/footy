@@ -1828,14 +1828,6 @@ export function initPrefs() {
   document.documentElement.style.setProperty('--card-border', cardBorder);
   document.documentElement.style.setProperty('--card-shadow', cardShadow);
 
-  // Card Size
-  document.body.classList.remove('card-size-small', 'card-size-normal', 'card-size-large');
-  if (userPrefs.cardSize) {
-      document.body.classList.add('card-size-' + userPrefs.cardSize);
-  } else {
-      document.body.classList.add('card-size-normal');
-  }
-
 
   // Nav Layout Styles
   // Removed dynamic JS nav layout injection to rely on CSS media queries for responsiveness.
@@ -1920,7 +1912,6 @@ export function initPrefs() {
   var selC1 = document.getElementById('pref-c1');
   var selC2 = document.getElementById('pref-c2');
   var selC3 = document.getElementById('pref-c3');
-  var selCardSize = document.getElementById('pref-card-size');
   var selCard = document.getElementById('pref-card-color');
   var selCardStyle = document.getElementById('pref-card-style');
   var selBtn = document.getElementById('pref-btn-shape');
@@ -1938,7 +1929,6 @@ export function initPrefs() {
       var hexC2 = document.getElementById('hex-c2');
       if(hexC2) hexC2.textContent = selC2.value;
   }
-  if(selCardSize) selCardSize.value = userPrefs.cardSize || 'normal';
   if(selCard) selCard.value = userPrefs.cardColor || 'gradient-45';
   if(selC3) {
       selC3.value = userPrefs.c3 || '#222222';
@@ -1991,7 +1981,6 @@ export function applyUserPrefs() {
   var c1Sel = document.getElementById('pref-c1');
   var c2Sel = document.getElementById('pref-c2');
   var c3Sel = document.getElementById('pref-c3');
-  var cardSizeSel = document.getElementById('pref-card-size');
   var cardSel = document.getElementById('pref-card-color');
   var cardStyleSel = document.getElementById('pref-card-style');
   var btnSel = document.getElementById('pref-btn-shape');
@@ -2004,7 +1993,6 @@ export function applyUserPrefs() {
   if(c1Sel) userPrefs.c1 = c1Sel.value;
   if(c2Sel) userPrefs.c2 = c2Sel.value;
   if(c3Sel) userPrefs.c3 = c3Sel.value;
-  if(cardSizeSel) userPrefs.cardSize = cardSizeSel.value;
   if(cardSel) userPrefs.cardColor = cardSel.value;
   userPrefs.cardStyle = 'glass';
   if(btnSel) userPrefs.btnShape = btnSel.value;

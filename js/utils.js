@@ -164,7 +164,7 @@ export function applyFilter(f){
 
   var zoomEpg = document.querySelector('.zoom-controls');
   if (zoomEpg) {
-      if (f === 'all') {
+      if (f === 'all' || f === 'live' || f === 'upcoming') {
           zoomEpg.style.display = 'flex';
       } else {
           zoomEpg.style.display = 'none';
