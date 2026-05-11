@@ -1,5 +1,5 @@
 import { S, favTeams, sourcesStatus, scrapeLogs } from './state.js';
-import { esc, showToast, escJs, applyFilter } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch } from './config.js';
@@ -1079,24 +1079,28 @@ export function updateMultivisionLayout() {
 
         // Helper function for fallback
         function fallbackToIframe(url, container, cell, s) {
-            container.innerHTML = '';
-            var iframe = document.createElement('iframe');
-            iframe.className = 'mv-media mv-iframe';
-            iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
-            iframe.setAttribute('allowfullscreen', 'true');
-            iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
-            iframe.src = url;
-            container.appendChild(iframe);
-            cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
-            cell.addEventListener('mouseup', function() { iframe.style.pointerEvents = 'auto'; });
-            cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
+            container.innerHTML = '<div style="color:var(--muted); font-size:12px;">Extraction du lecteur...</div>';
             s._currentUrl = url;
+            resolveStreamUrl(url).then(function(finalUrl) {
+                if (s._currentUrl !== url) return;
+                container.innerHTML = '';
+                var iframe = document.createElement('iframe');
+                iframe.className = 'mv-media mv-iframe';
+                iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
+                iframe.setAttribute('allowfullscreen', 'true');
+                iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
+                iframe.src = finalUrl;
+                container.appendChild(iframe);
+                cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
+                cell.addEventListener('mouseup', function() { iframe.style.pointerEvents = 'auto'; });
+                cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
 
-            if (s.cropped) {
-                iframe.style.transform = 'scale(1.15)';
-            } else {
-                iframe.style.transform = 'scale(1)';
-            }
+                if (s.cropped) {
+                    iframe.style.transform = 'scale(1.15)';
+                } else {
+                    iframe.style.transform = 'scale(1)';
+                }
+            });
         }
 
         // Use CSS flex/grid order to reorder elements without removing them from the DOM

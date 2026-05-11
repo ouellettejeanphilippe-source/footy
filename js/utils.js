@@ -27,6 +27,32 @@ export function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,
 export function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
 
 
+/* ══ RESOLVER ═══════════════════════════ */
+export function resolveStreamUrl(url) {
+    return new Promise(function(resolve) {
+        if (!url || typeof url !== 'string') {
+            resolve(url);
+            return;
+        }
+
+        if (url.indexOf('onhockey.tv') >= 0) {
+            fetchPage(url).then(function(html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var iframe = doc.querySelector('iframe');
+                if (iframe && iframe.getAttribute('src')) {
+                    resolve(iframe.getAttribute('src'));
+                } else {
+                    resolve(url);
+                }
+            }).catch(function(e) {
+                resolve(url);
+            });
+        } else {
+            resolve(url);
+        }
+    });
+}
+
 /* ══ FETCH ══════════════════════════════ */
 
 export function fetchPage(url){
@@ -374,4 +400,5 @@ window.applySportFilter = applySportFilter;
 window.toggleLeague = toggleLeague;
 window.toggleAutresFlux = toggleAutresFlux;
 window.toggleAccordion = toggleAccordion;
+window.resolveStreamUrl = resolveStreamUrl;
 
