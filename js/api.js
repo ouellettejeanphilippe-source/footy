@@ -173,9 +173,27 @@ export function getApiFirstMatches(targetDate) {
       });
 
       promises.push(
-          fetchPage('https://www.thepwhl.com/en/schedule').then(function(html) {
-              if (html) {
-                  var pwhlMatches = parsePWHLSchedule(html);
+          Promise.all([
+              fetchPage('https://www.thepwhl.com/en/schedule').catch(function() { return ''; }),
+              fetchPage('https://www.thepwhl.com/en/schedule-25-26').catch(function() { return ''; })
+          ]).then(function(htmls) {
+              var allMatches = [];
+              var seenIds = new Set();
+
+              htmls.forEach(function(html) {
+                  if (html) {
+                      var matches = parsePWHLSchedule(html);
+                      matches.forEach(function(m) {
+                          if (!seenIds.has(m.id)) {
+                              seenIds.add(m.id);
+                              allMatches.push(m);
+                          }
+                      });
+                  }
+              });
+
+              if (allMatches.length > 0) {
+                  var pwhlMatches = allMatches;
                   pwhlMatches.forEach(function(m) {
                       m.flag = lgFlag('PWHL');
                       m.color = lgColor('PWHL');
@@ -208,7 +226,7 @@ export function getApiFirstMatches(targetDate) {
                       }
                   });
               }
-          }).catch(function(e) { lg('Error fetching PWHL API schedule', e); })
+          }).catch(function(e) { console.error('Error fetching PWHL API schedule', e); lg('Error fetching PWHL API schedule', e); })
       );
   } else {
       espnPaths.forEach(function(path) {
