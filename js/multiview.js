@@ -1597,13 +1597,6 @@ export function openFlux(e, eu, en, mid){
 export function applyBgStyle() {
   var s = userPrefs.bgStyle || 'gradient';
 
-  // Theme styling
-  if(userPrefs.theme === 'metallic') {
-      document.body.classList.add('theme-metallic');
-  } else {
-      document.body.classList.remove('theme-metallic');
-  }
-
   // Icon Pack
   document.body.setAttribute('data-icon-pack', userPrefs.iconPack || 'standard');
 
@@ -1923,7 +1916,6 @@ export function initPrefs() {
 
 
   // Update DOM selectors
-  var selTheme = document.getElementById('pref-theme');
   var selBgStyle = document.getElementById('pref-bg-style');
   var selC1 = document.getElementById('pref-c1');
   var selC2 = document.getElementById('pref-c2');
@@ -1935,7 +1927,6 @@ export function initPrefs() {
   var selAccentColor = document.getElementById('pref-accent-color');
   var selOpacity = document.getElementById('pref-card-opacity');
 
-  if(selTheme) selTheme.value = userPrefs.theme || 'custom';
   if(selBgStyle) selBgStyle.value = userPrefs.bgStyle || 'gradient';
   if(selC1) {
       selC1.value = userPrefs.c1 || '#000000';
@@ -1996,7 +1987,6 @@ export function initPrefs() {
 }
 
 export function applyUserPrefs() {
-  var themeSel = document.getElementById('pref-theme');
   var bgStyleSel = document.getElementById('pref-bg-style');
   var c1Sel = document.getElementById('pref-c1');
   var c2Sel = document.getElementById('pref-c2');
@@ -2010,7 +2000,6 @@ export function applyUserPrefs() {
   var effectsContainer = document.getElementById('pref-ui-effects-container');
   var removeBlackCb = document.getElementById('pref-remove-black');
 
-  if(themeSel) userPrefs.theme = themeSel.value;
   if(bgStyleSel) userPrefs.bgStyle = bgStyleSel.value;
   if(c1Sel) userPrefs.c1 = c1Sel.value;
   if(c2Sel) userPrefs.c2 = c2Sel.value;
@@ -2055,97 +2044,12 @@ export function applyUserPrefs() {
 }
 
 export function markCustomTheme() {
-  var themeSel = document.getElementById('pref-theme');
-  if(themeSel) themeSel.value = 'custom';
-  // when a user changes a color manually, we set theme to custom, and then save
+  // when a user changes a color manually, we save
   applyUserPrefs();
 }
 
 export function applyUserBgStyleOnly() {
-  var themeSel = document.getElementById('pref-theme');
-  if(themeSel) themeSel.value = 'custom'; // mark custom so it doesn't revert to preset
   applyUserPrefs();
-}
-
-export function applyPredefinedTheme() {
-  var themeSel = document.getElementById('pref-theme');
-  if(!themeSel) return;
-  var theme = themeSel.value;
-  if(theme === 'custom') return;
-
-  var presets = {
-    // Épuré & Minimaliste
-        'midnight': { bgStyle: 'solid', c1: '#0a0a0c', c2: '#121214', c3: '#18181a', accent: '#38bdf8', btnShape: 'soft' },
-    'slate': { bgStyle: 'gradient', c1: '#1e293b', c2: '#334155', c3: '#475569', accent: '#cbd5e1', btnShape: 'rounded' },
-    'minimal_light': { bgStyle: 'solid', c1: '#f8fafc', c2: '#f1f5f9', c3: '#e2e8f0', accent: '#0f172a', btnShape: 'rounded' }
-  };
-
-  if(presets[theme]) {
-    userPrefs.bgStyle = presets[theme].bgStyle;
-    userPrefs.c1 = presets[theme].c1;
-    userPrefs.c2 = presets[theme].c2;
-    userPrefs.c3 = presets[theme].c3;
-    userPrefs.accent = presets[theme].accent;
-    if(presets[theme].btnShape) userPrefs.btnShape = presets[theme].btnShape;
-    if(presets[theme].iconPack) userPrefs.iconPack = presets[theme].iconPack;
-    if(presets[theme].toggleStyle) userPrefs.toggleStyle = presets[theme].toggleStyle;
-    if(presets[theme].hdrStyle) userPrefs.hdrStyle = presets[theme].hdrStyle;
-
-    if(presets[theme].uiEffects !== undefined) {
-        userPrefs.uiEffects = presets[theme].uiEffects;
-    } else {
-        userPrefs.uiEffects = [];
-    }
-    userPrefs.theme = theme;
-
-    // Reset darken when applying predefined theme
-    userPrefs.bgDarken = 0;
-
-    // Update inputs
-    if(document.getElementById('pref-bg-darken')) document.getElementById('pref-bg-darken').value = userPrefs.bgDarken || 0;
-    document.getElementById('pref-bg-style').value = userPrefs.bgStyle;
-    document.getElementById('pref-c1').value = userPrefs.c1;
-    document.getElementById('pref-c2').value = userPrefs.c2;
-    document.getElementById('pref-c3').value = userPrefs.c3;
-    document.getElementById('pref-accent-color').value = userPrefs.accent;
-
-    var hexC1 = document.getElementById('hex-c1');
-    if(hexC1) hexC1.textContent = userPrefs.c1;
-    var hexC2 = document.getElementById('hex-c2');
-    if(hexC2) hexC2.textContent = userPrefs.c2;
-    var hexC3 = document.getElementById('hex-c3');
-    if(hexC3) hexC3.textContent = userPrefs.c3;
-    var hexAccent = document.getElementById('hex-accent-color');
-    if(hexAccent) hexAccent.textContent = userPrefs.accent;
-    if(document.getElementById('pref-icon-pack') && presets[theme].iconPack) {
-      document.getElementById('pref-icon-pack').value = presets[theme].iconPack;
-    }
-    if(document.getElementById('pref-btn-shape') && presets[theme].btnShape) {
-      document.getElementById('pref-btn-shape').value = presets[theme].btnShape;
-    }
-    if(document.getElementById('pref-toggle-style') && presets[theme].toggleStyle) {
-      document.getElementById('pref-toggle-style').value = presets[theme].toggleStyle;
-    }
-    if(document.getElementById('pref-hdr-style') && presets[theme].hdrStyle) {
-      document.getElementById('pref-hdr-style').value = presets[theme].hdrStyle;
-    }
-
-    var effectsContainer = document.getElementById('pref-ui-effects-container');
-    if(effectsContainer) {
-        var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
-        var effects = userPrefs.uiEffects || [];
-        checkboxes.forEach(cb => {
-            cb.checked = effects.includes(cb.value);
-        });
-
-        var glassCb = document.getElementById('pref-glassmorphism');
-        if (glassCb) {
-            glassCb.checked = effects.includes('glassmorphism');
-        }
-    }
-
-    applyUserPrefs();
-  }
 }
 
 
@@ -2533,7 +2437,6 @@ window.initPrefs = initPrefs;
 window.applyUserPrefs = applyUserPrefs;
 window.markCustomTheme = markCustomTheme;
 window.applyUserBgStyleOnly = applyUserBgStyleOnly;
-window.applyPredefinedTheme = applyPredefinedTheme;
 window.PALETTES = PALETTES;
 window.buildSwatches = buildSwatches;
 window.renderSourcesStatus = renderSourcesStatus;
