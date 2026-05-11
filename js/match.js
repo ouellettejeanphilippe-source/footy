@@ -149,8 +149,8 @@ export function isMatchPair(m1, m2) {
   var longerCombo = combined1.length < combined2.length ? combined2 : combined1;
 
   // Let's break the original shorter names (from the object, not normalized) into words
-  var rawShortH = m1H.length + m1A.length < m2H.length + m2A.length ? m1.homeTeam : m2.homeTeam;
-  var rawShortA = m1H.length + m1A.length < m2H.length + m2A.length ? m1.awayTeam : m2.awayTeam;
+  var rawShortH = m1.homeTeam.length + m1.awayTeam.length < m2.homeTeam.length + m2.awayTeam.length ? m1.homeTeam : m2.homeTeam;
+  var rawShortA = m1.homeTeam.length + m1.awayTeam.length < m2.homeTeam.length + m2.awayTeam.length ? m1.awayTeam : m2.awayTeam;
 
   // Use normName on parts to match how the longer string is built
   var shortWordsRaw = (rawShortH + " " + rawShortA).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/);
