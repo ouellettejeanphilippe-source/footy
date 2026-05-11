@@ -285,3 +285,41 @@ window.getLogo = getLogo;
 window.STATIC_TEAM_MAP = STATIC_TEAM_MAP;
 window.getOfficialTeamName = getOfficialTeamName;
 window.normName = normName;
+export var DEFAULT_LEAGUES = {
+    'CHAMPIONS LEAGUE': { icon: '⚽' },
+    'NHL': { icon: '🏒' },
+    'PWHL': { icon: '🏒' },
+    'F1': { icon: '🏎️' },
+    'NBA': { icon: '🏀' },
+    'MLB': { icon: '⚾' },
+    'PREMIER LEAGUE': { icon: '⚽' },
+    'LIGUE 1': { icon: '⚽' },
+    'NFL': { icon: '🏈' },
+    'LHJMQ': { icon: '🏒' },
+    'AHL': { icon: '🏒' },
+    'LA LIGA': { icon: '⚽' },
+    'SERIE A': { icon: '⚽' },
+    'BUNDESLIGA': { icon: '⚽' },
+    'MLS': { icon: '⚽' },
+    'CFL': { icon: '🏈' },
+    'INDYCAR': { icon: '🏎️' },
+    'MOTOGP': { icon: '🏍️' },
+    'WWE': { icon: '🥊' }
+};
+
+export function getLeagueIcon(lgName) {
+    if(!lgName) return '🏆';
+    var norm = lgName.toUpperCase();
+    if(DEFAULT_LEAGUES[norm]) return DEFAULT_LEAGUES[norm].icon;
+    if(norm.indexOf('HOCKEY') > -1 || norm === 'PWHL' || norm === 'LHJMQ' || norm === 'AHL') return '🏒';
+    if(norm.indexOf('FOOTBALL') > -1 || norm.indexOf('LIGUE') > -1 || norm.indexOf('SOCCER') > -1) return '⚽';
+    if(norm.indexOf('BASKETBALL') > -1) return '🏀';
+    if(norm.indexOf('BASEBALL') > -1) return '⚾';
+    if(norm.indexOf('F1') > -1 || norm.indexOf('FORMULA 1') > -1) return '🏎️';
+    if(norm.indexOf('TENNIS') > -1) return '🎾';
+    if(norm.indexOf('RUGBY') > -1) return '🏉';
+    return '🏆';
+}
+
+window.DEFAULT_LEAGUES = DEFAULT_LEAGUES;
+window.getLeagueIcon = getLeagueIcon;

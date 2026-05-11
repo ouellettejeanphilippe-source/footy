@@ -3,7 +3,7 @@ import { esc, showToast, fetchPage, applySportFilter, escJs, toggleAutresFlux, l
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL } from './config.js';
-import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES } from './db.js';
+import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, getLeagueIcon } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
@@ -507,41 +507,7 @@ export function openFavPage() {
 }
 
 
-export var DEFAULT_LEAGUES = {
-    'NHL': { icon: '🏒' },
-    'NFL': { icon: '🏈' },
-    'MLB': { icon: '⚾' },
-    'NBA': { icon: '🏀' },
-    'PREMIER LEAGUE': { icon: '⚽' },
-    'CHAMPIONS LEAGUE': { icon: '⚽' },
-    'F1': { icon: '🏎️' },
-    'LIGUE 1': { icon: '⚽' },
-    'LA LIGA': { icon: '⚽' },
-    'SERIE A': { icon: '⚽' },
-    'BUNDESLIGA': { icon: '⚽' },
-    'MLS': { icon: '⚽' },
-    'CFL': { icon: '🏈' },
-    'INDYCAR': { icon: '🏎️' },
-    'MOTOGP': { icon: '🏍️' },
-    'WWE': { icon: '🥊' },
-    'PWHL': { icon: '🏒' },
-    'LHJMQ': { icon: '🏒' },
-    'AHL': { icon: '🏒' }
-};
 
-export function getLeagueIcon(lgName) {
-    if(!lgName) return '🏆';
-    var norm = lgName.toUpperCase();
-    if(DEFAULT_LEAGUES[norm]) return DEFAULT_LEAGUES[norm].icon;
-    if(norm.indexOf('HOCKEY') > -1 || norm === 'PWHL' || norm === 'LHJMQ' || norm === 'AHL') return '🏒';
-    if(norm.indexOf('FOOTBALL') > -1 || norm.indexOf('LIGUE') > -1 || norm.indexOf('SOCCER') > -1) return '⚽';
-    if(norm.indexOf('BASKETBALL') > -1) return '🏀';
-    if(norm.indexOf('BASEBALL') > -1) return '⚾';
-    if(norm.indexOf('F1') > -1 || norm.indexOf('FORMULA 1') > -1) return '🏎️';
-    if(norm.indexOf('TENNIS') > -1) return '🎾';
-    if(norm.indexOf('RUGBY') > -1) return '🏉';
-    return '🏆';
-}
 
 export function renderFavPage() {
     // Render leagues
@@ -906,8 +872,7 @@ window.updateZoomDisplay = updateZoomDisplay;
 window.zoomIn = zoomIn;
 window.zoomOut = zoomOut;
 window.openFavPage = openFavPage;
-window.DEFAULT_LEAGUES = DEFAULT_LEAGUES;
-window.getLeagueIcon = getLeagueIcon;
+
 window.renderFavPage = renderFavPage;
 window.toggleFavPageAccordion = toggleFavPageAccordion;
 window.toggleFavPageTeam = toggleFavPageTeam;
