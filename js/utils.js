@@ -210,7 +210,7 @@ export function applyFilter(f){
       }
 
       if(f === 'all' || f === 'live') {
-          setTimeout(scrollToNow, 100);
+          window.dispatchEvent(new Event('filterChanged'));
       }
   }
 }

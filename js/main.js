@@ -158,6 +158,7 @@ export function loadAll(isBackground, forceScrape){
           fetchSubPages(S.matches);
 
           if (!isBackground) { document.getElementById('ov').style.display='none'; }
+          window.dispatchEvent(new Event('loadSequenceComplete'));
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
       }
 
@@ -334,6 +335,7 @@ export function loadAll(isBackground, forceScrape){
           setTimeout(function() { installTampermonkey(); }, 500);
       }
       window.hasLoadedOnce = true;
+      window.dispatchEvent(new Event('loadSequenceComplete'));
   });
 }
 
