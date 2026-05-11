@@ -835,7 +835,8 @@ export function saveMultivisionState() {
 }
 
 export function restoreMultivisionState() {
-    var parsed = safeStorageGetJSON('mv_state');
+    try {
+        var parsed = safeStorageGetJSON('mv_state');
         if(parsed) {
 
             // Backward compatibility with just array
