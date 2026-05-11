@@ -50,7 +50,18 @@ try {
       localStorage.setItem('fav_teams', JSON.stringify(favTeams));
   }
   var storedLgOrder = localStorage.getItem('custom_lg_order');
-  if (storedLgOrder) customLgOrder = JSON.parse(storedLgOrder);
+  if (storedLgOrder) {
+      customLgOrder = JSON.parse(storedLgOrder);
+      // Migration: Ensure the user gets the new default order if they never explicitly reordered
+      var v2Migrated = localStorage.getItem('lg_order_migrated_v2');
+      if (!v2Migrated) {
+          customLgOrder = [];
+          localStorage.removeItem('custom_lg_order');
+          localStorage.setItem('lg_order_migrated_v2', '1');
+      }
+  } else {
+      localStorage.setItem('lg_order_migrated_v2', '1');
+  }
 } catch(e) {}
 
 export function saveCustomLgOrder() {

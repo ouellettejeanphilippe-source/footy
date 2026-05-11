@@ -512,25 +512,25 @@ export function openFavPage() {
 
 
 export var DEFAULT_LEAGUES = {
-    'NHL': { icon: '🏒' },
-    'NFL': { icon: '🏈' },
-    'MLB': { icon: '⚾' },
-    'NBA': { icon: '🏀' },
-    'PREMIER LEAGUE': { icon: '⚽' },
     'CHAMPIONS LEAGUE': { icon: '⚽' },
+    'NHL': { icon: '🏒' },
+    'PWHL': { icon: '🏒' },
     'F1': { icon: '🏎️' },
+    'NBA': { icon: '🏀' },
+    'MLB': { icon: '⚾' },
+    'PREMIER LEAGUE': { icon: '⚽' },
     'LIGUE 1': { icon: '⚽' },
+    'NFL': { icon: '🏈' },
     'LA LIGA': { icon: '⚽' },
     'SERIE A': { icon: '⚽' },
     'BUNDESLIGA': { icon: '⚽' },
     'MLS': { icon: '⚽' },
+    'LHJMQ': { icon: '🏒' },
+    'AHL': { icon: '🏒' },
     'CFL': { icon: '🏈' },
     'INDYCAR': { icon: '🏎️' },
     'MOTOGP': { icon: '🏍️' },
-    'WWE': { icon: '🥊' },
-    'PWHL': { icon: '🏒' },
-    'LHJMQ': { icon: '🏒' },
-    'AHL': { icon: '🏒' }
+    'WWE': { icon: '🥊' }
 };
 
 export function getLeagueIcon(lgName) {
