@@ -77,6 +77,10 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 - **Problèmes résolus** : Reduced redundant DOM lookups during high-frequency live score updates, improving CPU efficiency and UI responsiveness during matches.
 ## En cours
 
+- **Correction de l'embedding Firefox pour onhockey.tv**
+  - **Fichiers touchés** : `js/utils.js`, `js/multiview.js`
+  - **Résumé** : Firefox bloque l'affichage de certains sites (comme `onhockey.tv`) dans des iframes pour des raisons de sécurité ("Firefox Can't Open This Page"). Pour contourner cela, ajout d'une fonction `resolveStreamUrl` qui télécharge la page intermédiaire via proxy et extrait directement l'URL source du lecteur vidéo (l'iframe interne). Le composant multiview a été mis à jour pour appeler cette fonction de manière asynchrone avant d'injecter la source dans le lecteur.
+
 ## Fait
 
 ### 09 May 2026 - Base de données des équipes et correction des couleurs
