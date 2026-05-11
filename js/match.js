@@ -154,44 +154,54 @@ export function isMatchPair(m1, m2) {
 
   // Use normName on parts to match how the longer string is built
   var shortWordsRaw = (rawShortH + " " + rawShortA).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/);
-  var shortWords = [];
-  shortWordsRaw.forEach(function(w) {
-      var nw = normName(w);
-      if (nw.length >= 3) shortWords.push(nw);
-      else if (w.length >= 3) shortWords.push(w);
-  });
+  var uniqueRawWords = Array.from(new Set(shortWordsRaw.filter(w => w.length >= 3)));
 
-  // Remove duplicates
-  shortWords = Array.from(new Set(shortWords));
-
-  if (shortWords.length === 0) return false;
+  if (uniqueRawWords.length === 0) return false;
 
   var matchedWords = 0;
-  for (var i = 0; i < shortWords.length; i++) {
-      var word = shortWords[i];
-      if (longerCombo.includes(word)) {
-          matchedWords++;
-      } else {
-          // Last resort sliding window for this word on the entire longer combo
-          var maxW = Math.min(longerCombo.length, word.length + 2);
-          var minW = Math.max(1, word.length - 2);
-          var bestSubSim = 0;
-          for (var w = minW; w <= maxW; w++) {
-              for (var k = 0; k <= longerCombo.length - w; k++) {
-                  var sub = longerCombo.substring(k, k + w);
-                  var subSim = stringSimilarity(sub, word);
-                  if (subSim > bestSubSim) bestSubSim = subSim;
+  for (var i = 0; i < uniqueRawWords.length; i++) {
+      var rawWord = uniqueRawWords[i];
+      var normWord = normName(rawWord);
+
+      var wordsToTest = [rawWord];
+      if (normWord.length >= 3 && normWord !== rawWord) {
+          wordsToTest.push(normWord);
+      }
+
+      var wordMatched = false;
+
+      for (var t = 0; t < wordsToTest.length; t++) {
+          var word = wordsToTest[t];
+          if (longerCombo.includes(word)) {
+              wordMatched = true;
+              break;
+          } else {
+              // Last resort sliding window for this word on the entire longer combo
+              var maxW = Math.min(longerCombo.length, word.length + 2);
+              var minW = Math.max(1, word.length - 2);
+              var bestSubSim = 0;
+              for (var w = minW; w <= maxW; w++) {
+                  for (var k = 0; k <= longerCombo.length - w; k++) {
+                      var sub = longerCombo.substring(k, k + w);
+                      var subSim = stringSimilarity(sub, word);
+                      if (subSim > bestSubSim) bestSubSim = subSim;
+                  }
+              }
+              if (bestSubSim > 0.80) {
+                  wordMatched = true;
+                  break;
               }
           }
-          if (bestSubSim > 0.80) {
-              matchedWords++;
-          }
+      }
+
+      if (wordMatched) {
+          matchedWords++;
       }
   }
 
   // If a significant portion of words match, consider it the same matchup
   // (e.g. if we have "tigers" and "rangers", that's 2 words. If both match, it's 100%)
-  if (matchedWords >= shortWords.length * 0.75 && matchedWords >= 2) {
+  if (matchedWords >= uniqueRawWords.length * 0.75 && matchedWords >= 2) {
       return true;
   }
 
