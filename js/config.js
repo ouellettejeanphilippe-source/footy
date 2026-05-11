@@ -199,6 +199,284 @@ export function openGlobalStats(teamName) {
     }
 }
 
+
+export function generateStandingsHtml(res, lg, teamName) {
+    var foundTeamId = null;
+    var tableHtml = '';
+
+    if(res.source === 'espn' && res.data && res.data.children && res.data.children[0].standings) {
+        var sData = res.data.children[0].standings.entries;
+        tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;white-space:nowrap;">';
+        var lgLower = lg.toLowerCase();
+        var isSoccer = lgLower.indexOf('premier') > -1 || lgLower.indexOf('ligue 1') > -1 || lgLower.indexOf('liga') > -1 || lgLower.indexOf('serie a') > -1 || lgLower.indexOf('bundesliga') > -1 || lgLower.indexOf('mls') > -1 || lgLower.indexOf('champions league') > -1 || lgLower.indexOf('europa') > -1;
+        var isHockey = lgLower.indexOf('nhl') > -1 || lgLower.indexOf('lhjmq') > -1;
+        var isBaseball = lgLower.indexOf('mlb') > -1;
+
+        if(isSoccer) {
+            tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">N</th><th style="padding:4px;">D</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+        } else if (isHockey) {
+            tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">DP</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+        } else if (isBaseball) {
+            tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">Pct</th><th style="padding:4px;">GB</th></tr>';
+        } else {
+            tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">N</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+        }
+
+        var teamFound = false;
+        var allEntries = [];
+        // Flatten if divisions exist (like NHL)
+        if (res.data.children && res.data.children.length > 1) {
+             res.data.children.forEach(function(c) {
+                 if(c.standings && c.standings.entries) {
+                     c.standings.entries.forEach(function(e) { allEntries.push(e); });
+                 }
+             });
+             // Re-sort by points if possible
+             allEntries.sort(function(a, b) {
+                 var ptsA = a.stats.find(s => s.name === 'points') ? parseInt(a.stats.find(s => s.name === 'points').value) : 0;
+                 var ptsB = b.stats.find(s => s.name === 'points') ? parseInt(b.stats.find(s => s.name === 'points').value) : 0;
+                 return ptsB - ptsA;
+             });
+        } else {
+             allEntries = sData;
+        }
+
+        allEntries.forEach(function(row, idx) {
+            var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
+            if(isTeam) {
+                teamFound = true;
+                foundTeamId = row.team.id;
+            }
+
+            // Show top 3 + the team itself (+ surrounding)
+            if(idx < 3 || isTeam) {
+                var getStat = function(n) { var st = row.stats.find(s => s.name === n); return st ? st.displayValue : '0'; };
+                var pts = getStat('points');
+                var gp = getStat('gamesPlayed');
+                var wins = getStat('wins');
+                var losses = getStat('losses');
+                var ties = getStat('ties');
+                var otl = getStat('otLosses'); // Hockey
+                var pf = getStat('pointsFor');
+                var pa = getStat('pointsAgainst');
+                var diff = getStat('pointDifferential');
+                var pct = getStat('winPercent'); // Baseball
+                var gb = getStat('gamesBehind'); // Baseball
+
+                tableHtml += '<tr style="background:'+(isTeam?'rgba(255,255,255,0.1)':'transparent')+'; border-bottom:1px solid rgba(255,255,255,0.05);">';
+                tableHtml += '<td style="padding:6px 4px;font-weight:bold;">'+(idx+1)+'</td>';
+                tableHtml += '<td style="padding:6px 4px;color:#fff;">'+esc(row.team.shortDisplayName || row.team.name)+'</td>';
+                tableHtml += '<td style="padding:6px 4px;">'+gp+'</td>';
+                tableHtml += '<td style="padding:6px 4px;">'+wins+'</td>';
+
+                if (isBaseball) {
+                    tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pct+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+gb+'</td>';
+                } else if (isHockey) {
+                    tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+otl+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                } else {
+                    tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+ties+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                }
+                tableHtml += '</tr>';
+            }
+        });
+        tableHtml += '</table></div>';
+        if(allEntries.length > 3 && !teamFound) tableHtml += '<div style="margin-top:8px;font-size:11px;">(Position complète non trouvée dans le top)</div>';
+    } else {
+        tableHtml = 'Données de classement non disponibles via ESPN pour cette ligue.';
+    }
+
+    return { html: tableHtml, foundTeamId: foundTeamId };
+}
+
+export function generateTeamInfoHtml(infoRes, foundTeamId) {
+    var tHtml = '';
+    var teamObj = infoRes.team && infoRes.team.team ? infoRes.team.team : infoRes.team;
+    if (teamObj && teamObj.record && teamObj.record.items) {
+        var totalRec = teamObj.record.items.find(function(r) { return r.type === 'total'; });
+        if (totalRec && totalRec.summary) {
+            tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📊 Statistiques de l\'équipe (' + esc(totalRec.summary) + ')</h4>';
+            tHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));gap:8px;margin-bottom:16px;">';
+            var statTranslations = {
+                'otLosses': 'Défaites (Prol.)', 'OTLosses': 'Défaites (Prol.)',
+                'otWins': 'Victoires (Prol.)', 'OTWins': 'Victoires (Prol.)',
+                'overtimeLosses': 'Défaites (Prol.)', 'overtimeWins': 'Victoires (Prol.)',
+                'shootoutLosses': 'Défaites (Fus.)', 'shootoutWins': 'Victoires (Fus.)',
+                'avgPointsAgainst': 'Moy. Pts Contre', 'avgPointsFor': 'Moy. Pts Pour',
+                'differential': 'Différentiel', 'gamesBehind': 'Retard',
+                'divisionGamesBehind': 'Retard (Div.)', 'pointDifferential': 'Diff. Points',
+                'pointsAgainst': 'Points Contre', 'pointsFor': 'Points Pour',
+                'streak': 'Séquence', 'winPercent': '% Victoire',
+                'leagueWinPercent': '% Vict. (Ligue)', 'divisionWinPercent': '% Vict. (Div.)',
+                'playoffPercent': '% Séries', 'wildCardPercent': '% Quatrième',
+                'penaltyKillPct': '% Infériorité', 'powerPlayPct': '% Avantage',
+                'powerPlayGoals': 'Buts (Avantage)', 'powerPlayGoalsAgainst': 'Buts Contre (Avantage)',
+                'powerPlayOpportunities': 'Occasions (Avantage)',
+                'regLosses': 'Défaites (Rég.)', 'regWins': 'Victoires (Rég.)',
+                'rotLosses': 'Défaites (T.R./Prol.)', 'rotWins': 'Victoires (T.R./Prol.)',
+                'timesShortHanded': 'Fois en Inf.', 'pointsDiff': 'Diff. Points',
+                'homeLosses': 'Défaites (Dom.)', 'homeWins': 'Victoires (Dom.)', 'homeTies': 'Nuls (Dom.)',
+                'roadLosses': 'Défaites (Ext.)', 'roadWins': 'Victoires (Ext.)', 'roadTies': 'Nuls (Ext.)',
+                'divisionLosses': 'Défaites (Div.)', 'divisionWins': 'Victoires (Div.)', 'divisionTies': 'Nuls (Div.)',
+                'divisionRecord': 'Fiche (Div.)', 'divisionPercent': '% Vict. (Div.)',
+                'gamesAhead': 'Avance'
+            };
+            totalRec.stats.forEach(function(s) {
+                // Skip boring stats or repetitive ones
+                if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties' || s.name === 'playoffSeed' || s.name === 'clincher' || s.name === 'magicNumberDivision' || s.name === 'magicNumberWildcard') return;
+
+                var rawName = s.shortDisplayName || s.displayName || s.name || '';
+                var statName = statTranslations[rawName] || statTranslations[s.name] || rawName.replace(/([A-Z])/g, " $1").trim();
+                statName = statName.charAt(0).toUpperCase() + statName.slice(1);
+
+                var displayVal = s.displayValue !== undefined ? s.displayValue : s.value;
+                if (typeof displayVal === 'number' && !Number.isInteger(displayVal)) {
+                    displayVal = displayVal.toFixed(2);
+                } else if (typeof displayVal === 'string' && !isNaN(Number(displayVal)) && displayVal.indexOf('.') > -1) {
+                    displayVal = Number(displayVal).toFixed(2);
+                }
+
+                tHtml += '<div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:8px;text-align:center;display:flex;flex-direction:column;justify-content:center;">';
+                tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(statName)+'">'+esc(statName)+'</div>';
+                tHtml += '<div style="font-size:16px;font-weight:bold;color:#fff;">'+esc(displayVal)+'</div>';
+                tHtml += '</div>';
+            });
+            tHtml += '</div></div>';
+        }
+    }
+
+    // Render Leaders directly from team roster if available
+    if (infoRes.roster && infoRes.roster.team && infoRes.roster.team.athletes) {
+        var athletes = infoRes.roster.team.athletes;
+
+        // We will group leaders by primary stats if no explicit leaders object is given
+        // For simplicity, we just check if teamObj.leaders exists first
+        if (teamObj && teamObj.leaders && teamObj.leaders.length > 0) {
+             tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs</h4>';
+             tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
+             teamObj.leaders.forEach(function(l) {
+                 if(l.leaders && l.leaders.length > 0) {
+                     var lead = l.leaders[0];
+                     tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
+                     var headshot = lead.athlete && lead.athlete.headshot ? lead.athlete.headshot.href : '';
+                     if(headshot) {
+                         tHtml += '<img src="'+esc(headshot)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#111;">';
+                     } else {
+                         tHtml += '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;">'+(lead.athlete?lead.athlete.shortName.charAt(0):'')+'</div>';
+                     }
+                     tHtml += '<div>';
+                     tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">'+esc(l.displayName)+'</div>';
+                     tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;">'+(lead.athlete?esc(lead.athlete.shortName):'')+'</div>';
+                     tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
+                     tHtml += '</div></div>';
+                 }
+             });
+             tHtml += '</div></div>';
+        } else if (teamObj && teamObj.nextEvent && teamObj.nextEvent[0] && teamObj.nextEvent[0].competitions[0].competitors) {
+             // Fallback to next match leaders if team roster leaders are missing
+             var myC = teamObj.nextEvent[0].competitions[0].competitors.find(function(c) { return String(c.id) === String(foundTeamId); }) || teamObj.nextEvent[0].competitions[0].competitors[0];
+             if (myC.leaders && myC.leaders.length > 0) {
+                 tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs (Match)</h4>';
+                 tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
+                 myC.leaders.forEach(function(l) {
+                     if(l.leaders && l.leaders.length > 0) {
+                         var lead = l.leaders[0];
+                         tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
+                         var headshot = lead.athlete && lead.athlete.headshot ? lead.athlete.headshot.href : '';
+                         if(headshot) {
+                             tHtml += '<img src="'+esc(headshot)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#111;">';
+                         } else {
+                             tHtml += '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;">'+(lead.athlete?lead.athlete.shortName.charAt(0):'')+'</div>';
+                         }
+                         tHtml += '<div>';
+                         tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">'+esc(l.displayName)+'</div>';
+                         tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;">'+(lead.athlete?esc(lead.athlete.shortName):'')+'</div>';
+                         tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
+                         tHtml += '</div></div>';
+                     }
+                 });
+                 tHtml += '</div></div>';
+             }
+        }
+    }
+
+    return tHtml;
+}
+
+export function generateTeamScheduleHtml(schedRes, foundTeamId, teamName) {
+    var uHtml = '';
+    if(schedRes.source === 'espn' && schedRes.data && schedRes.data.events) {
+        var events = schedRes.data.events;
+        // Filter events from today onwards
+        var now = new Date();
+        now.setHours(0,0,0,0);
+        var futureEvents = events.filter(function(e) {
+            var eDate = new Date(e.date);
+            return eDate >= now;
+        }).slice(0, 5); // take next 5
+
+        if(futureEvents.length > 0) {
+            futureEvents.forEach(function(ev) {
+                var comp = ev.competitions[0];
+                var hComp = comp.competitors.find(function(c){return c.homeAway==='home';}) || comp.competitors[0];
+                var aComp = comp.competitors.find(function(c){return c.homeAway==='away';}) || comp.competitors[1];
+
+                var dateObj = new Date(ev.date);
+                var timeStr = getEstTimeStrFromDate(dateObj);
+                var dateStr = getEstDateStrFromDate(dateObj); // YYYY-MM-DD
+
+                var isHome = String(hComp.team.id) === String(foundTeamId) || (hComp.team.id === undefined && normName(hComp.team.name) === normName(teamName));
+                var oppComp = isHome ? aComp : hComp;
+                var opponentName = oppComp.team ? (oppComp.team.displayName || oppComp.team.name || 'TBD') : 'TBD';
+                var oppLogo = oppComp.team && oppComp.team.logos && oppComp.team.logos.length > 0 ? oppComp.team.logos[0].href : getLogo(opponentName);
+
+                uHtml += '<div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);">';
+                uHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+                uHtml += '<span style="font-size:11px;color:var(--muted);font-weight:bold;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">'+esc(dateStr)+' ' + esc(timeStr)+'</span>';
+                if (ev.status && ev.status.type && ev.status.type.state === 'in') {
+                    uHtml += '<span style="color:var(--red);font-size:11px;font-weight:bold;background:rgba(255,69,58,0.1);padding:2px 6px;border-radius:4px;">🔴 En Direct</span>';
+                }
+                uHtml += '</div>';
+
+                uHtml += '<div style="display:flex;align-items:center;gap:8px;">';
+                uHtml += '<div style="flex:1;">';
+                uHtml += '<div style="font-size:12px;color:var(--muted);">'+(isHome ? 'vs (Domicile)' : '@ (Extérieur)')+'</div>';
+                uHtml += '<div style="font-size:15px;font-weight:bold;color:#fff;display:flex;align-items:center;gap:8px;">';
+                if(oppLogo) uHtml += '<img src="'+esc(oppLogo)+'" style="width:20px;height:20px;object-fit:contain;background:#fff;border-radius:50%;padding:2px;">';
+                uHtml += esc(opponentName)+'</div>';
+                uHtml += '</div>';
+
+                if(ev.status && ev.status.type && ev.status.type.state !== 'pre') {
+                    var hScore = hComp.score ? hComp.score.displayValue : '0';
+                    var aScore = aComp.score ? aComp.score.displayValue : '0';
+                    var tScore = isHome ? parseInt(hScore) : parseInt(aScore);
+                    var oScore = isHome ? parseInt(aScore) : parseInt(hScore);
+                    var resColor = tScore > oScore ? 'var(--accent-green)' : (tScore < oScore ? 'var(--red)' : 'var(--muted)');
+                    uHtml += '<div style="font-size:20px;font-weight:800;color:'+resColor+';background:rgba(0,0,0,0.4);padding:4px 12px;border-radius:8px;">'+hScore+' - '+aScore+'</div>';
+                }
+
+                uHtml += '</div></div>';
+            });
+        } else {
+            uHtml = 'Aucun match prévu trouvé dans le calendrier.';
+        }
+    } else {
+        uHtml = 'Calendrier non disponible.';
+    }
+    return uHtml;
+}
+
 export function fetchTeamStats(teamName) {
     var content = document.getElementById('gstats-content');
 
@@ -255,99 +533,9 @@ export function fetchTeamStats(teamName) {
             var foundTeamId = null;
 
             if(stDiv) {
-                if(res.source === 'espn' && res.data && res.data.children && res.data.children[0].standings) {
-                    var sData = res.data.children[0].standings.entries;
-                    var tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;white-space:nowrap;">';
-                    var lgLower = lg.toLowerCase();
-                    var isSoccer = lgLower.indexOf('premier') > -1 || lgLower.indexOf('ligue 1') > -1 || lgLower.indexOf('liga') > -1 || lgLower.indexOf('serie a') > -1 || lgLower.indexOf('bundesliga') > -1 || lgLower.indexOf('mls') > -1 || lgLower.indexOf('champions league') > -1 || lgLower.indexOf('europa') > -1;
-                    var isHockey = lgLower.indexOf('nhl') > -1 || lgLower.indexOf('lhjmq') > -1;
-                    var isBaseball = lgLower.indexOf('mlb') > -1;
-
-                    if(isSoccer) {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">N</th><th style="padding:4px;">D</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
-                    } else if (isHockey) {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">DP</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
-                    } else if (isBaseball) {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">Pct</th><th style="padding:4px;">GB</th></tr>';
-                    } else {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">N</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
-                    }
-
-                    var teamFound = false;
-                    var allEntries = [];
-                    // Flatten if divisions exist (like NHL)
-                    if (res.data.children && res.data.children.length > 1) {
-                         res.data.children.forEach(function(c) {
-                             if(c.standings && c.standings.entries) {
-                                 c.standings.entries.forEach(function(e) { allEntries.push(e); });
-                             }
-                         });
-                         // Re-sort by points if possible
-                         allEntries.sort(function(a, b) {
-                             var ptsA = a.stats.find(s => s.name === 'points') ? parseInt(a.stats.find(s => s.name === 'points').value) : 0;
-                             var ptsB = b.stats.find(s => s.name === 'points') ? parseInt(b.stats.find(s => s.name === 'points').value) : 0;
-                             return ptsB - ptsA;
-                         });
-                    } else {
-                         allEntries = sData;
-                    }
-
-                    allEntries.forEach(function(row, idx) {
-                        var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
-                        if(isTeam) {
-                            teamFound = true;
-                            foundTeamId = row.team.id;
-                        }
-
-                        // Show top 3 + the team itself (+ surrounding)
-                        if(idx < 3 || isTeam) {
-                            var getStat = function(n) { var st = row.stats.find(s => s.name === n); return st ? st.displayValue : '0'; };
-                            var pts = getStat('points');
-                            var gp = getStat('gamesPlayed');
-                            var wins = getStat('wins');
-                            var losses = getStat('losses');
-                            var ties = getStat('ties');
-                            var otl = getStat('otLosses'); // Hockey
-                            var pf = getStat('pointsFor');
-                            var pa = getStat('pointsAgainst');
-                            var diff = getStat('pointDifferential');
-                            var pct = getStat('winPercent'); // Baseball
-                            var gb = getStat('gamesBehind'); // Baseball
-
-                            tableHtml += '<tr style="background:'+(isTeam?'rgba(255,255,255,0.1)':'transparent')+'; border-bottom:1px solid rgba(255,255,255,0.05);">';
-                            tableHtml += '<td style="padding:6px 4px;font-weight:bold;">'+(idx+1)+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;color:#fff;">'+esc(row.team.shortDisplayName || row.team.name)+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;">'+gp+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;">'+wins+'</td>';
-
-                            if (isBaseball) {
-                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pct+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+gb+'</td>';
-                            } else if (isHockey) {
-                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+otl+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
-                            } else {
-                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+ties+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
-                            }
-                            tableHtml += '</tr>';
-                        }
-                    });
-                    tableHtml += '</table></div>';
-                    if(allEntries.length > 3 && !teamFound) tableHtml += '<div style="margin-top:8px;font-size:11px;">(Position complète non trouvée dans le top)</div>';
-                    stDiv.innerHTML = tableHtml;
-                } else {
-                    stDiv.innerHTML = 'Données de classement non disponibles via ESPN pour cette ligue.';
-                }
+                var standingsResult = generateStandingsHtml(res, lg, teamName);
+                stDiv.innerHTML = standingsResult.html;
+                foundTeamId = standingsResult.foundTeamId;
             }
 
             // Fetch upcoming schedule and team info if team ID is found
@@ -356,115 +544,7 @@ export function fetchTeamStats(teamName) {
                 // Fetch Team Info (roster & stats)
                 fetchTeamInfo(lg, foundTeamId).then(function(infoRes) {
                     var statsContainer = document.createElement('div');
-                    var tHtml = '';
-                    var teamObj = infoRes.team && infoRes.team.team ? infoRes.team.team : infoRes.team;
-                    if (teamObj && teamObj.record && teamObj.record.items) {
-                        var totalRec = teamObj.record.items.find(function(r) { return r.type === 'total'; });
-                        if (totalRec && totalRec.summary) {
-                            tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📊 Statistiques de l\'équipe (' + esc(totalRec.summary) + ')</h4>';
-                            tHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));gap:8px;margin-bottom:16px;">';
-                            var statTranslations = {
-                                'otLosses': 'Défaites (Prol.)', 'OTLosses': 'Défaites (Prol.)',
-                                'otWins': 'Victoires (Prol.)', 'OTWins': 'Victoires (Prol.)',
-                                'overtimeLosses': 'Défaites (Prol.)', 'overtimeWins': 'Victoires (Prol.)',
-                                'shootoutLosses': 'Défaites (Fus.)', 'shootoutWins': 'Victoires (Fus.)',
-                                'avgPointsAgainst': 'Moy. Pts Contre', 'avgPointsFor': 'Moy. Pts Pour',
-                                'differential': 'Différentiel', 'gamesBehind': 'Retard',
-                                'divisionGamesBehind': 'Retard (Div.)', 'pointDifferential': 'Diff. Points',
-                                'pointsAgainst': 'Points Contre', 'pointsFor': 'Points Pour',
-                                'streak': 'Séquence', 'winPercent': '% Victoire',
-                                'leagueWinPercent': '% Vict. (Ligue)', 'divisionWinPercent': '% Vict. (Div.)',
-                                'playoffPercent': '% Séries', 'wildCardPercent': '% Quatrième',
-                                'penaltyKillPct': '% Infériorité', 'powerPlayPct': '% Avantage',
-                                'powerPlayGoals': 'Buts (Avantage)', 'powerPlayGoalsAgainst': 'Buts Contre (Avantage)',
-                                'powerPlayOpportunities': 'Occasions (Avantage)',
-                                'regLosses': 'Défaites (Rég.)', 'regWins': 'Victoires (Rég.)',
-                                'rotLosses': 'Défaites (T.R./Prol.)', 'rotWins': 'Victoires (T.R./Prol.)',
-                                'timesShortHanded': 'Fois en Inf.', 'pointsDiff': 'Diff. Points',
-                                'homeLosses': 'Défaites (Dom.)', 'homeWins': 'Victoires (Dom.)', 'homeTies': 'Nuls (Dom.)',
-                                'roadLosses': 'Défaites (Ext.)', 'roadWins': 'Victoires (Ext.)', 'roadTies': 'Nuls (Ext.)',
-                                'divisionLosses': 'Défaites (Div.)', 'divisionWins': 'Victoires (Div.)', 'divisionTies': 'Nuls (Div.)',
-                                'divisionRecord': 'Fiche (Div.)', 'divisionPercent': '% Vict. (Div.)',
-                                'gamesAhead': 'Avance'
-                            };
-                            totalRec.stats.forEach(function(s) {
-                                // Skip boring stats or repetitive ones
-                                if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties' || s.name === 'playoffSeed' || s.name === 'clincher' || s.name === 'magicNumberDivision' || s.name === 'magicNumberWildcard') return;
-
-                                var rawName = s.shortDisplayName || s.displayName || s.name || '';
-                                var statName = statTranslations[rawName] || statTranslations[s.name] || rawName.replace(/([A-Z])/g, " $1").trim();
-                                statName = statName.charAt(0).toUpperCase() + statName.slice(1);
-
-                                var displayVal = s.displayValue !== undefined ? s.displayValue : s.value;
-                                if (typeof displayVal === 'number' && !Number.isInteger(displayVal)) {
-                                    displayVal = displayVal.toFixed(2);
-                                } else if (typeof displayVal === 'string' && !isNaN(Number(displayVal)) && displayVal.indexOf('.') > -1) {
-                                    displayVal = Number(displayVal).toFixed(2);
-                                }
-
-                                tHtml += '<div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:8px;text-align:center;display:flex;flex-direction:column;justify-content:center;">';
-                                tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(statName)+'">'+esc(statName)+'</div>';
-                                tHtml += '<div style="font-size:16px;font-weight:bold;color:#fff;">'+esc(displayVal)+'</div>';
-                                tHtml += '</div>';
-                            });
-                            tHtml += '</div></div>';
-                        }
-                    }
-
-                    // Render Leaders directly from team roster if available
-                    if (infoRes.roster && infoRes.roster.team && infoRes.roster.team.athletes) {
-                        var athletes = infoRes.roster.team.athletes;
-
-                        // We will group leaders by primary stats if no explicit leaders object is given
-                        // For simplicity, we just check if teamObj.leaders exists first
-                        if (teamObj && teamObj.leaders && teamObj.leaders.length > 0) {
-                             tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs</h4>';
-                             tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
-                             teamObj.leaders.forEach(function(l) {
-                                 if(l.leaders && l.leaders.length > 0) {
-                                     var lead = l.leaders[0];
-                                     tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
-                                     var headshot = lead.athlete && lead.athlete.headshot ? lead.athlete.headshot.href : '';
-                                     if(headshot) {
-                                         tHtml += '<img src="'+esc(headshot)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#111;">';
-                                     } else {
-                                         tHtml += '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;">'+(lead.athlete?lead.athlete.shortName.charAt(0):'')+'</div>';
-                                     }
-                                     tHtml += '<div>';
-                                     tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">'+esc(l.displayName)+'</div>';
-                                     tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;">'+(lead.athlete?esc(lead.athlete.shortName):'')+'</div>';
-                                     tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
-                                     tHtml += '</div></div>';
-                                 }
-                             });
-                             tHtml += '</div></div>';
-                        } else if (teamObj && teamObj.nextEvent && teamObj.nextEvent[0] && teamObj.nextEvent[0].competitions[0].competitors) {
-                             // Fallback to next match leaders if team roster leaders are missing
-                             var myC = teamObj.nextEvent[0].competitions[0].competitors.find(function(c) { return String(c.id) === String(foundTeamId); }) || teamObj.nextEvent[0].competitions[0].competitors[0];
-                             if (myC.leaders && myC.leaders.length > 0) {
-                                 tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs (Match)</h4>';
-                                 tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
-                                 myC.leaders.forEach(function(l) {
-                                     if(l.leaders && l.leaders.length > 0) {
-                                         var lead = l.leaders[0];
-                                         tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
-                                         var headshot = lead.athlete && lead.athlete.headshot ? lead.athlete.headshot.href : '';
-                                         if(headshot) {
-                                             tHtml += '<img src="'+esc(headshot)+'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#111;">';
-                                         } else {
-                                             tHtml += '<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;">'+(lead.athlete?lead.athlete.shortName.charAt(0):'')+'</div>';
-                                         }
-                                         tHtml += '<div>';
-                                         tHtml += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;">'+esc(l.displayName)+'</div>';
-                                         tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;">'+(lead.athlete?esc(lead.athlete.shortName):'')+'</div>';
-                                         tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
-                                         tHtml += '</div></div>';
-                                     }
-                                 });
-                                 tHtml += '</div></div>';
-                             }
-                        }
-                    }
+                    var tHtml = generateTeamInfoHtml(infoRes, foundTeamId);
 
                     if(tHtml) {
                         statsContainer.innerHTML = tHtml;
@@ -475,67 +555,14 @@ export function fetchTeamStats(teamName) {
                 });
 
                 fetchTeamSchedule(lg, foundTeamId).then(function(schedRes) {
-                    if(schedRes.source === 'espn' && schedRes.data && schedRes.data.events) {
-                        var events = schedRes.data.events;
-                        // Filter events from today onwards
-                        var now = new Date();
-                        now.setHours(0,0,0,0);
-                        var futureEvents = events.filter(function(e) {
-                            var eDate = new Date(e.date);
-                            return eDate >= now;
-                        }).slice(0, 5); // take next 5
+                    var uHtml = generateTeamScheduleHtml(schedRes, foundTeamId, teamName);
 
-                        if(futureEvents.length > 0) {
-                            var uHtml = '';
-                            futureEvents.forEach(function(ev) {
-                                var comp = ev.competitions[0];
-                                var hComp = comp.competitors.find(function(c){return c.homeAway==='home';}) || comp.competitors[0];
-                                var aComp = comp.competitors.find(function(c){return c.homeAway==='away';}) || comp.competitors[1];
-
-                                var dateObj = new Date(ev.date);
-                                var timeStr = getEstTimeStrFromDate(dateObj);
-                                var dateStr = getEstDateStrFromDate(dateObj); // YYYY-MM-DD
-
-                                var isHome = String(hComp.team.id) === String(foundTeamId) || (hComp.team.id === undefined && normName(hComp.team.name) === normName(teamName));
-                                var oppComp = isHome ? aComp : hComp;
-                                var opponentName = oppComp.team ? (oppComp.team.displayName || oppComp.team.name || 'TBD') : 'TBD';
-                                var oppLogo = oppComp.team && oppComp.team.logos && oppComp.team.logos.length > 0 ? oppComp.team.logos[0].href : getLogo(opponentName);
-
-                                uHtml += '<div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);">';
-                                uHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-                                uHtml += '<span style="font-size:11px;color:var(--muted);font-weight:bold;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">'+esc(dateStr)+' ' + esc(timeStr)+'</span>';
-                                if (ev.status && ev.status.type && ev.status.type.state === 'in') {
-                                    uHtml += '<span style="color:var(--red);font-size:11px;font-weight:bold;background:rgba(255,69,58,0.1);padding:2px 6px;border-radius:4px;">🔴 En Direct</span>';
-                                }
-                                uHtml += '</div>';
-
-                                uHtml += '<div style="display:flex;align-items:center;gap:8px;">';
-                                uHtml += '<div style="flex:1;">';
-                                uHtml += '<div style="font-size:12px;color:var(--muted);">'+(isHome ? 'vs (Domicile)' : '@ (Extérieur)')+'</div>';
-                                uHtml += '<div style="font-size:15px;font-weight:bold;color:#fff;display:flex;align-items:center;gap:8px;">';
-                                if(oppLogo) uHtml += '<img src="'+esc(oppLogo)+'" style="width:20px;height:20px;object-fit:contain;background:#fff;border-radius:50%;padding:2px;">';
-                                uHtml += esc(opponentName)+'</div>';
-                                uHtml += '</div>';
-
-                                if(ev.status && ev.status.type && ev.status.type.state !== 'pre') {
-                                    var hScore = hComp.score ? hComp.score.displayValue : '0';
-                                    var aScore = aComp.score ? aComp.score.displayValue : '0';
-                                    var tScore = isHome ? parseInt(hScore) : parseInt(aScore);
-                                    var oScore = isHome ? parseInt(aScore) : parseInt(hScore);
-                                    var resColor = tScore > oScore ? 'var(--accent-green)' : (tScore < oScore ? 'var(--red)' : 'var(--muted)');
-                                    uHtml += '<div style="font-size:20px;font-weight:800;color:'+resColor+';background:rgba(0,0,0,0.4);padding:4px 12px;border-radius:8px;">'+hScore+' - '+aScore+'</div>';
-                                }
-
-                                uHtml += '</div></div>';
-                            });
-                            upcDiv.innerHTML = uHtml;
-                            upcDiv.style.background = 'transparent';
-                            upcDiv.style.padding = '0';
-                        } else {
-                            upcDiv.innerHTML = 'Aucun match prévu trouvé dans le calendrier.';
-                        }
+                    if (uHtml === 'Aucun match prévu trouvé dans le calendrier.' || uHtml === 'Calendrier non disponible.') {
+                        upcDiv.innerHTML = uHtml;
                     } else {
-                        upcDiv.innerHTML = 'Calendrier non disponible.';
+                        upcDiv.innerHTML = uHtml;
+                        upcDiv.style.background = 'transparent';
+                        upcDiv.style.padding = '0';
                     }
                 }).catch(function() {
                     upcDiv.innerHTML = 'Erreur de récupération du calendrier.';
