@@ -14,10 +14,11 @@ export function getLeagueDuration(league) {
   var l = league.toLowerCase();
 
   if(l.indexOf('mlb') >= 0 || l.indexOf('baseball') >= 0) return 180;
-  if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0) return 180;
+  if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0 || l.indexOf('cfl') >= 0) return 180;
   if(l.indexOf('nba') >= 0 || l.indexOf('basketball') >= 0) return 150;
-  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0) return 150;
+  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0 || l.indexOf('pwhl') >= 0 || l.indexOf('qmjhl') >= 0 || l.indexOf('lhjmq') >= 0) return 150;
   if(l.indexOf('f1') >= 0 || l.indexOf('formula 1') >= 0) return 120;
+  if(l.indexOf('motogp') >= 0 || l.indexOf('moto gp') >= 0) return 60;
   if(l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0) return 120;
   if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0) return 180;
 

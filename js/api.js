@@ -35,7 +35,9 @@ export var ESPN_LEAGUES = {
   'mlb': 'baseball/mlb',
   'baseball': 'baseball/mlb',
   'f1': 'racing/f1',
-  'formula 1': 'racing/f1'
+  'formula 1': 'racing/f1',
+  'cfl': 'football/cfl',
+  'indycar': 'racing/irl'
 };
 
 export function getEspnDateStr(d) {

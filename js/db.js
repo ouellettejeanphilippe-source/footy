@@ -43,10 +43,11 @@ export function lgFlag(n){
   var l=(n||'').toLowerCase();
   for(var k in FLAGS){ if(l.indexOf(k)>=0) return FLAGS[k]; }
   if(l.indexOf('mlb') >= 0 || l.indexOf('baseball') >= 0) return '⚾';
-  if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0) return '🏈';
+  if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0 || l.indexOf('cfl') >= 0) return '🏈';
   if(l.indexOf('nba') >= 0 || l.indexOf('basketball') >= 0) return '🏀';
-  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0 || l.indexOf('pwhl') >= 0 || l.indexOf('qmjhl') >= 0) return '🏒';
+  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0 || l.indexOf('pwhl') >= 0 || l.indexOf('qmjhl') >= 0 || l.indexOf('lhjmq') >= 0) return '🏒';
   if(l.indexOf('f1') >= 0 || l.indexOf('formula 1') >= 0 || l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0) return '🏎️';
+  if(l.indexOf('motogp') >= 0 || l.indexOf('moto gp') >= 0) return '🏍️';
   if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0 || l.indexOf('ufc') >= 0 || l.indexOf('mma') >= 0 || l.indexOf('boxing') >= 0) return '🥊';
   if(l.indexOf('tennis') >= 0) return '🎾';
   if(l.indexOf('rugby') >= 0) return '🏉';
@@ -112,7 +113,12 @@ export var LEAGUE_ALIASES = {
   'lhjmq': 'lhjmq',
   'qmjhl': 'lhjmq',
   'quebec maritimes junior hockey league': 'lhjmq',
-  'ligue de hockey junior maritimes quebec': 'lhjmq'
+  'ligue de hockey junior maritimes quebec': 'lhjmq',
+  'indycar': 'indycar',
+  'indy car': 'indycar',
+  'motogp': 'motogp',
+  'moto gp': 'motogp',
+  'wwe': 'wwe'
 };
 export var LEAGUE_FORMAT_NAMES = {
     'nba': 'NBA',
