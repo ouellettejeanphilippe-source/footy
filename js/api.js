@@ -438,18 +438,40 @@ export function renderScorersHtml(scorers, m, hId, aId) {
 
     if (hScorers.length === 0 && aScorers.length === 0) return '';
 
-    var html = '<div style="display:flex; justify-content:space-between; width:100%; font-size:12px; color:var(--muted); margin-top:8px;">';
-    html += '<div style="flex:1; text-align:right; padding-right:10px;">';
-    hScorers.forEach(function(s) {
-        html += '<div style="margin-bottom:2px;">' + esc(s.player) + ' ⚽ ' + esc(s.time) + '</div>';
+    // Sort all events by time to create a chronological timeline
+    var allScorers = [];
+    hScorers.forEach(function(s) { s._side = 'home'; allScorers.push(s); });
+    aScorers.forEach(function(s) { s._side = 'away'; allScorers.push(s); });
+
+    allScorers.sort(function(a, b) {
+        var tA = parseInt(a.time) || 0;
+        var tB = parseInt(b.time) || 0;
+        return tA - tB;
     });
+
+    var html = '<div style="display:flex; flex-direction:column; gap:8px; width:100%; font-size:13px; margin-top:8px; background:rgba(255,255,255,0.02); padding:12px; border-radius:12px;">';
+
+    // Header
+    html += '<div style="display:flex; justify-content:space-between; padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); font-weight:700; color:var(--muted2); font-size:11px; text-transform:uppercase;">';
+    html += '<div style="flex:1;">' + esc(m.homeTeam) + '</div>';
+    html += '<div style="width:40px; text-align:center;">Temps</div>';
+    html += '<div style="flex:1; text-align:right;">' + esc(m.awayTeam) + '</div>';
     html += '</div>';
-    html += '<div style="width:1px; background:rgba(255,255,255,0.1);"></div>';
-    html += '<div style="flex:1; text-align:left; padding-left:10px;">';
-    aScorers.forEach(function(s) {
-        html += '<div style="margin-bottom:2px;">⚽ ' + esc(s.time) + ' ' + esc(s.player) + '</div>';
+
+    allScorers.forEach(function(s) {
+        html += '<div style="display:flex; align-items:center; width:100%; gap:8px;">';
+        if (s._side === 'home') {
+            html += '<div style="flex:1; display:flex; align-items:center; gap:8px; color:#fff; font-weight:600;"><div style="width:20px; height:20px; border-radius:10px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:10px;">⚽</div><div style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(s.player) + '</div></div>';
+            html += '<div style="width:40px; text-align:center; font-weight:700; color:var(--accent);">' + esc(s.time) + '</div>';
+            html += '<div style="flex:1;"></div>';
+        } else {
+            html += '<div style="flex:1;"></div>';
+            html += '<div style="width:40px; text-align:center; font-weight:700; color:var(--accent);">' + esc(s.time) + '</div>';
+            html += '<div style="flex:1; display:flex; align-items:center; justify-content:flex-end; gap:8px; color:#fff; font-weight:600;"><div style="flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(s.player) + '</div><div style="width:20px; height:20px; border-radius:10px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:10px;">⚽</div></div>';
+        }
+        html += '</div>';
     });
-    html += '</div>';
+
     html += '</div>';
     return html;
 }
