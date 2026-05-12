@@ -310,96 +310,53 @@ export function fetchTeamStats(teamName) {
             var foundTeamId = null;
 
             if(stDiv) {
-                if(res.source === 'espn' && res.data && res.data.children && res.data.children[0].standings) {
-                    var sData = res.data.children[0].standings.entries;
-                    var tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;white-space:nowrap;">';
-                    var lgLower = lg.toLowerCase();
-                    var isSoccer = lgLower.indexOf('premier') > -1 || lgLower.indexOf('ligue 1') > -1 || lgLower.indexOf('liga') > -1 || lgLower.indexOf('serie a') > -1 || lgLower.indexOf('bundesliga') > -1 || lgLower.indexOf('mls') > -1 || lgLower.indexOf('champions league') > -1 || lgLower.indexOf('europa') > -1;
-                    var isHockey = lgLower.indexOf('nhl') > -1 || lgLower.indexOf('lhjmq') > -1;
-                    var isBaseball = lgLower.indexOf('mlb') > -1;
-
-                    if(isSoccer) {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">N</th><th style="padding:4px;">D</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
-                    } else if (isHockey) {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">DP</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
-                    } else if (isBaseball) {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">Pct</th><th style="padding:4px;">GB</th></tr>';
-                    } else {
-                        tableHtml += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">N</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+                if (res.source === 'espn' && res.data) {
+                    var sTypes = [];
+                    if (res.seasonTypes && res.seasonTypes.length > 0) {
+                        sTypes = res.seasonTypes.filter(function(t) {
+                            return t.hasStandings && (t.id === '1' || t.id === '2' || t.id === '3');
+                        }).sort(function(a, b) {
+                            return parseInt(b.id) - parseInt(a.id); // Prioritize regular season/playoffs over preseason
+                        });
                     }
 
-                    var teamFound = false;
-                    var allEntries = [];
-                    // Flatten if divisions exist (like NHL)
-                    if (res.data.children && res.data.children.length > 1) {
-                         res.data.children.forEach(function(c) {
-                             if(c.standings && c.standings.entries) {
-                                 c.standings.entries.forEach(function(e) { allEntries.push(e); });
-                             }
-                         });
-                         // Re-sort by points if possible
-                         allEntries.sort(function(a, b) {
-                             var ptsA = a.stats.find(s => s.name === 'points') ? parseInt(a.stats.find(s => s.name === 'points').value) : 0;
-                             var ptsB = b.stats.find(s => s.name === 'points') ? parseInt(b.stats.find(s => s.name === 'points').value) : 0;
-                             return ptsB - ptsA;
-                         });
-                    } else {
-                         allEntries = sData;
+                    if (sTypes.length === 0) {
+                        // Fallback if no specific season types are identified, but we have data
+                        sTypes = [{ id: null, name: 'Actuel', abbreviation: 'Actuel' }];
                     }
 
-                    allEntries.forEach(function(row, idx) {
-                        var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
-                        if(isTeam) {
-                            teamFound = true;
-                            foundTeamId = row.team.id;
-                        }
+                    var htmlTabs = '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;" class="hide-scrollbar">';
+                    sTypes.forEach(function(st, idx) {
+                        var name = st.name;
+                        if (name.indexOf('Regular') > -1) name = 'Saison Régulière';
+                        if (name.indexOf('Postseason') > -1 || name.indexOf('Playoffs') > -1) name = 'Séries';
+                        if (name.indexOf('Preseason') > -1) name = 'Présaison';
 
-                        // Show top 3 + the team itself (+ surrounding)
-                        if(idx < 3 || isTeam) {
-                            var getStat = function(n) { var st = row.stats.find(s => s.name === n); return st ? st.displayValue : '0'; };
-                            var pts = getStat('points');
-                            var gp = getStat('gamesPlayed');
-                            var wins = getStat('wins');
-                            var losses = getStat('losses');
-                            var ties = getStat('ties');
-                            var otl = getStat('otLosses'); // Hockey
-                            var pf = getStat('pointsFor');
-                            var pa = getStat('pointsAgainst');
-                            var diff = getStat('pointDifferential');
-                            var pct = getStat('winPercent'); // Baseball
-                            var gb = getStat('gamesBehind'); // Baseball
-
-                            tableHtml += '<tr style="background:'+(isTeam?'rgba(255,255,255,0.1)':'transparent')+'; border-bottom:1px solid rgba(255,255,255,0.05);">';
-                            tableHtml += '<td style="padding:6px 4px;font-weight:bold;">'+(idx+1)+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;color:#fff;">'+esc(row.team.shortDisplayName || row.team.name)+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;">'+gp+'</td>';
-                            tableHtml += '<td style="padding:6px 4px;">'+wins+'</td>';
-
-                            if (isBaseball) {
-                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pct+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+gb+'</td>';
-                            } else if (isHockey) {
-                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+otl+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
-                            } else {
-                                tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+ties+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
-                                tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
-                            }
-                            tableHtml += '</tr>';
-                        }
+                        htmlTabs += '<button id="seasontab-'+(st.id||'base')+'" onclick="window.loadStandingsTab(\''+escJs(lg)+'\', \''+escJs(teamName)+'\', \''+(st.id||'')+'\')" class="seasontab-btn" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;white-space:nowrap;opacity:'+(idx===0?'1':'0.5')+';">'+esc(name)+'</button>';
                     });
-                    tableHtml += '</table></div>';
-                    if(allEntries.length > 3 && !teamFound) tableHtml += '<div style="margin-top:8px;font-size:11px;">(Position complète non trouvée dans le top)</div>';
-                    stDiv.innerHTML = tableHtml;
+                    htmlTabs += '</div>';
+                    htmlTabs += '<div id="gstats-standings-content" style="position:relative;min-height:100px;">Chargement...</div>';
+
+                    stDiv.innerHTML = htmlTabs;
+                    stDiv.style.background = 'transparent';
+                    stDiv.style.padding = '0';
+
+                    // Load the first available season type by default
+                    if (sTypes.length > 0) {
+                        // Only pass initial res if it actually matches the season type we are prioritizing
+                        var cache = null;
+                        var rSeasonType = null;
+                        if (res.data && res.data.children && res.data.children.length > 0 && res.data.children[0].standings) {
+                             rSeasonType = res.data.children[0].standings.seasonType;
+                        }
+
+                        if (rSeasonType && String(rSeasonType) === String(sTypes[0].id)) {
+                            cache = res;
+                        } else if (!sTypes[0].id) {
+                            cache = res;
+                        }
+                        window.loadStandingsTab(lg, teamName, sTypes[0].id, cache);
+                    }
                 } else {
                     stDiv.innerHTML = 'Données de classement non disponibles via ESPN pour cette ligue.';
                 }
@@ -819,3 +776,140 @@ window.domainPrefs = domainPrefs;
 window.saveDomainPrefs = saveDomainPrefs;
 window.toggleDomainPref = toggleDomainPref;
 window.sortFluxLinks = sortFluxLinks;
+
+window.loadStandingsTab = function(lg, teamName, seasonTypeId, cachedRes) {
+    var contentDiv = document.getElementById('gstats-standings-content');
+    if (!contentDiv) return;
+
+    // Update active state of season tabs
+    document.querySelectorAll('.seasontab-btn').forEach(function(b) {
+        b.style.opacity = '0.5';
+    });
+    var activeBtn = document.getElementById('seasontab-' + (seasonTypeId || 'base'));
+    if (activeBtn) activeBtn.style.opacity = '1';
+
+    contentDiv.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);background:rgba(255,255,255,0.02);border-radius:12px;">Chargement...</div>';
+
+    var fetchPromise = cachedRes ? Promise.resolve(cachedRes) : fetchLeagueStandings(lg, seasonTypeId);
+
+    fetchPromise.then(function(res) {
+        if (!res || !res.data || !res.data.children || res.data.children.length === 0 || !res.data.children[0].standings) {
+            contentDiv.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);background:rgba(255,255,255,0.02);border-radius:12px;">Données non disponibles pour cette saison.</div>';
+            return;
+        }
+
+        var tableHtml = '';
+        var lgLower = lg.toLowerCase();
+        var isSoccer = lgLower.indexOf('premier') > -1 || lgLower.indexOf('ligue 1') > -1 || lgLower.indexOf('liga') > -1 || lgLower.indexOf('serie a') > -1 || lgLower.indexOf('bundesliga') > -1 || lgLower.indexOf('mls') > -1 || lgLower.indexOf('champions league') > -1 || lgLower.indexOf('europa') > -1;
+        var isHockey = lgLower.indexOf('nhl') > -1 || lgLower.indexOf('lhjmq') > -1;
+        var isBaseball = lgLower.indexOf('mlb') > -1;
+
+        var tableHeader = '';
+        if(isSoccer) {
+            tableHeader += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">N</th><th style="padding:4px;">D</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+        } else if (isHockey) {
+            tableHeader += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">DP</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+        } else if (isBaseball) {
+            tableHeader += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">Pct</th><th style="padding:4px;">GB</th></tr>';
+        } else {
+            tableHeader += '<tr style="color:var(--muted2);border-bottom:1px solid rgba(255,255,255,0.1);"><th style="padding:4px;">#</th><th style="padding:4px;min-width:100px;">Équipe</th><th style="padding:4px;">MJ</th><th style="padding:4px;">V</th><th style="padding:4px;">D</th><th style="padding:4px;">N</th><th style="padding:4px;">BP</th><th style="padding:4px;">BC</th><th style="padding:4px;">Diff</th><th style="padding:4px;">Pts</th></tr>';
+        }
+
+        var hasTabs = res.data.children.length > 1;
+        var activeGroupIdx = 0;
+
+        // First pass: detect which group the team belongs to
+        res.data.children.forEach(function(group, groupIdx) {
+            var groupEntries = [];
+            if (group.standings && group.standings.entries) {
+                groupEntries = group.standings.entries;
+            }
+            groupEntries.forEach(function(row) {
+                var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
+                if(isTeam) {
+                    activeGroupIdx = groupIdx;
+                }
+            });
+        });
+
+        if (hasTabs) {
+            tableHtml += '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;" class="hide-scrollbar">';
+            res.data.children.forEach(function(c, i) {
+                tableHtml += '<button onclick="document.querySelectorAll(\'#gstats-standings-content .st-tab-group\').forEach(e=>e.style.display=\'none\'); document.getElementById(\'st-tab-'+i+'\').style.display=\'block\'; document.querySelectorAll(\'#gstats-standings-content .st-tab-btn\').forEach(b=>b.style.opacity=\'0.5\'); this.style.opacity=\'1\';" class="st-tab-btn" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:12px;font-size:12px;cursor:pointer;white-space:nowrap;opacity:'+(i===activeGroupIdx?'1':'0.5')+';">'+esc(c.name || c.abbreviation || 'Grp '+(i+1))+'</button>';
+            });
+            tableHtml += '</div>';
+        }
+
+        var globalTeamFound = false;
+
+        res.data.children.forEach(function(group, groupIdx) {
+            var isFirst = groupIdx === activeGroupIdx;
+            tableHtml += '<div id="st-tab-'+groupIdx+'" class="st-tab-group" style="display:'+(isFirst?'block':'none')+';background:rgba(255,255,255,0.02);padding:16px;border-radius:12px;">';
+            tableHtml += '<div style="overflow-x:auto;max-height:400px;" class="hide-scrollbar"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;white-space:nowrap;">';
+            tableHtml += tableHeader;
+
+            var groupEntries = [];
+            if (group.standings && group.standings.entries) {
+                groupEntries = group.standings.entries;
+            }
+
+            var groupTeamFound = false;
+
+            groupEntries.forEach(function(row, idx) {
+                var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
+                if(isTeam) {
+                    groupTeamFound = true;
+                    globalTeamFound = true;
+                }
+
+                var getStat = function(n) { var st = row.stats.find(s => s.name === n); return st ? st.displayValue : '0'; };
+                var pts = getStat('points');
+                var gp = getStat('gamesPlayed');
+                var wins = getStat('wins');
+                var losses = getStat('losses');
+                var ties = getStat('ties');
+                var otl = getStat('otLosses'); // Hockey
+                var pf = getStat('pointsFor');
+                var pa = getStat('pointsAgainst');
+                var diff = getStat('pointDifferential');
+                var pct = getStat('winPercent'); // Baseball
+                var gb = getStat('gamesBehind'); // Baseball
+
+                tableHtml += '<tr style="background:'+(isTeam?'rgba(255,255,255,0.1)':'transparent')+'; border-bottom:1px solid rgba(255,255,255,0.05);">';
+                tableHtml += '<td style="padding:6px 4px;font-weight:bold;">'+(idx+1)+'</td>';
+                tableHtml += '<td style="padding:6px 4px;color:#fff;">'+esc(row.team.shortDisplayName || row.team.name)+'</td>';
+                tableHtml += '<td style="padding:6px 4px;">'+gp+'</td>';
+                tableHtml += '<td style="padding:6px 4px;">'+wins+'</td>';
+
+                if (isBaseball) {
+                    tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pct+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+gb+'</td>';
+                } else if (isHockey) {
+                    tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+otl+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                } else {
+                    tableHtml += '<td style="padding:6px 4px;">'+losses+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+ties+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pf+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;">'+pa+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;color:'+(diff.toString().indexOf('-')>-1?'var(--red)':'#4cd964')+';">'+diff+'</td>';
+                    tableHtml += '<td style="padding:6px 4px;font-weight:bold;color:var(--accent);">'+pts+'</td>';
+                }
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</table></div>';
+            if(!groupTeamFound && groupEntries.length > 0) tableHtml += '<div style="margin-top:8px;font-size:11px;color:var(--muted);">(Équipe non trouvée dans ce classement)</div>';
+            tableHtml += '</div>';
+        });
+
+        contentDiv.innerHTML = tableHtml;
+
+    }).catch(function(e) {
+        contentDiv.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);background:rgba(255,255,255,0.02);border-radius:12px;">Erreur lors du chargement des données.</div>';
+    });
+};

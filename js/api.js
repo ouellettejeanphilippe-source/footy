@@ -588,7 +588,7 @@ export function fetchTeamSchedule(leagueName, teamId) {
     });
 }
 
-export function fetchLeagueStandings(leagueName) {
+export function fetchLeagueStandings(leagueName, seasonType) {
     var path = 'soccer/eng.1'; // fallback
     for (var k in ESPN_LEAGUES) {
         if (k.toLowerCase() === leagueName.toLowerCase() || leagueName.toLowerCase().indexOf(k.toLowerCase()) > -1) {
@@ -596,9 +596,10 @@ export function fetchLeagueStandings(leagueName) {
             break;
         }
     }
-    var url = 'https://site.api.espn.com/apis/v2/sports/' + path + '/standings';
+    var url = 'https://site.api.espn.com/apis/v2/sports/' + path + '/standings' + (seasonType ? '?seasontype=' + seasonType : '');
     return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
-        return { source: 'espn', data: data };
+        var seasons = data.seasons && data.seasons.length > 0 && data.seasons[0].types ? data.seasons[0].types : [];
+        return { source: 'espn', data: data, seasonTypes: seasons, leaguePath: path };
     }).catch(function(e) {
         return Promise.reject(e);
     });
