@@ -421,4 +421,8 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `js/ui.js`, `js/utils.js`, `js/main.js`
 - **Résumé** : Remplacement des `setTimeout(scrollToNow, 100)` statiques (qui causaient des soucis de timing en fonction de la vitesse de rendu) par une écoute d'événements JavaScript natifs (`loadSequenceComplete`, `filterChanged`). L'exécution de `scrollToNow` est dorénavant encapsulée dans un `requestAnimationFrame` pour garantir que le DOM et le layout sont complètement calculés avant de tenter de recentrer la vue de l'EPG.
 - **Problèmes résolus** : L'autocentrage automatique sur l'heure actuelle de l'EPG fonctionne de manière robuste et déterministe lors du lancement de l'application.
+### 12 May 2026 - Redesign des Modales de Statistiques (Match et Équipes)
+- **Fichiers touchés** : `js/config.js`, `js/api.js`
+- **Résumé** : Refonte visuelle et structurelle des modales affichant les statistiques globales. Remplacement des grilles basiques par des vues organisées verticalement avec des listes structurées. Mise en évidence du bilan des équipes (Victoires, Défaites, Points, Série) en haut de la page Équipe. Transformation des statistiques de match (head-to-head) avec un système de barres de progression bicolores avec labels centrés. Mise en place d'une timeline (tri chronologique) pour l'affichage des buteurs.
+- **Problèmes résolus** : Améliore considérablement la lisibilité (UI/UX) pour l'utilisateur en appliquant un style "mobile-app" plus moderne et facile à lire.
 - **Fait:** Refactored the modal (openMod) to split the layout vertically by team (Logo, Name, Score, Scorers). Replaced the multivision addition button with a simple circular refresh icon.

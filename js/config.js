@@ -192,10 +192,29 @@ export function openGlobalStatsFromMatch(mid) {
                         html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
                         groupedStats[cat].forEach(function(st) {
                             var formattedLabel = formatStatLabel(st.label);
-                            html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;gap:8px;">';
-                            html += '<span style="font-weight:bold;min-width:30px;text-align:right;white-space:nowrap;">'+st.h+'</span>';
+                            var valH = parseFloat(String(st.h).replace(/[^0-9.]/g, '')) || 0;
+                            var valA = parseFloat(String(st.a).replace(/[^0-9.]/g, '')) || 0;
+                            var maxVal = Math.max(valH, valA);
+                            var pctH = maxVal > 0 ? (valH / maxVal) * 100 : 0;
+                            var pctA = maxVal > 0 ? (valA / maxVal) * 100 : 0;
+                            if (valH === 0 && valA === 0 && String(st.h).trim() !== '0' && String(st.a).trim() !== '0') {
+                                pctH = 50; pctA = 50; // Fallback for purely non-numeric strings
+                            }
+
+                            html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">';
+                            html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">';
+                            html += '<span style="font-weight:bold;width:40px;text-align:left;white-space:nowrap;">'+st.h+'</span>';
                             html += '<span style="color:var(--muted);flex:1;text-align:center;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(formattedLabel)+'">'+formattedLabel+'</span>';
-                            html += '<span style="font-weight:bold;min-width:30px;text-align:left;white-space:nowrap;">'+st.a+'</span>';
+                            html += '<span style="font-weight:bold;width:40px;text-align:right;white-space:nowrap;">'+st.a+'</span>';
+                            html += '</div>';
+                            html += '<div style="display:flex;height:4px;width:100%;gap:4px;">';
+                            html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-end;overflow:hidden;">';
+                            html += '<div style="height:100%;width:'+pctH+'%;background:var(--accent);border-radius:2px;"></div>';
+                            html += '</div>';
+                            html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-start;overflow:hidden;">';
+                            html += '<div style="height:100%;width:'+pctA+'%;background:#f59e0b;border-radius:2px;"></div>';
+                            html += '</div>';
+                            html += '</div>';
                             html += '</div>';
                         });
                         html += '</div>';
@@ -240,21 +259,25 @@ export function fetchTeamStats(teamName) {
 
     var html = '<div style="display:flex;flex-direction:column;gap:20px;">';
 
-    // Header Equipe The Score style
-    html += '<div style="display:flex; flex-direction:column; align-items:center; gap:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:24px 20px; border-radius:16px;">';
-    var logoUrl = getLogo(teamName);
-    if (logoUrl) {
-        html += '<div class="prime-logo" style="width:80px; height:80px; display:flex; justify-content:center; align-items:center;"><img id="gstats-team-logo" src="'+esc(logoUrl)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-    }
-    html += '<div style="text-align:center;">';
-    html += '<h2 style="margin:0 0 4px 0; font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.5px;">'+esc(teamName)+'</h2>';
+    // Placeholder pour Standings / Last 5
     var lg = teamMatches.length > 0 ? teamMatches[0].league : '';
+
+    var logoUrl = getLogo(teamName);
+    html += '<div id="team-stats-header" style="display:flex; flex-direction:column; align-items:center; gap:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:24px 20px; border-radius:16px;">';
+    html += '<div style="display:flex; justify-content:space-between; align-items:center; width: 100%;">';
+    html += '<div style="display:flex; align-items:center; gap:16px;">';
+    if (logoUrl) {
+        html += '<div class="prime-logo" style="width:60px; height:60px; display:flex; justify-content:center; align-items:center;"><img id="gstats-team-logo" src="'+esc(logoUrl)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
+    }
+    html += '<div>';
+    html += '<h2 style="margin:0 0 4px 0; font-size:20px; font-weight:800; color:#fff; letter-spacing:-0.5px; line-height: 1;">'+esc(teamName)+'</h2>';
     if(lg) html += '<div style="color:var(--muted2); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">'+esc(lg)+'</div>';
     html += '</div>';
     html += '</div>';
+    html += '<div id="team-record-header" style="display:flex; gap: 16px; text-align:center;"></div>';
+    html += '</div>';
+    html += '</div>';
 
-    // Placeholder pour Standings / Last 5
-    var lg = teamMatches.length > 0 ? teamMatches[0].league : '';
     // Try to find league from team name if teamMatches is empty
     if (!lg) {
         for (var k in STATIC_TEAMS) {
@@ -469,14 +492,46 @@ export function fetchTeamStats(teamName) {
 
                             tHtml = '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📊 Statistiques de l\'équipe (' + esc(totalRec.summary) + ')</h4>';
 
+                            var recStats = groupedTeamStats['Général'] || [];
+                            var wVal = '0', lVal = '0', dVal = '0', ptsVal = '0', streakVal = '', rankVal = '';
+
+                            // Try to extract main record stats to display in the header
+                            recStats.forEach(function(s) {
+                                if(s.name.toLowerCase().indexOf('victoire') > -1 && s.name.indexOf('%') === -1) wVal = s.val;
+                                if(s.name.toLowerCase().indexOf('défaite') > -1 && s.name.indexOf('%') === -1) lVal = s.val;
+                                if(s.name.toLowerCase().indexOf('nul') > -1 && s.name.indexOf('%') === -1) dVal = s.val;
+                                if(s.name.toLowerCase().indexOf('séquence') > -1) streakVal = s.val;
+                                if(s.name.toLowerCase().indexOf('points') > -1 && s.name.indexOf('diff') === -1) ptsVal = s.val;
+                            });
+
+                            // Fallback extraction
+                            if(wVal === '0' && totalRec.summary) {
+                                var parts = totalRec.summary.split('-');
+                                if (parts.length >= 2) {
+                                    wVal = parts[0];
+                                    lVal = parts[1];
+                                    if(parts.length > 2) dVal = parts[2];
+                                }
+                            }
+
+                            // Inject header stats if the target exists
+                            var recHeader = document.getElementById('team-record-header');
+                            if (recHeader) {
+                                var rhHtml = '';
+                                rhHtml += '<div style="display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; font-weight:800; color:#fff; line-height: 1;">'+esc(wVal)+'-'+esc(lVal)+(dVal!=='0'?'-'+esc(dVal):'')+'</div><div style="font-size:11px; color:var(--muted); text-transform:uppercase;">Fiche</div></div>';
+                                if (ptsVal !== '0') rhHtml += '<div style="display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; font-weight:800; color:#fff; line-height: 1;">'+esc(ptsVal)+'</div><div style="font-size:11px; color:var(--muted); text-transform:uppercase;">Pts</div></div>';
+                                if (streakVal) rhHtml += '<div style="display:flex; flex-direction:column; align-items:center;"><div style="font-size:24px; font-weight:800; color:#fff; line-height: 1;">'+esc(streakVal)+'</div><div style="font-size:11px; color:var(--muted); text-transform:uppercase;">Séquence</div></div>';
+                                recHeader.innerHTML = rhHtml;
+                            }
+
                             for (var cat in groupedTeamStats) {
-                                if (groupedTeamStats[cat].length > 0) {
+                                if (groupedTeamStats[cat].length > 0 && cat !== 'Général') {
                                     tHtml += '<div style="margin-top:16px; margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px;">' + esc(cat) + '</div>';
-                                    tHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(90px, 1fr));gap:6px;margin-bottom:8px;">';
+                                    tHtml += '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">';
                                     groupedTeamStats[cat].forEach(function(st) {
-                                        tHtml += '<div style="background:rgba(255,255,255,0.05);padding:6px;border-radius:8px;text-align:center;display:flex;flex-direction:column;justify-content:center;">';
-                                        tHtml += '<div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(st.name)+'">'+esc(st.name)+'</div>';
-                                        tHtml += '<div style="font-size:14px;font-weight:bold;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(st.val)+'">'+esc(st.val)+'</div>';
+                                        tHtml += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);">';
+                                        tHtml += '<div style="font-size:13px;color:var(--muted2);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(st.name)+'">'+esc(st.name)+'</div>';
+                                        tHtml += '<div style="font-size:14px;font-weight:800;color:#fff;">'+esc(st.val)+'</div>';
                                         tHtml += '</div>';
                                     });
                                     tHtml += '</div>';
