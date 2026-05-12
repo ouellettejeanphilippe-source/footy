@@ -329,6 +329,7 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
          if (!sm.matchDate) sm.matchDate = targetDateStr;
          sm.league = 'Autres Flux';
+         sm.streamsLoaded = true;
          sm.flag = '📡';
          sm.color = '#555555';
 
