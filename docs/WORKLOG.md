@@ -416,3 +416,4 @@ n- Identifié la cause du blocage sur la page de chargement (TypeError `Cannot s
 - **Fichiers touchés** : `js/ui.js`, `js/utils.js`, `js/main.js`
 - **Résumé** : Remplacement des `setTimeout(scrollToNow, 100)` statiques (qui causaient des soucis de timing en fonction de la vitesse de rendu) par une écoute d'événements JavaScript natifs (`loadSequenceComplete`, `filterChanged`). L'exécution de `scrollToNow` est dorénavant encapsulée dans un `requestAnimationFrame` pour garantir que le DOM et le layout sont complètement calculés avant de tenter de recentrer la vue de l'EPG.
 - **Problèmes résolus** : L'autocentrage automatique sur l'heure actuelle de l'EPG fonctionne de manière robuste et déterministe lors du lancement de l'application.
+- **Fait:** Refactored the modal (openMod) to split the layout vertically by team (Logo, Name, Score, Scorers). Replaced the multivision addition button with a simple circular refresh icon.
