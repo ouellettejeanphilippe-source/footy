@@ -680,9 +680,9 @@ export function scrollToNow(){
     var offsetPx = (h * hourPx) + (m * minPx) + chanW; // using chanW as offset for the ruler height/width
 
     if (window.innerWidth <= 768) {
-        epgContainer.scrollTop = Math.max(0, offsetPx - (hClient / 2));
+        epgContainer.scrollTop = Math.max(0, offsetPx - chanW);
     } else {
-        epgContainer.scrollLeft = Math.max(0, offsetPx - (w / 2));
+        epgContainer.scrollLeft = Math.max(0, offsetPx - chanW);
     }
 }
 
