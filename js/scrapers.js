@@ -1167,6 +1167,15 @@ export function saveStreamCache(mid, streams) {
 
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 export function fetchSubPages(matches){
+  var now = new Date();
+  var currentEstDateStr = getEstDateStrFromDate(now);
+  var currentEstTimeStr = getEstTimeStrFromDate(now);
+  var currentParts = currentEstTimeStr.split(':');
+
+  // Calculate absolute current minutes (since epoch) using EST date string and time string
+  var currentAbsoluteMins = Math.floor(new Date(currentEstDateStr + 'T00:00:00Z').getTime() / 60000) +
+                            parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
+
   // We use a limited concurrency pool so we don't spam the proxy/network
   var concurrency=3;
   var queue=matches.filter(function(m){
@@ -1175,7 +1184,29 @@ export function fetchSubPages(matches){
           m.streamsLoaded = true;
           return false;
       }
-      return m.matchUrl&&!m.streamsLoaded;
+      if (!m.matchUrl || m.streamsLoaded) return false;
+
+      if (m.startTime && m.matchDate) {
+          var mParts = m.startTime.split(':');
+          var matchAbsoluteStartMins = Math.floor(new Date(m.matchDate + 'T00:00:00Z').getTime() / 60000) +
+                                       parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+
+          var matchAbsoluteEndMins = matchAbsoluteStartMins + (m.durationMinutes || 120);
+
+          var diffStart = matchAbsoluteStartMins - currentAbsoluteMins;
+          var diffEnd = matchAbsoluteEndMins - currentAbsoluteMins;
+
+          // Only fetch if current time is within [start - 60, end + 60]
+          // which means current is >= start - 60 (diffStart <= 60)
+          // and current is <= end + 60 (diffEnd >= -60)
+          if (diffStart > 60) {
+              return false; // Too early, don't fetch (even if playoff)
+          }
+          if (diffEnd < -60 && !(m.isPlayoff && m.status !== 'finished')) {
+              return false; // Too late, unless it's an unfinished playoff game
+          }
+      }
+      return true;
   });
   queue.sort(function(a, b) {
     var aFav = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? 1 : 0;

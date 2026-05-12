@@ -135,6 +135,7 @@ export function getApiFirstMatches(targetDate) {
                 var dateObj = new Date(ev.date);
                 var startTime = getEstTimeStrFromDate(dateObj);
                 var matchDate = getEstDateStrFromDate(dateObj);
+                var isPlayoff = ev.season && ev.season.type === 3;
 
                 var matchObj = {
                   id: 'espn_' + ev.id,
@@ -153,7 +154,8 @@ export function getApiFirstMatches(targetDate) {
                   minute: minute,
                   streamLinks: [],
                   streamsLoaded: false,
-                  source: 'api'
+                  source: 'api',
+                  isPlayoff: isPlayoff
                 };
 
                 var existingMatch = baseMatchesById[matchObj.id];
@@ -163,6 +165,7 @@ export function getApiFirstMatches(targetDate) {
                   existingMatch.minute = matchObj.minute;
                   existingMatch.startTime = matchObj.startTime;
                   existingMatch.matchDate = matchObj.matchDate;
+                  existingMatch.isPlayoff = isPlayoff;
                 } else {
                   baseMatches.push(matchObj);
                   baseMatchesById[matchObj.id] = matchObj;
@@ -256,12 +259,15 @@ export function getApiFirstMatches(targetDate) {
                 minute = 'P' + ev.status.period;
               }
 
+              var isPlayoff = ev.season && ev.season.type === 3;
+
               var matchId = 'espn_' + ev.id;
               var existingMatch = baseMatchesById[matchId];
               if (existingMatch) {
                   existingMatch.status = status;
                   existingMatch.score = score;
                   existingMatch.minute = minute;
+                  existingMatch.isPlayoff = isPlayoff;
               }
             });
           })
