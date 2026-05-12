@@ -738,28 +738,40 @@ export function openMod(m,col){
   html += m.flag + ' ' + esc(m.league) + ' <span style="margin:0 8px; opacity:0.5;">•</span> ' + esc(m.startTime) + liveBadge;
   html += '</div>';
 
-  // Middle: Home Team | Score | Away Team
-  html += '<div style="display:flex; justify-content:space-between; align-items:center; width: 100%; padding: 0 10px;">';
+  // Middle: Home Team | Score & Scorers | Away Team
+  html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; width: 100%; padding: 0 10px;">';
 
-  // Home Team
-  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; flex: 1;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
+  // Home Team Column
+  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
+  html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
   if(hLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(hLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
   html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + esc(m.homeTeam) + '</span>';
   html += '</div>';
-
-  // Score
-  html += '<div style="flex: 0.8; display:flex; justify-content:center; align-items:center; flex-direction:column;">';
   if(m.score) {
-      html += '<div style="font-weight:800; font-size:32px; color:var(--text); letter-spacing:1px; line-height:1;">' + m.score[0] + ' <span style="color:var(--muted); font-size:24px;">-</span> ' + m.score[1] + '</div>';
+      html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[0] + '</div>';
+  }
+  html += '<div id="home-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
+  html += '</div>';
+
+  // Middle spacer (optional VS if no score)
+  html += '<div style="flex: 0.2; display:flex; justify-content:center; align-items:center; margin-top:25px;">';
+  if(!m.score) {
+      html += '<div style="font-weight:700; font-size:16px; color:var(--muted);">VS</div>';
   } else {
-      html += '<div style="font-weight:700; font-size:20px; color:var(--muted); line-height:1;">VS</div>';
+      html += '<div style="font-weight:700; font-size:20px; color:var(--muted);">-</div>';
   }
   html += '</div>';
 
-  // Away Team
-  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; flex: 1;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
+  // Away Team Column
+  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
+  html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
   if(aLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(aLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
   html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + esc(m.awayTeam) + '</span>';
+  html += '</div>';
+  if(m.score) {
+      html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[1] + '</div>';
+  }
+  html += '<div id="away-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
   html += '</div>';
 
   html += '</div></div>';
@@ -801,7 +813,37 @@ export function openMod(m,col){
               }
 
               if (res.scorers && res.scorers.length > 0) {
-                  extraHtml += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
+                  var hScorers = [], aScorers = [];
+                  res.scorers.forEach(function(s) {
+                      if (s.isHome !== undefined) {
+                          if (s.isHome) hScorers.push(s);
+                          else aScorers.push(s);
+                      } else if (s.teamId) {
+                          if (mHomeId && s.teamId == mHomeId) hScorers.push(s);
+                          else if (mAwayId && s.teamId == mAwayId) aScorers.push(s);
+                          else aScorers.push(s);
+                      } else {
+                          aScorers.push(s);
+                      }
+                  });
+
+                  var homeScorersModal = document.getElementById('home-scorers-modal');
+                  if (homeScorersModal) {
+                      var hHtml = '';
+                      hScorers.forEach(function(s) {
+                          hHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + '</div>';
+                      });
+                      homeScorersModal.innerHTML = hHtml;
+                  }
+
+                  var awayScorersModal = document.getElementById('away-scorers-modal');
+                  if (awayScorersModal) {
+                      var aHtml = '';
+                      aScorers.forEach(function(s) {
+                          aHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + '</div>';
+                      });
+                      awayScorersModal.innerHTML = aHtml;
+                  }
               }
 
               var existingStats = document.getElementById('modal-extra-stats');
@@ -831,26 +873,23 @@ export function openMod(m,col){
 
   var btnContainer = document.createElement('div');
   btnContainer.style.display = 'flex';
-  btnContainer.style.gap = '8px';
+  btnContainer.style.justifyContent = 'center';
   btnContainer.style.width = '100%';
   btnContainer.style.marginTop = '16px';
 
-  var addMvBtn = document.createElement('button');
-  addMvBtn.className = 'btn o';
-  addMvBtn.style.flex = '1';
-  addMvBtn.style.alignSelf = 'center';
-  addMvBtn.innerHTML = '⊞ Ajouter au Multivision (Attente du flux)';
-  addMvBtn.id = 'mv-add-btn';
-  addMvBtn.disabled = true;
-
   var refreshBtn = document.createElement('button');
   refreshBtn.className = 'btn o';
-  refreshBtn.style.flex = '1';
-  refreshBtn.style.alignSelf = 'center';
-  refreshBtn.innerHTML = '🔄 Rafraîchir les flux';
+  refreshBtn.style.padding = '8px';
+  refreshBtn.style.borderRadius = '50%';
+  refreshBtn.style.width = '40px';
+  refreshBtn.style.height = '40px';
+  refreshBtn.style.display = 'flex';
+  refreshBtn.style.alignItems = 'center';
+  refreshBtn.style.justifyContent = 'center';
+  refreshBtn.innerHTML = '🔄';
   refreshBtn.id = 'mv-refresh-btn';
   refreshBtn.onclick = function() {
-      refreshBtn.innerHTML = 'Chargement...';
+      refreshBtn.style.opacity = '0.5';
       refreshBtn.disabled = true;
       scrapeMatchFlux(m, true).finally(function() {
           openMod(m, col);
@@ -861,7 +900,6 @@ export function openMod(m,col){
       refreshBtn.disabled = true;
   }
 
-  btnContainer.appendChild(addMvBtn);
   btnContainer.appendChild(refreshBtn);
 
   // Since mmeta is cleared, append to mname which is our unified header
@@ -896,18 +934,6 @@ export function openMod(m,col){
       var sortedLinks = [];
       if (m.streamLinks && m.streamLinks.length > 0) {
           sortedLinks = sortFluxLinks(m.streamLinks);
-      }
-
-      var mvBtn = document.getElementById('mv-add-btn');
-      if(mvBtn && sortedLinks.length > 0) {
-          mvBtn.disabled = false;
-          mvBtn.innerHTML = '⊞ Ajouter au Multivision (' + esc(m.homeTeam) + ')';
-          mvBtn.onclick = function() {
-              addToMultivision(sortedLinks[0].url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
-              closeMod();
-          };
-      } else if (mvBtn) {
-          mvBtn.style.display = 'none';
       }
 
       var contentHtml = '';
