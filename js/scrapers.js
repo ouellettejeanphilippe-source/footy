@@ -176,6 +176,7 @@ export function parsePWHLSchedule(html) {
 
                               var isLive = false;
                               var status = g.game_status ? g.game_status.toLowerCase() : '';
+                              var isFinished = status.indexOf('final') >= 0;
                               if (status.indexOf('in progress') >= 0 || status === 'live' || status.indexOf('period') >= 0 || status.indexOf('intermission') >= 0) {
                                   isLive = true;
                               }
@@ -202,6 +203,7 @@ export function parsePWHLSchedule(html) {
                                   league: 'PWHL',
                                   time: isLive ? "LIVE" : timeStr,
                                   date: g.date_played,
+                                  isFinished: isFinished,
                                   streamLinks: []
                               };
 

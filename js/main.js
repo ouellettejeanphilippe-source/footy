@@ -63,7 +63,7 @@ export function updateLiveScores(matches) {
                         card.classList.add('live');
                         card.classList.remove('finished');
                     } else if (m.status === 'finished') {
-                        minEl.textContent = 'Fin';
+                        minEl.textContent = m.score ? 'Fin' : m.startTime;
                         minEl.parentElement.className = 'status-text';
                         var ld = minEl.parentElement.querySelector('.mb-ld');
                         if (ld) ld.remove();
