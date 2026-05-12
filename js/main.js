@@ -1,7 +1,7 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, toggleAutresFlux, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
-import { getApiFirstMatches, TARGET_DATE, mergeFluxToApi, getEspnDateStr } from './api.js';
+import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
@@ -125,19 +125,20 @@ export function loadAll(isBackground, forceScrape){
 
       // Async scrape sites
       var nowTime = Date.now();
-      var skipScraping = !forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000);
+      var isToday = (TARGET_DATE.toDateString() === new Date().toDateString());
+      var skipScraping = !isToday || (!forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000));
 
       if (skipScraping) {
                     // Just merge with existing scrapedMatches and update API
-          var finalMatches = mergeFluxToApi(apiMatches, window.lastScrapedMatches || [], true);
+          var finalMatches = mergeFluxToApi(apiMatches, isToday ? (window.lastScrapedMatches || []) : [], true);
 
           // Persist the updated scores/statuses back to cache even when skipping scraping
           var todayStr = getEspnDateStr(TARGET_DATE);
-              var cache = safeStorageGetJSON('api_calendar_cache');
+              var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              safeStorageSetJSON('api_calendar_cache', { fetchDate: fetchDateToSave, matches: finalMatches });
+              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, matches: finalMatches });
 
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
@@ -238,11 +239,11 @@ export function loadAll(isBackground, forceScrape){
 
           // Persist the merged data (which now includes streams) back to localStorage
           var todayStr = getEspnDateStr(TARGET_DATE);
-              var cache = safeStorageGetJSON('api_calendar_cache');
+              var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              safeStorageSetJSON('api_calendar_cache', { fetchDate: fetchDateToSave, matches: finalMatches });
+              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, matches: finalMatches });
 
                     var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
@@ -348,7 +349,7 @@ if ('serviceWorker' in navigator) {
   if (lst) window.lastScrapeTime = parseInt(lst, 10);
   if (lsm) window.lastScrapedMatches = lsm;
 
-  var cache = safeStorageGetJSON('api_calendar_cache');
+  var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
 
   if (cache && cache.fetchDate === todayStr && cache.matches && cache.matches.length > 0) {
             setMatches(cache.matches.filter(function(m) {
@@ -907,3 +908,52 @@ window.moveLeagueOrder = moveLeagueOrder;
 window.resetLgOrder = resetLgOrder;
 window.filterFavTeams = filterFavTeams;
 window.switchFavTab = switchFavTab;
+
+export function applyTargetDate(d) {
+    window.setApiTargetDate(d);
+
+    var now = new Date();
+    var isToday = (d.toDateString() === now.toDateString());
+
+    var d2 = new Date(now);
+    d2.setDate(now.getDate() - 1);
+    var isYesterday = (d.toDateString() === d2.toDateString());
+
+    var d3 = new Date(now);
+    d3.setDate(now.getDate() + 1);
+    var isTomorrow = (d.toDateString() === d3.toDateString());
+
+    var text = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+
+    if (isToday) text = "Aujourd'hui";
+    else if (isYesterday) text = "Hier";
+    else if (isTomorrow) text = "Demain";
+
+    var displayEl = document.getElementById('current-date-display');
+    if (displayEl) {
+        displayEl.textContent = text;
+    }
+
+    window.hasLoadedOnce = false; // Force a full reload sequence with UI
+    loadAll(false, false);
+}
+
+export function changeTargetDate(offsetDays) {
+    var newDate = new Date(TARGET_DATE);
+    newDate.setDate(newDate.getDate() + offsetDays);
+    applyTargetDate(newDate);
+}
+
+export function setTargetDate(dateStr) {
+    if (!dateStr) return;
+    // dateStr is YYYY-MM-DD
+    var parts = dateStr.split('-');
+    // Create date at noon to avoid timezone issues
+    var newDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+    applyTargetDate(newDate);
+}
+
+window.applyTargetDate = applyTargetDate;
+window.changeTargetDate = changeTargetDate;
+window.setTargetDate = setTargetDate;

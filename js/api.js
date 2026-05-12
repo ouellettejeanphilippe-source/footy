@@ -79,9 +79,14 @@ export function filterBuggyMatches(matches) {
 /* ══ API FIRST LOGIC ══════════════════ */
 export var TARGET_DATE = new Date();
 
+export function setApiTargetDate(d) {
+  TARGET_DATE = d;
+  window.TARGET_DATE = d;
+}
+
 export function getApiFirstMatches(targetDate) {
   var todayStr = getEspnDateStr(targetDate);
-  var cache = safeStorageGetJSON('api_calendar_cache');
+  var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
 
   var needsFullFetch = !cache || cache.fetchDate !== todayStr;
 
@@ -280,7 +285,7 @@ export function getApiFirstMatches(targetDate) {
             // we no longer want to strip out streams if they exist so they aren't lost on refresh
             return Object.assign({}, m);
         });
-        safeStorageSetJSON('api_calendar_cache', { fetchDate: fetchDateToSave, matches: cacheData });
+        safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, matches: cacheData });
     } catch (e) {
         console.error('Failed to cache calendar:', e);
     }
@@ -590,6 +595,7 @@ window.getEspnDateStr = getEspnDateStr;
 window.fetchEspnSchedule = fetchEspnSchedule;
 window.filterBuggyMatches = filterBuggyMatches;
 window.TARGET_DATE = TARGET_DATE;
+window.setApiTargetDate = setApiTargetDate;
 window.getApiFirstMatches = getApiFirstMatches;
 window.mergeFluxToApi = mergeFluxToApi;
 window.formatStatLabel = formatStatLabel;
