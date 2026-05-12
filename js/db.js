@@ -277,8 +277,8 @@ export function normName(n) {
       lower = LEAGUE_ALIASES[lower];
   }
 
-  // Basic fallback replacements (e.g. fc, afc, sc, cf, united, city)
-  var stripped = lower.replace(/\b(fc|afc|sc|cf|de|sporting|cd|racing|club|athletic|united|city|rovers|wanderers)\b/gi, '').trim();
+  // Basic fallback replacements (e.g. fc, afc, sc, cf)
+  var stripped = lower.replace(/\b(fc|afc|sc|cf|de|cd|club)\b/gi, '').trim();
   if (stripped.length > 0) {
       lower = stripped;
   }
