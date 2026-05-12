@@ -83,6 +83,11 @@ Journal append-only. Format strict : entrées datées, du plus récent au plus a
 
 ## Fait
 
+### 12 May 2026 - Nettoyage du répertoire
+- **Fichiers touchés** : `fix_names_and_aliases.js`, `server.log`, `test_eval.mjs`, `test_main*.js`, `test_main*.mjs`, `test_pwhl*.mjs`, `verify_pwhl_*.py`
+- **Résumé** : Nettoyage du dépôt selon les instructions de `AGENTS.md`. Suppression des scripts de test temporaires et des fichiers logs.
+- **Problèmes restants** : Aucun.
+
 ### 09 May 2026 - Base de données des équipes et correction des couleurs
 - **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
 - **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
