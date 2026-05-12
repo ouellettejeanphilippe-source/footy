@@ -1,3 +1,8 @@
+### 10 May 2026 - Tabulation des classements et affichage complet
+- **Fichiers touchés** : `js/config.js`, `js/api.js`
+- **Résumé** : Ajout du support des types de saison pour l API ESPN Standings (permettant la récupération automatique de la saison régulière ou des playoffs). Mise en place d onglets dynamiques pour afficher les classements de conférences séparés (ex. MLS et NBA) et les différentes phases (ex. Ligue des champions) sans les fusionner. Retrait de la limitation à trois équipes affichées afin d afficher le classement complet.
+- **Problèmes résolus** : Le classement de la NBA et de la MLS ne chargeait pas si aucune donnée de saison courante (ex. présaison ou saison morte) n était retournée par défaut. Le classement retourné est maintenant complet et organisé en onglets.
+
 ### 09 May 2026 - Base de données des équipes et correction des couleurs
 - **Fichiers touchés** : `js/config.js`, `js/db.js`, `js/utils.js`, etc.
 - **Résumé** : Extraction complète de la configuration statique des équipes (`TEAM_COLORS`, `STATIC_TEAMS`, `TEAM_ALIASES`, `STATIC_TEAM_MAP`) et des fonctions associées (`getTeamColors`, `normName`) depuis `js/config.js` vers un nouveau fichier dédié `js/db.js` servant de base de données unique. Mise à jour de tous les imports dans le projet. Correction de la logique de matching des couleurs dans `normName` et `getTeamColors` qui remplaçait abusivement les équipes par une chaîne vide, causant une attribution de couleurs incorrecte à de nombreuses équipes.
