@@ -158,12 +158,21 @@ export function formatLeagueName(league) {
         lower = LEAGUE_ALIASES[lower];
     }
 
+    var formatted = '';
     if (LEAGUE_FORMAT_NAMES[lower]) {
-        return LEAGUE_FORMAT_NAMES[lower];
+        formatted = LEAGUE_FORMAT_NAMES[lower];
+    } else {
+        formatted = lower.replace(/\b\w/g, function(l){ return l.toUpperCase(); });
     }
 
-    // Capitalize first letters if not in map
-    return lower.replace(/\b\w/g, function(l){ return l.toUpperCase(); });
+    // Si la ligue n'est pas dans DEFAULT_LEAGUES, on la met dans 'Autres Flux'
+    // Exception pour 'Autres' (qui peut être utilisé ailleurs) et 'Autres Flux'
+    if (window.DEFAULT_LEAGUES && formatted !== 'Autres' && formatted !== 'Autres Flux') {
+        if (!window.DEFAULT_LEAGUES[formatted]) {
+            return 'Autres Flux';
+        }
+    }
+    return formatted;
 }
 export var _normCache = {};
 
