@@ -6,6 +6,7 @@ import { TARGET_DATE, fetchGameStats, renderScorersHtml } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { isMatch } from './match.js';
+import { DEFAULT_LEAGUES } from './main.js';
 
 /* ══ EPG / LISTE ════════════════════════ */
 export function getOriginalMatchId(id) {
@@ -95,8 +96,9 @@ export function buildEPG(matches){
       if (b === 'Autres Flux') return -1;
 
       // Custom League Order User Preference
-      var idxA = customLgOrder.indexOf(a);
-      var idxB = customLgOrder.indexOf(b);
+      var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+      var idxA = displayOrder.indexOf(a);
+      var idxB = displayOrder.indexOf(b);
 
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
       if (idxA !== -1) return -1;
@@ -211,8 +213,9 @@ export function buildEPG(matches){
           lgOrder.sort(function(a, b) {
               if (a === 'Autres Flux') return 1;
               if (b === 'Autres Flux') return -1;
-              var idxA = customLgOrder.indexOf(a);
-              var idxB = customLgOrder.indexOf(b);
+              var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+      var idxA = displayOrder.indexOf(a);
+      var idxB = displayOrder.indexOf(b);
               if (idxA !== -1 && idxB !== -1) return idxA - idxB;
               if (idxA !== -1) return -1;
               if (idxB !== -1) return 1;
