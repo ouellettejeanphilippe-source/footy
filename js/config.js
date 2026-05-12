@@ -89,7 +89,14 @@ export function openGlobalStatsFromMatch(mid) {
 
         // Top: League & Metadata centered
         var liveBadge = m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : '';
-        var statusStr = m.status === 'finished' ? 'Terminé' : esc(m.startTime);
+        var statusStr = m.startTime;
+        if (m.status === 'finished' && m.score) {
+            statusStr = 'Terminé';
+        } else if (m.status === 'live' && !m.score) {
+            statusStr = 'Pas de stats lives disponibles';
+        } else if (m.status === 'finished' && !m.score) {
+            statusStr = 'Pas de stats disponibles';
+        }
         html += '<div style="text-align:center; font-size:11px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">';
         html += m.flag + ' ' + esc(m.league) + ' <span style="margin:0 8px; opacity:0.5;">•</span> ' + statusStr + liveBadge;
         html += '</div>';

@@ -278,7 +278,7 @@ export function buildEPG(matches){
                   if(m.status === 'live') {
                       statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
                   } else if(m.status === 'finished') {
-                      statusHtml = '<div class="status-text"><span class="status-minute">Fin</span></div>';
+                      statusHtml = '<div class="status-text"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
                   } else {
                       statusHtml = '<div class="status-text"><span class="status-minute">'+m.startTime+'</span></div>';
                   }
@@ -526,7 +526,10 @@ export function buildEPG(matches){
             if (m.status === 'live') {
                 timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (m.minute ? esc(m.minute) : 'LIVE') + (matchScoreText ? ' | ' + matchScoreText : '') + '</div>';
             } else if (m.status === 'finished') {
-                timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">Terminé' + (matchScoreText ? ' | ' + matchScoreText : '') + '</div>';
+                timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (matchScoreText ? 'Terminé | ' + matchScoreText : 'Terminé') + '</div>';
+                if (!matchScoreText) {
+                    timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:var(--muted);padding:2px 8px;border-radius:6px;font-weight:bold;">' + m.startTime + '</div>';
+                }
             } else {
                 timeBadge = '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + m.startTime + '</div>';
             }

@@ -204,10 +204,10 @@ export function getApiFirstMatches(targetDate) {
                       m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
 
                       m.status = m.time === 'LIVE' ? 'live' : 'upcoming';
-                      if (m.homeScore && m.awayScore && m.status !== 'live') {
+                      if (m.isFinished || (m.isFinished === undefined && m.homeScore && m.awayScore && m.status !== 'live')) {
                            m.status = 'finished';
-                           m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
-                      } else if (m.homeScore && m.awayScore) {
+                           if (m.homeScore && m.awayScore) m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
+                      } else if (m.homeScore && m.awayScore && (m.status === 'live' || m.isFinished === undefined)) {
                            m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
                       } else {
                            m.score = null;
