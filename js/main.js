@@ -159,6 +159,7 @@ export function loadAll(isBackground, forceScrape){
       }
 
             return Promise.allSettled([
+          fetchPage(SITE),
           fetchPage(MLBITE_URL),
           fetchPage(SPORTSURGE_URL),
           fetchPage(BUFFSTREAMS_URL),
@@ -175,7 +176,7 @@ export function loadAll(isBackground, forceScrape){
 
 
           // Check for failures and notify user
-          var sources = [MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL];
+          var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL];
           results.forEach(function(r, idx) {
               if (r.status === 'rejected') {
                   var domain = new URL(sources[idx]).hostname;
@@ -192,6 +193,7 @@ export function loadAll(isBackground, forceScrape){
           var scrapedMatches = [];
 
           var tasks = [
+              { fn: parseFootybite, url: SITE },
               { fn: parseNflbite, url: MLBITE_URL },
               { fn: parseSportsurge, url: SPORTSURGE_URL },
               { fn: parseBuffstreams, url: BUFFSTREAMS_URL },
