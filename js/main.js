@@ -653,8 +653,21 @@ export function renderFavPage() {
         }
 
         var sortedLeagues = Object.keys(teamsByLeague).sort(function(a,b) {
-            var idxA = customLgOrder.indexOf(a);
-            var idxB = customLgOrder.indexOf(b);
+            if (a === b) return 0;
+            if (a === 'Autres Flux' || a === 'Autres') return 1;
+            if (b === 'Autres Flux' || b === 'Autres') return -1;
+
+            var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+
+            // Les ligues dans customLgOrder sont typiquement en Title Case, ou comme a/b.
+            // On s'assure d'une comparaison tolérante.
+            var idxA = -1;
+            var idxB = -1;
+            for (var i = 0; i < displayOrder.length; i++) {
+                if (displayOrder[i].toUpperCase() === a.toUpperCase()) idxA = i;
+                if (displayOrder[i].toUpperCase() === b.toUpperCase()) idxB = i;
+            }
+
             if(idxA > -1 && idxB > -1) return idxA - idxB;
             if(idxA > -1) return -1;
             if(idxB > -1) return 1;
@@ -870,7 +883,9 @@ export function filterFavTeams(query) {
     // Force open the containers that have visible results
     var lgContainers = teamsContainer.querySelectorAll('.lg-container');
     lgContainers.forEach(function(c) {
-        var visibleTeams = c.querySelectorAll('.team-item[style="display: flex;"]');
+        var visibleTeams = Array.from(c.querySelectorAll('.team-item')).filter(function(el) {
+            return el.style.display === 'flex';
+        });
         if (visibleTeams.length > 0) {
             c.style.display = 'flex'; // Forcer l'ouverture pendant la recherche
         } else {
