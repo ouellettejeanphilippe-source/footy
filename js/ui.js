@@ -1,7 +1,7 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
-import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
 import { TARGET_DATE, fetchGameStats, renderScorersHtml } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
@@ -748,7 +748,7 @@ export function openMod(m,col){
   html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
   html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
   if(hLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(hLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + esc(m.homeTeam) + '</span>';
+  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.homeTeam) + '</span>';
   html += '</div>';
   if(m.score) {
       html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[0] + '</div>';
@@ -769,7 +769,7 @@ export function openMod(m,col){
   html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
   html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
   if(aLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(aLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + esc(m.awayTeam) + '</span>';
+  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.awayTeam) + '</span>';
   html += '</div>';
   if(m.score) {
       html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[1] + '</div>';

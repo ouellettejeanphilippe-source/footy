@@ -428,3 +428,41 @@ window.toggleAutresFlux = toggleAutresFlux;
 window.toggleAccordion = toggleAccordion;
 window.resolveStreamUrl = resolveStreamUrl;
 
+export function formatTeamNameBreak(name) {
+    if (!name) return '';
+    var n = name.trim();
+    var parts = n.split(' ');
+    if (parts.length <= 1) return esc(n);
+    if (parts.length === 2) return esc(parts[0]) + '<br>' + esc(parts[1]);
+
+    var prefixes = [
+        "new york", "new jersey", "tampa bay", "st. louis", "san jose", "los angeles", "san diego",
+        "san antonio", "san francisco", "kansas city", "green bay", "new england",
+        "new orleans", "las vegas", "oklahoma city", "golden state",
+        "real salt lake", "west ham", "brighton & hove", "1. fc", "cf", "fc", "ac",
+        "as", "inter", "dc", "d.c.", "rb", "sporting", "racing", "red bull"
+    ];
+
+    var nLower = n.toLowerCase();
+    for (var i = 0; i < prefixes.length; i++) {
+        var p = prefixes[i];
+        if (nLower.startsWith(p + ' ')) {
+            return esc(n.substring(0, p.length)) + '<br>' + esc(n.substring(p.length + 1));
+        }
+    }
+
+    var suffixes = [
+        "maple leafs", "golden knights", "red wings", "blue jackets", "white sox", "red sox",
+        "blue jays", "trail blazers", "hotspur", "united", "city", "rovers",
+        "albion", "athletic", "wanderers", "fc", "cf"
+    ];
+
+    for (var i = 0; i < suffixes.length; i++) {
+        var s = suffixes[i];
+        if (nLower.endsWith(' ' + s)) {
+            return esc(n.substring(0, n.length - s.length - 1)) + '<br>' + esc(n.substring(n.length - s.length));
+        }
+    }
+
+    return esc(parts[0]) + '<br>' + esc(parts.slice(1).join(' '));
+}

@@ -1,5 +1,5 @@
 import { S } from './state.js';
-import { escJs, esc, lg, pad, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { escJs, esc, lg, pad, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
 import { globalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
@@ -109,7 +109,7 @@ export function openGlobalStatsFromMatch(mid) {
         html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; flex: 1;" onclick="openGlobalStats(\''+escJs(m.homeTeam)+'\')">';
         if (hRankFormStr) html += '<span style="font-size:10px; color:rgba(255,255,255,0.4); margin-bottom:-4px;">' + hRankFormStr + '</span>';
         if(hLogo) html += '<div class="prime-logo" style="width:60px; height:60px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(hLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-        html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">'+esc(m.homeTeam)+'</span></div>';
+        html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">'+formatTeamNameBreak(m.homeTeam)+'</span></div>';
 
         // Score
         html += '<div style="flex: 0.8; display:flex; justify-content:center; align-items:center; flex-direction:column;">';
@@ -125,7 +125,7 @@ export function openGlobalStatsFromMatch(mid) {
         html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; flex: 1;" onclick="openGlobalStats(\''+escJs(m.awayTeam)+'\')">';
         if (aRankFormStr) html += '<span style="font-size:10px; color:rgba(255,255,255,0.4); margin-bottom:-4px;">' + aRankFormStr + '</span>';
         if(aLogo) html += '<div class="prime-logo" style="width:60px; height:60px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(aLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-        html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">'+esc(m.awayTeam)+'</span></div>';
+        html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">'+formatTeamNameBreak(m.awayTeam)+'</span></div>';
 
         html += '</div>';
 
