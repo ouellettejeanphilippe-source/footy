@@ -2,6 +2,7 @@ import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
 import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, SITE, sortFluxLinks } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
+import { getTeamInfo } from './match.js';
 import { S, addScrapeLog, favTeams } from './state.js';
 import { renderFluxItem } from './ui.js';
 
@@ -1276,6 +1277,8 @@ export function scrapeMatchFlux(m, forceRefresh){
     addScrapeLog(m.matchUrl, 'success', '');
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
+    var pageTextContext = doc.body ? doc.body.textContent || '' : '';
+    var pageLinksContext = [];
 
     // === TOUTES SOURCES : RECHERCHE LARGE DE FLUX ===
 
@@ -1306,7 +1309,8 @@ export function scrapeMatchFlux(m, forceRefresh){
                         quality: 'HD',
                         lang: lang,
                         url: src,
-                        icon: '▶️'
+                        icon: '▶️',
+                        scrapeContext: { blockText: panel.textContent || '', pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
                     });
                 }
             }
@@ -1323,7 +1327,8 @@ export function scrapeMatchFlux(m, forceRefresh){
                 quality: 'HD',
                 lang: 'MULTI',
                 url: src,
-                icon: '▶️'
+                icon: '▶️',
+                scrapeContext: { blockText: ifr.parentElement ? ifr.parentElement.textContent || '' : '', pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
             });
         }
     });
@@ -1373,7 +1378,8 @@ export function scrapeMatchFlux(m, forceRefresh){
             links.push({
                 name: name,
                 quality: qual,
-                url: url
+                url: url,
+                scrapeContext: { blockText: rowText, pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
             });
         }
     });
@@ -1398,16 +1404,27 @@ export function scrapeMatchFlux(m, forceRefresh){
 
               var isOtherMatch = false;
               if (lowerUrl.indexOf('match') >= 0 || name.toLowerCase().indexOf('match') >= 0 || name.toLowerCase().indexOf('started') >= 0 || name.toLowerCase().indexOf(' vs ') >= 0) {
+                  // Use the context to see if it matches our team
                   var hName = (m.homeTeam || '').toLowerCase();
                   var aName = (m.awayTeam || '').toLowerCase();
-                  var hasHome = hName.split(' ').some(function(w) { return w.length >= 3 && name.toLowerCase().indexOf(w) >= 0; });
-                  var hasAway = aName.split(' ').some(function(w) { return w.length >= 3 && name.toLowerCase().indexOf(w) >= 0; });
 
-                  // Also check against URL just in case name is generic but URL reveals it's a different match
-                  var urlHasHome = hName.split(' ').some(function(w) { return w.length >= 3 && lowerUrl.indexOf(w) >= 0; });
-                  var urlHasAway = aName.split(' ').some(function(w) { return w.length >= 3 && lowerUrl.indexOf(w) >= 0; });
+                  // Get team info if available
+                  var hInfo = { city: hName, teamName: hName };
+                  var aInfo = { city: aName, teamName: aName };
+                  if (typeof getTeamInfo !== 'undefined') {
+                      hInfo = getTeamInfo(hName);
+                      aInfo = getTeamInfo(aName);
+                  }
 
-                  if (!hasHome && !hasAway && !urlHasHome && !urlHasAway && (name.toLowerCase().length > 10 || lowerUrl.indexOf('match') >= 0)) {
+                  var checkWords = function(str, wordsStr) {
+                      return wordsStr.split(' ').some(function(w) { return w.length >= 3 && str.toLowerCase().indexOf(w) >= 0; });
+                  };
+
+                  var searchStr = (name + " " + lowerUrl).toLowerCase();
+                  var hasHome = checkWords(searchStr, hName) || checkWords(searchStr, hInfo.city.toLowerCase()) || checkWords(searchStr, hInfo.teamName.toLowerCase());
+                  var hasAway = checkWords(searchStr, aName) || checkWords(searchStr, aInfo.city.toLowerCase()) || checkWords(searchStr, aInfo.teamName.toLowerCase());
+
+                  if (!hasHome && !hasAway && (name.toLowerCase().length > 10 || lowerUrl.indexOf('match') >= 0)) {
                       isOtherMatch = true;
                   }
               }
@@ -1417,7 +1434,8 @@ export function scrapeMatchFlux(m, forceRefresh){
                  name:name,
                  quality:'HD',
                  lang:'MULTI',
-                 url:url
+                 url:url,
+                 scrapeContext: { blockText: btn.parentElement ? btn.parentElement.textContent || '' : btn.textContent || '', pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
               });
           }
        }
@@ -1440,7 +1458,8 @@ export function scrapeMatchFlux(m, forceRefresh){
                         quality: 'HD',
                         lang: 'MULTI',
                         url: url,
-                        icon: '▶️'
+                        icon: '▶️',
+                        scrapeContext: { blockText: el.parentElement ? el.parentElement.textContent || '' : el.textContent || '', pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
                     });
                 }
             }
@@ -1451,6 +1470,12 @@ export function scrapeMatchFlux(m, forceRefresh){
     if(links.length===0 && m.matchUrl){
         links.push({name:'Voir streams sur le site', quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗'});
     }
+
+
+    // Populate pageLinksContext for all contexts
+    links.forEach(function(l) {
+        if (l.url) pageLinksContext.push(l.url);
+    });
 
     // Preserve existing streams and avoid duplicates
     var existingLinks = m.streamLinks || [];

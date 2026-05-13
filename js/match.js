@@ -1,4 +1,5 @@
-import { normName } from './db.js';
+import { normName, NORM_TEAM_KEYS } from './db.js';
+import { TEAM_DATA } from './teams.js';
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
 export function mergeMatches(mainList, newList) {
@@ -76,6 +77,26 @@ export function stringSimilarity(s1, s2) {
   if (maxLen === 0) return 1.0;
   var dist = levenshtein(s1, s2);
   return (maxLen - dist) / maxLen;
+}
+
+
+export function getTeamInfo(name) {
+    if (!name) return { city: '', teamName: '' };
+    var n = normName(name);
+    var key = NORM_TEAM_KEYS[n];
+    if (key && TEAM_DATA[key]) {
+        return { city: TEAM_DATA[key].city || '', teamName: TEAM_DATA[key].teamName || '' };
+    }
+    var lowerName = name.toLowerCase().trim();
+    if (TEAM_DATA[lowerName]) {
+        return { city: TEAM_DATA[lowerName].city || '', teamName: TEAM_DATA[lowerName].teamName || '' };
+    }
+    return { city: name, teamName: name };
+}
+
+export function isMatchContext(name1, name2, contextText) {
+    if (isMatch(name1, name2)) return true;
+    return false;
 }
 
 export function isMatchPair(m1, m2) {
@@ -240,6 +261,8 @@ export function isMatch(name1, name2) {
 
   // If they share a common city prefix/suffix but are distinct teams, do not match.
   // For example: 'manchestercity' and 'manchesterunited'
+  var name1NoSpace = name1.replace(/\s+/g, '').toLowerCase();
+  var name2NoSpace = name2.replace(/\s+/g, '').toLowerCase();
   var knownDistinctPairs = [
       ['manchestercity', 'manchesterunited'],
       ['milan', 'intermilan'],
@@ -248,8 +271,8 @@ export function isMatch(name1, name2) {
   ];
   for (var i = 0; i < knownDistinctPairs.length; i++) {
       var pair = knownDistinctPairs[i];
-      if ((name1.includes(pair[0]) && name2.includes(pair[1])) ||
-          (name1.includes(pair[1]) && name2.includes(pair[0]))) {
+      if ((name1NoSpace.includes(pair[0]) && name2NoSpace.includes(pair[1])) ||
+          (name1NoSpace.includes(pair[1]) && name2NoSpace.includes(pair[0]))) {
           return false;
       }
   }
@@ -257,6 +280,44 @@ export function isMatch(name1, name2) {
   // Check if one contains the other (e.g. 'manchester' in 'manchesterunited')
   if (name1.includes(name2) || name2.includes(name1)) return true;
 
+  // Check if they match by city or team name using TEAM_DATA
+  var info1 = getTeamInfo(name1);
+  var info2 = getTeamInfo(name2);
+
+  var norm1C = normName(info1.city);
+  var norm2C = normName(info2.city);
+  var norm1N = normName(info1.teamName);
+  var norm2N = normName(info2.teamName);
+
+  // If one name is just the city of the other
+  if (norm1C && norm2C && norm1C === norm2C) {
+      // If one team doesn't have a distinct name (i.e. name == city) or they both have the same name
+      if (norm1N === norm1C || norm2N === norm2C || norm1N === norm2N || norm1N.includes(norm2N) || norm2N.includes(norm1N)) {
+          return true;
+      }
+  }
+
+  // If one name is just the team name of the other
+  if (norm1N && norm2N && norm1N === norm2N && norm1N.length > 3) {
+      if (norm1C === norm1N || norm2C === norm2N || norm1C === norm2C || norm1C.includes(norm2C) || norm2C.includes(norm1C)) {
+          return true;
+      }
+  }
+
+  // Cross check if one name provided is the city of the other, or teamName of the other
+  var n1 = normName(name1);
+  var n2 = normName(name2);
+  if (n1 && n2) {
+      if (n1 === norm2C && n1.length >= 3 && norm2N === norm2C) return true; // name2 has no distinct teamName
+      if (n2 === norm1C && n2.length >= 3 && norm1N === norm1C) return true;
+
+      // If n1 is the teamName of n2
+      if (n1 === norm2N && n1.length >= 3) return true;
+      if (n2 === norm1N && n2.length >= 3) return true;
+
+      if (n1 === norm2C && n1.length >= 3) return true;
+      if (n2 === norm1C && n2.length >= 3) return true;
+  }
   var sim = stringSimilarity(name1, name2);
 
   // Specific fallback for short names
@@ -306,3 +367,5 @@ window.levenshtein = levenshtein;
 window.stringSimilarity = stringSimilarity;
 window.isMatchPair = isMatchPair;
 window.isMatch = isMatch;
+
+window.getTeamInfo = getTeamInfo;

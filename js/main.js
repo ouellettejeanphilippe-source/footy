@@ -133,7 +133,7 @@ export function loadAll(isBackground, forceScrape){
           var finalMatches = mergeFluxToApi(apiMatches, isToday ? (window.lastScrapedMatches || []) : [], true);
 
           // Persist the updated scores/statuses back to cache even when skipping scraping
-          var todayStr = getEspnDateStr(TARGET_DATE);
+          var todayStr = getEspnDateStr(TARGET_DATE || new Date());
               var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
@@ -238,7 +238,7 @@ export function loadAll(isBackground, forceScrape){
               safeStorageSetJSON('last_scraped_matches', window.lastScrapedMatches);
 
           // Persist the merged data (which now includes streams) back to localStorage
-          var todayStr = getEspnDateStr(TARGET_DATE);
+          var todayStr = getEspnDateStr(TARGET_DATE || new Date());
               var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
@@ -342,7 +342,7 @@ if ('serviceWorker' in navigator) {
 
 (function(){
   var n = new Date();
-  var todayStr = getEspnDateStr(TARGET_DATE);
+  var todayStr = getEspnDateStr(TARGET_DATE || new Date());
 
   var lst = safeStorageGet('last_scrape_time');
   var lsm = safeStorageGetJSON('last_scraped_matches');
