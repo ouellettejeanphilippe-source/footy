@@ -85,7 +85,7 @@ export function setApiTargetDate(d) {
 }
 
 export function getApiFirstMatches(targetDate) {
-  var todayStr = getEspnDateStr(targetDate);
+  var todayStr = getEspnDateStr(targetDate || new Date());
   var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
 
   var needsFullFetch = !cache || cache.fetchDate !== todayStr;
@@ -104,7 +104,7 @@ export function getApiFirstMatches(targetDate) {
       }
   }
 
-  var espnPaths = Array.from(new Set(Object.values(ESPN_LEAGUES)));
+  var espnPaths = Array.from(new Set(Object.values(ESPN_LEAGUES || {})));
 
   if (needsFullFetch || baseMatches.length === 0) {
       espnPaths.forEach(function(path) {
