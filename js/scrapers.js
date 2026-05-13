@@ -382,7 +382,7 @@ export function parseOnHockey(html) {
                           status: 'upcoming',
                           streamLinks: streamLinksArr,
                           streamsLoaded: streamLinksArr.length > 0,
-                          matchUrl: streamLinksArr.length > 0 ? streamLinksArr[0].url : ONHOCKEY_URL,
+                          matchUrl: ONHOCKEY_URL,
                           source: 'onhockey',
                           matchDate: getEstDateStrFromDate(TARGET_DATE)
                       });
@@ -450,7 +450,7 @@ export function parseOnHockey(html) {
                   status: 'upcoming',
                   streamLinks: streamLinksArr,
                   streamsLoaded: streamLinksArr.length > 0,
-                  matchUrl: streamLinksArr.length > 0 ? streamLinksArr[0].url : ONHOCKEY_URL,
+                  matchUrl: ONHOCKEY_URL,
                           source: 'onhockey',
                   matchDate: getEstDateStrFromDate(TARGET_DATE)
               });
@@ -1466,7 +1466,7 @@ export function scrapeMatchFlux(m, forceRefresh){
     });
 
     // S'assurer qu'on affiche un maximum de streams (40)
-    m.streamLinks = combinedLinks.slice(0, 40);
+    m.streamLinks = combinedLinks.slice(0, 100);
     m.streamsLoaded=true;
     saveStreamCache(m.id, m.streamLinks);
     updateMatchUiAfterScrape(m);
