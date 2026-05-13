@@ -168,7 +168,7 @@ export function formatLeagueName(league) {
     // Si la ligue n'est pas dans DEFAULT_LEAGUES, on la met dans 'Autres Flux'
     // Exception pour 'Autres' (qui peut être utilisé ailleurs) et 'Autres Flux'
     if (window.DEFAULT_LEAGUES && formatted !== 'Autres' && formatted !== 'Autres Flux') {
-        if (!window.DEFAULT_LEAGUES[formatted]) {
+        if (!window.DEFAULT_LEAGUES[formatted.toUpperCase()]) {
             return 'Autres Flux';
         }
     }
