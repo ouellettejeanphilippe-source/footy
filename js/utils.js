@@ -109,7 +109,8 @@ export function fetchPage(url){
       var pu=PROXIES[i++](url);
       lg('Proxy '+i,pu.slice(0,70)+'…');
 
-      var headers = {'Accept':'text/html,*/*'};
+      var headers = {};
+      if(!pu.includes('codetabs')) { headers = {'Accept':'text/html,*/*'}; }
       // Note: Custom headers (X-Requested-With, Referer) were previously injected for onhockey.tv,
       // but they now cause CORS preflight OPTIONS requests to fail on api.codetabs.com with 400 Bad Request.
       // Removing them allows the proxy GET request to succeed normally.
