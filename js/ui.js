@@ -784,10 +784,19 @@ export function openMod(m,col){
       </div>
       <div style="flex:1; min-width:300px; display:flex; flex-direction:column; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
           <!-- Poster / Cover Image Placeholder -->
-          <div style="width:100%; aspect-ratio: 16/9; background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5)); border-radius:8px; display:flex; justify-content:center; align-items:center; overflow:hidden; position:relative;">
-              <div style="position:absolute; inset:0; background: url('${m.poster || ''}') center/cover no-repeat; opacity: 0.6;"></div>
-              <div style="z-index:1; font-weight:bold; font-size:24px; color:rgba(255,255,255,0.3);">${esc(m.league)}</div>
+          <div id="modal-poster-container" style="width:100%; aspect-ratio: 16/9; background: linear-gradient(45deg, ${m.color ? m.color + '40' : 'rgba(255,255,255,0.05)'}, rgba(0,0,0,0.8)); border-radius:8px; display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:hidden; position:relative; padding: 16px;">
+              <div id="modal-poster-bg" style="position:absolute; inset:0; background: url('${m.poster || ''}') center/cover no-repeat; opacity: 0.6;"></div>
+
+              <div id="modal-poster-content" style="z-index:1; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 12px; text-align:center;">
+                  <div style="display:flex; align-items:center; justify-content:center; gap: 16px; width:100%;">
+                      ${hLogo ? `<img src="${esc(hLogo)}" style="width:60px; height:60px; object-fit:contain;" onerror="this.style.display='none'">` : ''}
+                      <span style="font-weight:900; font-size:20px; color:rgba(255,255,255,0.8); font-style:italic;">VS</span>
+                      ${aLogo ? `<img src="${esc(aLogo)}" style="width:60px; height:60px; object-fit:contain;" onerror="this.style.display='none'">` : ''}
+                  </div>
+                  <div style="font-weight:bold; font-size:18px; color:rgba(255,255,255,0.9); text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${esc(m.league)}</div>
+              </div>
           </div>
+          <div id="modal-espn-link-container" style="width:100%; margin-top:12px; display:flex; justify-content:center;"></div>
       </div>
   </div>`;
 
@@ -877,6 +886,28 @@ export function openMod(m,col){
                   } else {
                       var mbody = document.getElementById('mbody');
                       if(mbody) mbody.insertBefore(stDiv, mbody.firstChild);
+                  }
+              }
+
+              if (res.articlePhoto || res.articleText) {
+                  var pContent = document.getElementById('modal-poster-content');
+                  var pBg = document.getElementById('modal-poster-bg');
+                  if (pContent) {
+                      pContent.innerHTML = '';
+                      if (res.articleText) {
+                          pContent.innerHTML = '<div style="font-weight:600; font-size:14px; color:#fff; text-align:center; text-shadow: 0 2px 4px rgba(0,0,0,0.8); background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 8px; width: 90%; line-height:1.4; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;">' + esc(res.articleText) + '</div>';
+                      }
+                  }
+                  if (pBg && res.articlePhoto) {
+                      pBg.style.background = 'url(' + res.articlePhoto + ') center/cover no-repeat';
+                      pBg.style.opacity = '0.8';
+                  }
+              }
+
+              if (res.espnLink) {
+                  var espnCont = document.getElementById('modal-espn-link-container');
+                  if (espnCont) {
+                      espnCont.innerHTML = '<a href="' + esc(res.espnLink) + '" target="_blank" style="display:flex; align-items:center; gap:6px; color:var(--text); text-decoration:none; background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">📰 Lire sur ESPN</a>';
                   }
               }
           }).catch(function(e) {});
