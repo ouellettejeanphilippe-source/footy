@@ -142,6 +142,38 @@ export var LEAGUE_ALIASES = {
   'moto gp': 'motogp',
   'wwe': 'wwe'
 };
+export var DEFAULT_LEAGUES = {
+    'CHAMPIONS LEAGUE': { icon: '⚽' },
+    'NHL': { icon: '🏒' },
+    'PWHL': { icon: '🏒' },
+    'F1': { icon: '🏎️' },
+    'NBA': { icon: '🏀' },
+    'MLB': { icon: '⚾' },
+    'PREMIER LEAGUE': { icon: '⚽' },
+    'LIGUE 1': { icon: '⚽' },
+    'NFL': { icon: '🏈' },
+    'LA LIGA': { icon: '⚽' },
+    'SERIE A': { icon: '⚽' },
+    'BUNDESLIGA': { icon: '⚽' },
+    'EUROPA LEAGUE': { icon: '⚽' },
+    'CONFERENCE LEAGUE': { icon: '⚽' },
+    'EREDIVISIE': { icon: '⚽' },
+    'PRIMEIRA LIGA': { icon: '⚽' },
+    'NATIONS LEAGUE': { icon: '⚽' },
+    'FA CUP': { icon: '⚽' },
+    'LEAGUE CUP': { icon: '⚽' },
+    'COPA DEL REY': { icon: '⚽' },
+    'DFB POKAL': { icon: '⚽' },
+    'SAUDI PRO LEAGUE': { icon: '⚽' },
+    'MLS': { icon: '⚽' },
+    'LHJMQ': { icon: '🏒' },
+    'AHL': { icon: '🏒' },
+    'CFL': { icon: '🏈' },
+    'INDYCAR': { icon: '🏎️' },
+    'MOTOGP': { icon: '🏍️' },
+    'WWE': { icon: '🥊' }
+};
+
 export var LEAGUE_FORMAT_NAMES = {
     'nba': 'NBA',
     'nhl': 'NHL',
@@ -185,8 +217,8 @@ export function formatLeagueName(league) {
 
     // Si la ligue n'est pas dans DEFAULT_LEAGUES, on la met dans 'Autres Flux'
     // Exception pour 'Autres' (qui peut être utilisé ailleurs) et 'Autres Flux'
-    if (window.DEFAULT_LEAGUES && formatted !== 'Autres' && formatted !== 'Autres Flux') {
-        if (!window.DEFAULT_LEAGUES[formatted.toUpperCase()]) {
+    if (DEFAULT_LEAGUES && formatted !== 'Autres' && formatted !== 'Autres Flux') {
+        if (!DEFAULT_LEAGUES[formatted.toUpperCase()]) {
             return 'Autres Flux';
         }
     }
@@ -324,6 +356,7 @@ window.getTeamColors = getTeamColors;
 window.TEAM_ALIASES = TEAM_ALIASES;
 window.LEAGUE_ALIASES = LEAGUE_ALIASES;
 window.LEAGUE_FORMAT_NAMES = LEAGUE_FORMAT_NAMES;
+window.DEFAULT_LEAGUES = DEFAULT_LEAGUES;
 window.formatLeagueName = formatLeagueName;
 window._normCache = _normCache;
 window.getLogo = getLogo;
