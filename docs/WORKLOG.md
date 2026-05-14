@@ -6,6 +6,7 @@
 - Ou mettre une photo ou un texte de preview du match si ESPN ou autre peut en fournir?
 
 ## Fait
+- Fix missing streams for Montreal teams by normalizing diacritics in stream text filtering and removing ambiguous aliases from js/teams.js.
 - 2026-05-14 - Removed arbitrary stream bounds limiting in `scrapeMatchFlux` and updated stream quantity threshold to 1000 so that every game will have every stream displayed.
 - Added parsing logic in `js/api.js` for ESPN article text, photo, and web link.
 - Modernized the `openMod` layout in `js/ui.js` to feature a stylish 45-degree gradient VS matchup card.

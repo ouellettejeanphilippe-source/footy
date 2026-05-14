@@ -1417,7 +1417,9 @@ export function scrapeMatchFlux(m, forceRefresh){
                   }
 
                   var checkWords = function(str, wordsStr) {
-                      return wordsStr.split(' ').some(function(w) { return w.length >= 3 && str.toLowerCase().indexOf(w) >= 0; });
+                      var normStr = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                      var normWords = wordsStr.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                      return normWords.split(' ').some(function(w) { return w.length >= 3 && normStr.indexOf(w) >= 0; });
                   };
 
                   var searchStr = (name + " " + lowerUrl).toLowerCase();
