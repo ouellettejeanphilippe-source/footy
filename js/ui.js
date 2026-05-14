@@ -981,7 +981,7 @@ export function openMod(m,col){
 
       var baseSites = [
           { name: 'Buffstreams', url: 'https://buffstreams.com.co/' },
-          { name: 'Footybite', url: 'https://footybite.to/' },
+          { name: 'Footybite', url: 'https://army.footybite.to' },
           { name: 'Streameast', url: 'https://naturallyyou.fit/' },
           { name: 'VIPLeague', url: 'https://vipleague.io/' },
           { name: 'Totalsportek', url: 'https://www.totalsportek-real.com/' },
