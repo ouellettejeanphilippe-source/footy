@@ -389,6 +389,8 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
           if (prevMatch.matchUrl && !am.matchUrl) {
               am.matchUrl = prevMatch.matchUrl;
           }
+          am.refreshedOnStart = prevMatch.refreshedOnStart;
+          am.refreshedOnStartScrape = prevMatch.refreshedOnStartScrape;
       }
   });
 
@@ -520,7 +522,9 @@ export function fetchGameStats(matchId) {
             }
             if (data.header && data.header.links) {
                 var sumLink = data.header.links.find(function(l) { return l.rel && l.rel.indexOf('summary') > -1; });
-                if (sumLink) espnLink = sumLink.href;
+                if (sumLink) {
+                    espnLink = sumLink.href.replace('/match/', '/preview/').replace('/game/', '/preview/');
+                }
             }
 
             if (data.header && data.header.competitions && data.header.competitions[0]) {
@@ -530,8 +534,9 @@ export function fetchGameStats(matchId) {
                         if (d.scoringPlay && d.participants && d.participants[0] && d.participants[0].athlete) {
                             var time = d.clock && d.clock.displayValue ? d.clock.displayValue : '';
                             var player = d.participants[0].athlete.shortName || d.participants[0].athlete.displayName;
+                            var passer = (d.participants.length > 1 && d.participants[1].athlete) ? (d.participants[1].athlete.shortName || d.participants[1].athlete.displayName) : null;
                             var teamId = d.team && d.team.id ? d.team.id : null;
-                            scorers.push({ time: time, player: player, teamId: teamId });
+                            scorers.push({ time: time, player: player, teamId: teamId, passer: passer });
                         }
                     });
                 }
