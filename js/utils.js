@@ -371,11 +371,11 @@ export function toggleLeague(lgName) {
   }
 
   // Hide/Show elements using CSS based on data attribute
-  var containers = document.querySelectorAll('.marea-row, .mrow, .lg-container');
+  var containers = document.querySelectorAll('.marea-row, .mrow, .lg-container, .match-card');
   containers.forEach(function(c) {
       var lg = c.getAttribute('data-lg');
       if (lg === lgName) {
-          c.style.display = S.hiddenLg[lgName] ? 'none' : (c.classList.contains('mrow') || c.classList.contains('marea-row') ? 'flex' : 'block');
+          c.style.display = S.hiddenLg[lgName] ? 'none' : (c.classList.contains('mrow') || c.classList.contains('marea-row') || c.classList.contains('match-card') ? 'flex' : 'block');
       }
   });
 }
@@ -393,6 +393,11 @@ export function toggleAccordion(lgName) {
   var rows = document.querySelectorAll('.mrow[data-lg="' + lgName + '"]');
   rows.forEach(function(r) {
       r.style.display = isC ? 'none' : 'flex';
+  });
+
+  var cards = document.querySelectorAll('.match-card[data-lg="' + lgName + '"]');
+  cards.forEach(function(c) {
+      c.style.display = isC ? 'none' : 'flex';
   });
 }
 

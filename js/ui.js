@@ -260,11 +260,12 @@ export function buildEPG(matches){
               lHdr.addEventListener('click', function(){ toggleAccordion(lg.league); });
               grid.appendChild(lHdr);
 
-              if (!isCollapsed) {
-                  lg.matches.forEach(function(m) {
-                      var b = document.createElement('div');
-                      b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
-                      b.id = 'mb-'+m.id;
+              lg.matches.forEach(function(m) {
+                  var b = document.createElement('div');
+                  b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
+                  b.id = 'mb-'+m.id;
+                  b.setAttribute('data-lg', lg.league);
+                  b.style.display = isCollapsed ? 'none' : 'flex';
 
                   var homeTeamName = normName(m.homeTeam) || 'A';
                   var awayTeamName = normName(m.awayTeam) || 'B';
@@ -351,7 +352,6 @@ export function buildEPG(matches){
                   b.addEventListener('click', function(){ openMod(m, lgCol); });
                   grid.appendChild(b);
               });
-          }
           });
       };
 
@@ -360,6 +360,7 @@ export function buildEPG(matches){
           var liveNow = [];
           var upNext = [];
           var laterToday = [];
+          var autresFluxMatches = [];
 
           var now = new Date();
           var currentEst = getEstTimeStrFromDate(now);
@@ -367,6 +368,11 @@ export function buildEPG(matches){
           var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
           filtered.forEach(function(m) {
+              if (m.league === 'Autres Flux') {
+                  autresFluxMatches.push(m);
+                  return;
+              }
+
               if (m.status === 'live') {
                   liveNow.push(m);
               } else {
@@ -392,9 +398,30 @@ export function buildEPG(matches){
           if (liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0) {
               epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
           }
+          if (autresFluxMatches.length > 0) {
+              if (S.collapsedSections['autresStreams'] === undefined) {
+                  S.collapsedSections['autresStreams'] = true;
+              }
+              renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+          }
       } else {
           // Render matches normally for upcoming
-          renderMatches(filtered, epgContainer, "");
+          var mainMatches = [];
+          var autresFluxMatches = [];
+          filtered.forEach(function(m) {
+              if (m.league === 'Autres Flux') {
+                  autresFluxMatches.push(m);
+              } else {
+                  mainMatches.push(m);
+              }
+          });
+          renderMatches(mainMatches, epgContainer, "");
+          if (autresFluxMatches.length > 0) {
+              if (S.collapsedSections['autresStreams'] === undefined) {
+                  S.collapsedSections['autresStreams'] = true;
+              }
+              renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+          }
       }
 
   } else { // Timeline EPG
