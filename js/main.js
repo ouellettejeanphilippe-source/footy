@@ -1,5 +1,5 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, toggleAutresFlux, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
+import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
@@ -259,23 +259,17 @@ export function loadAll(isBackground, forceScrape){
           if(sf){
               var anyHidden = false;
               Object.keys(S.hiddenLg).forEach(function(k) {
-                  if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+                  if (S.hiddenLg[k]) anyHidden = true;
               });
               var isAllSel = !anyHidden;
 
               var optionsHtml = '<button class="btn sport-btn '+(isAllSel?'active-toggle':'')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
               sportNames.forEach(function(sp){
-                  if (sp !== 'EN DIRECT' && sp !== 'Autres Flux') {
+                  if (sp !== 'EN DIRECT') {
                       var isSel = !S.hiddenLg[sp];
                       optionsHtml += '<button class="btn sport-btn '+(isSel?'active-toggle':'')+'" onclick="applySportFilter(\''+escJs(sp)+'\');"><span style="margin-right:4px;">'+lgFlag(sp)+'</span> '+esc(sp)+'</button>';
                   }
               });
-              // Add a toggle for 'Autres Flux' at the end if it exists in matches
-              if (sports['Autres Flux']) {
-                  var isAutresFluxVisible = !S.hiddenLg['Autres Flux'];
-                  optionsHtml += '<div style="width:1px; background:rgba(255,255,255,0.1); margin:4px 8px;"></div>'; // separator
-                  optionsHtml += '<button id="btn-autres-flux" class="btn sport-btn '+(isAutresFluxVisible?'active-toggle':'')+'" onclick="toggleAutresFlux();" style="border:1px dashed var(--border2) !important;"><span style="margin-right:4px;">📡</span> Autres Flux</button>';
-              }
               sf.innerHTML = optionsHtml;
           }
 

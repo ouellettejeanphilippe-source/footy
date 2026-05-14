@@ -105,7 +105,7 @@ export function setMatches(newMatches) {
         S.matchMap.set(String(newMatches[i].id), newMatches[i]);
     }
 }
-export var S = { searchQuery:'',  log:[], raw:'', matches:[], matchMap: new Map(), proxy:'', filter:'live', sportFilter:'all', hiddenLg:{'Autres Flux':true}, collapsedLg:{}, collapsedSections:{} };
+export var S = { searchQuery:'',  log:[], raw:'', matches:[], matchMap: new Map(), proxy:'', filter:'live', sportFilter:'all', hiddenLg:{}, collapsedLg:{'Autres Flux':true}, collapsedSections:{} };
 
 
 
