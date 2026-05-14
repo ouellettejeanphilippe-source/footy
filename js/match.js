@@ -267,7 +267,13 @@ export function isMatch(name1, name2) {
       ['manchestercity', 'manchesterunited'],
       ['milan', 'intermilan'],
       ['acmilan', 'intermilan'],
-      ['realmadrid', 'atleticomadrid']
+      ['realmadrid', 'atleticomadrid'],
+      ['montrealcanadiens', 'cfmontreal'],
+      ['montrealcanadiens', 'montrealalouettes'],
+      ['montrealcanadiens', 'montrealvictoire'],
+      ['cfmontreal', 'montrealalouettes'],
+      ['cfmontreal', 'montrealvictoire'],
+      ['montrealalouettes', 'montrealvictoire']
   ];
   for (var i = 0; i < knownDistinctPairs.length; i++) {
       var pair = knownDistinctPairs[i];

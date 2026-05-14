@@ -1426,13 +1426,23 @@ export function scrapeMatchFlux(m, forceRefresh){
                       aInfo = getTeamInfo(aName);
                   }
 
-                  var checkWords = function(str, wordsStr) {
-                      return wordsStr.split(' ').some(function(w) { return w.length >= 3 && str.toLowerCase().indexOf(w) >= 0; });
+                  var checkWords = function(normStr, normWords) {
+                      return normWords.split(' ').some(function(w) { return w.length >= 3 && normStr.indexOf(w) >= 0; });
                   };
 
                   var searchStr = (name + " " + lowerUrl).toLowerCase();
-                  var hasHome = checkWords(searchStr, hName) || checkWords(searchStr, hInfo.city.toLowerCase()) || checkWords(searchStr, hInfo.teamName.toLowerCase());
-                  var hasAway = checkWords(searchStr, aName) || checkWords(searchStr, aInfo.city.toLowerCase()) || checkWords(searchStr, aInfo.teamName.toLowerCase());
+                  var normSearchStr = searchStr.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+                  var normHName = hName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                  var normHCity = hInfo.city.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                  var normHTeamName = hInfo.teamName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+                  var normAName = aName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                  var normACity = aInfo.city.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                  var normATeamName = aInfo.teamName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+                  var hasHome = checkWords(normSearchStr, normHName) || checkWords(normSearchStr, normHCity) || checkWords(normSearchStr, normHTeamName);
+                  var hasAway = checkWords(normSearchStr, normAName) || checkWords(normSearchStr, normACity) || checkWords(normSearchStr, normATeamName);
 
                   if (!hasHome && !hasAway && (name.toLowerCase().length > 10 || lowerUrl.indexOf('match') >= 0)) {
                       isOtherMatch = true;
