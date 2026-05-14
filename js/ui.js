@@ -730,17 +730,16 @@ export function renderFluxItem(s, i, m) {
     var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
     var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
 
-    return '<div class="si" style="display:flex; flex-direction:column; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.2s; margin-bottom: 12px;">'
-      +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none;">'
+    return '<div class="si" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.2s; margin-bottom: 12px; padding-right:8px;">'
+      +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
       +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-      +'<div class="si-inf" style="flex:1;"><div class="si-n" style="font-weight:600; font-size:15px; margin-bottom:4px;">'+esc(s.name||'Flux '+(i+1))+'</div>'
-      +'<div class="si-s" style="font-size:12px; color:var(--muted);">'+(i===0?'Recommandé':'Alternatif')+'</div></div>'
+      +'<div class="si-inf" style="flex:1;"><div class="si-n" style="font-weight:600; font-size:15px;">'+esc(s.name||'Flux '+(i+1))+'</div></div>'
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
-      +'<div style="display:flex; border-top:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.2);">'
-        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1; padding:8px; background:'+(pref===1?'var(--accent)':'transparent')+'; border:none; border-right:1px solid rgba(255,255,255,0.08); color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">⭐</button>'
-        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1; padding:8px; background:'+(pref===-1?'var(--red)':'transparent')+'; border:none; border-right:1px solid rgba(255,255,255,0.08); color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">👎</button>'
-        +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="flex:2; padding:8px; background:transparent; border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px;"><span style="font-size:16px;">⊞</span> Multivision</button>'
+      +'<div style="display:flex; align-items:center; padding:8px; gap:4px; margin-left:auto;">'
+        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="width:36px; height:36px; border-radius:8px; background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">⭐</button>'
+        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="width:36px; height:36px; border-radius:8px; background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">👎</button>'
+        +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="padding:0 12px; height:36px; border-radius:8px; background:rgba(255,255,255,0.05); border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px; margin-left:4px;"><span style="font-size:16px;">⊞</span> Multivision</button>'
       +'</div>'
       +'</div>';
 }
