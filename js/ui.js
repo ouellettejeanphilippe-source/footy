@@ -730,18 +730,18 @@ export function renderFluxItem(s, i, m) {
     var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
     var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
 
-    return '<div class="si">'
-      +'<a href="#" onclick="'+ev+'" style="flex:1;min-width:0;display:flex;align-items:center;gap:16px;padding:16px;color:var(--text);text-decoration:none;">'
-      +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-      +'<div class="si-inf"><div class="si-n">'+esc(s.name||'Flux '+(i+1))+'</div>'
-      +'<div class="si-s">'+(i===0?'Recommandé':'Alternatif')+'</div></div>'
+    return '<div class="si" style="display:flex; flex-direction:column; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.2s; margin-bottom: 12px;">'
+      +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none;">'
+      +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
+      +'<div class="si-inf" style="flex:1;"><div class="si-n" style="font-weight:600; font-size:15px; margin-bottom:4px;">'+esc(s.name||'Flux '+(i+1))+'</div>'
+      +'<div class="si-s" style="font-size:12px; color:var(--muted);">'+(i===0?'Recommandé':'Alternatif')+'</div></div>'
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
-      +'<div style="display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.08);flex-shrink:0;width:40px;">'
-        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1;background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.02)')+';border:none;border-bottom:1px solid rgba(255,255,255,0.08);color:'+(pref===1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">⭐</button>'
-        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1;background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.02)')+';border:none;color:'+(pref===-1?'#fff':'var(--muted)')+';cursor:pointer;font-size:14px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;">👎</button>'
+      +'<div style="display:flex; border-top:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.2);">'
+        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="flex:1; padding:8px; background:'+(pref===1?'var(--accent)':'transparent')+'; border:none; border-right:1px solid rgba(255,255,255,0.08); color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">⭐</button>'
+        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="flex:1; padding:8px; background:'+(pref===-1?'var(--red)':'transparent')+'; border:none; border-right:1px solid rgba(255,255,255,0.08); color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">👎</button>'
+        +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="flex:2; padding:8px; background:transparent; border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px;"><span style="font-size:16px;">⊞</span> Multivision</button>'
       +'</div>'
-      +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="background:rgba(255,255,255,0.02);border:none;border-left:1px solid rgba(255,255,255,0.08);color:var(--text);width:50px;cursor:pointer;transition:background 0.2s;flex-shrink:0;font-size:20px;display:flex;align-items:center;justify-content:center;">⊞</button>'
       +'</div>';
 }
 
@@ -751,57 +751,50 @@ export function openMod(m,col){
   var hLogo = m.homeLogo || getLogo(m.homeTeam);
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
 
-  // Create a layout inspired by "The Score" scoreboard
-  var html = '<div style="display:flex; flex-direction:column; width: 100%; gap: 16px;">';
-
-  // Top: League & Metadata centered
-  var liveBadge = m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : '';
-  html += '<div style="text-align:center; font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">';
-  html += m.flag + ' ' + esc(m.league) + ' <span style="margin:0 8px; opacity:0.5;">•</span> ' + esc(m.startTime) + liveBadge;
-  html += '</div>';
-
-  // Middle: Home Team | Score & Scorers | Away Team
-  html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; width: 100%; padding: 0 10px;">';
-
-  // Home Team Column
-  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
-  html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
-  if(hLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(hLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.homeTeam) + '</span>';
-  html += '</div>';
-  if(m.score) {
-      html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[0] + '</div>';
-  }
-  html += '<div id="home-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
-  html += '</div>';
-
-  // Middle spacer (optional VS if no score)
-  html += '<div style="flex: 0.2; display:flex; justify-content:center; align-items:center; margin-top:25px;">';
-  if(!m.score) {
-      html += '<div style="font-weight:700; font-size:16px; color:var(--muted);">VS</div>';
-  } else {
-      html += '<div style="font-weight:700; font-size:20px; color:var(--muted);">-</div>';
-  }
-  html += '</div>';
-
-  // Away Team Column
-  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
-  html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
-  if(aLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(aLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.awayTeam) + '</span>';
-  html += '</div>';
-  if(m.score) {
-      html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[1] + '</div>';
-  }
-  html += '<div id="away-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
-  html += '</div>';
-
-  html += '</div></div>';
+  // Re-structure to 2 columns on desktop
+  // Left: score layout, right: poster image / empty space
+  var html = `
+  <div style="display:flex; flex-direction:row; flex-wrap:wrap; width: 100%; gap: 16px;">
+      <div style="flex:1; min-width:300px; display:flex; flex-direction:column; gap: 16px;" id="modal-left-col">
+          <div style="text-align:center; font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">
+              ${m.flag} ${esc(m.league)} <span style="margin:0 8px; opacity:0.5;">•</span> ${esc(m.startTime)}
+              ${m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : ''}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; width: 100%; padding: 0 10px;">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">
+                  <div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats('${escJs(m.homeTeam)}')">
+                      ${hLogo ? `<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="${esc(hLogo)}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display='none'"></div>` : ''}
+                      <span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">${formatTeamNameBreak(m.homeTeam)}</span>
+                  </div>
+                  ${m.score ? `<div style="font-weight:800; font-size:28px; color:var(--text);">${m.score[0]}</div>` : ''}
+                  <div id="home-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>
+              </div>
+              <div style="flex: 0.2; display:flex; justify-content:center; align-items:center; margin-top:25px;">
+                  ${!m.score ? '<div style="font-weight:700; font-size:16px; color:var(--muted);">VS</div>' : '<div style="font-weight:700; font-size:20px; color:var(--muted);">-</div>'}
+              </div>
+              <div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">
+                  <div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats('${escJs(m.awayTeam)}')">
+                      ${aLogo ? `<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="${esc(aLogo)}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display='none'"></div>` : ''}
+                      <span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">${formatTeamNameBreak(m.awayTeam)}</span>
+                  </div>
+                  ${m.score ? `<div style="font-weight:800; font-size:28px; color:var(--text);">${m.score[1]}</div>` : ''}
+                  <div id="away-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>
+              </div>
+          </div>
+          <div id="modal-stats-container"></div>
+      </div>
+      <div style="flex:1; min-width:300px; display:flex; flex-direction:column; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
+          <!-- Poster / Cover Image Placeholder -->
+          <div style="width:100%; aspect-ratio: 16/9; background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5)); border-radius:8px; display:flex; justify-content:center; align-items:center; overflow:hidden; position:relative;">
+              <div style="position:absolute; inset:0; background: url('${m.poster || ''}') center/cover no-repeat; opacity: 0.6;"></div>
+              <div style="z-index:1; font-weight:bold; font-size:24px; color:rgba(255,255,255,0.3);">${esc(m.league)}</div>
+          </div>
+      </div>
+  </div>`;
 
   document.getElementById('mname').innerHTML = html;
-  document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam; // for the stats checker
+  document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam;
 
-  // Clear the original elements since we combined them
   document.getElementById('mmeta').innerHTML = '';
   document.getElementById('mscore').innerHTML = '';
 
@@ -879,9 +872,13 @@ export function openMod(m,col){
                   stDiv.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.03)'; this.style.borderColor = 'rgba(255,255,255,0.05)'; };
                   stDiv.onclick = function() { closeMod(); openGlobalStatsFromMatch(m.id); };
                   stDiv.innerHTML = '<div style="max-width:100%; margin:0 auto;">' + extraHtml + '<div style="text-align:center; margin-top:12px; font-size:12px; font-weight:600; color:var(--accent);">Analyses du match <span style="font-size:10px;">➔</span></div></div>';
-                  // Prepend inside mbody so it spans full width and looks clean before the links
-                  var mbody = document.getElementById('mbody');
-                  mbody.insertBefore(stDiv, mbody.firstChild);
+                  var statsCont = document.getElementById('modal-stats-container');
+                  if (statsCont) {
+                      statsCont.appendChild(stDiv);
+                  } else {
+                      var mbody = document.getElementById('mbody');
+                      if(mbody) mbody.insertBefore(stDiv, mbody.firstChild);
+                  }
               }
           }).catch(function(e) {});
       }
