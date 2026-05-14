@@ -1180,6 +1180,11 @@ export function fetchSubPages(matches){
   // We use a limited concurrency pool so we don't spam the proxy/network
   var concurrency=3;
   var queue=matches.filter(function(m){
+      if (m.status === 'live' && !m.refreshedOnStart) {
+          m.refreshedOnStart = true;
+          m.streamsLoaded = false;
+      }
+
       // if it has >= 100 streams, skip
       if (m.streamLinks && m.streamLinks.length >= 100) {
           m.streamsLoaded = true;
@@ -1248,6 +1253,11 @@ export function fetchSubPages(matches){
 }
 
 export function scrapeMatchFlux(m, forceRefresh){
+  if (m.status === 'live' && !m.refreshedOnStartScrape) {
+      m.refreshedOnStartScrape = true;
+      forceRefresh = true;
+  }
+
   if (!forceRefresh && m.streamLinks && m.streamLinks.length >= 100) {
       lg('Scrape skipped, already has >= 100 streams', m.homeTeam);
       m.streamsLoaded = true;

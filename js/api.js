@@ -389,6 +389,8 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
           if (prevMatch.matchUrl && !am.matchUrl) {
               am.matchUrl = prevMatch.matchUrl;
           }
+          am.refreshedOnStart = prevMatch.refreshedOnStart;
+          am.refreshedOnStartScrape = prevMatch.refreshedOnStartScrape;
       }
   });
 
