@@ -507,6 +507,22 @@ export function fetchGameStats(matchId) {
         return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
             var scorers = [];
             var hRank = '', aRank = '', hForm = '', aForm = '';
+            var articlePhoto = null, articleText = null, espnLink = null;
+
+            if (data.article) {
+                var article = Array.isArray(data.article) ? data.article[0] : data.article;
+                if (article) {
+                    articleText = article.description || article.headline || null;
+                    if (article.images && article.images.length > 0) {
+                        articlePhoto = article.images[0].url;
+                    }
+                }
+            }
+            if (data.header && data.header.links) {
+                var sumLink = data.header.links.find(function(l) { return l.rel && l.rel.indexOf('summary') > -1; });
+                if (sumLink) espnLink = sumLink.href;
+            }
+
             if (data.header && data.header.competitions && data.header.competitions[0]) {
                 var comp = data.header.competitions[0];
                 if (comp.details) {
@@ -545,7 +561,7 @@ export function fetchGameStats(matchId) {
                     });
                 }
             }
-            return { source: 'espn', data: data, scorers: scorers, hRank: hRank, aRank: aRank, hForm: hForm, aForm: aForm };
+            return { source: 'espn', data: data, scorers: scorers, hRank: hRank, aRank: aRank, hForm: hForm, aForm: aForm, articlePhoto: articlePhoto, articleText: articleText, espnLink: espnLink };
         }).catch(function(e) {
             return Promise.reject(e);
         });
