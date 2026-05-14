@@ -733,7 +733,7 @@ export function renderFluxItem(s, i, m) {
     return '<div class="si" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.2s; margin-bottom: 12px; padding-right:8px;">'
       +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
       +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-      +'<div class="si-inf" style="flex:1;"><div class="si-n" style="font-weight:600; font-size:15px;">'+esc(s.name||'Flux '+(i+1))+'</div></div>'
+      +'<div class="si-inf" style="flex:1; overflow:hidden;"><div class="si-n" style="font-weight:600; font-size:15px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+'</div></div>'
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
       +'<div style="display:flex; align-items:center; padding:8px; gap:4px; margin-left:auto;">'
@@ -754,7 +754,7 @@ export function openMod(m,col){
   // Left: score layout, right: poster image / empty space
   var html = `
   <div style="display:flex; flex-direction:row; flex-wrap:wrap; width: 100%; gap: 16px;">
-      <div style="flex:1; min-width:300px; display:flex; flex-direction:column; gap: 16px;" id="modal-left-col">
+      <div style="flex:1; min-width:250px; display:flex; flex-direction:column; gap: 16px;" id="modal-left-col">
           <div style="text-align:center; font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">
               ${m.flag} ${esc(m.league)} <span style="margin:0 8px; opacity:0.5;">•</span> ${esc(m.startTime)}
               ${m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : ''}
@@ -782,7 +782,7 @@ export function openMod(m,col){
           </div>
           <div id="modal-stats-container"></div>
       </div>
-      <div style="flex:1; min-width:300px; display:flex; flex-direction:column; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
+      <div style="flex:1; min-width:250px; display:flex; flex-direction:column; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
           <!-- Poster / Cover Image Placeholder -->
           <div id="modal-poster-container" style="width:100%; aspect-ratio: 16/9; background: linear-gradient(45deg, ${m.color ? m.color + '40' : 'rgba(255,255,255,0.05)'}, rgba(0,0,0,0.8)); border-radius:8px; display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:hidden; position:relative; padding: 16px;">
               <div id="modal-poster-bg" style="position:absolute; inset:0; background: url('${m.poster || ''}') center/cover no-repeat; opacity: 0.6;"></div>
@@ -828,10 +828,12 @@ export function openMod(m,col){
 
               var extraHtml = '';
               if (res.hRank || res.aRank || res.hForm || res.aForm) {
-                  extraHtml += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.5); margin-bottom:10px; padding: 0 10px;">';
-                  extraHtml += '<div style="flex:1; text-align:center;">' + (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '') + '</div>';
+                  extraHtml += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.7); margin-bottom:10px; padding: 0 10px;">';
+                  var hFmt = (res.hRank ? '<span style="font-weight:bold; color:var(--text);">#' + res.hRank + '</span> ' : '') + (res.hForm ? '<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; margin-left:4px;">' + res.hForm + '</span>' : '');
+                  var aFmt = (res.aRank ? '<span style="font-weight:bold; color:var(--text);">#' + res.aRank + '</span> ' : '') + (res.aForm ? '<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; margin-left:4px;">' + res.aForm + '</span>' : '');
+                  extraHtml += '<div style="flex:1; text-align:center; display:flex; justify-content:center; align-items:center;">' + hFmt + '</div>';
                   extraHtml += '<div style="flex:0.8;"></div>'; // Spacer for score
-                  extraHtml += '<div style="flex:1; text-align:center;">' + (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '') + '</div>';
+                  extraHtml += '<div style="flex:1; text-align:center; display:flex; justify-content:center; align-items:center;">' + aFmt + '</div>';
                   extraHtml += '</div>';
               }
 
@@ -854,7 +856,8 @@ export function openMod(m,col){
                   if (homeScorersModal) {
                       var hHtml = '';
                       hScorers.forEach(function(s) {
-                          hHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + '</div>';
+                          var passerHtml = s.passer ? ' <span style="font-size:10px; opacity:0.8;">(' + esc(s.passer) + ')</span>' : '';
+                          hHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + passerHtml + '</div>';
                       });
                       homeScorersModal.innerHTML = hHtml;
                   }
@@ -863,7 +866,8 @@ export function openMod(m,col){
                   if (awayScorersModal) {
                       var aHtml = '';
                       aScorers.forEach(function(s) {
-                          aHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + '</div>';
+                          var passerHtml = s.passer ? ' <span style="font-size:10px; opacity:0.8;">(' + esc(s.passer) + ')</span>' : '';
+                          aHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + passerHtml + '</div>';
                       });
                       awayScorersModal.innerHTML = aHtml;
                   }
