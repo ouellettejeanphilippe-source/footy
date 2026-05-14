@@ -6,7 +6,7 @@ import { TARGET_DATE, fetchGameStats, renderScorersHtml } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { isMatch } from './match.js';
-import { DEFAULT_LEAGUES } from './main.js';
+import { DEFAULT_LEAGUES } from './db.js';
 
 /* ══ EPG / LISTE ════════════════════════ */
 export function getOriginalMatchId(id) {
@@ -96,9 +96,18 @@ export function buildEPG(matches){
       if (b === 'Autres Flux') return -1;
 
       // Custom League Order User Preference
-      var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
-      var idxA = displayOrder.indexOf(a);
-      var idxB = displayOrder.indexOf(b);
+      var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
+      var allLgs = Object.keys(DEFAULT_LEAGUES);
+      allLgs.forEach(function(l) {
+          if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
+      });
+
+      var idxA = -1;
+      var idxB = -1;
+      for (var i = 0; i < displayOrder.length; i++) {
+          if (displayOrder[i].toUpperCase() === a.toUpperCase()) idxA = i;
+          if (displayOrder[i].toUpperCase() === b.toUpperCase()) idxB = i;
+      }
 
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
       if (idxA !== -1) return -1;
@@ -213,9 +222,19 @@ export function buildEPG(matches){
           lgOrder.sort(function(a, b) {
               if (a === 'Autres Flux') return 1;
               if (b === 'Autres Flux') return -1;
-              var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
-      var idxA = displayOrder.indexOf(a);
-      var idxB = displayOrder.indexOf(b);
+              var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
+              var allLgs = Object.keys(DEFAULT_LEAGUES);
+              allLgs.forEach(function(l) {
+                  if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
+              });
+
+              var idxA = -1;
+              var idxB = -1;
+              for (var i = 0; i < displayOrder.length; i++) {
+                  if (displayOrder[i].toUpperCase() === a.toUpperCase()) idxA = i;
+                  if (displayOrder[i].toUpperCase() === b.toUpperCase()) idxB = i;
+              }
+
               if (idxA !== -1 && idxB !== -1) return idxA - idxB;
               if (idxA !== -1) return -1;
               if (idxB !== -1) return 1;
