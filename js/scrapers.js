@@ -1180,8 +1180,8 @@ export function fetchSubPages(matches){
   // We use a limited concurrency pool so we don't spam the proxy/network
   var concurrency=3;
   var queue=matches.filter(function(m){
-      // if it has >= 20 streams, skip
-      if (m.streamLinks && m.streamLinks.length >= 20) {
+      // if it has >= 100 streams, skip
+      if (m.streamLinks && m.streamLinks.length >= 100) {
           m.streamsLoaded = true;
           return false;
       }
@@ -1248,8 +1248,8 @@ export function fetchSubPages(matches){
 }
 
 export function scrapeMatchFlux(m, forceRefresh){
-  if (!forceRefresh && m.streamLinks && m.streamLinks.length >= 20) {
-      lg('Scrape skipped, already has >= 20 streams', m.homeTeam);
+  if (!forceRefresh && m.streamLinks && m.streamLinks.length >= 100) {
+      lg('Scrape skipped, already has >= 100 streams', m.homeTeam);
       m.streamsLoaded = true;
       return Promise.resolve();
   }
@@ -1490,8 +1490,8 @@ export function scrapeMatchFlux(m, forceRefresh){
         }
     });
 
-    // S'assurer qu'on affiche un maximum de streams (40)
-    m.streamLinks = combinedLinks.slice(0, 100);
+    // S'assurer qu'on affiche un maximum de streams (200)
+    m.streamLinks = combinedLinks.slice(0, 200);
     m.streamsLoaded=true;
     saveStreamCache(m.id, m.streamLinks);
     updateMatchUiAfterScrape(m);
