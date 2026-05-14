@@ -714,6 +714,7 @@ export var QC ={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
 export var QI ={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
 export function renderFluxItem(s, i, m) {
+    var isMvChange = !!window.multiviewPendingAction;
     var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"')";
 
     var addMvEv = "";
@@ -729,6 +730,16 @@ export function renderFluxItem(s, i, m) {
     var pref = domainPrefs[dom] || 0;
     var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
     var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
+
+    if (isMvChange) {
+        var hLogo = m.homeLogo || getLogo(m.homeTeam);
+        var recClass = (i === 0) ? 'recommended' : '';
+        // Uses the openFlux logic natively since it will replace or add based on the multiviewPendingAction state
+        return '<button onclick="'+ev+'" class="mv-stream-pill ' + recClass + '">'
+            + (hLogo ? '<img src="'+esc(hLogo)+'" style="width:16px; height:16px; object-fit:contain;" onerror="this.style.display=\'none\'"> ' : (s.icon||QI[s.quality]||'📺') + ' ')
+            + '<span>' + esc(s.name||'Flux '+(i+1)) + '</span>'
+            + '</button>';
+    }
 
     return '<div class="si">'
       +'<a href="#" onclick="'+ev+'" style="flex:1;min-width:0;display:flex;align-items:center;gap:16px;padding:16px;color:var(--text);text-decoration:none;">'
@@ -746,57 +757,96 @@ export function renderFluxItem(s, i, m) {
 }
 
 export function openMod(m,col){
+  var isMvChange = !!window.multiviewPendingAction;
+  var modalEl = document.querySelector('.modal');
+  if(modalEl) {
+      if(isMvChange) {
+          modalEl.classList.add('bottom-sheet');
+      } else {
+          modalEl.classList.remove('bottom-sheet');
+      }
+  }
+
   document.getElementById('mdot').style.background=col||'#888';
+  if(isMvChange) {
+      document.getElementById('mdot').style.display = 'none';
+  } else {
+      document.getElementById('mdot').style.display = 'block';
+  }
 
   var hLogo = m.homeLogo || getLogo(m.homeTeam);
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
 
-  // Create a layout inspired by "The Score" scoreboard
-  var html = '<div style="display:flex; flex-direction:column; width: 100%; gap: 16px;">';
+  var html = '';
 
-  // Top: League & Metadata centered
-  var liveBadge = m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : '';
-  html += '<div style="text-align:center; font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">';
-  html += m.flag + ' ' + esc(m.league) + ' <span style="margin:0 8px; opacity:0.5;">•</span> ' + esc(m.startTime) + liveBadge;
-  html += '</div>';
+  if (isMvChange) {
+      // Simplified header for multiview selection (bottom sheet)
+      html += '<div style="display:flex; flex-direction:column; width: 100%; gap: 12px; padding: 0;">';
+      html += '<div style="font-size:16px; font-weight:700; color:var(--text); text-align:center; margin-bottom: 8px;">Options de diffusion</div>';
 
-  // Middle: Home Team | Score & Scorers | Away Team
-  html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; width: 100%; padding: 0 10px;">';
+      html += '<div style="display:flex; justify-content:center; align-items:center; gap:16px;">';
 
-  // Home Team Column
-  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
-  html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
-  if(hLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(hLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.homeTeam) + '</span>';
-  html += '</div>';
-  if(m.score) {
-      html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[0] + '</div>';
-  }
-  html += '<div id="home-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
-  html += '</div>';
+      html += '<div style="display:flex; align-items:center; gap:8px;">';
+      if(hLogo) html += '<img src="'+esc(hLogo)+'" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display=\'none\'">';
+      html += '<span style="font-weight:600; font-size:14px;">' + formatTeamNameBreak(m.homeTeam).replace('<br>', ' ') + '</span>';
+      html += '</div>';
 
-  // Middle spacer (optional VS if no score)
-  html += '<div style="flex: 0.2; display:flex; justify-content:center; align-items:center; margin-top:25px;">';
-  if(!m.score) {
-      html += '<div style="font-weight:700; font-size:16px; color:var(--muted);">VS</div>';
+      html += '<div style="font-weight:700; font-size:12px; color:var(--muted);">VS</div>';
+
+      html += '<div style="display:flex; align-items:center; gap:8px;">';
+      if(aLogo) html += '<img src="'+esc(aLogo)+'" style="width:24px; height:24px; object-fit:contain;" onerror="this.style.display=\'none\'">';
+      html += '<span style="font-weight:600; font-size:14px;">' + formatTeamNameBreak(m.awayTeam).replace('<br>', ' ') + '</span>';
+      html += '</div>';
+
+      html += '</div></div>';
   } else {
-      html += '<div style="font-weight:700; font-size:20px; color:var(--muted);">-</div>';
-  }
-  html += '</div>';
+      // Standard layout inspired by "The Score" scoreboard
+      html += '<div style="display:flex; flex-direction:column; width: 100%; gap: 16px;">';
 
-  // Away Team Column
-  html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
-  html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
-  if(aLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(aLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
-  html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.awayTeam) + '</span>';
-  html += '</div>';
-  if(m.score) {
-      html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[1] + '</div>';
-  }
-  html += '<div id="away-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
-  html += '</div>';
+      // Top: League & Metadata centered
+      var liveBadge = m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : '';
+      html += '<div style="text-align:center; font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">';
+      html += m.flag + ' ' + esc(m.league) + ' <span style="margin:0 8px; opacity:0.5;">•</span> ' + esc(m.startTime) + liveBadge;
+      html += '</div>';
 
-  html += '</div></div>';
+      // Middle: Home Team | Score & Scorers | Away Team
+      html += '<div style="display:flex; justify-content:space-between; align-items:flex-start; width: 100%; padding: 0 10px;">';
+
+      // Home Team Column
+      html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
+      html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.homeTeam) + '\')">';
+      if(hLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(hLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
+      html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.homeTeam) + '</span>';
+      html += '</div>';
+      if(m.score) {
+          html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[0] + '</div>';
+      }
+      html += '<div id="home-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
+      html += '</div>';
+
+      // Middle spacer (optional VS if no score)
+      html += '<div style="flex: 0.2; display:flex; justify-content:center; align-items:center; margin-top:25px;">';
+      if(!m.score) {
+          html += '<div style="font-weight:700; font-size:16px; color:var(--muted);">VS</div>';
+      } else {
+          html += '<div style="font-weight:700; font-size:20px; color:var(--muted);">-</div>';
+      }
+      html += '</div>';
+
+      // Away Team Column
+      html += '<div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">';
+      html += '<div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats(\'' + escJs(m.awayTeam) + '\')">';
+      if(aLogo) html += '<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="'+esc(aLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\'none\'"></div>';
+      html += '<span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">' + formatTeamNameBreak(m.awayTeam) + '</span>';
+      html += '</div>';
+      if(m.score) {
+          html += '<div style="font-weight:800; font-size:28px; color:var(--text);">' + m.score[1] + '</div>';
+      }
+      html += '<div id="away-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>';
+      html += '</div>';
+
+      html += '</div></div>';
+  }
 
   document.getElementById('mname').innerHTML = html;
   document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam; // for the stats checker
@@ -805,92 +855,93 @@ export function openMod(m,col){
   document.getElementById('mmeta').innerHTML = '';
   document.getElementById('mscore').innerHTML = '';
 
-  if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
-
-  function fetchAndRenderModalStats() {
-      if (m.id && m.id.startsWith('espn_')) {
-          fetchGameStats(m.id).then(function(res) {
-              var scoreCont = document.getElementById('mscore');
-              if (!scoreCont || document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) === -1) {
-                  if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
-                  return;
-              }
-
-              var mHomeId = null, mAwayId = null;
-              if (res.data && res.data.header && res.data.header.competitions && res.data.header.competitions[0] && res.data.header.competitions[0].competitors) {
-                  var c = res.data.header.competitions[0].competitors;
-                  var hC = c.find(function(x) { return x.homeAway === 'home'; });
-                  var aC = c.find(function(x) { return x.homeAway === 'away'; });
-                  if(hC) mHomeId = hC.id;
-                  if(aC) mAwayId = aC.id;
-              }
-
-              var extraHtml = '';
-              if (res.hRank || res.aRank || res.hForm || res.aForm) {
-                  extraHtml += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.5); margin-bottom:10px; padding: 0 10px;">';
-                  extraHtml += '<div style="flex:1; text-align:center;">' + (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '') + '</div>';
-                  extraHtml += '<div style="flex:0.8;"></div>'; // Spacer for score
-                  extraHtml += '<div style="flex:1; text-align:center;">' + (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '') + '</div>';
-                  extraHtml += '</div>';
-              }
-
-              if (res.scorers && res.scorers.length > 0) {
-                  var hScorers = [], aScorers = [];
-                  res.scorers.forEach(function(s) {
-                      if (s.isHome !== undefined) {
-                          if (s.isHome) hScorers.push(s);
-                          else aScorers.push(s);
-                      } else if (s.teamId) {
-                          if (mHomeId && s.teamId == mHomeId) hScorers.push(s);
-                          else if (mAwayId && s.teamId == mAwayId) aScorers.push(s);
-                          else aScorers.push(s);
-                      } else {
-                          aScorers.push(s);
-                      }
-                  });
-
-                  var homeScorersModal = document.getElementById('home-scorers-modal');
-                  if (homeScorersModal) {
-                      var hHtml = '';
-                      hScorers.forEach(function(s) {
-                          hHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + '</div>';
-                      });
-                      homeScorersModal.innerHTML = hHtml;
-                  }
-
-                  var awayScorersModal = document.getElementById('away-scorers-modal');
-                  if (awayScorersModal) {
-                      var aHtml = '';
-                      aScorers.forEach(function(s) {
-                          aHtml += '<div style="margin-top:2px;">⚽ ' + esc(s.player) + ' ' + esc(s.time) + '</div>';
-                      });
-                      awayScorersModal.innerHTML = aHtml;
-                  }
-              }
-
-              var existingStats = document.getElementById('modal-extra-stats');
-              if (existingStats) existingStats.remove();
-
-              if (extraHtml) {
-                  var stDiv = document.createElement('div');
-                  stDiv.id = 'modal-extra-stats';
-                  stDiv.style.cssText = 'padding:12px 16px; width:100%; background:rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 16px; cursor:pointer; transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.05);';
-                  stDiv.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.06)'; this.style.borderColor = 'rgba(255,255,255,0.1)'; };
-                  stDiv.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.03)'; this.style.borderColor = 'rgba(255,255,255,0.05)'; };
-                  stDiv.onclick = function() { closeMod(); openGlobalStatsFromMatch(m.id); };
-                  stDiv.innerHTML = '<div style="max-width:100%; margin:0 auto;">' + extraHtml + '<div style="text-align:center; margin-top:12px; font-size:12px; font-weight:600; color:var(--accent);">Analyses du match <span style="font-size:10px;">➔</span></div></div>';
-                  // Prepend inside mbody so it spans full width and looks clean before the links
-                  var mbody = document.getElementById('mbody');
-                  mbody.insertBefore(stDiv, mbody.firstChild);
-              }
-          }).catch(function(e) {});
+  var mftEl = document.querySelector('.mft');
+  if(mftEl) {
+      if(isMvChange) {
+          mftEl.style.display = 'none';
+      } else {
+          mftEl.style.display = 'flex'; // or whatever its original display is (it's flex in css usually or block)
       }
   }
 
-  fetchAndRenderModalStats();
-  if (window.modalStatsInterval) clearInterval(window.modalStatsInterval);
-  if (m.status === 'live') {
-      window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 300000);
+  if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
+
+  // Skip fetching global stats in mv change mode to keep it snappy
+  if (!isMvChange) {
+      function fetchAndRenderModalStats() {
+          if (m.id && m.id.startsWith('espn_')) {
+              fetchGameStats(m.id).then(function(res) {
+                  var scoreCont = document.getElementById('mscore');
+                  if (!scoreCont || document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) === -1) {
+                      if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
+                      return;
+                  }
+
+                  var mHomeId = null, mAwayId = null;
+                  if (res.data && res.data.header && res.data.header.competitions && res.data.header.competitions[0] && res.data.header.competitions[0].competitors) {
+                      var c = res.data.header.competitions[0].competitors;
+                      var hC = c.find(function(x) { return x.homeAway === 'home'; });
+                      var aC = c.find(function(x) { return x.homeAway === 'away'; });
+                      if(hC) mHomeId = hC.id;
+                      if(aC) mAwayId = aC.id;
+                  }
+
+                  var extraHtml = '';
+                  if (res.hRank || res.aRank || res.hForm || res.aForm) {
+                      extraHtml += '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.5); margin-bottom:10px; padding: 0 10px;">';
+                      extraHtml += '<div style="flex:1; text-align:center;">' + (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '') + '</div>';
+                      extraHtml += '<div style="flex:0.8;"></div>'; // Spacer for score
+                      extraHtml += '<div style="flex:1; text-align:center;">' + (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '') + '</div>';
+                      extraHtml += '</div>';
+                  }
+
+                  if (res.scorers && res.scorers.length > 0) {
+                      var hScorers = [], aScorers = [];
+                      res.scorers.forEach(function(s) {
+                          if (s.isHome !== undefined) {
+                              if (s.isHome) hScorers.push(s);
+                              else aScorers.push(s);
+                          } else if (s.teamId) {
+                              if (mHomeId && s.teamId == mHomeId) hScorers.push(s);
+                              else if (mAwayId && s.teamId == mAwayId) aScorers.push(s);
+                              else aScorers.push(s);
+                          } else {
+                              aScorers.push(s);
+                          }
+                      });
+
+                      var homeScorersModal = document.getElementById('home-scorers-modal');
+                      if (homeScorersModal) {
+                          homeScorersModal.innerHTML = renderScorersHtml(hScorers);
+                      }
+                      var awayScorersModal = document.getElementById('away-scorers-modal');
+                      if (awayScorersModal) {
+                          awayScorersModal.innerHTML = renderScorersHtml(aScorers);
+                      }
+                  }
+
+                  var existingStats = document.getElementById('modal-extra-stats');
+                  if (!existingStats && extraHtml) {
+                      var stDiv = document.createElement('div');
+                      stDiv.id = 'modal-extra-stats';
+                      stDiv.style.cssText = 'padding:12px 16px; width:100%; background:rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 16px; cursor:pointer; transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.05);';
+                      stDiv.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.06)'; this.style.borderColor = 'rgba(255,255,255,0.1)'; };
+                      stDiv.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.03)'; this.style.borderColor = 'rgba(255,255,255,0.05)'; };
+                      stDiv.onclick = function() { closeMod(); openGlobalStatsFromMatch(m.id); };
+                      stDiv.innerHTML = '<div style="max-width:100%; margin:0 auto;">' + extraHtml + '<div style="text-align:center; margin-top:12px; font-size:12px; font-weight:600; color:var(--accent);">Analyses du match <span style="font-size:10px;">➔</span></div></div>';
+                      // Prepend inside mbody so it spans full width and looks clean before the links
+                      var mbody = document.getElementById('mbody');
+                      mbody.insertBefore(stDiv, mbody.firstChild);
+                  }
+              }).catch(function(e) {});
+          }
+      }
+
+      fetchAndRenderModalStats();
+      if (window.modalStatsInterval) clearInterval(window.modalStatsInterval);
+      if (m.status === 'live') {
+          window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 300000);
+      }
   }
 
   var btnContainer = document.createElement('div');
@@ -922,10 +973,10 @@ export function openMod(m,col){
       refreshBtn.disabled = true;
   }
 
-  btnContainer.appendChild(refreshBtn);
-
-  // Since mmeta is cleared, append to mname which is our unified header
-  document.getElementById('mname').appendChild(btnContainer);
+  if (!isMvChange) {
+      btnContainer.appendChild(refreshBtn);
+      document.getElementById('mname').appendChild(btnContainer);
+  }
 
   var body=document.getElementById('mbody');
 
@@ -966,75 +1017,83 @@ export function openMod(m,col){
           }
           contentHtml += '</div>';
       } else {
-          contentHtml = sortedLinks.map(function(s,i){
+          if (isMvChange) {
+              contentHtml += '<div style="margin-bottom: 8px; font-size: 13px; color: var(--muted); padding-top: 10px;">Video Feed</div>';
+              contentHtml += '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
+          }
+          contentHtml += sortedLinks.map(function(s,i){
               return renderFluxItem(s, i, m);
           }).join('');
-      }
-
-      // Fallback manual links search
-      contentHtml += '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">';
-      contentHtml += '<details style="color: var(--muted); cursor: pointer;"><summary style="outline:none; font-weight: 500;">Recherche manuelle & Sites de base (Fallback)</summary>';
-      contentHtml += '<div style="padding: 10px 0; display: flex; flex-wrap: wrap; gap: 8px;">';
-
-      var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
-      var singleTeam = encodeURIComponent(m.homeTeam);
-
-      var baseSites = [
-          { name: 'Buffstreams', url: 'https://buffstreams.com.co/' },
-          { name: 'Footybite', url: 'https://footybite.to/' },
-          { name: 'Streameast', url: 'https://naturallyyou.fit/' },
-          { name: 'VIPLeague', url: 'https://vipleague.io/' },
-          { name: 'Totalsportek', url: 'https://www.totalsportek-real.com/' },
-          { name: 'Sportsurge', url: 'https://v2.sportsurge.net/home5/' }
-      ];
-
-      baseSites.forEach(function(site) {
-          contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none;">'+site.name+' 🔗</a>';
-      });
-      contentHtml += '</div>';
-
-      contentHtml += '<div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
-      contentHtml += '<div style="font-size: 12px; margin-bottom: 8px;">Ajouter un flux manuellement au Multiview (m3u8, iframe, url):</div>';
-      contentHtml += '<div style="display:flex; gap: 8px;">';
-      contentHtml += '<input type="text" id="manual-flux-input" placeholder="https://..." style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px;">';
-      contentHtml += '<button class="btn o" onclick="var v=document.getElementById(\'manual-flux-input\').value; if(v){ addToMultivision(v, \''+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+'\', \''+escJs(m.id)+'\'); closeMod(); }">Ajouter ⊞</button>';
-      contentHtml += '</div></div>';
-
-      // Look for scraped links that didn't merge
-      var unmerged = (S.matches || []).filter(function(x) {
-          return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
-      });
-      var possibleMatches = [];
-      var mH = normName(m.homeTeam);
-      var mA = normName(m.awayTeam);
-
-      unmerged.forEach(function(u) {
-          if (u.id === m.id || u.league !== 'Autres Flux') return; // ignore self or already merged ones
-          var uH = normName(u.homeTeam);
-          var uA = normName(u.awayTeam);
-          // Very loose fuzzy match for suggestions
-          if (isMatch(mH, uH) || isMatch(mH, uA) || isMatch(mA, uH) || isMatch(mA, uA)) {
-              possibleMatches.push(u);
-          }
-      });
-
-      if (possibleMatches.length > 0) {
-          contentHtml += '<div style="margin-top: 15px;">';
-          contentHtml += '<div style="font-size: 12px; margin-bottom: 8px; color: var(--accent);">Flux isolés pouvant correspondre :</div>';
-          contentHtml += '<div style="display: flex; flex-direction: column; gap: 8px;">';
-          possibleMatches.forEach(function(pm) {
-              contentHtml += '<div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">';
-              contentHtml += '<div style="font-size: 12px;">' + esc(pm.homeTeam) + ' vs ' + esc(pm.awayTeam) + ' <span style="opacity:0.5;">('+esc(pm.source)+')</span></div>';
-              if (pm.matchUrl) {
-                  contentHtml += '<button class="btn o" style="padding: 4px 8px; font-size: 11px;" onclick="addToMultivision(\''+escJs(pm.matchUrl)+'\', \''+escJs(pm.homeTeam)+' vs '+escJs(pm.awayTeam)+'\', \''+escJs(pm.id)+'\'); closeMod();">Lancer ⊞</button>';
-              }
+          if (isMvChange) {
               contentHtml += '</div>';
-          });
-          contentHtml += '</div></div>';
+          }
       }
 
-      contentHtml += '</details></div>';
+      if(!isMvChange) {
+          // Fallback manual links search
+          contentHtml += '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">';
+          contentHtml += '<details style="color: var(--muted); cursor: pointer;"><summary style="outline:none; font-weight: 500;">Recherche manuelle & Sites de base (Fallback)</summary>';
+          contentHtml += '<div style="padding: 10px 0; display: flex; flex-wrap: wrap; gap: 8px;">';
 
+          var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
+          var singleTeam = encodeURIComponent(m.homeTeam);
+
+          var baseSites = [
+              { name: 'Buffstreams', url: 'https://buffstreams.com.co/' },
+              { name: 'Footybite', url: 'https://footybite.to/' },
+              { name: 'Streameast', url: 'https://naturallyyou.fit/' },
+              { name: 'VIPLeague', url: 'https://vipleague.io/' },
+              { name: 'Totalsportek', url: 'https://www.totalsportek-real.com/' },
+              { name: 'Sportsurge', url: 'https://v2.sportsurge.net/home5/' }
+          ];
+
+          baseSites.forEach(function(site) {
+              contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none;">'+site.name+' 🔗</a>';
+          });
+          contentHtml += '</div>';
+
+          contentHtml += '<div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
+          contentHtml += '<div style="font-size: 12px; margin-bottom: 8px;">Ajouter un flux manuellement au Multiview (m3u8, iframe, url):</div>';
+          contentHtml += '<div style="display:flex; gap: 8px;">';
+          contentHtml += '<input type="text" id="manual-flux-input" placeholder="https://..." style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px;">';
+          contentHtml += '<button class="btn o" onclick="var v=document.getElementById(\'manual-flux-input\').value; if(v){ addToMultivision(v, \''+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+'\', \''+escJs(m.id)+'\'); closeMod(); }">Ajouter ⊞</button>';
+          contentHtml += '</div></div>';
+
+          // Look for scraped links that didn't merge
+          var unmerged = (S.matches || []).filter(function(x) {
+              return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
+          });
+          var possibleMatches = [];
+          var mH = normName(m.homeTeam);
+          var mA = normName(m.awayTeam);
+
+          unmerged.forEach(function(u) {
+              if (u.id === m.id || u.league !== 'Autres Flux') return; // ignore self or already merged ones
+              var uH = normName(u.homeTeam);
+              var uA = normName(u.awayTeam);
+              // Very loose fuzzy match for suggestions
+              if (isMatch(mH, uH) || isMatch(mH, uA) || isMatch(mA, uH) || isMatch(mA, uA)) {
+                  possibleMatches.push(u);
+              }
+          });
+
+          if (possibleMatches.length > 0) {
+              contentHtml += '<div style="margin-top: 15px;">';
+              contentHtml += '<div style="font-size: 12px; margin-bottom: 8px; color: var(--accent);">Flux isolés pouvant correspondre :</div>';
+              contentHtml += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+              possibleMatches.forEach(function(pm) {
+                  contentHtml += '<div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">';
+                  contentHtml += '<div style="font-size: 12px;">' + esc(pm.homeTeam) + ' vs ' + esc(pm.awayTeam) + ' <span style="opacity:0.5;">('+esc(pm.source)+')</span></div>';
+                  if (pm.matchUrl) {
+                      contentHtml += '<button class="btn o" style="padding: 4px 8px; font-size: 11px;" onclick="addToMultivision(\''+escJs(pm.matchUrl)+'\', \''+escJs(pm.homeTeam)+' vs '+escJs(pm.awayTeam)+'\', \''+escJs(pm.id)+'\'); closeMod();">Lancer ⊞</button>';
+                  }
+                  contentHtml += '</div>';
+              });
+              contentHtml += '</div></div>';
+          }
+
+          contentHtml += '</details></div>';
+      }
       body.innerHTML = contentHtml;
       document.getElementById('mbg').classList.add('open');
   }
