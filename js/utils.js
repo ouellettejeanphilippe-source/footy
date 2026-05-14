@@ -290,7 +290,7 @@ export function applySportFilter(sport){
 
   if(sport) {
       if (sport === 'all') {
-          S.hiddenLg = {'Autres Flux': true};
+          S.hiddenLg = {};
       } else {
           // If we were previously showing 'all' (none hidden), first hide all EXCEPT the clicked one
           // to easily select just one league to start with.
@@ -298,12 +298,12 @@ export function applySportFilter(sport){
           var sports = {};
           S.matches.forEach(function(m){ sports[m.league]=true; });
           Object.keys(sports).forEach(function(k) {
-              if (k !== 'Autres Flux' && S.hiddenLg[k]) allWereVisible = false;
+              if (S.hiddenLg[k]) allWereVisible = false;
           });
 
           if (allWereVisible) {
               Object.keys(sports).forEach(function(k) {
-                  if (k !== 'Autres Flux') S.hiddenLg[k] = true;
+                  S.hiddenLg[k] = true;
               });
               S.hiddenLg[sport] = false; // Show only clicked
           } else {
@@ -313,9 +313,9 @@ export function applySportFilter(sport){
               // If user manually unhid everything one by one, effectively it's 'all'
               var anyHidden = false;
               Object.keys(sports).forEach(function(k) {
-                  if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+                  if (S.hiddenLg[k]) anyHidden = true;
               });
-              if (!anyHidden) S.hiddenLg = {'Autres Flux': true};
+              if (!anyHidden) S.hiddenLg = {};
           }
       }
   }
@@ -323,12 +323,11 @@ export function applySportFilter(sport){
   if(sfContainer) {
       var anyHidden = false;
       Object.keys(S.hiddenLg).forEach(function(k) {
-          if (k !== 'Autres Flux' && S.hiddenLg[k]) anyHidden = true;
+          if (S.hiddenLg[k]) anyHidden = true;
       });
 
       var buttons = sfContainer.querySelectorAll('.sport-btn');
       buttons.forEach(function(b) {
-          if (b.id === 'btn-autres-flux') return;
           var onClickStr = b.getAttribute('onclick') || '';
           if (onClickStr.indexOf("'all'") !== -1) {
               if (!anyHidden) b.classList.add('active-toggle');
@@ -381,19 +380,6 @@ export function toggleLeague(lgName) {
   });
 }
 
-export function toggleAutresFlux() {
-    S.hiddenLg['Autres Flux'] = !S.hiddenLg['Autres Flux'];
-    var btn = document.getElementById('btn-autres-flux');
-    if(btn) {
-        if (!S.hiddenLg['Autres Flux']) btn.classList.add('active-toggle');
-        else btn.classList.remove('active-toggle');
-    }
-    var containers = document.querySelectorAll('[data-lg="Autres Flux"]');
-    containers.forEach(function(c) {
-        c.style.display = S.hiddenLg['Autres Flux'] ? 'none' : (c.classList.contains('mrow') || c.classList.contains('marea-row') ? 'flex' : 'block');
-    });
-}
-
 export function toggleAccordion(lgName) {
   S.collapsedLg[lgName] = !S.collapsedLg[lgName];
   var isC = S.collapsedLg[lgName];
@@ -425,7 +411,6 @@ window.applyFilter = applyFilter;
 window.openMultiviewTab = openMultiviewTab;
 window.applySportFilter = applySportFilter;
 window.toggleLeague = toggleLeague;
-window.toggleAutresFlux = toggleAutresFlux;
 window.toggleAccordion = toggleAccordion;
 window.resolveStreamUrl = resolveStreamUrl;
 
