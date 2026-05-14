@@ -7,7 +7,7 @@ import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS } from './db.js';
 
 /* ══ CONFIG ═════════════════════════════ */
-export var SITE = 'https://www.footybite.do/';
+export var SITE = 'https://army.footybite.to';
 export var MLBITE_URL = 'https://nflbite.is/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
 export var MLBBITE_PLUS_URL = 'https://mlbbite.plus';
 export var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
