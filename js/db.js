@@ -9,7 +9,13 @@ export var NORM_TEAM_KEYS = {};
 for (var key in TEAM_DATA) {
     var data = TEAM_DATA[key];
     if (data.name && data.league) {
-        STATIC_TEAMS.push({ name: data.name, league: data.league });
+        if (Array.isArray(data.league)) {
+            data.league.forEach(function(lg) {
+                STATIC_TEAMS.push({ name: data.name, league: lg });
+            });
+        } else {
+            STATIC_TEAMS.push({ name: data.name, league: data.league });
+        }
     }
     if (data.colors) {
         TEAM_COLORS[data.name.toLowerCase()] = data.colors;
