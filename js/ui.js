@@ -777,58 +777,10 @@ export function openMod(m,col){
   var hLogo = m.homeLogo || getLogo(m.homeTeam);
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
 
-  // Re-structure to 2 columns on desktop
-  // Left: score layout, right: poster image / empty space
-  var html = `
-  <div style="display:flex; flex-direction:row; flex-wrap:wrap; width: 100%; gap: 16px;">
-      <div style="flex:1; min-width:250px; display:flex; flex-direction:column; gap: 16px;" id="modal-left-col">
-          <div style="text-align:center; font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.5px;">
-              ${m.flag} ${esc(m.league)} <span style="margin:0 8px; opacity:0.5;">•</span> ${esc(m.startTime)}
-              ${m.status === 'live' ? '<span style="color:var(--red); font-weight:800; font-size:12px; margin-left:8px;">🔴 ' + (m.minute ? esc(m.minute) + "'" : 'LIVE') + '</span>' : ''}
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; width: 100%; padding: 0 10px;">
-              <div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">
-                  <div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats('${escJs(m.homeTeam)}')">
-                      ${hLogo ? `<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="${esc(hLogo)}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display='none'"></div>` : ''}
-                      <span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">${formatTeamNameBreak(m.homeTeam)}</span>
-                  </div>
-                  ${m.score ? `<div style="font-weight:800; font-size:28px; color:var(--text);">${m.score[0]}</div>` : ''}
-                  <div id="home-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>
-              </div>
-              <div style="flex: 0.2; display:flex; justify-content:center; align-items:center; margin-top:25px;">
-                  ${!m.score ? '<div style="font-weight:700; font-size:16px; color:var(--muted);">VS</div>' : '<div style="font-weight:700; font-size:20px; color:var(--muted);">-</div>'}
-              </div>
-              <div style="display:flex; flex-direction:column; align-items:center; gap:8px; flex: 1;">
-                  <div style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;" onclick="openGlobalStats('${escJs(m.awayTeam)}')">
-                      ${aLogo ? `<div class="prime-logo" style="width:50px; height:50px; display:flex; justify-content:center; align-items:center;"><img src="${esc(aLogo)}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display='none'"></div>` : ''}
-                      <span style="font-weight:700; font-size:14px; text-align:center; line-height:1.2;">${formatTeamNameBreak(m.awayTeam)}</span>
-                  </div>
-                  ${m.score ? `<div style="font-weight:800; font-size:28px; color:var(--text);">${m.score[1]}</div>` : ''}
-                  <div id="away-scorers-modal" style="font-size:12px; color:var(--muted); text-align:center;"></div>
-              </div>
-          </div>
-          <div id="modal-stats-container"></div>
-      </div>
-      <div style="flex:1; min-width:250px; display:flex; flex-direction:column; justify-content:center; align-items:center; background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
-          <!-- Poster / Cover Image Placeholder -->
-          <div id="modal-poster-container" style="width:100%; aspect-ratio: 16/9; background: linear-gradient(45deg, ${m.color ? m.color + '40' : 'rgba(255,255,255,0.05)'}, rgba(0,0,0,0.8)); border-radius:8px; display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:hidden; position:relative; padding: 16px;">
-              <div id="modal-poster-bg" style="position:absolute; inset:0; background: url('${m.poster || ''}') center/cover no-repeat; opacity: 0.6;"></div>
 
-              <div id="modal-poster-content" style="z-index:1; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 12px; text-align:center;">
-                  <div style="display:flex; align-items:center; justify-content:center; gap: 16px; width:100%;">
-                      ${hLogo ? `<img src="${esc(hLogo)}" style="width:60px; height:60px; object-fit:contain;" onerror="this.style.display='none'">` : ''}
-                      <span style="font-weight:900; font-size:20px; color:rgba(255,255,255,0.8); font-style:italic;">VS</span>
-                      ${aLogo ? `<img src="${esc(aLogo)}" style="width:60px; height:60px; object-fit:contain;" onerror="this.style.display='none'">` : ''}
-                  </div>
-                  <div style="font-weight:bold; font-size:18px; color:rgba(255,255,255,0.9); text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${esc(m.league)}</div>
-              </div>
-          </div>
-          <div id="modal-espn-link-container" style="width:100%; margin-top:12px; display:flex; justify-content:center;"></div>
-      </div>
-  </div>`;
-
-  document.getElementById('mname').innerHTML = html;
+  document.getElementById('mname').innerHTML = '';
   document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam;
+
 
   document.getElementById('mmeta').innerHTML = '';
   document.getElementById('mscore').innerHTML = '';
@@ -914,33 +866,23 @@ export function openMod(m,col){
                   var statsCont = document.getElementById('modal-stats-container');
                   if (statsCont) {
                       statsCont.appendChild(stDiv);
+                      if (res.espnLink) {
+                          var espnBtn = document.createElement('a');
+                          espnBtn.href = esc(res.espnLink);
+                          espnBtn.target = '_blank';
+                          espnBtn.innerHTML = '📰 Lire sur ESPN';
+                          espnBtn.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:6px; color:var(--text); text-decoration:none; background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s; margin-top:16px;';
+                          espnBtn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.1)'; };
+                          espnBtn.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.05)'; };
+                          statsCont.appendChild(espnBtn);
+                      }
                   } else {
                       var mbody = document.getElementById('mbody');
                       if(mbody) mbody.insertBefore(stDiv, mbody.firstChild);
                   }
               }
 
-              if (res.articlePhoto || res.articleText) {
-                  var pContent = document.getElementById('modal-poster-content');
-                  var pBg = document.getElementById('modal-poster-bg');
-                  if (pContent) {
-                      pContent.innerHTML = '';
-                      if (res.articleText) {
-                          pContent.innerHTML = '<div style="font-weight:600; font-size:14px; color:#fff; text-align:center; text-shadow: 0 2px 4px rgba(0,0,0,0.8); background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 8px; width: 90%; line-height:1.4; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;">' + esc(res.articleText) + '</div>';
-                      }
-                  }
-                  if (pBg && res.articlePhoto) {
-                      pBg.style.background = 'url(' + res.articlePhoto + ') center/cover no-repeat';
-                      pBg.style.opacity = '0.8';
-                  }
-              }
 
-              if (res.espnLink) {
-                  var espnCont = document.getElementById('modal-espn-link-container');
-                  if (espnCont) {
-                      espnCont.innerHTML = '<a href="' + esc(res.espnLink) + '" target="_blank" style="display:flex; align-items:center; gap:6px; color:var(--text); text-decoration:none; background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:20px; font-size:13px; font-weight:600; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">📰 Lire sur ESPN</a>';
-                  }
-              }
           }).catch(function(e) {});
       }
   }
@@ -982,14 +924,96 @@ export function openMod(m,col){
 
   btnContainer.appendChild(refreshBtn);
 
-  // Since mmeta is cleared, append to mname which is our unified header
-  document.getElementById('mname').appendChild(btnContainer);
-
   var body=document.getElementById('mbody');
+
+  var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
+  var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
+  var homeColor = lgColor(normName(m.homeTeam));
+  var awayColor = lgColor(normName(m.awayTeam));
+  var tColorsH = getTeamColors(m.homeTeam);
+  var tColorsA = getTeamColors(m.awayTeam);
+  if (tColorsH) homeColor = tColorsH[0];
+  if (tColorsA) awayColor = tColorsA[0];
+  var lgCol2 = m.color || lgColor(m.league);
+
+  var cardBg = '';
+  if (userPrefs.cardColor === 'home') {
+      cardBg = homeColor;
+  } else if (userPrefs.cardColor === 'league') {
+      cardBg = lgCol2;
+  } else if (userPrefs.cardColor === 'dark') {
+      cardBg = 'rgba(255,255,255,0.05)';
+  } else if (userPrefs.cardColor === 'split') {
+      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
+  } else if (userPrefs.cardColor === 'gradient') {
+      cardBg = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+  } else {
+      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+  }
+
+  var streamsBadgePrime = m.streamLinks && m.streamLinks.length>0 ? '<div class="prime-stream-count">'+m.streamLinks.length+' flux</div>' : '';
+  var lgBadge = '<div class="prime-league-badge">'+m.flag+'</div>';
+
+  var homeLogoHtmlPrime = hLogo ? '<img src="'+esc(hLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
+  var awayLogoHtmlPrime = aLogo ? '<img src="'+esc(aLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
+
+  var logosHtml = m.awayTeam ?
+                  '<div class="prime-logo-wrapper home" style="padding-right:15%;">' + homeLogoHtmlPrime + '</div><div class="prime-logo-wrapper away" style="padding-left:15%;">' + awayLogoHtmlPrime + '</div>' :
+                  '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
+
+  var statusHtml = '';
+  if(m.status === 'live') {
+      statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; gap:6px; font-size:11px;"><span class="mb-ld" style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
+  } else if(m.status === 'finished') {
+      statusHtml = '<div class="status-text" style="color:var(--muted); font-size:12px; font-weight:600;"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
+  } else {
+      statusHtml = '<div class="status-text" style="color:var(--muted); font-size:12px; font-weight:600;"><span class="status-minute">'+m.startTime+'</span></div>';
+  }
+
+  var teamsHtml = m.awayTeam ?
+                  '<div class="prime-team-name" style="display:flex;align-items:center; white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-size:14px;font-weight:700;" title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam)+'</div>' +
+                  '<div class="prime-team-name" style="display:flex;align-items:center; white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-size:14px;font-weight:700;" title="'+esc(m.awayTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.awayTeam)+'</div>' :
+                  '<div class="prime-team-name" style="display:flex;align-items:center; justify-content:center; white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-size:14px;font-weight:700;" title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam)+'</div>';
+
+  var scoresHtmlInner = m.awayTeam ?
+                  '<div class="prime-score" style="line-height:1.2;">'+homeScore+'</div><div class="prime-score" style="line-height:1.2;">'+awayScore+'</div>' :
+                  '<div class="prime-score"></div>';
+
+  var wrapperHtml = '<div style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%;">' +
+      '<div id="modal-left-col" style="flex: 1; min-width: 280px; position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; background: var(--bg); z-index: 10; padding-bottom: 10px; margin-top: -10px; padding-top: 10px;">' +
+          '<div class="match-card" style="display:flex; flex-direction:column; gap:8px; position:relative; pointer-events:none;">' +
+              '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:16/9; border-radius:var(--radius-card,8px); overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:flex; background-color:var(--bg2);">' +
+                  lgBadge +
+                  streamsBadgePrime +
+                  '<div class="prime-logos" style="position:absolute; inset:0; display:flex; z-index:2;">' +
+                      logosHtml +
+                  '</div>' +
+              '</div>' +
+              '<div class="prime-info" style="display:flex; justify-content:space-between; font-size:14px; font-weight:700; color:#fff; padding:0 4px; pointer-events:auto;">' +
+                  '<div class="prime-col-teams" style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:0;">' +
+                      teamsHtml +
+                  '</div>' +
+                  '<div class="prime-col-scores" style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; margin-right:16px; flex-shrink:0;">' +
+                      scoresHtmlInner +
+                  '</div>' +
+                  '<div class="prime-col-status" style="display:flex; flex-direction:column; align-items:flex-start; justify-content:center; border-left:1px solid var(--border); padding-left:16px; flex-shrink:0; min-width:50px;">' +
+                      statusHtml +
+                  '</div>' +
+              '</div>' +
+          '</div>' +
+          '<div id="modal-stats-container"></div>' +
+      '</div>' +
+      '<div id="modal-right-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 12px;"></div>' +
+  '</div>';
+
+  body.innerHTML = wrapperHtml;
+  document.getElementById('modal-left-col').appendChild(btnContainer);
+
+  var rightCol = document.getElementById('modal-right-col');
 
   // Wait if streams are still loading, but fetch them specifically if they aren't loading
   if(!m.streamsLoaded && m.matchUrl) {
-      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
+      rightCol.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
       document.getElementById('mbg').classList.add('open');
 
       // Force load the streams for this specific match right away if they aren't loaded yet
@@ -1008,7 +1032,7 @@ export function openMod(m,col){
           }
       });
   } else if(!m.streamsLoaded){
-      body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams...</div>';
+      rightCol.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams...</div>';
       document.getElementById('mbg').classList.add('open');
   } else {
       var sortedLinks = [];
@@ -1093,7 +1117,7 @@ export function openMod(m,col){
 
       contentHtml += '</details></div>';
 
-      body.innerHTML = contentHtml;
+      rightCol.innerHTML = contentHtml;
       document.getElementById('mbg').classList.add('open');
   }
 }
