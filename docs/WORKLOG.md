@@ -3,6 +3,7 @@
 ## En cours
 
 ## Fait
+- 2026-05-15 - Ajout de l'outil de diagnostic et extraction manuelle de flux dans la fenêtre de match. Refactorisation de `isMatchPair` vers `debugMatchPair` pour exposer la raison de l'échec de l'association.
 - 2026-05-14 - Fixed URL matching/parsing in `js/scrapers.js` for `MLBITE_URL` trailing slash replacement bug by checking `endsWith('/')` rather than blindly using string `.replace(/\/$/, '')`.
 - 2026-05-14 - Refined match modal for game streaming in `js/ui.js` by hiding legacy header/footer, injecting a new close button into `wrapperHtml`, and fixing the async stream render target in `js/scrapers.js` to update the new split layout instead of overwriting the entire modal.
 - 2026-05-14 - Redesigned stream modal layout (desktop and mobile) to use a 2-column view with stickied game info on the left (reusing live cards design) and stream links on the right.
