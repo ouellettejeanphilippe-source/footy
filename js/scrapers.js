@@ -94,7 +94,7 @@ export function parseStreameast(html){
 
                   var streamUrl = href;
                   if (!streamUrl.startsWith('http')) {
-                      streamUrl = STREAMEAST_URL.slice(0, -1) + (streamUrl.startsWith('/') ? streamUrl : '/' + streamUrl);
+                      streamUrl = (STREAMEAST_URL.endsWith('/') ? STREAMEAST_URL.slice(0, -1) : STREAMEAST_URL) + (streamUrl.startsWith('/') ? streamUrl : '/' + streamUrl);
                   }
 
                   matches.push({
@@ -121,7 +121,7 @@ export function parseStreameast(html){
                   added[href] = true;
               } else if (textToParse.length > 3 && textToParse.length < 40) {
                   var streamUrl2 = href;
-                  if (!streamUrl2.startsWith('http')) streamUrl2 = STREAMEAST_URL.slice(0, -1) + (streamUrl2.startsWith('/') ? streamUrl2 : '/' + streamUrl2);
+                  if (!streamUrl2.startsWith('http')) streamUrl2 = (STREAMEAST_URL.endsWith('/') ? STREAMEAST_URL.slice(0, -1) : STREAMEAST_URL) + (streamUrl2.startsWith('/') ? streamUrl2 : '/' + streamUrl2);
                   matches.push({
                       id: 'se_fb_' + index,
                       league: formatLeagueName('Sports'),
@@ -269,7 +269,7 @@ export function parseSportsurge(html) {
                   color: lgColor('Sports'),
                   startTime: '00:00',
                   status: 'upcoming',
-                  matchUrl: url.indexOf('http') === 0 ? url : (SPORTSURGE_URL.slice(0, -1) + (url.startsWith('/') ? url : '/' + url)),
+                  matchUrl: url.indexOf('http') === 0 ? url : ((SPORTSURGE_URL.endsWith('/') ? SPORTSURGE_URL.slice(0, -1) : SPORTSURGE_URL) + (url.startsWith('/') ? url : '/' + url)),
                   streamLinks: [],
                   streamsLoaded: false,
                   source: 'sportsurge'
@@ -791,7 +791,7 @@ export function parseNflbite(html) {
                  var teamPart = href.split('/teams/')[1].split('-live-stream')[0];
                  var teamN = teamPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                  if (teamN && !matches.find(m => m.homeTeam === teamN)) {
-                     var matchUrl = href.startsWith('http') ? href : MLBITE_URL.replace(/\/$/, '') + (href.startsWith('/') ? href : '/' + href);
+                     var matchUrl = href.startsWith('http') ? href : (MLBITE_URL.endsWith('/') ? MLBITE_URL.slice(0, -1) : MLBITE_URL) + (href.startsWith('/') ? href : '/' + href);
                      matches.push({
                         id: "nflbite_fb_" + i++,
                         homeTeam: getOfficialTeamName(teamN),
