@@ -972,7 +972,8 @@ export function parseFootybite(html){
                 if (a) matchUrl = a.getAttribute('href') || '';
             }
             if (matchUrl && !matchUrl.startsWith('http')) {
-                matchUrl = SITE.slice(0, -1) + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
+                var baseUrl = SITE.endsWith('/') ? SITE.slice(0, -1) : SITE;
+                matchUrl = baseUrl + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
             }
 
             matches.push({
@@ -1112,7 +1113,8 @@ export function parseFootybite(html){
     if(matchLink){
       var mhref=(matchLink.getAttribute('href')||'').trim();
       if(mhref&&mhref!=='#'){
-        matchUrl=mhref.indexOf('http')===0?mhref:SITE.slice(0,-1)+mhref;
+        var baseUrl = SITE.endsWith('/') ? SITE.slice(0, -1) : SITE;
+        matchUrl=mhref.indexOf('http')===0?mhref:baseUrl+(mhref.startsWith('/')?mhref:'/'+mhref);
       }
     }
 
