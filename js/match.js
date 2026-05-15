@@ -149,8 +149,19 @@ export function isMatchPair(m1, m2) {
       return false;
   }
 
+  var m2RawH = (m2.homeTeam || '').toLowerCase().trim();
+  var m2RawA = (m2.awayTeam || '').toLowerCase().trim();
+  var k1H = NORM_TEAM_KEYS[m1H];
+  var k1A = NORM_TEAM_KEYS[m1A];
+
+  var hMatches = isMatch(m1H, m2H);
+  if (!hMatches && k1H && TEAM_DATA[k1H] && TEAM_DATA[k1H].aliases && TEAM_DATA[k1H].aliases.includes(m2RawH)) hMatches = true;
+
+  var aMatches = isMatch(m1A, m2A);
+  if (!aMatches && k1A && TEAM_DATA[k1A] && TEAM_DATA[k1A].aliases && TEAM_DATA[k1A].aliases.includes(m2RawA)) aMatches = true;
+
   // Standard direct match
-  if (isMatch(m1H, m2H) && isMatch(m1A, m2A)) {
+  if (hMatches && aMatches) {
       return true;
   }
 
@@ -223,6 +234,20 @@ export function isMatchPair(m1, m2) {
   // If a significant portion of words match, consider it the same matchup
   // (e.g. if we have "tigers" and "rangers", that's 2 words. If both match, it's 100%)
   if (matchedWords >= uniqueRawWords.length * 0.75 && matchedWords >= 2) {
+      // Prevent cross-validation from grouping known distinct pairs
+      // We block the direct match interpretation if any of its aligned pairs are explicitly distinct.
+      var blockedDirect = isKnownDistinct(m1H, m2H) || isKnownDistinct(m1A, m2A);
+      // We block the reversed match interpretation if any of its aligned pairs are explicitly distinct.
+      var blockedReversed = isKnownDistinct(m1H, m2A) || isKnownDistinct(m1A, m2H);
+
+      // If the direct interpretation is blocked, and it doesn't match reversed, reject.
+      if (blockedDirect && !isMatch(m1H, m2A) && !isMatch(m1A, m2H)) {
+          return false;
+      }
+      // If the reversed interpretation is blocked, and it doesn't match direct, reject.
+      if (blockedReversed && !isMatch(m1H, m2H) && !isMatch(m1A, m2A)) {
+          return false;
+      }
       return true;
   }
 
@@ -252,6 +277,32 @@ export function isMatchPair(m1, m2) {
   return false;
 }
 
+export function isKnownDistinct(name1, name2) {
+    if (!name1 || !name2) return false;
+    var name1NoSpace = name1.replace(/\s+/g, '').toLowerCase();
+    var name2NoSpace = name2.replace(/\s+/g, '').toLowerCase();
+    var knownDistinctPairs = [
+        ['manchestercity', 'manchesterunited'],
+        ['milan', 'intermilan'],
+        ['acmilan', 'intermilan'],
+        ['realmadrid', 'atleticomadrid'],
+        ['montrealcanadiens', 'cfmontreal'],
+        ['montrealcanadiens', 'montrealalouettes'],
+        ['montrealcanadiens', 'montrealvictoire'],
+        ['cfmontreal', 'montrealalouettes'],
+        ['cfmontreal', 'montrealvictoire'],
+        ['montrealalouettes', 'montrealvictoire']
+    ];
+    for (var i = 0; i < knownDistinctPairs.length; i++) {
+        var pair = knownDistinctPairs[i];
+        if ((name1NoSpace.includes(pair[0]) && name2NoSpace.includes(pair[1])) ||
+            (name1NoSpace.includes(pair[1]) && name2NoSpace.includes(pair[0]))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export function isMatch(name1, name2) {
   if (!name1 || !name2) return false;
   if (name1 === name2) return true;
@@ -261,27 +312,7 @@ export function isMatch(name1, name2) {
 
   // If they share a common city prefix/suffix but are distinct teams, do not match.
   // For example: 'manchestercity' and 'manchesterunited'
-  var name1NoSpace = name1.replace(/\s+/g, '').toLowerCase();
-  var name2NoSpace = name2.replace(/\s+/g, '').toLowerCase();
-  var knownDistinctPairs = [
-      ['manchestercity', 'manchesterunited'],
-      ['milan', 'intermilan'],
-      ['acmilan', 'intermilan'],
-      ['realmadrid', 'atleticomadrid'],
-      ['montrealcanadiens', 'cfmontreal'],
-      ['montrealcanadiens', 'montrealalouettes'],
-      ['montrealcanadiens', 'montrealvictoire'],
-      ['cfmontreal', 'montrealalouettes'],
-      ['cfmontreal', 'montrealvictoire'],
-      ['montrealalouettes', 'montrealvictoire']
-  ];
-  for (var i = 0; i < knownDistinctPairs.length; i++) {
-      var pair = knownDistinctPairs[i];
-      if ((name1NoSpace.includes(pair[0]) && name2NoSpace.includes(pair[1])) ||
-          (name1NoSpace.includes(pair[1]) && name2NoSpace.includes(pair[0]))) {
-          return false;
-      }
-  }
+  if (isKnownDistinct(name1, name2)) return false;
 
   // Check if one contains the other (e.g. 'manchester' in 'manchesterunited')
   if (name1.includes(name2) || name2.includes(name1)) return true;
@@ -373,5 +404,6 @@ window.levenshtein = levenshtein;
 window.stringSimilarity = stringSimilarity;
 window.isMatchPair = isMatchPair;
 window.isMatch = isMatch;
+window.isKnownDistinct = isKnownDistinct;
 
 window.getTeamInfo = getTeamInfo;
