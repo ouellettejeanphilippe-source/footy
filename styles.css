@@ -248,7 +248,7 @@ body[data-icon-pack="sharp"] .ic-close {
 /* MODAL */
 .mbg { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); align-items: center; justify-content: center; padding: 20px; transition: opacity 0.3s; }
 .mbg.open { display: flex; }
-.modal { background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(0, 0, 0, 0.95)); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; width: 90%; max-width: 800px; overflow: hidden; animation: mopen 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 30px 60px rgba(0,0,0,0.9); display: flex; flex-direction: column; backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); }
+.modal { background: linear-gradient(135deg, rgba(28, 28, 30, 0.95), rgba(0, 0, 0, 0.95)); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; width: 90%; max-width: 800px; overflow: hidden; animation: mopen 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 30px 60px rgba(0,0,0,0.9); display: flex; flex-direction: column; backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); margin-top: 20px; }
 @keyframes mopen { from { opacity: 0; transform: scale(0.95) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
 .mhd { position: relative; padding: 24px 24px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 16px; background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent); flex-wrap: wrap; padding-right: 56px; }
 .mdot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; box-shadow: 0 0 12px rgba(255,255,255,0.3); }
@@ -417,7 +417,8 @@ body[data-icon-pack="sharp"] .ic-close {
   .fav-container { flex-direction: column !important; }
   .fav-col-left, .fav-col-right { flex: none !important; width: 100% !important; min-width: 0 !important; }
   #fav-page { padding: 10px; }
-  .modal { width: 95%; max-height: 90vh; }
+  .modal { width: 95%; max-height: 90vh; margin-top: 30px; }
+  #modal-left-col { position: relative !important; }
   .mhd { padding: 16px; padding-right: 48px; }
   .mn { font-size: 18px; }
   .msc { font-size: 20px; padding: 4px 10px; margin-top: 8px; }

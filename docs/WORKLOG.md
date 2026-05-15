@@ -21,3 +21,6 @@
 - Increase stream limits in scrapeMatchFlux (js/scrapers.js) to display all streams for sources with large volumes.
 - 2026-05-13 - Update Footybite URL to army.footybite.to in js/config.js and js/ui.js.
 - 2026-05-13 - Fixed missing leagues in the EPG guide by moving DEFAULT_LEAGUES to db.js and handling case-insensitive logic in UI display sorting.
+- Refonte visuelle de la carte de match dans `js/ui.js` (mode Scoreboard).
+- Simplification du bouton Multivision dans la liste de flux en icône carrée simple.
+- Correction du scroll mobile pour `#modal-left-col` (retrait de la couleur de fond fixe et du sticky) dans `styles.css`.

@@ -766,7 +766,7 @@ export function renderFluxItem(s, i, m) {
       +'<div style="display:flex; align-items:center; padding:8px; gap:4px; margin-left:auto;">'
         +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="width:36px; height:36px; border-radius:8px; background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">⭐</button>'
         +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="width:36px; height:36px; border-radius:8px; background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:14px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">👎</button>'
-        +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="padding:0 12px; height:36px; border-radius:8px; background:rgba(255,255,255,0.05); border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center; gap:8px; margin-left:4px;"><span style="font-size:16px;">⊞</span> Multivision</button>'
+        +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="width:36px; height:36px; border-radius:8px; background:rgba(255,255,255,0.05); border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:16px; display:flex; align-items:center; justify-content:center; margin-left:4px;">⊞</button>'
       +'</div>'
       +'</div>';
 }
@@ -963,21 +963,38 @@ export function openMod(m,col){
 
   var statusHtml = '';
   if(m.status === 'live') {
-      statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; gap:6px; font-size:11px;"><span class="mb-ld" style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
+      statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; margin-top:8px;"><span class="mb-ld" style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
   } else if(m.status === 'finished') {
-      statusHtml = '<div class="status-text" style="color:var(--muted); font-size:12px; font-weight:600;"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
+      statusHtml = '<div class="status-text" style="color:var(--muted); font-size:14px; font-weight:600; text-align:center; margin-top:8px;"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
   } else {
-      statusHtml = '<div class="status-text" style="color:var(--muted); font-size:12px; font-weight:600;"><span class="status-minute">'+m.startTime+'</span></div>';
+      statusHtml = '<div class="status-text" style="color:var(--muted); font-size:14px; font-weight:600; text-align:center; margin-top:8px;"><span class="status-minute">'+m.startTime+'</span></div>';
+  }
+
+  var centerScoreHtml = '';
+  if (m.awayTeam) {
+      if (homeScore !== '' && awayScore !== '') {
+          centerScoreHtml = '<div style="font-size: 32px; font-weight: 800; line-height: 1; display:flex; gap: 12px; align-items:center; justify-content:center; letter-spacing:-1px;"><span>'+homeScore+'</span><span style="color:var(--muted2); font-size:24px;">-</span><span>'+awayScore+'</span></div>';
+      } else {
+          centerScoreHtml = '<div style="font-size: 20px; font-weight: 800; line-height: 1; display:flex; align-items:center; justify-content:center; color:var(--muted2);">VS</div>';
+      }
   }
 
   var teamsHtml = m.awayTeam ?
-                  '<div class="prime-team-name" style="display:flex;align-items:center; white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-size:14px;font-weight:700;" title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam)+'</div>' +
-                  '<div class="prime-team-name" style="display:flex;align-items:center; white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-size:14px;font-weight:700;" title="'+esc(m.awayTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.awayTeam)+'</div>' :
-                  '<div class="prime-team-name" style="display:flex;align-items:center; justify-content:center; white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-size:14px;font-weight:700;" title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam)+'</div>';
+                  '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-top:12px; font-size:15px; font-weight:700; color:#fff; text-align:center; line-height:1.2; padding:0 8px;">' +
+                      '<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">' +
+                          '<div title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+' <button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button></div>' +
+                          '<div id="home-scorers-modal" style="font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
+                      '</div>' +
+                      '<div style="flex:0.2;"></div>' +
+                      '<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">' +
+                          '<div title="'+esc(m.awayTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button> '+esc(m.awayTeam)+'</div>' +
+                          '<div id="away-scorers-modal" style="font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
+                      '</div>' +
+                  '</div>' :
+                  '<div style="display:flex; justify-content:center; align-items:center; margin-top:12px; font-size:16px; font-weight:700; color:#fff; text-align:center;">' +
+                      '<div title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam)+'</div>' +
+                  '</div>';
 
-  var scoresHtmlInner = m.awayTeam ?
-                  '<div class="prime-score" style="line-height:1.2;">'+homeScore+'</div><div class="prime-score" style="line-height:1.2;">'+awayScore+'</div>' :
-                  '<div class="prime-score"></div>';
 
   var mhd = document.querySelector('.mhd');
   if (mhd) mhd.style.display = 'none';
@@ -986,25 +1003,19 @@ export function openMod(m,col){
 
   var wrapperHtml = '<div style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
       '<button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; top: -10px; right: -10px; z-index: 100;"><span class="ic ic-close"></span></button>' +
-      '<div id="modal-left-col" style="flex: 1; min-width: 280px; position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; background: var(--bg); z-index: 10; padding-bottom: 10px; margin-top: -10px; padding-top: 10px;">' +
-          '<div class="match-card" style="display:flex; flex-direction:column; gap:8px; position:relative; pointer-events:none;">' +
-              '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:16/9; border-radius:var(--radius-card,8px); overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:flex; background-color:var(--bg2);">' +
+      '<div id="modal-left-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
+          '<div class="match-card scoreboard" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
+              '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:21/9; border-radius:var(--radius-card,12px); overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.3); display:flex; background-color:var(--bg2); margin-bottom: -20px; z-index: 1;">' +
                   lgBadge +
                   streamsBadgePrime +
                   '<div class="prime-logos" style="position:absolute; inset:0; display:flex; z-index:2;">' +
                       logosHtml +
                   '</div>' +
               '</div>' +
-              '<div class="prime-info" style="display:flex; justify-content:space-between; font-size:14px; font-weight:700; color:#fff; padding:0 4px; pointer-events:auto;">' +
-                  '<div class="prime-col-teams" style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:0;">' +
-                      teamsHtml +
-                  '</div>' +
-                  '<div class="prime-col-scores" style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; margin-right:16px; flex-shrink:0;">' +
-                      scoresHtmlInner +
-                  '</div>' +
-                  '<div class="prime-col-status" style="display:flex; flex-direction:column; align-items:flex-start; justify-content:center; border-left:1px solid var(--border); padding-left:16px; flex-shrink:0; min-width:50px;">' +
-                      statusHtml +
-                  '</div>' +
+              '<div class="prime-info" style="display:flex; flex-direction:column; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 32px 16px 16px; pointer-events:auto; z-index: 2;">' +
+                  centerScoreHtml +
+                  statusHtml +
+                  teamsHtml +
               '</div>' +
           '</div>' +
           '<div id="modal-stats-container"></div>' +
