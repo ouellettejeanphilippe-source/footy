@@ -1563,14 +1563,16 @@ export function updateMatchUiAfterScrape(m) {
     // Si la modale est ouverte pour CE match, on la met à jour
     var mnameEl=document.getElementById('mname');
     if(document.getElementById('mbg').classList.contains('open') && mnameEl && mnameEl.textContent.indexOf(m.homeTeam) >= 0){
-        var body=document.getElementById('mbody');
-        if(!m.streamLinks || m.streamLinks.length===0){
-            body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
-        } else {
-            var sortedLinks = sortFluxLinks(m.streamLinks);
-            body.innerHTML=sortedLinks.map(function(s,i){
-                return renderFluxItem(s, i, m);
-            }).join('');
+        var targetContainer = document.getElementById('modal-right-col') || document.getElementById('mbody');
+        if(targetContainer) {
+            if(!m.streamLinks || m.streamLinks.length===0){
+                targetContainer.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
+            } else {
+                var sortedLinks = sortFluxLinks(m.streamLinks);
+                targetContainer.innerHTML=sortedLinks.map(function(s,i){
+                    return renderFluxItem(s, i, m);
+                }).join('');
+            }
         }
     }
 }

@@ -979,7 +979,13 @@ export function openMod(m,col){
                   '<div class="prime-score" style="line-height:1.2;">'+homeScore+'</div><div class="prime-score" style="line-height:1.2;">'+awayScore+'</div>' :
                   '<div class="prime-score"></div>';
 
-  var wrapperHtml = '<div style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%;">' +
+  var mhd = document.querySelector('.mhd');
+  if (mhd) mhd.style.display = 'none';
+  var mft = document.querySelector('.mft');
+  if (mft) mft.style.display = 'none';
+
+  var wrapperHtml = '<div style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
+      '<button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; top: -10px; right: -10px; z-index: 100;"><span class="ic ic-close"></span></button>' +
       '<div id="modal-left-col" style="flex: 1; min-width: 280px; position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; background: var(--bg); z-index: 10; padding-bottom: 10px; margin-top: -10px; padding-top: 10px;">' +
           '<div class="match-card" style="display:flex; flex-direction:column; gap:8px; position:relative; pointer-events:none;">' +
               '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:16/9; border-radius:var(--radius-card,8px); overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.2); display:flex; background-color:var(--bg2);">' +
@@ -1124,6 +1130,11 @@ export function openMod(m,col){
 export function closeMod(){
   document.getElementById('mbg').classList.remove('open');
     if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
+
+  var mhd = document.querySelector('.mhd');
+  if (mhd) mhd.style.display = '';
+  var mft = document.querySelector('.mft');
+  if (mft) mft.style.display = '';
 }
 
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
