@@ -742,6 +742,22 @@ export function sortFluxLinks(links) {
   return links.slice().sort(function(a, b) {
     var nameA = (a.name || '').toLowerCase();
     var nameB = (b.name || '').toLowerCase();
+    var qualA = (a.quality || '').toLowerCase();
+    var qualB = (b.quality || '').toLowerCase();
+    var urlA = (a.url || '').toLowerCase();
+    var urlB = (b.url || '').toLowerCase();
+
+    var is4kA = (qualA === '4k' || nameA.includes('4k')) ? 1 : 0;
+    var is4kB = (qualB === '4k' || nameB.includes('4k')) ? 1 : 0;
+    if (is4kA !== is4kB) {
+      return is4kB - is4kA;
+    }
+
+    var isBuffA = (urlA.includes('buffstreams') || nameA.includes('buffstream')) ? 1 : 0;
+    var isBuffB = (urlB.includes('buffstreams') || nameB.includes('buffstream')) ? 1 : 0;
+    if (isBuffA !== isBuffB) {
+      return isBuffB - isBuffA;
+    }
 
     var isFavA = nameA.includes('sheri') || nameA.includes('4kplayer') ? 1 : 0;
     var isFavB = nameB.includes('sheri') || nameB.includes('4kplayer') ? 1 : 0;
