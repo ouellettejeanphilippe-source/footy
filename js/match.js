@@ -100,7 +100,11 @@ export function isMatchContext(name1, name2, contextText) {
 }
 
 export function isMatchPair(m1, m2) {
-  if (!m1 || !m2) return false;
+  return debugMatchPair(m1, m2).isMatch;
+}
+
+export function debugMatchPair(m1, m2) {
+  if (!m1 || !m2) return { isMatch: false, reason: "m1 ou m2 manquant" };
 
   // League strict check if both have leagues defined and aren't generic
   var l1 = (m1.league || '').toLowerCase();
@@ -121,7 +125,7 @@ export function isMatchPair(m1, m2) {
           (is1Bball && (is2Hockey || is2Base || is2Football)) ||
           (is1Base && (is2Hockey || is2Bball || is2Football)) ||
           (is1Football && (is2Hockey || is2Bball || is2Base))) {
-          return false;
+          return { isMatch: false, reason: "Incompatibilité de sport/ligue (ex: hockey vs basketball)" };
       }
   }
 
@@ -132,7 +136,7 @@ export function isMatchPair(m1, m2) {
 
   // Check explicitly for different dates before ANY matching
   if (m1.matchDate && m2.matchDate && m1.matchDate !== m2.matchDate) {
-      return false;
+      return { isMatch: false, reason: "Dates différentes (" + m1.matchDate + " vs " + m2.matchDate + ")" };
   }
 
   // Check for TBD or missing teams (some scrapers only provide one team from URL)
@@ -142,21 +146,32 @@ export function isMatchPair(m1, m2) {
   var is2AwayTbd = m2.awayTeam === 'TBD' || m2.awayTeam === 'tbd' || m2A === '';
 
   if (is1AwayTbd || is2AwayTbd || is1HomeTbd || is2HomeTbd) {
-      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2H)) return true;
-      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2A)) return true; // Could be reversed
-      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2A)) return true;
-      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2H)) return true;
-      return false;
+      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2H)) return { isMatch: true, reason: "Match (TBD)" };
+      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2A)) return { isMatch: true, reason: "Match inversé (TBD)" };
+      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2A)) return { isMatch: true, reason: "Match (TBD)" };
+      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2H)) return { isMatch: true, reason: "Match inversé (TBD)" };
+      return { isMatch: false, reason: "Équipe manquante ou TBD sans correspondance" };
   }
 
+  var m2RawH = (m2.homeTeam || '').toLowerCase().trim();
+  var m2RawA = (m2.awayTeam || '').toLowerCase().trim();
+  var k1H = NORM_TEAM_KEYS[m1H];
+  var k1A = NORM_TEAM_KEYS[m1A];
+
+  var hMatches = isMatch(m1H, m2H);
+  if (!hMatches && k1H && TEAM_DATA[k1H] && TEAM_DATA[k1H].aliases && TEAM_DATA[k1H].aliases.includes(m2RawH)) hMatches = true;
+
+  var aMatches = isMatch(m1A, m2A);
+  if (!aMatches && k1A && TEAM_DATA[k1A] && TEAM_DATA[k1A].aliases && TEAM_DATA[k1A].aliases.includes(m2RawA)) aMatches = true;
+
   // Standard direct match
-  if (isMatch(m1H, m2H) && isMatch(m1A, m2A)) {
-      return true;
+  if (hMatches && aMatches) {
+      return { isMatch: true, reason: "Correspondance directe" };
   }
 
   // Reversed match (away vs home)
   if (isMatch(m1H, m2A) && isMatch(m1A, m2H)) {
-      return true;
+      return { isMatch: true, reason: "Correspondance inversée" };
   }
 
   // Advanced Cross-Validation Match
@@ -177,7 +192,7 @@ export function isMatchPair(m1, m2) {
   var shortWordsRaw = (rawShortH + " " + rawShortA).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/);
   var uniqueRawWords = Array.from(new Set(shortWordsRaw.filter(w => w.length >= 3)));
 
-  if (uniqueRawWords.length === 0) return false;
+  if (uniqueRawWords.length === 0) return { isMatch: false, reason: "Aucun mot clé significatif pour la validation croisée" };
 
   var matchedWords = 0;
   for (var i = 0; i < uniqueRawWords.length; i++) {
@@ -223,33 +238,73 @@ export function isMatchPair(m1, m2) {
   // If a significant portion of words match, consider it the same matchup
   // (e.g. if we have "tigers" and "rangers", that's 2 words. If both match, it's 100%)
   if (matchedWords >= uniqueRawWords.length * 0.75 && matchedWords >= 2) {
-      return true;
+      // Prevent cross-validation from grouping known distinct pairs
+      // We block the direct match interpretation if any of its aligned pairs are explicitly distinct.
+      var blockedDirect = isKnownDistinct(m1H, m2H) || isKnownDistinct(m1A, m2A);
+      // We block the reversed match interpretation if any of its aligned pairs are explicitly distinct.
+      var blockedReversed = isKnownDistinct(m1H, m2A) || isKnownDistinct(m1A, m2H);
+
+      // If the direct interpretation is blocked, and it doesn't match reversed, reject.
+      if (blockedDirect && !isMatch(m1H, m2A) && !isMatch(m1A, m2H)) {
+          return { isMatch: false, reason: "Bloqué par distinction explicite (Direct)" };
+      }
+      // If the reversed interpretation is blocked, and it doesn't match direct, reject.
+      if (blockedReversed && !isMatch(m1H, m2H) && !isMatch(m1A, m2A)) {
+          return { isMatch: false, reason: "Bloqué par distinction explicite (Inversé)" };
+      }
+      return { isMatch: true, reason: "Validation croisée (" + matchedWords + "/" + uniqueRawWords.length + " mots)" };
   }
 
   // Final permissive fallback: pure substring overlap for extreme abbreviations (e.g. 'Rangers' vs 'Texas Rangers')
   if (m1H && m1A && m2H && m2A) {
       var hMatch = m1H.includes(m2H) || m2H.includes(m1H);
       var aMatch = m1A.includes(m2A) || m2A.includes(m1A);
-      if (hMatch && aMatch) return true;
+      if (hMatch && aMatch) return { isMatch: true, reason: "Sous-chaîne extrême (Direct)" };
 
       // Check reversed teams with subset matching
       var crossHMatch = m1H.includes(m2A) || m2A.includes(m1H);
       var crossAMatch = m1A.includes(m2H) || m2H.includes(m1A);
-      if (crossHMatch && crossAMatch) return true;
+      if (crossHMatch && crossAMatch) return { isMatch: true, reason: "Sous-chaîne extrême (Inversé)" };
   }
 
   // Prevent specific city-only mismatches in the fallback
   if (m1H && m1A && m2H && m2A) {
       if ((m1H.includes('manchester') && m2H.includes('manchester') && !isMatch(m1H, m2H)) ||
           (m1A.includes('manchester') && m2A.includes('manchester') && !isMatch(m1A, m2A))) {
-          return false;
+          return { isMatch: false, reason: "Rejeté: équipes distinctes de même ville (ex: Manchester)" };
       }
   }
 
   // Cross-check dates and exact matches (already handled by early return, so we can just return true here)
-  if (m1H === m2H && m1A === m2A) return true;
+  if (m1H === m2H && m1A === m2A) return { isMatch: true, reason: "Match exact (fallback final)" };
 
-  return false;
+  return { isMatch: false, reason: "Score de similarité insuffisant (Mots trouvés: " + matchedWords + "/" + uniqueRawWords.length + ")" };
+}
+
+export function isKnownDistinct(name1, name2) {
+    if (!name1 || !name2) return false;
+    var name1NoSpace = name1.replace(/\s+/g, '').toLowerCase();
+    var name2NoSpace = name2.replace(/\s+/g, '').toLowerCase();
+    var knownDistinctPairs = [
+        ['manchestercity', 'manchesterunited'],
+        ['milan', 'intermilan'],
+        ['acmilan', 'intermilan'],
+        ['realmadrid', 'atleticomadrid'],
+        ['montrealcanadiens', 'cfmontreal'],
+        ['montrealcanadiens', 'montrealalouettes'],
+        ['montrealcanadiens', 'montrealvictoire'],
+        ['cfmontreal', 'montrealalouettes'],
+        ['cfmontreal', 'montrealvictoire'],
+        ['montrealalouettes', 'montrealvictoire']
+    ];
+    for (var i = 0; i < knownDistinctPairs.length; i++) {
+        var pair = knownDistinctPairs[i];
+        if ((name1NoSpace.includes(pair[0]) && name2NoSpace.includes(pair[1])) ||
+            (name1NoSpace.includes(pair[1]) && name2NoSpace.includes(pair[0]))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 export function isMatch(name1, name2) {
@@ -261,27 +316,7 @@ export function isMatch(name1, name2) {
 
   // If they share a common city prefix/suffix but are distinct teams, do not match.
   // For example: 'manchestercity' and 'manchesterunited'
-  var name1NoSpace = name1.replace(/\s+/g, '').toLowerCase();
-  var name2NoSpace = name2.replace(/\s+/g, '').toLowerCase();
-  var knownDistinctPairs = [
-      ['manchestercity', 'manchesterunited'],
-      ['milan', 'intermilan'],
-      ['acmilan', 'intermilan'],
-      ['realmadrid', 'atleticomadrid'],
-      ['montrealcanadiens', 'cfmontreal'],
-      ['montrealcanadiens', 'montrealalouettes'],
-      ['montrealcanadiens', 'montrealvictoire'],
-      ['cfmontreal', 'montrealalouettes'],
-      ['cfmontreal', 'montrealvictoire'],
-      ['montrealalouettes', 'montrealvictoire']
-  ];
-  for (var i = 0; i < knownDistinctPairs.length; i++) {
-      var pair = knownDistinctPairs[i];
-      if ((name1NoSpace.includes(pair[0]) && name2NoSpace.includes(pair[1])) ||
-          (name1NoSpace.includes(pair[1]) && name2NoSpace.includes(pair[0]))) {
-          return false;
-      }
-  }
+  if (isKnownDistinct(name1, name2)) return false;
 
   // Check if one contains the other (e.g. 'manchester' in 'manchesterunited')
   if (name1.includes(name2) || name2.includes(name1)) return true;
@@ -372,6 +407,8 @@ window.mergeMatches = mergeMatches;
 window.levenshtein = levenshtein;
 window.stringSimilarity = stringSimilarity;
 window.isMatchPair = isMatchPair;
+window.debugMatchPair = debugMatchPair;
 window.isMatch = isMatch;
+window.isKnownDistinct = isKnownDistinct;
 
 window.getTeamInfo = getTeamInfo;

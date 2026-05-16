@@ -5,8 +5,66 @@ import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON,
 import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
-import { isMatch } from './match.js';
+import { isMatch, debugMatchPair } from './match.js';
 import { DEFAULT_LEAGUES } from './db.js';
+
+/* ══ DIAGNOSTIC SCRAPE ══════════════════ */
+export function diagnosticScrape(matchId, url) {
+    var repContainer = document.getElementById('diagnostic-report-container');
+    if(repContainer) repContainer.innerHTML = '<span style="color:var(--accent);">Scraping en cours...</span>';
+
+    // Find our current API match
+    var m = (S.matches || []).find(function(x) { return x.id === matchId; });
+    if(!m) {
+        if(repContainer) repContainer.innerHTML = '<span style="color:var(--red);">Erreur: Match non trouvé en mémoire.</span>';
+        return;
+    }
+
+    // Update match source URL
+    m.matchUrl = url;
+    m.streamLinks = [];
+    m.streamsLoaded = false;
+
+    // Trigger force scrape
+    scrapeMatchFlux(m, true).then(function() {
+        if(repContainer) {
+            var unmerged = (S.matches || []).filter(function(x) {
+               return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
+            });
+            var scrapedMatch = null;
+            // The scraping might have added a new "unmerged" match, or it just added streams to the passed match 'm' because of fallback scraper.
+            // ScrapeMatchFlux modifies `m` directly. It passes `m` to scraper, but generic scraper creates a new 'scraped_' match if it finds links on the page?
+            // Actually, in our application logic, `scrapeMatchFlux` passes the current match `m` down to the scrapers. Scrapers usually use the passed `m` and push to its `m.streamLinks` directly.
+            // Let's re-verify the matches list for any unmerged match that has this URL.
+
+            var newScraped = unmerged.find(function(x) { return x.matchUrl === url; });
+            var html = '<div style="margin-top:8px; padding:8px; background:rgba(255,255,255,0.05); border-radius:4px;">';
+            html += '<div style="font-weight:bold; margin-bottom:4px; color:var(--text);">Résultat :</div>';
+            html += '<div>Flux trouvés : ' + (m.streamLinks ? m.streamLinks.length : 0) + '</div>';
+
+            if (newScraped) {
+                html += '<div style="margin-top: 8px; font-weight:bold; color:var(--text);">Diagnostic d\'association (Pourquoi isMatchPair a échoué ?) :</div>';
+                var diag = debugMatchPair(m, newScraped);
+                html += '<div style="color:var(--red); font-family:monospace; margin-top:4px; padding:4px; background:rgba(0,0,0,0.3); border-radius:4px;">' + esc(diag.reason) + '</div>';
+                html += '<div style="margin-top:4px;"><strong>Scrapé :</strong> ' + esc(newScraped.homeTeam) + ' vs ' + esc(newScraped.awayTeam) + '</div>';
+                html += '<div><strong>Attendu :</strong> ' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
+            }
+            html += '</div>';
+
+            // Because openMod wipes the right column, we must append this report AFTER openMod is called, but openMod redraws this section.
+            m._diagnosticReportHtml = html; // Store temporarily
+
+            // Re-render modal right column to show new links and the report
+            var btnContainer = document.getElementById('modal-btn-container');
+            if (btnContainer && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {
+               openMod(m, lgColor(normName(m.homeTeam)));
+            }
+        }
+    }).catch(function(e) {
+        var repContainer2 = document.getElementById('diagnostic-report-container');
+        if(repContainer2) repContainer2.innerHTML = '<span style="color:var(--red);">Erreur: ' + esc(e.message) + '</span>';
+    });
+}
 
 /* ══ EPG / LISTE ════════════════════════ */
 export function getOriginalMatchId(id) {
@@ -1200,6 +1258,20 @@ export function openMod(m,col){
       contentHtml += '<button class="btn o" onclick="var v=document.getElementById(\'manual-flux-input\').value; if(v){ addToMultivision(v, \''+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+'\', \''+escJs(m.id)+'\'); closeMod(); }">Ajouter ⊞</button>';
       contentHtml += '</div></div>';
 
+      contentHtml += '<div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
+      contentHtml += '<div style="font-size: 12px; margin-bottom: 8px;">Corriger et extraire via URL source (Diagnostic) :</div>';
+      contentHtml += '<div style="display:flex; gap: 8px;">';
+      contentHtml += '<input type="text" id="diagnostic-url-input" placeholder="https://site-de-streaming.com/match-xyz" value="'+(m.matchUrl ? esc(m.matchUrl) : '')+'" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px;">';
+      contentHtml += '<button class="btn" style="background:var(--accent); color:#fff;" onclick="var u=document.getElementById(\'diagnostic-url-input\').value; if(u){ window.diagnosticScrape(\''+escJs(m.id)+'\', u); }">Scraper</button>';
+      contentHtml += '</div>';
+      contentHtml += '<div id="diagnostic-report-container" style="margin-top: 10px; font-size: 12px; color: var(--muted2);">';
+      if (m._diagnosticReportHtml) {
+          contentHtml += m._diagnosticReportHtml;
+          delete m._diagnosticReportHtml; // Consume it
+      }
+      contentHtml += '</div>';
+      contentHtml += '</div>';
+
       // Look for scraped links that didn't merge
       var unmerged = (S.matches || []).filter(function(x) {
           return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
@@ -1270,6 +1342,7 @@ if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
 
 
 // Global bindings for HTML compatibility
+window.diagnosticScrape = diagnosticScrape;
 window.getOriginalMatchId = getOriginalMatchId;
 window.buildEPG = buildEPG;
 window.updateNowLine = updateNowLine;
