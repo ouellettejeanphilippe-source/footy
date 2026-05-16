@@ -364,7 +364,7 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          apiMatches.push(sm);
 
          if (!skipScraping) {
-             addScrapeLog('Merge Failure', 'error', 'Unmerged: ' + sm.homeTeam + ' vs ' + sm.awayTeam + ' (' + (sm.source || 'unknown') + ')');
+             addScrapeLog(sm.matchUrl || 'Merge Failure', 'error', 'Unmerged: ' + sm.homeTeam + ' vs ' + sm.awayTeam + ' (' + (sm.source || 'unknown') + ')');
          }
       }
   });
