@@ -42,14 +42,36 @@ export function diagnosticScrape(matchId, url) {
             html += '<div style="font-weight:bold; margin-bottom:4px; color:var(--text);">Résultat :</div>';
             html += '<div>Flux trouvés : ' + (m.streamLinks ? m.streamLinks.length : 0) + '</div>';
 
+            var logPayload = '=== DIAGNOSTIC LOG ===\n';
+            logPayload += 'URL: ' + url + '\n';
+            logPayload += 'Match Attendu: ' + m.homeTeam + ' vs ' + m.awayTeam + ' (ID: ' + m.id + ')\n';
+            logPayload += 'Flux Trouvés: ' + (m.streamLinks ? m.streamLinks.length : 0) + '\n';
+
             if (newScraped) {
                 html += '<div style="margin-top: 8px; font-weight:bold; color:var(--text);">Diagnostic d\'association (Pourquoi isMatchPair a échoué ?) :</div>';
                 var diag = debugMatchPair(m, newScraped);
                 html += '<div style="color:var(--red); font-family:monospace; margin-top:4px; padding:4px; background:rgba(0,0,0,0.3); border-radius:4px;">' + esc(diag.reason) + '</div>';
                 html += '<div style="margin-top:4px;"><strong>Scrapé :</strong> ' + esc(newScraped.homeTeam) + ' vs ' + esc(newScraped.awayTeam) + '</div>';
                 html += '<div><strong>Attendu :</strong> ' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
+
+                logPayload += '\n=== DEBUG MATCH PAIR ===\n';
+                logPayload += 'Raison: ' + diag.reason + '\n';
+                logPayload += 'Scrapé: ' + newScraped.homeTeam + ' vs ' + newScraped.awayTeam + '\n';
             }
+
+            // Save stream cache
+            if (window.saveStreamCache) {
+                window.saveStreamCache(m.id, m.streamLinks);
+            }
+
+            // Add copy button
+            html += '<div style="margin-top: 10px;"><button class="btn o" style="font-size: 11px; padding: 4px 8px;" onclick="window.copyToClipboard(\'' + escJs(logPayload) + '\').then(function(){ window.showToast(\'Log copié !\'); }).catch(function(){ window.showToast(\'Erreur copie\'); });">📋 Copier le log de debug</button></div>';
             html += '</div>';
+
+            // Also add to global scrape logs
+            if (window.addScrapeLog) {
+                window.addScrapeLog(url, 'success', logPayload);
+            }
 
             // Because openMod wipes the right column, we must append this report AFTER openMod is called, but openMod redraws this section.
             m._diagnosticReportHtml = html; // Store temporarily
@@ -1267,7 +1289,7 @@ export function openMod(m,col){
       contentHtml += '<div style="font-size: 12px; margin-bottom: 8px;">Ajouter un flux manuellement au Multiview (m3u8, iframe, url):</div>';
       contentHtml += '<div style="display:flex; gap: 8px;">';
       contentHtml += '<input type="text" id="manual-flux-input" placeholder="https://..." style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px;">';
-      contentHtml += '<button class="btn o" onclick="var v=document.getElementById(\'manual-flux-input\').value; if(v){ addToMultivision(v, \''+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+'\', \''+escJs(m.id)+'\'); closeMod(); }">Ajouter ⊞</button>';
+      contentHtml += '<button class="btn o" onclick="var v=document.getElementById(\'manual-flux-input\').value; if(v){ window.addManualStream(\''+escJs(m.id)+'\', v); }">Ajouter ⊞</button>';
       contentHtml += '</div></div>';
 
       contentHtml += '<div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
@@ -1365,3 +1387,20 @@ window.renderFluxItem = renderFluxItem;
 window.openMod = openMod;
 window.closeMod = closeMod;
 window.userPrefs = userPrefs;
+
+export function addManualStream(matchId, url) {
+    if (!url) return;
+    var m = (S.matches || []).find(function(x) { return x.id === matchId; });
+    if (!m) return;
+
+    m.streamLinks = m.streamLinks || [];
+    m.streamLinks.push({url: url, name: 'Stream Manuel', source: 'manual'});
+
+    if (window.saveStreamCache) {
+        window.saveStreamCache(m.id, m.streamLinks);
+    }
+
+    addToMultivision(url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+    closeMod();
+}
+window.addManualStream = addManualStream;

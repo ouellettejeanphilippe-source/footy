@@ -457,3 +457,28 @@ export function formatTeamNameBreak(name) {
 
     return esc(parts[0]) + '<br>' + esc(parts.slice(1).join(' '));
 }
+
+export function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+    } else {
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        return new Promise(function(resolve, reject) {
+            var successful = document.execCommand('copy');
+            textArea.remove();
+            if (successful) {
+                resolve();
+            } else {
+                reject(new Error('copy command failed'));
+            }
+        });
+    }
+}
+window.copyToClipboard = copyToClipboard;

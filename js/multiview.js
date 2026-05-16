@@ -2213,13 +2213,27 @@ export function renderScrapeLogs() {
     scrapeLogs.forEach(function(log) {
         var color = log.status === 'error' ? 'var(--red)' : (log.status === 'success' ? '#34c759' : 'var(--text)');
         var icon = log.status === 'error' ? '❌' : (log.status === 'success' ? '✅' : 'ℹ️');
-        html += '<div style="display:flex; flex-direction:column; gap:2px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;">' +
+
+        var errorDisplay = '';
+        if (log.error) {
+            if (log.error.indexOf('\n') !== -1 || log.error.indexOf('=== DIAGNOSTIC LOG ===') !== -1) {
+                // If the error message is multiline or a specific debug log, use pre for formatting and add a copy button
+                var textColor = log.status === 'success' ? 'var(--text)' : 'var(--red)';
+                errorDisplay = '<pre style="color:' + textColor + '; font-size: 11px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;">' + esc(log.error) + '</pre>' +
+                               '<button class="btn o" style="font-size: 10px; padding: 2px 6px; align-self: flex-start;" onclick="window.copyToClipboard(\'' + escJs(log.error) + '\').then(function(){ window.showToast(\'Log copié !\'); }).catch(function(){ window.showToast(\'Erreur copie\'); });">📋 Copier le log</button>';
+            } else {
+                var singleColor = log.status === 'success' ? 'var(--text)' : 'var(--red)';
+                errorDisplay = '<div style="color:' + singleColor + '; font-size: 11px;">' + esc(log.error) + '</div>';
+            }
+        }
+
+        html += '<div style="display:flex; flex-direction:column; gap:4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px;">' +
                   '<div style="display:flex; justify-content:space-between;">' +
                       '<span style="color:var(--muted);">' + esc(log.time) + '</span>' +
                       '<span style="color:' + color + ';">' + icon + ' ' + esc(log.status.toUpperCase()) + '</span>' +
                   '</div>' +
-                  '<div style="word-break: break-all; color: #a1a1aa;">' + esc(log.url) + '</div>' +
-                  (log.error ? '<div style="color:var(--red); font-size: 11px;">' + esc(log.error) + '</div>' : '') +
+                  '<div style="word-break: break-all; color: #a1a1aa; font-weight: 500;">' + esc(log.url) + '</div>' +
+                  errorDisplay +
                 '</div>';
     });
     container.innerHTML = html;
