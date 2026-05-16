@@ -151,82 +151,62 @@ export function openGlobalStatsFromMatch(mid) {
             if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
                 var ts = res.data.boxscore.teams;
                 if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
-                    var statNames = {};
-                    ts[0].statistics.forEach(s => statNames[s.name] = {h: s.displayValue});
-                    ts[1].statistics.forEach(s => {
-                        if(statNames[s.name]) statNames[s.name].a = s.displayValue;
-                    });
-                    for(var k in statNames) {
-                        if(statNames[k].h && statNames[k].a) {
-                            stats.push({label: k, h: statNames[k].h, a: statNames[k].a});
+                    var hIsTs0 = ts[0].homeAway === 'home';
+                    if (ts[0].homeAway !== 'home' && ts[1].homeAway === 'home') hIsTs0 = false;
+                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[0].team && ts[0].team.id === mHomeId) hIsTs0 = true;
+                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[1].team && ts[1].team.id === mHomeId) hIsTs0 = false;
+
+                    var homeStats = hIsTs0 ? ts[0].statistics : ts[1].statistics;
+                    var awayStats = hIsTs0 ? ts[1].statistics : ts[0].statistics;
+
+                    homeStats.forEach(function(hStat) {
+                        var aStat = awayStats.find(function(s) { return s.name === hStat.name; });
+                        if (aStat && hStat.displayValue && aStat.displayValue) {
+                            stats.push({
+                                label: hStat.name,
+                                displayLabel: hStat.label || hStat.displayName || hStat.name,
+                                h: hStat.displayValue,
+                                a: aStat.displayValue
+                            });
                         }
-                    }
+                    });
                 }
             }
 
             if(stats.length > 0) {
                 html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques du match</h4>';
+                html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
 
-                var STAT_CATEGORIES = {
-                    'Possession & Passes': ['possession', 'possessionTime', 'passes', 'passAccuracy'],
-                    'Attaque': ['shots', 'shotsOnTarget', 'expectedGoals'],
-                    'Défense': ['tackles', 'interceptions', 'clearances', 'blocks', 'saves'],
-                    'Discipline & Coups de pied arrêtés': ['fouls', 'yellowCards', 'redCards', 'offsides', 'cornerKicks', 'freeKicks', 'goalKicks', 'throwIns']
-                };
+                stats.forEach(function(st) {
+                    var formattedLabel = formatStatLabel(st.label);
+                    if (!formattedLabel || formattedLabel === st.label) formattedLabel = formatStatLabel(st.displayLabel) || st.displayLabel;
 
-                var groupedStats = {};
-                var usedKeys = new Set();
-
-                for (var cat in STAT_CATEGORIES) {
-                    groupedStats[cat] = [];
-                    STAT_CATEGORIES[cat].forEach(function(key) {
-                        var st = stats.find(function(s) { return s.label === key; });
-                        if (st) {
-                            groupedStats[cat].push(st);
-                            usedKeys.add(key);
-                        }
-                    });
-                }
-
-                var autres = stats.filter(function(st) { return !usedKeys.has(st.label); });
-                if (autres.length > 0) {
-                    groupedStats['Autres'] = autres;
-                }
-
-                for (var cat in groupedStats) {
-                    if (groupedStats[cat].length > 0) {
-                        html += '<div style="margin-top:12px; margin-bottom: 4px; font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px;">' + esc(cat) + '</div>';
-                        html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
-                        groupedStats[cat].forEach(function(st) {
-                            var formattedLabel = formatStatLabel(st.label);
-                            var valH = parseFloat(String(st.h).replace(/[^0-9.]/g, '')) || 0;
-                            var valA = parseFloat(String(st.a).replace(/[^0-9.]/g, '')) || 0;
-                            var maxVal = Math.max(valH, valA);
-                            var pctH = maxVal > 0 ? (valH / maxVal) * 100 : 0;
-                            var pctA = maxVal > 0 ? (valA / maxVal) * 100 : 0;
-                            if (valH === 0 && valA === 0 && String(st.h).trim() !== '0' && String(st.a).trim() !== '0') {
-                                pctH = 50; pctA = 50; // Fallback for purely non-numeric strings
-                            }
-
-                            html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">';
-                            html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">';
-                            html += '<span style="font-weight:bold;width:40px;text-align:left;white-space:nowrap;">'+st.h+'</span>';
-                            html += '<span style="color:var(--muted);flex:1;text-align:center;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(formattedLabel)+'">'+formattedLabel+'</span>';
-                            html += '<span style="font-weight:bold;width:40px;text-align:right;white-space:nowrap;">'+st.a+'</span>';
-                            html += '</div>';
-                            html += '<div style="display:flex;height:4px;width:100%;gap:4px;">';
-                            html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-end;overflow:hidden;">';
-                            html += '<div style="height:100%;width:'+pctH+'%;background:var(--accent);border-radius:2px;"></div>';
-                            html += '</div>';
-                            html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-start;overflow:hidden;">';
-                            html += '<div style="height:100%;width:'+pctA+'%;background:#f59e0b;border-radius:2px;"></div>';
-                            html += '</div>';
-                            html += '</div>';
-                            html += '</div>';
-                        });
-                        html += '</div>';
+                    var valH = parseFloat(String(st.h).replace(/[^0-9.]/g, '')) || 0;
+                    var valA = parseFloat(String(st.a).replace(/[^0-9.]/g, '')) || 0;
+                    var maxVal = Math.max(valH, valA);
+                    var pctH = maxVal > 0 ? (valH / maxVal) * 100 : 0;
+                    var pctA = maxVal > 0 ? (valA / maxVal) * 100 : 0;
+                    if (valH === 0 && valA === 0 && String(st.h).trim() !== '0' && String(st.a).trim() !== '0') {
+                        pctH = 50; pctA = 50; // Fallback for purely non-numeric strings
                     }
-                }
+
+                    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">';
+                    html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">';
+                    html += '<span style="font-weight:bold;width:40px;text-align:left;white-space:nowrap;">'+st.h+'</span>';
+                    html += '<span style="color:var(--muted);flex:1;text-align:center;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(formattedLabel)+'">'+formattedLabel+'</span>';
+                    html += '<span style="font-weight:bold;width:40px;text-align:right;white-space:nowrap;">'+st.a+'</span>';
+                    html += '</div>';
+                    html += '<div style="display:flex;height:4px;width:100%;gap:4px;">';
+                    html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-end;overflow:hidden;">';
+                    html += '<div style="height:100%;width:'+pctH+'%;background:var(--accent);border-radius:2px;"></div>';
+                    html += '</div>';
+                    html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-start;overflow:hidden;">';
+                    html += '<div style="height:100%;width:'+pctA+'%;background:#f59e0b;border-radius:2px;"></div>';
+                    html += '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
             } else {
                 html += '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Statistiques détaillées non disponibles.</div>';
             }

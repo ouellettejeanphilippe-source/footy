@@ -322,16 +322,30 @@ export function updateMvGameModeStats() {
             if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
                 var ts = res.data.boxscore.teams;
                 if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
-                    var statNames = {};
-                    ts[0].statistics.forEach(s => statNames[s.name] = {h: s.displayValue});
-                    ts[1].statistics.forEach(s => {
-                        if(statNames[s.name]) statNames[s.name].a = s.displayValue;
-                    });
-                    for(var k in statNames) {
-                        if(statNames[k].h && statNames[k].a) {
-                            stats.push({label: k, h: statNames[k].h, a: statNames[k].a});
+                    var hStats = ts[0].statistics;
+                    var aStats = ts[1].statistics;
+
+                    // Always try to put home team on the left, away on the right. Usually ts[0] is home if homeAway == 'home', else we need to swap
+                    var hIsTs0 = ts[0].homeAway === 'home';
+                    if (ts[0].homeAway !== 'home' && ts[1].homeAway === 'home') hIsTs0 = false;
+                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[0].team && ts[0].team.id === mHomeId) hIsTs0 = true;
+                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[1].team && ts[1].team.id === mHomeId) hIsTs0 = false;
+
+                    var homeStats = hIsTs0 ? ts[0].statistics : ts[1].statistics;
+                    var awayStats = hIsTs0 ? ts[1].statistics : ts[0].statistics;
+
+                    homeStats.forEach(function(hStat) {
+                        var aStat = awayStats.find(function(s) { return s.name === hStat.name; });
+                        if (aStat && hStat.displayValue && aStat.displayValue) {
+                            // Only add if there is some value to display to keep it clean, though we could just show all
+                            stats.push({
+                                label: hStat.name,
+                                displayLabel: hStat.label || hStat.displayName || hStat.name,
+                                h: hStat.displayValue,
+                                a: aStat.displayValue
+                            });
                         }
-                    }
+                    });
                 }
             }
 
@@ -340,10 +354,11 @@ export function updateMvGameModeStats() {
                 html += '<div style="display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,0.02);padding:10px;border-radius:12px;">';
                 stats.forEach(function(st) {
                     var label = formatStatLabel(st.label);
+                    if (!label || label === st.label) label = formatStatLabel(st.displayLabel) || st.displayLabel;
                     html += '<div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;">';
-                    html += '<span style="font-weight:bold;width:30px;text-align:right;">'+esc(st.h)+'</span>';
-                    html += '<span style="color:var(--muted);flex:1;text-align:center;">'+esc(label)+'</span>';
-                    html += '<span style="font-weight:bold;width:30px;text-align:left;">'+esc(st.a)+'</span>';
+                    html += '<span style="font-weight:bold;width:40px;text-align:left;">'+esc(st.h)+'</span>';
+                    html += '<span style="color:var(--muted);flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(label)+'">'+esc(label)+'</span>';
+                    html += '<span style="font-weight:bold;width:40px;text-align:right;">'+esc(st.a)+'</span>';
                     html += '</div>';
                 });
                 html += '</div>';
