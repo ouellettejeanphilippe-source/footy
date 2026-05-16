@@ -697,7 +697,12 @@ export function getDomain(url) {
     var u = new URL(url);
     return u.hostname.replace(/^www\./, '');
   } catch(e) {
-    return url;
+    try {
+        var match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/i);
+        return match && match[1] ? match[1] : url;
+    } catch(err) {
+        return url;
+    }
   }
 }
 
