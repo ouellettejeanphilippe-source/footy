@@ -962,45 +962,6 @@ export function openMod(m,col){
                           var aTotalRec = aTeam.record.items.find(function(r) { return r.type === 'total'; });
 
                           if (hTotalRec && aTotalRec && hTotalRec.stats && aTotalRec.stats) {
-                              // Goals Stats
-                              var hGoalsFor = hTotalRec.stats.find(function(s) { return s.name === 'pointsFor' || s.name === 'avgPointsFor'; });
-                              var aGoalsFor = aTotalRec.stats.find(function(s) { return s.name === 'pointsFor' || s.name === 'avgPointsFor'; });
-                              var hGoalsAgainst = hTotalRec.stats.find(function(s) { return s.name === 'pointsAgainst' || s.name === 'avgPointsAgainst'; });
-                              var aGoalsAgainst = aTotalRec.stats.find(function(s) { return s.name === 'pointsAgainst' || s.name === 'avgPointsAgainst'; });
-
-                              if ((hGoalsFor || hGoalsAgainst) && (aGoalsFor || aGoalsAgainst)) {
-                                  var bpLbl = 'BP', bcLbl = 'BC';
-                                  var _lg = m.league ? m.league.toUpperCase() : '';
-                                  if (_lg === 'NBA' || _lg === 'NFL' || _lg === 'CFL' || _lg === 'NCAA') {
-                                      bpLbl = 'PP'; bcLbl = 'PC';
-                                  } else if (_lg === 'MLB') {
-                                      bpLbl = 'CP'; bcLbl = 'CC';
-                                  }
-
-                                  var goalStatsHtml = '<div style="display:flex; justify-content:space-between; width:100%; font-size:12px; color:#fff; text-align:center;">';
-
-                                  var hGoalsHtml = '<div style="flex:1; display:flex; flex-direction:column; gap:4px;">';
-                                  if (hGoalsFor) hGoalsHtml += '<div><span style="font-weight:bold;">' + hGoalsFor.displayValue + '</span> <span style="color:var(--muted); font-size:10px;">' + bpLbl + '</span></div>';
-                                  if (hGoalsAgainst) hGoalsHtml += '<div><span style="font-weight:bold;">' + hGoalsAgainst.displayValue + '</span> <span style="color:var(--muted); font-size:10px;">' + bcLbl + '</span></div>';
-                                  hGoalsHtml += '</div>';
-
-                                  var aGoalsHtml = '<div style="flex:1; display:flex; flex-direction:column; gap:4px;">';
-                                  if (aGoalsFor) aGoalsHtml += '<div><span style="color:var(--muted); font-size:10px;">' + bpLbl + '</span> <span style="font-weight:bold;">' + aGoalsFor.displayValue + '</span></div>';
-                                  if (aGoalsAgainst) aGoalsHtml += '<div><span style="color:var(--muted); font-size:10px;">' + bcLbl + '</span> <span style="font-weight:bold;">' + aGoalsAgainst.displayValue + '</span></div>';
-                                  aGoalsHtml += '</div>';
-
-                                  goalStatsHtml += hGoalsHtml;
-                                  goalStatsHtml += '<div style="flex:0.2;"></div>'; // spacer
-                                  goalStatsHtml += aGoalsHtml;
-                                  goalStatsHtml += '</div>';
-
-                                  var goalStatsContainer = document.getElementById('goal-stats-container');
-                                  if (goalStatsContainer) {
-                                      goalStatsContainer.innerHTML = goalStatsHtml;
-                                      goalStatsContainer.style.display = 'block';
-                                  }
-                              }
-
                               // Global Stats Toggle
                               var globalStatsToggleContainer = document.getElementById('global-stats-toggle-container');
                               if (globalStatsToggleContainer) {
@@ -1029,14 +990,20 @@ export function openMod(m,col){
 
                                   var statsListHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
 
-                                  var statsToCompare = ['wins', 'losses', 'differential', 'streak'];
-                                  var statLabels = {'wins': 'Victoires', 'losses': 'Défaites', 'differential': 'Différentiel', 'streak': 'Séquence', 'points': 'Pts', 'ties': 'Nuls', 'otLosses': 'DP'};
+                                  var statsToCompare = ['wins', 'losses', 'winPercent', 'streak'];
+                                  var statLabels = {
+                                      'wins': 'Victoires', 'losses': 'Défaites', 'differential': 'Différentiel', 'streak': 'Séquence',
+                                      'points': 'Pts', 'ties': 'Nuls', 'otLosses': 'DP', 'winPercent': 'Pourcentage', 'gamesBehind': 'Retard',
+                                      'pointsFor': 'Buts', 'pointDifferential': 'Différentiel', 'assists': 'Passes décisives', 'pointsAgainst': 'Buts encaissés'
+                                  };
 
                                   var __lg = m.league ? m.league.toUpperCase() : '';
                                   if (__lg.indexOf('LIGUE 1') > -1 || __lg.indexOf('PREMIER LEAGUE') > -1 || __lg.indexOf('LA LIGA') > -1 || __lg.indexOf('SERIE A') > -1 || __lg.indexOf('BUNDESLIGA') > -1 || __lg.indexOf('MLS') > -1 || __lg.indexOf('CHAMPIONS LEAGUE') > -1 || __lg.indexOf('EUROPA') > -1 || __lg.indexOf('SOCCER') > -1) {
-                                      statsToCompare = ['points', 'wins', 'ties', 'losses'];
+                                      statsToCompare = ['pointsFor', 'pointDifferential', 'assists', 'pointsAgainst'];
                                   } else if (__lg === 'NHL' || __lg === 'PWHL' || __lg.indexOf('HOCKEY') > -1 || __lg === 'AHL' || __lg === 'QMJHL' || __lg === 'OHL' || __lg === 'WHL') {
                                       statsToCompare = ['points', 'wins', 'losses', 'otLosses'];
+                                  } else if (__lg === 'MLB' || __lg.indexOf('BASEBALL') > -1) {
+                                      statsToCompare = ['wins', 'losses', 'winPercent', 'gamesBehind'];
                                   }
 
                                   statsToCompare.forEach(function(sName) {
@@ -1044,8 +1011,14 @@ export function openMod(m,col){
                                       var aStat = aTotalRec.stats.find(function(s) { return s.name === sName; });
 
                                       if (hStat || aStat) {
-                                          var hVal = hStat ? hStat.displayValue : '-';
-                                          var aVal = aStat ? aStat.displayValue : '-';
+                                          var hVal = '-';
+                                          if (hStat) {
+                                              hVal = hStat.displayValue !== undefined ? hStat.displayValue : (hStat.value !== undefined ? hStat.value : '-');
+                                          }
+                                          var aVal = '-';
+                                          if (aStat) {
+                                              aVal = aStat.displayValue !== undefined ? aStat.displayValue : (aStat.value !== undefined ? aStat.value : '-');
+                                          }
                                           var lbl = statLabels[sName] || sName;
 
                                           statsListHtml += '<div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">';
