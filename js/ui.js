@@ -1097,37 +1097,6 @@ export function openMod(m,col){
       window.modalStatsInterval = setInterval(fetchAndRenderModalStats, 300000);
   }
 
-  var btnContainer = document.createElement('div');
-  btnContainer.style.display = 'flex';
-  btnContainer.style.justifyContent = 'center';
-  btnContainer.style.width = '100%';
-  btnContainer.style.marginTop = '16px';
-
-  var refreshBtn = document.createElement('button');
-  refreshBtn.className = 'btn o';
-  refreshBtn.style.padding = '8px';
-  refreshBtn.style.borderRadius = '50%';
-  refreshBtn.style.width = '40px';
-  refreshBtn.style.height = '40px';
-  refreshBtn.style.display = 'flex';
-  refreshBtn.style.alignItems = 'center';
-  refreshBtn.style.justifyContent = 'center';
-  refreshBtn.innerHTML = '🔄';
-  refreshBtn.id = 'mv-refresh-btn';
-  refreshBtn.onclick = function() {
-      refreshBtn.style.opacity = '0.5';
-      refreshBtn.disabled = true;
-      scrapeMatchFlux(m, true).finally(function() {
-          openMod(m, col);
-      });
-  };
-
-  if (!m.matchUrl) {
-      refreshBtn.disabled = true;
-  }
-
-  btnContainer.appendChild(refreshBtn);
-
   var body=document.getElementById('mbody');
 
   var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
@@ -1204,7 +1173,7 @@ export function openMod(m,col){
   if (mft) mft.style.display = 'none';
 
   var wrapperHtml = '<div style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
-      '<button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; top: -10px; right: -10px; z-index: 100;"><span class="ic ic-close"></span></button>' +
+      '<button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; top: -10px; right: -10px; z-index: 100; pointer-events: auto;"><span class="ic ic-close"></span></button>' +
       '<div id="modal-left-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
           '<div class="match-card scoreboard" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
               '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:21/9; border-radius:var(--radius-card,12px); overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.3); display:flex; background-color:var(--bg2); z-index: 1;">' +
@@ -1235,7 +1204,6 @@ export function openMod(m,col){
   '</div>';
 
   body.innerHTML = wrapperHtml;
-  document.getElementById('modal-left-col').appendChild(btnContainer);
 
   var rightCol = document.getElementById('modal-right-col');
 
@@ -1244,8 +1212,50 @@ export function openMod(m,col){
   var hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
   var needsScraping = (!m.streamsLoaded || !hasEnoughStreams) && m.matchUrl;
 
+  // Header section for right column (Refresh + Random Multiview)
+  var rightHeaderHtml = '<div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;">';
+
+  // Refresh button
+  rightHeaderHtml += '<button id="mv-refresh-btn" title="Mettre à jour les streams" style="background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.2s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'" ' + (!m.matchUrl ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : '') + '>🔄</button>';
+
+  // Random Multiview button
+  rightHeaderHtml += '<button id="mv-random-btn" title="Ajouter un stream aléatoire à la Multivision" style="background:transparent; border:none; color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.2s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'">⊞</button>';
+
+  rightHeaderHtml += '</div>';
+
+  // This will attach events to the header buttons once rightCol.innerHTML is set
+  function attachHeaderEvents() {
+      var refreshBtn = document.getElementById('mv-refresh-btn');
+      if (refreshBtn) {
+          refreshBtn.onclick = function() {
+              this.style.opacity = '0.5';
+              this.disabled = true;
+              scrapeMatchFlux(m, true).finally(function() {
+                  openMod(m, col);
+              });
+          };
+      }
+      var randomBtn = document.getElementById('mv-random-btn');
+      if (randomBtn) {
+          randomBtn.onclick = function(e) {
+              e.stopPropagation();
+              e.preventDefault();
+              if (m && m.streamLinks && m.streamLinks.length > 0) {
+                  var sList = m.streamLinks;
+                  var s4k = sList.filter(function(s) {
+                      return (s.quality && s.quality.toUpperCase() === '4K') || (s.name && s.name.toUpperCase().indexOf('4K') > -1);
+                  });
+                  var sel = s4k.length > 0 ? s4k[0] : sList[Math.floor(Math.random() * sList.length)];
+                  addToMultivision(sel.url || '#', m.homeTeam + ' vs ' + m.awayTeam, m.id);
+                  closeMod();
+              }
+          };
+      }
+  }
+
   if(needsScraping) {
-      rightCol.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
+      rightCol.innerHTML= rightHeaderHtml + '<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
+      attachHeaderEvents();
       document.getElementById('mbg').classList.add('open');
 
       // Force load the streams for this specific match right away if they aren't loaded yet
@@ -1269,15 +1279,15 @@ export function openMod(m,col){
           sortedLinks = sortFluxLinks(m.streamLinks);
       }
 
-      var contentHtml = '';
+      var contentHtml = rightHeaderHtml;
       if (sortedLinks.length === 0) {
-          contentHtml = '<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.<br>';
+          contentHtml += '<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.<br>';
           if (m.matchUrl) {
               contentHtml += '<a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a>';
           }
           contentHtml += '</div>';
       } else {
-          contentHtml = sortedLinks.map(function(s,i){
+          contentHtml += sortedLinks.map(function(s,i){
               return renderFluxItem(s, i, m);
           }).join('');
       }
@@ -1361,6 +1371,7 @@ export function openMod(m,col){
       contentHtml += '</details></div>';
 
       rightCol.innerHTML = contentHtml;
+      attachHeaderEvents();
       document.getElementById('mbg').classList.add('open');
   }
 }

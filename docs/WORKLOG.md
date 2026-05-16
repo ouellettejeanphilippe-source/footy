@@ -1,9 +1,10 @@
 # Worklog
 
 ## En cours
-- 2026-05-16 - Fixed stream cache persistence issue where cached streamLinks were discarded upon page refresh. Updated `getApiFirstMatches` in `js/api.js` to eagerly inject saved `stream_cache` into newly fetched API matches before saving them into the local calendar cache.
 
 ## Fait
+- 2026-05-16 - Déplacer bouton de mise à jour de la liste des streams et mettre en haut de la liste des streams, sans rond autour, juste l'icone, à côté, ajouter une icone de multiview qui ajoute un stream random du match (sauf si 4k stream dispo, mettre 4k stream). Aussi, 4k streams et Buffstream Flux toujours favoris en haut.
+- 2026-05-16 - Fixed stream cache persistence issue where cached streamLinks were discarded upon page refresh. Updated `getApiFirstMatches` in `js/api.js` to eagerly inject saved `stream_cache` into newly fetched API matches before saving them into the local calendar cache.
 - 2024-05-18 - Mettre "Manches" au lieu de "Temps" pour le baseball dans la section des scores.
 - 2026-05-16 - Fixed URL matching/parsing in `js/scrapers.js` where `new URL` failed silently for base URLs lacking a protocol, preventing relative streams from resolving properly.
 - 2026-05-16 - Enhanced `getDomain` in `js/config.js` with regex fallback to gracefully parse naked domains if `new URL` throws an exception, avoiding full URL returns when protocols are missing.
