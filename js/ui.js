@@ -1224,8 +1224,12 @@ export function openMod(m,col){
 
   var rightCol = document.getElementById('modal-right-col');
 
-  // Wait if streams are still loading, but fetch them specifically if they aren't loading
-  if(!m.streamsLoaded && m.matchUrl) {
+  // Wait if streams are still loading, but fetch them specifically if they aren't loading.
+  // Si on a m.streamsLoaded mais aucun flux trouvé, on force le re-scraping car l'utilisateur demande explicitement le match
+  var hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
+  var needsScraping = (!m.streamsLoaded || !hasEnoughStreams) && m.matchUrl;
+
+  if(needsScraping) {
       rightCol.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
       document.getElementById('mbg').classList.add('open');
 

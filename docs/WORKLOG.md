@@ -3,6 +3,7 @@
 ## En cours
 
 ## Fait
+- 2024-05-15 - Fixed premature stream scraping blocks by introducing a `hasEnoughStreams` check in `fetchSubPages` (background scraper) and `openMod` (foreground modal). This ensures matches that were checked too early and had 0 streams are eligible for re-scraping later, solving the missing streams issue.
 - 2026-05-15 - Ajout de logs de debug détaillés (diagnosticScrape), persistance des streams manuels (via saveStreamCache), fonction globale copyToClipboard et affichage des logs multilignes dans le Multiview.
 - 2024-05-15 - Fixed URL matching/parsing in `js/scrapers.js` for `MLBITE_URL` trailing slash replacement bug by checking `endsWith('/')` rather than blindly using string `.replace(/\/$/, '')`.
 - 2024-05-15 - Refined match modal for game streaming in `js/ui.js` by hiding legacy header/footer, injecting a new close button into `wrapperHtml`, and fixing the async stream render target in `js/scrapers.js` to update the new split layout instead of overwriting the entire modal.

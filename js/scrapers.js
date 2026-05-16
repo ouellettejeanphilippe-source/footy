@@ -1192,7 +1192,10 @@ export function fetchSubPages(matches){
           m.streamsLoaded = true;
           return false;
       }
-      if (!m.matchUrl || m.streamsLoaded) return false;
+      // Si on a très peu/pas de flux, on ne considère pas les streams comme "définitivement" chargés
+      // pour le background refresh. Cela permet de réessayer si on a ouvert le modal trop tôt.
+      var hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
+      if (!m.matchUrl || (m.streamsLoaded && hasEnoughStreams)) return false;
 
       if (m.startTime && m.matchDate) {
           var mParts = m.startTime.split(':');
