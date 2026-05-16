@@ -947,16 +947,24 @@ export function openMod(m,col){
                               var aGoalsAgainst = aTotalRec.stats.find(function(s) { return s.name === 'pointsAgainst' || s.name === 'avgPointsAgainst'; });
 
                               if ((hGoalsFor || hGoalsAgainst) && (aGoalsFor || aGoalsAgainst)) {
+                                  var bpLbl = 'BP', bcLbl = 'BC';
+                                  var _lg = m.league ? m.league.toUpperCase() : '';
+                                  if (_lg === 'NBA' || _lg === 'NFL' || _lg === 'CFL' || _lg === 'NCAA') {
+                                      bpLbl = 'PP'; bcLbl = 'PC';
+                                  } else if (_lg === 'MLB') {
+                                      bpLbl = 'CP'; bcLbl = 'CC';
+                                  }
+
                                   var goalStatsHtml = '<div style="display:flex; justify-content:space-between; width:100%; font-size:12px; color:#fff; text-align:center;">';
 
                                   var hGoalsHtml = '<div style="flex:1; display:flex; flex-direction:column; gap:4px;">';
-                                  if (hGoalsFor) hGoalsHtml += '<div><span style="font-weight:bold;">' + hGoalsFor.displayValue + '</span> <span style="color:var(--muted); font-size:10px;">BP</span></div>';
-                                  if (hGoalsAgainst) hGoalsHtml += '<div><span style="font-weight:bold;">' + hGoalsAgainst.displayValue + '</span> <span style="color:var(--muted); font-size:10px;">BC</span></div>';
+                                  if (hGoalsFor) hGoalsHtml += '<div><span style="font-weight:bold;">' + hGoalsFor.displayValue + '</span> <span style="color:var(--muted); font-size:10px;">' + bpLbl + '</span></div>';
+                                  if (hGoalsAgainst) hGoalsHtml += '<div><span style="font-weight:bold;">' + hGoalsAgainst.displayValue + '</span> <span style="color:var(--muted); font-size:10px;">' + bcLbl + '</span></div>';
                                   hGoalsHtml += '</div>';
 
                                   var aGoalsHtml = '<div style="flex:1; display:flex; flex-direction:column; gap:4px;">';
-                                  if (aGoalsFor) aGoalsHtml += '<div><span style="color:var(--muted); font-size:10px;">BP</span> <span style="font-weight:bold;">' + aGoalsFor.displayValue + '</span></div>';
-                                  if (aGoalsAgainst) aGoalsHtml += '<div><span style="color:var(--muted); font-size:10px;">BC</span> <span style="font-weight:bold;">' + aGoalsAgainst.displayValue + '</span></div>';
+                                  if (aGoalsFor) aGoalsHtml += '<div><span style="color:var(--muted); font-size:10px;">' + bpLbl + '</span> <span style="font-weight:bold;">' + aGoalsFor.displayValue + '</span></div>';
+                                  if (aGoalsAgainst) aGoalsHtml += '<div><span style="color:var(--muted); font-size:10px;">' + bcLbl + '</span> <span style="font-weight:bold;">' + aGoalsAgainst.displayValue + '</span></div>';
                                   aGoalsHtml += '</div>';
 
                                   goalStatsHtml += hGoalsHtml;
@@ -1000,7 +1008,14 @@ export function openMod(m,col){
                                   var statsListHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
 
                                   var statsToCompare = ['wins', 'losses', 'differential', 'streak'];
-                                  var statLabels = {'wins': 'Victoires', 'losses': 'Défaites', 'differential': 'Différentiel', 'streak': 'Séquence'};
+                                  var statLabels = {'wins': 'Victoires', 'losses': 'Défaites', 'differential': 'Différentiel', 'streak': 'Séquence', 'points': 'Pts', 'ties': 'Nuls', 'otLosses': 'DP'};
+
+                                  var __lg = m.league ? m.league.toUpperCase() : '';
+                                  if (__lg.indexOf('LIGUE 1') > -1 || __lg.indexOf('PREMIER LEAGUE') > -1 || __lg.indexOf('LA LIGA') > -1 || __lg.indexOf('SERIE A') > -1 || __lg.indexOf('BUNDESLIGA') > -1 || __lg.indexOf('MLS') > -1 || __lg.indexOf('CHAMPIONS LEAGUE') > -1 || __lg.indexOf('EUROPA') > -1 || __lg.indexOf('SOCCER') > -1) {
+                                      statsToCompare = ['points', 'wins', 'ties', 'losses'];
+                                  } else if (__lg === 'NHL' || __lg === 'PWHL' || __lg.indexOf('HOCKEY') > -1 || __lg === 'AHL' || __lg === 'QMJHL' || __lg === 'OHL' || __lg === 'WHL') {
+                                      statsToCompare = ['points', 'wins', 'losses', 'otLosses'];
+                                  }
 
                                   statsToCompare.forEach(function(sName) {
                                       var hStat = hTotalRec.stats.find(function(s) { return s.name === sName; });
@@ -1207,9 +1222,6 @@ export function openMod(m,col){
               openMod(m, col); // Re-render modal only if still open and matching
           }
       });
-  } else if(!m.streamsLoaded){
-      rightCol.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement des streams...</div>';
-      document.getElementById('mbg').classList.add('open');
   } else {
       var sortedLinks = [];
       if (m.streamLinks && m.streamLinks.length > 0) {
