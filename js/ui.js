@@ -1207,14 +1207,14 @@ export function openMod(m,col){
       '<button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; top: -10px; right: -10px; z-index: 100;"><span class="ic ic-close"></span></button>' +
       '<div id="modal-left-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
           '<div class="match-card scoreboard" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
-              '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:21/9; border-radius:var(--radius-card,12px); overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.3); display:flex; background-color:var(--bg2); margin-bottom: -20px; z-index: 1;">' +
+              '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:21/9; border-radius:var(--radius-card,12px); overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.3); display:flex; background-color:var(--bg2); z-index: 1;">' +
                   lgBadge +
 
                   '<div class="prime-logos" style="position:absolute; inset:0; display:flex; z-index:2;">' +
                       logosHtml +
                   '</div>' +
               '</div>' +
-              '<div class="prime-info" style="display:flex; flex-direction:column; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 32px 16px 16px; pointer-events:auto; z-index: 2;">' +
+              '<div class="prime-info" style="display:flex; flex-direction:column; padding: 16px; pointer-events:auto; z-index: 2;">' +
                   teamsHtml +
                   '<div style="margin-top:16px;">' + centerScoreHtml + '</div>' +
                   statusHtml +
