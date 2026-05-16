@@ -3,6 +3,8 @@
 ## En cours
 
 ## Fait
+- 2026-05-16 - Fixed URL matching/parsing in `js/scrapers.js` where `new URL` failed silently for base URLs lacking a protocol, preventing relative streams from resolving properly.
+- 2026-05-16 - Enhanced `getDomain` in `js/config.js` with regex fallback to gracefully parse naked domains if `new URL` throws an exception, avoiding full URL returns when protocols are missing.
 - 2024-05-16 - Correction du bug undefined BP/BC et mise à jour des statistiques par défaut (statsToCompare) dans js/ui.js pour correspondre aux Team Stats affichées par ESPN pour chaque sport (Soccer, Hockey, MLB, etc.), regroupées dans la section Voir les statistiques de la saison.
 
 ## Fait
