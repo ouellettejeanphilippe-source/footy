@@ -2,7 +2,7 @@ import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
-import { parsePWHLSchedule } from './scrapers.js';
+import { parsePWHLSchedule, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
@@ -282,6 +282,23 @@ export function getApiFirstMatches(targetDate) {
 
   return Promise.allSettled(promises).then(function(){
     var filtered = filterBuggyMatches(baseMatches);
+
+    // Inject stream cache before returning
+    filtered.forEach(function(m) {
+        var cachedStreams = getStreamCache(m.id);
+        if (cachedStreams && cachedStreams.length > 0) {
+            if (!m.streamLinks) m.streamLinks = [];
+            var combinedLinks = m.streamLinks.slice();
+            cachedStreams.forEach(function(cs) {
+                if (!combinedLinks.find(function(ex) { return ex.url === cs.url; })) {
+                    combinedLinks.push(cs);
+                }
+            });
+            m.streamLinks = combinedLinks;
+            m.streamsLoaded = true;
+        }
+    });
+
     try {
         var fetchDateToSave = todayStr;
         if (!needsFullFetch && cache && cache.fetchDate) {
