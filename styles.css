@@ -733,3 +733,11 @@ body[data-icon-pack="sharp"] .ic-close {
 .mrow.hidden-lg {
     display: none !important;
 }
+
+@media (min-width: 769px) {
+  #modal-left-col {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+  }
+}
