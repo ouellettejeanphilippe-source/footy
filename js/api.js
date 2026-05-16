@@ -482,10 +482,14 @@ export function renderScorersHtml(scorers, m, hId, aId) {
 
     var html = '<div style="display:flex; flex-direction:column; gap:8px; width:100%; font-size:13px; margin-top:8px; background:rgba(255,255,255,0.02); padding:12px; border-radius:12px;">';
 
+    var lgUpper = m && m.league ? m.league.toUpperCase() : '';
+    var isBaseball = lgUpper === 'MLB' || lgUpper.indexOf('BASEBALL') > -1;
+    var timeLabel = isBaseball ? 'Manches' : 'Temps';
+
     // Header
     html += '<div style="display:flex; justify-content:space-between; padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); font-weight:700; color:var(--muted2); font-size:11px; text-transform:uppercase;">';
     html += '<div style="flex:1;">' + esc(m.homeTeam) + '</div>';
-    html += '<div style="width:40px; text-align:center;">Temps</div>';
+    html += '<div style="width:60px; text-align:center;">' + timeLabel + '</div>';
     html += '<div style="flex:1; text-align:right;">' + esc(m.awayTeam) + '</div>';
     html += '</div>';
 
@@ -493,11 +497,11 @@ export function renderScorersHtml(scorers, m, hId, aId) {
         html += '<div style="display:flex; align-items:center; width:100%; gap:8px;">';
         if (s._side === 'home') {
             html += '<div style="flex:1; display:flex; align-items:center; gap:8px; color:#fff; font-weight:600;"><div style="width:20px; height:20px; border-radius:10px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:10px;">⚽</div><div style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(s.player) + '</div></div>';
-            html += '<div style="width:40px; text-align:center; font-weight:700; color:var(--accent);">' + esc(s.time) + '</div>';
+            html += '<div style="width:60px; text-align:center; font-weight:700; color:var(--accent);">' + esc(s.time) + '</div>';
             html += '<div style="flex:1;"></div>';
         } else {
             html += '<div style="flex:1;"></div>';
-            html += '<div style="width:40px; text-align:center; font-weight:700; color:var(--accent);">' + esc(s.time) + '</div>';
+            html += '<div style="width:60px; text-align:center; font-weight:700; color:var(--accent);">' + esc(s.time) + '</div>';
             html += '<div style="flex:1; display:flex; align-items:center; justify-content:flex-end; gap:8px; color:#fff; font-weight:600;"><div style="flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(s.player) + '</div><div style="width:20px; height:20px; border-radius:10px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; font-size:10px;">⚽</div></div>';
         }
         html += '</div>';
