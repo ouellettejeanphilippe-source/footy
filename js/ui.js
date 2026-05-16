@@ -5,7 +5,7 @@ import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON,
 import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
-import { isMatch, debugMatchPair } from './match.js';
+import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES } from './db.js';
 
 /* ══ DIAGNOSTIC SCRAPE ══════════════════ */
@@ -57,6 +57,48 @@ export function diagnosticScrape(matchId, url) {
                 logPayload += '\n=== DEBUG MATCH PAIR ===\n';
                 logPayload += 'Raison: ' + diag.reason + '\n';
                 logPayload += 'Scrapé: ' + newScraped.homeTeam + ' vs ' + newScraped.awayTeam + '\n';
+
+                // Simulation automatique contre tous les matchs de l'API
+                var simMatches = [];
+                var apiOnly = (S.matches || []).filter(function(x) { return x.league !== 'Autres Flux' && !x.id.toString().startsWith('scraped_') && !x.id.toString().startsWith('bs_') && !x.id.toString().startsWith('se_') && !x.id.toString().startsWith('ts_') && !x.id.toString().startsWith('vip_'); });
+
+                var matchedSim = null;
+                apiOnly.forEach(function(apiM) {
+                    var apiDiag = debugMatchPair(apiM, newScraped);
+                    if (apiDiag.isMatch) {
+                        matchedSim = apiM;
+                    } else {
+                        // Basic similarity score to find top closest matches if no match found
+                        var simH = stringSimilarity(apiM.homeTeam, newScraped.homeTeam);
+                        var simA = stringSimilarity(apiM.awayTeam, newScraped.awayTeam);
+                        var simHA = stringSimilarity(apiM.homeTeam, newScraped.awayTeam);
+                        var simAH = stringSimilarity(apiM.awayTeam, newScraped.homeTeam);
+
+                        var maxSim = Math.max(simH + simA, simHA + simAH) / 2;
+                        simMatches.push({ match: apiM, score: maxSim, reason: apiDiag.reason });
+                    }
+                });
+
+                logPayload += '\n=== SIMULATION AUTOMATIQUE ===\n';
+                if (matchedSim) {
+                    logPayload += 'SUCCÈS: Si ce lien n\'avait pas été manuel, il aurait été associé automatiquement au match:\n';
+                    logPayload += '- ' + matchedSim.homeTeam + ' vs ' + matchedSim.awayTeam + ' (ID: ' + matchedSim.id + ')\n';
+
+                    html += '<div style="margin-top:8px; font-weight:bold; color:var(--text);">Simulation Automatique :</div>';
+                    html += '<div style="color:var(--green); font-size:12px;">✅ Associé automatiquement à :<br><strong>' + esc(matchedSim.homeTeam) + ' vs ' + esc(matchedSim.awayTeam) + '</strong></div>';
+                } else {
+                    logPayload += 'ÉCHEC: Aucun match de l\'API ne correspondrait à ce flux.\n';
+                    logPayload += 'Les matchs les plus proches dans la base de données et pourquoi ils échouent :\n';
+                    simMatches.sort(function(a, b) { return b.score - a.score; });
+                    var topSims = simMatches.slice(0, 3);
+                    topSims.forEach(function(sim) {
+                        logPayload += '\n> ' + sim.match.homeTeam + ' vs ' + sim.match.awayTeam + ' (Score: ' + sim.score.toFixed(2) + ')\n';
+                        logPayload += '  Raison de l\'échec: ' + sim.reason + '\n';
+                    });
+
+                    html += '<div style="margin-top:8px; font-weight:bold; color:var(--text);">Simulation Automatique :</div>';
+                    html += '<div style="color:var(--red); font-size:12px;">❌ Aucun match API correspondant. (Voir le log complet)</div>';
+                }
             }
 
             // Save stream cache
