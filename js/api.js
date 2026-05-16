@@ -523,7 +523,7 @@ export function fetchGameStats(matchId) {
             if (data.header && data.header.links) {
                 var sumLink = data.header.links.find(function(l) { return l.rel && l.rel.indexOf('summary') > -1; });
                 if (sumLink) {
-                    espnLink = sumLink.href.replace('/match/', '/preview/').replace('/game/', '/preview/');
+                    espnLink = sumLink.href;
                 }
             }
 
