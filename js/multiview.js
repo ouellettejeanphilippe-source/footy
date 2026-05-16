@@ -1,4 +1,4 @@
-import { S, favTeams, sourcesStatus, scrapeLogs } from './state.js';
+import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
@@ -2237,6 +2237,41 @@ export function renderScrapeLogs() {
                 '</div>';
     });
     container.innerHTML = html;
+
+    var manualContainer = document.getElementById('manual-logs-container');
+    if(!manualContainer) return;
+    if(manualStreamLogs.length === 0) {
+        manualContainer.innerHTML = '<div style="color: var(--muted2); text-align: center; padding: 10px;">Aucun diagnostic récent.</div>';
+        return;
+    }
+    var manualHtml = '';
+    manualStreamLogs.forEach(function(log) {
+        var color = log.status === 'error' ? 'var(--red)' : (log.status === 'success' ? '#34c759' : 'var(--text)');
+        var icon = log.status === 'error' ? '❌' : (log.status === 'success' ? '✅' : 'ℹ️');
+
+        var errorDisplay = '';
+        if (log.error) {
+            if (log.error.indexOf('\n') !== -1 || log.error.indexOf('===') !== -1) {
+                var textColor = log.status === 'success' ? 'var(--text)' : 'var(--red)';
+                errorDisplay = '<pre style="color:' + textColor + '; font-size: 11px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;">' + esc(log.error) + '</pre>' +
+                               '<button class="btn o" style="font-size: 10px; padding: 2px 6px; align-self: flex-start;" onclick="window.copyToClipboard(\'' + escJs(log.error) + '\').then(function(){ window.showToast(\'Log copié !\'); }).catch(function(){ window.showToast(\'Erreur copie\'); });">📋 Copier le log</button>';
+            } else {
+                var singleColor = log.status === 'success' ? 'var(--text)' : 'var(--red)';
+                errorDisplay = '<div style="color:' + singleColor + '; font-size: 11px;">' + esc(log.error) + '</div>';
+            }
+        }
+
+        manualHtml += '<div style="display:flex; flex-direction:column; gap:4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px;">' +
+                  '<div style="display:flex; justify-content:space-between;">' +
+                      '<span style="color:var(--muted);">' + esc(log.time) + '</span>' +
+                      '<span style="color:' + color + ';">' + icon + ' ' + esc(log.status.toUpperCase()) + '</span>' +
+                  '</div>' +
+                  '<div style="color: #fff; font-weight: bold;">' + esc(log.matchName) + '</div>' +
+                  '<div style="word-break: break-all; color: #a1a1aa; font-weight: 500;">' + esc(log.url) + '</div>' +
+                  errorDisplay +
+                '</div>';
+    });
+    manualContainer.innerHTML = manualHtml;
 }
 
 export function openOptionsPage() {

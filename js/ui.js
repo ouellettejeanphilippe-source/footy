@@ -1412,14 +1412,113 @@ export function addManualStream(matchId, url) {
     var m = (S.matches || []).find(function(x) { return x.id === matchId; });
     if (!m) return;
 
-    m.streamLinks = m.streamLinks || [];
-    m.streamLinks.push({url: url, name: 'Stream Manuel', source: 'manual'});
+    // Temporary match to capture scraping results cleanly
+    var tempMatch = {
+        id: 'manual_tmp_' + Date.now(),
+        matchUrl: url,
+        streamLinks: [],
+        streamsLoaded: false,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        sport: m.sport,
+        league: m.league,
+        status: m.status
+    };
 
-    if (window.saveStreamCache) {
-        window.saveStreamCache(m.id, m.streamLinks);
-    }
+    window.showToast("Scraping du flux manuel...");
 
-    addToMultivision(url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
-    closeMod();
+    scrapeMatchFlux(tempMatch, true).then(function() {
+        var unmerged = (S.matches || []).filter(function(x) {
+           return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
+        });
+        var newScraped = unmerged.find(function(x) { return x.matchUrl === url; });
+
+        var logPayload = '=== DIAGNOSTIC LOG ===\n';
+        logPayload += 'URL: ' + url + '\n';
+        logPayload += 'Match Attendu: ' + m.homeTeam + ' vs ' + m.awayTeam + ' (ID: ' + m.id + ')\n';
+        logPayload += 'Flux Trouvés: ' + (tempMatch.streamLinks ? tempMatch.streamLinks.length : 0) + '\n';
+
+        if (newScraped) {
+            var diag = debugMatchPair(m, newScraped);
+            logPayload += '\n=== DEBUG MATCH PAIR ===\n';
+            logPayload += 'Raison de l\'échec: ' + diag.reason + '\n';
+            logPayload += 'Scrapé: ' + newScraped.homeTeam + ' vs ' + newScraped.awayTeam + '\n';
+
+            var simMatches = [];
+            var apiOnly = (S.matches || []).filter(function(x) { return x.league !== 'Autres Flux' && !x.id.toString().startsWith('scraped_') && !x.id.toString().startsWith('bs_') && !x.id.toString().startsWith('se_') && !x.id.toString().startsWith('ts_') && !x.id.toString().startsWith('vip_'); });
+
+            var matchedSim = null;
+            apiOnly.forEach(function(apiM) {
+                var apiDiag = debugMatchPair(apiM, newScraped);
+                if (apiDiag.isMatch) {
+                    matchedSim = apiM;
+                } else {
+                    var simH = stringSimilarity(apiM.homeTeam, newScraped.homeTeam);
+                    var simA = stringSimilarity(apiM.awayTeam, newScraped.awayTeam);
+                    var simHA = stringSimilarity(apiM.homeTeam, newScraped.awayTeam);
+                    var simAH = stringSimilarity(apiM.awayTeam, newScraped.homeTeam);
+                    var maxSim = Math.max(simH + simA, simHA + simAH) / 2;
+                    simMatches.push({ match: apiM, score: maxSim, reason: apiDiag.reason });
+                }
+            });
+
+            logPayload += '\n=== SIMULATION AUTOMATIQUE ===\n';
+            if (matchedSim) {
+                logPayload += 'SUCCÈS: Si ce lien n\'avait pas été manuel, il aurait été associé automatiquement au match:\n';
+                logPayload += '- ' + matchedSim.homeTeam + ' vs ' + matchedSim.awayTeam + ' (ID: ' + matchedSim.id + ')\n';
+            } else {
+                logPayload += 'ÉCHEC: Aucun match de l\'API ne correspondrait à ce flux.\n';
+                logPayload += 'Les matchs les plus proches dans la base de données et pourquoi ils échouent :\n';
+                simMatches.sort(function(a, b) { return b.score - a.score; });
+                var topSims = simMatches.slice(0, 3);
+                topSims.forEach(function(sim) {
+                    logPayload += '\n> ' + sim.match.homeTeam + ' vs ' + sim.match.awayTeam + ' (Score: ' + sim.score.toFixed(2) + ')\n';
+                    logPayload += '  Raison de l\'échec: ' + sim.reason + '\n';
+                });
+            }
+        }
+
+        if (window.addManualStreamLog) {
+            window.addManualStreamLog(m.homeTeam + ' vs ' + m.awayTeam, url, logPayload, tempMatch.streamLinks.length > 0 ? 'success' : 'error');
+        }
+
+        m.streamLinks = m.streamLinks || [];
+        if (tempMatch.streamLinks && tempMatch.streamLinks.length > 0) {
+            tempMatch.streamLinks.forEach(function(stream) {
+                stream.name = stream.name + ' (Manuel)';
+                stream.source = 'manual';
+                m.streamLinks.push(stream);
+            });
+            window.showToast(tempMatch.streamLinks.length + " flux extraits avec succès !");
+        } else {
+            m.streamLinks.push({url: url, name: 'Stream Manuel (URL Brute)', source: 'manual'});
+            window.showToast("Aucun flux extrait, utilisation de l'URL brute.");
+        }
+
+        if (window.saveStreamCache) {
+            window.saveStreamCache(m.id, m.streamLinks);
+        }
+
+        var streamUrlToLaunch = (tempMatch.streamLinks && tempMatch.streamLinks.length > 0) ? tempMatch.streamLinks[0].url : url;
+        addToMultivision(streamUrlToLaunch, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+        closeMod();
+    }).catch(function(e) {
+        window.showToast("Erreur lors de l'extraction: " + e.message);
+
+        // Fallback to manual URL directly
+        m.streamLinks = m.streamLinks || [];
+        m.streamLinks.push({url: url, name: 'Stream Manuel (URL Brute)', source: 'manual'});
+
+        if (window.addManualStreamLog) {
+            window.addManualStreamLog(m.homeTeam + ' vs ' + m.awayTeam, url, 'Erreur de scraping: ' + e.message, 'error');
+        }
+
+        if (window.saveStreamCache) {
+            window.saveStreamCache(m.id, m.streamLinks);
+        }
+
+        addToMultivision(url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+        closeMod();
+    });
 }
 window.addManualStream = addManualStream;

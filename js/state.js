@@ -6,6 +6,7 @@ import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON,
 
 export var sourcesStatus = [];
 export var scrapeLogs = [];
+export var manualStreamLogs = [];
 export function updateSourceStatus(name, status, matchCount, message) {
     var existing = sourcesStatus.find(function(s) { return s.name === name; });
     if (existing) {
@@ -33,6 +34,18 @@ export function addScrapeLog(url, status, errorMsg) {
     };
     scrapeLogs.unshift(entry);
     if(scrapeLogs.length > 50) scrapeLogs.pop();
+}
+
+export function addManualStreamLog(matchName, url, logPayload, status) {
+    var entry = {
+        time: new Date().toLocaleTimeString('fr-CA', {hour12: false}),
+        matchName: matchName,
+        url: url,
+        status: status || 'info',
+        error: logPayload || ''
+    };
+    manualStreamLogs.unshift(entry);
+    if(manualStreamLogs.length > 50) manualStreamLogs.pop();
 }
 
 export var favTeams = {};
@@ -112,8 +125,10 @@ export var S = { searchQuery:'',  log:[], raw:'', matches:[], matchMap: new Map(
 // Global bindings for HTML compatibility
 window.sourcesStatus = sourcesStatus;
 window.scrapeLogs = scrapeLogs;
+window.manualStreamLogs = manualStreamLogs;
 window.updateSourceStatus = updateSourceStatus;
 window.addScrapeLog = addScrapeLog;
+window.addManualStreamLog = addManualStreamLog;
 window.favTeams = favTeams;
 window.customLgOrder = customLgOrder;
 window.setCustomLgOrder = setCustomLgOrder;
