@@ -1286,7 +1286,6 @@ export function scrapeMatchFlux(m, forceRefresh){
     return new Promise(function(resolve, reject) {
       setTimeout(function() {
         try {
-    addScrapeLog(m.matchUrl, 'success', '');
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
     var pageTextContext = doc.body ? doc.body.textContent || '' : '';
@@ -1517,8 +1516,13 @@ export function scrapeMatchFlux(m, forceRefresh){
     m.streamsLoaded=true;
     saveStreamCache(m.id, m.streamLinks);
     updateMatchUiAfterScrape(m);
+
+    // Add success log with number of streams found
+    addScrapeLog(m.matchUrl, 'success', 'Scraping terminé: ' + combinedLinks.length + ' streams trouvés.');
+
         resolve();
         } catch(e) {
+            addScrapeLog(m.matchUrl, 'error', 'Match scrape flux failed: ' + e.message);
             reject(e);
         }
       }, 0);
