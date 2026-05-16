@@ -1203,8 +1203,8 @@ export function openMod(m,col){
   var mft = document.querySelector('.mft');
   if (mft) mft.style.display = 'none';
 
-  var wrapperHtml = '<div style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
-      '<button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; top: -10px; right: -10px; z-index: 100;"><span class="ic ic-close"></span></button>' +
+  var wrapperHtml = '<div id="modal-wrapper" style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; width: 100%; position: relative; height: 100%;">' +
+      '<button class="mx" id="modal-close-btn" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; z-index: 100;"><span class="ic ic-close"></span></button>' +
       '<div id="modal-left-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
           '<div class="match-card scoreboard" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
               '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:21/9; border-radius:var(--radius-card,12px); overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.3); display:flex; background-color:var(--bg2); z-index: 1;">' +
