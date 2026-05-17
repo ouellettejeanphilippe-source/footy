@@ -2,7 +2,7 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
-import { getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
+import { getDomain, getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
@@ -179,7 +179,7 @@ export function loadAll(isBackground, forceScrape){
           var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL];
           results.forEach(function(r, idx) {
               if (r.status === 'rejected') {
-                  var domain = new URL(sources[idx]).hostname;
+                  var domain = getDomain(sources[idx]);
                   console.error('Failed to fetch:', sources[idx], r.reason);
                   var errMsg = (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion');
                   addScrapeLog(sources[idx], 'error', errMsg);
@@ -216,7 +216,7 @@ export function loadAll(isBackground, forceScrape){
                               if (task.setRaw) S.raw = results[idx].value;
                               try {
                                   var m = task.fn(results[idx].value);
-                                  updateSourceStatus(new URL(task.url).hostname, 'success', m.length, 'OK');
+                                  updateSourceStatus(getDomain(task.url), 'success', m.length, 'OK');
                                   scrapedMatches = mergeMatches(scrapedMatches, m);
                               } catch(e) {
                                   console.error('Error parsing ' + task.url, e);

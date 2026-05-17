@@ -674,11 +674,14 @@ export function getEstTimeStrFromDate(d) {
 /* ══ DOMAIN PREFS ════════════════════════ */
 export function getDomain(url) {
   try {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+    }
     var u = new URL(url);
     return u.hostname.replace(/^www\./, '');
   } catch(e) {
     try {
-        var match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/i);
+        var match = url.match(/^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:\/\n]+)/i);
         return match && match[1] ? match[1] : url;
     } catch(err) {
         return url;
