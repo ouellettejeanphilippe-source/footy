@@ -1449,7 +1449,12 @@ export function scrapeMatchFlux(m, forceRefresh){
                   var hasAway = checkWords(normSearchStr, normAName) || checkWords(normSearchStr, normACity) || checkWords(normSearchStr, normATeamName);
 
                   if (!hasHome && !hasAway && (name.toLowerCase().length > 10 || lowerUrl.indexOf('match') >= 0)) {
-                      isOtherMatch = true;
+                      // Si on est déjà sur la page spécifique du match, on ne rejette pas ces liens !
+                      if (m.matchUrl && m.matchUrl !== SITE && m.matchUrl !== SPORTSURGE_URL && m.matchUrl !== VIPLEAGUE_URL && m.matchUrl !== ONHOCKEY_URL) {
+                          isOtherMatch = false; // Ne pas rejeter, on est sur la page du match
+                      } else {
+                          isOtherMatch = true;
+                      }
                   }
               }
               if (isOtherMatch) return;
