@@ -1568,14 +1568,35 @@ export function updateMatchUiAfterScrape(m) {
     if(document.getElementById('mbg').classList.contains('open') && mnameEl && mnameEl.textContent.indexOf(m.homeTeam) >= 0){
         var targetContainer = document.getElementById('modal-right-col') || document.getElementById('mbody');
         if(targetContainer) {
+            // Check if we already have the rightHeaderHtml structure from openMod to preserve it
+            var headerHtml = '';
+            var existingHeader = targetContainer.querySelector('div[style*="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;"]');
+            if (existingHeader) {
+                headerHtml = existingHeader.outerHTML;
+            }
+
+            var linksHtml = '';
             if(!m.streamLinks || m.streamLinks.length===0){
-                targetContainer.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
+                linksHtml='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
             } else {
                 var sortedLinks = sortFluxLinks(m.streamLinks);
-                targetContainer.innerHTML=sortedLinks.map(function(s,i){
+                linksHtml=sortedLinks.map(function(s,i){
                     return renderFluxItem(s, i, m);
                 }).join('');
             }
+
+            // Preserve the manual links fallback section at the bottom if it exists
+            var fallbackHtml = '';
+            var detailsArr = targetContainer.querySelectorAll('details');
+            for(var d=0; d<detailsArr.length; d++) {
+                var sum = detailsArr[d].querySelector('summary');
+                if(sum && sum.textContent.indexOf('Fallback') > -1) {
+                    fallbackHtml = '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">' + detailsArr[d].outerHTML + '</div>';
+                    break;
+                }
+            }
+
+            targetContainer.innerHTML = headerHtml + linksHtml + fallbackHtml;
         }
     }
 }

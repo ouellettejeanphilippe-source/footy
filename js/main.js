@@ -59,6 +59,14 @@ export function updateLiveScores(matches) {
                             minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">'+esc(m.minute||'LIVE')+'</span>';
                             // Re-cache minEl because innerHTML replacement
                             cached.minEl = card.querySelector('.status-minute');
+                        } else {
+                            var ld = ind.querySelector('.mb-ld');
+                            if (ld) {
+                                ld.classList.add('refreshing');
+                                setTimeout(function() {
+                                    if(ld) ld.classList.remove('refreshing');
+                                }, 2000);
+                            }
                         }
                         card.classList.add('live');
                         card.classList.remove('finished');
@@ -109,8 +117,8 @@ export function loadAll(isBackground, forceScrape){
         var ic=el.querySelector('.sic');ic.classList.remove('ok');
         ic.innerHTML='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
       });
-      var ovmsg = document.getElementById('ovmsg'); if(ovmsg) ovmsg.textContent='Connexion au Guide télé (API)...';
-      var s1 = document.getElementById('s1'); if(s1 && s1.querySelector('span')) s1.querySelector('span').textContent = 'Téléchargement Guide télé Officiel';
+      var ovmsg = document.getElementById('ovmsg'); if(ovmsg) ovmsg.innerHTML='<div class="spinner"></div> Connexion API...';
+      var s1 = document.getElementById('s1'); if(s1 && s1.querySelector('span')) s1.querySelector('span').textContent = 'Téléchargement Guide télé';
       var s2 = document.getElementById('s2'); if(s2 && s2.querySelector('span')) s2.querySelector('span').textContent = 'Recherche de streams...';
       var s3 = document.getElementById('s3'); if(s3 && s3.querySelector('span')) s3.querySelector('span').textContent = 'Fusion et Affichage';
   } else {
