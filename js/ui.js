@@ -1,4 +1,4 @@
-import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SITE, MLBITE_URL, MLBBITE_PLUS_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
+import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
@@ -1348,21 +1348,7 @@ export function openMod(m,col){
       var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
       var singleTeam = encodeURIComponent(m.homeTeam);
 
-      var baseSites = [
-          { name: 'Footybite', url: SITE },
-          { name: 'MLBite', url: MLBITE_URL },
-          { name: 'MLBite+', url: MLBBITE_PLUS_URL },
-          { name: 'Sportsurge', url: SPORTSURGE_URL },
-          { name: 'Buffstreams', url: BUFFSTREAMS_URL },
-          { name: 'Streameast', url: STREAMEAST_URL },
-          { name: 'OnHockey', url: ONHOCKEY_URL },
-          { name: 'VIPLeague', url: VIPLEAGUE_URL },
-          { name: 'Methstreams', url: METHSTREAMS_URL },
-          { name: 'Totalsportek', url: TOTALSPORTEK_URL },
-          { name: 'Streamonsport', url: STREAMONSPORT_URL }
-      ];
-
-      baseSites.forEach(function(site) {
+      SCRAPERS_CONFIG.forEach(function(site) {
           contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none;">'+site.name+' 🔗</a>';
       });
       contentHtml += '</div>';

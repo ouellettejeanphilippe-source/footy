@@ -2,7 +2,7 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
-import { getDomain, getEstDateStrFromDate, SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL } from './config.js';
+import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
@@ -163,25 +163,15 @@ export function loadAll(isBackground, forceScrape){
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
       }
 
-            return Promise.allSettled([
-          fetchPage(SITE),
-          fetchPage(MLBITE_URL),
-          fetchPage(SPORTSURGE_URL),
-          fetchPage(BUFFSTREAMS_URL),
-          fetchPage(STREAMEAST_URL),
-          fetchPage(ONHOCKEY_URL),
-          fetchPage(MLBBITE_PLUS_URL),
-          fetchPage(VIPLEAGUE_URL),
-          fetchPage(METHSTREAMS_URL),
-          fetchPage(TOTALSPORTEK_URL),
-          fetchPage(STREAMONSPORT_URL)
-      ]).then(function(results) {
+            return Promise.allSettled(
+          SCRAPERS_CONFIG.map(function(scraper) { return fetchPage(scraper.url); })
+      ).then(function(results) {
           if (!results) return;
           if (!isBackground) { stepOk(2);  }
 
 
           // Check for failures and notify user
-          var sources = [SITE, MLBITE_URL, SPORTSURGE_URL, BUFFSTREAMS_URL, STREAMEAST_URL, ONHOCKEY_URL, MLBBITE_PLUS_URL, VIPLEAGUE_URL, METHSTREAMS_URL, TOTALSPORTEK_URL, STREAMONSPORT_URL];
+          var sources = SCRAPERS_CONFIG.map(function(s) { return s.url; });
           results.forEach(function(r, idx) {
               if (r.status === 'rejected') {
                   var domain = getDomain(sources[idx]);
@@ -197,19 +187,22 @@ export function loadAll(isBackground, forceScrape){
 
           var scrapedMatches = [];
 
-          var tasks = [
-              { fn: parseFootybite, url: SITE },
-              { fn: parseNflbite, url: MLBITE_URL },
-              { fn: parseSportsurge, url: SPORTSURGE_URL },
-              { fn: parseBuffstreams, url: BUFFSTREAMS_URL },
-              { fn: parseStreameast, url: STREAMEAST_URL },
-              { fn: parseOnHockey, url: ONHOCKEY_URL },
-              { fn: parseMlbbite, url: MLBBITE_PLUS_URL },
-              { fn: parseVipleague, url: VIPLEAGUE_URL },
-              { fn: parseMethstreams, url: METHSTREAMS_URL },
-              { fn: parseTotalsportek, url: TOTALSPORTEK_URL },
-              { fn: parseStreamonsport, url: STREAMONSPORT_URL }
-          ];
+                    var scraperFunctions = {
+              'footybite': parseFootybite,
+              'nflbite': parseNflbite,
+              'mlbbite': parseMlbbite,
+              'sportsurge': parseSportsurge,
+              'buffstreams': parseBuffstreams,
+              'streameast': parseStreameast,
+              'onhockey': parseOnHockey,
+              'vipleague': parseVipleague,
+              'methstreams': parseMethstreams,
+              'totalsportek': parseTotalsportek,
+              'streamonsport': parseStreamonsport
+          };
+          var tasks = SCRAPERS_CONFIG.map(function(sc) {
+              return { fn: scraperFunctions[sc.id], url: sc.url };
+          });
 
           var p = Promise.resolve();
 

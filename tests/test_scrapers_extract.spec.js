@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-// Define the scraper URLs from config
-const sites = [
+// Define the scraper URLs directly here for Playwright to avoid pulling in the whole DOM-dependent config
+const SCRAPERS_CONFIG = [
   { name: 'Footybite', url: 'https://army.footybite.to' },
   { name: 'MLBite', url: 'https://nflbite.is/' },
   { name: 'MLBite+', url: 'https://mlbbite.plus' },
@@ -16,15 +16,13 @@ const sites = [
 ];
 
 test.describe('Scraper pages must have stream links or elements', () => {
-  for (const site of sites) {
+  for (const site of SCRAPERS_CONFIG) {
     test(`Verify ${site.name} page loads and has anchors`, async ({ page }) => {
       // Test actual scraping viability by loading the page and checking if it has structural content that could be a stream link
       let response;
       try {
         response = await page.goto(site.url, { timeout: 15000, waitUntil: 'domcontentloaded' });
       } catch (e) {
-        // If direct navigation fails (e.g. CORS/Firewall), we can't fully test Playwright navigation, but we expect our proxy to handle it in prod.
-        // For the sake of the test, we'll try the proxy if direct fails.
         console.log(`Direct navigation to ${site.url} failed, trying proxy...`);
         const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(site.url)}`;
         try {
@@ -34,17 +32,20 @@ test.describe('Scraper pages must have stream links or elements', () => {
         }
       }
 
-      if (response && response.ok()) {
-         // Verify the page has <a> tags, indicating it's a real page with potential stream links
-         // We also wait for the network to be mostly idle in case it loads links dynamically
-         await page.waitForTimeout(1000);
-         const linksCount = await page.locator('a').count();
-         expect(linksCount).toBeGreaterThan(0);
-         console.log(`Successfully verified ${site.name} has ${linksCount} potential stream links.`);
+      // If the response is a 403, we know the site is active but blocking our headless browser / proxy.
+      // We will accept a 403 as a "success" in terms of "the endpoint exists and responds".
+      expect(response, `Failed to load ${site.url} directly or via proxy`).toBeTruthy();
+      expect([200, 403].includes(response.status()), `Response not 200 or 403 for ${site.url}: ${response.status()}`).toBeTruthy();
+
+      // Only check for links if we got a 200 OK. If we got a 403, Cloudflare/Firewall blocked the DOM load.
+      if (response.ok()) {
+          // Verify the page has <a> tags, indicating it's a real page with potential stream links
+          await page.waitForTimeout(1000);
+          const linksCount = await page.locator('a').count();
+          expect(linksCount).toBeGreaterThan(0);
+          console.log(`Successfully verified ${site.name} has ${linksCount} potential stream links.`);
       } else {
-         // If we couldn't load it even with a proxy, the test should fail unless the site is known to be aggressively blocking
-         // In which case we'd need more complex bypassing, but we'll assume ok for now and just log
-         console.warn(`Could not verify page content for ${site.url} due to loading issues.`);
+          console.log(`${site.name} returned ${response.status()}, skipping DOM link validation.`);
       }
     });
   }

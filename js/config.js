@@ -18,6 +18,24 @@ export var VIPLEAGUE_URL = 'https://vipleague.im/top-streaming';
 export var METHSTREAMS_URL = 'https://methstreams.com/';
 export var TOTALSPORTEK_URL = 'https://totalsportek-real.com/';
 export var STREAMONSPORT_URL = 'https://www.stremonsport.net/';
+
+
+
+
+export const SCRAPERS_CONFIG = [
+    { name: 'Footybite', url: SITE, id: 'footybite' },
+    { name: 'MLBite', url: MLBITE_URL, id: 'nflbite' },
+    { name: 'MLBite+', url: MLBBITE_PLUS_URL, id: 'mlbbite' },
+    { name: 'Sportsurge', url: SPORTSURGE_URL, id: 'sportsurge' },
+    { name: 'Buffstreams', url: BUFFSTREAMS_URL, id: 'buffstreams' },
+    { name: 'Streameast', url: STREAMEAST_URL, id: 'streameast' },
+    { name: 'OnHockey', url: ONHOCKEY_URL, id: 'onhockey' },
+    { name: 'VIPLeague', url: VIPLEAGUE_URL, id: 'vipleague' },
+    { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams' },
+    { name: 'Totalsportek', url: TOTALSPORTEK_URL, id: 'totalsportek' },
+    { name: 'Streamonsport', url: STREAMONSPORT_URL, id: 'streamonsport' }
+];
+
 export var PROXIES = [
   function(u){ return 'https://api.allorigins.win/get?url='+encodeURIComponent(u); },
   function(u){ return 'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u); },
