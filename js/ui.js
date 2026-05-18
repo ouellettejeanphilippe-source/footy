@@ -1253,6 +1253,54 @@ export function openMod(m,col){
       }
   }
 
+  // Look for scraped links that didn't merge
+  var unmerged = (S.matches || []).filter(function(x) {
+      return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
+  });
+  var possibleMatches = [];
+  var mH = normName(m.homeTeam);
+  var mA = normName(m.awayTeam);
+
+  var didAbsorbNewStream = false;
+
+  unmerged.forEach(function(u) {
+      if (u.id === m.id || u.league !== 'Autres Flux') return; // ignore self or already merged ones
+      var uH = normName(u.homeTeam);
+      var uA = normName(u.awayTeam);
+
+      // Stronger fuzzy match for suggestions: MUST match both teams (or inverted) to automatically absorb
+      var isStrongMatch = (isMatch(mH, uH) && isMatch(mA, uA)) || (isMatch(mH, uA) && isMatch(mA, uH));
+      // Loose fuzzy match for UI suggestions ONLY (requires user to click)
+      var isLooseMatch = isMatch(mH, uH) || isMatch(mH, uA) || isMatch(mA, uH) || isMatch(mA, uA);
+
+      if (isStrongMatch) {
+          // Absorb streams automatically into the match ONLY IF BOTH teams match, so they stay in the UI safely
+          if (!m.streamLinks) m.streamLinks = [];
+          if (u.streamLinks) {
+              u.streamLinks.forEach(function(sl) {
+                  if (!m.streamLinks.find(function(ex) { return ex.url === sl.url; })) {
+                      m.streamLinks.push(sl);
+                      didAbsorbNewStream = true;
+                  }
+              });
+          }
+          if (u.matchUrl && !m.matchUrl) m.matchUrl = u.matchUrl;
+          m.streamsLoaded = true;
+      } else if (isLooseMatch) {
+          possibleMatches.push(u);
+      }
+  });
+
+  // Save any absorbed streams to cache immediately so they survive UI redraws
+  if (didAbsorbNewStream && window.saveStreamCache) {
+      window.saveStreamCache(m.id, m.streamLinks);
+
+      // Since we mutated m, recalculate the scraping needs flag so the UI generates correctly
+      hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
+      needsScraping = !hasEnoughStreams && m.matchUrl;
+  }
+
+
   if(needsScraping) {
       rightCol.innerHTML= rightHeaderHtml + '<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
       attachHeaderEvents();
@@ -1335,27 +1383,9 @@ export function openMod(m,col){
       contentHtml += '</div>';
       contentHtml += '</div>';
 
-      // Look for scraped links that didn't merge
-      var unmerged = (S.matches || []).filter(function(x) {
-          return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
-      });
-      var possibleMatches = [];
-      var mH = normName(m.homeTeam);
-      var mA = normName(m.awayTeam);
-
-      unmerged.forEach(function(u) {
-          if (u.id === m.id || u.league !== 'Autres Flux') return; // ignore self or already merged ones
-          var uH = normName(u.homeTeam);
-          var uA = normName(u.awayTeam);
-          // Very loose fuzzy match for suggestions
-          if (isMatch(mH, uH) || isMatch(mH, uA) || isMatch(mA, uH) || isMatch(mA, uA)) {
-              possibleMatches.push(u);
-          }
-      });
-
       if (possibleMatches.length > 0) {
           contentHtml += '<div style="margin-top: 15px;">';
-          contentHtml += '<div style="font-size: 12px; margin-bottom: 8px; color: var(--accent);">Flux isolés pouvant correspondre :</div>';
+          contentHtml += '<div style="font-size: 12px; margin-bottom: 8px; color: var(--accent);">Flux isolés trouvés :</div>';
           contentHtml += '<div style="display: flex; flex-direction: column; gap: 8px;">';
           possibleMatches.forEach(function(pm) {
               contentHtml += '<div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">';
