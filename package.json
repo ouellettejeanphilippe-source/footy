@@ -1,8 +1,9 @@
 {
   "scripts": {
-    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js"
+    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js && npx playwright test tests/test_scrapers_extract.spec.js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.60.0"
   },
