@@ -1,5 +1,5 @@
 import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, SITE, sortFluxLinks } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, SITE, sortFluxLinks, resolveUrl } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo } from './match.js';
@@ -725,7 +725,7 @@ export function parseMethstreams(html) {
                 if(home && away) {
                     var matchUrl = a.getAttribute('href');
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        try { matchUrl = new URL(matchUrl, 'https://methstreams.com/').href; } catch(e) {}
+                        matchUrl = resolveUrl(matchUrl, 'https://methstreams.com/');
                     }
                     if(matchUrl.startsWith('http')) {
                         matches.push({
@@ -1352,7 +1352,7 @@ export function scrapeMatchFlux(m, forceRefresh){
             var as = row.querySelectorAll('a[href]');
             for(var i=0; i<as.length; i++) {
                  var href = as[i].getAttribute('href');
-                 if(href && !href.startsWith('http') && !href.startsWith('javascript')) { try { href = new URL(href, m.matchUrl).href; } catch(e) { try { href = new URL(href, 'https://' + m.matchUrl).href; } catch(err) {} } }
+                 if(href && !href.startsWith('http') && !href.startsWith('javascript')) { href = resolveUrl(href, m.matchUrl); }
                  if(href && href.indexOf('http')===0) {
                      url = href;
                      break;
@@ -1394,7 +1394,7 @@ export function scrapeMatchFlux(m, forceRefresh){
     [].forEach.call(btns,function(btn){
        if(btn.tagName==='A' && btn.getAttribute('href')){
           var url=btn.getAttribute('href');
-          if(url && !url.startsWith('http') && !url.startsWith('javascript')) { try { url = new URL(url, m.matchUrl).href; } catch(e) { try { url = new URL(url, 'https://' + m.matchUrl).href; } catch(err) {} } }
+          if(url && !url.startsWith('http') && !url.startsWith('javascript')) { url = resolveUrl(url, m.matchUrl); }
           if(url && url.indexOf('http')===0) {
               var lowerUrl = url.toLowerCase();
               if (lowerUrl.includes('1xbet') || lowerUrl.includes('bet365') || lowerUrl.includes('ads') || lowerUrl.includes('f1streamsi') || lowerUrl.length < 5) return;
@@ -1469,7 +1469,7 @@ export function scrapeMatchFlux(m, forceRefresh){
             if (url.startsWith('aHR0c')) {
                 try { url = atob(url); } catch(e) {}
             }
-            if(!url.startsWith('http') && !url.startsWith('javascript')) { try { url = new URL(url, m.matchUrl).href; } catch(e) { try { url = new URL(url, 'https://' + m.matchUrl).href; } catch(err) {} } }
+            if(!url.startsWith('http') && !url.startsWith('javascript')) { url = resolveUrl(url, m.matchUrl); }
             if(url.indexOf('http') === 0) {
                 var lowerUrl = url.toLowerCase();
                 if (!lowerUrl.includes('1xbet') && !lowerUrl.includes('bet365') && !lowerUrl.includes('ads') && lowerUrl.length >= 5) {

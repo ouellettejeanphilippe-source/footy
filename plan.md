@@ -1,20 +1,14 @@
-1.  **Fix "Autres Flux" not toggling:**
-    - The issue is that in the Live/Upcoming view, `.match-card` elements are created, but they don't have the `data-lg` attribute, and `toggleAccordion` currently only toggles elements with `.mrow[data-lg="..."]` (which are used in the Timeline Guide view) or `.marea-row`.
-    - We need to:
-        - Add `b.setAttribute('data-lg', lg.league);` to the `.match-card` creation in `renderMatches` in `js/ui.js` (around line 267).
-        - Update `toggleAccordion` in `js/utils.js` to also select `.match-card[data-lg="..."]` and toggle their `display` between `'none'` and `'flex'`.
-    - Also, `toggleLeague` in `js/utils.js` should probably hide `.match-card` when toggling. Currently it selects `.marea-row, .mrow, .lg-container`. Wait, `.match-card` is just a flex child, so hiding it is good. Or maybe we hide the whole `lg-hdr` and `match-card` in Live mode.
+Plan:
+1. **Fix URL Parsing in `js/config.js` and `js/scrapers.js`**:
+   - `getDomain(url)` currently strips protocols but fails to gracefully inject them for URLs that are protocol-relative (e.g., `//example.com`) or naked domains (`example.com`). It will be updated to prefix `http:` or `http://` before executing `new URL(url)` to prevent exceptions.
+   - Implement and export `resolveUrl(href, base)` in `js/config.js`. It will safely resolve relative paths using `new URL()`. If it fails (e.g. `base` is missing a protocol), it will use `getDomain(base)` to reconstruct a valid base URL (e.g. `https://<domain>`) and retry, falling back to returning `href` as-is.
+   - Update `js/scrapers.js` to import and utilize `resolveUrl`. Replace all the brittle `try/catch` fallbacks like `new URL(href, m.matchUrl).href ... new URL(href, 'https://' + m.matchUrl).href` with `resolveUrl(href, m.matchUrl)`.
 
-2.  **Add a toggle for "Autres Flux" in the "En Direct" view, at the bottom:**
-    - The user wants "Autres streams" (which translates to the "Autres Flux" league) to be in a separate, toggleable section at the bottom of the "En direct" tab.
-    - In `js/ui.js` inside `buildEPG`, when `S.filter === 'live'`, we divide matches into `liveNow`, `upNext`, and `laterToday`.
-    - We should extract `m.league === 'Autres Flux'` from `liveNow`, `upNext`, and `laterToday`.
-    - Or we can group all `Autres Flux` matches into a separate array `autresFluxMatches`, and render them separately at the end.
-    - Wait, `renderMatches` groups matches by league *inside* the section. If we render a separate section using `renderMatches` at the end with `titleStr="Autres streams"` and `isCollapsible=true`, it will create a collapsible section just for these!
-    - So, in `buildEPG` for `S.filter === 'live'`:
-        - Filter out `Autres Flux` from `liveNow`, `upNext`, `laterToday`.
-        - Create an `autresFluxMatches` array.
-        - Render `liveNow`, `upNext`, `laterToday` normally.
-        - At the end, if `autresFluxMatches.length > 0`, call `renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams')`.
-        - We should also probably do this for `upcoming` view? The user specifically said "dans En direct, sous le reste".
-        - This provides the toggle out of the box using `renderMatches`' built-in `isCollapsible` feature!
+2. **Verify Matching System (`js/match.js`)**:
+   - The user mentioned "Make sure the url parsing and the matching system is fully functional without bugs".
+   - `js/match.js` heavily relies on sliding window string comparisons (`stringSimilarity`). The logic appears robust (`minWindow`, `maxWindow`, loop bounds).
+   - I will double-check for edge cases like missing properties (`m1.homeTeam` undefined), but existing checks (`!name1 || !name2`, `var m1H = normName(m1.homeTeam)`) generally prevent these.
+   - I will add a test script for url parsing.
+
+3. **Pre-commit Checks**:
+   - Follow instructions from `pre_commit_instructions` before submitting to ensure tests pass and code meets the repository's guidelines.

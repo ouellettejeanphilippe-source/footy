@@ -673,9 +673,14 @@ export function getEstTimeStrFromDate(d) {
 
 /* ══ DOMAIN PREFS ════════════════════════ */
 export function getDomain(url) {
+  if (!url) return '';
   try {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'http://' + url;
+        if (url.startsWith('//')) {
+            url = 'http:' + url;
+        } else if (!url.includes('://')) {
+            url = 'http://' + url;
+        }
     }
     var u = new URL(url);
     return u.hostname.replace(/^www\./, '');
@@ -687,6 +692,24 @@ export function getDomain(url) {
         return url;
     }
   }
+}
+
+export function resolveUrl(href, base) {
+    if (!href) return href;
+    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('javascript')) return href;
+    try {
+        return new URL(href, base).href;
+    } catch(e) {
+        try {
+            var baseDom = base;
+            if (!baseDom.startsWith('http://') && !baseDom.startsWith('https://')) {
+                baseDom = 'https://' + baseDom;
+            }
+            return new URL(href, baseDom).href;
+        } catch(err) {
+            return href;
+        }
+    }
 }
 
 export var domainPrefs = {};
@@ -783,6 +806,7 @@ window.estFormatter = estFormatter;
 window.getEstDateStrFromDate = getEstDateStrFromDate;
 window.getEstTimeStrFromDate = getEstTimeStrFromDate;
 window.getDomain = getDomain;
+window.resolveUrl = resolveUrl;
 window.domainPrefs = domainPrefs;
 window.saveDomainPrefs = saveDomainPrefs;
 window.toggleDomainPref = toggleDomainPref;
