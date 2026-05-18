@@ -339,26 +339,46 @@ export function parseOnHockey(html) {
                       var streamLinksArr = [];
                       var linksContainer = row.querySelector('.gamelinks') || row; // fallback to entire row if .gamelinks is missing
                       if (linksContainer) {
-                          var links = linksContainer.querySelectorAll('a');
-                          for (var l = 0; l < links.length; l++) {
-                              var linkEl = links[l];
-                              var href = linkEl.getAttribute('href');
-                              if (!href) continue;
+                          var currentCategory = '';
+                          for (var l = 0; l < linksContainer.childNodes.length; l++) {
+                              var child = linksContainer.childNodes[l];
 
-                              var streamUrl = href;
-                              if (streamUrl.indexOf('//') === 0) {
-                                  streamUrl = 'https:' + streamUrl;
-                              } else if (streamUrl.indexOf('http') !== 0) {
-                                  streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                              if (child.nodeType === 3) { // Text node
+                                  var text = child.textContent.trim();
+                                  if (text && text.endsWith(':')) {
+                                      currentCategory = text.replace(':', '').trim();
+                                  } else if (text && text.length > 0 && text !== '--' && text.indexOf('geo-blocked') === -1) {
+                                      // Sometimes there's just a raw text without colon
+                                      var parts = text.split(':');
+                                      if(parts.length > 1) {
+                                          currentCategory = parts[0].trim();
+                                      } else {
+                                          currentCategory = text.trim();
+                                      }
+                                  }
+                              } else if (child.tagName === 'A') {
+                                  var linkEl = child;
+                                  var href = linkEl.getAttribute('href');
+                                  if (!href) continue;
+
+                                  var streamUrl = href;
+                                  if (streamUrl.indexOf('//') === 0) {
+                                      streamUrl = 'https:' + streamUrl;
+                                  } else if (streamUrl.indexOf('http') !== 0) {
+                                      streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                                  }
+
+                                  var linkName = (linkEl.title || linkEl.textContent || 'Flux').trim();
+                                  var finalName = 'OnHockey ' + (currentCategory ? currentCategory + ' - ' : '') + linkName;
+
+                                  streamLinksArr.push({
+                                      name: finalName,
+                                      url: streamUrl,
+                                      quality: 'HD',
+                                      lang: currentCategory.toUpperCase().indexOf('FRENCH') >= 0 || currentCategory.toUpperCase().indexOf('FR') === 0 ? 'FR' : 'MULTI',
+                                      icon: '🏒'
+                                  });
                               }
-
-                              streamLinksArr.push({
-                                  name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
-                                  url: streamUrl,
-                                  quality: 'HD',
-                                  lang: 'MULTI',
-                                  icon: '🏒'
-                              });
                           }
                       }
 
@@ -1289,14 +1309,23 @@ export function scrapeMatchFlux(m, forceRefresh){
 
     // OnHockey specific logic for stream extraction from aggregate page
     if (m.matchUrl === ONHOCKEY_URL || m.source === 'onhockey') {
-        var ohMatches = parseOnHockey(html);
-        var matchingOh = ohMatches.find(function(oh) { return isMatchPair(m, oh); });
-        if (matchingOh && matchingOh.streamLinks) {
-            matchingOh.streamLinks.forEach(function(sl) {
-                if (!links.find(function(l) { return l.url === sl.url; })) {
-                    links.push(sl);
-                }
-            });
+        // Enforce that OnHockey only bleeds into actual Hockey matches to avoid generic match collision with other sports
+        var mLeague = (m.league || '').toLowerCase();
+        var isBball = mLeague.indexOf('nba') >= 0 || mLeague.indexOf('basketball') >= 0;
+        var isBase = mLeague.indexOf('mlb') >= 0 || mLeague.indexOf('baseball') >= 0;
+        var isFootball = mLeague.indexOf('nfl') >= 0 || mLeague.indexOf('american') >= 0;
+
+        // If the match is explicitly confirmed as a non-hockey major sport, do not attempt OnHockey merge
+        if (!isBball && !isBase && !isFootball) {
+            var ohMatches = parseOnHockey(html);
+            var matchingOh = ohMatches.find(function(oh) { return isMatchPair(m, oh); });
+            if (matchingOh && matchingOh.streamLinks) {
+                matchingOh.streamLinks.forEach(function(sl) {
+                    if (!links.find(function(l) { return l.url === sl.url; })) {
+                        links.push(sl);
+                    }
+                });
+            }
         }
     }
 
