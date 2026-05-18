@@ -1207,10 +1207,10 @@ export function openMod(m,col){
 
   var rightCol = document.getElementById('modal-right-col');
 
-  // Wait if streams are still loading, but fetch them specifically if they aren't loading.
-  // Si on a m.streamsLoaded mais aucun flux trouvé, on force le re-scraping car l'utilisateur demande explicitement le match
+  // When a user clicks a match, we ALWAYS fetch streams if there are none available yet,
+  // bypassing background state checks that might erroneously be true.
   var hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
-  var needsScraping = (!m.streamsLoaded || !hasEnoughStreams) && m.matchUrl;
+  var needsScraping = !hasEnoughStreams && m.matchUrl;
 
   // Header section for right column (Refresh + Random Multiview)
   var rightHeaderHtml = '<div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;">';

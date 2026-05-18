@@ -1139,11 +1139,11 @@ export function getStreamCache(mid) {
     var globalCache = safeStorageGetJSON('stream_cache', {});
     var matchCache = globalCache[mid];
 
-    if (matchCache) {
-        if (Date.now() - matchCache.ts < 2 * 60 * 60 * 1000) {
+    if (matchCache && matchCache.streams && matchCache.streams.length > 0) {
+        // Shorter cache lifespan: 30 minutes. Let's make sure we have fresh streams.
+        if (Date.now() - matchCache.ts < 30 * 60 * 1000) {
             return matchCache.streams;
         } else {
-            // Delete expired cache entry
             delete globalCache[mid];
             safeStorageSetJSON('stream_cache', globalCache);
         }
@@ -1152,15 +1152,16 @@ export function getStreamCache(mid) {
 }
 
 export function saveStreamCache(mid, streams) {
-    var globalCache = safeStorageGetJSON('stream_cache', {});
+    // Only cache if there are actual streams to avoid caching empty results
+    if (!streams || streams.length === 0) return;
 
-    // Purge logic: remove anything older than 2 hours to keep cache small
+    var globalCache = safeStorageGetJSON('stream_cache', {});
     var now = Date.now();
-    var hasDeletes = false;
+
+    // Clean up older items to avoid large local storage footprint
     for (var k in globalCache) {
-        if (now - globalCache[k].ts >= 2 * 60 * 60 * 1000) {
+        if (now - globalCache[k].ts >= 30 * 60 * 1000) {
             delete globalCache[k];
-            hasDeletes = true;
         }
     }
 
@@ -1258,21 +1259,11 @@ export function fetchSubPages(matches){
 }
 
 export function scrapeMatchFlux(m, forceRefresh){
-  if (m.status === 'live' && !m.refreshedOnStartScrape) {
-      m.refreshedOnStartScrape = true;
-      forceRefresh = true;
-  }
-
-  if (!forceRefresh && m.streamLinks && m.streamLinks.length >= 1000) {
-      lg('Scrape skipped, already has >= 1000 streams', m.homeTeam);
-      m.streamsLoaded = true;
-      return Promise.resolve();
-  }
-
-  // Check cache first
+  // Ignore artificial limits to allow robust fetch
+  // Check cache first unless explicitly forcing refresh
   if (!forceRefresh) {
       var cachedStreams = getStreamCache(m.id);
-      if (cachedStreams) {
+      if (cachedStreams && cachedStreams.length > 0) {
           lg('Scrape streams cached', m.homeTeam);
           m.streamLinks = cachedStreams;
           m.streamsLoaded = true;
