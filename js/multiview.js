@@ -688,6 +688,7 @@ export function setupMultivisionUI() {
       + '<button class="nav-btn hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 8px; min-width: auto; font-size: 16px;">🎬</button>'
       + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
       + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
+      + (('documentPictureInPicture' in window) ? '<button class="nav-btn hide-pip" id="mv-doc-pip-btn" onclick="toggleDocumentPiP()" aria-label="Fenêtre détachée" title="Fenêtre détachée (PiP)" style="padding: 8px; min-width: auto; font-size: 16px;">🖼️</button>' : '')
       + '</div>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
@@ -1566,6 +1567,97 @@ document.addEventListener("fullscreenchange", function() {
         }
     }
 });
+
+/* ══ DOCUMENT PICTURE-IN-PICTURE ═══════════ */
+var docPiPWindow = null;
+
+export async function toggleDocumentPiP() {
+    if (!('documentPictureInPicture' in window)) {
+        showToast('Votre navigateur ne supporte pas le Document PiP.');
+        return;
+    }
+
+    var mvContainer = document.getElementById('mv-container');
+
+    if (!mvContainer) return;
+
+    if (docPiPWindow) {
+        // If already in PiP, closing the window will trigger the pagehide event and restore the UI
+        docPiPWindow.close();
+        return;
+    }
+
+    var gridWrapper = document.getElementById('mv-grid-wrapper');
+    if (!gridWrapper) return;
+
+    try {
+        // Open the PiP window
+        docPiPWindow = await window.documentPictureInPicture.requestWindow({
+            width: 800,
+            height: 450
+        });
+
+        // Copy styles to the new window
+        var styleSheets = document.styleSheets;
+        for (var i = 0; i < styleSheets.length; i++) {
+            var styleSheet = styleSheets[i];
+            try {
+                if (styleSheet.href) {
+                    var newLinkEl = document.createElement('link');
+                    newLinkEl.rel = 'stylesheet';
+                    newLinkEl.href = styleSheet.href;
+                    docPiPWindow.document.head.appendChild(newLinkEl);
+                } else if (styleSheet.ownerNode && styleSheet.ownerNode.innerText) {
+                    var newStyleEl = document.createElement('style');
+                    newStyleEl.textContent = styleSheet.ownerNode.innerText;
+                    docPiPWindow.document.head.appendChild(newStyleEl);
+                }
+            } catch (e) {
+                console.warn('Failed to copy stylesheet', e);
+            }
+        }
+
+        // Add root styles to match main window
+        docPiPWindow.document.body.style.cssText = 'margin: 0; padding: 0; background: #000; overflow: hidden; display: flex; flex-direction: column; width: 100vw; height: 100vh;';
+        docPiPWindow.document.documentElement.style.cssText = document.documentElement.style.cssText;
+
+        // Create a placeholder in the main window
+        var placeholder = document.createElement('div');
+        placeholder.id = 'mv-pip-placeholder';
+        placeholder.style.cssText = 'flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); text-align:center; padding:20px;';
+        placeholder.innerHTML = '<div style="font-size:48px; margin-bottom:16px;">🖼️</div>' +
+                                '<div style="font-size:18px; font-weight:bold; color:#fff; margin-bottom:8px;">Multivision détaché</div>' +
+                                '<div style="margin-bottom:20px;">Les streams sont actuellement en cours de lecture dans une fenêtre flottante.</div>' +
+                                '<button class="btn p" onclick="toggleDocumentPiP()">Restaurer la vue</button>';
+
+        // Move the grid to the PiP window
+        docPiPWindow.document.body.appendChild(gridWrapper);
+
+        // Add the placeholder to the main container
+        mvContainer.appendChild(placeholder);
+
+        // Add class to container to hide other things if needed
+        mvContainer.classList.add('mv-doc-pip-active');
+
+        // Handle PiP window close
+        docPiPWindow.addEventListener('pagehide', function() {
+            // Remove placeholder
+            var p = document.getElementById('mv-pip-placeholder');
+            if (p) p.remove();
+
+            // Move grid back to main window
+            mvContainer.appendChild(gridWrapper);
+
+            mvContainer.classList.remove('mv-doc-pip-active');
+            docPiPWindow = null;
+        });
+
+    } catch (e) {
+        console.error('Failed to open Document PiP window', e);
+        showToast('Erreur lors de l\'ouverture de la fenêtre détachée.');
+    }
+}
+
 
 /* ══ OPEN FLUX (MULTIVISION) ═══════════ */
 export function openFlux(e, eu, en, mid){
@@ -2473,6 +2565,7 @@ window.removeFromMultivision = removeFromMultivision;
 window.clearMultivision = clearMultivision;
 window.hideMultivision = hideMultivision;
 window.toggleMultiview = toggleMultiview;
+window.toggleDocumentPiP = toggleDocumentPiP;
 window.toggleTheaterMode = toggleTheaterMode;
 window.toggleFullscreen = toggleFullscreen;
 window.openFlux = openFlux;
