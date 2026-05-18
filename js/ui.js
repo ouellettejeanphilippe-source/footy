@@ -1302,7 +1302,7 @@ export function openMod(m,col){
 
 
   if(needsScraping) {
-      rightCol.innerHTML= rightHeaderHtml + '<div style="text-align:center;padding:20px;color:var(--muted2);">Chargement asynchrone des streams... <span style="font-size: 0.8em; opacity: 0.5;">(Patientez, ne bloque pas)</span></div>';
+      rightCol.innerHTML= rightHeaderHtml + '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted2); gap: 16px;"><div class="spinner"></div><div style="font-weight: 600;">Recherche de streams...</div><div style="font-size: 12px; opacity: 0.6;">(Chargement en arrière-plan)</div></div>';
       attachHeaderEvents();
       document.getElementById('mbg').classList.add('open');
 
