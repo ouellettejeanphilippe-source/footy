@@ -1,13 +1,23 @@
-import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, SITE, sortFluxLinks, resolveUrl } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
-import { TARGET_DATE } from './api.js';
-import { getTeamInfo } from './match.js';
-import { S, addScrapeLog, favTeams } from './state.js';
-import { renderFluxItem } from './ui.js';
+
+global.window = {};
+function getOfficialTeamName(x) { return x; }
+function formatLeagueName(x) { return x; }
+function getLeagueDuration() { return 120; }
+function getEstDateStrFromDate() { return "today"; }
+const ONHOCKEY_URL = "dummy";
+const TARGET_DATE = new Date();
+function lg() {}
+
+
+
+
+
+
+
+
 
 /* ══ PARSE STREAMEAST ════════════════ */
-export function parseStreameast(html){
+function parseStreameast(html){
   var matches=[];
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var cards = doc.querySelectorAll('.match-card');
@@ -151,7 +161,7 @@ export function parseStreameast(html){
 /* ══ PARSE ONHOCKEY ═══════════════════ */
 
 /* ══ PARSE SPORTSURGE ═════════════════ */
-export function parsePWHLSchedule(html) {
+function parsePWHLSchedule(html) {
   var matches = [];
   try {
       var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -233,7 +243,7 @@ export function parsePWHLSchedule(html) {
   return matches;
 }
 
-export function parseSportsurge(html) {
+function parseSportsurge(html) {
   var matches = [];
   try {
       var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -284,7 +294,7 @@ export function parseSportsurge(html) {
   return matches;
 }
 
-export function parseOnHockey(html) {
+function parseOnHockey(html) {
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var matches = [];
 
@@ -465,7 +475,7 @@ export function parseOnHockey(html) {
 
 
 /* ══ PARSE BUFFSTREAMS ════════════════ */
-export function parseBuffstreams(html){
+function parseBuffstreams(html){
   var matches=[];
   var index = 0;
   var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -552,7 +562,7 @@ export function parseBuffstreams(html){
 
 /* ══ FOOTYBITE LOGOS SCRAPING ═════════ */
 // Add footybite logo parsing
-export function extractFootybiteLogos(doc) {
+function extractFootybiteLogos(doc) {
     var teams = doc.querySelectorAll('.txt-team');
     teams.forEach(function(teamEl) {
         var teamName = teamEl.textContent.trim();
@@ -568,7 +578,7 @@ export function extractFootybiteLogos(doc) {
 
 
 /* ══ PARSE STREAMONSPORT ═══════════════ */
-export function parseStreamonsport(html) {
+function parseStreamonsport(html) {
     var matches = [];
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var cards = doc.querySelectorAll('.match-card');
@@ -631,7 +641,7 @@ export function parseStreamonsport(html) {
 
 
 /* ══ PARSE TOTALSPORTEK ════════════════ */
-export function parseTotalsportek(html) {
+function parseTotalsportek(html) {
     var matches = [];
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
@@ -671,7 +681,7 @@ export function parseTotalsportek(html) {
 }
 
 /* ══ PARSE VIPLEAGUE ════════════════ */
-export function parseVipleague(html) {
+function parseVipleague(html) {
     var matches = [];
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
@@ -711,7 +721,7 @@ export function parseVipleague(html) {
 }
 
 /* ══ PARSE METHSTREAMS ════════════════ */
-export function parseMethstreams(html) {
+function parseMethstreams(html) {
     var matches = [];
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
@@ -752,7 +762,7 @@ export function parseMethstreams(html) {
    .text-dark-light → titre de ligue (21x)
    .img-icone      → icône de ligue (20x)
 ═══════════════════════════════════════ */
-export function parseNflbite(html) {
+function parseNflbite(html) {
     var matches = [];
     var regex = /<a class="teams-logo" href="([^"]*\/teams\/([^"]*)-live-stream\/)">[\s\S]*?<img class="team-logo-img" src="([^"]*)"/g;
     var match;
@@ -812,7 +822,7 @@ export function parseNflbite(html) {
     return matches;
 }
 
-export function parseMlbbite(html) {
+function parseMlbbite(html) {
     var matches = [];
     try {
         var doc = new DOMParser().parseFromString(html, "text/html");
@@ -921,7 +931,7 @@ export function parseMlbbite(html) {
     return matches;
 }
 
-export function parseFootybite(html){
+function parseFootybite(html){
   var doc=new DOMParser().parseFromString(html,'text/html');
   lg('Title',doc.title);
   lg('HTML len',html.length);
@@ -1135,7 +1145,7 @@ export function parseFootybite(html){
 
 
 /* ══ CACHE STREAMS (2 hours) ══════════════ */
-export function getStreamCache(mid) {
+function getStreamCache(mid) {
     var globalCache = safeStorageGetJSON('stream_cache', {});
     var matchCache = globalCache[mid];
 
@@ -1151,7 +1161,7 @@ export function getStreamCache(mid) {
     return null;
 }
 
-export function saveStreamCache(mid, streams) {
+function saveStreamCache(mid, streams) {
     // Only cache if there are actual streams to avoid caching empty results
     if (!streams || streams.length === 0) return;
 
@@ -1170,7 +1180,7 @@ export function saveStreamCache(mid, streams) {
 }
 
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
-export function fetchSubPages(matches){
+function fetchSubPages(matches){
   var now = new Date();
   var currentEstDateStr = getEstDateStrFromDate(now);
   var currentEstTimeStr = getEstTimeStrFromDate(now);
@@ -1258,7 +1268,7 @@ export function fetchSubPages(matches){
   next();
 }
 
-export function scrapeMatchFlux(m, forceRefresh){
+function scrapeMatchFlux(m, forceRefresh){
   // Ignore artificial limits to allow robust fetch
   // Check cache first unless explicitly forcing refresh
   if (!forceRefresh) {
@@ -1286,19 +1296,6 @@ export function scrapeMatchFlux(m, forceRefresh){
     var pageLinksContext = [];
 
     // === TOUTES SOURCES : RECHERCHE LARGE DE FLUX ===
-
-    // OnHockey specific logic for stream extraction from aggregate page
-    if (m.matchUrl === ONHOCKEY_URL || m.source === 'onhockey') {
-        var ohMatches = parseOnHockey(html);
-        var matchingOh = ohMatches.find(function(oh) { return isMatchPair(m, oh); });
-        if (matchingOh && matchingOh.streamLinks) {
-            matchingOh.streamLinks.forEach(function(sl) {
-                if (!links.find(function(l) { return l.url === sl.url; })) {
-                    links.push(sl);
-                }
-            });
-        }
-    }
 
     // StreamOnSport specific logic
     if (m.source === 'streamonsport') {
@@ -1542,7 +1539,7 @@ export function scrapeMatchFlux(m, forceRefresh){
   });
 }
 
-export function updateMatchUiAfterScrape(m) {
+function updateMatchUiAfterScrape(m) {
     // Refresh UI for this specific match if needed
     var mbs = [document.getElementById('mb-'+m.id), document.getElementById('mb-'+m.id+'_live_copy')];
     mbs.forEach(function(mb) {
@@ -1594,7 +1591,7 @@ export function updateMatchUiAfterScrape(m) {
 }
 
 /* Remonte les siblings/parents pour trouver le header de ligue */
-export function findLeagueHeader(el) {
+function findLeagueHeader(el) {
     var curr = el;
     while (curr && curr !== document.body) {
         if (curr.classList && curr.classList.contains('my-1') && curr.querySelector('.img-icone')) {
@@ -1619,7 +1616,7 @@ export function findLeagueHeader(el) {
 }
 
 /* Convert UK time to EST */
-export function getEstTime(ukTimeStr){
+function getEstTime(ukTimeStr){
     var parts = ukTimeStr.split(':');
     if(parts.length !== 2) return ukTimeStr;
     var h = parseInt(parts[0], 10);
@@ -1635,23 +1632,37 @@ export function getEstTime(ukTimeStr){
 
 
 // Global bindings for HTML compatibility
-window.parseStreameast = parseStreameast;
-window.parsePWHLSchedule = parsePWHLSchedule;
-window.parseSportsurge = parseSportsurge;
-window.parseOnHockey = parseOnHockey;
-window.parseBuffstreams = parseBuffstreams;
-window.extractFootybiteLogos = extractFootybiteLogos;
-window.parseTotalsportek = parseTotalsportek;
-window.parseVipleague = parseVipleague;
-window.parseMethstreams = parseMethstreams;
-window.parseNflbite = parseNflbite;
-window.parseMlbbite = parseMlbbite;
-window.parseFootybite = parseFootybite;
-window.parseStreamonsport = parseStreamonsport;
-window.getStreamCache = getStreamCache;
-window.saveStreamCache = saveStreamCache;
-window.fetchSubPages = fetchSubPages;
-window.scrapeMatchFlux = scrapeMatchFlux;
-window.updateMatchUiAfterScrape = updateMatchUiAfterScrape;
-window.findLeagueHeader = findLeagueHeader;
-window.getEstTime = getEstTime;
+// window.parseStreameast = parseStreameast;
+// window.parsePWHLSchedule = parsePWHLSchedule;
+// window.parseSportsurge = parseSportsurge;
+// window.parseOnHockey = parseOnHockey;
+// window.parseBuffstreams = parseBuffstreams;
+// window.extractFootybiteLogos = extractFootybiteLogos;
+// window.parseTotalsportek = parseTotalsportek;
+// window.parseVipleague = parseVipleague;
+// window.parseMethstreams = parseMethstreams;
+// window.parseNflbite = parseNflbite;
+// window.parseMlbbite = parseMlbbite;
+// window.parseFootybite = parseFootybite;
+// window.parseStreamonsport = parseStreamonsport;
+// window.getStreamCache = getStreamCache;
+// window.saveStreamCache = saveStreamCache;
+// window.fetchSubPages = fetchSubPages;
+// window.scrapeMatchFlux = scrapeMatchFlux;
+// window.updateMatchUiAfterScrape = updateMatchUiAfterScrape;
+// window.findLeagueHeader = findLeagueHeader;
+// window.getEstTime = getEstTime;
+
+
+// Mock DOMParser
+class DOMParser {
+  parseFromString(html, type) {
+    const { JSDOM } = require("jsdom");
+    const dom = new JSDOM(html);
+    return dom.window.document;
+  }
+}
+global.DOMParser = DOMParser;
+
+const html = "<table><tbody><tr><td>PWHL</td></tr><tr class=\"game\"><td>19:00</td><td>Montréal Victoire - Ottawa Charge<div class=\"gamelinks\"><a href=\"/link1\">Link 1</a></div></td></tr></tbody></table>";
+console.log(JSON.stringify(parseOnHockey(html), null, 2));
