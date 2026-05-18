@@ -151,10 +151,15 @@ export function loadAll(isBackground, forceScrape){
           } else {
               updateLiveScores(S.matches); // New function to update scores smoothly
           }
-          fetchSubPages(S.matches);
 
           if (!isBackground) { document.getElementById('ov').style.display='none'; }
           window.dispatchEvent(new Event('loadSequenceComplete'));
+
+          // Run background fetch completely asynchronously so it never blocks the UI
+          setTimeout(function() {
+              fetchSubPages(S.matches);
+          }, 0);
+
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
       }
 
@@ -294,7 +299,7 @@ export function loadAll(isBackground, forceScrape){
 
               } else {
                   buildEPG(S.matches);
-                  fetchSubPages(S.matches);
+                  setTimeout(function() { fetchSubPages(S.matches); }, 0);
               }
                         }, 0);
           var live=S.matches.filter(function(m){return m.status==='live';}).length;
