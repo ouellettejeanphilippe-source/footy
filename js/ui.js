@@ -60,7 +60,7 @@ export function diagnosticScrape(matchId, url) {
 
                 // Simulation automatique contre tous les matchs de l'API
                 var simMatches = [];
-                var apiOnly = (S.matches || []).filter(function(x) { return x.league !== 'Autres Flux' && !x.id.toString().startsWith('scraped_') && !x.id.toString().startsWith('bs_') && !x.id.toString().startsWith('se_') && !x.id.toString().startsWith('ts_') && !x.id.toString().startsWith('vip_'); });
+                var apiOnly = (S.matches || []).filter(function(x) { return DEFAULT_LEAGUES[(x.league||'').toUpperCase()] && !x.id.toString().startsWith('scraped_') && !x.id.toString().startsWith('bs_') && !x.id.toString().startsWith('se_') && !x.id.toString().startsWith('ts_') && !x.id.toString().startsWith('vip_'); });
 
                 var matchedSim = null;
                 apiOnly.forEach(function(apiM) {
@@ -214,8 +214,8 @@ export function buildEPG(matches){
       if (b === 'EN DIRECT') return 1;
 
       // Ensure 'Autres Flux' is always sorted last globally in the main feed
-      if (a === 'Autres Flux') return 1;
-      if (b === 'Autres Flux') return -1;
+      if (!DEFAULT_LEAGUES[(a||'').toUpperCase()]) return 1;
+      if (!DEFAULT_LEAGUES[(b||'').toUpperCase()]) return -1;
 
       // Custom League Order User Preference
       var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
@@ -342,8 +342,8 @@ export function buildEPG(matches){
 
           var lgOrder = Object.keys(lgMap);
           lgOrder.sort(function(a, b) {
-              if (a === 'Autres Flux') return 1;
-              if (b === 'Autres Flux') return -1;
+              if (!DEFAULT_LEAGUES[(a||'').toUpperCase()]) return 1;
+              if (!DEFAULT_LEAGUES[(b||'').toUpperCase()]) return -1;
               var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
               var allLgs = Object.keys(DEFAULT_LEAGUES);
               allLgs.forEach(function(l) {
@@ -475,6 +475,7 @@ export function buildEPG(matches){
                   grid.appendChild(b);
               });
           });
+          return grid;
       };
 
       // Split live and upcoming in 60 mins and later today if filter is live
@@ -490,7 +491,7 @@ export function buildEPG(matches){
           var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
           filtered.forEach(function(m) {
-              if (m.league === 'Autres Flux') {
+              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
                   autresFluxMatches.push(m);
                   return;
               }
@@ -524,14 +525,38 @@ export function buildEPG(matches){
               if (S.collapsedSections['autresStreams'] === undefined) {
                   S.collapsedSections['autresStreams'] = true;
               }
-              renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+
+                            // Render the parent "Autres streams" category
+              var autresContainer = renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+
+              // If the user has expanded "Autres streams", group and display the specific leagues inside it
+              if (autresContainer && !S.collapsedSections['autresStreams']) {
+                  // We remove the default grid that renderMatches just created to replace it with sub-groups
+                  var defaultGrid = autresContainer.querySelector('.match-grid');
+                  if (defaultGrid) defaultGrid.remove();
+
+                  var secondaryLeagues = {};
+                  autresFluxMatches.forEach(function(m) {
+                      var lg = m.league || 'Autres Flux';
+                      if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
+                      secondaryLeagues[lg].push(m);
+                  });
+
+                  Object.keys(secondaryLeagues).sort().forEach(function(lg) {
+                      var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
+                      if (S.collapsedSections[subSectionId] === undefined) {
+                          S.collapsedSections[subSectionId] = true;
+                      }
+                      renderMatches(secondaryLeagues[lg], autresContainer, lg, true, subSectionId);
+                  });
+              }
           }
       } else {
           // Render matches normally for upcoming
           var mainMatches = [];
           var autresFluxMatches = [];
           filtered.forEach(function(m) {
-              if (m.league === 'Autres Flux') {
+              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
                   autresFluxMatches.push(m);
               } else {
                   mainMatches.push(m);
@@ -542,7 +567,31 @@ export function buildEPG(matches){
               if (S.collapsedSections['autresStreams'] === undefined) {
                   S.collapsedSections['autresStreams'] = true;
               }
-              renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+
+                            // Render the parent "Autres streams" category
+              var autresContainer = renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+
+              // If the user has expanded "Autres streams", group and display the specific leagues inside it
+              if (autresContainer && !S.collapsedSections['autresStreams']) {
+                  // We remove the default grid that renderMatches just created to replace it with sub-groups
+                  var defaultGrid = autresContainer.querySelector('.match-grid');
+                  if (defaultGrid) defaultGrid.remove();
+
+                  var secondaryLeagues = {};
+                  autresFluxMatches.forEach(function(m) {
+                      var lg = m.league || 'Autres Flux';
+                      if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
+                      secondaryLeagues[lg].push(m);
+                  });
+
+                  Object.keys(secondaryLeagues).sort().forEach(function(lg) {
+                      var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
+                      if (S.collapsedSections[subSectionId] === undefined) {
+                          S.collapsedSections[subSectionId] = true;
+                      }
+                      renderMatches(secondaryLeagues[lg], autresContainer, lg, true, subSectionId);
+                  });
+              }
           }
       }
 
@@ -1264,7 +1313,7 @@ export function openMod(m,col){
   var didAbsorbNewStream = false;
 
   unmerged.forEach(function(u) {
-      if (u.id === m.id || u.league !== 'Autres Flux') return; // ignore self or already merged ones
+      if (u.id === m.id || DEFAULT_LEAGUES[(u.league||'').toUpperCase()]) return; // ignore self or already merged ones
       var uH = normName(u.homeTeam);
       var uA = normName(u.awayTeam);
 
@@ -1477,7 +1526,7 @@ export function addManualStream(matchId, url) {
             logPayload += 'Scrapé: ' + newScraped.homeTeam + ' vs ' + newScraped.awayTeam + '\n';
 
             var simMatches = [];
-            var apiOnly = (S.matches || []).filter(function(x) { return x.league !== 'Autres Flux' && !x.id.toString().startsWith('scraped_') && !x.id.toString().startsWith('bs_') && !x.id.toString().startsWith('se_') && !x.id.toString().startsWith('ts_') && !x.id.toString().startsWith('vip_'); });
+            var apiOnly = (S.matches || []).filter(function(x) { return DEFAULT_LEAGUES[(x.league||'').toUpperCase()] && !x.id.toString().startsWith('scraped_') && !x.id.toString().startsWith('bs_') && !x.id.toString().startsWith('se_') && !x.id.toString().startsWith('ts_') && !x.id.toString().startsWith('vip_'); });
 
             var matchedSim = null;
             apiOnly.forEach(function(apiM) {

@@ -230,7 +230,7 @@ export function formatLeagueName(league) {
     // Exception pour 'Autres' (qui peut être utilisé ailleurs) et 'Autres Flux'
     if (DEFAULT_LEAGUES && formatted !== 'Autres' && formatted !== 'Autres Flux') {
         if (!DEFAULT_LEAGUES[formatted.toUpperCase()]) {
-            return 'Autres Flux';
+            return formatted;
         }
     }
     return formatted;
