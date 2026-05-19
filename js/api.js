@@ -1,6 +1,6 @@
 import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
+import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
 import { parsePWHLSchedule, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
@@ -354,7 +354,22 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
 
          // Flux that do not match an API match are kept but categorized distinctly
          // so they appear separated from the official API timeline, usually at the bottom.
-         sm.id = 'scraped_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+         var safeH = sm.homeTeam ? normName(sm.homeTeam) : 'unk';
+         var safeA = sm.awayTeam ? normName(sm.awayTeam) : 'unk';
+
+         // Use a deterministic ID based on teams if available. If both are unknown, fallback to a unique identifier
+         // incorporating the URL or name to prevent colliding all unknown streams into a single "undefined" card.
+         var determStr = safeH + '_' + safeA;
+         if (safeH === 'unk' && safeA === 'unk') {
+             var hashStr = (sm.matchUrl || '') + '_' + (sm.name || '') + '_' + (sm.source || '');
+             var hash = 0;
+             for (var j = 0; j < hashStr.length; j++) {
+                 hash = ((hash << 5) - hash) + hashStr.charCodeAt(j);
+                 hash |= 0;
+             }
+             determStr = 'unk_' + Math.abs(hash);
+         }
+         sm.id = 'scraped_' + encodeURIComponent(determStr);
          if (!sm.matchDate) sm.matchDate = targetDateStr;
          sm.league = 'Autres Flux';
          sm.streamsLoaded = true;

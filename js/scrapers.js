@@ -1245,6 +1245,10 @@ export function fetchSubPages(matches){
     var bLive = b.status === 'live' ? 1 : 0;
     if (aLive !== bLive) return bLive - aLive;
 
+    var aFooty = a.matchUrl && a.matchUrl.includes('footybite') ? 1 : 0;
+    var bFooty = b.matchUrl && b.matchUrl.includes('footybite') ? 1 : 0;
+    if (aFooty !== bFooty) return bFooty - aFooty;
+
     var aFav = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? 1 : 0;
     var bFav = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? 1 : 0;
     if (aFav !== bFav) return bFav - aFav;
