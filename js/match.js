@@ -104,7 +104,7 @@ export function isMatchPair(m1, m2) {
 }
 
 export function debugMatchPair(m1, m2) {
-  if (!m1 || !m2) return { isMatch: false, reason: "m1 ou m2 manquant" };
+  if (!m1 || !m2 || !m1.homeTeam || !m1.awayTeam || !m2.homeTeam || !m2.awayTeam) return { isMatch: false, reason: "m1 ou m2 ou données d'équipes manquantes" };
 
   // League strict check if both have leagues defined and aren't generic
   var l1 = (m1.league || '').toLowerCase();
@@ -308,6 +308,7 @@ export function isKnownDistinct(name1, name2) {
 }
 
 export function isMatch(name1, name2) {
+  if (name1 === '' && name2 === '') return true;
   if (!name1 || !name2) return false;
   if (name1 === name2) return true;
 
