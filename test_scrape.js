@@ -1586,7 +1586,7 @@ var TARGET_DATE = new Date();
 var ONHOCKEY_URL = "https://onhockey.tv/schedule_table.php";
 function lg() {}
 function getLeagueDuration() { return 120; }
-var SITE = "https://army.footybite.to";
+var SITE = "https://live1.footybite.to";
 var SPORTSURGE_URL = "test";
 var VIPLEAGUE_URL = "test";
 var BUFFSTREAMS_URL = "test";
