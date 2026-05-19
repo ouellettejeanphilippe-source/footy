@@ -1576,6 +1576,8 @@ export function addManualStream(matchId, url) {
             window.showToast("Aucun flux extrait, utilisation de l'URL brute.");
         }
 
+        m.streamsLoaded = true;
+
         if (window.saveStreamCache) {
             window.saveStreamCache(m.id, m.streamLinks);
         }
@@ -1589,6 +1591,7 @@ export function addManualStream(matchId, url) {
         // Fallback to manual URL directly
         m.streamLinks = m.streamLinks || [];
         m.streamLinks.push({url: url, name: 'Stream Manuel (URL Brute)', source: 'manual'});
+        m.streamsLoaded = true;
 
         if (window.addManualStreamLog) {
             window.addManualStreamLog(m.homeTeam + ' vs ' + m.awayTeam, url, 'Erreur de scraping: ' + e.message, 'error');
