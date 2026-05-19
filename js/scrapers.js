@@ -1181,7 +1181,7 @@ export function fetchSubPages(matches){
                             parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
   // We use a limited concurrency pool so we don't spam the proxy/network
-  var concurrency=3;
+  var concurrency=15;
   var queue=matches.filter(function(m){
       if (m.status === 'live' && !m.refreshedOnStart) {
           m.refreshedOnStart = true;
@@ -1221,6 +1221,10 @@ export function fetchSubPages(matches){
       return true;
   });
   queue.sort(function(a, b) {
+    var aLive = a.status === 'live' ? 1 : 0;
+    var bLive = b.status === 'live' ? 1 : 0;
+    if (aLive !== bLive) return bLive - aLive;
+
     var aFav = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? 1 : 0;
     var bFav = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? 1 : 0;
     if (aFav !== bFav) return bFav - aFav;
