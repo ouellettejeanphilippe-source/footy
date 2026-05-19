@@ -165,7 +165,13 @@ export function loadAll(isBackground, forceScrape){
 
           // Run background fetch completely asynchronously so it never blocks the UI
           setTimeout(function() {
-              fetchSubPages(S.matches);
+
+            // Only fetch sub pages for main leagues by default at startup
+            var startupMatches = S.matches.filter(function(m) {
+                return DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || m.league === 'FAVORIS' || m.league === 'EN DIRECT';
+            });
+            fetchSubPages(startupMatches);
+
           }, 0);
 
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
@@ -293,14 +299,26 @@ export function loadAll(isBackground, forceScrape){
                       if (i < S.matches.length) {
                           setTimeout(processChunk, 0);
                       } else {
-                          fetchSubPages(S.matches);
+
+            // Only fetch sub pages for main leagues by default at startup
+            var startupMatches = S.matches.filter(function(m) {
+                return DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || m.league === 'FAVORIS' || m.league === 'EN DIRECT';
+            });
+            fetchSubPages(startupMatches);
+
                       }
                   }
                   processChunk();
 
               } else {
                   buildEPG(S.matches);
-                  setTimeout(function() { fetchSubPages(S.matches); }, 0);
+                  setTimeout(function() {
+            // Only fetch sub pages for main leagues by default at startup
+            var startupMatches = S.matches.filter(function(m) {
+                return DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || m.league === 'FAVORIS' || m.league === 'EN DIRECT';
+            });
+            fetchSubPages(startupMatches);
+ }, 0);
               }
                         }, 0);
           var live=S.matches.filter(function(m){return m.status==='live';}).length;
@@ -632,8 +650,8 @@ export function renderFavPage() {
 
         var sortedLeagues = Object.keys(teamsByLeague).sort(function(a,b) {
             if (a === b) return 0;
-            if (a === 'Autres Flux' || a === 'Autres') return 1;
-            if (b === 'Autres Flux' || b === 'Autres') return -1;
+            if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] || a === 'Autres') return 1;
+            if (!DEFAULT_LEAGUES[(b||'').toUpperCase()] || b === 'Autres') return -1;
 
             var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
 

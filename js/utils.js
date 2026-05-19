@@ -1,3 +1,4 @@
+import { fetchSubPages } from './scrapers.js';
 import { S } from './state.js';
 import { PROXIES } from './config.js';
 import { normName, getLogo } from './db.js';
@@ -48,7 +49,7 @@ export function pad(n){return String(n).padStart(2,'0');}
 export function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 export function getLeagueDuration(league) {
-  if(!league) return 105;
+  if(!league) return 180;
   var l = league.toLowerCase();
 
   if(l.indexOf('mlb') >= 0 || l.indexOf('baseball') >= 0) return 180;
@@ -60,7 +61,7 @@ export function getLeagueDuration(league) {
   if(l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0) return 120;
   if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0) return 180;
 
-  return 105; // Default for soccer and others
+  return 180; // Default requested
 }
 export function escJs(s){var e=String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"');return e.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 export function lg(label,val){S.log.push({l:String(label),v:String(val||'')});}
@@ -382,7 +383,27 @@ export function toggleLeague(lgName) {
 
 export function toggleAccordion(lgName) {
   S.collapsedLg[lgName] = !S.collapsedLg[lgName];
+  // Sync section state if it was an epg section
+  S.collapsedSections[lgName] = S.collapsedLg[lgName];
+
   var isC = S.collapsedLg[lgName];
+  if (!isC) {
+      // If it's a secondary league or "Autres Flux", fetch streams for matches in it when expanded
+      var matchesToFetch = [];
+      var rowsToFetch = document.querySelectorAll('.mrow[data-lg="' + lgName + '"], .match-card[data-lg="' + lgName + '"]');
+      rowsToFetch.forEach(function(el) {
+          var id = el.id.replace('mb-', '');
+          if (id) {
+              var m = S.matchMap.get(id);
+              if (m && !m.streamsLoaded) {
+                  matchesToFetch.push(m);
+              }
+          }
+      });
+      if (matchesToFetch.length > 0 && typeof fetchSubPages === 'function') {
+          fetchSubPages(matchesToFetch);
+      }
+  }
 
   var hdrs = document.querySelectorAll('.lg-hdr[data-lg-hdr="' + lgName + '"]');
   hdrs.forEach(function(h) {
