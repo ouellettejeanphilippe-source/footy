@@ -531,13 +531,16 @@ export function buildEPG(matches){
 
               // If the user has expanded "Autres streams", group and display the specific leagues inside it
               if (autresContainer && !S.collapsedSections['autresStreams']) {
-                  // We remove the default grid that renderMatches just created to replace it with sub-groups
+                  // Remove the match-grid class from defaultGrid so that renderMatches doesn't append nested grids into a grid.
                   var defaultGrid = autresContainer.querySelector('.match-grid');
-                  if (defaultGrid) defaultGrid.remove();
+                  if (defaultGrid) {
+                      defaultGrid.innerHTML = '';
+                      defaultGrid.className = 'autres-streams-sub-container'; // Make it a normal block wrapper
+                  }
 
                   var secondaryLeagues = {};
                   autresFluxMatches.forEach(function(m) {
-                      var lg = m.league || 'Autres Flux';
+                      var lg = m.scrapedLeagueName || 'Autres Flux';
                       if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
                       secondaryLeagues[lg].push(m);
                   });
@@ -547,7 +550,7 @@ export function buildEPG(matches){
                       if (S.collapsedSections[subSectionId] === undefined) {
                           S.collapsedSections[subSectionId] = true;
                       }
-                      renderMatches(secondaryLeagues[lg], autresContainer, lg, true, subSectionId);
+                      renderMatches(secondaryLeagues[lg], defaultGrid || autresContainer, lg, true, subSectionId);
                   });
               }
           }
@@ -573,13 +576,16 @@ export function buildEPG(matches){
 
               // If the user has expanded "Autres streams", group and display the specific leagues inside it
               if (autresContainer && !S.collapsedSections['autresStreams']) {
-                  // We remove the default grid that renderMatches just created to replace it with sub-groups
+                  // Remove the match-grid class from defaultGrid so that renderMatches doesn't append nested grids into a grid.
                   var defaultGrid = autresContainer.querySelector('.match-grid');
-                  if (defaultGrid) defaultGrid.remove();
+                  if (defaultGrid) {
+                      defaultGrid.innerHTML = '';
+                      defaultGrid.className = 'autres-streams-sub-container'; // Make it a normal block wrapper
+                  }
 
                   var secondaryLeagues = {};
                   autresFluxMatches.forEach(function(m) {
-                      var lg = m.league || 'Autres Flux';
+                      var lg = m.scrapedLeagueName || 'Autres Flux';
                       if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
                       secondaryLeagues[lg].push(m);
                   });
@@ -589,7 +595,7 @@ export function buildEPG(matches){
                       if (S.collapsedSections[subSectionId] === undefined) {
                           S.collapsedSections[subSectionId] = true;
                       }
-                      renderMatches(secondaryLeagues[lg], autresContainer, lg, true, subSectionId);
+                      renderMatches(secondaryLeagues[lg], defaultGrid || autresContainer, lg, true, subSectionId);
                   });
               }
           }

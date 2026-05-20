@@ -352,6 +352,17 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
       if(!matched) {
          if (sm.status === 'finished') return; // Skip finished matches that have no API counterpart
 
+         // Filter out nonsense matches (TBD, TBA, Winner, missing teams)
+         var htLower = (sm.homeTeam || '').toLowerCase().trim();
+         var atLower = (sm.awayTeam || '').toLowerCase().trim();
+         var isInvalidTeam = function(t) {
+             return t === 'tbd' || t === 'tba' || t === 'tbc' || t === 'winner' || t.indexOf('vainqueur') !== -1;
+         };
+         // Drop if BOTH teams are empty, or if any team is explicitly invalid
+         if ((!htLower && !atLower) || isInvalidTeam(htLower) || isInvalidTeam(atLower)) {
+             return;
+         }
+
          // Flux that do not match an API match are kept but categorized distinctly
          // so they appear separated from the official API timeline, usually at the bottom.
          var safeH = sm.homeTeam ? normName(sm.homeTeam) : 'unk';
@@ -371,6 +382,7 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          }
          sm.id = 'scraped_' + encodeURIComponent(determStr);
          if (!sm.matchDate) sm.matchDate = targetDateStr;
+         sm.scrapedLeagueName = sm.league ? formatLeagueName(sm.league) : 'Autres Flux';
          sm.league = 'Autres Flux';
          sm.streamsLoaded = true;
          sm.flag = '📡';
