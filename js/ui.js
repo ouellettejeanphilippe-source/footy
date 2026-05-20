@@ -530,28 +530,43 @@ export function buildEPG(matches){
               var autresContainer = renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
 
               // If the user has expanded "Autres streams", group and display the specific leagues inside it
-              if (autresContainer && !S.collapsedSections['autresStreams']) {
+              if (autresContainer) {
                   // Remove the match-grid class from defaultGrid so that renderMatches doesn't append nested grids into a grid.
-                  var defaultGrid = autresContainer.querySelector('.match-grid');
-                  if (defaultGrid) {
-                      defaultGrid.innerHTML = '';
+                  // Since renderMatches returns the grid itself if there was no title wrapper, we just use it directly.
+                  var defaultGrid = autresContainer;
+
+                  // If it's expanded, render sub-leagues inside it.
+                  if (!S.collapsedSections['autresStreams']) {
+                      defaultGrid.innerHTML = ''; // Clear out the flattened matches
                       defaultGrid.className = 'autres-streams-sub-container'; // Make it a normal block wrapper
+                      defaultGrid.style.display = 'block';
+
+                      var secondaryLeagues = {};
+                      autresFluxMatches.forEach(function(m) {
+                          var lg = m.scrapedLeagueName || 'Autres Flux';
+                          if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
+                          secondaryLeagues[lg].push(m);
+                      });
+
+                      // Group matches by time or league as requested ("Should find a way to match the times...")
+                      // We will sort leagues alphabetically
+                      Object.keys(secondaryLeagues).sort().forEach(function(lg) {
+                          var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
+                          if (S.collapsedSections[subSectionId] === undefined) {
+                              S.collapsedSections[subSectionId] = true;
+                          }
+
+                          // Sort matches by time before passing them to renderMatches
+                          var sortedMatches = secondaryLeagues[lg].sort(function(a, b) {
+                              if (!a.startTime && !b.startTime) return 0;
+                              if (!a.startTime) return 1;
+                              if (!b.startTime) return -1;
+                              return a.startTime.localeCompare(b.startTime);
+                          });
+
+                          renderMatches(sortedMatches, defaultGrid, lg, true, subSectionId);
+                      });
                   }
-
-                  var secondaryLeagues = {};
-                  autresFluxMatches.forEach(function(m) {
-                      var lg = m.scrapedLeagueName || 'Autres Flux';
-                      if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
-                      secondaryLeagues[lg].push(m);
-                  });
-
-                  Object.keys(secondaryLeagues).sort().forEach(function(lg) {
-                      var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
-                      if (S.collapsedSections[subSectionId] === undefined) {
-                          S.collapsedSections[subSectionId] = true;
-                      }
-                      renderMatches(secondaryLeagues[lg], defaultGrid || autresContainer, lg, true, subSectionId);
-                  });
               }
           }
       } else {
@@ -575,28 +590,39 @@ export function buildEPG(matches){
               var autresContainer = renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
 
               // If the user has expanded "Autres streams", group and display the specific leagues inside it
-              if (autresContainer && !S.collapsedSections['autresStreams']) {
+              if (autresContainer) {
                   // Remove the match-grid class from defaultGrid so that renderMatches doesn't append nested grids into a grid.
-                  var defaultGrid = autresContainer.querySelector('.match-grid');
-                  if (defaultGrid) {
+                  var defaultGrid = autresContainer;
+
+                  if (!S.collapsedSections['autresStreams']) {
                       defaultGrid.innerHTML = '';
                       defaultGrid.className = 'autres-streams-sub-container'; // Make it a normal block wrapper
+                      defaultGrid.style.display = 'block';
+
+                      var secondaryLeagues = {};
+                      autresFluxMatches.forEach(function(m) {
+                          var lg = m.scrapedLeagueName || 'Autres Flux';
+                          if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
+                          secondaryLeagues[lg].push(m);
+                      });
+
+                      Object.keys(secondaryLeagues).sort().forEach(function(lg) {
+                          var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
+                          if (S.collapsedSections[subSectionId] === undefined) {
+                              S.collapsedSections[subSectionId] = true;
+                          }
+
+                          // Sort matches by time
+                          var sortedMatches = secondaryLeagues[lg].sort(function(a, b) {
+                              if (!a.startTime && !b.startTime) return 0;
+                              if (!a.startTime) return 1;
+                              if (!b.startTime) return -1;
+                              return a.startTime.localeCompare(b.startTime);
+                          });
+
+                          renderMatches(sortedMatches, defaultGrid, lg, true, subSectionId);
+                      });
                   }
-
-                  var secondaryLeagues = {};
-                  autresFluxMatches.forEach(function(m) {
-                      var lg = m.scrapedLeagueName || 'Autres Flux';
-                      if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
-                      secondaryLeagues[lg].push(m);
-                  });
-
-                  Object.keys(secondaryLeagues).sort().forEach(function(lg) {
-                      var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
-                      if (S.collapsedSections[subSectionId] === undefined) {
-                          S.collapsedSections[subSectionId] = true;
-                      }
-                      renderMatches(secondaryLeagues[lg], defaultGrid || autresContainer, lg, true, subSectionId);
-                  });
               }
           }
       }
