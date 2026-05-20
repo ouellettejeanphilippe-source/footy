@@ -151,7 +151,25 @@ export var LEAGUE_ALIASES = {
   'indy car': 'indycar',
   'motogp': 'motogp',
   'moto gp': 'motogp',
-  'wwe': 'wwe'
+  'wwe': 'wwe',
+  'ahl': 'ahl',
+  'american hockey league': 'ahl',
+  'echl': 'echl',
+  'ncaa': 'ncaa',
+  'ncaa football': 'ncaa',
+  'ncaa basketball': 'ncaa',
+  'wnba': 'wnba',
+  'womens national basketball association': 'wnba',
+  'euroleague': 'euroleague',
+  'champions cup': 'champions cup',
+  'challenge cup': 'challenge cup',
+  'top 14': 'top 14',
+  'pro d2': 'pro d2',
+  'united rugby championship': 'urc',
+  'urc': 'urc',
+  'premiership rugby': 'premiership rugby',
+  'super rugby': 'super rugby',
+  'six nations': 'six nations'
 };
 export var DEFAULT_LEAGUES = {
     'CHAMPIONS LEAGUE': { icon: '⚽' },
@@ -182,7 +200,19 @@ export var DEFAULT_LEAGUES = {
     'CFL': { icon: '🏈' },
     'INDYCAR': { icon: '🏎️' },
     'MOTOGP': { icon: '🏍️' },
-    'WWE': { icon: '🥊' }
+    'WWE': { icon: '🥊' },
+    'ECHL': { icon: '🏒' },
+    'NCAA': { icon: '🎓' },
+    'WNBA': { icon: '🏀' },
+    'EUROLEAGUE': { icon: '🏀' },
+    'CHAMPIONS CUP': { icon: '🏉' },
+    'CHALLENGE CUP': { icon: '🏉' },
+    'TOP 14': { icon: '🏉' },
+    'PRO D2': { icon: '🏉' },
+    'URC': { icon: '🏉' },
+    'PREMIERSHIP RUGBY': { icon: '🏉' },
+    'SUPER RUGBY': { icon: '🏉' },
+    'SIX NATIONS': { icon: '🏉' }
 };
 
 export var LEAGUE_FORMAT_NAMES = {
@@ -210,7 +240,20 @@ export var LEAGUE_FORMAT_NAMES = {
     'saudi pro league': 'Saudi Pro League',
     'f1': 'F1',
     'pwhl': 'PWHL',
-    'lhjmq': 'LHJMQ'
+    'lhjmq': 'LHJMQ',
+    'ahl': 'AHL',
+    'echl': 'ECHL',
+    'ncaa': 'NCAA',
+    'wnba': 'WNBA',
+    'euroleague': 'Euroleague',
+    'champions cup': 'Champions Cup',
+    'challenge cup': 'Challenge Cup',
+    'top 14': 'Top 14',
+    'pro d2': 'Pro D2',
+    'urc': 'URC',
+    'premiership rugby': 'Premiership Rugby',
+    'super rugby': 'Super Rugby',
+    'six nations': 'Six Nations'
 };
 export function formatLeagueName(league) {
     if (!league) return 'Autres Flux';
