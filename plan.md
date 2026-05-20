@@ -1,14 +1,21 @@
-Plan:
-1. **Fix URL Parsing in `js/config.js` and `js/scrapers.js`**:
-   - `getDomain(url)` currently strips protocols but fails to gracefully inject them for URLs that are protocol-relative (e.g., `//example.com`) or naked domains (`example.com`). It will be updated to prefix `http:` or `http://` before executing `new URL(url)` to prevent exceptions.
-   - Implement and export `resolveUrl(href, base)` in `js/config.js`. It will safely resolve relative paths using `new URL()`. If it fails (e.g. `base` is missing a protocol), it will use `getDomain(base)` to reconstruct a valid base URL (e.g. `https://<domain>`) and retry, falling back to returning `href` as-is.
-   - Update `js/scrapers.js` to import and utilize `resolveUrl`. Replace all the brittle `try/catch` fallbacks like `new URL(href, m.matchUrl).href ... new URL(href, 'https://' + m.matchUrl).href` with `resolveUrl(href, m.matchUrl)`.
+1.  **Refactor naive URL concatenation in `js/scrapers.js`:**
+    *   Many scrapers (e.g., `parseStreameast`, `parseSportsurge`, `parseStreamonsport`, `parseTotalsportek`, `parseVipleague`, `parseNflbite`, `parsefootybite` (various others using `.startsWith('/')` concat)) manually concatenate paths to base URLs instead of using the newly created `resolveUrl` helper from `js/config.js`. I will replace these manual concatenations with `resolveUrl` calls.
+    *   Example: `streamUrl = (STREAMEAST_URL.endsWith('/') ? STREAMEAST_URL.slice(0, -1) : STREAMEAST_URL) + (streamUrl.startsWith('/') ? streamUrl : '/' + streamUrl);` -> `streamUrl = resolveUrl(streamUrl, STREAMEAST_URL);`
 
-2. **Verify Matching System (`js/match.js`)**:
-   - The user mentioned "Make sure the url parsing and the matching system is fully functional without bugs".
-   - `js/match.js` heavily relies on sliding window string comparisons (`stringSimilarity`). The logic appears robust (`minWindow`, `maxWindow`, loop bounds).
-   - I will double-check for edge cases like missing properties (`m1.homeTeam` undefined), but existing checks (`!name1 || !name2`, `var m1H = normName(m1.homeTeam)`) generally prevent these.
-   - I will add a test script for url parsing.
+2.  **Verify refactored URL logic:**
+    *   Use `run_in_bash_session` to run `git diff js/scrapers.js` and confirm the `resolveUrl` refactoring was applied correctly without syntax errors.
 
-3. **Pre-commit Checks**:
-   - Follow instructions from `pre_commit_instructions` before submitting to ensure tests pass and code meets the repository's guidelines.
+3.  **Update `debugMatchPair` strictness in `js/match.js`:**
+    *   Edit `js/match.js` to update the `debugMatchPair` function, ensuring it strictly checks for the existence of `homeTeam` and `awayTeam` properties using the `in` operator (e.g., `!('homeTeam' in m1)`) instead of relying on truthiness which could falsely reject empty strings.
+
+4.  **Verify matching system strictness:**
+    *   Use `run_in_bash_session` to run `git diff js/match.js` and confirm the `in` operators were applied correctly without syntax errors. Ensure that `m1.homeTeam` is checked properly.
+
+5.  **Run Tests:**
+    *   Run `npm test` and `python3 run_checks.py`.
+
+6.  **Complete pre commit steps:**
+    *   Complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.
+
+7.  **Submit the change:**
+    *   Commit and submit the change.
