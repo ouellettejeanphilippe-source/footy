@@ -105,6 +105,8 @@ export function getTeamColors(teamName) {
 }
 
 export var LEAGUE_ALIASES = {
+  'fifa world cup': 'world cup',
+  'coupe du monde': 'world cup',
   'formula 1': 'f1',
   'formula1': 'f1',
   'f1': 'f1',
@@ -169,9 +171,11 @@ export var LEAGUE_ALIASES = {
   'urc': 'urc',
   'premiership rugby': 'premiership rugby',
   'super rugby': 'super rugby',
-  'six nations': 'six nations'
+    'six nations': 'six nations',
+    'world cup': 'world cup'
 };
 export var DEFAULT_LEAGUES = {
+    'WORLD CUP': { icon: '⚽' },
     'CHAMPIONS LEAGUE': { icon: '⚽' },
     'NHL': { icon: '🏒' },
     'PWHL': { icon: '🏒' },
@@ -267,7 +271,8 @@ export var LEAGUE_FORMAT_NAMES = {
     'urc': 'URC',
     'premiership rugby': 'Premiership Rugby',
     'super rugby': 'Super Rugby',
-    'six nations': 'Six Nations'
+    'six nations': 'Six Nations',
+    'world cup': 'World Cup'
 };
 export function formatLeagueName(league) {
     if (!league) return 'Autres Flux';
