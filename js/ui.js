@@ -645,210 +645,288 @@ export function buildEPG(matches){
   epgContainer.style.overflow = 'auto'; // allow natural scrolling
   epgContainer.style.position = 'relative';
 
-  var epgWrapper = document.createElement('div');
-  epgWrapper.className = 'epg-wrapper';
-  epgWrapper.id = 'epg-wrapper';
+var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
+    if (!leaguesToRender || leaguesToRender.length === 0) return null;
 
-  // Ruler Row
-  var rulerRow = document.createElement('div');
-  rulerRow.className = 'ruler-row';
+    var wrapper = document.createElement('div');
+    wrapper.className = 'epg-wrapper';
 
-  var corner = document.createElement('div');
-  corner.className = 'corner';
-  corner.textContent = 'Compétition';
-  rulerRow.appendChild(corner);
+    // Ruler Row
+    var rulerRow = document.createElement('div');
+    rulerRow.className = 'ruler-row';
 
-  var rulerTimes = document.createElement('div');
-  rulerTimes.className = 'ruler-times';
-  var hhtml = '';
-  for(var h=0; h<=24; h++){
-      hhtml += '<div class="tc">' + pad(h) + ':00</div>';
-  }
-  rulerTimes.innerHTML = hhtml;
-  rulerRow.appendChild(rulerTimes);
+    var corner = document.createElement('div');
+    corner.className = 'corner';
+    corner.textContent = 'Compétition';
+    rulerRow.appendChild(corner);
 
-  epgWrapper.appendChild(rulerRow);
+    var rulerTimes = document.createElement('div');
+    rulerTimes.className = 'ruler-times';
+    var hhtml = '';
+    for(var h=0; h<=24; h++){
+        hhtml += '<div class="tc">' + pad(h) + ':00</div>';
+    }
+    rulerTimes.innerHTML = hhtml;
+    rulerRow.appendChild(rulerTimes);
 
-  // Now Line element will be appended to the first marea so it spans down
-  var nowLineAdded = false;
-  var nowLineHtml = '<div class="now-line" id="nowline"></div>';
+    wrapper.appendChild(rulerRow);
 
-  leagues.forEach(function(lg){
-    if(!lg || lg.matches.length === 0) return;
-    if(S.hiddenLg[lg.league]) return;
-    var isCollapsed = S.collapsedLg[lg.league];
-    var lgCol = lg.color||lgColor(lg.league);
+    // Now Line element will be appended to the first marea so it spans down
+    var nowLineAdded = false;
+    var nowLineHtml = '<div class="now-line"></div>';
 
-    // League Header Row
-    var lHdrRow = document.createElement('div');
-    lHdrRow.className = 'marea-row';
-    lHdrRow.setAttribute('data-lg', lg.league);
+    leaguesToRender.forEach(function(lg){
+      if(!lg || lg.matches.length === 0) return;
+      if(S.hiddenLg[lg.league]) return;
+      var isCollapsed = S.collapsedLg[lg.league];
+      var lgCol = lg.color||lgColor(lg.league);
 
-    var lHdrCell = document.createElement('div');
-    lHdrCell.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
-    lHdrCell.setAttribute('data-lg-hdr', lg.league);
-    lHdrCell.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
-      + '<span class="ch-flag">'+(lg.flag || lgFlag(lg.league) || '')+'</span>'
-      + '<span class="lg-title">'+esc(lg.league)+'</span>'
-      + '<span class="lg-cnt">'+lg.matches.length+'</span>';
-    lHdrCell.addEventListener('click', function(){ toggleAccordion(lg.league); });
+      // League Header Row
+      var lHdrRow = document.createElement('div');
+      lHdrRow.className = 'marea-row';
+      lHdrRow.setAttribute('data-lg', lg.league);
 
-    var lHdrMarea = document.createElement('div');
-    lHdrMarea.className = 'marea';
-    // Add grid background to header marea as well to match
-    lHdrRow.appendChild(lHdrCell);
-    lHdrRow.appendChild(lHdrMarea);
-    epgWrapper.appendChild(lHdrRow);
+      var lHdrCell = document.createElement('div');
+      lHdrCell.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
+      lHdrCell.setAttribute('data-lg-hdr', lg.league);
+      lHdrCell.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
+        + '<span class="ch-flag">'+(lg.flag || lgFlag(lg.league) || '')+'</span>'
+        + '<span class="lg-title">'+esc(lg.league)+'</span>'
+        + '<span class="lg-cnt">'+lg.matches.length+'</span>';
+      lHdrCell.addEventListener('click', function(){ toggleAccordion(lg.league); });
 
-    if(!nowLineAdded) {
-        lHdrMarea.innerHTML += nowLineHtml;
-        nowLineAdded = true;
+      var lHdrMarea = document.createElement('div');
+      lHdrMarea.className = 'marea';
+      // Add grid background to header marea as well to match
+      lHdrRow.appendChild(lHdrCell);
+      lHdrRow.appendChild(lHdrMarea);
+      wrapper.appendChild(lHdrRow);
+
+      if(!nowLineAdded) {
+          lHdrMarea.innerHTML += nowLineHtml;
+          nowLineAdded = true;
+      }
+
+      if(!isCollapsed) {
+          lg.matches.forEach(function(m){
+              var row = document.createElement('div');
+              row.className = 'mrow' + (isCollapsed ? ' hidden-lg' : '');
+              row.setAttribute('data-lg', lg.league);
+
+              // Channel cell
+              var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
+              var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
+              var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+              var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+
+              var cCell = document.createElement('div');
+              cCell.className = 'chan-cell';
+              cCell.innerHTML = '<div class="chan-team">'
+                              + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</button>'
+                              + homeLogoHtml
+                              + '<span class="ch-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span></div>'
+                              + '<div class="chan-team">'
+                              + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\')">★</button>'
+                              + awayLogoHtml
+                              + '<span class="ch-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span></div>';
+
+              var marea = document.createElement('div');
+              marea.className = 'marea';
+
+              var b = document.createElement('div');
+              b.id = 'mb-'+m.id;
+
+              var isLiveOrSoonLoc = m.status === 'live';
+              var now = new Date();
+              var currentEst = getEstTimeStrFromDate(now);
+              var currentParts = currentEst.split(':');
+              var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
+
+              if(m.status === 'upcoming' && m.startTime) {
+                  var mParts = m.startTime.split(':');
+                  var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
+                  var diff = mMins - currentMins;
+                  if (currentMins >= 1380 && mMins <= 60) diff += 1440;
+                  if(diff <= 15 && diff > -1440) isLiveOrSoonLoc = true;
+              }
+
+              b.className = 'mb' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
+              b.setAttribute('data-home', m.homeTeam);
+              b.setAttribute('data-away', m.awayTeam);
+              b.setAttribute('data-lg', lg.league);
+              if (isLiveOrSoonLoc) b.classList.add('is-live');
+              if (favTeams[m.homeTeam] || favTeams[m.awayTeam]) b.classList.add('is-fav');
+
+              var homeTeamName = normName(m.homeTeam) || 'A';
+              var awayTeamName = normName(m.awayTeam) || 'B';
+              var homeColor = lgColor(homeTeamName);
+              var awayColor = lgColor(awayTeamName);
+              var tColorsH = getTeamColors(m.homeTeam);
+              var tColorsA = getTeamColors(m.awayTeam);
+              if (tColorsH) homeColor = tColorsH[0];
+              if (tColorsA) awayColor = tColorsA[0];
+
+              if (userPrefs.cardColor === 'home') {
+                  b.style.background = homeColor;
+              } else if (userPrefs.cardColor === 'league') {
+                  b.style.background = lgCol;
+              } else if (userPrefs.cardColor === 'dark') {
+                  b.style.background = 'rgba(255,255,255,0.05)';
+              } else if (userPrefs.cardColor === 'split') {
+                  b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
+              } else if (userPrefs.cardColor === 'gradient') {
+                  b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+              } else {
+                  b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
+              }
+
+              var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
+              var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
+
+              var matchScoreText = (homeScore !== '' && awayScore !== '') ? homeScore + ' - ' + awayScore : '';
+              var timeBadge = '';
+
+              if (m.status === 'live') {
+                  timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (m.minute ? esc(m.minute) : 'LIVE') + (matchScoreText ? ' | ' + matchScoreText : '') + '</div>';
+              } else if (m.status === 'finished') {
+                  timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (matchScoreText ? 'Terminé | ' + matchScoreText : 'Terminé') + '</div>';
+                  if (!matchScoreText) {
+                      timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:var(--muted);padding:2px 8px;border-radius:6px;font-weight:bold;">' + m.startTime + '</div>';
+                  }
+              } else {
+                  timeBadge = '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + m.startTime + '</div>';
+              }
+
+              var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
+
+              if (m.awayTeam) {
+                  b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 12px;">'
+                              +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-end; text-align: right; width: auto;">'
+                              +     '<div class="mb-t" style="text-align: right;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
+                              +     homeLogoHtml
+                              +   '</div>'
+                              +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-start; text-align: left; width: auto;">'
+                              +     awayLogoHtml
+                              +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
+                              +   '</div>'
+                              + '</div>'
+                              + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
+              } else {
+                  b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: center; align-items: center; gap: 12px;">'
+                              +   '<div class="mb-team-row" style="flex: 1; justify-content: center; text-align: center; width: auto;">'
+                              +     homeLogoHtml
+                              +     '<div class="mb-t" style="text-align: center;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
+                              +   '</div>'
+                              + '</div>'
+                              + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
+              }
+
+              // Calculate position via CSS vars
+              var parts = m.startTime.split(':');
+              var mH = parseInt(parts[0], 10);
+              var mM = parseInt(parts[1], 10);
+
+              var duration = m.durationMinutes || 105;
+              if (m.status === 'live') {
+                  var matchStartMins = mH * 60 + mM;
+                  var tempCurrentMins = currentMins;
+                  if (tempCurrentMins < matchStartMins && (matchStartMins - tempCurrentMins) > 12 * 60) {
+                      tempCurrentMins += 24 * 60; // wrap around midnight
+                  } else if (matchStartMins < tempCurrentMins && (tempCurrentMins - matchStartMins) > 12 * 60) {
+                      matchStartMins += 24 * 60; // match start is near midnight previous day
+                  }
+                  var matchEndMins = matchStartMins + duration;
+                  if (tempCurrentMins > matchEndMins - 15) {
+                      duration = (tempCurrentMins - matchStartMins) + 15;
+                  }
+              }
+
+              b.style.setProperty('--start-h', mH);
+              b.style.setProperty('--start-m', mM);
+              b.style.setProperty('--duration-m', duration);
+
+              b.addEventListener('click', function(){ openMod(m, lgCol); });
+              marea.appendChild(b);
+
+              row.appendChild(cCell);
+              row.appendChild(marea);
+              wrapper.appendChild(row);
+          });
+      }
+    });
+
+    containerToAppend.appendChild(wrapper);
+    return wrapper;
+};
+
+var mainLeagues = [];
+var autresLeagues = [];
+
+leagues.forEach(function(lg) {
+    if (!lg) return;
+    if (!DEFAULT_LEAGUES[(lg.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(lg.league||'').toUpperCase()]) && lg.league !== 'FAVORIS' && lg.league !== 'EN DIRECT') {
+        autresLeagues.push(lg);
+    } else {
+        mainLeagues.push(lg);
+    }
+});
+
+renderTimelineGuide(mainLeagues, epgContainer);
+
+if (autresLeagues.length > 0) {
+    var sectionId = 'autresStreamsEpg';
+    if (S.collapsedSections[sectionId] === undefined) {
+        S.collapsedSections[sectionId] = true;
     }
 
-    if(!isCollapsed) {
-        lg.matches.forEach(function(m){
-            var row = document.createElement('div');
-            row.className = 'mrow' + (isCollapsed ? ' hidden-lg' : '');
-            row.setAttribute('data-lg', lg.league);
+    var autresSecTitle = document.createElement('div');
+    autresSecTitle.style.cssText = 'padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px; margin-top: 24px; display: flex; align-items: center; gap: 8px; cursor: pointer;';
 
-            // Channel cell
-            var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
-            var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
-            var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\x27none\x27">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
-            var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\x27none\x27">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+    var isCollapsed = S.collapsedSections[sectionId];
 
-            var cCell = document.createElement('div');
-            cCell.className = 'chan-cell';
-            cCell.innerHTML = '<div class="chan-team">'
-                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick=\"toggleFavTeam(\'"+escJs(m.homeTeam)+"\')\">★</button>'
-                            + homeLogoHtml
-                            + '<span class="ch-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span></div>'
-                            + '<div class="chan-team">'
-                            + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick=\"toggleFavTeam(\'"+escJs(m.awayTeam)+"\')\">★</button>'
-                            + awayLogoHtml
-                            + '<span class="ch-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span></div>';
-
-            var marea = document.createElement('div');
-            marea.className = 'marea';
-
-            var b = document.createElement('div');
-            b.id = 'mb-'+m.id;
-
-            var isLiveOrSoonLoc = m.status === 'live';
-            if(m.status === 'upcoming' && m.startTime) {
-                var mParts = m.startTime.split(':');
-                var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-                var diff = mMins - currentMins;
-                if (currentMins >= 1380 && mMins <= 60) diff += 1440;
-                if(diff <= 15 && diff > -1440) isLiveOrSoonLoc = true;
-            }
-
-            b.className = 'mb' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
-            b.setAttribute('data-home', m.homeTeam);
-            b.setAttribute('data-away', m.awayTeam);
-            b.setAttribute('data-lg', lg.league);
-            if (isLiveOrSoonLoc) b.classList.add('is-live');
-            if (favTeams[m.homeTeam] || favTeams[m.awayTeam]) b.classList.add('is-fav');
-
-            var homeTeamName = normName(m.homeTeam) || 'A';
-            var awayTeamName = normName(m.awayTeam) || 'B';
-            var homeColor = lgColor(homeTeamName);
-            var awayColor = lgColor(awayTeamName);
-            var tColorsH = getTeamColors(m.homeTeam);
-            var tColorsA = getTeamColors(m.awayTeam);
-            if (tColorsH) homeColor = tColorsH[0];
-            if (tColorsA) awayColor = tColorsA[0];
-
-            if (userPrefs.cardColor === 'home') {
-                b.style.background = homeColor;
-            } else if (userPrefs.cardColor === 'league') {
-                b.style.background = lgCol;
-            } else if (userPrefs.cardColor === 'dark') {
-                b.style.background = 'rgba(255,255,255,0.05)';
-            } else if (userPrefs.cardColor === 'split') {
-                b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
-            } else if (userPrefs.cardColor === 'gradient') {
-                b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-            } else {
-                b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-            }
-
-            var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
-            var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
-
-            var matchScoreText = (homeScore !== '' && awayScore !== '') ? homeScore + ' - ' + awayScore : '';
-            var timeBadge = '';
-
-            if (m.status === 'live') {
-                timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (m.minute ? esc(m.minute) : 'LIVE') + (matchScoreText ? ' | ' + matchScoreText : '') + '</div>';
-            } else if (m.status === 'finished') {
-                timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (matchScoreText ? 'Terminé | ' + matchScoreText : 'Terminé') + '</div>';
-                if (!matchScoreText) {
-                    timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:var(--muted);padding:2px 8px;border-radius:6px;font-weight:bold;">' + m.startTime + '</div>';
-                }
-            } else {
-                timeBadge = '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + m.startTime + '</div>';
-            }
-
-            var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
-
-            if (m.awayTeam) {
-                b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 12px;">'
-                            +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-end; text-align: right; width: auto;">'
-                            +     '<div class="mb-t" style="text-align: right;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                            +     homeLogoHtml
-                            +   '</div>'
-                            +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-start; text-align: left; width: auto;">'
-                            +     awayLogoHtml
-                            +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
-                            +   '</div>'
-                            + '</div>'
-                            + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
-            } else {
-                b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: center; align-items: center; gap: 12px;">'
-                            +   '<div class="mb-team-row" style="flex: 1; justify-content: center; text-align: center; width: auto;">'
-                            +     homeLogoHtml
-                            +     '<div class="mb-t" style="text-align: center;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                            +   '</div>'
-                            + '</div>'
-                            + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
-            }
-
-            // Calculate position via CSS vars
-            var parts = m.startTime.split(':');
-            var mH = parseInt(parts[0], 10);
-            var mM = parseInt(parts[1], 10);
-
-            var duration = m.durationMinutes || 105;
-            if (m.status === 'live') {
-                var matchStartMins = mH * 60 + mM;
-                var tempCurrentMins = currentMins;
-                if (tempCurrentMins < matchStartMins && (matchStartMins - tempCurrentMins) > 12 * 60) {
-                    tempCurrentMins += 24 * 60; // wrap around midnight
-                } else if (matchStartMins < tempCurrentMins && (tempCurrentMins - matchStartMins) > 12 * 60) {
-                    matchStartMins += 24 * 60; // match start is near midnight previous day
-                }
-                var matchEndMins = matchStartMins + duration;
-                if (tempCurrentMins > matchEndMins - 15) {
-                    duration = (tempCurrentMins - matchStartMins) + 15;
-                }
-            }
-
-            b.style.setProperty('--start-h', mH);
-            b.style.setProperty('--start-m', mM);
-            b.style.setProperty('--duration-m', duration);
-
-            b.addEventListener('click', function(){ openMod(m, lgCol); });
-            marea.appendChild(b);
-
-            row.appendChild(cCell);
-            row.appendChild(marea);
-            epgWrapper.appendChild(row);
-        });
+    var icon = document.createElement('span');
+    icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    icon.style.transition = 'transform 0.2s';
+    if (isCollapsed) {
+        icon.style.transform = 'rotate(-90deg)';
     }
-  });
+    autresSecTitle.appendChild(icon);
 
-  epgContainer.appendChild(epgWrapper);
+    var textSpan = document.createElement('span');
+    textSpan.textContent = "Autres streams";
+    autresSecTitle.appendChild(textSpan);
+    epgContainer.appendChild(autresSecTitle);
+
+    var autresWrapperContainer = document.createElement('div');
+    autresWrapperContainer.style.display = isCollapsed ? 'none' : 'block';
+    epgContainer.appendChild(autresWrapperContainer);
+
+    var autresRendered = false;
+
+    var toggleAutres = function() {
+        S.collapsedSections[sectionId] = !S.collapsedSections[sectionId];
+        if (S.collapsedSections[sectionId]) {
+            icon.style.transform = 'rotate(-90deg)';
+            autresWrapperContainer.style.display = 'none';
+        } else {
+            icon.style.transform = '';
+            autresWrapperContainer.style.display = 'block';
+            if (!autresRendered) {
+                renderTimelineGuide(autresLeagues, autresWrapperContainer);
+                autresRendered = true;
+                updateNowLine();
+            }
+        }
+    };
+
+    autresSecTitle.addEventListener('click', toggleAutres);
+
+    // If initially expanded, render it
+    if (!isCollapsed) {
+        renderTimelineGuide(autresLeagues, autresWrapperContainer);
+        autresRendered = true;
+    }
+}
 
   // Note: we can remove the old gl/glh DOM grid lines because we added repeating-linear-gradient in CSS!
   } // End of else block for timeline EPG
@@ -893,25 +971,27 @@ window.addEventListener('filterChanged', function() {
 });
 
 export function updateNowLine() {
-    var line = document.getElementById('nowline');
-    if(!line) return;
+    var lines = document.querySelectorAll('.now-line');
+    if(lines.length === 0) return;
 
     var now = new Date();
     var isToday = (TARGET_DATE.toDateString() === now.toDateString());
 
-    if(isToday) {
-        var estStr = getEstTimeStrFromDate(now);
-        var parts = estStr.split(':');
-        var h = parseInt(parts[0], 10);
-        var m = parseInt(parts[1], 10);
+    lines.forEach(function(line) {
+        if(isToday) {
+            var estStr = getEstTimeStrFromDate(now);
+            var parts = estStr.split(':');
+            var h = parseInt(parts[0], 10);
+            var m = parseInt(parts[1], 10);
 
-        line.style.setProperty('--now-h', h);
-        line.style.setProperty('--now-m', m);
-        line.style.display = 'block';
-        line.setAttribute('data-t', estStr);
-    } else {
-        line.style.display = 'none';
-    }
+            line.style.setProperty('--now-h', h);
+            line.style.setProperty('--now-m', m);
+            line.style.display = 'block';
+            line.setAttribute('data-t', estStr);
+        } else {
+            line.style.display = 'none';
+        }
+    });
 }
 
 setInterval(updateNowLine, 60000);
