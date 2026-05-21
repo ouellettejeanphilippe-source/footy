@@ -52,7 +52,7 @@ export function lgFlag(n){
   if(l.indexOf('mlb') >= 0 || l.indexOf('baseball') >= 0) return '⚾';
   if(l.indexOf('nfl') >= 0 || l.indexOf('american football') >= 0 || l.indexOf('cfl') >= 0) return '🏈';
   if(l.indexOf('nba') >= 0 || l.indexOf('basketball') >= 0) return '🏀';
-  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0 || l.indexOf('pwhl') >= 0 || l.indexOf('qmjhl') >= 0 || l.indexOf('lhjmq') >= 0) return '🏒';
+  if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0 || l.indexOf('pwhl') >= 0 || l.indexOf('qmjhl') >= 0 || l.indexOf('lhjmq') >= 0 || l.indexOf('ahl') >= 0 || l.indexOf('echl') >= 0 || l.indexOf('ncaa') >= 0) return '🏒';
   if(l.indexOf('f1') >= 0 || l.indexOf('formula 1') >= 0 || l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0) return '🏎️';
   if(l.indexOf('motogp') >= 0 || l.indexOf('moto gp') >= 0) return '🏍️';
   if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0 || l.indexOf('ufc') >= 0 || l.indexOf('mma') >= 0 || l.indexOf('boxing') >= 0) return '🥊';
@@ -199,7 +199,10 @@ export var DEFAULT_LEAGUES = {
     'AHL': { icon: '🏒' },
     'CFL': { icon: '🏈' },
     'INDYCAR': { icon: '🏎️' },
-    'MOTOGP': { icon: '🏍️' },
+    'MOTOGP': { icon: '🏍️' }
+};
+
+export var OTHER_LEAGUES = {
     'WWE': { icon: '🥊' },
     'ECHL': { icon: '🏒' },
     'NCAA': { icon: '🎓' },
@@ -212,7 +215,18 @@ export var DEFAULT_LEAGUES = {
     'URC': { icon: '🏉' },
     'PREMIERSHIP RUGBY': { icon: '🏉' },
     'SUPER RUGBY': { icon: '🏉' },
-    'SIX NATIONS': { icon: '🏉' }
+    'SIX NATIONS': { icon: '🏉' },
+    'NASCAR': { icon: '🏎️' },
+    'GOLF': { icon: '⛳' },
+    'PGA': { icon: '⛳' },
+    'TENNIS': { icon: '🎾' },
+    'ATP': { icon: '🎾' },
+    'WTA': { icon: '🎾' },
+    'UFC': { icon: '🥊' },
+    'BOXING': { icon: '🥊' },
+    'DARTS': { icon: '🎯' },
+    'SNOOKER': { icon: '🎱' },
+    'CYCLING': { icon: '🚴' }
 };
 
 export var LEAGUE_FORMAT_NAMES = {
@@ -269,10 +283,10 @@ export function formatLeagueName(league) {
         formatted = lower.replace(/\b\w/g, function(l){ return l.toUpperCase(); });
     }
 
-    // Si la ligue n'est pas dans DEFAULT_LEAGUES, on la met dans 'Autres Flux'
+    // Si la ligue n'est pas dans DEFAULT_LEAGUES ou OTHER_LEAGUES, on la laisse telle quelle
     // Exception pour 'Autres' (qui peut être utilisé ailleurs) et 'Autres Flux'
     if (DEFAULT_LEAGUES && formatted !== 'Autres' && formatted !== 'Autres Flux') {
-        if (!DEFAULT_LEAGUES[formatted.toUpperCase()]) {
+        if (!DEFAULT_LEAGUES[formatted.toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[formatted.toUpperCase()])) {
             return formatted;
         }
     }
@@ -411,6 +425,7 @@ window.TEAM_ALIASES = TEAM_ALIASES;
 window.LEAGUE_ALIASES = LEAGUE_ALIASES;
 window.LEAGUE_FORMAT_NAMES = LEAGUE_FORMAT_NAMES;
 window.DEFAULT_LEAGUES = DEFAULT_LEAGUES;
+window.OTHER_LEAGUES = OTHER_LEAGUES;
 window.formatLeagueName = formatLeagueName;
 window._normCache = _normCache;
 window.getLogo = getLogo;
