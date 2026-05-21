@@ -104,7 +104,7 @@ export function isMatchPair(m1, m2) {
 }
 
 export function debugMatchPair(m1, m2) {
-  if (!m1 || !m2 || !m1.homeTeam || !m1.awayTeam || !m2.homeTeam || !m2.awayTeam) return { isMatch: false, reason: "m1 ou m2 ou données d'équipes manquantes" };
+  if (!m1 || !m2 || typeof m1.homeTeam !== 'string' || typeof m1.awayTeam !== 'string' || typeof m2.homeTeam !== 'string' || typeof m2.awayTeam !== 'string') return { isMatch: false, reason: "m1 ou m2 ou données d'équipes manquantes" };
 
   // League strict check if both have leagues defined and aren't generic
   var l1 = (m1.league || '').toLowerCase();
