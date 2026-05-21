@@ -197,7 +197,6 @@ export var DEFAULT_LEAGUES = {
     'LEAGUE CUP': { icon: '⚽' },
     'COPA DEL REY': { icon: '⚽' },
     'DFB POKAL': { icon: '⚽' },
-    'SAUDI PRO LEAGUE': { icon: '⚽' },
     'MLS': { icon: '⚽' },
     'LHJMQ': { icon: '🏒' },
     'AHL': { icon: '🏒' },
@@ -207,6 +206,7 @@ export var DEFAULT_LEAGUES = {
 };
 
 export var OTHER_LEAGUES = {
+    'SAUDI PRO LEAGUE': { icon: '⚽' },
     'WWE': { icon: '🥊' },
     'ECHL': { icon: '🏒' },
     'NCAA': { icon: '🎓' },
