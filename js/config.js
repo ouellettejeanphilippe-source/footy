@@ -712,23 +712,6 @@ export function getDomain(url) {
   }
 }
 
-export function resolveUrl(href, base) {
-    if (!href) return href;
-    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('javascript')) return href;
-    try {
-        return new URL(href, base).href;
-    } catch(e) {
-        try {
-            var baseDom = base;
-            if (!baseDom.startsWith('http://') && !baseDom.startsWith('https://')) {
-                baseDom = 'https://' + baseDom;
-            }
-            return new URL(href, baseDom).href;
-        } catch(err) {
-            return href;
-        }
-    }
-}
 
 export var domainPrefs = {};
 domainPrefs = safeStorageGetJSON('domain_prefs', {});
@@ -823,6 +806,28 @@ window.fetchTeamStats = fetchTeamStats;
 window.estFormatter = estFormatter;
 window.getEstDateStrFromDate = getEstDateStrFromDate;
 window.getEstTimeStrFromDate = getEstTimeStrFromDate;
+
+
+
+
+export function resolveUrl(href, base) {
+    if (!href) return href;
+    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('javascript')) return href;
+    try {
+        return new URL(href, base).href;
+    } catch(e) {
+        try {
+            var baseDom = base;
+            if (!baseDom.startsWith('http://') && !baseDom.startsWith('https://')) {
+                baseDom = 'https://' + baseDom;
+            }
+            return new URL(href, baseDom).href;
+        } catch(e2) {
+            return href; // Return original if all parsing fails
+        }
+    }
+}
+
 window.getDomain = getDomain;
 window.resolveUrl = resolveUrl;
 window.domainPrefs = domainPrefs;

@@ -1,5 +1,5 @@
 import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, SITE, sortFluxLinks, resolveUrl } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, MLBBITE_PLUS_URL, SITE, STREAMONSPORT_URL, TOTALSPORTEK_URL, VIPLEAGUE_URL, sortFluxLinks, resolveUrl } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo } from './match.js';
@@ -94,7 +94,7 @@ export function parseStreameast(html){
 
                   var streamUrl = href;
                   if (!streamUrl.startsWith('http')) {
-                      streamUrl = (STREAMEAST_URL.endsWith('/') ? STREAMEAST_URL.slice(0, -1) : STREAMEAST_URL) + (streamUrl.startsWith('/') ? streamUrl : '/' + streamUrl);
+                      streamUrl = resolveUrl(streamUrl, STREAMEAST_URL);
                   }
 
                   matches.push({
@@ -121,7 +121,7 @@ export function parseStreameast(html){
                   added[href] = true;
               } else if (textToParse.length > 3 && textToParse.length < 40) {
                   var streamUrl2 = href;
-                  if (!streamUrl2.startsWith('http')) streamUrl2 = (STREAMEAST_URL.endsWith('/') ? STREAMEAST_URL.slice(0, -1) : STREAMEAST_URL) + (streamUrl2.startsWith('/') ? streamUrl2 : '/' + streamUrl2);
+                  if (!streamUrl2.startsWith('http')) streamUrl2 = resolveUrl(streamUrl2, STREAMEAST_URL);
                   matches.push({
                       id: 'se_fb_' + index,
                       league: formatLeagueName('Sports'),
@@ -269,7 +269,7 @@ export function parseSportsurge(html) {
                   color: lgColor('Sports'),
                   startTime: '00:00',
                   status: 'upcoming',
-                  matchUrl: url.indexOf('http') === 0 ? url : ((SPORTSURGE_URL.endsWith('/') ? SPORTSURGE_URL.slice(0, -1) : SPORTSURGE_URL) + (url.startsWith('/') ? url : '/' + url)),
+                  matchUrl: url.indexOf('http') === 0 ? url : resolveUrl(url, SPORTSURGE_URL),
                   streamLinks: [],
                   streamsLoaded: false,
                   source: 'sportsurge'
@@ -365,7 +365,7 @@ export function parseOnHockey(html) {
                                   if (streamUrl.indexOf('//') === 0) {
                                       streamUrl = 'https:' + streamUrl;
                                   } else if (streamUrl.indexOf('http') !== 0) {
-                                      streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                                      streamUrl = resolveUrl(streamUrl, 'https://onhockey.tv/');
                                   }
 
                                   var linkName = (linkEl.title || linkEl.textContent || 'Flux').trim();
@@ -439,7 +439,7 @@ export function parseOnHockey(html) {
                   if (streamUrl.indexOf('//') === 0) {
                       streamUrl = 'https:' + streamUrl;
                   } else if (streamUrl.indexOf('http') !== 0) {
-                      streamUrl = 'https://onhockey.tv' + (streamUrl.charAt(0) === '/' ? '' : '/') + streamUrl;
+                      streamUrl = resolveUrl(streamUrl, 'https://onhockey.tv/');
                   }
 
                   streamLinksArr.push({
@@ -559,7 +559,7 @@ export function parseBuffstreams(html){
               score: null,
               streamLinks: streamLinks,
               streamsLoaded: false,
-              matchUrl: (evObj.link ? (evObj.link.indexOf('http')===0 ? evObj.link : 'https://buffstreams.com.co' + evObj.link) : (streamLinks.length > 0 ? streamLinks[0].url : BUFFSTREAMS_URL)),
+              matchUrl: (evObj.link ? (evObj.link.indexOf('http')===0 ? evObj.link : resolveUrl(evObj.link, BUFFSTREAMS_URL)) : (streamLinks.length > 0 ? streamLinks[0].url : BUFFSTREAMS_URL)),
               source: 'buffstreams'
           });
           index++;
@@ -623,7 +623,7 @@ export function parseStreamonsport(html) {
             var league = lgEl ? lgEl.textContent.trim() : 'Football';
 
             if(!matchUrl.startsWith('http')) {
-                matchUrl = 'https://www.stremonsport.net' + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
+                matchUrl = resolveUrl(matchUrl, STREAMONSPORT_URL);
             }
 
             if (home && away) {
@@ -665,7 +665,7 @@ export function parseTotalsportek(html) {
                 if(home && away) {
                     var matchUrl = href;
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        matchUrl = 'https://www.totalsportek-real.com' + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
+                        matchUrl = resolveUrl(matchUrl, TOTALSPORTEK_URL);
                     }
                     if(matchUrl && !matchUrl.startsWith('javascript') && !matches.find(m => m.matchUrl === matchUrl)) {
                         matches.push({
@@ -705,7 +705,7 @@ export function parseVipleague(html) {
                 if(home && away) {
                     var matchUrl = href;
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        matchUrl = 'https://vipleague.io' + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
+                        matchUrl = resolveUrl(matchUrl, VIPLEAGUE_URL);
                     }
                     if(matchUrl.startsWith('http') && !matches.find(m => m.matchUrl === matchUrl)) {
                         matches.push({
@@ -792,7 +792,7 @@ export function parseNflbite(html) {
             status: "upcoming",
             score: null,
             startTime: "00:00",
-            matchUrl: url.indexOf("http") === 0 ? url : "https://nflbite.is" + url,
+            matchUrl: url.indexOf("http") === 0 ? url : resolveUrl(url, 'https://nflbite.is'),
             streamLinks: streamLinks,
             streamsLoaded: false,
             league: "NFL",
@@ -811,7 +811,7 @@ export function parseNflbite(html) {
                  var teamPart = href.split('/teams/')[1].split('-live-stream')[0];
                  var teamN = teamPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
                  if (teamN && !matches.find(m => m.homeTeam === teamN)) {
-                     var matchUrl = href.startsWith('http') ? href : (MLBITE_URL.endsWith('/') ? MLBITE_URL.slice(0, -1) : MLBITE_URL) + (href.startsWith('/') ? href : '/' + href);
+                     var matchUrl = href.startsWith('http') ? href : resolveUrl(href, MLBITE_URL);
                      matches.push({
                         id: "nflbite_fb_" + i++,
                         homeTeam: getOfficialTeamName(teamN),
@@ -856,7 +856,7 @@ export function parseMlbbite(html) {
             var href = el.getAttribute("href");
             if (!href) return;
 
-            var matchUrl = href.indexOf("http") === 0 ? href : "https://mlbbite.plus" + href;
+            var matchUrl = href.indexOf("http") === 0 ? href : resolveUrl(href, MLBBITE_PLUS_URL);
 
             var home = "TBD";
             var away = "TBD";
@@ -992,8 +992,7 @@ export function parseFootybite(html){
                 if (a) matchUrl = a.getAttribute('href') || '';
             }
             if (matchUrl && !matchUrl.startsWith('http')) {
-                var baseUrl = SITE.endsWith('/') ? SITE.slice(0, -1) : SITE;
-                matchUrl = baseUrl + (matchUrl.startsWith('/') ? matchUrl : '/' + matchUrl);
+                matchUrl = resolveUrl(matchUrl, SITE);
             }
 
             matches.push({
@@ -1133,8 +1132,7 @@ export function parseFootybite(html){
     if(matchLink){
       var mhref=(matchLink.getAttribute('href')||'').trim();
       if(mhref&&mhref!=='#'){
-        var baseUrl = SITE.endsWith('/') ? SITE.slice(0, -1) : SITE;
-        matchUrl=mhref.indexOf('http')===0?mhref:baseUrl+(mhref.startsWith('/')?mhref:'/'+mhref);
+        matchUrl=mhref.indexOf('http')===0?mhref:resolveUrl(mhref, SITE);
       }
     }
 
