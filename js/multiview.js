@@ -1,4 +1,4 @@
-import { DEFAULT_LEAGUES } from './db.js';
+import { DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
@@ -123,7 +123,7 @@ export function updateGmScoresTab() {
     if (!content) return;
 
     var liveMatches = S.matches.filter(function(m) {
-        return (m.status === 'live' || gmPinnedMatches.indexOf(String(m.id)) > -1) && DEFAULT_LEAGUES[(m.league||'').toUpperCase()];
+        return (m.status === 'live' || gmPinnedMatches.indexOf(String(m.id)) > -1) && (DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || OTHER_LEAGUES[(m.league||'').toUpperCase()]);
     });
 
     if (liveMatches.length === 0) {

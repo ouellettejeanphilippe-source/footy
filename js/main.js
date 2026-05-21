@@ -3,7 +3,7 @@ import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJ
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG } from './config.js';
-import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES } from './db.js';
+import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
@@ -516,6 +516,7 @@ export function getLeagueIcon(lgName) {
     if(!lgName) return '🏆';
     var norm = lgName.toUpperCase();
     if(DEFAULT_LEAGUES[norm]) return DEFAULT_LEAGUES[norm].icon;
+    if(OTHER_LEAGUES[norm]) return OTHER_LEAGUES[norm].icon;
     if(norm.indexOf('HOCKEY') > -1 || norm === 'PWHL' || norm === 'LHJMQ' || norm === 'AHL') return '🏒';
     if(norm.indexOf('FOOTBALL') > -1 || norm.indexOf('LIGUE') > -1 || norm.indexOf('SOCCER') > -1) return '⚽';
     if(norm.indexOf('BASKETBALL') > -1) return '🏀';
@@ -650,8 +651,8 @@ export function renderFavPage() {
 
         var sortedLeagues = Object.keys(teamsByLeague).sort(function(a,b) {
             if (a === b) return 0;
-            if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] || a === 'Autres') return 1;
-            if (!DEFAULT_LEAGUES[(b||'').toUpperCase()] || b === 'Autres') return -1;
+            if ((!DEFAULT_LEAGUES[(a||'').toUpperCase()] && !OTHER_LEAGUES[(a||'').toUpperCase()]) || a === 'Autres') return 1;
+            if ((!DEFAULT_LEAGUES[(b||'').toUpperCase()] && !OTHER_LEAGUES[(b||'').toUpperCase()]) || b === 'Autres') return -1;
 
             var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
 

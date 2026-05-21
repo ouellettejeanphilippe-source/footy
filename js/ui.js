@@ -6,7 +6,7 @@ import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from '.
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
-import { DEFAULT_LEAGUES } from './db.js';
+import { DEFAULT_LEAGUES, OTHER_LEAGUES, lgFlag } from './db.js';
 
 /* ══ DIAGNOSTIC SCRAPE ══════════════════ */
 export function diagnosticScrape(matchId, url) {
@@ -214,8 +214,8 @@ export function buildEPG(matches){
       if (b === 'EN DIRECT') return 1;
 
       // Ensure 'Autres Flux' is always sorted last globally in the main feed
-      if (!DEFAULT_LEAGUES[(a||'').toUpperCase()]) return 1;
-      if (!DEFAULT_LEAGUES[(b||'').toUpperCase()]) return -1;
+      if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(a||'').toUpperCase()])) return 1;
+      if (!DEFAULT_LEAGUES[(b||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(b||'').toUpperCase()])) return -1;
 
       // Custom League Order User Preference
       var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
@@ -326,7 +326,14 @@ export function buildEPG(matches){
               }
 
               var textSpan = document.createElement('span');
-              textSpan.textContent = titleStr;
+              var prefix = '';
+              if (window.getLeagueIcon && titleStr && titleStr !== "Plus tard aujourd'hui" && titleStr !== "À venir dans l'heure" && titleStr !== "Autres streams") {
+                  var icon = window.getLeagueIcon(titleStr);
+                  if (icon && icon !== '🏆') {
+                      prefix = icon + ' ';
+                  }
+              }
+              textSpan.textContent = prefix + titleStr;
               secTitle.appendChild(textSpan);
               container.appendChild(secTitle);
           }
@@ -342,8 +349,8 @@ export function buildEPG(matches){
 
           var lgOrder = Object.keys(lgMap);
           lgOrder.sort(function(a, b) {
-              if (!DEFAULT_LEAGUES[(a||'').toUpperCase()]) return 1;
-              if (!DEFAULT_LEAGUES[(b||'').toUpperCase()]) return -1;
+              if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(a||'').toUpperCase()])) return 1;
+              if (!DEFAULT_LEAGUES[(b||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(b||'').toUpperCase()])) return -1;
               var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
               var allLgs = Object.keys(DEFAULT_LEAGUES);
               allLgs.forEach(function(l) {
@@ -376,7 +383,7 @@ export function buildEPG(matches){
               lHdr.style.marginBottom = '8px';
               lHdr.style.display = 'none'; // explicitly hiding it here to satisfy requirement if CSS fails
               lHdr.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
-                + '<span class="ch-flag">'+lg.flag+'</span>'
+                + '<span class="ch-flag">'+(lg.flag || lgFlag(lg.league) || '')+'</span>'
                 + '<span class="lg-title">'+esc(lg.league)+'</span>'
                 + '<span class="lg-cnt">'+lg.matches.length+'</span>';
               lHdr.addEventListener('click', function(){ toggleAccordion(lg.league); });
@@ -435,7 +442,7 @@ export function buildEPG(matches){
                   var awayLogoHtmlPrime = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
 
                   var streamsBadgePrime = "";
-                  var lgBadge = '<div class="prime-league-badge">'+lg.flag+'</div>';
+                  var lgBadge = '<div class="prime-league-badge">'+(lg.flag || lgFlag(lg.league) || '')+'</div>';
 
                   var homeFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>';
                   var awayFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>';
@@ -681,7 +688,7 @@ export function buildEPG(matches){
     lHdrCell.className = 'lg-hdr' + (isCollapsed ? ' collapsed' : '');
     lHdrCell.setAttribute('data-lg-hdr', lg.league);
     lHdrCell.innerHTML = '<svg class="lg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
-      + '<span class="ch-flag">'+lg.flag+'</span>'
+      + '<span class="ch-flag">'+(lg.flag || lgFlag(lg.league) || '')+'</span>'
       + '<span class="lg-title">'+esc(lg.league)+'</span>'
       + '<span class="lg-cnt">'+lg.matches.length+'</span>';
     lHdrCell.addEventListener('click', function(){ toggleAccordion(lg.league); });
