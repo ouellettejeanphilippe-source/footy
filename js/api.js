@@ -114,19 +114,38 @@ export function getApiFirstMatches(targetDate) {
               var leagueName = data.leagues && data.leagues[0] ? data.leagues[0].name : path;
 
               data.events.forEach(function(ev) {
-                var comp = ev.competitions[0];
-                if(!comp || !comp.competitors) return;
-                var home = comp.competitors.find(function(c){return c.homeAway==='home';});
-                var away = comp.competitors.find(function(c){return c.homeAway==='away';});
-                if(!home || !away) return;
+                var isRacing = leagueName.toLowerCase().indexOf('f1') > -1 || leagueName.toLowerCase().indexOf('indycar') > -1 || path.indexOf('racing') > -1;
+
+                var compsToProcess = isRacing ? ev.competitions : (ev.competitions.length > 0 ? [ev.competitions[0]] : []);
+
+                compsToProcess.forEach(function(comp) {
+                  if(!comp) return;
+
+                  var homeName, awayName;
+                  if (isRacing) {
+                      homeName = ev.name || 'Racing Event';
+                      awayName = comp.type && comp.type.abbreviation ? comp.type.abbreviation : 'Race';
+                  } else {
+                      if (!comp.competitors) return;
+                      var homeC = comp.competitors.find(function(c){return c.homeAway==='home';});
+                      var awayC = comp.competitors.find(function(c){return c.homeAway==='away';});
+                      if(!homeC || !awayC) return;
+                      homeName = homeC.team.name;
+                      awayName = awayC.team.name;
+                  }
+
 
                 var status = 'upcoming';
                 if(ev.status.type.state === 'in') status = 'live';
                 if(ev.status.type.state === 'post') status = 'finished';
 
                 var score = null;
-                if(status !== 'upcoming') {
-                  score = [parseInt(home.score), parseInt(away.score)];
+                if(status !== 'upcoming' && !isRacing) {
+                  var homeScoreObj = comp.competitors.find(function(c){return c.homeAway==='home';});
+                  var awayScoreObj = comp.competitors.find(function(c){return c.homeAway==='away';});
+                  if (homeScoreObj && awayScoreObj && homeScoreObj.score !== undefined && awayScoreObj.score !== undefined) {
+                      score = [parseInt(homeScoreObj.score), parseInt(awayScoreObj.score)];
+                  }
                 }
 
 
@@ -137,21 +156,21 @@ export function getApiFirstMatches(targetDate) {
                   minute = 'P' + ev.status.period;
                 }
 
-                var dateObj = new Date(ev.date);
+                var dateObj = new Date(comp.date || ev.date);
                 var startTime = getEstTimeStrFromDate(dateObj);
                 var matchDate = getEstDateStrFromDate(dateObj);
                 var isPlayoff = ev.season && ev.season.type === 3;
 
                 var matchObj = {
-                  id: 'espn_' + ev.id,
+                  id: isRacing ? 'espn_' + ev.id + '_' + comp.id : 'espn_' + ev.id,
                   league: formatLeagueName(leagueName),
                   flag: lgFlag(leagueName),
                   color: lgColor(leagueName),
-                  homeTeam: getOfficialTeamName(home.team.name),
-                  awayTeam: getOfficialTeamName(away.team.name),
+                  homeTeam: getOfficialTeamName(homeName),
+                  awayTeam: getOfficialTeamName(awayName),
                   matchDate: matchDate,
-                  homeLogo: home.team.logo || null,
-                  awayLogo: away.team.logo || null,
+                  homeLogo: isRacing ? null : (comp.competitors.find(function(c){return c.homeAway==='home';}).team.logo || null),
+                  awayLogo: isRacing ? null : (comp.competitors.find(function(c){return c.homeAway==='away';}).team.logo || null),
                   startTime: startTime,
                   durationMinutes: getLeagueDuration(leagueName),
                   status: status,
@@ -175,6 +194,7 @@ export function getApiFirstMatches(targetDate) {
                   baseMatches.push(matchObj);
                   baseMatchesById[matchObj.id] = matchObj;
                 }
+                }); // end compsToProcess
               });
             })
           );
@@ -242,19 +262,31 @@ export function getApiFirstMatches(targetDate) {
             fetchEspnSchedule(path, todayStr).then(function(data) {
             if(!data || !data.events) return;
             data.events.forEach(function(ev) {
-              var comp = ev.competitions[0];
-              if(!comp || !comp.competitors) return;
-              var home = comp.competitors.find(function(c){return c.homeAway==='home';});
-              var away = comp.competitors.find(function(c){return c.homeAway==='away';});
-              if(!home || !away) return;
+              var leagueName = data.leagues && data.leagues[0] ? data.leagues[0].name : path;
+              var isRacing = leagueName && (leagueName.toLowerCase().indexOf('f1') > -1 || leagueName.toLowerCase().indexOf('indycar') > -1 || path.indexOf('racing') > -1) || path.indexOf('racing') > -1;
+              var compsToProcess = isRacing ? ev.competitions : (ev.competitions.length > 0 ? [ev.competitions[0]] : []);
+
+              compsToProcess.forEach(function(comp) {
+                if(!comp) return;
+
+                if (!isRacing) {
+                  if(!comp.competitors) return;
+                  var home = comp.competitors.find(function(c){return c.homeAway==='home';});
+                  var away = comp.competitors.find(function(c){return c.homeAway==='away';});
+                  if(!home || !away) return;
+                }
 
               var status = 'upcoming';
               if(ev.status.type.state === 'in') status = 'live';
               if(ev.status.type.state === 'post') status = 'finished';
 
               var score = null;
-              if(status !== 'upcoming') {
-                score = [parseInt(home.score), parseInt(away.score)];
+              if(status !== 'upcoming' && !isRacing) {
+                var homeScoreObj = comp.competitors.find(function(c){return c.homeAway==='home';});
+                var awayScoreObj = comp.competitors.find(function(c){return c.homeAway==='away';});
+                if (homeScoreObj && awayScoreObj && homeScoreObj.score !== undefined && awayScoreObj.score !== undefined) {
+                    score = [parseInt(homeScoreObj.score), parseInt(awayScoreObj.score)];
+                }
               }
 
               var minute = null;
@@ -266,7 +298,7 @@ export function getApiFirstMatches(targetDate) {
 
               var isPlayoff = ev.season && ev.season.type === 3;
 
-              var matchId = 'espn_' + ev.id;
+              var matchId = isRacing ? 'espn_' + ev.id + '_' + comp.id : 'espn_' + ev.id;
               var existingMatch = baseMatchesById[matchId];
               if (existingMatch) {
                   existingMatch.status = status;
@@ -274,6 +306,7 @@ export function getApiFirstMatches(targetDate) {
                   existingMatch.minute = minute;
                   existingMatch.isPlayoff = isPlayoff;
               }
+              }); // end compsToProcess
             });
           })
         );
