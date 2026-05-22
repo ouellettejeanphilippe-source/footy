@@ -158,10 +158,14 @@ export var LEAGUE_ALIASES = {
   'american hockey league': 'ahl',
   'echl': 'echl',
   'ncaa': 'ncaa',
-  'ncaa football': 'ncaa',
-  'ncaa basketball': 'ncaa',
+  'ncaa football': 'ncaa football',
+  'ncaa basketball': 'ncaa men\'s basketball',
   'wnba': 'wnba',
   'womens national basketball association': 'wnba',
+  'iihf world championship': 'world hockey championships',
+  'iihf world championships': 'world hockey championships',
+  'world hockey championship': 'world hockey championships',
+  'world championship': 'world hockey championships',
   'euroleague': 'euroleague',
   'champions cup': 'champions cup',
   'challenge cup': 'challenge cup',
@@ -202,11 +206,26 @@ export var DEFAULT_LEAGUES = {
     'AHL': { icon: '🏒' },
     'CFL': { icon: '🏈' },
     'INDYCAR': { icon: '🏎️' },
-    'MOTOGP': { icon: '🏍️' }
+    'MOTOGP': { icon: '🏍️' },
+    'WORLD HOCKEY CHAMPIONSHIPS': { icon: '🏒' }
 };
 
 export var OTHER_LEAGUES = {
     'SAUDI PRO LEAGUE': { icon: '⚽' },
+    'WORLD BASEBALL CLASSIC': { icon: '⚾' },
+    'FIBA WORLD CUP': { icon: '🏀' },
+    'NCAA MEN\'S BASKETBALL': { icon: '🏀' },
+    'OLYMPICS MEN\'S BASKETBALL': { icon: '🏀' },
+    'NCAA WOMEN\'S BASKETBALL': { icon: '🏀' },
+    'NCAA FOOTBALL': { icon: '🏈' },
+    'WORLD CUP OF HOCKEY': { icon: '🏒' },
+    'NCAA MEN\'S ICE HOCKEY': { icon: '🏒' },
+    'OLYMPICS MEN\'S ICE HOCKEY': { icon: '🏒' },
+    'OLYMPICS WOMEN\'S ICE HOCKEY': { icon: '🏒' },
+    'NCAA WOMEN\'S HOCKEY': { icon: '🏒' },
+    'FIFA WORLD CUP': { icon: '⚽' },
+    'FIFA WOMEN\'S WORLD CUP': { icon: '⚽' },
+    'NWSL': { icon: '⚽' },
     'WWE': { icon: '🥊' },
     'ECHL': { icon: '🏒' },
     'NCAA': { icon: '🎓' },
@@ -272,7 +291,22 @@ export var LEAGUE_FORMAT_NAMES = {
     'premiership rugby': 'Premiership Rugby',
     'super rugby': 'Super Rugby',
     'six nations': 'Six Nations',
-    'world cup': 'World Cup'
+    'world cup': 'World Cup',
+    'world hockey championships': 'World Hockey Championships',
+    'world baseball classic': 'World Baseball Classic',
+    'fiba world cup': 'FIBA World Cup',
+    'ncaa men\'s basketball': 'NCAA Men\'s Basketball',
+    'olympics men\'s basketball': 'Olympics Men\'s Basketball',
+    'ncaa women\'s basketball': 'NCAA Women\'s Basketball',
+    'ncaa football': 'NCAA Football',
+    'world cup of hockey': 'World Cup of Hockey',
+    'ncaa men\'s ice hockey': 'NCAA Men\'s Ice Hockey',
+    'olympics men\'s ice hockey': 'Olympics Men\'s Ice Hockey',
+    'olympics women\'s ice hockey': 'Olympics Women\'s Ice Hockey',
+    'ncaa women\'s hockey': 'NCAA Women\'s Hockey',
+    'fifa world cup': 'FIFA World Cup',
+    'fifa women\'s world cup': 'FIFA Women\'s World Cup',
+    'nwsl': 'NWSL'
 };
 export function formatLeagueName(league) {
     if (!league) return 'Autres Flux';

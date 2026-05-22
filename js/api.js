@@ -38,7 +38,22 @@ export var ESPN_LEAGUES = {
   'f1': 'racing/f1',
   'formula 1': 'racing/f1',
   'cfl': 'football/cfl',
-  'indycar': 'racing/irl'
+  'indycar': 'racing/irl',
+  'world baseball classic': 'baseball/world-baseball-classic',
+  'fiba world cup': 'basketball/fiba',
+  'ncaa men\'s basketball': 'basketball/mens-college-basketball',
+  'olympics men\'s basketball': 'basketball/mens-olympics-basketball',
+  'ncaa women\'s basketball': 'basketball/womens-college-basketball',
+  'ncaa football': 'football/college-football',
+  'world hockey championships': 'hockey/hockey-world-cup',
+  'world cup of hockey': 'hockey/hockey-world-cup',
+  'ncaa men\'s ice hockey': 'hockey/mens-college-hockey',
+  'olympics men\'s ice hockey': 'hockey/olympics-mens-ice-hockey',
+  'olympics women\'s ice hockey': 'hockey/olympics-womens-ice-hockey',
+  'ncaa women\'s hockey': 'hockey/womens-college-hockey',
+  'fifa world cup': 'soccer/fifa.world',
+  'fifa women\'s world cup': 'soccer/fifa.wwc',
+  'nwsl': 'soccer/usa.nwsl'
 };
 
 export function getEspnDateStr(d) {
