@@ -150,6 +150,47 @@ export function parseStreameast(html){
 
 /* ══ PARSE ONHOCKEY ═══════════════════ */
 
+export function parseWWEEvents(html) {
+  var matches = [];
+  try {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var events = doc.querySelectorAll('.events-search-results--right-rail, .events-upcoming-item');
+
+      for (var i = 0; i < events.length; i++) {
+          var ev = events[i];
+          var titleEl = ev.querySelector('.events-upcoming-header h2 a, .events-upcoming-card--title a');
+          if (!titleEl) continue;
+          var title = titleEl.textContent.trim();
+
+          var dateEl = ev.querySelector('time.datetime, .week-date time');
+          var dateStr = '';
+          if (dateEl) {
+              dateStr = dateEl.getAttribute('datetime');
+          }
+          if (!dateStr || !title) continue;
+
+          var idStr = 'wwe_event_' + title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dateStr.substring(0, 10);
+
+          var isFinished = false;
+
+          matches.push({
+              id: idStr,
+              date: dateStr,
+              time: 'UPCOMING',
+              homeTeam: title,
+              awayTeam: 'WWE', // Fallback for fuzzy matching
+              homeScore: null,
+              awayScore: null,
+              isFinished: isFinished
+          });
+      }
+  } catch (e) {
+      console.error('Error parsing WWE events', e);
+  }
+  return matches;
+}
+
+
 /* ══ PARSE SPORTSURGE ═════════════════ */
 export function parsePWHLSchedule(html) {
   var matches = [];
@@ -1693,6 +1734,7 @@ export function getEstTime(ukTimeStr){
 // Global bindings for HTML compatibility
 window.parseStreameast = parseStreameast;
 window.parsePWHLSchedule = parsePWHLSchedule;
+window.parseWWEEvents = parseWWEEvents;
 window.parseSportsurge = parseSportsurge;
 window.parseOnHockey = parseOnHockey;
 window.parseBuffstreams = parseBuffstreams;
