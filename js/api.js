@@ -173,7 +173,7 @@ export function getApiFirstMatches(targetDate) {
 
                 var dateObj = new Date(comp.date || ev.date);
                 var startTime = getEstTimeStrFromDate(dateObj);
-                var matchDate = getEstDateStrFromDate(dateObj);
+                var matchDate = isRacing ? getEstDateStrFromDate(targetDate || new Date()) : getEstDateStrFromDate(dateObj);
                 var isPlayoff = ev.season && ev.season.type === 3;
 
                 var matchObj = {
