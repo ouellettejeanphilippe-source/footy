@@ -1,0 +1,11 @@
+--- js/match.js
++++ js/match.js
+@@ -137,8 +137,8 @@
+   var l2 = (m2.league || '').toLowerCase();
+
+   // Some basic sport/league exclusions (only exclude if we are absolutely sure they mismatch)
+-  if (l1 && l2 && l1 !== l2) {
++  if (l1 && l2 && l1 !== l2 && l1 !== 'sports' && l2 !== 'sports') {
+       var is1Hockey = l1.includes('nhl') || l1.includes('hockey') || l1.includes('pwhl') || l1.includes('lhjmq');
+       var is2Hockey = l2.includes('nhl') || l2.includes('hockey') || l2.includes('pwhl') || l2.includes('lhjmq');
+       var is1Bball = l1.includes('nba') || l1.includes('basketball');

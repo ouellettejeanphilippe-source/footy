@@ -1,0 +1,17 @@
+--- js/match.js
++++ js/match.js
+@@ -108,8 +108,12 @@
+   if (!m1 || !m2 || typeof m1.homeTeam !== 'string' || typeof m1.awayTeam !== 'string' || typeof m2.homeTeam !== 'string' || typeof m2.awayTeam !== 'string') return { isMatch: false, reason: "m1 ou m2 ou données d'équipes manquantes" };
+
+   // Special Racing/Event bypass (F1, IndyCar, WWE)
+   // These are handled like events where the "homeTeam" is usually the event name or League, and "awayTeam" is the session
+-  var isRacingEvent1 = m1.homeTeam.toLowerCase().includes('grand prix') || m1.homeTeam.toLowerCase().includes('formula 1') || m1.homeTeam.toLowerCase() === 'f1' || m1.homeTeam.toLowerCase().includes('indy') || m1.homeTeam.toLowerCase() === 'wwe' || m1.league === 'F1' || m1.league === 'INDYCAR' || m1.league === 'WWE';
+-  var isRacingEvent2 = m2.homeTeam.toLowerCase().includes('grand prix') || m2.homeTeam.toLowerCase().includes('formula 1') || m2.homeTeam.toLowerCase() === 'f1' || m2.homeTeam.toLowerCase().includes('indy') || m2.homeTeam.toLowerCase() === 'wwe' || m2.league === 'F1' || m2.league === 'INDYCAR' || m2.league === 'WWE';
++  var esportsLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'WORLDS', 'CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
++  var isEsports1 = esportsLeagues.includes(m1.league) || m1.homeTeam.toLowerCase().includes('esports') || m1.awayTeam.toLowerCase().includes('esports');
++  var isEsports2 = esportsLeagues.includes(m2.league) || m2.homeTeam.toLowerCase().includes('esports') || m2.awayTeam.toLowerCase().includes('esports');
++  var isRacingEvent1 = m1.homeTeam.toLowerCase().includes('grand prix') || m1.homeTeam.toLowerCase().includes('formula 1') || m1.homeTeam.toLowerCase() === 'f1' || m1.homeTeam.toLowerCase().includes('indy') || m1.homeTeam.toLowerCase() === 'wwe' || m1.league === 'F1' || m1.league === 'INDYCAR' || m1.league === 'WWE' || isEsports1;
++  var isRacingEvent2 = m2.homeTeam.toLowerCase().includes('grand prix') || m2.homeTeam.toLowerCase().includes('formula 1') || m2.homeTeam.toLowerCase() === 'f1' || m2.homeTeam.toLowerCase().includes('indy') || m2.homeTeam.toLowerCase() === 'wwe' || m2.league === 'F1' || m2.league === 'INDYCAR' || m2.league === 'WWE' || isEsports2;
+
+   if (isRacingEvent1 || isRacingEvent2) {
+       var combo1 = normName(m1.homeTeam + " " + m1.awayTeam);
