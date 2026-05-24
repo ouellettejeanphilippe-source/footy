@@ -1,7 +1,7 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
-import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
+import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak, resolveStreamUrl } from './utils.js';
 import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
@@ -1607,30 +1607,31 @@ window.openMod = openMod;
 window.closeMod = closeMod;
 window.userPrefs = userPrefs;
 
-export function addManualStream(matchId, url) {
-    if (!url) return;
+export function addManualStream(matchId, rawUrl) {
+    if (!rawUrl) return;
     var m = (S.matches || []).find(function(x) { return x.id === matchId; });
     if (!m) return;
 
-    // Temporary match to capture scraping results cleanly
-    var tempMatch = {
-        id: 'manual_tmp_' + Date.now(),
-        matchUrl: url,
-        streamLinks: [],
-        streamsLoaded: false,
-        homeTeam: m.homeTeam,
-        awayTeam: m.awayTeam,
-        sport: m.sport,
-        league: m.league,
-        status: m.status
-    };
+    resolveStreamUrl(rawUrl).then(function(url) {
+        // Temporary match to capture scraping results cleanly
+        var tempMatch = {
+            id: 'manual_tmp_' + Date.now(),
+            matchUrl: url,
+            streamLinks: [],
+            streamsLoaded: false,
+            homeTeam: m.homeTeam,
+            awayTeam: m.awayTeam,
+            sport: m.sport,
+            league: m.league,
+            status: m.status
+        };
 
-    window.showToast("Scraping du flux manuel...");
+        window.showToast("Scraping du flux manuel...");
 
-    scrapeMatchFlux(tempMatch, true).then(function() {
-        var unmerged = (S.matches || []).filter(function(x) {
-           return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
-        });
+        scrapeMatchFlux(tempMatch, true).then(function() {
+            var unmerged = (S.matches || []).filter(function(x) {
+               return x.id.startsWith('scraped_') || x.id.startsWith('bs_') || x.id.startsWith('se_') || x.id.startsWith('ts_') || x.id.startsWith('vip_');
+            });
         var newScraped = unmerged.find(function(x) { return x.matchUrl === url; });
 
         var logPayload = '=== DIAGNOSTIC LOG ===\n';
@@ -1722,6 +1723,7 @@ export function addManualStream(matchId, url) {
 
         addToMultivision(url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
         closeMod();
+    });
     });
 }
 window.addManualStream = addManualStream;
