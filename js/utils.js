@@ -60,6 +60,7 @@ export function getLeagueDuration(league) {
   if(l.indexOf('motogp') >= 0 || l.indexOf('moto gp') >= 0) return 60;
   if(l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0) return 120;
   if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0) return 180;
+  if(['lcs', 'lec', 'lpl', 'lck', 'msi', 'worlds', 'league of legends'].includes(l)) return 60;
 
   return 180; // Default requested
 }

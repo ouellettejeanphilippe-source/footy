@@ -207,7 +207,13 @@ export var DEFAULT_LEAGUES = {
     'CFL': { icon: '🏈' },
     'INDYCAR': { icon: '🏎️' },
     'MOTOGP': { icon: '🏍️' },
-    'WORLD HOCKEY CHAMPIONSHIPS': { icon: '🏒' }
+    'WORLD HOCKEY CHAMPIONSHIPS': { icon: '🏒' },
+    'LCS': { icon: '🎮' },
+    'LEC': { icon: '🎮' },
+    'LPL': { icon: '🎮' },
+    'LCK': { icon: '🎮' },
+    'MSI': { icon: '🎮' },
+    'WORLDS': { icon: '🎮' }
 };
 
 export var OTHER_LEAGUES = {

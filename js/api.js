@@ -62,6 +62,22 @@ export function fetchEspnSchedule(leaguePath, dateStr) {
   return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(res) { return res.json(); }).catch(function(){ return null; });
 }
 
+export function fetchLolEsportsSchedule(targetDate) {
+    var url = 'https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US';
+    return fetch(url, {
+        headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' },
+        signal: AbortSignal.timeout(8000)
+    }).then(function(res) { return res.json(); }).catch(function(){ return null; });
+}
+
+export function fetchLolEsportsLiveStreams() {
+    var url = 'https://esports-api.lolesports.com/persisted/gw/getLive?hl=en-US';
+    return fetch(url, {
+        headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' },
+        signal: AbortSignal.timeout(8000)
+    }).then(function(res) { return res.json(); }).catch(function(){ return null; });
+}
+
 export function filterBuggyMatches(matches) {
     var today = new Date();
     var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
@@ -380,6 +396,105 @@ export function getApiFirstMatches(targetDate) {
                   });
               }
           }).catch(function(e) { console.error('Error fetching IndyCar ICS schedule', e); lg('Error fetching IndyCar ICS schedule', e); })
+      );
+
+      promises.push(
+          fetchLolEsportsSchedule(todayStr).then(function(data) {
+              if(!data || !data.data || !data.data.schedule || !data.data.schedule.events) return;
+              data.data.schedule.events.forEach(function(ev) {
+                  if (ev.type !== 'match') return;
+                  var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds'];
+                  if (!targetLeagues.includes(ev.league.name)) return;
+
+                  var dateObj = new Date(ev.startTime);
+                  var matchDate = getEstDateStrFromDate(dateObj);
+
+                  // Use todayStr or targetDate since targetDateStr is not defined here yet
+                  var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
+                  if (matchDate !== matchDateTarget) return;
+
+                  var startTime = getEstTimeStrFromDate(dateObj);
+
+                  var status = 'upcoming';
+                  if (ev.state === 'inProgress') status = 'live';
+                  else if (ev.state === 'completed') status = 'finished';
+
+                  var score = null;
+                  if (status !== 'upcoming' && ev.match.teams && ev.match.teams.length >= 2) {
+                      var homeWins = ev.match.teams[0].result ? ev.match.teams[0].result.gameWins : 0;
+                      var awayWins = ev.match.teams[1].result ? ev.match.teams[1].result.gameWins : 0;
+                      score = [homeWins, awayWins];
+                  }
+
+                  if (!ev.match.teams || ev.match.teams.length < 2) return;
+
+                  var m = {
+                      id: 'lol_' + ev.match.id,
+                      league: formatLeagueName(ev.league.name),
+                      flag: lgFlag(ev.league.name),
+                      color: lgColor(ev.league.name),
+                      homeTeam: getOfficialTeamName(ev.match.teams[0].name || 'TBD'),
+                      awayTeam: getOfficialTeamName(ev.match.teams[1].name || 'TBD'),
+                      matchDate: matchDate,
+                      homeLogo: ev.match.teams[0].image || null,
+                      awayLogo: ev.match.teams[1].image || null,
+                      startTime: startTime,
+                      durationMinutes: getLeagueDuration(ev.league.name),
+                      status: status,
+                      score: score,
+                      minute: null,
+                      streamLinks: [],
+                      streamsLoaded: false,
+                      source: 'api',
+                      isPlayoff: ev.blockName && ev.blockName.toLowerCase().indexOf('playoff') > -1
+                  };
+
+                  var existingIdx = baseMatches.findIndex(function(existing) {
+                      return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
+                  });
+
+                  if (existingIdx >= 0) {
+                      baseMatches[existingIdx].status = m.status;
+                      baseMatches[existingIdx].score = m.score;
+                      baseMatches[existingIdx].startTime = m.startTime;
+                  } else {
+                      baseMatches.push(m);
+                  }
+              });
+
+              return fetchLolEsportsLiveStreams().then(function(liveData) {
+                  if (!liveData || !liveData.data || !liveData.data.schedule || !liveData.data.schedule.events) return;
+                  liveData.data.schedule.events.forEach(function(liveEv) {
+                      if (liveEv.type !== 'match') return;
+                      var matchId = 'lol_' + liveEv.match.id;
+                      var matchObj = baseMatches.find(function(m) { return m.id === matchId; });
+                      if (matchObj && liveEv.match.streams) {
+                          liveEv.match.streams.forEach(function(stream) {
+                              var url = '';
+                              if (stream.provider === 'twitch') {
+                                  url = 'https://www.twitch.tv/' + stream.parameter;
+                              } else if (stream.provider === 'youtube') {
+                                  url = 'https://www.youtube.com/watch?v=' + stream.parameter;
+                              }
+
+                              if (url && !matchObj.streamLinks.find(function(s) { return s.url === url; })) {
+                                  var language = stream.mediaLocale && stream.mediaLocale.englishName ? stream.mediaLocale.englishName : stream.locale;
+                                  matchObj.streamLinks.push({
+                                      name: stream.provider + ' (' + language + ')',
+                                      url: url,
+                                      res: '1080p',
+                                      lang: language,
+                                      type: 'video'
+                                  });
+                              }
+                          });
+                          if (matchObj.streamLinks.length > 0) {
+                              matchObj.streamsLoaded = true;
+                          }
+                      }
+                  });
+              });
+          }).catch(function(e) { console.error('Error fetching LoL schedule', e); lg('Error fetching LoL schedule', e); })
       );
 
       promises.push(
