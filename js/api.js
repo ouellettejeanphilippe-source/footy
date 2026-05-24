@@ -399,6 +399,20 @@ export function getApiFirstMatches(targetDate) {
           fetchPage('https://calendar.google.com/calendar/ical/335cea66edf27097e6a689c1067382ac1cd69f6795cac889f2acf87911f0d473%40group.calendar.google.com/public/basic.ics').catch(function() { return ''; }).then(function(icsText) {
               if (icsText) {
                   var matches = parseWWEIcs(icsText);
+                  matches.forEach(function(m) {
+                      m.flag = lgFlag('WWE');
+                      m.color = lgColor('WWE');
+                      m.source = 'api';
+                      m.league = formatLeagueName('WWE');
+                      if (m.matchDate === targetDateStr) {
+                          baseMatches.push(m);
+                      }
+                  });
+              }
+          }).catch(function(e) { console.error('Error fetching WWE ICS schedule', e); lg('Error fetching WWE ICS schedule', e); })
+      );
+
+      promises.push(
           fetchLolEsportsSchedule(todayStr).then(function(data) {
               if(!data || !data.data || !data.data.schedule || !data.data.schedule.events) return;
               data.data.schedule.events.forEach(function(ev) {
