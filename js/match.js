@@ -106,6 +106,19 @@ export function isMatchPair(m1, m2) {
 export function debugMatchPair(m1, m2) {
   if (!m1 || !m2 || typeof m1.homeTeam !== 'string' || typeof m1.awayTeam !== 'string' || typeof m2.homeTeam !== 'string' || typeof m2.awayTeam !== 'string') return { isMatch: false, reason: "m1 ou m2 ou données d'équipes manquantes" };
 
+  // Special Racing/Event bypass (F1, IndyCar, WWE)
+  // These are handled like events where the "homeTeam" is usually the event name or League, and "awayTeam" is the session
+  var isRacingEvent1 = m1.homeTeam.toLowerCase().includes('grand prix') || m1.homeTeam.toLowerCase().includes('formula 1') || m1.homeTeam.toLowerCase() === 'f1' || m1.homeTeam.toLowerCase().includes('indy') || m1.homeTeam.toLowerCase() === 'wwe' || m1.league === 'F1' || m1.league === 'INDYCAR' || m1.league === 'WWE';
+  var isRacingEvent2 = m2.homeTeam.toLowerCase().includes('grand prix') || m2.homeTeam.toLowerCase().includes('formula 1') || m2.homeTeam.toLowerCase() === 'f1' || m2.homeTeam.toLowerCase().includes('indy') || m2.homeTeam.toLowerCase() === 'wwe' || m2.league === 'F1' || m2.league === 'INDYCAR' || m2.league === 'WWE';
+
+  if (isRacingEvent1 || isRacingEvent2) {
+      var combo1 = normName(m1.homeTeam + " " + m1.awayTeam);
+      var combo2 = normName(m2.homeTeam + " " + m2.awayTeam);
+      if (isMatch(combo1, combo2) || combo1.includes(combo2) || combo2.includes(combo1)) {
+          return { isMatch: true, reason: "Racing/Event direct combo match" };
+      }
+  }
+
   // League strict check if both have leagues defined and aren't generic
   var l1 = (m1.league || '').toLowerCase();
   var l2 = (m2.league || '').toLowerCase();

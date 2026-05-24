@@ -342,6 +342,18 @@ export var _normCache = {};
 export function getLogo(teamName) {
     if(!teamName) return null;
     var lowerName = teamName.toLowerCase().trim();
+
+    if (lowerName === 'wwe' || lowerName === 'raw' || lowerName === 'smackdown' || lowerName === 'nxt' || lowerName.includes('wrestlemania')) {
+        return 'https://a.espncdn.com/i/teamlogos/leagues/500/wwe.png';
+    }
+    if (lowerName === 'f1' || lowerName.includes('grand prix') || lowerName.includes('formula 1') || lowerName.includes('gp ')) {
+        return 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
+    }
+    if (lowerName === 'indycar' || lowerName.includes('indy 500') || lowerName.includes('indianapolis 500') || lowerName.includes('indycar series')) {
+        // Since we don't have a reliable direct link for IndyCar, use a UI avatar with IndyCar colors (Red and Black)
+        return 'https://ui-avatars.com/api/?name=IndyCar&background=e3002b&color=ffffff&size=200&font-size=0.4';
+    }
+
     if (TEAM_DATA[lowerName] && TEAM_DATA[lowerName].logo) {
         return TEAM_DATA[lowerName].logo;
     }
