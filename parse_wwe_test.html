@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+<script type="module">
+import { parseWWEIcs } from './js/scrapers.js';
+
+const icsText = `BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:WWE
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+DTSTART:20261023T210000Z
+DTEND:20261023T220000Z
+SUMMARY:Friday Night SmackDown
+END:VEVENT
+END:VCALENDAR`;
+
+console.log(JSON.stringify(parseWWEIcs(icsText), null, 2));
+document.body.innerHTML = "<pre>" + JSON.stringify(parseWWEIcs(icsText), null, 2) + "</pre>";
+</script>
+</body>
+</html>

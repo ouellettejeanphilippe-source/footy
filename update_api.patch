@@ -1,0 +1,62 @@
+<<<<<<< SEARCH
+export function getApiFirstMatches(targetDate) {
+  var todayStr = getEspnDateStr(targetDate || new Date());
+  var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+
+  var needsFullFetch = !cache || cache.fetchDate !== todayStr;
+=======
+export function getApiFirstMatches(targetDate) {
+  var targetDateObj = targetDate || new Date();
+  var targetDateStr = getEstDateStrFromDate(targetDateObj);
+  var todayStr = getEspnDateStr(targetDateObj);
+  var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+
+  var needsFullFetch = !cache || cache.fetchDate !== todayStr;
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+      // Synthesize weekly WWE shows that might not be on wwe.com/events, or could disappear when live.
+      var dateObjTarget = new Date(targetDate + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
+      var dayOfWeekTarget = dateObjTarget.getUTCDay();
+
+      var synthesizedWWE = [];
+      if (dayOfWeekTarget === 1) { // Monday
+          synthesizedWWE.push({ id: 'wwe_raw_' + targetDate, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDate, startTime: '20:00' });
+      } else if (dayOfWeekTarget === 2) { // Tuesday
+          synthesizedWWE.push({ id: 'wwe_nxt_' + targetDate, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDate, startTime: '20:00' });
+      } else if (dayOfWeekTarget === 5) { // Friday
+          synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDate, homeTeam: 'WWE', awayTeam: 'Smackdown', matchDate: targetDate, startTime: '20:00' });
+      }
+=======
+      // Synthesize weekly WWE shows that might not be on wwe.com/events, or could disappear when live.
+      var dateObjTarget = new Date(targetDateStr + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
+      var dayOfWeekTarget = dateObjTarget.getUTCDay();
+
+      var synthesizedWWE = [];
+      if (dayOfWeekTarget === 1) { // Monday
+          synthesizedWWE.push({ id: 'wwe_raw_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDateStr, startTime: '20:00' });
+      } else if (dayOfWeekTarget === 2) { // Tuesday
+          synthesizedWWE.push({ id: 'wwe_nxt_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDateStr, startTime: '20:00' });
+      } else if (dayOfWeekTarget === 5) { // Friday
+          synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Smackdown', matchDate: targetDateStr, startTime: '20:00' });
+      }
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+                      // Use todayStr or targetDate since targetDateStr is not defined here yet
+                      var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
+
+                      if (m.matchDate === matchDateTarget) {
+=======
+                      if (m.matchDate === targetDateStr) {
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+                      var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
+
+                      if (m.matchDate === matchDateTarget) {
+=======
+                      if (m.matchDate === targetDateStr) {
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+                      if (m.matchDate === targetDate) {
+=======
+                      if (m.matchDate === targetDateStr) {
+>>>>>>> REPLACE
