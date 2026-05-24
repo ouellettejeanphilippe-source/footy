@@ -2,7 +2,7 @@ import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
-import { parsePWHLSchedule, parseWWEEvents, getStreamCache } from './scrapers.js';
+import { parsePWHLSchedule, parseWWEEvents, parseF1Ics, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
@@ -35,8 +35,6 @@ export var ESPN_LEAGUES = {
   'american-football': 'football/nfl',
   'mlb': 'baseball/mlb',
   'baseball': 'baseball/mlb',
-  'f1': 'racing/f1',
-  'formula 1': 'racing/f1',
   'cfl': 'football/cfl',
   'indycar': 'racing/irl',
   'world baseball classic': 'baseball/world-baseball-classic',
@@ -291,6 +289,53 @@ export function getApiFirstMatches(targetDate) {
           m.score = null;
           baseMatches.push(m);
       });
+
+      promises.push(
+          fetchPage('https://calendar.google.com/calendar/ical/2d18e6600fa752927895f23b0f3f948613a55c062369d07498a5fd388db34017%40group.calendar.google.com/public/basic.ics').catch(function() { return ''; }).then(function(icsText) {
+              if (icsText) {
+                  var matches = parseF1Ics(icsText);
+                  matches.forEach(function(m) {
+                      m.flag = lgFlag('F1');
+                      m.color = lgColor('F1');
+                      m.source = 'api';
+                      m.league = formatLeagueName('F1');
+
+                      var dateObj = new Date(m.date);
+                      m.matchDate = getEstDateStrFromDate(dateObj);
+                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+
+                      var now = new Date();
+                      var durationMs = 120 * 60 * 1000; // 2 hours default
+
+                      if (now > new Date(dateObj.getTime() + durationMs)) {
+                          m.status = 'finished';
+                      } else if (now >= dateObj) {
+                          m.status = 'live';
+                      } else {
+                          m.status = 'upcoming';
+                      }
+
+                      m.score = null;
+
+                      // Use todayStr or targetDate since targetDateStr is not defined here yet
+                      var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
+
+                      if (m.matchDate === matchDateTarget) {
+                          var existingIdx = baseMatches.findIndex(function(existing) {
+                              return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
+                          });
+
+                          if (existingIdx >= 0) {
+                              baseMatches[existingIdx].status = m.status;
+                              baseMatches[existingIdx].startTime = m.startTime;
+                          } else {
+                              baseMatches.push(m);
+                          }
+                      }
+                  });
+              }
+          }).catch(function(e) { console.error('Error fetching F1 ICS schedule', e); lg('Error fetching F1 ICS schedule', e); })
+      );
 
       promises.push(
           fetchPage('https://www.wwe.com/events').catch(function() { return ''; }).then(function(html) {
