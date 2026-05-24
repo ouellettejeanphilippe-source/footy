@@ -1254,31 +1254,39 @@ export function updateMultivisionLayout() {
         // Update drag/drop indices as they can change
         cell.ondragstart = function(e) {
             e.dataTransfer.setData('text/plain', idx.toString());
+            window.draggedMvIdx = idx;
             cell.style.opacity = '0.5';
         };
         cell.ondragend = function(e) {
             cell.style.opacity = '1';
             cell.draggable = false;
+            window.draggedMvIdx = null;
+            saveMultivisionState();
+            updateMultivisionLayout();
         };
-        cell.ondragover = function(e) {
+        cell.ondragenter = function(e) {
             e.preventDefault();
-            cell.style.boxShadow = 'inset 0 0 0 2px var(--accent)';
-        };
-        cell.ondragleave = function(e) {
-            cell.style.boxShadow = 'none';
-        };
-        cell.ondrop = function(e) {
-            e.preventDefault();
-            cell.style.boxShadow = 'none';
-            var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+            var fromIdx = window.draggedMvIdx;
             var toIdx = idx;
-            if (fromIdx !== toIdx && !isNaN(fromIdx)) {
+            if (fromIdx !== null && fromIdx !== undefined && fromIdx !== toIdx && !isNaN(fromIdx)) {
                 var temp = mvFlux[fromIdx];
                 mvFlux[fromIdx] = mvFlux[toIdx];
                 mvFlux[toIdx] = temp;
+                window.draggedMvIdx = toIdx; // Update tracked index after swap
                 saveMultivisionState();
                 updateMultivisionLayout();
             }
+        };
+        cell.ondragover = function(e) {
+            e.preventDefault();
+            // Optional: visual indicator here if wanted
+        };
+        cell.ondragleave = function(e) {
+            // No action needed
+        };
+        cell.ondrop = function(e) {
+            e.preventDefault();
+            // Swapping already handled in dragenter
         };
 
         // Update header HTML
