@@ -447,15 +447,17 @@ export function buildEPG(matches){
                   var homeFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>';
                   var awayFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>';
 
-                  var logosHtml = m.awayTeam ?
+                  var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
+
+                  var logosHtml = !isRacing ?
                                   '<div class="prime-logo-wrapper home">' + homeLogoHtmlPrime + '</div><div class="prime-logo-wrapper away">' + awayLogoHtmlPrime + '</div>' :
                                   '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
 
-                  var teamsHtml = m.awayTeam ?
+                  var teamsHtml = !isRacing ?
                                   '<div class="prime-team-name" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'">'+awayFavBtn+esc(m.awayTeam)+'</div>' :
-                                  '<div class="prime-team-name" style="text-align: center; justify-content: center;" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam)+'</div>';
+                                  '<div class="prime-team-name" style="text-align: center; justify-content: center; width: 100%;" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam) + (m.awayTeam ? ' - ' + esc(m.awayTeam) : '') + '</div>';
 
-                  var scoresHtml = m.awayTeam ?
+                  var scoresHtml = !isRacing ?
                                   '<div class="prime-score">'+homeScore+'</div><div class="prime-score">'+awayScore+'</div>' :
                                   '<div class="prime-score"></div>';
 
@@ -721,14 +723,24 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
 
               var cCell = document.createElement('div');
               cCell.className = 'chan-cell';
-              cCell.innerHTML = '<div class="chan-team">'
-                              + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</button>'
-                              + homeLogoHtml
-                              + '<span class="ch-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span></div>'
-                              + '<div class="chan-team">'
-                              + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\')">★</button>'
-                              + awayLogoHtml
-                              + '<span class="ch-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span></div>';
+
+              var isRacingEvent = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
+
+              if (isRacingEvent) {
+                  cCell.innerHTML = '<div class="chan-team" style="justify-content: center; width: 100%; height: 100%;">'
+                                  + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</button>'
+                                  + homeLogoHtml
+                                  + '<span class="ch-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam) + (m.awayTeam ? ' - ' + esc(m.awayTeam) : '') + '</span></div>';
+              } else {
+                  cCell.innerHTML = '<div class="chan-team">'
+                                  + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\')">★</button>'
+                                  + homeLogoHtml
+                                  + '<span class="ch-name" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span></div>'
+                                  + '<div class="chan-team">'
+                                  + '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\')">★</button>'
+                                  + awayLogoHtml
+                                  + '<span class="ch-name" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span></div>';
+              }
 
               var marea = document.createElement('div');
               marea.className = 'marea';
@@ -1298,7 +1310,9 @@ export function openMod(m,col){
   var homeLogoHtmlPrime = hLogo ? '<img src="'+esc(hLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
   var awayLogoHtmlPrime = aLogo ? '<img src="'+esc(aLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
 
-  var logosHtml = m.awayTeam ?
+  var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
+
+  var logosHtml = !isRacing ?
                   '<div class="prime-logo-wrapper home" style="flex:1; display:flex; justify-content:center;">' + homeLogoHtmlPrime + '</div><div style="flex:0.2;"></div><div class="prime-logo-wrapper away" style="flex:1; display:flex; justify-content:center;">' + awayLogoHtmlPrime + '</div>' :
                   '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
 
@@ -1312,7 +1326,7 @@ export function openMod(m,col){
   }
 
   var centerScoreHtml = '';
-  if (m.awayTeam) {
+  if (!isRacing) {
       if (homeScore !== '' && awayScore !== '') {
           centerScoreHtml = '<div style="font-size: 32px; font-weight: 800; line-height: 1; display:flex; gap: 12px; align-items:center; justify-content:center; letter-spacing:-1px;"><span>'+homeScore+'</span><span style="color:var(--muted2); font-size:24px;">-</span><span>'+awayScore+'</span></div>';
       } else {
@@ -1320,7 +1334,7 @@ export function openMod(m,col){
       }
   }
 
-  var teamsHtml = m.awayTeam ?
+  var teamsHtml = !isRacing ?
                   '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-top:12px; font-size:13px; font-weight:700; color:#fff; text-align:center; line-height:1.2; padding:0 8px;">' +
                       '<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">' +
                           '<div title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+' <button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button></div>' +
@@ -1330,8 +1344,8 @@ export function openMod(m,col){
                           '<div title="'+esc(m.awayTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button> '+esc(m.awayTeam)+'</div>' +
                       '</div>' +
                   '</div>' :
-                  '<div style="display:flex; justify-content:center; align-items:center; margin-top:12px; font-size:16px; font-weight:700; color:#fff; text-align:center;">' +
-                      '<div title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam)+'</div>' +
+                  '<div style="display:flex; justify-content:center; align-items:center; margin-top:12px; font-size:16px; font-weight:700; color:#fff; text-align:center; flex-direction:column;">' +
+                      '<div title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam) + (m.awayTeam ? ' - ' + esc(m.awayTeam) : '') + '</div>' +
                   '</div>';
 
 
