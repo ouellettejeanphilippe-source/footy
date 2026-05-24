@@ -139,6 +139,13 @@ export function debugMatchPair(m1, m2) {
       return { isMatch: false, reason: "Dates différentes (" + m1.matchDate + " vs " + m2.matchDate + ")" };
   }
 
+  // Broad WWE Match Rule: If both matches appear to be WWE-related and occur on the same day, force a match.
+  var is1Wwe = l1.includes('wwe') || m1H.includes('wwe') || m1A.includes('wwe') || m1H.includes('wrestlemania') || m1H.includes('smackdown') || m1H.includes('nxt');
+  var is2Wwe = l2.includes('wwe') || m2H.includes('wwe') || m2A.includes('wwe') || m2H.includes('wrestlemania') || m2H.includes('smackdown') || m2H.includes('nxt');
+  if (is1Wwe && is2Wwe) {
+      return { isMatch: true, reason: "Correspondance WWE" };
+  }
+
   // Check for TBD or missing teams (some scrapers only provide one team from URL)
   var is1HomeTbd = m1.homeTeam === 'TBD' || m1.homeTeam === 'tbd' || m1H === '';
   var is1AwayTbd = m1.awayTeam === 'TBD' || m1.awayTeam === 'tbd' || m1A === '';

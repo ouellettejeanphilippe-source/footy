@@ -150,42 +150,106 @@ export function parseStreameast(html){
 
 /* ══ PARSE ONHOCKEY ═══════════════════ */
 
-export function parseWWEEvents(html) {
+export function parseWWEEvents(icsData) {
   var matches = [];
   try {
-      var doc = new DOMParser().parseFromString(html, 'text/html');
-      var events = doc.querySelectorAll('.events-search-results--right-rail, .events-upcoming-item');
+      var lines = icsData.split('\n');
+      var currentEvent = null;
 
-      for (var i = 0; i < events.length; i++) {
-          var ev = events[i];
-          var titleEl = ev.querySelector('.events-upcoming-header h2 a, .events-upcoming-card--title a');
-          if (!titleEl) continue;
-          var title = titleEl.textContent.trim();
-
-          var dateEl = ev.querySelector('time.datetime, .week-date time');
-          var dateStr = '';
-          if (dateEl) {
-              dateStr = dateEl.getAttribute('datetime');
+      for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          // handle folded lines
+          while (i + 1 < lines.length && (lines[i+1].startsWith(' ') || lines[i+1].startsWith('\t'))) {
+              i++;
+              line += lines[i].substring(1);
           }
-          if (!dateStr || !title) continue;
 
-          var idStr = 'wwe_event_' + title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dateStr.substring(0, 10);
+          if (line === 'BEGIN:VEVENT') {
+              currentEvent = {};
+          } else if (line === 'END:VEVENT') {
+              if (currentEvent && currentEvent.SUMMARY && currentEvent.DTSTART) {
+                  var title = currentEvent.SUMMARY;
 
-          var isFinished = false;
+                  // ICS datetime format: YYYYMMDDThhmmssZ
+                  var ds = currentEvent.DTSTART;
+                  var dateStr = null;
+                  var timeStr = '20:00'; // Default to 8 PM EST
+                  if (ds.length >= 8) {
+                      var yr = ds.substring(0, 4);
+                      var mo = ds.substring(4, 6);
+                      var da = ds.substring(6, 8);
+                      var hr = ds.length >= 15 ? ds.substring(9, 11) : "00";
+                      var min = ds.length >= 15 ? ds.substring(11, 13) : "00";
 
-          matches.push({
-              id: idStr,
-              date: dateStr,
-              time: 'UPCOMING',
-              homeTeam: title,
-              awayTeam: 'WWE', // Fallback for fuzzy matching
-              homeScore: null,
-              awayScore: null,
-              isFinished: isFinished
-          });
+                      // Convert directly to Date using UTC string
+                      var d = new Date(yr + '-' + mo + '-' + da + 'T' + hr + ':' + min + ':00Z');
+
+                      var estDateFormatter = new Intl.DateTimeFormat('en-CA', {
+                          timeZone: 'America/New_York',
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit'
+                      });
+
+                      // This returns YYYY-MM-DD
+                      var matchDateStr = estDateFormatter.format(d);
+
+                      // ICS events might fall on a date boundary in UTC that differs from EST.
+                      // By setting the time explicitly to noon UTC below, getEstDateStrFromDate(new Date(dateStr))
+                      // will correctly maintain this exact same localized date regardless of timezone offsets.
+                      dateStr = matchDateStr + 'T12:00:00Z';
+
+                      if (hr !== '00' || min !== '00') {
+                          var estTimeFormatter = new Intl.DateTimeFormat('en-CA', {
+                              timeZone: 'America/New_York',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hourCycle: 'h23'
+                          });
+                          var estTimeRaw = estTimeFormatter.format(d);
+                          var mFormat = estTimeRaw.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/i);
+                          if (mFormat) {
+                              var h = parseInt(mFormat[1], 10);
+                              if (mFormat[3]) {
+                                  var ampm = mFormat[3].toUpperCase();
+                                  if (ampm === 'PM' && h < 12) h += 12;
+                                  if (ampm === 'AM' && h === 12) h = 0;
+                              } else {
+                                  if (h === 24) h = 0;
+                              }
+                              timeStr = (h < 10 ? '0'+h : h) + ':' + mFormat[2];
+                          }
+                      }
+                  }
+
+                  if (dateStr) {
+                      var idStr = 'wwe_event_' + title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dateStr.substring(0, 10);
+                      matches.push({
+                          id: idStr,
+                          date: dateStr,
+                          time: timeStr,
+                          homeTeam: title,
+                          awayTeam: 'WWE', // Fallback for fuzzy matching
+                          homeScore: null,
+                          awayScore: null,
+                          isFinished: false
+                      });
+                  }
+              }
+              currentEvent = null;
+          } else if (currentEvent) {
+              var colonIdx = line.indexOf(':');
+              if (colonIdx > 0) {
+                  var keyStr = line.substring(0, colonIdx);
+                  // Some keys might have parameters like DTSTART;TZID=America/Chicago
+                  var key = keyStr.split(';')[0];
+                  var val = line.substring(colonIdx + 1);
+                  currentEvent[key] = val;
+              }
+          }
       }
   } catch (e) {
-      console.error('Error parsing WWE events', e);
+      console.error('Error parsing WWE events from ICS', e);
   }
   return matches;
 }

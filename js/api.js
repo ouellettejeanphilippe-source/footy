@@ -240,7 +240,10 @@ export function getApiFirstMatches(targetDate) {
 
 
                       var dateObj = new Date(m.date);
-                      m.matchDate = getEstDateStrFromDate(dateObj);
+                      // the ICS date already includes timezone adjustments natively, so doing getEstDateStrFromDate will shift the UTC noon to 08:00 AM, but keeps the same day.
+                      // Wait! If the date in scrapers.js is already 'YYYY-MM-DD', then new Date(m.date) creates a local Date at 00:00.
+                      // Let's check what m.date is. It is 'YYYY-MM-DDT12:00:00Z'.
+                      m.matchDate = m.date.split('T')[0]; // Use the exact string passed from scrapers.js
                       m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
 
                       m.status = m.time === 'LIVE' ? 'live' : 'upcoming';
@@ -293,28 +296,28 @@ export function getApiFirstMatches(targetDate) {
       });
 
       promises.push(
-          fetchPage('https://www.wwe.com/events').catch(function() { return ''; }).then(function(html) {
-              if (html) {
-                  var matches = parseWWEEvents(html);
+          fetchPage('https://calendar.google.com/calendar/ical/335cea66edf27097e6a689c1067382ac1cd69f6795cac889f2acf87911f0d473%40group.calendar.google.com/public/basic.ics').catch(function() { return ''; }).then(function(icsData) {
+              if (icsData) {
+                  var matches = parseWWEEvents(icsData);
                   matches.forEach(function(m) {
                       m.flag = lgFlag('WWE');
                       m.color = lgColor('WWE');
                       m.source = 'api';
                       m.league = formatLeagueName('WWE');
 
-                      var dateObj = new Date(m.date);
-                      m.matchDate = getEstDateStrFromDate(dateObj);
-                      // Since we often don't get time from events page, default to 20:00
-                      // If it's 00:00 (which happens for timezone midnight parsing), set to 20:00
-                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
-                      if (m.startTime === '00:00') {
-                          m.startTime = '20:00';
-                      }
+                      // The ICS date is exactly parsed as YYYY-MM-DD string, but since Date() constructor shifts timezone, we bypass it.
+                      m.matchDate = m.date.split('T')[0]; // Use the exact string passed from scrapers.js
+                      m.startTime = m.time || '20:00';
 
                       m.status = 'upcoming';
                       m.score = null;
 
-                      if (m.matchDate === targetDate) {
+                      // We must explicitly test against the EST string of the targetDate so timezone offset mismatches don't drop events.
+                      var tDateStr = typeof targetDate === 'string' ? targetDate : getEstDateStrFromDate(targetDate || new Date());
+
+                      // For WWE, m.matchDate is the exact YYYY-MM-DD string resolved during parse.
+                      // We must explicitly test against the EST string of the targetDate so timezone offset mismatches don't drop events.
+                      if (m.matchDate === tDateStr) {
                           var existingIdx = baseMatches.findIndex(function(existing) {
                               return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
                           });
