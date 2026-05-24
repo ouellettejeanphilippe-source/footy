@@ -450,9 +450,8 @@ export function getApiFirstMatches(targetDate) {
                       league: formatLeagueName(ev.league.name),
                       flag: lgFlag(ev.league.name),
                       color: lgColor(ev.league.name),
-                      // Pass a third boolean argument to bypass fuzzy matching for LoL
-                      homeTeam: getOfficialTeamName(ev.match.teams[0].name || 'TBD', true),
-                      awayTeam: getOfficialTeamName(ev.match.teams[1].name || 'TBD', true),
+                      homeTeam: ev.match.teams[0].name || 'TBD',
+                      awayTeam: ev.match.teams[1].name || 'TBD',
                       matchDate: matchDate,
                       homeLogo: ev.match.teams[0].image || null,
                       awayLogo: ev.match.teams[1].image || null,

@@ -438,8 +438,8 @@ export function buildEPG(matches){
                   var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
                   var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
 
-                  var homeLogoHtmlPrime = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
-                  var awayLogoHtmlPrime = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
+                  var homeLogoHtmlPrime = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+                  var awayLogoHtmlPrime = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
 
                   var streamsBadgePrime = "";
                   var lgBadge = '<div class="prime-league-badge">'+(lg.flag || lgFlag(lg.league) || '')+'</div>';
@@ -724,8 +724,8 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               // Channel cell
               var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
               var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
-              var homeLogoHtml = homeLogoUrl ? '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
-              var awayLogoHtml = awayLogoUrl ? '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>';
+              var homeLogoHtml = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">') : (m.flag === '🎮' ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🎮</div>' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>');
+              var awayLogoHtml = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">') : (m.flag === '🎮' ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🎮</div>' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>');
 
               var cCell = document.createElement('div');
               cCell.className = 'chan-cell';
@@ -1313,8 +1313,8 @@ export function openMod(m,col){
   var streamsBadgePrime = "";
   var lgBadge = '<div class="prime-league-badge">'+m.flag+'</div>';
 
-  var homeLogoHtmlPrime = hLogo ? '<img src="'+esc(hLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
-  var awayLogoHtmlPrime = aLogo ? '<img src="'+esc(aLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>';
+  var homeLogoHtmlPrime = hLogo ? (hLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(hLogo.split(':')[1]) + '</div>' : '<img src="'+esc(hLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+  var awayLogoHtmlPrime = aLogo ? (aLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(aLogo.split(':')[1]) + '</div>' : '<img src="'+esc(aLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
 
   var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
 

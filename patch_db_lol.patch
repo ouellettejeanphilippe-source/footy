@@ -1,0 +1,13 @@
+--- js/db.js
++++ js/db.js
+@@ -432,6 +432,10 @@
+     stripped = stripped.replace(/\b(fc|afc|sc|cf|de|sporting|cd|racing)\b/g, '').trim();
+     stripped = stripped.replace(/[^a-z0-9]/g, '');
+
++    var isEsports = false;
++    if (n && (n.toLowerCase().includes('esports') || n.toLowerCase().includes('e-sports'))) isEsports = true;
++    if (bypassFuzzyMatch || isEsports) return n;
++
+     // Skip all fuzzy match processing and static map mapping if we explicitly bypass it (e.g., for esports)
+     if (bypassFuzzyMatch) {
+         return n;

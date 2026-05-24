@@ -989,9 +989,6 @@ export function parseMethstreams(html) {
                     if(matchUrl.startsWith('http') && !matches.find(function(m) { return m.matchUrl === matchUrl; })) {
                         matches.push({
                             id: 'meth_' + matches.length,
-                            league: formatLeagueName('Sports'),
-                            flag: lgFlag('Sports'),
-                            color: lgColor('Sports'),
                             homeTeam: home,
                             awayTeam: away,
                             matchUrl: matchUrl,
@@ -1299,7 +1296,7 @@ export function parseFootybite(html){
     }
 
     if(!home) return;
-    if(!away && home.toLowerCase().indexOf('f1') === -1 && home.toLowerCase().indexOf('nascar') === -1 && home.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('f1') === -1 && league.toLowerCase().indexOf('nascar') === -1 && league.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('nhl') === -1 && league.toLowerCase().indexOf('mlb') === -1 && league.toLowerCase().indexOf('baseball') === -1) {
+    if(!away && home.toLowerCase().indexOf('f1') === -1 && home.toLowerCase().indexOf('nascar') === -1 && home.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('f1') === -1 && league.toLowerCase().indexOf('nascar') === -1 && league.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('nhl') === -1 && league.toLowerCase().indexOf('mlb') === -1) {
        return;
     }
 

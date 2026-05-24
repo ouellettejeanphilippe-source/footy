@@ -1,0 +1,45 @@
+--- js/scrapers.js
++++ js/scrapers.js
+@@ -904,8 +904,8 @@
+                     if(matchUrl && !matchUrl.startsWith('javascript') && !matches.find(m => m.matchUrl === matchUrl)) {
+                         matches.push({
+                             id: 'ts_' + matches.length,
+-                            league: 'Sports',
+-                            flag: lgFlag('Sports'),
+-                            color: lgColor('Sports'),
++                            league: formatLeagueName('Sports'),
++                            flag: lgFlag('Sports'),
++                            color: lgColor('Sports'),
+                             homeTeam: getOfficialTeamName(home),
+                             awayTeam: getOfficialTeamName(away),
+@@ -945,8 +945,8 @@
+                     if(matchUrl.startsWith('http') && !matches.find(m => m.matchUrl === matchUrl)) {
+                         matches.push({
+                             id: 'vip_' + matches.length,
+-                            league: 'Sports',
+-                            flag: lgFlag('Sports'),
+-                            color: lgColor('Sports'),
++                            league: formatLeagueName('Sports'),
++                            flag: lgFlag('Sports'),
++                            color: lgColor('Sports'),
+                             homeTeam: getOfficialTeamName(home),
+                             awayTeam: getOfficialTeamName(away),
+@@ -1004,8 +1004,8 @@
+                     if(matchUrl.startsWith('http') && !matches.find(function(m) { return m.matchUrl === matchUrl; })) {
+                         matches.push({
+                             id: 'meth_' + matches.length,
++                            league: formatLeagueName('Sports'),
++                            flag: lgFlag('Sports'),
++                            color: lgColor('Sports'),
+                             homeTeam: home,
+                             awayTeam: away,
+                             matchUrl: matchUrl,
+@@ -1297,7 +1297,7 @@
+       away = '';
+     }
+
+     if(!home) return;
+-    if(!away && home.toLowerCase().indexOf('f1') === -1 && home.toLowerCase().indexOf('nascar') === -1 && home.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('f1') === -1 && league.toLowerCase().indexOf('nascar') === -1 && league.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('nhl') === -1 && league.toLowerCase().indexOf('mlb') === -1) {
++    if(!away && home.toLowerCase().indexOf('f1') === -1 && home.toLowerCase().indexOf('nascar') === -1 && home.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('f1') === -1 && league.toLowerCase().indexOf('nascar') === -1 && league.toLowerCase().indexOf('golf') === -1 && league.toLowerCase().indexOf('nhl') === -1 && league.toLowerCase().indexOf('mlb') === -1 && league.toLowerCase().indexOf('baseball') === -1) {
+        return;
+     }
