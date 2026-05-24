@@ -7,9 +7,9 @@ import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS } from './db.js';
 
 /* ══ CONFIG ═════════════════════════════ */
-export var SITE = 'https://live1.footybite.to'; // Updated to new live1.footybite.to domain
+export var SITE = 'https://live1.footybite.to/'; // Updated to new live1.footybite.to domain
 export var MLBITE_URL = 'https://nflbite.is/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
-export var MLBBITE_PLUS_URL = 'https://mlbbite.plus';
+export var MLBBITE_PLUS_URL = 'https://mlbbite.plus/';
 export var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
 export var BUFFSTREAMS_URL = 'https://buffstreams.com.co/index2';
 export var STREAMEAST_URL = 'https://naturallyyou.fit/';
