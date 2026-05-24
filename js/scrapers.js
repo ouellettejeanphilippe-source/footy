@@ -150,6 +150,66 @@ export function parseStreameast(html){
 
 /* ══ PARSE ONHOCKEY ═══════════════════ */
 
+export function parseF1Ics(txt) {
+    var matches = [];
+    try {
+        var lines = txt.split(/\r?\n/);
+        var currentEvent = null;
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (line === 'BEGIN:VEVENT') {
+                currentEvent = {};
+            } else if (line === 'END:VEVENT') {
+                if (currentEvent && currentEvent.SUMMARY && currentEvent.DTSTART) {
+                    var dtstart = currentEvent.DTSTART;
+                    // Support standard ISO 8601 YYYYMMDDTHHMMSSZ format
+                    var dateObj = new Date(
+                        dtstart.substring(0, 4) + '-' +
+                        dtstart.substring(4, 6) + '-' +
+                        dtstart.substring(6, 8) + 'T' +
+                        dtstart.substring(9, 11) + ':' +
+                        dtstart.substring(11, 13) + ':' +
+                        dtstart.substring(13, 15) + 'Z'
+                    );
+
+                    if (!isNaN(dateObj)) {
+                        var summary = currentEvent.SUMMARY;
+                        var homeTeam = summary;
+                        var awayTeam = 'Race';
+
+                        if (summary.indexOf(' - ') !== -1) {
+                            var parts = summary.split(' - ');
+                            homeTeam = parts[0].trim();
+                            awayTeam = parts.slice(1).join(' - ').trim();
+                        }
+
+                        matches.push({
+                            id: 'f1_ics_' + homeTeam.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dtstart,
+                            homeTeam: homeTeam,
+                            awayTeam: awayTeam,
+                            date: dateObj.toISOString()
+                        });
+                    }
+                }
+                currentEvent = null;
+            } else if (currentEvent) {
+                var splitIndex = line.indexOf(':');
+                if (splitIndex !== -1) {
+                    var keyRaw = line.substring(0, splitIndex);
+                    var value = line.substring(splitIndex + 1);
+                    var key = keyRaw.split(';')[0];
+                    currentEvent[key] = value.replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\n/g, ' ');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error parsing F1 ICS', e);
+        lg('Error parsing F1 ICS', e);
+    }
+    return matches;
+}
+
 export function parseWWEEvents(html) {
   var matches = [];
   try {
@@ -1733,6 +1793,7 @@ export function getEstTime(ukTimeStr){
 
 // Global bindings for HTML compatibility
 window.parseStreameast = parseStreameast;
+window.parseF1Ics = parseF1Ics;
 window.parsePWHLSchedule = parsePWHLSchedule;
 window.parseWWEEvents = parseWWEEvents;
 window.parseSportsurge = parseSportsurge;
