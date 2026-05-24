@@ -2,7 +2,7 @@ import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
-import { parsePWHLSchedule, parseWWEEvents, parseF1Ics, parseIndycarIcs, getStreamCache } from './scrapers.js';
+import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
@@ -108,7 +108,9 @@ export function setApiTargetDate(d) {
 }
 
 export function getApiFirstMatches(targetDate) {
-  var todayStr = getEspnDateStr(targetDate || new Date());
+  var targetDateObj = targetDate || new Date();
+  var targetDateStr = getEstDateStrFromDate(targetDateObj);
+  var todayStr = getEspnDateStr(targetDateObj);
   var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
 
   var needsFullFetch = !cache || cache.fetchDate !== todayStr;
@@ -181,7 +183,7 @@ export function getApiFirstMatches(targetDate) {
 
                 var dateObj = new Date(comp.date || ev.date);
                 var startTime = getEstTimeStrFromDate(dateObj);
-                var matchDate = isRacing ? getEstDateStrFromDate(targetDate || new Date()) : getEstDateStrFromDate(dateObj);
+                var matchDate = isRacing ? targetDateStr : getEstDateStrFromDate(dateObj);
                 var isPlayoff = ev.season && ev.season.type === 3;
 
                 var matchObj = {
@@ -283,16 +285,16 @@ export function getApiFirstMatches(targetDate) {
       );
 
       // Synthesize weekly WWE shows that might not be on wwe.com/events, or could disappear when live.
-      var dateObjTarget = new Date(targetDate + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
+      var dateObjTarget = new Date(targetDateStr + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
       var dayOfWeekTarget = dateObjTarget.getUTCDay();
 
       var synthesizedWWE = [];
       if (dayOfWeekTarget === 1) { // Monday
-          synthesizedWWE.push({ id: 'wwe_raw_' + targetDate, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDate, startTime: '20:00' });
+          synthesizedWWE.push({ id: 'wwe_raw_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDateStr, startTime: '20:00' });
       } else if (dayOfWeekTarget === 2) { // Tuesday
-          synthesizedWWE.push({ id: 'wwe_nxt_' + targetDate, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDate, startTime: '20:00' });
+          synthesizedWWE.push({ id: 'wwe_nxt_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDateStr, startTime: '20:00' });
       } else if (dayOfWeekTarget === 5) { // Friday
-          synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDate, homeTeam: 'WWE', awayTeam: 'Smackdown', matchDate: targetDate, startTime: '20:00' });
+          synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Smackdown', matchDate: targetDateStr, startTime: '20:00' });
       }
 
       synthesizedWWE.forEach(function(m) {
@@ -332,10 +334,7 @@ export function getApiFirstMatches(targetDate) {
 
                       m.score = null;
 
-                      // Use todayStr or targetDate since targetDateStr is not defined here yet
-                      var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
-
-                      if (m.matchDate === matchDateTarget) {
+                      if (m.matchDate === targetDateStr) {
                           var existingIdx = baseMatches.findIndex(function(existing) {
                               return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
                           });
@@ -379,9 +378,7 @@ export function getApiFirstMatches(targetDate) {
 
                       m.score = null;
 
-                      var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
-
-                      if (m.matchDate === matchDateTarget) {
+                      if (m.matchDate === targetDateStr) {
                           var existingIdx = baseMatches.findIndex(function(existing) {
                               return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
                           });
@@ -399,6 +396,9 @@ export function getApiFirstMatches(targetDate) {
       );
 
       promises.push(
+          fetchPage('https://calendar.google.com/calendar/ical/335cea66edf27097e6a689c1067382ac1cd69f6795cac889f2acf87911f0d473%40group.calendar.google.com/public/basic.ics').catch(function() { return ''; }).then(function(icsText) {
+              if (icsText) {
+                  var matches = parseWWEIcs(icsText);
           fetchLolEsportsSchedule(todayStr).then(function(data) {
               if(!data || !data.data || !data.data.schedule || !data.data.schedule.events) return;
               data.data.schedule.events.forEach(function(ev) {
@@ -509,8 +509,6 @@ export function getApiFirstMatches(targetDate) {
 
                       var dateObj = new Date(m.date);
                       m.matchDate = getEstDateStrFromDate(dateObj);
-                      // Since we often don't get time from events page, default to 20:00
-                      // If it's 00:00 (which happens for timezone midnight parsing), set to 20:00
                       m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
                       if (m.startTime === '00:00') {
                           m.startTime = '20:00';
@@ -519,7 +517,7 @@ export function getApiFirstMatches(targetDate) {
                       m.status = 'upcoming';
                       m.score = null;
 
-                      if (m.matchDate === targetDate) {
+                      if (m.matchDate === targetDateStr) {
                           var existingIdx = baseMatches.findIndex(function(existing) {
                               return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
                           });

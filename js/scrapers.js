@@ -321,44 +321,64 @@ export function parseIndycarIcs(txt) {
     return matches;
 }
 
-export function parseWWEEvents(html) {
-  var matches = [];
-  try {
-      var doc = new DOMParser().parseFromString(html, 'text/html');
-      var events = doc.querySelectorAll('.events-search-results--right-rail, .events-upcoming-item');
+export function parseWWEIcs(txt) {
+    var matches = [];
+    try {
+        var lines = txt.split(/\r?\n/);
+        var unfoldedLines = [];
+        for (var j = 0; j < lines.length; j++) {
+            if (lines[j].startsWith(' ') || lines[j].startsWith('\t')) {
+                if (unfoldedLines.length > 0) {
+                    unfoldedLines[unfoldedLines.length - 1] += lines[j].substring(1);
+                }
+            } else {
+                unfoldedLines.push(lines[j]);
+            }
+        }
 
-      for (var i = 0; i < events.length; i++) {
-          var ev = events[i];
-          var titleEl = ev.querySelector('.events-upcoming-header h2 a, .events-upcoming-card--title a');
-          if (!titleEl) continue;
-          var title = titleEl.textContent.trim();
+        var currentEvent = null;
 
-          var dateEl = ev.querySelector('time.datetime, .week-date time');
-          var dateStr = '';
-          if (dateEl) {
-              dateStr = dateEl.getAttribute('datetime');
-          }
-          if (!dateStr || !title) continue;
+        for (var i = 0; i < unfoldedLines.length; i++) {
+            var line = unfoldedLines[i];
+            if (line === 'BEGIN:VEVENT') {
+                currentEvent = {};
+            } else if (line === 'END:VEVENT') {
+                if (currentEvent && currentEvent.SUMMARY && currentEvent.DTSTART) {
+                    var dtstart = currentEvent.DTSTART;
+                    var dateObj = new Date(
+                        dtstart.substring(0, 4) + '-' +
+                        dtstart.substring(4, 6) + '-' +
+                        dtstart.substring(6, 8) + 'T' +
+                        (dtstart.length > 8 ? dtstart.substring(9, 11) + ':' + dtstart.substring(11, 13) + ':' + dtstart.substring(13, 15) + 'Z' : '00:00:00Z')
+                    );
 
-          var idStr = 'wwe_event_' + title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dateStr.substring(0, 10);
+                    if (!isNaN(dateObj)) {
+                        var summary = currentEvent.SUMMARY.trim();
 
-          var isFinished = false;
-
-          matches.push({
-              id: idStr,
-              date: dateStr,
-              time: 'UPCOMING',
-              homeTeam: title,
-              awayTeam: 'WWE', // Fallback for fuzzy matching
-              homeScore: null,
-              awayScore: null,
-              isFinished: isFinished
-          });
-      }
-  } catch (e) {
-      console.error('Error parsing WWE events', e);
-  }
-  return matches;
+                        matches.push({
+                            id: 'wwe_ics_' + summary.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dtstart,
+                            homeTeam: 'WWE',
+                            awayTeam: summary,
+                            date: dateObj.toISOString()
+                        });
+                    }
+                }
+                currentEvent = null;
+            } else if (currentEvent) {
+                var splitIndex = line.indexOf(':');
+                if (splitIndex !== -1) {
+                    var keyRaw = line.substring(0, splitIndex);
+                    var value = line.substring(splitIndex + 1);
+                    var key = keyRaw.split(';')[0];
+                    currentEvent[key] = value.replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\n/g, ' ');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error parsing WWE ICS', e);
+        lg('Error parsing WWE ICS', e);
+    }
+    return matches;
 }
 
 
@@ -1911,7 +1931,7 @@ window.parseStreameast = parseStreameast;
 window.parseF1Ics = parseF1Ics;
 window.parseIndycarIcs = parseIndycarIcs;
 window.parsePWHLSchedule = parsePWHLSchedule;
-window.parseWWEEvents = parseWWEEvents;
+window.parseWWEIcs = parseWWEIcs;
 window.parseSportsurge = parseSportsurge;
 window.parseOnHockey = parseOnHockey;
 window.parseBuffstreams = parseBuffstreams;
