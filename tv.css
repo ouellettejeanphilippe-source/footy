@@ -1,0 +1,86 @@
+/*
+ * tv.css - Mode TV/Tablette
+ * Augmente la taille des éléments et ajoute des styles pour la navigation spatiale
+ */
+
+body.tv-mode {
+    font-size: 1.2rem;
+}
+
+body.tv-mode .header-title {
+    font-size: 2rem;
+}
+
+body.tv-mode .tab-btn {
+    font-size: 1.2rem;
+    padding: 15px 20px;
+}
+
+body.tv-mode .match-card {
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+body.tv-mode .team-name {
+    font-size: 1.3rem;
+}
+
+body.tv-mode .match-time,
+body.tv-mode .match-league {
+    font-size: 1.1rem;
+}
+
+body.tv-mode button {
+    font-size: 1.2rem;
+    padding: 12px 24px;
+}
+
+body.tv-mode .icon-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+}
+
+/* Spatial Navigation Focus Styles */
+body.tv-mode [tabindex="0"]:focus,
+body.tv-mode button:focus,
+body.tv-mode a:focus,
+body.tv-mode input:focus,
+body.tv-mode .match-card:focus,
+body.tv-mode .tab-btn:focus,
+body.tv-mode .icon-btn:focus,
+body.tv-mode .stream-link:focus {
+    outline: 4px solid #4CAF50 !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+    background-color: rgba(76, 175, 80, 0.1);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+body.tv-mode .match-card:focus {
+    transform: scale(1.02);
+}
+
+body.tv-mode .stream-link {
+    padding: 15px;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+}
+
+/* Increase modal sizes */
+body.tv-mode .modal-content {
+    width: 95%;
+    max-width: 1000px;
+    padding: 30px;
+}
+
+body.tv-mode .modal-header h2 {
+    font-size: 1.8rem;
+}
+
+body.tv-mode .close-modal {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+}

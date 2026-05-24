@@ -746,3 +746,25 @@ body[data-icon-pack="sharp"] .ic-close {
     align-self: flex-start;
   }
 }
+
+/* Toggle Switch Styles */
+.switch input:checked + .slider {
+  background-color: #4CAF50;
+}
+.switch input:focus + .slider {
+  box-shadow: 0 0 1px #4CAF50;
+}
+.switch input:checked + .slider:before {
+  transform: translateX(18px);
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}

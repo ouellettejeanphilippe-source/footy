@@ -968,3 +968,53 @@ export function setTargetDate(dateStr) {
 window.applyTargetDate = applyTargetDate;
 window.changeTargetDate = changeTargetDate;
 window.setTargetDate = setTargetDate;
+
+
+window.toggleTvMode = function(enabled) {
+    localStorage.setItem('pref-tv-mode', enabled ? 'true' : 'false');
+
+    if (enabled) {
+        document.body.classList.add('tv-mode');
+
+        // Charger tv.css s'il n'est pas déjà là
+        if (!document.getElementById('tv-css')) {
+            const link = document.createElement('link');
+            link.id = 'tv-css';
+            link.rel = 'stylesheet';
+            link.href = 'tv.css';
+            document.head.appendChild(link);
+        }
+
+        // Charger tv-navigation.js s'il n'est pas déjà là
+        if (!document.getElementById('tv-nav-script')) {
+            const script = document.createElement('script');
+            script.id = 'tv-nav-script';
+            script.src = 'js/tv-navigation.js';
+            document.body.appendChild(script);
+        }
+    } else {
+        document.body.classList.remove('tv-mode');
+
+        // Retirer css
+        const link = document.getElementById('tv-css');
+        if (link) link.remove();
+
+        // Exécuter le nettoyage complet
+        if (window.__tvNavigationCleanup) {
+            window.__tvNavigationCleanup();
+            window.__tvNavigationCleanup = null;
+        }
+
+        // Retirer le script TV
+        const script = document.getElementById('tv-nav-script');
+        if (script) script.remove();
+    }
+};
+
+// Auto-init at boot
+document.addEventListener('DOMContentLoaded', () => {
+    const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
+    const tvCheckbox = document.getElementById('pref-tv-mode');
+    if (tvCheckbox) tvCheckbox.checked = isTvMode;
+    if (isTvMode) window.toggleTvMode(true);
+});
