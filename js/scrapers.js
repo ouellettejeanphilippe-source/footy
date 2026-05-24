@@ -724,7 +724,7 @@ export function parseBuffstreams(html){
 
   // New Buffstreams doesn't load all data in home page JSON always, but it often does list categories
   // Let's try to extract what we can from React chunks
-  var scriptRegex = /self\.__next_f\.push\(\[1,"(.*)"\]\)/g;
+  var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
   var match;
   var concatenatedData = "";
 
@@ -1579,6 +1579,66 @@ export function scrapeMatchFlux(m, forceRefresh){
                     }
                 });
             }
+        }
+    }
+
+        // StreamEast specific logic (Next.js data extraction)
+    if (m.source === 'streameast' || m.matchUrl.includes('istreameast') || m.matchUrl.includes('streameast')) {
+        var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
+        var match;
+        var concatenatedData = "";
+
+        while ((match = scriptRegex.exec(html)) !== null) {
+            var chunk = match[1];
+            chunk = chunk.replace(/\\"/g, '"')
+                         .replace(/\\\\/g, '\\')
+                         .replace(/\\n/g, '\n');
+            concatenatedData += chunk;
+        }
+
+        try {
+            var directMatch = /"directStreams":(\[.*?\])/.exec(concatenatedData);
+            var iframeMatch = /"iframeStreams":(\[.*?\])/.exec(concatenatedData);
+
+            var directStreams = directMatch ? JSON.parse(directMatch[1]) : [];
+            var iframeStreams = iframeMatch ? JSON.parse(iframeMatch[1]) : [];
+
+            var serverIndex = 1;
+
+                if (Array.isArray(directStreams)) {
+                    directStreams.forEach(function(s) {
+                        if (s.link) {
+                            var langStr = (s.language || '').toLowerCase();
+                            links.push({
+                                name: 'Server ' + serverIndex + ' - ' + (s.name || 'Flux'),
+                                quality: (s.quality && s.quality.toUpperCase() === 'HD') ? 'HD' : 'SD',
+                                lang: langStr.includes('english') ? 'EN' : (langStr || 'MULTI').toUpperCase(),
+                                url: s.link,
+                                icon: '📺',
+                                scrapeContext: { blockText: JSON.stringify(s), pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+                            });
+                            serverIndex++;
+                        }
+                    });
+                }
+
+                if (Array.isArray(iframeStreams)) {
+                    iframeStreams.forEach(function(s) {
+                        if (s.src) {
+                            links.push({
+                                name: 'Server ' + serverIndex + ' - ' + (s.name || 'Flux'),
+                                quality: 'HD',
+                                lang: 'MULTI',
+                                url: s.src,
+                                icon: '📺',
+                                scrapeContext: { blockText: JSON.stringify(s), pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+                            });
+                            serverIndex++;
+                        }
+                    });
+                }
+        } catch(e) {
+            console.error("Error parsing Streameast streams:", e);
         }
     }
 
