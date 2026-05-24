@@ -399,12 +399,29 @@ export function getApiFirstMatches(targetDate) {
           fetchPage('https://calendar.google.com/calendar/ical/335cea66edf27097e6a689c1067382ac1cd69f6795cac889f2acf87911f0d473%40group.calendar.google.com/public/basic.ics').catch(function() { return ''; }).then(function(icsText) {
               if (icsText) {
                   var matches = parseWWEIcs(icsText);
+                  matches.forEach(function(m) {
+                      m.flag = lgFlag('WWE');
+                      m.color = lgColor('WWE');
+                      m.source = 'api';
+                      m.league = formatLeagueName('WWE');
+                      if (m.matchDate === targetDateStr) {
+                          baseMatches.push(m);
+                      }
+                  });
+              }
+          }).catch(function(e) { console.error('Error fetching WWE ICS schedule', e); lg('Error fetching WWE ICS schedule', e); })
+      );
+
+      promises.push(
           fetchLolEsportsSchedule(todayStr).then(function(data) {
               if(!data || !data.data || !data.data.schedule || !data.data.schedule.events) return;
               data.data.schedule.events.forEach(function(ev) {
                   if (ev.type !== 'match') return;
-                  var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds'];
-                  if (!targetLeagues.includes(ev.league.name)) return;
+                  if (!ev.match) return;
+
+                  var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds', 'CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
+                  if (!ev.league || !ev.league.name) return;
+                  if (!targetLeagues.includes(ev.league.name.toUpperCase()) && !targetLeagues.includes(ev.league.name)) return;
 
                   var dateObj = new Date(ev.startTime);
                   var matchDate = getEstDateStrFromDate(dateObj);
@@ -426,15 +443,16 @@ export function getApiFirstMatches(targetDate) {
                       score = [homeWins, awayWins];
                   }
 
-                  if (!ev.match.teams || ev.match.teams.length < 2) return;
+                  if (!ev.match.teams || ev.match.teams.length < 2 || !ev.match.teams[0] || !ev.match.teams[1]) return;
 
                   var m = {
                       id: 'lol_' + ev.match.id,
                       league: formatLeagueName(ev.league.name),
                       flag: lgFlag(ev.league.name),
                       color: lgColor(ev.league.name),
-                      homeTeam: getOfficialTeamName(ev.match.teams[0].name || 'TBD'),
-                      awayTeam: getOfficialTeamName(ev.match.teams[1].name || 'TBD'),
+                      // Pass a third boolean argument to bypass fuzzy matching for LoL
+                      homeTeam: getOfficialTeamName(ev.match.teams[0].name || 'TBD', true),
+                      awayTeam: getOfficialTeamName(ev.match.teams[1].name || 'TBD', true),
                       matchDate: matchDate,
                       homeLogo: ev.match.teams[0].image || null,
                       awayLogo: ev.match.teams[1].image || null,
