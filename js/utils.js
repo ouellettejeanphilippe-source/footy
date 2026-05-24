@@ -75,6 +75,13 @@ export function resolveStreamUrl(url) {
             return;
         }
 
+        // Convert YouTube URLs to embed format
+        var ytMatch = url.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=|live\/)|youtu\.be\/)([^"&?\/\s]{11})/i);
+        if (ytMatch && ytMatch[1]) {
+            resolve('https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=1');
+            return;
+        }
+
         if (url.indexOf('onhockey.tv') >= 0) {
             fetchPage(url).then(function(html) {
                 var doc = new DOMParser().parseFromString(html, 'text/html');
