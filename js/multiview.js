@@ -1406,12 +1406,13 @@ export function addToMultivision(url, name, mid) {
     }
     mvFlux.push({url: url, name: name, mid: mid, cropped: false});
 
-    if (activeMvIdx === null) {
-        activeMvIdx = 0;
-    }
+    // Make the newly added stream the active one (unmuted and focused)
+    activeMvIdx = mvFlux.length - 1;
 
     saveMultivisionState();
     updateMultivisionLayout();
+    applyMvFocusStyling();
+    applyMvAudioState();
 
     // Auto-open multiview if it's the first flux added
     var mvc = document.getElementById('mv-container');
