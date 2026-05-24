@@ -51,7 +51,7 @@ export function addManualStreamLog(matchName, url, logPayload, status) {
 export var favTeams = {};
 export var customLgOrder = [];
 
-var defaultFavs = { "Toronto Blue Jays": 1, "Montreal Canadiens": 1, "CF Montréal": 1, "Toronto Raptors": 1, "Montréal Victoire": 1 };
+var defaultFavs = { "Toronto Blue Jays": 1, "Montreal Canadiens": 1, "CF Montréal": 1, "Toronto Raptors": 1, "Montréal Victoire": 1, "WWE": 1, "F1": 1 };
 favTeams = safeStorageGetJSON('fav_teams');
 if (!favTeams) {
     favTeams = defaultFavs;
@@ -93,7 +93,7 @@ export function toggleFavTeam(teamName) {
       var h = c.getAttribute('data-home');
       var a = c.getAttribute('data-away');
       if (h && a) {
-          if (favTeams[h] || favTeams[a]) {
+          if (favTeams[h] || favTeams[a] || favTeams[c.getAttribute('data-lg')]) {
               c.classList.add('is-fav');
               var starH = c.querySelector('.chan-team:first-child button');
               var starA = c.querySelector('.chan-team:last-child button');

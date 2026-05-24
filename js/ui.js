@@ -252,8 +252,8 @@ export function buildEPG(matches){
 
   var leagues=lgOrder.map(function(k){
     lgMap[k].matches.sort(function(m1,m2){
-        var f1 = (favTeams[m1.homeTeam] || favTeams[m1.awayTeam]) ? -1 : 0;
-        var f2 = (favTeams[m2.homeTeam] || favTeams[m2.awayTeam]) ? -1 : 0;
+        var f1 = (favTeams[m1.homeTeam] || favTeams[m1.awayTeam] || favTeams[m1.league]) ? -1 : 0;
+        var f2 = (favTeams[m2.homeTeam] || favTeams[m2.awayTeam] || favTeams[m2.league]) ? -1 : 0;
         if(f1 !== f2) return f1 - f2;
         var w1 = m1.status==='live'?0:(m1.status==='upcoming'?1:2);
         var w2 = m2.status==='live'?0:(m2.status==='upcoming'?1:2);
@@ -327,7 +327,7 @@ export function buildEPG(matches){
 
               var textSpan = document.createElement('span');
               var prefix = '';
-              if (window.getLeagueIcon && titleStr && titleStr !== "Plus tard aujourd'hui" && titleStr !== "À venir dans l'heure" && titleStr !== "Autres streams") {
+              if (window.getLeagueIcon && titleStr && titleStr !== "Plus tard aujourd'hui" && titleStr !== "À venir dans l'heure" && titleStr !== "Autres streams" && titleStr !== "Favoris aujourd'hui" && titleStr !== "Live") {
                   var icon = window.getLeagueIcon(titleStr);
                   if (icon && icon !== '🏆') {
                       prefix = icon + ' ';
@@ -487,6 +487,7 @@ export function buildEPG(matches){
 
       // Split live and upcoming in 60 mins and later today if filter is live
       if (S.filter === 'live') {
+          var favorisAujourdhui = [];
           var liveNow = [];
           var upNext = [];
           var laterToday = [];
@@ -498,6 +499,10 @@ export function buildEPG(matches){
           var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
           filtered.forEach(function(m) {
+              if (favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]) {
+                  favorisAujourdhui.push(m);
+              }
+
               if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
                   autresFluxMatches.push(m);
                   return;
@@ -522,10 +527,11 @@ export function buildEPG(matches){
                   }
               }
           });
-          if (liveNow.length > 0) renderMatches(liveNow, epgContainer, "");
+          if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, epgContainer, "Favoris aujourd'hui");
+          if (liveNow.length > 0) renderMatches(liveNow, epgContainer, "Live");
           if (upNext.length > 0) renderMatches(upNext, epgContainer, "À venir dans l'heure");
           if (laterToday.length > 0) renderMatches(laterToday, epgContainer, "Plus tard aujourd'hui", true, 'laterToday');
-          if (liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0) {
+          if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0) {
               epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
           }
           if (autresFluxMatches.length > 0) {
@@ -755,7 +761,7 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               b.setAttribute('data-away', m.awayTeam);
               b.setAttribute('data-lg', lg.league);
               if (isLiveOrSoonLoc) b.classList.add('is-live');
-              if (favTeams[m.homeTeam] || favTeams[m.awayTeam]) b.classList.add('is-fav');
+              if (favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]) b.classList.add('is-fav');
 
               var homeTeamName = normName(m.homeTeam) || 'A';
               var awayTeamName = normName(m.awayTeam) || 'B';
