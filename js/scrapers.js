@@ -230,6 +230,97 @@ export function parseF1Ics(txt) {
     return matches;
 }
 
+export function parseIndycarIcs(txt) {
+    var matches = [];
+    try {
+        var lines = txt.split(/\r?\n/);
+        var unfoldedLines = [];
+        for (var j = 0; j < lines.length; j++) {
+            if (lines[j].startsWith(' ') || lines[j].startsWith('\t')) {
+                if (unfoldedLines.length > 0) {
+                    unfoldedLines[unfoldedLines.length - 1] += lines[j].substring(1);
+                }
+            } else {
+                unfoldedLines.push(lines[j]);
+            }
+        }
+
+        var currentEvent = null;
+
+        for (var i = 0; i < unfoldedLines.length; i++) {
+            var line = unfoldedLines[i];
+            if (line === 'BEGIN:VEVENT') {
+                currentEvent = {};
+            } else if (line === 'END:VEVENT') {
+                if (currentEvent && currentEvent.SUMMARY && currentEvent.DTSTART) {
+                    var dtstart = currentEvent.DTSTART;
+                    // Support standard ISO 8601 YYYYMMDDTHHMMSSZ format
+                    var dateObj = new Date(
+                        dtstart.substring(0, 4) + '-' +
+                        dtstart.substring(4, 6) + '-' +
+                        dtstart.substring(6, 8) + 'T' +
+                        dtstart.substring(9, 11) + ':' +
+                        dtstart.substring(11, 13) + ':' +
+                        dtstart.substring(13, 15) + 'Z'
+                    );
+
+                    if (!isNaN(dateObj)) {
+                        var summary = currentEvent.SUMMARY;
+                        // Strip leading emojis and symbols (e.g. 🏎, 🏁, ⏱️)
+                        summary = summary.replace(/^[^a-zA-Z0-9]+/, '').trim();
+
+                        var homeTeam = summary;
+                        var awayTeam = 'Race';
+
+                        // Example parsing: "Practice 1 for the XPEL Grand Prix at Road America" -> "XPEL Grand Prix at Road America", "Practice 1"
+                        var forIndex = summary.toLowerCase().indexOf(' for ');
+                        var atIndex = summary.toLowerCase().indexOf(' at ');
+
+                        if (forIndex !== -1) {
+                            awayTeam = summary.substring(0, forIndex).trim();
+                            homeTeam = summary.substring(forIndex + 5).trim();
+                            // If it says "for the ...", remove "the "
+                            if (homeTeam.toLowerCase().startsWith('the ')) {
+                                homeTeam = homeTeam.substring(4).trim();
+                            }
+                        } else if (atIndex !== -1 && summary.toLowerCase().includes('race ')) {
+                            // Example: "Race 1 at the Milwaukee Mile"
+                            awayTeam = summary.substring(0, atIndex).trim();
+                            homeTeam = summary.substring(atIndex + 4).trim();
+                            if (homeTeam.toLowerCase().startsWith('the ')) {
+                                homeTeam = homeTeam.substring(4).trim();
+                            }
+                        } else {
+                            // If it's just "WeatherTech Raceway Laguna Seca", homeTeam = summary, awayTeam = Race
+                            // This is handled by default
+                        }
+
+                        matches.push({
+                            id: 'indycar_ics_' + homeTeam.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dtstart,
+                            homeTeam: homeTeam,
+                            awayTeam: awayTeam,
+                            date: dateObj.toISOString()
+                        });
+                    }
+                }
+                currentEvent = null;
+            } else if (currentEvent) {
+                var splitIndex = line.indexOf(':');
+                if (splitIndex !== -1) {
+                    var keyRaw = line.substring(0, splitIndex);
+                    var value = line.substring(splitIndex + 1);
+                    var key = keyRaw.split(';')[0];
+                    currentEvent[key] = value.replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\n/g, ' ');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error parsing IndyCar ICS', e);
+        lg('Error parsing IndyCar ICS', e);
+    }
+    return matches;
+}
+
 export function parseWWEEvents(html) {
   var matches = [];
   try {
@@ -1818,6 +1909,7 @@ export function getEstTime(ukTimeStr){
 // Global bindings for HTML compatibility
 window.parseStreameast = parseStreameast;
 window.parseF1Ics = parseF1Ics;
+window.parseIndycarIcs = parseIndycarIcs;
 window.parsePWHLSchedule = parsePWHLSchedule;
 window.parseWWEEvents = parseWWEEvents;
 window.parseSportsurge = parseSportsurge;
