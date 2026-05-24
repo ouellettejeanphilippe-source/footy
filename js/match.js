@@ -117,6 +117,14 @@ export function debugMatchPair(m1, m2) {
       if (isMatch(combo1, combo2) || combo1.includes(combo2) || combo2.includes(combo1)) {
           return { isMatch: true, reason: "Racing/Event direct combo match" };
       }
+
+      // Fallback for racing/events: strip generic terms and check if the base event name matches
+      var clean1 = combo1.replace(/(f1|formula1|grandprix|race|qualifying|practice|sprint|indycar|indy|wwe|mondaynightraw|smackdown|nxt)/g, '').trim();
+      var clean2 = combo2.replace(/(f1|formula1|grandprix|race|qualifying|practice|sprint|indycar|indy|wwe|mondaynightraw|smackdown|nxt)/g, '').trim();
+
+      if (clean1 && clean2 && (clean1.includes(clean2) || clean2.includes(clean1) || isMatch(clean1, clean2))) {
+          return { isMatch: true, reason: "Racing/Event base name match (" + clean1 + " vs " + clean2 + ")" };
+      }
   }
 
   // League strict check if both have leagues defined and aren't generic
