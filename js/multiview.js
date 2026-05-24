@@ -3,7 +3,7 @@ import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs } from './stat
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
-import { sortFluxLinks, getDomain, openGlobalStatsFromMatch } from './config.js';
+import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { loadAll } from './main.js';
 
@@ -431,13 +431,21 @@ export function showFluxSelector(idx, mid, event) {
                 selector.remove();
             };
 
+            var pref = domainPrefs[dom] || 0;
+            var favEv = "toggleDomainPref('" + escJs(dom) + "', 'fav', '" + (m.id ? escJs(m.id) : '') + "'); event.stopPropagation(); event.preventDefault(); showFluxSelector(" + idx + ", '" + escJs(mid) + "');";
+            var depEv = "toggleDomainPref('" + escJs(dom) + "', 'dep', '" + (m.id ? escJs(m.id) : '') + "'); event.stopPropagation(); event.preventDefault(); showFluxSelector(" + idx + ", '" + escJs(mid) + "');";
+
             btn.innerHTML = '<div style="font-size:16px;">' + (s.icon||QI[s.quality]||'📺') + '</div>' +
                             '<div style="flex:1;overflow:hidden;">' +
                             '<div style="font-size:13px;font-weight:bold;color:#fff;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">' + esc(s.name) + '</div>' +
                             '<div style="font-size:11px;color:var(--muted);">' + esc(dom) + '</div>' +
                             '</div>' +
                             (isActive ? '<div style="font-size:9px;background:var(--accent);color:#fff;padding:2px 4px;border-radius:4px;font-weight:bold;margin-right:4px;">ACTIF</div>' : '') +
-                            '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;">' + (s.quality||'SD') + '</span>';
+                            '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;margin-right:8px;">' + (s.quality||'SD') + '</span>' +
+                            '<div style="display:flex; align-items:center; gap:4px;">' +
+                                '<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="' + favEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === 1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">⭐</button>' +
+                                '<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="' + depEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === -1 ? 'var(--red)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === -1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">👎</button>' +
+                            '</div>';
 
             streamsContainer.appendChild(btn);
         });
@@ -1351,6 +1359,20 @@ export function updateMultivisionLayout() {
         controlsHtml += '<button title="Caster (Nouvelle fenêtre)" aria-label="Caster" style="' + btnStyle + '" ' + hoverAttr + ' onclick="window.open(\'' + escJs(s.url) + '\', \'_blank\', \'width=800,height=600\'); document.getElementById(\'' + ddId + '\').style.display=\'none\'; event.stopPropagation();">' + svgCast + ' Caster (Chromecast)</button>';
         controlsHtml += '<button title="Changer de match" aria-label="Changer de match" style="' + btnStyle + '" ' + hoverAttr + ' onclick="showMatchSelector(event, ' + idx + ');event.stopPropagation();">' + svgMatch + ' Changer de match</button>';
         controlsHtml += '<button title="Recharger" aria-label="Recharger" style="' + btnStyle + '" ' + hoverAttr + ' onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; document.getElementById(\'' + ddId + '\').style.display=\'none\'; event.stopPropagation();">' + svgReload + ' Recharger</button>';
+
+        var currentDomain = getDomain(s.url);
+        var currentPref = domainPrefs[currentDomain] || 0;
+        var starColor = currentPref === 1 ? 'var(--accent)' : '#fff';
+        var starIcon = '⭐';
+        var downColor = currentPref === -1 ? 'var(--red)' : '#fff';
+        var downIcon = '👎';
+
+        var favEv = "toggleDomainPref('" + escJs(currentDomain) + "', 'fav', '" + (s.mid ? escJs(s.mid) : '') + "'); document.getElementById('" + ddId + "').style.display='none'; event.stopPropagation(); updateMultivisionLayout();";
+        var depEv = "toggleDomainPref('" + escJs(currentDomain) + "', 'dep', '" + (s.mid ? escJs(s.mid) : '') + "'); document.getElementById('" + ddId + "').style.display='none'; event.stopPropagation(); updateMultivisionLayout();";
+
+        controlsHtml += '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;">';
+        controlsHtml += '<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" style="' + btnStyle + ' color:' + starColor + ';" ' + hoverAttr + ' onclick="' + favEv + '">' + starIcon + ' Prioriser ce domaine</button>';
+        controlsHtml += '<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" style="' + btnStyle + ' color:' + downColor + ';" ' + hoverAttr + ' onclick="' + depEv + '">' + downIcon + ' Déprioriser ce domaine</button>';
 
         controlsHtml += '</div></div>'; // Close dropdown container
 
