@@ -187,6 +187,19 @@
 
         <div style="display:flex; flex-direction:column; gap:24px;">
 
+
+          <!-- Mode TV / Tablette -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">📺 Mode d'affichage</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Activer le mode TV/Tablette (Textes plus gros, navigation à la télécommande)</div>
+              <label class="switch" style="position:relative; display:inline-block; width:40px; height:22px;">
+                <input type="checkbox" id="pref-tv-mode" style="opacity:0; width:0; height:0;" onchange="toggleTvMode(this.checked)">
+                <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
+              </label>
+            </div>
+          </div>
+
           <!-- 1. Thème & Arrière-plan -->
           <!-- 2. Style des Cartes -->
           <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
