@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // Define the scraper URLs directly here for Playwright to avoid pulling in the whole DOM-dependent config
 const SCRAPERS_CONFIG = [
-  { name: 'Footybite', url: 'https://live1.footybite.to' },
+  { name: 'Footybite', url: 'https://footybite.vc/' },
   { name: 'MLBite', url: 'https://nflbite.is/' },
   { name: 'MLBite+', url: 'https://mlbbite.plus' },
   { name: 'Sportsurge', url: 'https://v2.sportsurge.net/home5/' },
