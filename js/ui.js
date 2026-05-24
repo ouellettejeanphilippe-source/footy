@@ -1418,8 +1418,20 @@ export function openMod(m,col){
           refreshBtn.onclick = function() {
               this.style.opacity = '0.5';
               this.disabled = true;
+
+              var rightCol = document.getElementById('modal-right-col');
+              if(rightCol) {
+                  rightCol.innerHTML = rightHeaderHtml + '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted2); gap: 16px;"><div class="spinner"></div><div style="font-weight: 600;">Recherche de streams...</div><div style="font-size: 12px; opacity: 0.6;">(Actualisation en cours)</div></div>';
+                  attachHeaderEvents();
+              }
+
+              m.streamLinks = [];
+              m.streamsLoaded = false;
+
               scrapeMatchFlux(m, true).finally(function() {
-                  openMod(m, col);
+                  if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {
+                      openMod(m, col);
+                  }
               });
           };
       }

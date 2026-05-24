@@ -1892,6 +1892,42 @@ export function updateMatchUiAfterScrape(m) {
             }
 
             targetContainer.innerHTML = headerHtml + linksHtml + fallbackHtml;
+
+            // Re-attach events for the header buttons if they exist
+            var refreshBtn = document.getElementById('mv-refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.onclick = function() {
+                    this.style.opacity = '0.5';
+                    this.disabled = true;
+                    var rightCol = document.getElementById('modal-right-col');
+                    if(rightCol) {
+                        rightCol.innerHTML = headerHtml + '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted2); gap: 16px;"><div class="spinner"></div><div style="font-weight: 600;">Recherche de streams...</div><div style="font-size: 12px; opacity: 0.6;">(Actualisation en cours)</div></div>';
+                    }
+                    m.streamLinks = [];
+                    m.streamsLoaded = false;
+                    scrapeMatchFlux(m, true);
+                };
+            }
+            var randomBtn = document.getElementById('mv-random-btn');
+            if (randomBtn) {
+                randomBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (m && m.streamLinks && m.streamLinks.length > 0) {
+                        var sList = m.streamLinks;
+                        var s4k = sList.filter(function(s) {
+                            return (s.quality && s.quality.toUpperCase() === '4K') || (s.name && s.name.toUpperCase().indexOf('4K') > -1);
+                        });
+                        var sel = s4k.length > 0 ? s4k[0] : sList[Math.floor(Math.random() * sList.length)];
+                        if(typeof window.addToMultivision === 'function') {
+                            window.addToMultivision(sel.url || '#', m.homeTeam + ' vs ' + m.awayTeam, m.id);
+                        }
+                        if(typeof window.closeMod === 'function') {
+                            window.closeMod();
+                        }
+                    }
+                };
+            }
         }
     }
 }
