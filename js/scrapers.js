@@ -1,5 +1,5 @@
 import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, MLBBITE_PLUS_URL, SITE, STREAMONSPORT_URL, TOTALSPORTEK_URL, VIPLEAGUE_URL, sortFluxLinks, resolveUrl } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBITE_URL, MLBBITE_PLUS_URL, SITE, STREAMONSPORT_URL, TOTALSPORTEK_URL, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo } from './match.js';
@@ -968,23 +968,34 @@ export function parseMethstreams(html) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var links = doc.querySelectorAll('a[href]');
     [].forEach.call(links, function(a) {
-        if(a.href && a.href.includes('stream')) {
-            var text = a.textContent.replace(/\s+/g, ' ').trim();
-            var teams = text.split(/ vs | v | - /i);
-            if(teams.length >= 2 && text.length < 100) {
-                var home = teams[0].trim();
-                var away = teams.slice(1).join(' - ').trim();
-                if(home && away) {
-                    var matchUrl = a.getAttribute('href');
+        var href = a.getAttribute('href') || '';
+        // Methstreams often has format /matchName-stream/ or similar
+        if(href && (href.includes('stream') || href.includes('live'))) {
+            var text = a.textContent.replace(/\s+/g, ' ').replace(/[\n\r]/g, '').trim();
+            // Try to split nicely by known separators
+            var teams = text.split(/\s+vs\s+|\s+v\s+|\s+-\s+/i);
+
+            // If the text split worked and the text is not too long (avoiding paragraph text)
+            if(teams.length >= 2 && text.length > 5 && text.length < 80) {
+                var home = teams[0].replace(/stream|live/ig, '').trim();
+                var away = teams.slice(1).join(' ').replace(/stream|live/ig, '').trim();
+
+                if(home && away && home.length > 2 && away.length > 2) {
+                    var matchUrl = href;
                     if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        matchUrl = resolveUrl(matchUrl, 'https://methstreams.com/');
+                        matchUrl = resolveUrl(matchUrl, METHSTREAMS_URL);
                     }
-                    if(matchUrl.startsWith('http')) {
+
+                    if(matchUrl.startsWith('http') && !matches.find(function(m) { return m.matchUrl === matchUrl; })) {
                         matches.push({
                             id: 'meth_' + matches.length,
                             homeTeam: home,
                             awayTeam: away,
                             matchUrl: matchUrl,
+                            startTime: '00:00',
+                            status: 'upcoming',
+                            streamLinks: [],
+                            streamsLoaded: false,
                             source: 'methstreams'
                         });
                     }
