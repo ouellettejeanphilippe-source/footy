@@ -279,6 +279,24 @@
             </div>
           </div>
 
+          <!-- 4. Sauvegarde & Importation -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">💾 Sauvegarde & Importation</div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); flex: 1; min-width: 200px;">
+                Exportez vos préférences (thème, couleurs) et vos favoris pour les sauvegarder ou les transférer sur un autre appareil.
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn" style="padding:8px 16px; font-size:13px;" onclick="window.exportSettings()">Exporter (.json)</button>
+                <label class="btn" style="padding:8px 16px; font-size:13px; cursor:pointer; background:var(--accent); color:#fff;">
+                  Importer
+                  <input type="file" id="import-settings-file" accept=".json" style="display:none;" onchange="window.importSettings(event)">
+                </label>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
