@@ -842,8 +842,16 @@ export function moveMultiviewStream(idx, direction) {
     mvFlux[idx] = mvFlux[targetIdx];
     mvFlux[targetIdx] = temp;
 
+    if (activeMvIdx === idx) {
+        activeMvIdx = targetIdx;
+    } else if (activeMvIdx === targetIdx) {
+        activeMvIdx = idx;
+    }
+
     saveMultivisionState();
     updateMultivisionLayout();
+    applyMvFocusStyling();
+    applyMvAudioState();
 }
 
 /* ══ PERSISTENCE MULTIVISION ═══════════ */
@@ -885,19 +893,9 @@ export var activeMvIdx = null;
 export function focusStream(idx) {
     if (idx < 0 || idx >= mvFlux.length) return;
 
-    // Auto swap if in focus mode and clicking on a non-focus item
-    if (mvLayout === 'focus' && idx !== 0) {
-        var temp = mvFlux[0];
-        mvFlux[0] = mvFlux[idx];
-        mvFlux[idx] = temp;
-        activeMvIdx = 0; // Focus always moves to main slot
-        saveMultivisionState();
-        updateMultivisionLayout();
-    } else {
-        activeMvIdx = idx;
-        applyMvFocusStyling();
-        applyMvAudioState();
-    }
+    activeMvIdx = idx;
+    applyMvFocusStyling();
+    applyMvAudioState();
 
     if (typeof updateMvGameModeStats === 'function') {
         updateMvGameModeStats();
@@ -1273,8 +1271,17 @@ export function updateMultivisionLayout() {
                 mvFlux[fromIdx] = mvFlux[toIdx];
                 mvFlux[toIdx] = temp;
                 window.draggedMvIdx = toIdx; // Update tracked index after swap
+
+                if (activeMvIdx === fromIdx) {
+                    activeMvIdx = toIdx;
+                } else if (activeMvIdx === toIdx) {
+                    activeMvIdx = fromIdx;
+                }
+
                 saveMultivisionState();
                 updateMultivisionLayout();
+                applyMvFocusStyling();
+                applyMvAudioState();
             }
         };
         cell.ondragover = function(e) {
@@ -1397,7 +1404,14 @@ export function addToMultivision(url, name, mid) {
         showToast('Maximum 4 streams en Multivision.');
         return;
     }
-    mvFlux.push({url: url, name: name, mid: mid, cropped: false}); saveMultivisionState(); updateMultivisionLayout();
+    mvFlux.push({url: url, name: name, mid: mid, cropped: false});
+
+    if (activeMvIdx === null) {
+        activeMvIdx = 0;
+    }
+
+    saveMultivisionState();
+    updateMultivisionLayout();
 
     // Auto-open multiview if it's the first flux added
     var mvc = document.getElementById('mv-container');
@@ -1408,11 +1422,23 @@ export function addToMultivision(url, name, mid) {
 }
 
 export function removeFromMultivision(idx) {
-    mvFlux.splice(idx, 1); saveMultivisionState(); updateMultivisionLayout();
+    mvFlux.splice(idx, 1);
+
+    if (activeMvIdx === idx) {
+        activeMvIdx = mvFlux.length > 0 ? 0 : null;
+    } else if (activeMvIdx > idx) {
+        activeMvIdx--;
+    }
+
+    saveMultivisionState();
+    updateMultivisionLayout();
+    applyMvFocusStyling();
+    applyMvAudioState();
     // Do not auto-close multiview when empty, keep the empty state visible
 }
 
 export function clearMultivision() {
+    activeMvIdx = null;
     mvFlux = []; saveMultivisionState(); updateMultivisionLayout();
     // Do not auto-close multiview when clearing all
 }
