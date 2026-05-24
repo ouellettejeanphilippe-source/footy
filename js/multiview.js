@@ -1,5 +1,5 @@
 import { DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
-import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs } from './state.js';
+import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder, saveCustomLgOrder, toggleFavTeam } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
@@ -2639,3 +2639,67 @@ window.openOptionsPage = openOptionsPage;
 window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
 window.installTampermonkey = installTampermonkey;
+
+export function exportSettings() {
+    var settings = {
+        user_prefs: userPrefs,
+        fav_teams: favTeams,
+        custom_lg_order: customLgOrder
+    };
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
+    var downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "multivision_settings.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    showToast("Paramètres exportés !");
+}
+
+export function importSettings(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var imported = JSON.parse(e.target.result);
+
+            if (imported.user_prefs) {
+                Object.assign(userPrefs, imported.user_prefs);
+                safeStorageSetJSON('user_prefs', userPrefs);
+            }
+            if (imported.fav_teams) {
+                // Clear existing properties and assign new ones
+                for (var key in favTeams) {
+                  if (favTeams.hasOwnProperty(key)) {
+                      delete favTeams[key];
+                  }
+                }
+                Object.assign(favTeams, imported.fav_teams);
+                safeStorageSetJSON('fav_teams', favTeams);
+            }
+            if (imported.custom_lg_order) {
+                setCustomLgOrder(imported.custom_lg_order);
+            }
+
+            initPrefs();
+            setTimeout(function() { buildEPG(S.matches); }, 0);
+            showToast("Paramètres importés avec succès !");
+
+            // Re-apply visual preferences if needed
+            if (imported.user_prefs) {
+                applyUserPrefs();
+            }
+
+        } catch (err) {
+            console.error("Erreur d'importation", err);
+            showToast("Erreur: fichier invalide");
+        }
+        event.target.value = ''; // Reset input
+    };
+    reader.readAsText(file);
+}
+
+window.exportSettings = exportSettings;
+window.importSettings = importSettings;
