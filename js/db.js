@@ -255,7 +255,25 @@ export var OTHER_LEAGUES = {
     'BOXING': { icon: '🥊' },
     'DARTS': { icon: '🎯' },
     'SNOOKER': { icon: '🎱' },
-    'CYCLING': { icon: '🚴' }
+    'CYCLING': { icon: '🚴' },
+    'CBLOL': { icon: '🎮' },
+    'LJL': { icon: '🎮' },
+    'PCS': { icon: '🎮' },
+    'VCS': { icon: '🎮' },
+    'LLA': { icon: '🎮' },
+    'TCL': { icon: '🎮' },
+    'LCP': { icon: '🎮' },
+    'NLC': { icon: '🎮' },
+    'PRIME LEAGUE': { icon: '🎮' },
+    'LVP SUPERLIGA': { icon: '🎮' },
+    'LIT': { icon: '🎮' },
+    'ESPORTS BALKAN LEAGUE': { icon: '🎮' },
+    'GREEK LEGENDS LEAGUE': { icon: '🎮' },
+    'ARABIAN LEAGUE': { icon: '🎮' },
+    'NACL': { icon: '🎮' },
+    'CBLOL ACADEMY': { icon: '🎮' },
+    'LCK CHALLENGERS': { icon: '🎮' },
+    'LPL ACADEMY': { icon: '🎮' }
 };
 
 export var LEAGUE_FORMAT_NAMES = {
@@ -393,7 +411,7 @@ if (typeof STATIC_TEAMS !== 'undefined') {
         }
     });
 }
-export function getOfficialTeamName(n) {
+export function getOfficialTeamName(n, bypassFuzzyMatch) {
     if (!n) return n;
 
     // For F1 Grand Prix events, remove the "F1 " prefix so it looks cleaner
@@ -412,6 +430,11 @@ export function getOfficialTeamName(n) {
     var stripped = lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     stripped = stripped.replace(/\b(fc|afc|sc|cf|de|sporting|cd|racing)\b/g, '').trim();
     stripped = stripped.replace(/[^a-z0-9]/g, '');
+
+    // Skip all fuzzy match processing and static map mapping if we explicitly bypass it (e.g., for esports)
+    if (bypassFuzzyMatch) {
+        return n;
+    }
 
     if (typeof STATIC_TEAM_MAP !== 'undefined' && STATIC_TEAM_MAP[stripped]) {
         return STATIC_TEAM_MAP[stripped];
