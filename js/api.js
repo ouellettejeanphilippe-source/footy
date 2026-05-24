@@ -2,7 +2,7 @@ import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
-import { parsePWHLSchedule, parseWWEEvents, parseF1Ics, getStreamCache } from './scrapers.js';
+import { parsePWHLSchedule, parseWWEEvents, parseF1Ics, parseIndycarIcs, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
@@ -36,7 +36,6 @@ export var ESPN_LEAGUES = {
   'mlb': 'baseball/mlb',
   'baseball': 'baseball/mlb',
   'cfl': 'football/cfl',
-  'indycar': 'racing/irl',
   'world baseball classic': 'baseball/world-baseball-classic',
   'fiba world cup': 'basketball/fiba',
   'ncaa men\'s basketball': 'basketball/mens-college-basketball',
@@ -335,6 +334,52 @@ export function getApiFirstMatches(targetDate) {
                   });
               }
           }).catch(function(e) { console.error('Error fetching F1 ICS schedule', e); lg('Error fetching F1 ICS schedule', e); })
+      );
+
+      promises.push(
+          fetchPage('https://ics.ecal.com/ecal-sub/6a130e1f7b50220002db8220/INDYCAR.ics').catch(function() { return ''; }).then(function(icsText) {
+              if (icsText) {
+                  var matches = parseIndycarIcs(icsText);
+                  matches.forEach(function(m) {
+                      m.flag = lgFlag('INDYCAR');
+                      m.color = lgColor('INDYCAR');
+                      m.source = 'api';
+                      m.league = formatLeagueName('INDYCAR');
+
+                      var dateObj = new Date(m.date);
+                      m.matchDate = getEstDateStrFromDate(dateObj);
+                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+
+                      var now = new Date();
+                      var durationMs = 120 * 60 * 1000; // 2 hours default
+
+                      if (now > new Date(dateObj.getTime() + durationMs)) {
+                          m.status = 'finished';
+                      } else if (now >= dateObj) {
+                          m.status = 'live';
+                      } else {
+                          m.status = 'upcoming';
+                      }
+
+                      m.score = null;
+
+                      var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
+
+                      if (m.matchDate === matchDateTarget) {
+                          var existingIdx = baseMatches.findIndex(function(existing) {
+                              return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
+                          });
+
+                          if (existingIdx >= 0) {
+                              baseMatches[existingIdx].status = m.status;
+                              baseMatches[existingIdx].startTime = m.startTime;
+                          } else {
+                              baseMatches.push(m);
+                          }
+                      }
+                  });
+              }
+          }).catch(function(e) { console.error('Error fetching IndyCar ICS schedule', e); lg('Error fetching IndyCar ICS schedule', e); })
       );
 
       promises.push(
