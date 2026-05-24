@@ -2,7 +2,7 @@ import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
-import { parsePWHLSchedule, getStreamCache } from './scrapers.js';
+import { parsePWHLSchedule, parseWWEEvents, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
@@ -76,15 +76,10 @@ export function filterBuggyMatches(matches) {
         var isRaw = lowerHome.includes('raw') || lowerAway.includes('raw');
         var isSmackdown = lowerHome.includes('smackdown') || lowerAway.includes('smackdown');
 
-        if (isWWE) {
-            // WWE Raw happens on Monday (1).
-            // We might allow Tuesday (2) if it's past midnight EST.
-            if (isRaw && dayOfWeek !== 1 && dayOfWeek !== 2) return false;
-
-            // WWE Smackdown happens on Friday (5).
-            // We might allow Saturday (6) if it's past midnight EST.
-            if (isSmackdown && dayOfWeek !== 5 && dayOfWeek !== 6) return false;
-        }
+        // Note: The previous logic aggressively filtered Raw/SmackDown by dayOfWeek,
+        // which caused legitimate WWE streams (now parsed accurately from wwe.com/events)
+        // to vanish. We no longer filter WWE by day of week here to allow the official schedule to dictate visibility.
+        // If other buggy stream matching rules are needed in the future, they should go here.
 
         return true;
     });
@@ -241,6 +236,8 @@ export function getApiFirstMatches(targetDate) {
                       m.flag = lgFlag('PWHL');
                       m.color = lgColor('PWHL');
                       m.source = 'api';
+                      m.league = formatLeagueName('PWHL');
+
 
                       var dateObj = new Date(m.date);
                       m.matchDate = getEstDateStrFromDate(dateObj);
@@ -270,6 +267,69 @@ export function getApiFirstMatches(targetDate) {
                   });
               }
           }).catch(function(e) { console.error('Error fetching PWHL API schedule', e); lg('Error fetching PWHL API schedule', e); })
+      );
+
+      // Synthesize weekly WWE shows that might not be on wwe.com/events, or could disappear when live.
+      var dateObjTarget = new Date(targetDate + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
+      var dayOfWeekTarget = dateObjTarget.getUTCDay();
+
+      var synthesizedWWE = [];
+      if (dayOfWeekTarget === 1) { // Monday
+          synthesizedWWE.push({ id: 'wwe_raw_' + targetDate, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDate, startTime: '20:00' });
+      } else if (dayOfWeekTarget === 2) { // Tuesday
+          synthesizedWWE.push({ id: 'wwe_nxt_' + targetDate, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDate, startTime: '20:00' });
+      } else if (dayOfWeekTarget === 5) { // Friday
+          synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDate, homeTeam: 'WWE', awayTeam: 'Smackdown', matchDate: targetDate, startTime: '20:00' });
+      }
+
+      synthesizedWWE.forEach(function(m) {
+          m.flag = lgFlag('WWE');
+          m.color = lgColor('WWE');
+          m.source = 'api';
+          m.league = formatLeagueName('WWE');
+          m.status = 'upcoming';
+          m.score = null;
+          baseMatches.push(m);
+      });
+
+      promises.push(
+          fetchPage('https://www.wwe.com/events').catch(function() { return ''; }).then(function(html) {
+              if (html) {
+                  var matches = parseWWEEvents(html);
+                  matches.forEach(function(m) {
+                      m.flag = lgFlag('WWE');
+                      m.color = lgColor('WWE');
+                      m.source = 'api';
+                      m.league = formatLeagueName('WWE');
+
+                      var dateObj = new Date(m.date);
+                      m.matchDate = getEstDateStrFromDate(dateObj);
+                      // Since we often don't get time from events page, default to 20:00
+                      // If it's 00:00 (which happens for timezone midnight parsing), set to 20:00
+                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+                      if (m.startTime === '00:00') {
+                          m.startTime = '20:00';
+                      }
+
+                      m.status = 'upcoming';
+                      m.score = null;
+
+                      if (m.matchDate === targetDate) {
+                          var existingIdx = baseMatches.findIndex(function(existing) {
+                              return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
+                          });
+
+                          if (existingIdx >= 0) {
+                              // It might be a synthesized match (like Raw/SmackDown). Update its info if we scraped better data.
+                              baseMatches[existingIdx].status = m.status;
+                              baseMatches[existingIdx].startTime = m.startTime;
+                          } else {
+                              baseMatches.push(m);
+                          }
+                      }
+                  });
+              }
+          }).catch(function(e) { console.error('Error fetching WWE events schedule', e); lg('Error fetching WWE events schedule', e); })
       );
   } else {
       espnPaths.forEach(function(path) {
