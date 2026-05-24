@@ -154,10 +154,21 @@ export function parseF1Ics(txt) {
     var matches = [];
     try {
         var lines = txt.split(/\r?\n/);
+        var unfoldedLines = [];
+        for (var j = 0; j < lines.length; j++) {
+            if (lines[j].startsWith(' ') || lines[j].startsWith('\t')) {
+                if (unfoldedLines.length > 0) {
+                    unfoldedLines[unfoldedLines.length - 1] += lines[j].substring(1);
+                }
+            } else {
+                unfoldedLines.push(lines[j]);
+            }
+        }
+
         var currentEvent = null;
 
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i];
+        for (var i = 0; i < unfoldedLines.length; i++) {
+            var line = unfoldedLines[i];
             if (line === 'BEGIN:VEVENT') {
                 currentEvent = {};
             } else if (line === 'END:VEVENT') {
@@ -175,6 +186,9 @@ export function parseF1Ics(txt) {
 
                     if (!isNaN(dateObj)) {
                         var summary = currentEvent.SUMMARY;
+                        // Strip leading emojis and symbols (e.g. 🏎, 🏁, ⏱️)
+                        summary = summary.replace(/^[^a-zA-Z0-9]+/, '').trim();
+
                         var homeTeam = summary;
                         var awayTeam = 'Race';
 

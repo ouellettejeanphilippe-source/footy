@@ -291,7 +291,7 @@ export function getApiFirstMatches(targetDate) {
       });
 
       promises.push(
-          fetchPage('https://calendar.google.com/calendar/ical/2d18e6600fa752927895f23b0f3f948613a55c062369d07498a5fd388db34017%40group.calendar.google.com/public/basic.ics').catch(function() { return ''; }).then(function(icsText) {
+          fetchPage('https://ics.ecal.com/ecal-sub/6a1306ca7b50220002db8201/Formula%201.ics').catch(function() { return ''; }).then(function(icsText) {
               if (icsText) {
                   var matches = parseF1Ics(icsText);
                   matches.forEach(function(m) {
