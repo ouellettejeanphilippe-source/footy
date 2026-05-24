@@ -186,6 +186,12 @@ export function parseF1Ics(txt) {
 
                     if (!isNaN(dateObj)) {
                         var summary = currentEvent.SUMMARY;
+
+                        if (summary.toLowerCase().includes('in your calendar') || summary.toLowerCase() === 'formula 1') {
+                            currentEvent = null;
+                            continue;
+                        }
+
                         // Strip leading emojis and symbols (e.g. 🏎, 🏁, ⏱️)
                         summary = summary.replace(/^[^a-zA-Z0-9]+/, '').trim();
 
@@ -1097,6 +1103,10 @@ export function parseFootybite(html){
             if (timeM) {
                 startTime = pad(parseInt(timeM[1])) + ':' + timeM[2];
                 startTime = getEstTime(startTime);
+            }
+
+            if(away.toLowerCase() === 'live') {
+                away = '';
             }
 
             var matchUrl = '';
