@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // Define the scraper URLs from config
 const sites = {
-  SITE: 'https://live1.footybite.to',
+  SITE: 'https://footybite.vc/',
   MLBITE_URL: 'https://nflbite.is/',
   MLBBITE_PLUS_URL: 'https://mlbbite.plus',
   SPORTSURGE_URL: 'https://v2.sportsurge.net/home5/',
