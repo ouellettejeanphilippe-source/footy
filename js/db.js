@@ -64,7 +64,10 @@ export function lgFlag(n){
   if(l.indexOf('darts') >= 0) return '🎯';
   if(l.indexOf('snooker') >= 0) return '🎱';
   if(l.indexOf('cycling') >= 0 || l.indexOf('tour de france') >= 0) return '🚴';
-  if (['lcs', 'lec', 'lpl', 'lck', 'msi', 'worlds'].includes(l) || MINOR_ESPORTS.some(function(ml) { return ml.toLowerCase() === l; }) || l.includes('esports') || l.includes('e-sports')) return '🎮';
+
+  var targetLeagues = ['lcs', 'lec', 'lpl', 'lck', 'msi', 'worlds', 'cblol', 'ljl', 'pcs', 'vcs', 'lla', 'tcl', 'lcp', 'nlc', 'prime league', 'lvp superliga', 'lit', 'esports balkan league', 'greek legends league', 'arabian league', 'nacl', 'cblol academy', 'lck challengers', 'lpl academy'];
+  if (targetLeagues.includes(l) || l.includes('esports') || l.includes('e-sports')) return '🎮';
+
   return '⚽';
 }
 
@@ -216,8 +219,6 @@ export var DEFAULT_LEAGUES = {
     'MSI': { icon: '🎮' },
     'WORLDS': { icon: '🎮' }
 };
-
-export var MINOR_ESPORTS = ['CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
 
 export var OTHER_LEAGUES = {
     'SAUDI PRO LEAGUE': { icon: '⚽' },
@@ -524,7 +525,6 @@ window.LEAGUE_ALIASES = LEAGUE_ALIASES;
 window.LEAGUE_FORMAT_NAMES = LEAGUE_FORMAT_NAMES;
 window.DEFAULT_LEAGUES = DEFAULT_LEAGUES;
 window.OTHER_LEAGUES = OTHER_LEAGUES;
-window.MINOR_ESPORTS = MINOR_ESPORTS;
 window.formatLeagueName = formatLeagueName;
 window._normCache = _normCache;
 window.getLogo = getLogo;
