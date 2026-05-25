@@ -1109,8 +1109,8 @@ export function updateMultivisionLayout() {
                 iframe.src = finalUrl;
                 container.appendChild(iframe);
                 cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
-                cell.addEventListener('mouseup', function() { iframe.style.pointerEvents = 'auto'; });
-                cell.addEventListener('mouseleave', function() { iframe.style.pointerEvents = 'auto'; });
+                cell.addEventListener('mouseup', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
+                cell.addEventListener('mouseleave', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
 
                 if (s.cropped) {
                     iframe.style.transform = 'scale(1.15)';
@@ -1262,11 +1262,17 @@ export function updateMultivisionLayout() {
             e.dataTransfer.setData('text/plain', idx.toString());
             window.draggedMvIdx = idx;
             cell.style.opacity = '0.5';
+            document.querySelectorAll('.mv-iframe').forEach(function(iframe) {
+                iframe.style.pointerEvents = 'none';
+            });
         };
         cell.ondragend = function(e) {
             cell.style.opacity = '1';
             cell.draggable = false;
             window.draggedMvIdx = null;
+            document.querySelectorAll('.mv-iframe').forEach(function(iframe) {
+                iframe.style.pointerEvents = 'auto';
+            });
             saveMultivisionState();
             updateMultivisionLayout();
         };
