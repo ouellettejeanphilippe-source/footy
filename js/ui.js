@@ -1011,7 +1011,7 @@ export function updateNowLine() {
 setInterval(updateNowLine, 60000);
 
 export function scrollToNow(){
-    var epgContainer = document.getElementById('epg');
+    var epgContainer = document.getElementById('marea');
     if(!epgContainer || epgContainer.style.display === 'none') return;
 
     var now = new Date();
