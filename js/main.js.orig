@@ -6,7 +6,6 @@ import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
-import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
 import { setMatches } from './state.js';
 
@@ -216,10 +215,8 @@ export function loadAll(isBackground, forceScrape){
               'streamonsport': parseStreamonsport
           };
           var tasks = SCRAPERS_CONFIG.map(function(sc) {
-              return { fn: scraperFunctions[sc.id], url: sc.url, id: sc.id };
+              return { fn: scraperFunctions[sc.id], url: sc.url };
           });
-
-          window.scraperStats = safeStorageGetJSON('scraper_stats') || {};
 
           var p = Promise.resolve();
 
@@ -231,15 +228,6 @@ export function loadAll(isBackground, forceScrape){
                               if (task.setRaw) S.raw = results[idx].value;
                               try {
                                   var m = task.fn(results[idx].value);
-                                  var matchedCount = 0;
-                                  m.forEach(function(scrapedMatch) {
-                                      if (apiMatches.find(function(am) { return isMatchPair(am, scrapedMatch); })) {
-                                          matchedCount++;
-                                      }
-                                  });
-                                  window.scraperStats[task.id] = { total: m.length, matched: matchedCount };
-                                  safeStorageSetJSON('scraper_stats', window.scraperStats);
-
                                   updateSourceStatus(getDomain(task.url), 'success', m.length, 'OK');
                                   scrapedMatches = mergeMatches(scrapedMatches, m);
                               } catch(e) {
