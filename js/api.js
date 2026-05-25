@@ -485,6 +485,44 @@ export function getApiFirstMatches(targetDate) {
                       if (liveEv.type !== 'match') return;
                       var matchId = 'lol_' + liveEv.match.id;
                       var matchObj = baseMatches.find(function(m) { return m.id === matchId; });
+                      if (!matchObj && liveEv.match && liveEv.match.teams && liveEv.match.teams.length >= 2 && liveEv.match.teams[0] && liveEv.match.teams[1]) {
+                          var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds', 'CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
+                          if (liveEv.league && liveEv.league.name && (targetLeagues.includes(liveEv.league.name.toUpperCase()) || targetLeagues.includes(liveEv.league.name))) {
+                              var dateObj = new Date(liveEv.startTime);
+                              var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
+                              var startTime = getEstTimeStrFromDate(dateObj);
+
+                              var status = 'live'; // Since it's in getLive
+
+                              var score = null;
+                              if (liveEv.match.teams[0].result && liveEv.match.teams[1].result) {
+                                  score = [liveEv.match.teams[0].result.gameWins || 0, liveEv.match.teams[1].result.gameWins || 0];
+                              }
+
+                              matchObj = {
+                                  id: matchId,
+                                  league: formatLeagueName(liveEv.league.name),
+                                  flag: lgFlag(liveEv.league.name),
+                                  color: lgColor(liveEv.league.name),
+                                  homeTeam: liveEv.match.teams[0].name || 'TBD',
+                                  awayTeam: liveEv.match.teams[1].name || 'TBD',
+                                  matchDate: matchDateTarget, // Force it to show on target date
+                                  homeLogo: liveEv.match.teams[0].image || null,
+                                  awayLogo: liveEv.match.teams[1].image || null,
+                                  startTime: startTime,
+                                  durationMinutes: getLeagueDuration(liveEv.league.name),
+                                  status: status,
+                                  score: score,
+                                  minute: null,
+                                  streamLinks: [],
+                                  streamsLoaded: false,
+                                  source: 'api',
+                                  isPlayoff: liveEv.blockName && liveEv.blockName.toLowerCase().indexOf('playoff') > -1
+                              };
+                              baseMatches.push(matchObj);
+                          }
+                      }
+
                       if (matchObj && liveEv.streams) {
                           liveEv.streams.forEach(function(stream) {
                               var url = '';
