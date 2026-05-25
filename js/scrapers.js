@@ -2005,6 +2005,7 @@ export function findLeagueHeader(el) {
         }
         var prev = curr.previousElementSibling;
         while (prev) {
+            if (prev.tagName === 'H2') return prev.textContent.trim();
             if (prev.classList && prev.classList.contains('my-1') && prev.querySelector('.img-icone')) {
                 var spanPrev = prev.querySelector('span');
                 if (spanPrev) return spanPrev.textContent.trim();
@@ -2012,6 +2013,13 @@ export function findLeagueHeader(el) {
             if (prev.classList && prev.classList.contains('league-header')) {
                 var text = prev.textContent.replace(/\s+/g, ' ').trim();
                 return text;
+            }
+            if (prev.classList && prev.classList.contains('text-dark-light')) {
+                return prev.textContent.trim();
+            }
+            if (prev.querySelector && prev.querySelector('.text-dark-light')) {
+                var aChild = prev.querySelector('.text-dark-light');
+                if (aChild) return aChild.textContent.trim();
             }
             prev = prev.previousElementSibling;
         }
