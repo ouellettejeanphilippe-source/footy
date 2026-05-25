@@ -1011,8 +1011,9 @@ export function updateNowLine() {
 setInterval(updateNowLine, 60000);
 
 export function scrollToNow(){
-    var epgContainer = document.getElementById('epg');
-    if(!epgContainer || epgContainer.style.display === 'none') return;
+    var epgContainer = document.getElementById('marea');
+    var rootContainer = document.getElementById('epg');
+    if(!rootContainer || rootContainer.style.display === 'none' || !epgContainer) return;
 
     var now = new Date();
     var isToday = (TARGET_DATE.toDateString() === now.toDateString());
@@ -1027,18 +1028,18 @@ export function scrollToNow(){
     var h = parseInt(parts[0], 10);
     var m = parseInt(parts[1], 10);
 
-    var w = epgContainer.clientWidth;
-    var hClient = epgContainer.clientHeight;
+    var viewWidth = epgContainer.clientWidth;
     var chanW = parseFloat(rootStyles.getPropertyValue('--chan-w')) || (window.innerWidth <= 768 ? 100 : 240);
-    var offsetPx = (h * hourPx) + (m * minPx) + chanW; // using chanW as offset for the ruler height/width
+    var offsetPx = (h * hourPx) + (m * minPx);
+    var scrollLeft = offsetPx - ((viewWidth - chanW) / 2);
 
     try {
         epgContainer.scrollTo({
-            left: Math.max(0, offsetPx - chanW),
+            left: Math.max(0, scrollLeft),
             behavior: 'smooth'
         });
     } catch (e) {
-        epgContainer.scrollLeft = Math.max(0, offsetPx - chanW);
+        epgContainer.scrollLeft = Math.max(0, scrollLeft);
     }
 }
 
