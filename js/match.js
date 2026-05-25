@@ -15,6 +15,7 @@ export function mergeMatches(mainList, newList) {
         nm.streamLinks = nm.streamLinks || [];
 
         nm.streamLinks.forEach(function(sl) {
+          if (!sl.source && nm.source) sl.source = nm.source;
           // Avoid exact duplicates
           if(!mm.streamLinks.find(function(existing) { return existing.url === sl.url; })) {
             mm.streamLinks.push(sl);

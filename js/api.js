@@ -539,7 +539,8 @@ export function getApiFirstMatches(targetDate) {
                                       url: url,
                                       res: '1080p',
                                       lang: language,
-                                      type: 'video'
+                                      type: 'video',
+                                      source: 'api'
                                   });
                               }
                           });
@@ -697,6 +698,7 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
             if(!am.streamLinks) am.streamLinks = [];
             if(sm.streamLinks) {
                 sm.streamLinks.forEach(function(sl) {
+                    if(!sl.source && sm.source) sl.source = sm.source;
                     if(!am.streamLinks.find(function(e){ return e.url === sl.url; })) {
                         am.streamLinks.push(sl);
                     }

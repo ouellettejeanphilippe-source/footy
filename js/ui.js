@@ -1478,6 +1478,7 @@ export function openMod(m,col){
           if (!m.streamLinks) m.streamLinks = [];
           if (u.streamLinks) {
               u.streamLinks.forEach(function(sl) {
+                  if (!sl.source && u.source) sl.source = u.source;
                   if (!m.streamLinks.find(function(ex) { return ex.url === sl.url; })) {
                       m.streamLinks.push(sl);
                       didAbsorbNewStream = true;
@@ -1548,19 +1549,29 @@ export function openMod(m,col){
       var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
       var singleTeam = encodeURIComponent(m.homeTeam);
 
-      var storedScraperStats = safeStorageGetJSON('scraper_stats') || window.scraperStats || {};
+      var feedCountsBySource = {};
+      if (m.streamLinks) {
+          m.streamLinks.forEach(function(sl) {
+              if (sl.source) {
+                  feedCountsBySource[sl.source] = (feedCountsBySource[sl.source] || 0) + 1;
+              }
+          });
+      }
+
       SCRAPERS_CONFIG.forEach(function(site) {
-          var stats = storedScraperStats[site.id];
+          var feedCount = feedCountsBySource[site.id] || 0;
           var statHtml = '';
-          if (stats) {
+
+          if (m.streamsLoaded) {
               var statColor = 'var(--muted)';
-              if (stats.matched > 0) {
+              if (feedCount > 0) {
                   statColor = '#34c759';
-              } else if (stats.total > 0 && stats.matched === 0) {
+              } else {
                   statColor = 'var(--red)';
               }
-              statHtml = ' <span style="font-size: 10px; margin-left: 4px; color: '+statColor+';" title="Matchs trouvés sur ce site (globalement)">('+stats.matched+'/'+stats.total+' matchs)</span>';
+              statHtml = ' <span style="font-size: 10px; margin-left: 4px; color: '+statColor+';" title="Flux extraits pour ce match">('+feedCount+' flux)</span>';
           }
+
           contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none; display: inline-flex; align-items: center;">'+site.name+' 🔗' + statHtml + '</a>';
       });
       contentHtml += '</div>';
