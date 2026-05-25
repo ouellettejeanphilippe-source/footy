@@ -505,7 +505,7 @@ export function buildEPG(matches){
                   favorisAujourdhui.push(m);
               }
 
-              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
+              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
                   autresFluxMatches.push(m);
                   return;
               }
@@ -589,7 +589,7 @@ export function buildEPG(matches){
           var mainMatches = [];
           var autresFluxMatches = [];
           filtered.forEach(function(m) {
-              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
+              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
                   autresFluxMatches.push(m);
               } else {
                   mainMatches.push(m);
