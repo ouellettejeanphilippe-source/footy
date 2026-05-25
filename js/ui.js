@@ -1032,9 +1032,12 @@ export function scrollToNow(){
     var chanW = parseFloat(rootStyles.getPropertyValue('--chan-w')) || (window.innerWidth <= 768 ? 100 : 240);
     var offsetPx = (h * hourPx) + (m * minPx) + chanW; // using chanW as offset for the ruler height/width
 
-    if (window.innerWidth <= 768) {
-        epgContainer.scrollTop = Math.max(0, offsetPx - chanW);
-    } else {
+    try {
+        epgContainer.scrollTo({
+            left: Math.max(0, offsetPx - chanW),
+            behavior: 'smooth'
+        });
+    } catch (e) {
         epgContainer.scrollLeft = Math.max(0, offsetPx - chanW);
     }
 }
