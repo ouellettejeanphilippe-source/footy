@@ -485,8 +485,8 @@ export function getApiFirstMatches(targetDate) {
                       if (liveEv.type !== 'match') return;
                       var matchId = 'lol_' + liveEv.match.id;
                       var matchObj = baseMatches.find(function(m) { return m.id === matchId; });
-                      if (matchObj && liveEv.match.streams) {
-                          liveEv.match.streams.forEach(function(stream) {
+                      if (matchObj && liveEv.streams) {
+                          liveEv.streams.forEach(function(stream) {
                               var url = '';
                               if (stream.provider === 'twitch') {
                                   url = 'https://www.twitch.tv/' + stream.parameter;
