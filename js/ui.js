@@ -679,9 +679,10 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
 
     wrapper.appendChild(rulerRow);
 
-    // Now Line element will be appended to the first marea so it spans down
-    var nowLineAdded = false;
-    var nowLineHtml = '<div class="now-line"></div>';
+    // Now Line element will be appended to the wrapper to span all the way down
+    var nowLineHtml = document.createElement('div');
+    nowLineHtml.className = 'now-line';
+    wrapper.appendChild(nowLineHtml);
 
     leaguesToRender.forEach(function(lg){
       if(!lg || lg.matches.length === 0) return;
@@ -709,11 +710,6 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
       lHdrRow.appendChild(lHdrCell);
       lHdrRow.appendChild(lHdrMarea);
       wrapper.appendChild(lHdrRow);
-
-      if(!nowLineAdded) {
-          lHdrMarea.innerHTML += nowLineHtml;
-          nowLineAdded = true;
-      }
 
       if(!isCollapsed) {
           lg.matches.forEach(function(m){
@@ -1015,7 +1011,7 @@ export function updateNowLine() {
 setInterval(updateNowLine, 60000);
 
 export function scrollToNow(){
-    var epgContainer = document.getElementById('epg');
+    var epgContainer = document.getElementById('marea');
     if(!epgContainer || epgContainer.style.display === 'none') return;
 
     var now = new Date();
