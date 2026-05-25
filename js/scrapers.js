@@ -1859,7 +1859,23 @@ export function scrapeMatchFlux(m, forceRefresh){
     var existingLinks = m.streamLinks || [];
     var combinedLinks = existingLinks.slice();
 
+    var targetSource = m.source;
+    if (!targetSource && m.matchUrl) {
+        if (m.matchUrl.indexOf('footybite') > -1) targetSource = 'footybite';
+        else if (m.matchUrl.indexOf('nflbite') > -1) targetSource = 'nflbite';
+        else if (m.matchUrl.indexOf('mlbbite') > -1) targetSource = 'mlbbite';
+        else if (m.matchUrl.indexOf('sportsurge') > -1) targetSource = 'sportsurge';
+        else if (m.matchUrl.indexOf('buffstreams') > -1) targetSource = 'buffstreams';
+        else if (m.matchUrl.indexOf('streameast') > -1) targetSource = 'streameast';
+        else if (m.matchUrl.indexOf('onhockey') > -1) targetSource = 'onhockey';
+        else if (m.matchUrl.indexOf('vipleague') > -1) targetSource = 'vipleague';
+        else if (m.matchUrl.indexOf('methstreams') > -1) targetSource = 'methstreams';
+        else if (m.matchUrl.indexOf('totalsportek') > -1) targetSource = 'totalsportek';
+        else if (m.matchUrl.indexOf('streamonsport') > -1) targetSource = 'streamonsport';
+    }
+
     links.forEach(function(newLink) {
+        if (!newLink.source && targetSource) newLink.source = targetSource;
         var isDuplicate = combinedLinks.some(function(existingLink) {
             return existingLink.url === newLink.url;
         });
