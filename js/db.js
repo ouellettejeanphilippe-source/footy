@@ -64,6 +64,10 @@ export function lgFlag(n){
   if(l.indexOf('darts') >= 0) return '🎯';
   if(l.indexOf('snooker') >= 0) return '🎱';
   if(l.indexOf('cycling') >= 0 || l.indexOf('tour de france') >= 0) return '🚴';
+
+  var targetLeagues = ['lcs', 'lec', 'lpl', 'lck', 'msi', 'worlds', 'cblol', 'ljl', 'pcs', 'vcs', 'lla', 'tcl', 'lcp', 'nlc', 'prime league', 'lvp superliga', 'lit', 'esports balkan league', 'greek legends league', 'arabian league', 'nacl', 'cblol academy', 'lck challengers', 'lpl academy'];
+  if (targetLeagues.includes(l) || l.includes('esports') || l.includes('e-sports')) return '🎮';
+
   return '⚽';
 }
 
