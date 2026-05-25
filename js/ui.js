@@ -1547,8 +1547,20 @@ export function openMod(m,col){
       var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
       var singleTeam = encodeURIComponent(m.homeTeam);
 
+      var storedScraperStats = safeStorageGetJSON('scraper_stats') || window.scraperStats || {};
       SCRAPERS_CONFIG.forEach(function(site) {
-          contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none;">'+site.name+' 🔗</a>';
+          var stats = storedScraperStats[site.id];
+          var statHtml = '';
+          if (stats) {
+              var statColor = 'var(--muted)';
+              if (stats.matched > 0) {
+                  statColor = '#34c759';
+              } else if (stats.total > 0 && stats.matched === 0) {
+                  statColor = 'var(--red)';
+              }
+              statHtml = ' <span style="font-size: 10px; margin-left: 4px; color: '+statColor+';">('+stats.matched+'/'+stats.total+')</span>';
+          }
+          contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none; display: inline-flex; align-items: center;">'+site.name+' 🔗' + statHtml + '</a>';
       });
       contentHtml += '</div>';
 
