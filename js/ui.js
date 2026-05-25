@@ -6,7 +6,7 @@ import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from '.
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
-import { DEFAULT_LEAGUES, OTHER_LEAGUES, lgFlag } from './db.js';
+import { DEFAULT_LEAGUES, OTHER_LEAGUES, MINOR_ESPORTS, lgFlag } from './db.js';
 
 /* ══ DIAGNOSTIC SCRAPE ══════════════════ */
 export function diagnosticScrape(matchId, url) {
@@ -505,7 +505,7 @@ export function buildEPG(matches){
                   favorisAujourdhui.push(m);
               }
 
-              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
+              if ((!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || MINOR_ESPORTS.includes((m.league||'').toUpperCase())) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
                   autresFluxMatches.push(m);
                   return;
               }
@@ -589,7 +589,7 @@ export function buildEPG(matches){
           var mainMatches = [];
           var autresFluxMatches = [];
           filtered.forEach(function(m) {
-              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
+              if ((!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || MINOR_ESPORTS.includes((m.league||'').toUpperCase())) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
                   autresFluxMatches.push(m);
               } else {
                   mainMatches.push(m);
@@ -878,7 +878,7 @@ var autresLeagues = [];
 
 leagues.forEach(function(lg) {
     if (!lg) return;
-    if (!DEFAULT_LEAGUES[(lg.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(lg.league||'').toUpperCase()]) && lg.league !== 'FAVORIS' && lg.league !== 'EN DIRECT') {
+    if (MINOR_ESPORTS.includes((lg.league||'').toUpperCase()) || (!DEFAULT_LEAGUES[(lg.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(lg.league||'').toUpperCase()]) && lg.league !== 'FAVORIS' && lg.league !== 'EN DIRECT')) {
         autresLeagues.push(lg);
     } else {
         mainLeagues.push(lg);
@@ -1011,7 +1011,7 @@ export function updateNowLine() {
 setInterval(updateNowLine, 60000);
 
 export function scrollToNow(){
-    var epgContainer = document.getElementById('epg');
+    var epgContainer = document.getElementById('marea');
     if(!epgContainer || epgContainer.style.display === 'none') return;
 
     var now = new Date();

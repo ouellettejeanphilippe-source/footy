@@ -1,6 +1,6 @@
 import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
+import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, MINOR_ESPORTS } from './db.js';
 import { isMatch, isMatchPair } from './match.js';
 import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
@@ -419,9 +419,10 @@ export function getApiFirstMatches(targetDate) {
                   if (ev.type !== 'match') return;
                   if (!ev.match) return;
 
-                  var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds', 'CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
+                  var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds'].concat(MINOR_ESPORTS);
                   if (!ev.league || !ev.league.name) return;
-                  if (!targetLeagues.includes(ev.league.name.toUpperCase()) && !targetLeagues.includes(ev.league.name)) return;
+                  var isTarget = targetLeagues.some(function(l) { return l.toUpperCase() === ev.league.name.toUpperCase(); });
+                  if (!isTarget) return;
 
                   var dateObj = new Date(ev.startTime);
                   var matchDate = getEstDateStrFromDate(dateObj);
