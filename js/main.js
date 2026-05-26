@@ -29,74 +29,83 @@ export function stepOk(n) {
 }
 
 export function updateLiveScores(matches) {
-    matches.forEach(function(m) {
-        // Update main card, live copy, and fav copy
-        var cardIds = ['mb-' + m.id, 'mb-' + m.id + '_live_copy', 'mb-' + m.id + '_fav_copy'];
+    var i = 0;
+    function processChunk() {
+        var chunkEnd = Math.min(i + 20, matches.length);
+        for (; i < chunkEnd; i++) {
+            var m = matches[i];
+            // Update main card, live copy, and fav copy
+            var cardIds = ['mb-' + m.id, 'mb-' + m.id + '_live_copy', 'mb-' + m.id + '_fav_copy'];
 
-        cardIds.forEach(function(cid) {
-            var cached = matchCardCache.get(cid);
-            if (!cached) {
-                var card = document.getElementById(cid);
-                if (card) {
-                    cached = {
-                        el: card,
-                        minEl: card.querySelector('.status-minute'),
-                        scoreEls: card.querySelectorAll('.prime-score')
-                    };
-                    matchCardCache.set(cid, cached);
+            cardIds.forEach(function(cid) {
+                var cached = matchCardCache.get(cid);
+                if (!cached) {
+                    var card = document.getElementById(cid);
+                    if (card) {
+                        cached = {
+                            el: card,
+                            minEl: card.querySelector('.status-minute'),
+                            scoreEls: card.querySelectorAll('.prime-score')
+                        };
+                        matchCardCache.set(cid, cached);
+                    }
                 }
-            }
 
-            if (cached) {
-                var card = cached.el;
-                var minEl = cached.minEl;
-                // Update time/status
-                if (minEl) {
-                    if (m.status === 'live') {
-                        minEl.textContent = m.minute || 'LIVE';
-                        var ind = card.querySelector('.live-indicator');
-                        if (!ind) {
-                            minEl.parentElement.className = 'live-indicator status-text';
-                            minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">'+esc(m.minute||'LIVE')+'</span>';
-                            // Re-cache minEl because innerHTML replacement
-                            cached.minEl = card.querySelector('.status-minute');
-                        } else {
-                            var ld = ind.querySelector('.mb-ld');
-                            if (ld) {
-                                ld.classList.add('refreshing');
-                                setTimeout(function() {
-                                    if(ld) ld.classList.remove('refreshing');
-                                }, 2000);
+                if (cached) {
+                    var card = cached.el;
+                    var minEl = cached.minEl;
+                    // Update time/status
+                    if (minEl) {
+                        if (m.status === 'live') {
+                            minEl.textContent = m.minute || 'LIVE';
+                            var ind = card.querySelector('.live-indicator');
+                            if (!ind) {
+                                minEl.parentElement.className = 'live-indicator status-text';
+                                minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">'+esc(m.minute||'LIVE')+'</span>';
+                                // Re-cache minEl because innerHTML replacement
+                                cached.minEl = card.querySelector('.status-minute');
+                            } else {
+                                var ld = ind.querySelector('.mb-ld');
+                                if (ld) {
+                                    ld.classList.add('refreshing');
+                                    setTimeout(function() {
+                                        if(ld) ld.classList.remove('refreshing');
+                                    }, 2000);
+                                }
                             }
+                            card.classList.add('live');
+                            card.classList.remove('finished');
+                        } else if (m.status === 'finished') {
+                            minEl.textContent = m.score ? 'Fin' : m.startTime;
+                            minEl.parentElement.className = 'status-text';
+                            var ld = minEl.parentElement.querySelector('.mb-ld');
+                            if (ld) ld.remove();
+                            card.classList.remove('live');
+                            card.classList.add('finished');
+                        } else {
+                            minEl.textContent = m.startTime || '';
                         }
-                        card.classList.add('live');
-                        card.classList.remove('finished');
-                    } else if (m.status === 'finished') {
-                        minEl.textContent = m.score ? 'Fin' : m.startTime;
-                        minEl.parentElement.className = 'status-text';
-                        var ld = minEl.parentElement.querySelector('.mb-ld');
-                        if (ld) ld.remove();
-                        card.classList.remove('live');
-                        card.classList.add('finished');
-                    } else {
-                        minEl.textContent = m.startTime || '';
                     }
-                }
 
-                // Update scores
-                var scoreEls = cached.scoreEls;
-                if (scoreEls && scoreEls.length === 2) {
-                    if (m.score && m.score.length === 2) {
-                        scoreEls[0].textContent = m.score[0];
-                        scoreEls[1].textContent = m.score[1];
-                    } else {
-                        scoreEls[0].textContent = '';
-                        scoreEls[1].textContent = '';
+                    // Update scores
+                    var scoreEls = cached.scoreEls;
+                    if (scoreEls && scoreEls.length === 2) {
+                        if (m.score && m.score.length === 2) {
+                            scoreEls[0].textContent = m.score[0];
+                            scoreEls[1].textContent = m.score[1];
+                        } else {
+                            scoreEls[0].textContent = '';
+                            scoreEls[1].textContent = '';
+                        }
                     }
                 }
-            }
-        });
-    });
+            });
+        }
+        if (i < matches.length) {
+            requestAnimationFrame(processChunk);
+        }
+    }
+    processChunk();
 }
 
 export function loadAll(isBackground, forceScrape){
