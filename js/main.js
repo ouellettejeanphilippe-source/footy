@@ -31,7 +31,7 @@ export function stepOk(n) {
 export function updateLiveScores(matches) {
     var i = 0;
     function processChunk() {
-        var chunkEnd = Math.min(i + 20, matches.length);
+        var chunkEnd = Math.min(i + 5, matches.length);
         for (; i < chunkEnd; i++) {
             var m = matches[i];
             // Update main card, live copy, and fav copy
@@ -313,12 +313,12 @@ export function loadAll(isBackground, forceScrape){
                   // Process UI updates asynchronously in chunks to prevent blocking the UI thread
                   var i = 0;
                   function processChunk() {
-                      var chunkEnd = Math.min(i + 20, S.matches.length);
+                      var chunkEnd = Math.min(i + 5, S.matches.length);
                       for (; i < chunkEnd; i++) {
                           updateMatchUiAfterScrape(S.matches[i]);
                       }
                       if (i < S.matches.length) {
-                          setTimeout(processChunk, 0);
+                          requestAnimationFrame(processChunk);
                       } else {
 
             // Only fetch sub pages for main leagues by default at startup
