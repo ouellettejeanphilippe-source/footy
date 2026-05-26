@@ -705,7 +705,7 @@ export function renderFavPage() {
             var chevTransform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
 
             tHtml += '<div class="lg-header" data-target="'+lgId+'" style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--muted); text-transform:uppercase; display:flex; align-items:center; cursor:pointer;" onclick="toggleFavPageAccordion(\''+escJs(lg)+'\')">';
-            tHtml += '<svg id="chev-'+lgId+'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; transition:transform 0.2s; transform:'+chevTransform+';"><path d="M6 9l6 6 6-6"/></svg>';
+            tHtml += '<svg id="chev-'+lgId+'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; transition:transform 0.15s; transform:'+chevTransform+';"><path d="M6 9l6 6 6-6"/></svg>';
             tHtml += esc(lg);
             tHtml += '</div>';
 

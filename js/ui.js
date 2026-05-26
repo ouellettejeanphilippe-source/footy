@@ -1067,15 +1067,15 @@ export function renderFluxItem(s, i, m) {
     var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
     var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
 
-    return '<div class="si" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.2s; margin-bottom: 12px; padding-right:8px;">'
+    return '<div class="si" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.15s; margin-bottom: 12px; padding-right:8px;">'
       +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
       +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
       +'<div class="si-inf" style="flex:1; overflow:hidden;"><div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+'</div></div>'
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
       +'<div style="display:flex; align-items:center; padding:8px; gap:2px; margin-left:auto;">'
-        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">⭐</button>'
-        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">👎</button>'
+        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>'
+        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>'
         +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="width:28px; height:28px; border-radius:8px; background:rgba(255,255,255,0.05); border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center; margin-left:4px;">⊞</button>'
       +'</div>'
       +'</div>';
@@ -1172,7 +1172,7 @@ export function openMod(m,col){
                   espnBtn.href = esc(res.espnLink);
                   espnBtn.target = '_blank';
                   espnBtn.innerHTML = '📰 Stats complètes sur ESPN';
-                  espnBtn.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:6px; color:var(--text); text-decoration:none; background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s;';
+                  espnBtn.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:6px; color:var(--text); text-decoration:none; background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; border:1px solid rgba(255,255,255,0.1); transition:all 0.15s;';
                   espnBtn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.1)'; };
                   espnBtn.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.05)'; };
                   espnBtnContainer.appendChild(espnBtn);
@@ -1197,7 +1197,7 @@ export function openMod(m,col){
                               if (globalStatsToggleContainer) {
                                   var toggleBtn = document.createElement('button');
                                   toggleBtn.innerHTML = '📊 Voir les statistiques de la saison';
-                                  toggleBtn.style.cssText = 'display:flex; width:100%; align-items:center; justify-content:center; gap:6px; color:var(--text); background:transparent; border:none; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; opacity:0.8; transition:all 0.2s;';
+                                  toggleBtn.style.cssText = 'display:flex; width:100%; align-items:center; justify-content:center; gap:6px; color:var(--text); background:transparent; border:none; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; opacity:0.8; transition:all 0.15s;';
                                   toggleBtn.onmouseover = function() { this.style.opacity = '1'; };
                                   toggleBtn.onmouseout = function() { this.style.opacity = '0.8'; };
 
@@ -1406,10 +1406,10 @@ export function openMod(m,col){
   var rightHeaderHtml = '<div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;">';
 
   // Refresh button
-  rightHeaderHtml += '<button id="mv-refresh-btn" title="Mettre à jour les streams" style="background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.2s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'" ' + (!m.matchUrl ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : '') + '>🔄</button>';
+  rightHeaderHtml += '<button id="mv-refresh-btn" title="Mettre à jour les streams" style="background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'" ' + (!m.matchUrl ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : '') + '>🔄</button>';
 
   // Random Multiview button
-  rightHeaderHtml += '<button id="mv-random-btn" title="Ajouter un stream aléatoire à la Multivision" style="background:transparent; border:none; color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.2s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'">⊞</button>';
+  rightHeaderHtml += '<button id="mv-random-btn" title="Ajouter un stream aléatoire à la Multivision" style="background:transparent; border:none; color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'">⊞</button>';
 
   rightHeaderHtml += '</div>';
 
