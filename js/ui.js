@@ -1033,7 +1033,7 @@ export function scrollToNow(){
     var viewWidth = epgContainer.clientWidth;
     var chanW = parseFloat(rootStyles.getPropertyValue('--chan-w')) || (window.innerWidth <= 768 ? 100 : 240);
     var offsetPx = (h * hourPx) + (m * minPx);
-    var scrollLeft = offsetPx - ((viewWidth - chanW) / 2);
+    var scrollLeft = offsetPx - 40;
 
     try {
         epgContainer.scrollTo({
