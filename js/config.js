@@ -754,10 +754,22 @@ export function sortFluxLinks(links) {
     var urlA = (a.url || '').toLowerCase();
     var urlB = (b.url || '').toLowerCase();
 
-    var is4kA = (qualA === '4k' || nameA.includes('4k')) ? 1 : 0;
-    var is4kB = (qualB === '4k' || nameB.includes('4k')) ? 1 : 0;
-    if (is4kA !== is4kB) {
-      return is4kB - is4kA;
+    function getQualityScore(qualStr, nameStr) {
+      var str = (qualStr + ' ' + nameStr).toLowerCase();
+      var bitrateMatch = str.match(/(\d+)\s*(kbps|kbs|kb\/s)/);
+      if (bitrateMatch) {
+          return 1000000 + parseInt(bitrateMatch[1], 10);
+      }
+      if (str.includes('4k')) return 100000;
+      if (str.includes('1080p') || str.includes('1080')) return 10000;
+      if (str.includes('720p') || str.includes('720') || str.includes('hd')) return 1000;
+      return 0; // SD or unknown
+    }
+
+    var scoreA = getQualityScore(qualA, nameA);
+    var scoreB = getQualityScore(qualB, nameB);
+    if (scoreA !== scoreB) {
+        return scoreB - scoreA;
     }
 
     var isBuffA = (urlA.includes('buffstreams') || nameA.includes('buffstream')) ? 1 : 0;
