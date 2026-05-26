@@ -628,7 +628,7 @@ export function toggleMultiviewPip() {
             if(sf) sf.style.display = 'flex';
         } else {
             // On tablet/desktop, show column
-            mvc.style.cssText = 'position:fixed;right:20px;bottom:20px;width:350px;max-height:500px;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);z-index:999;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.8);border-radius:12px;overflow:hidden;';
+            mvc.style.cssText = 'position:fixed;right:0;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';bottom:0;width:350px;background:var(--bg, rgba(10,10,12,0.95));backdrop-filter:blur(10px);z-index:999;display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);box-shadow:-5px 0 30px rgba(0,0,0,0.5);overflow:hidden;resize:horizontal;direction:rtl;min-width:250px;max-width:60vw;';
             epg.style.display = 'flex';
             epg.style.paddingRight = '0';
             var sf = document.getElementById('sport-filters-container');
@@ -654,7 +654,7 @@ window.addEventListener('resize', function() {
             if(epg) epg.style.paddingRight = '0';
         } else {
             mvc.style.display = 'flex';
-            if(epg) epg.style.paddingRight = '350px';
+            if(epg) epg.style.paddingRight = mvc.offsetWidth + 'px';
         }
     }
 
@@ -679,7 +679,7 @@ export function setupMultivisionUI() {
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
-    mvToolbar.style.cssText = 'position:relative;min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;';
+    mvToolbar.style.cssText = 'position:relative;min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;direction:ltr;';
     var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="nav-btn" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
@@ -704,7 +704,7 @@ export function setupMultivisionUI() {
 
     var mvGridWrapper = document.createElement('div');
     mvGridWrapper.id = 'mv-grid-wrapper';
-    mvGridWrapper.style.cssText = 'display:flex; flex:1; width:100%; overflow:hidden; background:transparent;';
+    mvGridWrapper.style.cssText = 'display:flex; flex:1; width:100%; overflow:hidden; background:transparent;direction:ltr;';
 
     var mvGrid = document.createElement('div');
     mvGrid.id = 'mv-grid';
@@ -759,7 +759,19 @@ export function setupMultivisionUI() {
     mvContainer.appendChild(mvToolbar);
     mvContainer.appendChild(mvGridWrapper);
     mvContainer.appendChild(exitTheaterBtn);
-    document.body.appendChild(mvContainer); restoreMultivisionState();
+    document.body.appendChild(mvContainer);
+
+    // Dynamically adjust epg padding when PiP sidebar is resized
+    if (window.ResizeObserver) {
+        new ResizeObserver(function(entries) {
+            var mvc = document.getElementById('mv-container');
+            if (mvc && mvc.classList.contains('mv-pip') && mvc.style.display !== 'none' && window.innerWidth > 768) {
+                var epg = document.getElementById('epg');
+                if (epg) epg.style.paddingRight = mvc.offsetWidth + 'px';
+            }
+        }).observe(mvContainer);
+    }
+ restoreMultivisionState();
 
     if (window.ResizeObserver) {
         var ro = new ResizeObserver(function(entries) {
