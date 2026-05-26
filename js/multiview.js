@@ -34,7 +34,7 @@ export function toggleMvGameMode() {
         if (!document.getElementById('mv-stats-sidebar')) {
             var statsSidebar = document.createElement('div');
             statsSidebar.id = 'mv-stats-sidebar';
-            statsSidebar.style.cssText = 'width: 350px; background: rgba(20, 20, 20, 0.95); border-left: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: width 0.3s;';
+            statsSidebar.style.cssText = 'width: 350px; background: rgba(20, 20, 20, 0.95); border-left: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: width 0.15s;';
 
             var headerHtml = '<div style="display:flex; border-bottom:1px solid rgba(255,255,255,0.1); padding:0;">' +
                              '<button id="gm-tab-stats" class="gm-tab active" onclick="switchGmTab(\'stats\')" style="flex:1; background:none; border:none; color:#fff; padding:15px 0; cursor:pointer; font-weight:bold; border-bottom: 2px solid var(--accent);">Stats du Match</button>' +
@@ -169,7 +169,7 @@ export function updateGmScoresTab() {
         html += '<div style="font-size:11px; color:' + statusColor + '; margin-top:4px; text-align:right;">' + timeStr + '</div>';
         html += '</div>'; // End flex:1
 
-        html += '<button onclick="toggleGmPinMatch(\'' + m.id + '\', event)" style="background:none; border:none; cursor:pointer; font-size:16px; color:' + pinColor + '; padding:5px; transition:transform 0.2s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'none\'" title="Épingler le match">' + pinIcon + '</button>';
+        html += '<button onclick="toggleGmPinMatch(\'' + m.id + '\', event)" style="background:none; border:none; cursor:pointer; font-size:16px; color:' + pinColor + '; padding:5px; transition:transform 0.15s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'none\'" title="Épingler le match">' + pinIcon + '</button>';
 
         html += '</div>'; // End card
     });
@@ -226,7 +226,7 @@ export function updateMvGameModeStats() {
                 var scoreStr = pm.score ? (esc(pm.score[0]) + ' - ' + esc(pm.score[1])) : 'À venir';
                 var timeStr = (pm.status === 'live' && pm.minute) ? esc(pm.minute) + "'" : esc(pm.startTime);
                 var statusColor = pm.status === 'live' ? 'var(--accent)' : 'var(--muted)';
-                pinnedHtml += '<div onclick="openPinnedStats(\'' + pm.id + '\')" style="background:rgba(255,255,255,0.05); border-radius:8px; padding:10px; cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">';
+                pinnedHtml += '<div onclick="openPinnedStats(\'' + pm.id + '\')" style="background:rgba(255,255,255,0.05); border-radius:8px; padding:10px; cursor:pointer; transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">';
                 pinnedHtml += '<div style="font-size:11px; color:var(--muted); margin-bottom:4px;">' + esc(pm.flag) + ' ' + esc(pm.league) + '</div>';
                 pinnedHtml += '<div style="display:flex; justify-content:space-between; align-items:center;">';
                 pinnedHtml += '<div style="font-size:13px; font-weight:bold; color:#fff;">' + esc(pm.homeTeam) + ' - ' + esc(pm.awayTeam) + '</div>';
@@ -416,7 +416,7 @@ export function showFluxSelector(idx, mid, event) {
             var isActive = mvFlux[idx].url === s.url;
 
             var btn = document.createElement('div');
-            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.15s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
 
             btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
             btn.onmouseleave = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.05)'; };
@@ -443,8 +443,8 @@ export function showFluxSelector(idx, mid, event) {
                             (isActive ? '<div style="font-size:9px;background:var(--accent);color:#fff;padding:2px 4px;border-radius:4px;font-weight:bold;margin-right:4px;">ACTIF</div>' : '') +
                             '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;margin-right:8px;">' + (s.quality||'SD') + '</span>' +
                             '<div style="display:flex; align-items:center; gap:4px;">' +
-                                '<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="' + favEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === 1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">⭐</button>' +
-                                '<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="' + depEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === -1 ? 'var(--red)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === -1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">👎</button>' +
+                                '<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="' + favEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === 1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>' +
+                                '<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="' + depEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === -1 ? 'var(--red)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === -1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>' +
                             '</div>';
 
             streamsContainer.appendChild(btn);
@@ -488,7 +488,7 @@ export function showFluxSelector(idx, mid, event) {
             var alreadyIn = mvFlux.some(function(ms) { return String(ms.mid) === String(sm.id); });
 
             var btn = document.createElement('div');
-            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.15s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
 
             btn.onmouseenter = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.1)'; };
             btn.onmouseleave = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.05)'; };
@@ -679,7 +679,7 @@ export function setupMultivisionUI() {
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
-    mvToolbar.style.cssText = 'position:relative;min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.3s; flex-wrap:wrap;direction:ltr;';
+    mvToolbar.style.cssText = 'position:relative;min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.15s; flex-wrap:wrap;direction:ltr;';
     var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="nav-btn" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
@@ -715,7 +715,7 @@ export function setupMultivisionUI() {
     var exitTheaterBtn = document.createElement('button');
     exitTheaterBtn.id = 'mv-exit-theater';
     exitTheaterBtn.innerHTML = 'Quitter le Plein Onglet';
-    exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.3s;';
+    exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.15s;';
 
 
     window.addEventListener('message', function(e) {
@@ -1214,7 +1214,7 @@ export function updateMultivisionLayout() {
                 container.innerHTML = '';
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
-                iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.2s;';
+                iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;';
                 iframe.setAttribute('allowfullscreen', 'true');
                 iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
                 iframe.src = finalUrl;
@@ -1452,12 +1452,12 @@ export function updateMultivisionLayout() {
         // Dropdown Toggle
         var ddId = 'mv-dd-' + idx;
         controlsHtml += '<div style="position:relative;">';
-        controlsHtml += '<button title="Menu" aria-label="Menu" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="var d = document.getElementById(\'' + ddId + '\'); d.style.display = d.style.display === \'block\' ? \'none\' : \'block\'; event.stopPropagation();">' + svgMenu + '</button>';
+        controlsHtml += '<button title="Menu" aria-label="Menu" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="var d = document.getElementById(\'' + ddId + '\'); d.style.display = d.style.display === \'block\' ? \'none\' : \'block\'; event.stopPropagation();">' + svgMenu + '</button>';
 
         // Dropdown Menu
         controlsHtml += '<div id="' + ddId + '" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:rgba(20,20,20,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px;min-width:160px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.5);">';
 
-        var btnStyle = 'background:transparent;color:#fff;border:none;border-radius:4px;width:100%;text-align:left;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background 0.2s;';
+        var btnStyle = 'background:transparent;color:#fff;border:none;border-radius:4px;width:100%;text-align:left;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background 0.15s;';
         var hoverAttr = ' onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" ';
 
         if (idx > 0) {
@@ -1495,7 +1495,7 @@ export function updateMultivisionLayout() {
         controlsHtml += '</div></div>'; // Close dropdown container
 
         // Close Button
-        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.5);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(220,53,69,0.8)\'" onmouseout="this.style.background=\'rgba(220,53,69,0.5)\'" onclick="removeFromMultivision(' + idx + ')">' + svgClose + '</button>';
+        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.5);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(220,53,69,0.8)\'" onmouseout="this.style.background=\'rgba(220,53,69,0.5)\'" onclick="removeFromMultivision(' + idx + ')">' + svgClose + '</button>';
 
         controlsHtml += '</div>';
 
@@ -1684,7 +1684,7 @@ export function toggleFullscreen(elem) {
             closeFsBtn = document.createElement('button');
             closeFsBtn.id = 'mv-close-fs';
             closeFsBtn.innerHTML = '<span class="ic ic-close" style="background-color: currentColor; display: inline-block; width: 24px; height: 24px;"></span>';
-            closeFsBtn.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99999; background:rgba(255,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(5px); box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.3s;';
+            closeFsBtn.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99999; background:rgba(255,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(5px); box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.15s;';
             closeFsBtn.onclick = function() { toggleFullscreen(); };
             elem.appendChild(closeFsBtn);
 
