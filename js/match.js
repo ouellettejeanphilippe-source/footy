@@ -3,7 +3,8 @@ import { TEAM_DATA } from './teams.js';
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
 export function mergeMatches(mainList, newList) {
-  newList.forEach(function(nm) {
+  for(var k=0; k<newList.length; k++) {
+    var nm = newList[k];
     var merged = false;
 
     for (var i = 0; i < mainList.length; i++) {
@@ -14,13 +15,16 @@ export function mergeMatches(mainList, newList) {
         mm.streamLinks = mm.streamLinks || [];
         nm.streamLinks = nm.streamLinks || [];
 
-        nm.streamLinks.forEach(function(sl) {
+        for(var l=0; l<nm.streamLinks.length; l++) {
+          var sl = nm.streamLinks[l];
           if (!sl.source && nm.source) sl.source = nm.source;
           // Avoid exact duplicates
-          if(!mm.streamLinks.find(function(existing) { return existing.url === sl.url; })) {
+          var found = false;
+          for(var j=0; j<mm.streamLinks.length; j++) { if(mm.streamLinks[j].url === sl.url) { found = true; break; } }
+          if(!found) {
             mm.streamLinks.push(sl);
           }
-        });
+        }
 
         // Update logos if the new source has them and we don't
         if(!mm.homeLogo && nm.homeLogo && nm.homeLogo.indexOf('default') === -1) {
@@ -48,7 +52,7 @@ export function mergeMatches(mainList, newList) {
       nm.id = mainList.length;
       mainList.push(nm);
     }
-  });
+  }
 
   return mainList;
 }
