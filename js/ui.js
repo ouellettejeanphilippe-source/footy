@@ -264,6 +264,7 @@ export function buildEPG(matches){
   });
 
   var epgContainer = document.getElementById('marea');
+  var fragment = document.createDocumentFragment();
   matchCardCache.clear();
   epgContainer.style.cssText = '';
   epgContainer.style.display = 'flex';
@@ -277,10 +278,10 @@ export function buildEPG(matches){
   var errBoxElement = document.getElementById('errbox');
   epgContainer.innerHTML = '';
   if (ovElement) {
-      epgContainer.appendChild(ovElement);
+      fragment.appendChild(ovElement);
   }
   if (errBoxElement) {
-      epgContainer.appendChild(errBoxElement);
+      fragment.appendChild(errBoxElement);
   }
 
   if (S.filter === 'live' || S.filter === 'upcoming') {
@@ -529,10 +530,10 @@ export function buildEPG(matches){
                   }
               }
           });
-          if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, epgContainer, "Favoris aujourd'hui");
-          if (liveNow.length > 0) renderMatches(liveNow, epgContainer, "Live");
-          if (upNext.length > 0) renderMatches(upNext, epgContainer, "À venir dans l'heure");
-          if (laterToday.length > 0) renderMatches(laterToday, epgContainer, "Plus tard aujourd'hui", true, 'laterToday');
+          if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, fragment, "Favoris aujourd'hui");
+          if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live");
+          if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure");
+          if (laterToday.length > 0) renderMatches(laterToday, fragment, "Plus tard aujourd'hui", true, 'laterToday');
           if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0) {
               epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
           }
@@ -542,7 +543,7 @@ export function buildEPG(matches){
               }
 
                             // Render the parent "Autres streams" category
-              var autresContainer = renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+              var autresContainer = renderMatches(autresFluxMatches, fragment, "Autres streams", true, 'autresStreams');
 
               // If the user has expanded "Autres streams", group and display the specific leagues inside it
               if (autresContainer) {
@@ -595,14 +596,14 @@ export function buildEPG(matches){
                   mainMatches.push(m);
               }
           });
-          renderMatches(mainMatches, epgContainer, "");
+          renderMatches(mainMatches, fragment, "");
           if (autresFluxMatches.length > 0) {
               if (S.collapsedSections['autresStreams'] === undefined) {
                   S.collapsedSections['autresStreams'] = true;
               }
 
                             // Render the parent "Autres streams" category
-              var autresContainer = renderMatches(autresFluxMatches, epgContainer, "Autres streams", true, 'autresStreams');
+              var autresContainer = renderMatches(autresFluxMatches, fragment, "Autres streams", true, 'autresStreams');
 
               // If the user has expanded "Autres streams", group and display the specific leagues inside it
               if (autresContainer) {
@@ -885,7 +886,7 @@ leagues.forEach(function(lg) {
     }
 });
 
-renderTimelineGuide(mainLeagues, epgContainer);
+renderTimelineGuide(mainLeagues, fragment);
 
 if (autresLeagues.length > 0) {
     var sectionId = 'autresStreamsEpg';
@@ -909,11 +910,11 @@ if (autresLeagues.length > 0) {
     var textSpan = document.createElement('span');
     textSpan.textContent = "Autres streams";
     autresSecTitle.appendChild(textSpan);
-    epgContainer.appendChild(autresSecTitle);
+    fragment.appendChild(autresSecTitle);
 
     var autresWrapperContainer = document.createElement('div');
     autresWrapperContainer.style.display = isCollapsed ? 'none' : 'block';
-    epgContainer.appendChild(autresWrapperContainer);
+    fragment.appendChild(autresWrapperContainer);
 
     var autresRendered = false;
 
@@ -967,6 +968,8 @@ if (autresLeagues.length > 0) {
   });
 
 
+
+  epgContainer.appendChild(fragment);
 
   updateNowLine();
 }

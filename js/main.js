@@ -31,8 +31,8 @@ export function stepOk(n) {
 export function updateLiveScores(matches) {
     var i = 0;
     function processChunk() {
-        var chunkEnd = Math.min(i + 5, matches.length);
-        for (; i < chunkEnd; i++) {
+        var start = performance.now();
+        for (; i < matches.length && performance.now() - start < 15; i++) {
             var m = matches[i];
             // Update main card, live copy, and fav copy
             var cardIds = ['mb-' + m.id, 'mb-' + m.id + '_live_copy', 'mb-' + m.id + '_fav_copy'];
@@ -313,8 +313,8 @@ export function loadAll(isBackground, forceScrape){
                   // Process UI updates asynchronously in chunks to prevent blocking the UI thread
                   var i = 0;
                   function processChunk() {
-                      var chunkEnd = Math.min(i + 5, S.matches.length);
-                      for (; i < chunkEnd; i++) {
+                      var start = performance.now();
+                      for (; i < S.matches.length && performance.now() - start < 15; i++) {
                           updateMatchUiAfterScrape(S.matches[i]);
                       }
                       if (i < S.matches.length) {
