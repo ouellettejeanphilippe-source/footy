@@ -761,6 +761,35 @@ export function setupMultivisionUI() {
     mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer); restoreMultivisionState();
 
+
+    if (!window._mvKeydownAttached) {
+        window.addEventListener('keydown', function(e) {
+            var mvc = document.getElementById('mv-container');
+            if (!mvc || mvc.style.display === 'none') return;
+
+            var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            if (activeTag === 'input' || activeTag === 'textarea') return;
+
+            var key = e.key;
+            if (['1', '2', '3', '4'].includes(key)) {
+                var targetIdx = parseInt(key) - 1;
+                if (targetIdx >= 0 && targetIdx < mvFlux.length) {
+                    if (targetIdx === 0) {
+                        focusStream(0);
+                    } else {
+                        var item = mvFlux.splice(targetIdx, 1)[0];
+                        mvFlux.unshift(item);
+
+                        saveMultivisionState();
+                        updateMultivisionLayout();
+                        focusStream(0);
+                    }
+                }
+            }
+        });
+        window._mvKeydownAttached = true;
+    }
+
     if (window.ResizeObserver) {
         var ro = new ResizeObserver(function(entries) {
             for (var entry of entries) {
@@ -1323,6 +1352,7 @@ export function updateMultivisionLayout() {
 
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
             '<div class="mv-drag-handle" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" title="Déplacer">' + svgDrag + '</div>' +
+            '<div class="mv-stream-number" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: bold; font-size: 14px; color: #fff;" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' +
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);position:relative;">';
