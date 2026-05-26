@@ -6,6 +6,19 @@ import { getTeamInfo } from './match.js';
 import { S, addScrapeLog, favTeams, matchCardCache } from './state.js';
 import { renderFluxItem } from './ui.js';
 
+
+export function extractQuality(text) {
+    if (!text) return 'SD';
+    text = String(text).toLowerCase();
+    var bitrateMatch = text.match(/(\d+)\s*(kbps|kbs|kb\/s)/i);
+    if (bitrateMatch) return bitrateMatch[1] + ' Kbps';
+    if (text.indexOf('4k') >= 0) return '4K';
+    if (text.indexOf('1080') >= 0) return '1080p';
+    if (text.indexOf('720') >= 0) return '720p';
+    if (text.indexOf('hd') >= 0) return 'HD';
+    return 'SD';
+}
+
 /* ══ PARSE STREAMEAST ════════════════ */
 export function parseStreameast(html){
   var matches=[];
@@ -43,7 +56,7 @@ export function parseStreameast(html){
 
           var streamLinks = [{
               name: 'Streameast - Flux',
-              quality: 'HD',
+              quality: extractQuality(playerLink) === 'SD' ? 'HD' : extractQuality(playerLink),
               lang: 'MULTI',
               url: playerLink,
               icon: '📺'
@@ -132,7 +145,7 @@ export function parseStreameast(html){
                       startTime: '00:00',
                       durationMinutes: getLeagueDuration('Sports'),
                       status: 'upcoming',
-                      streamLinks: [{ name: 'Streameast - Flux', quality: 'HD', lang: 'MULTI', url: streamUrl2, icon: '📺' }],
+                      streamLinks: [{ name: 'Streameast - Flux', quality: extractQuality(href), lang: 'MULTI', url: streamUrl2, icon: '📺' }],
                       streamsLoaded: false,
                       matchUrl: streamUrl2,
                       source: 'streameast'
@@ -1614,7 +1627,7 @@ export function scrapeMatchFlux(m, forceRefresh){
                             var langStr = (s.language || '').toLowerCase();
                             links.push({
                                 name: 'Server ' + serverIndex + ' - ' + (s.name || 'Flux'),
-                                quality: (s.quality && s.quality.toUpperCase() === 'HD') ? 'HD' : 'SD',
+                                quality: extractQuality((s.name || '') + ' ' + (s.quality || '')),
                                 lang: langStr.includes('english') ? 'EN' : (langStr || 'MULTI').toUpperCase(),
                                 url: s.link,
                                 icon: '📺',
@@ -1734,9 +1747,7 @@ export function scrapeMatchFlux(m, forceRefresh){
             if (isPartnerSite) return;
 
             var rowText = row.textContent.toLowerCase();
-            var qual = 'SD';
-            if(rowText.indexOf('hd') >= 0 || rowText.indexOf('1080') >= 0 || rowText.indexOf('720') >= 0) qual = 'HD';
-            if(rowText.indexOf('4k') >= 0) qual = '4K';
+            var qual = extractQuality(rowText);
 
             links.push({
                 name: name,
@@ -1810,7 +1821,7 @@ export function scrapeMatchFlux(m, forceRefresh){
 
               links.push({
                  name:name,
-                 quality:'HD',
+                 quality: extractQuality((btn.parentElement ? btn.parentElement.textContent : btn.textContent) + ' ' + url),
                  lang:'MULTI',
                  url:url,
                  scrapeContext: { blockText: btn.parentElement ? btn.parentElement.textContent || '' : btn.textContent || '', pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
