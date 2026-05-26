@@ -43,12 +43,18 @@ export function updateLiveScores(matches) {
                     var card = document.getElementById(cid);
                     if (card) {
                         cached = {
-                            el: card,
-                            minEl: card.querySelector('.status-minute'),
-                            scoreEls: card.querySelectorAll('.prime-score')
+                            el: card
                         };
                         matchCardCache.set(cid, cached);
                     }
+                }
+
+                if (cached && cached.el && !cached.hasMainQueries) {
+                    cached.minEl = cached.el.querySelector('.status-minute');
+                    cached.scoreEls = cached.el.querySelectorAll('.prime-score');
+                    cached.ind = cached.el.querySelector('.live-indicator');
+                    cached.ld = cached.el.querySelector('.mb-ld');
+                    cached.hasMainQueries = true;
                 }
 
                 if (cached) {
@@ -58,18 +64,19 @@ export function updateLiveScores(matches) {
                     if (minEl) {
                         if (m.status === 'live') {
                             minEl.textContent = m.minute || 'LIVE';
-                            var ind = card.querySelector('.live-indicator');
-                            if (!ind) {
+                            if (!cached.ind) {
                                 minEl.parentElement.className = 'live-indicator status-text';
                                 minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">'+esc(m.minute||'LIVE')+'</span>';
                                 // Re-cache minEl because innerHTML replacement
                                 cached.minEl = card.querySelector('.status-minute');
+                                cached.ind = card.querySelector('.live-indicator');
+                                cached.ld = card.querySelector('.mb-ld');
                             } else {
-                                var ld = ind.querySelector('.mb-ld');
-                                if (ld) {
-                                    ld.classList.add('refreshing');
+                                if (cached.ld) {
+                                    cached.ld.classList.add('refreshing');
+                                    var ldRef = cached.ld;
                                     setTimeout(function() {
-                                        if(ld) ld.classList.remove('refreshing');
+                                        if(ldRef) ldRef.classList.remove('refreshing');
                                     }, 2000);
                                 }
                             }
@@ -78,8 +85,8 @@ export function updateLiveScores(matches) {
                         } else if (m.status === 'finished') {
                             minEl.textContent = m.score ? 'Fin' : m.startTime;
                             minEl.parentElement.className = 'status-text';
-                            var ld = minEl.parentElement.querySelector('.mb-ld');
-                            if (ld) ld.remove();
+                            if (cached.ld) { cached.ld.remove(); cached.ld = null; }
+                            if (cached.ind) { cached.ind = null; }
                             card.classList.remove('live');
                             card.classList.add('finished');
                         } else {
