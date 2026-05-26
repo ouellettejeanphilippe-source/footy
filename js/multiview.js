@@ -785,6 +785,25 @@ export function setupMultivisionUI() {
                         focusStream(0);
                     }
                 }
+            } else if (['5', '6', '7', '8'].includes(key)) {
+                var targetIdx = parseInt(key) - 5;
+                if (targetIdx > 0 && targetIdx < mvFlux.length) {
+                    // Moving item to front without changing active stream focus
+                    var item = mvFlux.splice(targetIdx, 1)[0];
+                    mvFlux.unshift(item);
+
+                    // Adjust activeMvIdx to keep focus on the same stream
+                    if (activeMvIdx === targetIdx) {
+                        activeMvIdx = 0; // The active stream was moved to front
+                    } else if (activeMvIdx !== null && activeMvIdx < targetIdx) {
+                        activeMvIdx++; // The active stream was shifted right
+                    }
+
+                    saveMultivisionState();
+                    updateMultivisionLayout();
+                    applyMvFocusStyling();
+                    applyMvAudioState();
+                }
             }
         });
         window._mvKeydownAttached = true;
