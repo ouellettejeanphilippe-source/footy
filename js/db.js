@@ -38,7 +38,7 @@ export var LGC = {
 export var FLAGS = {
   'england':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','france':'🇫🇷','spain':'🇪🇸','germany':'🇩🇪','italy':'🇮🇹',
   'netherlands':'🇳🇱','portugal':'🇵🇹','turkey':'🇹🇷','usa':'🇺🇸','brazil':'🇧🇷',
-  'argentina':'🇦🇷','europe':'🌍','world':'🌐','scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','belgium':'🇧🇪',
+  'argentina':'🇦🇷','europe':'🌍','world':'🌐','scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','belgium':'🇧🇪'
 };
 export function lgColor(n){
   var l=(n||'').toLowerCase();
@@ -259,25 +259,7 @@ export var OTHER_LEAGUES = {
     'BOXING': { icon: '🥊' },
     'DARTS': { icon: '🎯' },
     'SNOOKER': { icon: '🎱' },
-    'CYCLING': { icon: '🚴' },
-    'CBLOL': { icon: '🎮' },
-    'LJL': { icon: '🎮' },
-    'PCS': { icon: '🎮' },
-    'VCS': { icon: '🎮' },
-    'LLA': { icon: '🎮' },
-    'TCL': { icon: '🎮' },
-    'LCP': { icon: '🎮' },
-    'NLC': { icon: '🎮' },
-    'PRIME LEAGUE': { icon: '🎮' },
-    'LVP SUPERLIGA': { icon: '🎮' },
-    'LIT': { icon: '🎮' },
-    'ESPORTS BALKAN LEAGUE': { icon: '🎮' },
-    'GREEK LEGENDS LEAGUE': { icon: '🎮' },
-    'ARABIAN LEAGUE': { icon: '🎮' },
-    'NACL': { icon: '🎮' },
-    'CBLOL ACADEMY': { icon: '🎮' },
-    'LCK CHALLENGERS': { icon: '🎮' },
-    'LPL ACADEMY': { icon: '🎮' }
+    'CYCLING': { icon: '🚴' }
 };
 
 export var LEAGUE_FORMAT_NAMES = {
