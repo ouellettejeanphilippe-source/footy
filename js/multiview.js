@@ -821,6 +821,54 @@ export function setupMultivisionUI() {
         window._mvKeydownAttached = true;
     }
 
+
+    if (!window._mvKeydownAttached) {
+        window.addEventListener('keydown', function(e) {
+            var mvc = document.getElementById('mv-container');
+            if (!mvc || mvc.style.display === 'none') return;
+
+            var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            if (activeTag === 'input' || activeTag === 'textarea') return;
+
+            var key = e.key;
+            if (['1', '2', '3', '4'].includes(key)) {
+                var targetIdx = parseInt(key) - 1;
+                if (targetIdx >= 0 && targetIdx < mvFlux.length) {
+                    if (targetIdx === 0) {
+                        focusStream(0);
+                    } else {
+                        var item = mvFlux.splice(targetIdx, 1)[0];
+                        mvFlux.unshift(item);
+
+                        saveMultivisionState();
+                        updateMultivisionLayout();
+                        focusStream(0);
+                    }
+                }
+            } else if (['5', '6', '7', '8'].includes(key)) {
+                var targetIdx = parseInt(key) - 5;
+                if (targetIdx > 0 && targetIdx < mvFlux.length) {
+                    // Moving item to front without changing active stream focus
+                    var item = mvFlux.splice(targetIdx, 1)[0];
+                    mvFlux.unshift(item);
+
+                    // Adjust activeMvIdx to keep focus on the same stream
+                    if (activeMvIdx === targetIdx) {
+                        activeMvIdx = 0; // The active stream was moved to front
+                    } else if (activeMvIdx !== null && activeMvIdx < targetIdx) {
+                        activeMvIdx++; // The active stream was shifted right
+                    }
+
+                    saveMultivisionState();
+                    updateMultivisionLayout();
+                    applyMvFocusStyling();
+                    applyMvAudioState();
+                }
+            }
+        });
+        window._mvKeydownAttached = true;
+    }
+
     if (window.ResizeObserver) {
         var ro = new ResizeObserver(function(entries) {
             for (var entry of entries) {
