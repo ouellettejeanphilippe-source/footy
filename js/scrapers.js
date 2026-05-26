@@ -3,7 +3,7 @@ import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, ge
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo } from './match.js';
-import { S, addScrapeLog, favTeams } from './state.js';
+import { S, addScrapeLog, favTeams, matchCardCache } from './state.js';
 import { renderFluxItem } from './ui.js';
 
 /* ══ PARSE STREAMEAST ════════════════ */
@@ -1905,111 +1905,138 @@ export function scrapeMatchFlux(m, forceRefresh){
 
 export function updateMatchUiAfterScrape(m) {
     // Refresh UI for this specific match if needed
-    var mbs = [document.getElementById('mb-'+m.id), document.getElementById('mb-'+m.id+'_live_copy')];
-    mbs.forEach(function(mb) {
-        if(mb){
-            var sn=m.streamLinks ? m.streamLinks.length : 0;
-            var snEl=mb.querySelector('.mb-sn');
-            if(snEl){
-                snEl.textContent=sn+' flux'+(sn>1?'s':'');
-            }else if(sn>0){
-                var mbM=mb.querySelector('.mb-m');
-                if(mbM){
-                    var span=document.createElement('span');
-                    span.className='mb-sn';
-                    span.textContent=sn+' flux'+(sn>1?'s':'');
-                    mbM.appendChild(span);
+    var i = 0;
+    function processChunk() {
+        var start = performance.now();
+        // We only process one match in this function, but use RAF for async layout handling
+        for (; i < 1 && performance.now() - start < 15; i++) {
+            var cids = ['mb-'+m.id, 'mb-'+m.id+'_live_copy', 'mb-'+m.id+'_fav_copy'];
+            cids.forEach(function(cid) {
+                var cached = matchCardCache.get(cid);
+                if (!cached) {
+                    var card = document.getElementById(cid);
+                    if (card) {
+                        cached = { el: card };
+                        matchCardCache.set(cid, cached);
+                    }
                 }
-            }
 
-            var primeSnEl=mb.querySelector('.prime-stream-count');
-            if(primeSnEl){
-                primeSnEl.textContent=sn+' flux';
-            }else if(sn>0){
-                var primeThumb=mb.querySelector('.prime-thumbnail');
-                if(primeThumb){
-                    var div=document.createElement('div');
-                    div.className='prime-stream-count';
-                    div.textContent=sn+' flux';
-                    primeThumb.appendChild(div);
+                if (cached && cached.el) {
+                    var mb = cached.el;
+                    var sn = m.streamLinks ? m.streamLinks.length : 0;
+
+                    if (!cached.snEl && sn > 0) {
+                        cached.snEl = mb.querySelector('.mb-sn');
+                        if (!cached.snEl) {
+                            var mbM = mb.querySelector('.mb-m');
+                            if (mbM) {
+                                cached.snEl = document.createElement('span');
+                                cached.snEl.className = 'mb-sn';
+                                mbM.appendChild(cached.snEl);
+                            }
+                        }
+                    }
+                    if (cached.snEl) {
+                        cached.snEl.textContent = sn + ' flux' + (sn > 1 ? 's' : '');
+                    }
+
+                    if (!cached.primeSnEl && sn > 0) {
+                        cached.primeSnEl = mb.querySelector('.prime-stream-count');
+                        if (!cached.primeSnEl) {
+                            var primeThumb = mb.querySelector('.prime-thumbnail');
+                            if (primeThumb) {
+                                cached.primeSnEl = document.createElement('div');
+                                cached.primeSnEl.className = 'prime-stream-count';
+                                primeThumb.appendChild(cached.primeSnEl);
+                            }
+                        }
+                    }
+                    if (cached.primeSnEl) {
+                        cached.primeSnEl.textContent = sn + ' flux';
+                    }
                 }
-            }
+            });
         }
-    });
+        if (i < 1) {
+            requestAnimationFrame(processChunk);
+        } else {
+            // We keep updateMatchModalAfterScrape logic here
+            var mnameEl=document.getElementById('mname');
+            if(document.getElementById('mbg').classList.contains('open') && mnameEl && mnameEl.textContent.indexOf(m.homeTeam) >= 0){
+                var targetContainer = document.getElementById('modal-right-col') || document.getElementById('mbody');
+                if(targetContainer) {
+                    // Check if we already have the rightHeaderHtml structure from openMod to preserve it
+                    var headerHtml = '';
+                    var existingHeader = targetContainer.querySelector('div[style*="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;"]');
+                    if (existingHeader) {
+                        headerHtml = existingHeader.outerHTML;
+                    }
 
-    // Si la modale est ouverte pour CE match, on la met à jour
-    var mnameEl=document.getElementById('mname');
-    if(document.getElementById('mbg').classList.contains('open') && mnameEl && mnameEl.textContent.indexOf(m.homeTeam) >= 0){
-        var targetContainer = document.getElementById('modal-right-col') || document.getElementById('mbody');
-        if(targetContainer) {
-            // Check if we already have the rightHeaderHtml structure from openMod to preserve it
-            var headerHtml = '';
-            var existingHeader = targetContainer.querySelector('div[style*="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;"]');
-            if (existingHeader) {
-                headerHtml = existingHeader.outerHTML;
-            }
+                    var linksHtml = '';
+                    if(!m.streamLinks || m.streamLinks.length===0){
+                        linksHtml='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
+                    } else {
+                        var sortedLinks = sortFluxLinks(m.streamLinks);
+                        linksHtml=sortedLinks.map(function(s,idx){
+                            return renderFluxItem(s, idx, m);
+                        }).join('');
+                    }
 
-            var linksHtml = '';
-            if(!m.streamLinks || m.streamLinks.length===0){
-                linksHtml='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
-            } else {
-                var sortedLinks = sortFluxLinks(m.streamLinks);
-                linksHtml=sortedLinks.map(function(s,i){
-                    return renderFluxItem(s, i, m);
-                }).join('');
-            }
+                    // Preserve the manual links fallback section at the bottom if it exists
+                    var fallbackHtml = '';
+                    var detailsArr = targetContainer.querySelectorAll('details');
+                    for(var d=0; d<detailsArr.length; d++) {
+                        var sum = detailsArr[d].querySelector('summary');
+                        if(sum && sum.textContent.indexOf('Fallback') > -1) {
+                            fallbackHtml = '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">' + detailsArr[d].outerHTML + '</div>';
+                            break;
+                        }
+                    }
 
-            // Preserve the manual links fallback section at the bottom if it exists
-            var fallbackHtml = '';
-            var detailsArr = targetContainer.querySelectorAll('details');
-            for(var d=0; d<detailsArr.length; d++) {
-                var sum = detailsArr[d].querySelector('summary');
-                if(sum && sum.textContent.indexOf('Fallback') > -1) {
-                    fallbackHtml = '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">' + detailsArr[d].outerHTML + '</div>';
-                    break;
+                    targetContainer.innerHTML = headerHtml + linksHtml + fallbackHtml;
+
+                    // Re-attach events for the header buttons if they exist
+                    var refreshBtn = document.getElementById('mv-refresh-btn');
+                    if (refreshBtn) {
+                        refreshBtn.onclick = function() {
+                            this.style.opacity = '0.5';
+                            this.disabled = true;
+                            var rightCol = document.getElementById('modal-right-col');
+                            if(rightCol) {
+                                rightCol.innerHTML = headerHtml + '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted2); gap: 16px;"><div class="spinner"></div><div style="font-weight: 600;">Recherche de streams...</div><div style="font-size: 12px; opacity: 0.6;">(Actualisation en cours)</div></div>';
+                            }
+                            m.streamLinks = [];
+                            m.streamsLoaded = false;
+                            scrapeMatchFlux(m, true);
+                        };
+                    }
+                    var randomBtn = document.getElementById('mv-random-btn');
+                    if (randomBtn) {
+                        randomBtn.onclick = function(e) {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            if (m && m.streamLinks && m.streamLinks.length > 0) {
+                                var sList = m.streamLinks;
+                                var s4k = sList.filter(function(s) {
+                                    return (s.quality && s.quality.toUpperCase() === '4K') || (s.name && s.name.toUpperCase().indexOf('4K') > -1);
+                                });
+                                var sel = s4k.length > 0 ? s4k[0] : sList[Math.floor(Math.random() * sList.length)];
+                                if(typeof window.addToMultivision === 'function') {
+                                    window.addToMultivision(sel.url || '#', m.homeTeam + ' vs ' + m.awayTeam, m.id);
+                                }
+                                if(typeof window.closeMod === 'function') {
+                                    window.closeMod();
+                                }
+                            }
+                        };
+                    }
                 }
-            }
-
-            targetContainer.innerHTML = headerHtml + linksHtml + fallbackHtml;
-
-            // Re-attach events for the header buttons if they exist
-            var refreshBtn = document.getElementById('mv-refresh-btn');
-            if (refreshBtn) {
-                refreshBtn.onclick = function() {
-                    this.style.opacity = '0.5';
-                    this.disabled = true;
-                    var rightCol = document.getElementById('modal-right-col');
-                    if(rightCol) {
-                        rightCol.innerHTML = headerHtml + '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted2); gap: 16px;"><div class="spinner"></div><div style="font-weight: 600;">Recherche de streams...</div><div style="font-size: 12px; opacity: 0.6;">(Actualisation en cours)</div></div>';
-                    }
-                    m.streamLinks = [];
-                    m.streamsLoaded = false;
-                    scrapeMatchFlux(m, true);
-                };
-            }
-            var randomBtn = document.getElementById('mv-random-btn');
-            if (randomBtn) {
-                randomBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (m && m.streamLinks && m.streamLinks.length > 0) {
-                        var sList = m.streamLinks;
-                        var s4k = sList.filter(function(s) {
-                            return (s.quality && s.quality.toUpperCase() === '4K') || (s.name && s.name.toUpperCase().indexOf('4K') > -1);
-                        });
-                        var sel = s4k.length > 0 ? s4k[0] : sList[Math.floor(Math.random() * sList.length)];
-                        if(typeof window.addToMultivision === 'function') {
-                            window.addToMultivision(sel.url || '#', m.homeTeam + ' vs ' + m.awayTeam, m.id);
-                        }
-                        if(typeof window.closeMod === 'function') {
-                            window.closeMod();
-                        }
-                    }
-                };
             }
         }
     }
+    processChunk();
 }
+
 
 /* Remonte les siblings/parents pour trouver le header de ligue */
 export function findLeagueHeader(el) {
