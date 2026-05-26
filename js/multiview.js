@@ -1173,7 +1173,7 @@ export function updateMultivisionLayout() {
             cell.setAttribute('data-internal-id', cellId);
             cell.classList.add('mv-cell');
             cell.dataset.index = idx;
-            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:default;overflow:hidden;resize:both;';
+            cell.style.cssText = 'position:relative;background:#111;display:flex;flex-direction:column;cursor:default;overflow:hidden;resize:horizontal;padding-right:8px;';
 
             var hdr = document.createElement('div');
             hdr.className = 'mv-hdr';
@@ -1242,7 +1242,7 @@ export function updateMultivisionLayout() {
             cell.style.width = '100%';
             cell.style.height = '100%';
             // Enable horizontal resize only on elements that represent a column boundary
-            cell.style.resize = 'horizontal';
+            cell.style.resize = 'horizontal'; cell.style.paddingRight = '8px';
             cell.style.overflow = 'hidden';
 
             var colIndex = 0;
@@ -1257,7 +1257,7 @@ export function updateMultivisionLayout() {
                     cell.style.gridRow = 'auto';
                     cell.style.gridColumn = '2';
                     colIndex = 1;
-                    cell.style.resize = 'none'; // Only resize main focus col
+                    cell.style.resize = 'none'; cell.style.paddingRight = '0'; // Only resize main focus col
                 }
             } else if (mvLayout === 'auto' && count === 3 && idx === 0) {
                 cell.style.gridRow = 'span 2';
@@ -1269,11 +1269,11 @@ export function updateMultivisionLayout() {
                 if (mvLayout === 'horizontal') {
                     cell.style.gridColumn = 'auto';
                     colIndex = idx;
-                    if (idx === count - 1) cell.style.resize = 'none'; // No need to resize last col
+                    if (idx === count - 1) { cell.style.resize = 'none'; cell.style.paddingRight = '0'; } // No need to resize last col
                 } else if (mvLayout === 'vertical') {
                     cell.style.gridColumn = '1';
                     colIndex = 0;
-                    cell.style.resize = 'none'; // Only one column, no horizontal resizing
+                    cell.style.resize = 'none'; cell.style.paddingRight = '0'; // Only one column, no horizontal resizing
                 } else {
                     // Standard auto mode (usually 2 cols)
                     if (count === 3) {
@@ -1283,7 +1283,7 @@ export function updateMultivisionLayout() {
                         colIndex = (idx % 2 === 0) ? 0 : 1;
                         cell.style.gridColumn = 'auto';
                     }
-                    if (colIndex === 1 || count === 1) cell.style.resize = 'none';
+                    if (colIndex === 1 || count === 1) { cell.style.resize = 'none'; cell.style.paddingRight = '0'; }
                 }
             }
             // Assign col index for tracking
@@ -1357,7 +1357,7 @@ export function updateMultivisionLayout() {
             // Force pure vertical in PiP mode
             cell.style.width = '100%';
             cell.style.height = '100%';
-            cell.style.resize = 'none';
+            cell.style.resize = 'none'; cell.style.paddingRight = '0';
             cell.style.gridRow = 'auto';
             cell.style.gridColumn = '1';
         }
