@@ -214,7 +214,7 @@ export function buildEPG(matches){
       if (b === 'EN DIRECT') return 1;
 
       // Ensure 'Autres Flux' is always sorted last globally in the main feed
-      if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(a||'').toUpperCase()])) return 1;
+        if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(a||'').toUpperCase()])) return 1;
       if (!DEFAULT_LEAGUES[(b||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(b||'').toUpperCase()])) return -1;
 
       // Custom League Order User Preference
@@ -506,7 +506,7 @@ export function buildEPG(matches){
                   favorisAujourdhui.push(m);
               }
 
-              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
+              if ((!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') || m.league === 'Autres Flux') {
                   autresFluxMatches.push(m);
                   return;
               }
@@ -590,7 +590,7 @@ export function buildEPG(matches){
           var mainMatches = [];
           var autresFluxMatches = [];
           filtered.forEach(function(m) {
-              if (!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') {
+              if ((!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') || m.league === 'Autres Flux') {
                   autresFluxMatches.push(m);
               } else {
                   mainMatches.push(m);
@@ -879,7 +879,7 @@ var autresLeagues = [];
 
 leagues.forEach(function(lg) {
     if (!lg) return;
-    if (!DEFAULT_LEAGUES[(lg.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(lg.league||'').toUpperCase()]) && lg.league !== 'FAVORIS' && lg.league !== 'EN DIRECT') {
+    if ((!DEFAULT_LEAGUES[(lg.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(lg.league||'').toUpperCase()]) && lg.league !== 'FAVORIS' && lg.league !== 'EN DIRECT') || lg.league === 'Autres Flux') {
         autresLeagues.push(lg);
     } else {
         mainLeagues.push(lg);
@@ -1020,7 +1020,6 @@ export function scrollToNow(){
 
     var now = new Date();
     var isToday = (TARGET_DATE.toDateString() === now.toDateString());
-    if(!isToday) return;
 
     var rootStyles = getComputedStyle(document.documentElement);
     var hourPx = parseFloat(rootStyles.getPropertyValue('--hour-px')) || (window.innerWidth <= 768 ? 140 : 220);
@@ -1034,7 +1033,7 @@ export function scrollToNow(){
     var viewWidth = epgContainer.clientWidth;
     var chanW = parseFloat(rootStyles.getPropertyValue('--chan-w')) || (window.innerWidth <= 768 ? 100 : 240);
     var offsetPx = (h * hourPx) + (m * minPx);
-    var scrollLeft = offsetPx - ((viewWidth - chanW) / 2);
+    var scrollLeft = offsetPx - 40;
 
     try {
         epgContainer.scrollTo({
