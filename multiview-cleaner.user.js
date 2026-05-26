@@ -298,13 +298,28 @@
 
         const mediaObserver = new MutationObserver((mutations) => {
             if (window.mvUnmutedState) {
-                const mediaElements = document.querySelectorAll('video, audio');
-                mediaElements.forEach(el => {
-                    if (el.muted) {
-                        el.muted = false;
-                        el.volume = 1;
+                let checkMedia = false;
+                for (const mutation of mutations) {
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        for (const node of mutation.addedNodes) {
+                            if (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO' || (node.querySelectorAll && node.querySelectorAll('video, audio').length > 0)) {
+                                checkMedia = true;
+                                break;
+                            }
+                        }
                     }
-                });
+                    if (checkMedia) break;
+                }
+
+                if (checkMedia) {
+                    const mediaElements = document.querySelectorAll('video, audio');
+                    mediaElements.forEach(el => {
+                        if (el.muted) {
+                            el.muted = false;
+                            el.volume = 1;
+                        }
+                    });
+                }
             }
         });
         mediaObserver.observe(document.body, { childList: true, subtree: true });

@@ -724,7 +724,9 @@ export function setupMultivisionUI() {
             mvFlux.forEach(function(s, idx) {
                 var iframe = document.getElementById('mv-iframe-' + idx);
                 if (iframe && iframe.contentWindow === e.source) {
-                    focusStream(idx);
+                    if (activeMvIdx !== idx) {
+                        focusStream(idx);
+                    }
                 }
             });
         }
@@ -736,7 +738,9 @@ export function setupMultivisionUI() {
             if (activeElement && activeElement.tagName === 'IFRAME' && activeElement.classList.contains('mv-iframe')) {
                 var idx = parseInt(activeElement.id.replace('mv-iframe-', ''));
                 if (!isNaN(idx)) {
-                    focusStream(idx);
+                    if (activeMvIdx !== idx) {
+                        focusStream(idx);
+                    }
                 }
             }
         }, 100);
