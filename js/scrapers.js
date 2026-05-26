@@ -1449,7 +1449,7 @@ export function fetchSubPages(matches){
                             parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
   // We use a limited concurrency pool so we don't spam the proxy/network
-  var concurrency=15;
+  var concurrency=5;
   var queue=matches.filter(function(m){
       if (m.status === 'live' && !m.refreshedOnStart) {
           m.refreshedOnStart = true;
