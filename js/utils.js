@@ -83,6 +83,14 @@ export function resolveStreamUrl(url) {
             return;
         }
 
+        // Convert Twitch URLs to embed format with parent
+        var twitchMatch = url.match(/(?:twitch\.tv\/|player\.twitch\.tv\/\?channel=)([^"&?\/\s]+)/i);
+        if (twitchMatch && twitchMatch[1] && twitchMatch[1].toLowerCase() !== 'videos') {
+            var parent = window.location.hostname || 'localhost';
+            resolve('https://player.twitch.tv/?channel=' + twitchMatch[1] + '&parent=' + parent);
+            return;
+        }
+
         if (url.indexOf('onhockey.tv') >= 0) {
             fetchPage(url).then(function(html) {
                 var doc = new DOMParser().parseFromString(html, 'text/html');
