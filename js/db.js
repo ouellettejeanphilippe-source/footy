@@ -10,9 +10,9 @@ for (var key in TEAM_DATA) {
     var data = TEAM_DATA[key];
     if (data.name && data.league) {
         if (Array.isArray(data.league)) {
-            data.league.forEach(function(lg) {
-                STATIC_TEAMS.push({ name: data.name, league: lg });
-            });
+            for (var i = 0; i < data.league.length; i++) {
+                STATIC_TEAMS.push({ name: data.name, league: data.league[i] });
+            }
         } else {
             STATIC_TEAMS.push({ name: data.name, league: data.league });
         }
@@ -22,9 +22,9 @@ for (var key in TEAM_DATA) {
         TEAM_COLORS[key] = data.colors;
     }
     if (data.aliases) {
-        data.aliases.forEach(function(alias) {
-            TEAM_ALIASES[alias] = key;
-        });
+        for (var i = 0; i < data.aliases.length; i++) {
+            TEAM_ALIASES[data.aliases[i]] = key;
+        }
     }
 }
 export var LGC = {
@@ -43,7 +43,7 @@ export var FLAGS = {
 export function lgColor(n){
   var l=(n||'').toLowerCase();
   for(var k in LGC){ if(l.indexOf(k)>=0) return LGC[k]; }
-  var h=[].reduce.call(n||'X',function(a,c){return a+c.charCodeAt(0);},0);
+  var h=0; var str=n||'X'; for(var i=0; i<str.length; i++) h+=str.charCodeAt(i);
   return 'hsl('+[200,240,280,320,150,180,210][h%7]+',55%,30%)';
 }
 export function lgFlag(n){

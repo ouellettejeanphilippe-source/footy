@@ -37,7 +37,8 @@ export function updateLiveScores(matches) {
             // Update main card, live copy, and fav copy
             var cardIds = ['mb-' + m.id, 'mb-' + m.id + '_live_copy', 'mb-' + m.id + '_fav_copy'];
 
-            cardIds.forEach(function(cid) {
+            for(var j=0; j<cardIds.length; j++) {
+                var cid = cardIds[j];
                 var cached = matchCardCache.get(cid);
                 if (!cached) {
                     var card = document.getElementById(cid);
@@ -106,7 +107,7 @@ export function updateLiveScores(matches) {
                         }
                     }
                 }
-            });
+            }
         }
         if (i < matches.length) {
             requestAnimationFrame(processChunk);
@@ -293,14 +294,12 @@ export function loadAll(isBackground, forceScrape){
 
           // Populate sports filter
           var sports = {};
-          S.matches.forEach(function(m){ sports[m.league]=true; });
+          for(var i=0; i<S.matches.length; i++) { sports[S.matches[i].league]=true; }
           var sportNames = Object.keys(sports).sort();
           var sf = document.getElementById('sport-filters');
           if(sf){
               var anyHidden = false;
-              Object.keys(S.hiddenLg).forEach(function(k) {
-                  if (S.hiddenLg[k]) anyHidden = true;
-              });
+              var keys = Object.keys(S.hiddenLg); for(var i=0; i<keys.length; i++) { if(S.hiddenLg[keys[i]]) { anyHidden = true; break; } }
               var isAllSel = !anyHidden;
 
               var optionsHtml = '<button class="btn sport-btn '+(isAllSel?'active-toggle':'')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
@@ -349,7 +348,7 @@ export function loadAll(isBackground, forceScrape){
  }, 0);
               }
                         }, 0);
-          var live=S.matches.filter(function(m){return m.status==='live';}).length;
+          var live=0; for(var i=0; i<S.matches.length; i++) { if(S.matches[i].status==='live') live++; }
           showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
           });
       });
