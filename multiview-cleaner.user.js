@@ -268,55 +268,71 @@
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Add event listeners for audio control
-        window.addEventListener('message', function(e) {
-            if (e.data === 'mv_mute') {
-                const mediaElements = document.querySelectorAll('video, audio');
-                mediaElements.forEach(el => {
-                    el.muted = true;
-                    el.volume = 0;
-                });
-            } else if (e.data === 'mv_unmute') {
-                const mediaElements = document.querySelectorAll('video, audio');
-                mediaElements.forEach(el => {
-                    el.muted = false;
-                    el.volume = 1;
-                });
-            }
-        });
-
-        // Unmute newly added media elements if we are supposed to be unmuted
         // We handle this by checking if there's a stored 'mv_unmuted_state'
         window.mvUnmutedState = false;
         window.addEventListener('message', function(e) {
             if (e.data === 'mv_mute') {
                 window.mvUnmutedState = false;
+                const mediaElements = document.querySelectorAll('video, audio');
+                mediaElements.forEach(el => {
+                    if (!el.muted || el.volume > 0) {
+                        el.muted = true;
+                        el.volume = 0;
+                    }
+                });
             } else if (e.data === 'mv_unmute') {
                 window.mvUnmutedState = true;
+                const mediaElements = document.querySelectorAll('video, audio');
+                mediaElements.forEach(el => {
+                    if (el.muted || el.volume === 0) {
+                        el.muted = false;
+                        el.volume = 1;
+                    }
+                });
             }
         });
 
-        const mediaObserver = new MutationObserver((mutations) => {
-            if (window.mvUnmutedState) {
-                let checkMedia = false;
-                for (const mutation of mutations) {
-                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                        for (const node of mutation.addedNodes) {
-                            if (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO' || (node.querySelectorAll && node.querySelectorAll('video, audio').length > 0)) {
-                                checkMedia = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (checkMedia) break;
-                }
+        function attachMediaListeners(mediaEl) {
+            if (mediaEl.dataset.mvListenersAttached) return;
+            mediaEl.dataset.mvListenersAttached = 'true';
 
-                if (checkMedia) {
-                    const mediaElements = document.querySelectorAll('video, audio');
-                    mediaElements.forEach(el => {
-                        if (el.muted) {
-                            el.muted = false;
-                            el.volume = 1;
+            mediaEl.addEventListener('volumechange', function() {
+                // If user manually unmutes or increases volume, notify parent to focus this stream
+                // This ensures other streams get muted
+                if (!mediaEl.muted && mediaEl.volume > 0 && !window.mvUnmutedState) {
+                    window.parent.postMessage('mv_frame_clicked', '*');
+                }
+            });
+
+            mediaEl.addEventListener('play', function() {
+                 if (!mediaEl.muted && mediaEl.volume > 0 && !window.mvUnmutedState) {
+                    window.parent.postMessage('mv_frame_clicked', '*');
+                }
+            });
+        }
+
+        // Attach listeners to existing media
+        document.querySelectorAll('video, audio').forEach(attachMediaListeners);
+
+        const mediaObserver = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeName === 'VIDEO' || node.nodeName === 'AUDIO') {
+                            attachMediaListeners(node);
+                            if (window.mvUnmutedState && node.muted) {
+                                node.muted = false;
+                                node.volume = 1;
+                            }
+                        } else if (node.querySelectorAll) {
+                            const newMedia = node.querySelectorAll('video, audio');
+                            newMedia.forEach(el => {
+                                attachMediaListeners(el);
+                                if (window.mvUnmutedState && el.muted) {
+                                    el.muted = false;
+                                    el.volume = 1;
+                                }
+                            });
                         }
                     });
                 }
