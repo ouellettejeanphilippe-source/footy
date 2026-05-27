@@ -617,26 +617,12 @@ export function toggleMultiviewPip() {
         // Switch to PIP mode
         mvc.classList.add('mv-pip');
 
-        var isMobile = window.innerWidth <= 768;
+        var sf = document.getElementById('sport-filters-container');
+        if(sf) sf.style.display = 'flex';
+        epg.style.display = 'flex';
 
-        if (isMobile) {
-            // On mobile, completely hide it in the background
-            mvc.style.cssText = 'display:none;';
-            epg.style.display = 'flex';
-            epg.style.paddingRight = '0';
-            var sf = document.getElementById('sport-filters-container');
-            if(sf) sf.style.display = 'flex';
-        } else {
-            // On tablet/desktop, show column
-            mvc.style.cssText = 'position:fixed;right:0;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';bottom:0;width:350px;background:var(--bg, rgba(10,10,12,0.95));backdrop-filter:blur(10px);z-index:999;display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);box-shadow:-5px 0 30px rgba(0,0,0,0.5);overflow:hidden;resize:horizontal;direction:rtl;min-width:250px;max-width:60vw;';
-            epg.style.display = 'flex';
-            epg.style.paddingRight = '0';
-            var sf = document.getElementById('sport-filters-container');
-            if(sf) sf.style.display = 'flex';
-
-            // Note: The vertical stack layout logic is now handled entirely within updateMultivisionLayout
-            updateMultivisionLayout();
-        }
+        var mode = localStorage.getItem('multiviewPipMode') || 'sidebar';
+        applyPipModeStyles(mode);
     }
 }
 
@@ -673,14 +659,124 @@ export function setupMultivisionUI() {
     if(document.getElementById('mv-container')) return;
 
     // Create Multivision Container
+
+    var pipStyles = document.createElement('style');
+    pipStyles.textContent = `
+      #mv-container:not(.mv-pip) .only-pip { display: none !important; }
+      #mv-container.mv-pip .hide-pip { display: none !important; }
+      #mv-container.mv-pip #mv-toolbar { cursor: move; }
+      #mv-container.mv-pip #mv-drag-handle { cursor: move; }
+    `;
+    document.head.appendChild(pipStyles);
+
     var mvContainer = document.createElement('div');
+
     mvContainer.id = 'mv-container';
     mvContainer.style.cssText = 'position:fixed;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:#000;z-index:90;display:none;flex-direction:column;';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
     mvToolbar.style.cssText = 'position:relative;min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.15s; flex-wrap:wrap;direction:ltr;';
-    var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
+
+  window.applyPipModeStyles = function(mode) {
+      var mvc = document.getElementById('mv-container');
+      var epg = document.getElementById('epg');
+      var btnMin = document.getElementById('mv-minimize-btn');
+      if(!mvc || !epg) return;
+
+      var isMobile = window.innerWidth <= 768;
+
+      // Reset common styles first
+      mvc.style.resize = 'none';
+      mvc.style.boxShadow = 'none';
+      mvc.style.borderRadius = '0';
+      mvc.style.direction = 'ltr';
+      mvc.style.minHeight = '0';
+      mvc.style.minWidth = '0';
+
+      if(btnMin) btnMin.innerHTML = '➖';
+
+      if (mode === 'sidebar') {
+          if(isMobile) {
+              mvc.style.cssText = 'display:none;';
+              epg.style.paddingRight = '0';
+          } else {
+              mvc.style.cssText = 'position:fixed;right:0;top:var(--hdr-height, 70px);bottom:0;width:350px;background:var(--bg, rgba(10,10,12,0.95));backdrop-filter:blur(10px);z-index:999;display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);box-shadow:-5px 0 30px rgba(0,0,0,0.5);overflow:hidden;resize:horizontal;direction:rtl;min-width:250px;max-width:60vw;';
+              // epg padding is handled by resize observer, but we set it here as fallback
+              epg.style.paddingRight = mvc.offsetWidth + 'px';
+          }
+      } else if (mode === 'floating') {
+          var rectStr = localStorage.getItem('multiviewFloatingRect');
+          var rect = rectStr ? JSON.parse(rectStr) : {width: 400, height: 300, right: 20, bottom: 20};
+
+          mvc.style.cssText = 'position:fixed;background:var(--bg, rgba(10,10,12,0.95));backdrop-filter:blur(10px);z-index:9999;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5);overflow:hidden;resize:both;direction:ltr;border-radius:8px;min-width:250px;min-height:150px;';
+
+          if(rect.top !== undefined && rect.left !== undefined) {
+              mvc.style.top = rect.top + 'px';
+              mvc.style.left = rect.left + 'px';
+              mvc.style.right = 'auto';
+              mvc.style.bottom = 'auto';
+          } else {
+              mvc.style.right = (rect.right || 20) + 'px';
+              mvc.style.bottom = (rect.bottom || 20) + 'px';
+              mvc.style.top = 'auto';
+              mvc.style.left = 'auto';
+          }
+
+          mvc.style.width = (rect.width || 400) + 'px';
+          mvc.style.height = (rect.height || 300) + 'px';
+
+          epg.style.paddingRight = '0';
+      } else if (mode === 'minimized') {
+          var rectStr = localStorage.getItem('multiviewMinimizedRect');
+          var rect = rectStr ? JSON.parse(rectStr) : {width: 300, right: 20, bottom: 20};
+
+          mvc.style.cssText = 'position:fixed;background:var(--bg2, rgba(20,20,24,0.95));backdrop-filter:blur(10px);z-index:9999;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.2);box-shadow:0 4px 12px rgba(0,0,0,0.5);overflow:hidden;resize:none;direction:ltr;border-radius:8px;';
+
+          if(rect.top !== undefined && rect.left !== undefined) {
+              mvc.style.top = rect.top + 'px';
+              mvc.style.left = rect.left + 'px';
+              mvc.style.right = 'auto';
+              mvc.style.bottom = 'auto';
+          } else {
+              mvc.style.right = (rect.right || 20) + 'px';
+              mvc.style.bottom = (rect.bottom || 20) + 'px';
+              mvc.style.top = 'auto';
+              mvc.style.left = 'auto';
+          }
+
+          mvc.style.width = (rect.width || 300) + 'px';
+          mvc.style.height = '44px'; // Height of toolbar
+
+          epg.style.paddingRight = '0';
+          if(btnMin) btnMin.innerHTML = '🗖';
+      }
+
+      updateMultivisionLayout();
+  };
+
+  window.setMvPipMode = function(mode) {
+      if (!document.getElementById('mv-container').classList.contains('mv-pip')) {
+          toggleMultiviewPip();
+      }
+      localStorage.setItem('multiviewPipMode', mode);
+      applyPipModeStyles(mode);
+  };
+
+  window.toggleMinimizePip = function(e) {
+      if(e) { e.stopPropagation(); e.preventDefault(); }
+      var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
+      if(currentMode === 'minimized') {
+          // Restore to previous non-minimized mode
+          var prevMode = localStorage.getItem('multiviewPipPrevMode') || 'sidebar';
+          setMvPipMode(prevMode);
+      } else {
+          localStorage.setItem('multiviewPipPrevMode', currentMode);
+          setMvPipMode('minimized');
+      }
+  };
+
+  var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);cursor:move;" id="mv-drag-handle"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
       + '<div class="sp" style="flex:1;"></div>'
       + '<button class="nav-btn" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
       + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
@@ -698,11 +794,135 @@ export function setupMultivisionUI() {
       + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
       + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
       + (('documentPictureInPicture' in window) ? '<button class="nav-btn hide-pip" id="mv-doc-pip-btn" onclick="toggleDocumentPiP()" aria-label="Fenêtre détachée" title="Fenêtre détachée (PiP)" style="padding: 8px; min-width: auto; font-size: 16px;">🖼️</button>' : '')
+      + '<div style="position:relative; display:flex; align-items:center;" class="only-pip">'
+      +   '<button class="nav-btn only-pip" onclick="var d=document.getElementById(\'mv-pip-dropdown\'); d.style.display = d.style.display === \'flex\' ? \'none\' : \'flex\'; event.stopPropagation();" aria-label="Mode PiP" title="Mode PiP" style="padding: 8px; min-width: auto; font-size: 16px;">⚙️</button>'
+      +   '<div id="mv-pip-dropdown" style="display:none; position:absolute; top:100%; right:0; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:4px; z-index:100; flex-direction:column; gap:4px; margin-top:4px; min-width:130px;">'
+      +     '<button class="nav-btn" onclick="setMvPipMode(\'sidebar\'); document.getElementById(\'mv-pip-dropdown\').style.display=\'none\';" aria-label="Sidebar" title="Sidebar" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>◫</span> Sidebar</button>'
+      +     '<button class="nav-btn" onclick="setMvPipMode(\'floating\'); document.getElementById(\'mv-pip-dropdown\').style.display=\'none\';" aria-label="Flottant" title="Flottant" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>🗗</span> Flottant</button>'
+      +   '</div>'
+      + '</div>'
+      + '<button class="nav-btn only-pip" id="mv-minimize-btn" onclick="toggleMinimizePip(event)" aria-label="Minimiser" title="Minimiser" style="padding: 8px; min-width: auto; font-size: 16px;">➖</button>'
       + '</div>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
 
+
+    // Make toolbar draggable for floating/minimized modes
+    var isDragging = false;
+    var dragStartX, dragStartY;
+    var initialLeft, initialTop;
+
+    function startDrag(e) {
+        if(e.target.closest('button') || e.target.closest('.mv-actions')) return; // Don't drag on buttons
+
+        var mvc = document.getElementById('mv-container');
+        if(!mvc || !mvc.classList.contains('mv-pip')) return;
+
+        var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
+        if(currentMode === 'sidebar') return; // Cannot drag sidebar
+
+        isDragging = true;
+
+        // Support both mouse and touch events
+        var clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        var clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+
+        dragStartX = clientX;
+        dragStartY = clientY;
+
+        var rect = mvc.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        // Convert right/bottom positioning to top/left for smooth dragging
+        mvc.style.right = 'auto';
+        mvc.style.bottom = 'auto';
+        mvc.style.left = initialLeft + 'px';
+        mvc.style.top = initialTop + 'px';
+
+        if (e.type.includes('mouse')) {
+            e.preventDefault(); // Prevent text selection only for mouse (breaks touch scrolling if not careful, though here we want to drag the whole pip window)
+        }
+    }
+
+    function doDrag(e) {
+        if(!isDragging) return;
+
+        var clientX = e.type.includes('mouse') ? e.clientX : (e.touches ? e.touches[0].clientX : dragStartX);
+        var clientY = e.type.includes('mouse') ? e.clientY : (e.touches ? e.touches[0].clientY : dragStartY);
+
+        var mvc = document.getElementById('mv-container');
+        var dx = clientX - dragStartX;
+        var dy = clientY - dragStartY;
+
+        var newLeft = initialLeft + dx;
+        var newTop = initialTop + dy;
+
+        // Keep within window bounds
+        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - mvc.offsetWidth));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - mvc.offsetHeight));
+
+        mvc.style.left = newLeft + 'px';
+        mvc.style.top = newTop + 'px';
+
+        // Prevent default to avoid scrolling while dragging
+        if (e.cancelable) e.preventDefault();
+    }
+
+    function endDrag() {
+        if(isDragging) {
+            isDragging = false;
+            var mvc = document.getElementById('mv-container');
+            if(!mvc) return;
+            var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
+            var rect = mvc.getBoundingClientRect();
+
+            var saveObj = {
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height
+            };
+
+            if(currentMode === 'floating') {
+                localStorage.setItem('multiviewFloatingRect', JSON.stringify(saveObj));
+            } else if(currentMode === 'minimized') {
+                localStorage.setItem('multiviewMinimizedRect', JSON.stringify(saveObj));
+            }
+        }
+    }
+
+    mvToolbar.addEventListener('mousedown', startDrag);
+    mvToolbar.addEventListener('touchstart', startDrag, { passive: false });
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('touchmove', doDrag, { passive: false });
+
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchend', endDrag);
+
+    // Add resize observer for floating mode to save size
+    const mvResizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+            var mvc = document.getElementById('mv-container');
+            if(!mvc || !mvc.classList.contains('mv-pip')) continue;
+
+            var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
+            if(currentMode === 'floating') {
+                var rect = mvc.getBoundingClientRect();
+                var saveObj = {
+                    top: rect.top,
+                    left: rect.left,
+                    width: rect.width,
+                    height: rect.height
+                };
+                localStorage.setItem('multiviewFloatingRect', JSON.stringify(saveObj));
+            }
+        }
+    });
+
     var mvGridWrapper = document.createElement('div');
+
     mvGridWrapper.id = 'mv-grid-wrapper';
     mvGridWrapper.style.cssText = 'display:flex; flex:1; width:100%; overflow:hidden; background:#000;direction:ltr;';
 
@@ -763,14 +983,22 @@ export function setupMultivisionUI() {
     mvContainer.appendChild(mvGridWrapper);
     mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer);
+    mvResizeObserver.observe(mvContainer);
 
     // Dynamically adjust epg padding when PiP sidebar is resized
     if (window.ResizeObserver) {
         new ResizeObserver(function(entries) {
             var mvc = document.getElementById('mv-container');
             if (mvc && mvc.classList.contains('mv-pip') && mvc.style.display !== 'none' && window.innerWidth > 768) {
+                var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
                 var epg = document.getElementById('epg');
-                if (epg) epg.style.paddingRight = mvc.offsetWidth + 'px';
+                if (epg) {
+                    if (currentMode === 'sidebar') {
+                        epg.style.paddingRight = mvc.offsetWidth + 'px';
+                    } else {
+                        epg.style.paddingRight = '0px';
+                    }
+                }
             }
         }).observe(mvContainer);
     }
