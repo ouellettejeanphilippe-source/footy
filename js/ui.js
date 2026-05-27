@@ -1543,6 +1543,55 @@ export function openMod(m,col){
           }).join('');
       }
 
+            // Fetch League VODs
+      if (m.id && m.id.toString().startsWith('lol_') && m.status === 'finished') {
+          import('./api.js').then(api => {
+              var eventId = m.id.split('_')[1];
+              api.fetchLolEsportsEventDetails(eventId).then(function(res) {
+                  if (res && res.data && res.data.event && res.data.event.match && res.data.event.match.games) {
+                      var newStreams = [];
+                      res.data.event.match.games.forEach(function(game) {
+                          if (game.vods && game.vods.length > 0) {
+                              var vod = game.vods[0];
+                              var url = '';
+                              if (vod.provider === 'youtube') {
+                                  url = 'https://www.youtube.com/watch?v=' + vod.parameter;
+                              } else if (vod.provider === 'twitch') {
+                                  url = 'https://www.twitch.tv/videos/' + vod.parameter;
+                              }
+
+                              if (url) {
+                                  newStreams.push({
+                                      name: 'VOD Game ' + game.number + ' (' + vod.provider + ')',
+                                      url: url,
+                                      source: 'vod',
+                                      quality: '1080p'
+                                  });
+                              }
+                          }
+                      });
+
+                      if (newStreams.length > 0) {
+                          m.streamLinks = m.streamLinks || [];
+                          var added = false;
+                          newStreams.forEach(function(ns) {
+                              if (!m.streamLinks.find(sl => sl.url === ns.url)) {
+                                  m.streamLinks.push(ns);
+                                  added = true;
+                              }
+                          });
+                          if (added) {
+                              // Force redraw modal
+                              if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {
+                                  openMod(m, col);
+                              }
+                          }
+                      }
+                  }
+              });
+          });
+      }
+
       // Fallback manual links search
       contentHtml += '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">';
       contentHtml += '<details style="color: var(--muted); cursor: pointer;"><summary style="outline:none; font-weight: 500;">Recherche manuelle & Sites de base (Fallback)</summary>';

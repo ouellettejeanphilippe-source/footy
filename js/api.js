@@ -98,6 +98,14 @@ export function fetchLolEsportsLiveStreams() {
     }).then(function(res) { return res.json(); }).catch(function(){ return null; });
 }
 
+export function fetchLolEsportsEventDetails(id) {
+    var url = 'https://esports-api.lolesports.com/persisted/gw/getEventDetails?hl=en-US&id=' + id;
+    return fetch(url, {
+        headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' },
+        signal: AbortSignal.timeout(8000)
+    }).then(function(res) { return res.json(); }).catch(function(){ return null; });
+}
+
 export function filterBuggyMatches(matches) {
     var today = new Date();
     var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
