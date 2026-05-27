@@ -1,3 +1,6 @@
+## En cours
+- Adding League of Legends (LoL) VOD extraction and display directly within the match stream modal for finished matches.
+
 # Worklog
 
 ## En cours
