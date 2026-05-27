@@ -53,6 +53,26 @@ export var ESPN_LEAGUES = {
   'nwsl': 'soccer/usa.nwsl'
 };
 
+var _leaguePathCache = Object.create(null);
+export function getEspnPath(leagueName) {
+    if (!leagueName) return 'soccer/eng.1';
+    var lower = leagueName.toLowerCase();
+    if (_leaguePathCache[lower]) {
+        return _leaguePathCache[lower];
+    }
+
+    var path = 'soccer/eng.1';
+    for (var k in ESPN_LEAGUES) {
+        var lowerK = k.toLowerCase();
+        if (lowerK === lower || lower.indexOf(lowerK) > -1) {
+            path = ESPN_LEAGUES[k];
+            break;
+        }
+    }
+    _leaguePathCache[lower] = path;
+    return path;
+}
+
 export function getEspnDateStr(d) {
   return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
 }
@@ -945,16 +965,7 @@ export function fetchGameStats(matchId) {
     if(matchId.startsWith('espn_')) {
         var espnId = matchId.split('_')[1];
         var m = S.matchMap.get(String(matchId));
-        var path = 'soccer/eng.1'; // fallback
-
-        if (m) {
-            for (var k in ESPN_LEAGUES) {
-                if (k.toLowerCase() === m.league.toLowerCase() || m.league.toLowerCase().indexOf(k.toLowerCase()) > -1) {
-                    path = ESPN_LEAGUES[k];
-                    break;
-                }
-            }
-        }
+        var path = m ? getEspnPath(m.league) : 'soccer/eng.1';
 
         var url = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/summary?event=' + espnId;
         return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
@@ -1028,13 +1039,7 @@ export function fetchGameStats(matchId) {
 
 
 export function fetchTeamInfo(leagueName, teamId) {
-    var path = 'soccer/eng.1'; // fallback
-    for (var k in ESPN_LEAGUES) {
-        if (k.toLowerCase() === leagueName.toLowerCase() || leagueName.toLowerCase().indexOf(k.toLowerCase()) > -1) {
-            path = ESPN_LEAGUES[k];
-            break;
-        }
-    }
+    var path = getEspnPath(leagueName);
     // Fetch base team info and roster info in parallel
     var teamUrl = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId;
     var rosterUrl = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId + '/roster';
@@ -1050,13 +1055,7 @@ export function fetchTeamInfo(leagueName, teamId) {
 }
 
 export function fetchTeamSchedule(leagueName, teamId) {
-    var path = 'soccer/eng.1'; // fallback
-    for (var k in ESPN_LEAGUES) {
-        if (k.toLowerCase() === leagueName.toLowerCase() || leagueName.toLowerCase().indexOf(k.toLowerCase()) > -1) {
-            path = ESPN_LEAGUES[k];
-            break;
-        }
-    }
+    var path = getEspnPath(leagueName);
     var url = 'https://site.api.espn.com/apis/site/v2/sports/' + path + '/teams/' + teamId + '/schedule';
     return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
         if (data && data.events && data.events.length === 0) {
@@ -1073,13 +1072,7 @@ export function fetchTeamSchedule(leagueName, teamId) {
 }
 
 export function fetchLeagueStandings(leagueName, seasonType) {
-    var path = 'soccer/eng.1'; // fallback
-    for (var k in ESPN_LEAGUES) {
-        if (k.toLowerCase() === leagueName.toLowerCase() || leagueName.toLowerCase().indexOf(k.toLowerCase()) > -1) {
-            path = ESPN_LEAGUES[k];
-            break;
-        }
-    }
+    var path = getEspnPath(leagueName);
     var url = 'https://site.api.espn.com/apis/v2/sports/' + path + '/standings' + (seasonType ? '?seasontype=' + seasonType : '');
     return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r){ return r.json(); }).then(function(data) {
         var seasons = data.seasons && data.seasons.length > 0 && data.seasons[0].types ? data.seasons[0].types : [];
