@@ -6,6 +6,7 @@
 ## En cours
 
 ## Fait
+- 2026-05-28 - Ajout d'attributs `aria-label` aux boutons avec des icônes uniquement dans `index.html`, `js/ui.js`, et `js/multiview.js` pour améliorer l'accessibilité.
 - Optimizing array iterations (forEach, map, filter, find) to traditional for loops to improve performance and reduce resource usage.
 - 2026-05-18 - Fix robust URL parsing using getDomain with a custom fallback and a new resolveUrl helper in js/config.js to resolve scrapers missing protocol bugs without error. Replaced naive new URL try/catch blocks in js/scrapers.js.
 - 2026-05-16 - Déplacer bouton de mise à jour de la liste des streams et mettre en haut de la liste des streams, sans rond autour, juste l'icone, à côté, ajouter une icone de multiview qui ajoute un stream random du match (sauf si 4k stream dispo, mettre 4k stream). Aussi, 4k streams et Buffstream Flux toujours favoris en haut.

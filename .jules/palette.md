@@ -7,3 +7,7 @@
 ## 2026-04-10 - Grid View and Button Filter Refactor
 **Learning:** A standard dropdown (<select>) for primary filtering isn't as touch-friendly or modern-looking as an overflow-x scroll container of pill buttons on mobile/TV interfaces. Also, mixed rendering (Timeline vs Grid) requires strict condition branching based on the active tab state.
 **Action:** I converted the sport filter into scrollable buttons and split `buildEPG` rendering logic to return a flex-grid of cards if the filter is "live" or "upcoming", while preserving the strict EPG timeline if the filter is "all" (now renamed "GUIDE").
+
+## 2026-05-28 - Missing ARIA Labels on Core Navigation Icons
+**Learning:** Many core interactive elements (like the main menu toggle, date navigation arrows, and stream refresh/randomize buttons) rely entirely on text icons (e.g. ☰, ❮, ❯, 🔄, ⊞) without screen reader accessible text. This is a common pattern in this app, severely impacting keyboard and screen reader navigation. Furthermore, when adding aria-labels to non-semantic interactive `div` elements (like drag handles), they require `role="button"` to be properly recognized.
+**Action:** Always verify that buttons containing only symbols or emojis have a descriptive `aria-label` attribute applied. For non-semantic interactive elements, always pair `aria-label` with an appropriate `role` attribute.
