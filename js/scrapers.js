@@ -1527,13 +1527,6 @@ export function fetchSubPages(matches){
       lg('Scrape streams','Terminé pour tous les matchs');
       return;
     }
-
-    // Pause the queue if the tab is hidden
-    if (typeof document !== 'undefined' && document.hidden) {
-        setTimeout(next, 1000);
-        return;
-    }
-
     while(active<concurrency && queue.length>0){
       active++;
       var m=queue.shift();
@@ -1551,17 +1544,6 @@ export function fetchSubPages(matches){
       });
     }
   }
-
-  // Also hook into visibilitychange to kickstart the queue immediately when resuming
-  if (typeof document !== 'undefined' && !window._subPageVisibilityHooked) {
-      window._subPageVisibilityHooked = true;
-      document.addEventListener("visibilitychange", function() {
-          if (!document.hidden && active < concurrency && queue.length > 0) {
-              next();
-          }
-      });
-  }
-
   next();
 }
 
@@ -1880,9 +1862,9 @@ export function scrapeMatchFlux(m, forceRefresh){
 
 
     // Populate pageLinksContext for all contexts
-    for (var i = 0; i < links.length; i++) {
-        if (links[i].url) pageLinksContext.push(links[i].url);
-    }
+    links.forEach(function(l) {
+        if (l.url) pageLinksContext.push(l.url);
+    });
 
     // Preserve existing streams and avoid duplicates
     var existingLinks = m.streamLinks || [];
@@ -1903,20 +1885,15 @@ export function scrapeMatchFlux(m, forceRefresh){
         else if (m.matchUrl.indexOf('streamonsport') > -1) targetSource = 'streamonsport';
     }
 
-    for (var j = 0; j < links.length; j++) {
-        var newLink = links[j];
+    links.forEach(function(newLink) {
         if (!newLink.source && targetSource) newLink.source = targetSource;
-        var isDuplicate = false;
-        for (var k = 0; k < combinedLinks.length; k++) {
-            if (combinedLinks[k].url === newLink.url) {
-                isDuplicate = true;
-                break;
-            }
-        }
+        var isDuplicate = combinedLinks.some(function(existingLink) {
+            return existingLink.url === newLink.url;
+        });
         if (!isDuplicate) {
             combinedLinks.push(newLink);
         }
-    }
+    });
 
     // S'assurer qu'on affiche un maximum de streams
     m.streamLinks = combinedLinks;
@@ -1945,8 +1922,7 @@ export function updateMatchUiAfterScrape(m) {
         // We only process one match in this function, but use RAF for async layout handling
         for (; i < 1 && performance.now() - start < 15; i++) {
             var cids = ['mb-'+m.id, 'mb-'+m.id+'_live_copy', 'mb-'+m.id+'_fav_copy'];
-            for (var c = 0; c < cids.length; c++) {
-                var cid = cids[c];
+            cids.forEach(function(cid) {
                 var cached = matchCardCache.get(cid);
                 if (!cached) {
                     var card = document.getElementById(cid);
@@ -1990,7 +1966,7 @@ export function updateMatchUiAfterScrape(m) {
                         cached.primeSnEl.textContent = sn + ' flux';
                     }
                 }
-            }
+            });
         }
         if (i < 1) {
             requestAnimationFrame(processChunk);
