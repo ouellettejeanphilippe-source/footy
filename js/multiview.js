@@ -169,7 +169,7 @@ export function updateGmScoresTab() {
         html += '<div style="font-size:11px; color:' + statusColor + '; margin-top:4px; text-align:right;">' + timeStr + '</div>';
         html += '</div>'; // End flex:1
 
-        html += '<button onclick="toggleGmPinMatch(\'' + m.id + '\', event)" style="background:none; border:none; cursor:pointer; font-size:16px; color:' + pinColor + '; padding:5px; transition:transform 0.15s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'none\'" title="Épingler le match">' + pinIcon + '</button>';
+        html += '<button onclick="toggleGmPinMatch(\'' + m.id + '\', event)" style="background:none; border:none; cursor:pointer; font-size:16px; color:' + pinColor + '; padding:5px; transition:transform 0.15s;" onmouseover="this.style.transform=\'scale(1.2)\'" onmouseout="this.style.transform=\'none\'" aria-label="Épingler le match" title="Épingler le match">' + pinIcon + '</button>';
 
         html += '</div>'; // End card
     });
@@ -272,7 +272,7 @@ export function updateMvGameModeStats() {
         carouselHtml += '<div id="mv-stat-card-' + m.id + '" style="min-width: 100%; scroll-snap-align: start; flex: 0 0 100%; position:relative;">';
 
         if (!isMain) {
-            carouselHtml += '<button onclick="closePinnedStats(\'' + m.id + '\')" style="position:absolute; top:0; right:0; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:24px; height:24px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10;" title="Fermer">✕</button>';
+            carouselHtml += '<button onclick="closePinnedStats(\'' + m.id + '\')" style="position:absolute; top:0; right:0; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:24px; height:24px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10;" aria-label="Fermer" title="Fermer">✕</button>';
         }
 
         carouselHtml += '<div id="mv-gm-header-' + m.id + '" style="font-size:16px; font-weight:bold; color:#fff; text-align:center; padding: 0 25px;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
@@ -1661,8 +1661,8 @@ export function updateMultivisionLayout() {
         var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
 
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
-            '<div class="mv-drag-handle" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" title="Déplacer">' + svgDrag + '</div>' +
-            '<div class="mv-stream-number" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: bold; font-size: 14px; color: #fff;" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' +
+            '<div class="mv-drag-handle" role="button" tabindex="0" aria-label="Déplacer" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" title="Déplacer">' + svgDrag + '</div>' +
+            '<div class="mv-stream-number" role="button" tabindex="0" aria-label="Touche ' + (idx + 1) + '" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: bold; font-size: 14px; color: #fff;" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' +
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);position:relative;">';

@@ -1406,10 +1406,10 @@ export function openMod(m,col){
   var rightHeaderHtml = '<div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;">';
 
   // Refresh button
-  rightHeaderHtml += '<button id="mv-refresh-btn" title="Mettre à jour les streams" style="background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'" ' + (!m.matchUrl ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : '') + '>🔄</button>';
+  rightHeaderHtml += '<button id="mv-refresh-btn" aria-label="Mettre à jour les streams" title="Mettre à jour les streams" style="background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'" ' + (!m.matchUrl ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : '') + '>🔄</button>';
 
   // Random Multiview button
-  rightHeaderHtml += '<button id="mv-random-btn" title="Ajouter un stream aléatoire à la Multivision" style="background:transparent; border:none; color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'">⊞</button>';
+  rightHeaderHtml += '<button id="mv-random-btn" aria-label="Ajouter un stream aléatoire à la Multivision" title="Ajouter un stream aléatoire à la Multivision" style="background:transparent; border:none; color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'">⊞</button>';
 
   rightHeaderHtml += '</div>';
 

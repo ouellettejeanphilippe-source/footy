@@ -40,7 +40,7 @@
       <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">Lecteur</button>
 
       <div style="position: relative; display: inline-block;">
-          <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)" style="font-size: 20px; padding: 0 12px;">☰</button>
+          <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)" aria-label="Menu principal" style="font-size: 20px; padding: 0 12px;">☰</button>
           <div class="secondary-actions" id="main-menu">
               <button class="nav-btn" id="filter-fav" onclick="applyFilter('fav'); toggleMenu(event);" style="padding: 10px 16px;">Favoris</button>
               <button class="nav-btn" id="filter-options" onclick="applyFilter('options'); toggleMenu(event);" style="padding: 10px 16px;">Options</button>
@@ -58,12 +58,12 @@
   <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
     <button class="btn" id="sport-menu-btn" onclick="toggleSportFilters(event)" style="display:none; align-self:flex-start; padding:8px 16px; font-size:16px; border-radius:8px;">☰ Ligues</button>
     <div id="date-selector" style="display:flex; align-items:center; gap: 8px; margin-left: auto;">
-        <button class="btn" style="padding: 4px 10px;" onclick="changeTargetDate(-1)">❮</button>
+        <button class="btn" aria-label="Date précédente" style="padding: 4px 10px;" onclick="changeTargetDate(-1)">❮</button>
         <div style="position: relative;">
             <div id="current-date-display" style="font-weight: bold; cursor: pointer; background: var(--btn-bg); padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; text-align: center; min-width: 100px;" onclick="document.getElementById('date-picker-input').showPicker()">Aujourd'hui</div>
             <input type="date" id="date-picker-input" style="width: 0; height: 0; border: none; padding: 0; opacity: 0; pointer-events: none; position: absolute; bottom: 0; left: 50%;" onchange="setTargetDate(this.value)">
         </div>
-        <button class="btn" style="padding: 4px 10px;" onclick="changeTargetDate(1)">❯</button>
+        <button class="btn" aria-label="Date suivante" style="padding: 4px 10px;" onclick="changeTargetDate(1)">❯</button>
     </div>
   </div>
   <div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;scrollbar-width:none;flex-wrap:nowrap;">
