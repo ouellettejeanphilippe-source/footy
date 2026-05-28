@@ -716,8 +716,8 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
 
   if (typeof window.streamMissingCounts === 'undefined') window.streamMissingCounts = {};
 
-  for (var k = 0; k < scrapedMatches.length; k++) {
-      var sm = scrapedMatches[k];
+  scrapedMatches.forEach(function(sm) {
+
       var matched = false;
       for(var i=0; i<apiMatches.length; i++) {
          var am = apiMatches[i];
@@ -725,20 +725,12 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          if(isMatchPair(am, sm)) {
             if(!am.streamLinks) am.streamLinks = [];
             if(sm.streamLinks) {
-                for (var l = 0; l < sm.streamLinks.length; l++) {
-                    var sl = sm.streamLinks[l];
+                sm.streamLinks.forEach(function(sl) {
                     if(!sl.source && sm.source) sl.source = sm.source;
-                    var found = false;
-                    for (var j = 0; j < am.streamLinks.length; j++) {
-                        if (am.streamLinks[j].url === sl.url) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
+                    if(!am.streamLinks.find(function(e){ return e.url === sl.url; })) {
                         am.streamLinks.push(sl);
                     }
-                }
+                });
             }
             if(sm.matchUrl && !am.matchUrl) am.matchUrl = sm.matchUrl;
 
@@ -804,22 +796,14 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
   // If a stream link from the PREVIOUS state is missing in the NEW state,
   // increment its missing count. If missing count < 3, add it back to the match.
   // Reset missing count if the stream is found in the NEW state.
-  for (var k = 0; k < apiMatches.length; k++) {
-      var am = apiMatches[k];
+  apiMatches.forEach(function(am) {
       if (!am.streamLinks) am.streamLinks = [];
 
       // Get previous match state if it exists
       var prevMatch = S.matchMap ? S.matchMap.get(String(am.id)) : null;
       if (prevMatch && prevMatch.streamLinks) {
-          for (var i = 0; i < prevMatch.streamLinks.length; i++) {
-              var oldSl = prevMatch.streamLinks[i];
-              var found = false;
-              for (var j = 0; j < am.streamLinks.length; j++) {
-                  if (am.streamLinks[j].url === oldSl.url) {
-                      found = true;
-                      break;
-                  }
-              }
+          prevMatch.streamLinks.forEach(function(oldSl) {
+              var found = am.streamLinks.find(function(sl) { return sl.url === oldSl.url; });
               if (found) {
                   // Link still exists, reset missing count
                   window.streamMissingCounts[oldSl.url] = 0;
@@ -834,7 +818,7 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
                       am.streamLinks.push(oldSl);
                   }
               }
-          }
+          });
       }
 
       if (prevMatch) {

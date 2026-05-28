@@ -195,8 +195,7 @@ export function openGlobalStatsFromMatch(mid) {
                 html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques du match</h4>';
                 html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
 
-                for (var i = 0; i < stats.length; i++) {
-                    var st = stats[i];
+                stats.forEach(function(st) {
                     var formattedLabel = formatStatLabel(st.label);
                     if (!formattedLabel || formattedLabel === st.label) formattedLabel = formatStatLabel(st.displayLabel) || st.displayLabel;
 
@@ -224,7 +223,7 @@ export function openGlobalStatsFromMatch(mid) {
                     html += '</div>';
                     html += '</div>';
                     html += '</div>';
-                }
+                });
                 html += '</div>';
             } else {
                 html += '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Statistiques détaillées non disponibles.</div>';
@@ -422,10 +421,9 @@ export function fetchTeamStats(teamName) {
                             }
                             groupedTeamStats['Autres'] = [];
 
-                            for (var i = 0; i < totalRec.stats.length; i++) {
-                                var s = totalRec.stats[i];
+                            totalRec.stats.forEach(function(s) {
                                 // Skip boring stats or repetitive ones
-                                if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties' || s.name === 'playoffSeed' || s.name === 'clincher' || s.name === 'magicNumberDivision' || s.name === 'magicNumberWildcard') continue;
+                                if(s.name === 'gamesPlayed' || s.name === 'points' || s.name === 'wins' || s.name === 'losses' || s.name === 'ties' || s.name === 'playoffSeed' || s.name === 'clincher' || s.name === 'magicNumberDivision' || s.name === 'magicNumberWildcard') return;
 
                                 var rawName = s.shortDisplayName || s.displayName || s.name || '';
                                 var statName = statTranslations[rawName] || statTranslations[s.name] || rawName.replace(/([A-Z])/g, " $1").trim();
@@ -452,7 +450,7 @@ export function fetchTeamStats(teamName) {
                                 if (!foundCat) {
                                     groupedTeamStats['Autres'].push(statObj);
                                 }
-                            }
+                            });
 
                             tHtml = '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📊 Statistiques de l\'équipe (' + esc(totalRec.summary) + ')</h4>';
 
@@ -460,14 +458,13 @@ export function fetchTeamStats(teamName) {
                             var wVal = '0', lVal = '0', dVal = '0', ptsVal = '0', streakVal = '', rankVal = '';
 
                             // Try to extract main record stats to display in the header
-                            for (var i = 0; i < recStats.length; i++) {
-                                var s = recStats[i];
+                            recStats.forEach(function(s) {
                                 if(s.name.toLowerCase().indexOf('victoire') > -1 && s.name.indexOf('%') === -1) wVal = s.val;
                                 if(s.name.toLowerCase().indexOf('défaite') > -1 && s.name.indexOf('%') === -1) lVal = s.val;
                                 if(s.name.toLowerCase().indexOf('nul') > -1 && s.name.indexOf('%') === -1) dVal = s.val;
                                 if(s.name.toLowerCase().indexOf('séquence') > -1) streakVal = s.val;
                                 if(s.name.toLowerCase().indexOf('points') > -1 && s.name.indexOf('diff') === -1) ptsVal = s.val;
-                            }
+                            });
 
                             // Fallback extraction
                             if(wVal === '0' && totalRec.summary) {
@@ -493,13 +490,12 @@ export function fetchTeamStats(teamName) {
                                 if (groupedTeamStats[cat].length > 0 && cat !== 'Général') {
                                     tHtml += '<div style="margin-top:16px; margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px;">' + esc(cat) + '</div>';
                                     tHtml += '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">';
-                                    for (var i = 0; i < groupedTeamStats[cat].length; i++) {
-                                        var st = groupedTeamStats[cat][i];
+                                    groupedTeamStats[cat].forEach(function(st) {
                                         tHtml += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);">';
                                         tHtml += '<div style="font-size:13px;color:var(--muted2);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(st.name)+'">'+esc(st.name)+'</div>';
                                         tHtml += '<div style="font-size:14px;font-weight:800;color:#fff;">'+esc(st.val)+'</div>';
                                         tHtml += '</div>';
-                                    }
+                                    });
                                     tHtml += '</div>';
                                 }
                             }
@@ -516,8 +512,7 @@ export function fetchTeamStats(teamName) {
                         if (teamObj && teamObj.leaders && teamObj.leaders.length > 0) {
                              tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs</h4>';
                              tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
-                             for (var i = 0; i < teamObj.leaders.length; i++) {
-                                 var l = teamObj.leaders[i];
+                             teamObj.leaders.forEach(function(l) {
                                  if(l.leaders && l.leaders.length > 0) {
                                      var lead = l.leaders[0];
                                      tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
@@ -533,7 +528,7 @@ export function fetchTeamStats(teamName) {
                                      tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
                                      tHtml += '</div></div>';
                                  }
-                             }
+                             });
                              tHtml += '</div></div>';
                         } else if (teamObj && teamObj.nextEvent && teamObj.nextEvent[0] && teamObj.nextEvent[0].competitions[0].competitors) {
                              // Fallback to next match leaders if team roster leaders are missing
@@ -541,8 +536,7 @@ export function fetchTeamStats(teamName) {
                              if (myC.leaders && myC.leaders.length > 0) {
                                  tHtml += '<div><h4 style="color:#fff;margin-top:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">🌟 Meneurs (Match)</h4>';
                                  tHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">';
-                                 for (var i = 0; i < myC.leaders.length; i++) {
-                                     var l = myC.leaders[i];
+                                 myC.leaders.forEach(function(l) {
                                      if(l.leaders && l.leaders.length > 0) {
                                          var lead = l.leaders[0];
                                          tHtml += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:12px;border-radius:12px;flex:1;min-width:140px;display:flex;align-items:center;gap:12px;">';
@@ -558,7 +552,7 @@ export function fetchTeamStats(teamName) {
                                          tHtml += '<div style="font-size:12px;color:var(--accent);font-weight:bold;">'+esc(lead.displayValue)+'</div>';
                                          tHtml += '</div></div>';
                                      }
-                                 }
+                                 });
                                  tHtml += '</div></div>';
                              }
                         }
@@ -585,15 +579,10 @@ export function fetchTeamStats(teamName) {
 
                         if(futureEvents.length > 0) {
                             var uHtml = '';
-                            for (var i = 0; i < futureEvents.length; i++) {
-                                var ev = futureEvents[i];
+                            futureEvents.forEach(function(ev) {
                                 var comp = ev.competitions[0];
-                                var hComp = comp.competitors[0];
-                                var aComp = comp.competitors[1];
-                                for (var j = 0; j < comp.competitors.length; j++) {
-                                    if (comp.competitors[j].homeAway === 'home') hComp = comp.competitors[j];
-                                    if (comp.competitors[j].homeAway === 'away') aComp = comp.competitors[j];
-                                }
+                                var hComp = comp.competitors.find(function(c){return c.homeAway==='home';}) || comp.competitors[0];
+                                var aComp = comp.competitors.find(function(c){return c.homeAway==='away';}) || comp.competitors[1];
 
                                 var dateObj = new Date(ev.date);
                                 var timeStr = getEstTimeStrFromDate(dateObj);
@@ -900,34 +889,30 @@ window.loadStandingsTab = function(lg, teamName, seasonTypeId, cachedRes) {
         var activeGroupIdx = 0;
 
         // First pass: detect which group the team belongs to
-        for (var groupIdx = 0; groupIdx < res.data.children.length; groupIdx++) {
-            var group = res.data.children[groupIdx];
+        res.data.children.forEach(function(group, groupIdx) {
             var groupEntries = [];
             if (group.standings && group.standings.entries) {
                 groupEntries = group.standings.entries;
             }
-            for (var rIdx = 0; rIdx < groupEntries.length; rIdx++) {
-                var row = groupEntries[rIdx];
+            groupEntries.forEach(function(row) {
                 var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
                 if(isTeam) {
                     activeGroupIdx = groupIdx;
                 }
-            }
-        }
+            });
+        });
 
         if (hasTabs) {
             tableHtml += '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;" class="hide-scrollbar">';
-            for (var i = 0; i < res.data.children.length; i++) {
-                var c = res.data.children[i];
-                tableHtml += '<button onclick="var groups = document.querySelectorAll(\'#gstats-standings-content .st-tab-group\'); for(var g=0; g<groups.length; g++) groups[g].style.display=\'none\'; document.getElementById(\'st-tab-'+i+'\').style.display=\'block\'; var btns = document.querySelectorAll(\'#gstats-standings-content .st-tab-btn\'); for(var b=0; b<btns.length; b++) btns[b].style.opacity=\'0.5\'; this.style.opacity=\'1\';" class="st-tab-btn" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:12px;font-size:12px;cursor:pointer;white-space:nowrap;opacity:'+(i===activeGroupIdx?'1':'0.5')+';">'+esc(c.name || c.abbreviation || 'Grp '+(i+1))+'</button>';
-            }
+            res.data.children.forEach(function(c, i) {
+                tableHtml += '<button onclick="document.querySelectorAll(\'#gstats-standings-content .st-tab-group\').forEach(e=>e.style.display=\'none\'); document.getElementById(\'st-tab-'+i+'\').style.display=\'block\'; document.querySelectorAll(\'#gstats-standings-content .st-tab-btn\').forEach(b=>b.style.opacity=\'0.5\'); this.style.opacity=\'1\';" class="st-tab-btn" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:12px;font-size:12px;cursor:pointer;white-space:nowrap;opacity:'+(i===activeGroupIdx?'1':'0.5')+';">'+esc(c.name || c.abbreviation || 'Grp '+(i+1))+'</button>';
+            });
             tableHtml += '</div>';
         }
 
         var globalTeamFound = false;
 
-        for (var groupIdx = 0; groupIdx < res.data.children.length; groupIdx++) {
-            var group = res.data.children[groupIdx];
+        res.data.children.forEach(function(group, groupIdx) {
             var isFirst = groupIdx === activeGroupIdx;
             tableHtml += '<div id="st-tab-'+groupIdx+'" class="st-tab-group" style="display:'+(isFirst?'block':'none')+';background:rgba(255,255,255,0.02);padding:16px;border-radius:12px;">';
             tableHtml += '<div style="overflow-x:auto;max-height:400px;" class="hide-scrollbar"><table style="width:100%;border-collapse:collapse;text-align:left;font-size:12px;white-space:nowrap;">';
@@ -940,20 +925,14 @@ window.loadStandingsTab = function(lg, teamName, seasonTypeId, cachedRes) {
 
             var groupTeamFound = false;
 
-            for (var idx = 0; idx < groupEntries.length; idx++) {
-                var row = groupEntries[idx];
+            groupEntries.forEach(function(row, idx) {
                 var isTeam = normName(row.team.name) === normName(teamName) || isMatch(normName(row.team.name), normName(teamName)) || normName(teamName).indexOf(normName(row.team.name)) > -1 || normName(row.team.name).indexOf(normName(teamName)) > -1;
                 if(isTeam) {
                     groupTeamFound = true;
                     globalTeamFound = true;
                 }
 
-                var getStat = function(n) {
-                    for(var sIdx=0; sIdx<row.stats.length; sIdx++) {
-                        if (row.stats[sIdx].name === n) return row.stats[sIdx].displayValue;
-                    }
-                    return '0';
-                };
+                var getStat = function(n) { var st = row.stats.find(s => s.name === n); return st ? st.displayValue : '0'; };
                 var pts = getStat('points');
                 var gp = getStat('gamesPlayed');
                 var wins = getStat('wins');
