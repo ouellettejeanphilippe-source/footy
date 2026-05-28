@@ -6,7 +6,6 @@
 ## En cours
 
 ## Fait
-- Optimizing array iterations (forEach, map, filter, find) to traditional for loops to improve performance and reduce resource usage.
 - 2026-05-18 - Fix robust URL parsing using getDomain with a custom fallback and a new resolveUrl helper in js/config.js to resolve scrapers missing protocol bugs without error. Replaced naive new URL try/catch blocks in js/scrapers.js.
 - 2026-05-16 - Déplacer bouton de mise à jour de la liste des streams et mettre en haut de la liste des streams, sans rond autour, juste l'icone, à côté, ajouter une icone de multiview qui ajoute un stream random du match (sauf si 4k stream dispo, mettre 4k stream). Aussi, 4k streams et Buffstream Flux toujours favoris en haut.
 - 2026-05-16 - Fixed stream cache persistence issue where cached streamLinks were discarded upon page refresh. Updated `getApiFirstMatches` in `js/api.js` to eagerly inject saved `stream_cache` into newly fetched API matches before saving them into the local calendar cache.
@@ -46,3 +45,6 @@
 - Refonte visuelle de la carte de match dans `js/ui.js` (mode Scoreboard).
 - Simplification du bouton Multivision dans la liste de flux en icône carrée simple.
 - Correction du scroll mobile pour `#modal-left-col` (retrait de la couleur de fond fixe et du sticky) dans `styles.css`.
+
+- 2026-05-18 - Implemented caching for parsed schedule lists in `js/main.js` and replaced naive higher-order array methods with performance-oriented `for` loops across the codebase. Paused background scraper `fetchSubPages` logic when browser tabs are hidden to optimize resources.
+- 2026-05-18 - Avoid redundant game scraping if existing API matches already contain robust streams via earlier parsers in the queue.

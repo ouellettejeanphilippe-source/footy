@@ -129,12 +129,14 @@ export function loadAll(isBackground, forceScrape){
       if (ovElement) document.getElementById('marea').appendChild(ovElement); // Move ov to marea
       if (errBoxElement) document.getElementById('marea').appendChild(errBoxElement); // Move errbox to marea
       if (ovElement) ovElement.style.display='flex';
-      [1,2,3].forEach(function(n){
-        var el=document.getElementById('s'+n);if(!el)return;
+      var arr = [1,2,3];
+      for (var i = 0; i < arr.length; i++) {
+        var n = arr[i];
+        var el=document.getElementById('s'+n);if(!el)continue;
         el.style.opacity=n===1?'1':'.4';el.style.color='';
         var ic=el.querySelector('.sic');ic.classList.remove('ok');
         ic.innerHTML='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
-      });
+      }
       var ovmsg = document.getElementById('ovmsg'); if(ovmsg) ovmsg.innerHTML='<div class="spinner"></div> Connexion API...';
       var s1 = document.getElementById('s1'); if(s1 && s1.querySelector('span')) s1.querySelector('span').textContent = 'Téléchargement Guide télé';
       var s2 = document.getElementById('s2'); if(s2 && s2.querySelector('span')) s2.querySelector('span').textContent = 'Recherche de streams...';
@@ -195,27 +197,37 @@ export function loadAll(isBackground, forceScrape){
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
       }
 
-            return Promise.allSettled(
-          SCRAPERS_CONFIG.map(function(scraper) { return fetchPage(scraper.url); })
-      ).then(function(results) {
+            var now = Date.now();
+            var scraperPromises = SCRAPERS_CONFIG.map(function(scraper) {
+                var cacheKey = 'scraper_cache_' + scraper.id;
+                var cached = safeStorageGetJSON(cacheKey);
+                // Cache valid for 5 minutes (300000 ms)
+                if (cached && cached.ts && now - cached.ts < 300000 && cached.data) {
+                    return Promise.resolve({ cached: true, matches: cached.data });
+                }
+                return fetchPage(scraper.url);
+            });
+
+            return Promise.allSettled(scraperPromises).then(function(results) {
           if (!results) return;
           if (!isBackground) { stepOk(2);  }
 
 
           // Check for failures and notify user
           var sources = SCRAPERS_CONFIG.map(function(s) { return s.url; });
-          results.forEach(function(r, idx) {
+          for (var idx = 0; idx < results.length; idx++) {
+              var r = results[idx];
               if (r.status === 'rejected') {
                   var domain = getDomain(sources[idx]);
                   console.error('Failed to fetch:', sources[idx], r.reason);
                   var errMsg = (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion');
                   addScrapeLog(sources[idx], 'error', errMsg);
                   updateSourceStatus(domain, 'error', 0, errMsg);
-                  setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
+                  setTimeout((function(d, i) { return function() { showToast('Échec de la connexion à ' + d); }; })(domain, idx), idx * 1000);
               } else {
-                  addScrapeLog(sources[idx], 'success', '');
+                  addScrapeLog(sources[idx], 'success', r.value && r.value.cached ? '(Cache local)' : '');
               }
-          });
+          }
 
           var scrapedMatches = [];
 
@@ -232,42 +244,69 @@ export function loadAll(isBackground, forceScrape){
               'totalsportek': parseTotalsportek,
               'streamonsport': parseStreamonsport
           };
-          var tasks = SCRAPERS_CONFIG.map(function(sc) {
-              return { fn: scraperFunctions[sc.id], url: sc.url, id: sc.id };
-          });
+          var tasks = [];
+          for (var i = 0; i < SCRAPERS_CONFIG.length; i++) {
+              var sc = SCRAPERS_CONFIG[i];
+              tasks.push({ fn: scraperFunctions[sc.id], url: sc.url, id: sc.id });
+          }
 
           window.scraperStats = safeStorageGetJSON('scraper_stats') || {};
 
           var p = Promise.resolve();
 
-          tasks.forEach(function(task, idx) {
-              p = p.then(function() {
-                  return new Promise(function(resolve) {
-                      setTimeout(function() {
-                          if (results[idx] && results[idx].status === 'fulfilled' && results[idx].value) {
-                              if (task.setRaw) S.raw = results[idx].value;
-                              try {
-                                  var m = task.fn(results[idx].value);
-                                  var matchedCount = 0;
-                                  m.forEach(function(scrapedMatch) {
-                                      if (apiMatches.find(function(am) { return isMatchPair(am, scrapedMatch); })) {
-                                          matchedCount++;
+          for (var idx = 0; idx < tasks.length; idx++) {
+              (function(task, idx) {
+                  p = p.then(function() {
+                      return new Promise(function(resolve) {
+                          setTimeout(function() {
+                              if (results[idx] && results[idx].status === 'fulfilled' && results[idx].value) {
+                                  var resVal = results[idx].value;
+                                  try {
+                                      var m = [];
+                                      if (resVal.cached) {
+                                          m = resVal.matches;
+                                      } else {
+                                          if (task.setRaw) S.raw = resVal;
+                                          m = task.fn(resVal);
+                                          safeStorageSetJSON('scraper_cache_' + task.id, { ts: Date.now(), data: m });
                                       }
-                                  });
-                                  window.scraperStats[task.id] = { total: m.length, matched: matchedCount };
-                                  safeStorageSetJSON('scraper_stats', window.scraperStats);
+                                      var matchedCount = 0;
+                                      var validMatchesToMerge = [];
+                                      for (var k = 0; k < m.length; k++) {
+                                          var scrapedMatch = m[k];
+                                          var found = false;
+                                          var existingApiMatch = null;
+                                          for (var a = 0; a < apiMatches.length; a++) {
+                                              if (isMatchPair(apiMatches[a], scrapedMatch)) {
+                                                  found = true;
+                                                  existingApiMatch = apiMatches[a];
+                                                  break;
+                                              }
+                                          }
+                                          if (found) {
+                                              matchedCount++;
+                                              // Skip redundant merging if this apiMatch already has 3 or more streams from other parsers
+                                              if (existingApiMatch && existingApiMatch.streamLinks && existingApiMatch.streamLinks.length >= 3) {
+                                                  continue;
+                                              }
+                                          }
+                                          validMatchesToMerge.push(scrapedMatch);
+                                      }
+                                      window.scraperStats[task.id] = { total: m.length, matched: matchedCount };
+                                      safeStorageSetJSON('scraper_stats', window.scraperStats);
 
-                                  updateSourceStatus(getDomain(task.url), 'success', m.length, 'OK');
-                                  scrapedMatches = mergeMatches(scrapedMatches, m);
-                              } catch(e) {
-                                  console.error('Error parsing ' + task.url, e);
+                                      updateSourceStatus(getDomain(task.url), 'success', m.length, 'OK');
+                                      scrapedMatches = mergeMatches(scrapedMatches, validMatchesToMerge);
+                                  } catch(e) {
+                                      console.error('Error parsing ' + task.url, e);
+                                  }
                               }
-                          }
-                          resolve();
-                      }, 0);
+                              resolve();
+                          }, 0);
+                      });
                   });
-              });
-          });
+              })(tasks[idx], idx);
+          }
 
           return p.then(function() {
               var finalMatches = mergeFluxToApi(apiMatches, scrapedMatches, false);
@@ -303,12 +342,13 @@ export function loadAll(isBackground, forceScrape){
               var isAllSel = !anyHidden;
 
               var optionsHtml = '<button class="btn sport-btn '+(isAllSel?'active-toggle':'')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
-              sportNames.forEach(function(sp){
+              for (var i = 0; i < sportNames.length; i++) {
+                  var sp = sportNames[i];
                   if (sp !== 'EN DIRECT') {
                       var isSel = !S.hiddenLg[sp];
                       optionsHtml += '<button class="btn sport-btn '+(isSel?'active-toggle':'')+'" onclick="applySportFilter(\''+escJs(sp)+'\');"><span style="margin-right:4px;">'+lgFlag(sp)+'</span> '+esc(sp)+'</button>';
                   }
-              });
+              }
               sf.innerHTML = optionsHtml;
           }
 
@@ -563,11 +603,13 @@ export function renderFavPage() {
 
         // Ensure all mainLeagues are in the list
         var allLgs = Object.keys(DEFAULT_LEAGUES);
-        allLgs.forEach(function(l) {
+        for (var i = 0; i < allLgs.length; i++) {
+            var l = allLgs[i];
             if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
-        });
+        }
 
-        displayOrder.forEach(function(lgKey, idx) {
+        for (var idx = 0; idx < displayOrder.length; idx++) {
+            var lgKey = displayOrder[idx];
             var lgIcon = getLeagueIcon(lgKey);
             var isFirst = idx === 0;
             var isLast = idx === displayOrder.length - 1;
@@ -582,7 +624,7 @@ export function renderFavPage() {
                    + '<button class="btn o" style="padding:4px; font-size:12px; opacity:' + (isLast ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', 1)" ' + (isLast ? 'disabled' : '') + '>▼</button>'
                    + '</div>'
                    + '</div>';
-        });
+        }
         leaguesContainer.innerHTML = lgHtml;
     }
 
@@ -593,27 +635,47 @@ export function renderFavPage() {
 
         // Populate from STATIC_TEAMS
         if (typeof STATIC_TEAMS !== 'undefined') {
-            STATIC_TEAMS.forEach(function(t) {
+            for (var i = 0; i < STATIC_TEAMS.length; i++) {
+                var t = STATIC_TEAMS[i];
                 var lg = t.league ? t.league.toUpperCase() : 'AUTRES';
                 if (!teamsByLeague[lg]) teamsByLeague[lg] = [];
-                if (!teamsByLeague[lg].find(function(x) { return x.name === t.name; })) {
+                var found = false;
+                for (var j = 0; j < teamsByLeague[lg].length; j++) {
+                    if (teamsByLeague[lg][j].name === t.name) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
                     teamsByLeague[lg].push({ name: t.name, source: 'static' });
                 }
-            });
+            }
         }
 
         // Also populate from matches currently in memory to catch unlisted teams
         if (typeof S !== 'undefined' && S.matches) {
-            S.matches.forEach(function(m) {
+            for (var i = 0; i < S.matches.length; i++) {
+                var m = S.matches[i];
                 var lg = m.league || 'AUTRES';
                 if (!teamsByLeague[lg]) teamsByLeague[lg] = [];
 
-                [m.homeTeam, m.awayTeam].forEach(function(tName) {
-                    if (tName && !teamsByLeague[lg].find(function(x) { return x.name === tName; })) {
-                        teamsByLeague[lg].push({ name: tName, source: 'live' });
+                var names = [m.homeTeam, m.awayTeam];
+                for (var j = 0; j < names.length; j++) {
+                    var tName = names[j];
+                    if (tName) {
+                        var found = false;
+                        for (var k = 0; k < teamsByLeague[lg].length; k++) {
+                            if (teamsByLeague[lg][k].name === tName) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            teamsByLeague[lg].push({ name: tName, source: 'live' });
+                        }
                     }
-                });
-            });
+                }
+            }
         }
 
         var tHtml = '';
@@ -654,7 +716,9 @@ export function renderFavPage() {
         var allTeams = [];
         var seenTeams = new Set();
         for (var lg in teamsByLeague) {
-            teamsByLeague[lg].forEach(function(t) {
+            var teamsInLg = teamsByLeague[lg];
+            for (var i = 0; i < teamsInLg.length; i++) {
+                var t = teamsInLg[i];
                 if (!seenTeams.has(t.name)) {
                     seenTeams.add(t.name);
                     allTeams.push(t);
@@ -662,7 +726,7 @@ export function renderFavPage() {
                         favorisList.push(t);
                     }
                 }
-            });
+            }
         }
 
         if (favorisList.length > 0) {
@@ -670,9 +734,9 @@ export function renderFavPage() {
             favorisList.sort(function(a, b) {
                 return a.name.localeCompare(b.name);
             });
-            favorisList.forEach(function(t) {
-                tHtml += renderTeam(t);
-            });
+            for (var i = 0; i < favorisList.length; i++) {
+                tHtml += renderTeam(favorisList[i]);
+            }
             tHtml += '<div class="fav-section-padding" style="height: 16px;"></div>'; // padding before leagues
         }
 
@@ -698,7 +762,8 @@ export function renderFavPage() {
             return a.localeCompare(b);
         });
 
-        sortedLeagues.forEach(function(lg) {
+        for (var i = 0; i < sortedLeagues.length; i++) {
+            var lg = sortedLeagues[i];
             var lgId = 'fav-lg-' + lg.replace(/[^a-zA-Z0-9]/g, '-');
             var isCollapsed = S.collapsedFavLg && S.collapsedFavLg[lg];
             var chevTransform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
@@ -715,11 +780,11 @@ export function renderFavPage() {
                 return a.name.localeCompare(b.name);
             });
 
-            sortedTeams.forEach(function(t) {
-                tHtml += renderTeam(t);
-            });
+            for (var j = 0; j < sortedTeams.length; j++) {
+                tHtml += renderTeam(sortedTeams[j]);
+            }
             tHtml += '</div>';
-        });
+        }
 
         teamsContainer.innerHTML = tHtml;
     }
@@ -795,9 +860,9 @@ export function handleDropLg(event, dropLgKey) {
     if (draggedLgKey && draggedLgKey !== dropLgKey) {
         var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
         var allLgs = Object.keys(DEFAULT_LEAGUES);
-        allLgs.forEach(function(l) {
-            if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
-        });
+        for (var i = 0; i < allLgs.length; i++) {
+            if (displayOrder.indexOf(allLgs[i]) === -1) displayOrder.push(allLgs[i]);
+        }
 
         var draggedIdx = displayOrder.indexOf(draggedLgKey);
         var dropIdx = displayOrder.indexOf(dropLgKey);
@@ -816,9 +881,9 @@ export function handleDropLg(event, dropLgKey) {
 export function moveLeagueOrder(lgKey, direction) {
     var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
     var allLgs = Object.keys(DEFAULT_LEAGUES);
-    allLgs.forEach(function(l) {
-        if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
-    });
+    for (var i = 0; i < allLgs.length; i++) {
+        if (displayOrder.indexOf(allLgs[i]) === -1) displayOrder.push(allLgs[i]);
+    }
 
     var idx = displayOrder.indexOf(lgKey);
     if (idx === -1) return;
@@ -864,34 +929,36 @@ export function filterFavTeams(query) {
     // Si la recherche est vide, on affiche tout et on ferme les accordéons
     if (!q) {
         var favHeaders = teamsContainer.querySelectorAll('.fav-section-header, .fav-section-padding');
-        favHeaders.forEach(function(el) { el.style.display = 'block'; });
+        for (var i = 0; i < favHeaders.length; i++) favHeaders[i].style.display = 'block';
 
         var teamEls = teamsContainer.querySelectorAll('.team-item');
-        teamEls.forEach(function(el) { el.style.display = 'flex'; });
+        for (var i = 0; i < teamEls.length; i++) teamEls[i].style.display = 'flex';
 
         var lgHeaders = teamsContainer.querySelectorAll('.lg-header');
-        lgHeaders.forEach(function(el) { el.style.display = 'flex'; });
+        for (var i = 0; i < lgHeaders.length; i++) lgHeaders[i].style.display = 'flex';
 
         var lgContainers = teamsContainer.querySelectorAll('.lg-container');
-        lgContainers.forEach(function(c) {
+        for (var i = 0; i < lgContainers.length; i++) {
+            var c = lgContainers[i];
             var lgName = c.id.replace('fav-lg-', '').replace(/-/g, ' ');
             // Utiliser toggleFavPageAccordion pour restaurer l'état (ou on force fermé)
             c.style.display = (S.collapsedFavLg && S.collapsedFavLg[lgName]) ? 'none' : 'flex';
-        });
+        }
         return;
     }
 
     // On parcourt toutes les équipes et on masque les en-têtes pour une liste simple
     var favHeaders = teamsContainer.querySelectorAll('.fav-section-header, .fav-section-padding');
-    favHeaders.forEach(function(el) { el.style.display = 'none'; });
+    for (var i = 0; i < favHeaders.length; i++) favHeaders[i].style.display = 'none';
 
     var lgHeaders = teamsContainer.querySelectorAll('.lg-header');
-    lgHeaders.forEach(function(el) { el.style.display = 'none'; });
+    for (var i = 0; i < lgHeaders.length; i++) lgHeaders[i].style.display = 'none';
 
     var allTeamEls = teamsContainer.querySelectorAll('.team-item');
     // Set for keeping track of already displayed names to avoid duplicates since teams might be in favorites and league
     var displayedNames = {};
-    allTeamEls.forEach(function(el) {
+    for (var i = 0; i < allTeamEls.length; i++) {
+        var el = allTeamEls[i];
         var teamName = el.getAttribute('data-team-name');
         var nName = normName(teamName);
         var aliasesStr = el.getAttribute('data-aliases') || '';
@@ -902,11 +969,12 @@ export function filterFavTeams(query) {
         } else {
             el.style.display = 'none';
         }
-    });
+    }
 
     // Force open the containers that have visible results
     var lgContainers = teamsContainer.querySelectorAll('.lg-container');
-    lgContainers.forEach(function(c) {
+    for (var i = 0; i < lgContainers.length; i++) {
+        var c = lgContainers[i];
         var visibleTeams = Array.from(c.querySelectorAll('.team-item')).filter(function(el) {
             return el.style.display === 'flex';
         });
@@ -915,7 +983,7 @@ export function filterFavTeams(query) {
         } else {
             c.style.display = 'none';
         }
-    });
+    }
 }
 
 
