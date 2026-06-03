@@ -6,7 +6,7 @@ const SCRAPERS_CONFIG = [
   { name: 'MLBite', url: 'https://nflbite.is/' },
   { name: 'MLBite+', url: 'https://mlbbite.plus' },
   { name: 'Sportsurge', url: 'https://v2.sportsurge.net/home5/' },
-  { name: 'Buffstreams', url: 'https://buffstreams.com.co/index2' },
+  { name: 'Buffstreams', url: 'https://buffstreams.app/' },
   { name: 'Streameast', url: 'https://naturallyyou.fit/' },
   { name: 'OnHockey', url: 'https://onhockey.tv/schedule_table.php' },
   { name: 'VIPLeague', url: 'https://vipleague.im/top-streaming' },
