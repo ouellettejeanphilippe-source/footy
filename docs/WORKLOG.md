@@ -1,6 +1,10 @@
 ## En cours
 - Adding League of Legends (LoL) VOD extraction and display directly within the match stream modal for finished matches.
 
+## Fait
+- 2026-06-03 - Updated GitHub Action workflows (`android-build.yml` and `tests.yml`) to use Node.js version 22 instead of 20, fixing the `@capacitor/cli` compatibility failure during the CI process.
+- 2026-06-03 - Fixed tests.yml failure when downloading browsers or testing by updating Playwright GitHub Action to not be deprecated and fixed capacitor webDir setting.
+
 # Worklog
 
 ## En cours
