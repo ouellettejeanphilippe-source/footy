@@ -6,10 +6,10 @@ const sites = {
   MLBITE_URL: 'https://nflbite.is/',
   MLBBITE_PLUS_URL: 'https://mlbbite.plus',
   SPORTSURGE_URL: 'https://v2.sportsurge.net/home5/',
-  BUFFSTREAMS_URL: 'https://buffstreams.com.co/index2',
+  BUFFSTREAMS_URL: 'https://buffstreams.app/',
   STREAMEAST_URL: 'https://naturallyyou.fit/',
   ONHOCKEY_URL: 'https://onhockey.tv/schedule_table.php',
-  VIPLEAGUE_URL: 'https://vipleague.im/top-streaming',
+  VIPLEAGUE_URL: 'https://vipleague.io/top-streaming',
   METHSTREAMS_URL: 'https://methstreams.com/',
   TOTALSPORTEK_URL: 'https://totalsportek-real.com/',
   STREAMONSPORT_URL: 'https://www.stremonsport.net/'
