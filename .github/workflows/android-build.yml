@@ -29,6 +29,14 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Prepare web assets
+      run: |
+        mkdir -p www
+        cp index.html styles.css tv.css sw.js manifest.json www/ 2>/dev/null || true
+        cp -r js www/ 2>/dev/null || true
+        cp -r css www/ 2>/dev/null || true
+        cp -r videos www/ 2>/dev/null || true
+
     - name: Sync Capacitor
       run: npx cap sync android
 
