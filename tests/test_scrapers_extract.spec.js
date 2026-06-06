@@ -2,16 +2,16 @@ import { test, expect } from '@playwright/test';
 
 // Define the scraper URLs directly here for Playwright to avoid pulling in the whole DOM-dependent config
 const SCRAPERS_CONFIG = [
-  { name: 'Footybite', url: 'https://footybite.vc/' },
-  { name: 'MLBite', url: 'https://nflbite.is/' },
+  { name: 'Footybite', url: 'https://home.footybite.vc/' },
+  { name: 'MLBite', url: 'https://mlbbite.plus/' },
   { name: 'MLBite+', url: 'https://mlbbite.plus' },
   { name: 'Sportsurge', url: 'https://v2.sportsurge.net/home5/' },
-  { name: 'Buffstreams', url: 'https://buffstreams.app/' },
+  { name: 'Buffstreams', url: 'https://app.buffstreams.is/indexcracked29' },
   { name: 'Streameast', url: 'https://naturallyyou.fit/' },
   { name: 'OnHockey', url: 'https://onhockey.tv/schedule_table.php' },
-  { name: 'VIPLeague', url: 'https://vipleague.io/top-streaming' },
+  { name: 'VIPLeague', url: 'https://www.vipleague.ws/' },
   { name: 'Methstreams', url: 'https://methstreams.com/' },
-  { name: 'Totalsportek', url: 'https://totalsportek-real.com/' },
+  { name: 'Totalsportek', url: 'https://totalsportekz.com/' },
   { name: 'Streamonsport', url: 'https://www.stremonsport.net/' }
 ];
 
