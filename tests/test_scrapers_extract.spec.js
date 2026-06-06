@@ -34,7 +34,7 @@ test.describe('Scraper pages must have stream links or elements', () => {
 
       // If the response is a 403 or 520, we know the site is active but blocking our headless browser / proxy.
       // We will accept a 403/520 as a "success" in terms of "the endpoint exists and responds".
-      if(!response) { console.log(`Skipping test for ${site.url} due to timeout/proxy failure`); return; } expect(response, `Failed to load ${site.url} directly or via proxy`).toBeTruthy();
+      if(!response) { console.log(`Skipping test for ${site.url} due to timeout/proxy failure`); return; }
       expect([200, 403, 520].includes(response.status()), `Response not 200, 403 or 520 for ${site.url}: ${response.status()}`).toBeTruthy();
 
       // Only check for links if we got a 200 OK. If we got a 403 or 520, Cloudflare/Firewall blocked the DOM load.
