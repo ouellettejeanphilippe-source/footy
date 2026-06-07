@@ -2,7 +2,7 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
-import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG } from './config.js';
+import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
 import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
@@ -116,8 +116,13 @@ export function updateLiveScores(matches) {
     processChunk();
 }
 
-export function loadAll(isBackground, forceScrape){
+export async function loadAll(isBackground, forceScrape){
   if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
+
+  // Load dynamic domain configuration on initial load
+  if (!window.hasLoadedOnce && !isBackground) {
+      await fetchRemoteConfig();
+  }
   setupMultivisionUI();
 
   var btn=document.getElementById('relBtn');if(btn) btn.disabled=true;
@@ -407,7 +412,8 @@ if ('serviceWorker' in navigator) {
           safeStorageSet('hasSeenScriptModal', 'true');
           setTimeout(function() { installTampermonkey(); }, 500);
       }
-      loadAll(true, false); // background update for fresh streams/stats
+      // Delay to ensure the initial cache render doesn't block the dynamic domain fetch
+      setTimeout(() => loadAll(true, false), 10);
   } else {
       loadAll(window.hasLoadedOnce, false);
   }

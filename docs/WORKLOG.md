@@ -1,8 +1,10 @@
 ## En cours
 - Adding League of Legends (LoL) VOD extraction and display directly within the match stream modal for finished matches.
 
-- 2026-06-03 - Fixed CI playwright extraction test failing due to Sportsurge/Methstreams scraping proxies returning wrapped HTML in `<pre>` instead of standard DOM output. Also handled `520` Cloudflare status codes. Updated base URLs for Buffstreams and VIPLeague to resolve endpoint fetch errors.
 ## Fait
+- 2026-06-05 - Fixed scraper extraction issues by updating hardcoded base URLs for Footybite (`home.footybite.vc`), Totalsportek (`totalsportekz.com`), Buffstreams (`app.buffstreams.is/indexcracked29`), and VIPLeague (`www.vipleague.ws`).
+- 2026-06-05 - Implemented dynamic domain resolution in `js/config.js` and `js/main.js` which fetches a remote `domains.json` file from the repository at startup to seamlessly update domains without requiring full app updates.
+- 2026-06-03 - Fixed CI playwright extraction test failing due to Sportsurge/Methstreams scraping proxies returning wrapped HTML in `<pre>` instead of standard DOM output. Also handled `520` Cloudflare status codes. Updated base URLs for Buffstreams and VIPLeague to resolve endpoint fetch errors.
 - 2026-06-03 - Updated GitHub Action workflows (`android-build.yml` and `tests.yml`) to use Node.js version 22 instead of 20, fixing the `@capacitor/cli` compatibility failure during the CI process.
 - 2026-06-03 - Fixed tests.yml failure when downloading browsers or testing by updating Playwright GitHub Action to not be deprecated and fixed capacitor webDir setting.
 
