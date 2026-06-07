@@ -7,19 +7,71 @@ import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS } from './db.js';
 
 /* ══ CONFIG ═════════════════════════════ */
-export var SITE = 'https://footybite.vc/'; // Updated to new footybite.vc domain
-export var MLBITE_URL = 'https://nflbite.is/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
+export var SITE = 'https://home.footybite.vc/'; // Updated to new footybite.vc domain
+export var MLBITE_URL = 'https://mlbbite.plus/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
 export var MLBBITE_PLUS_URL = 'https://mlbbite.plus/';
 export var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
-export var BUFFSTREAMS_URL = 'https://buffstreams.app/';
+export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
 export var STREAMEAST_URL = 'https://naturallyyou.fit/';
 export var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
-export var VIPLEAGUE_URL = 'https://vipleague.io/top-streaming';
+export var VIPLEAGUE_URL = 'https://www.vipleague.ws/';
 export var METHSTREAMS_URL = 'https://methstreams.com/';
-export var TOTALSPORTEK_URL = 'https://totalsportek-real.com/';
+export var TOTALSPORTEK_URL = 'https://totalsportekz.com/';
 export var STREAMONSPORT_URL = 'https://www.stremonsport.net/';
 
 
+// Dynamic Domain Resolution
+export async function fetchRemoteConfig() {
+    try {
+        var remoteConfigUrl = 'https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/domains.json';
+        var res = await fetch(remoteConfigUrl, { cache: 'no-cache' });
+        if (res.ok) {
+            var data = await res.json();
+            if (data.SITE) SITE = data.SITE;
+            if (data.MLBITE_URL) MLBITE_URL = data.MLBITE_URL;
+            if (data.MLBBITE_PLUS_URL) MLBBITE_PLUS_URL = data.MLBBITE_PLUS_URL;
+            if (data.SPORTSURGE_URL) SPORTSURGE_URL = data.SPORTSURGE_URL;
+            if (data.BUFFSTREAMS_URL) BUFFSTREAMS_URL = data.BUFFSTREAMS_URL;
+            if (data.STREAMEAST_URL) STREAMEAST_URL = data.STREAMEAST_URL;
+            if (data.ONHOCKEY_URL) ONHOCKEY_URL = data.ONHOCKEY_URL;
+            if (data.VIPLEAGUE_URL) VIPLEAGUE_URL = data.VIPLEAGUE_URL;
+            if (data.METHSTREAMS_URL) METHSTREAMS_URL = data.METHSTREAMS_URL;
+            if (data.TOTALSPORTEK_URL) TOTALSPORTEK_URL = data.TOTALSPORTEK_URL;
+            if (data.STREAMONSPORT_URL) STREAMONSPORT_URL = data.STREAMONSPORT_URL;
+
+            // Re-sync global bindings
+            window.SITE = SITE;
+            window.MLBITE_URL = MLBITE_URL;
+            window.MLBBITE_PLUS_URL = MLBBITE_PLUS_URL;
+            window.SPORTSURGE_URL = SPORTSURGE_URL;
+            window.BUFFSTREAMS_URL = BUFFSTREAMS_URL;
+            window.STREAMEAST_URL = STREAMEAST_URL;
+            window.ONHOCKEY_URL = ONHOCKEY_URL;
+            window.VIPLEAGUE_URL = VIPLEAGUE_URL;
+            window.METHSTREAMS_URL = METHSTREAMS_URL;
+            window.TOTALSPORTEK_URL = TOTALSPORTEK_URL;
+            window.STREAMONSPORT_URL = STREAMONSPORT_URL;
+
+            // Re-sync the config array
+            SCRAPERS_CONFIG.forEach(function(s) {
+                if (s.id === 'footybite') s.url = SITE;
+                if (s.id === 'nflbite') s.url = MLBITE_URL;
+                if (s.id === 'mlbbite') s.url = MLBBITE_PLUS_URL;
+                if (s.id === 'sportsurge') s.url = SPORTSURGE_URL;
+                if (s.id === 'buffstreams') s.url = BUFFSTREAMS_URL;
+                if (s.id === 'streameast') s.url = STREAMEAST_URL;
+                if (s.id === 'onhockey') s.url = ONHOCKEY_URL;
+                if (s.id === 'vipleague') s.url = VIPLEAGUE_URL;
+                if (s.id === 'methstreams') s.url = METHSTREAMS_URL;
+                if (s.id === 'totalsportek') s.url = TOTALSPORTEK_URL;
+                if (s.id === 'streamonsport') s.url = STREAMONSPORT_URL;
+            });
+            console.log('Dynamic domains loaded successfully from remote config.');
+        }
+    } catch(e) {
+        console.log('Failed to fetch dynamic domain config, using local fallbacks.');
+    }
+}
 
 
 export const SCRAPERS_CONFIG = [
