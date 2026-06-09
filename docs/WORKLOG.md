@@ -2,6 +2,9 @@
 - Adding League of Legends (LoL) VOD extraction and display directly within the match stream modal for finished matches.
 
 ## Fait
+
+* **2026-06-07**: Correction du bogue critique provoquant des erreurs 404 (GitHub Pages) dans le Multiview. Import et utilisation globale de `resolveUrl` au sein de `resolveStreamUrl` dans `js/utils.js` pour imposer des URLs de flux absolues strictes (`https://`).
+
 - 2026-06-05 - Fixed scraper extraction issues by updating hardcoded base URLs for Footybite (`home.footybite.vc`), Totalsportek (`totalsportekz.com`), Buffstreams (`app.buffstreams.is/indexcracked29`), and VIPLeague (`www.vipleague.ws`).
 - 2026-06-05 - Implemented dynamic domain resolution in `js/config.js` and `js/main.js` which fetches a remote `domains.json` file from the repository at startup to seamlessly update domains without requiring full app updates.
 - 2026-06-03 - Fixed CI playwright extraction test failing due to Sportsurge/Methstreams scraping proxies returning wrapped HTML in `<pre>` instead of standard DOM output. Also handled `520` Cloudflare status codes. Updated base URLs for Buffstreams and VIPLeague to resolve endpoint fetch errors.
