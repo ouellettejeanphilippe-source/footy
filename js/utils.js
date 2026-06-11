@@ -1,6 +1,6 @@
 import { fetchSubPages } from './scrapers.js';
 import { S } from './state.js';
-import { PROXIES } from './config.js';
+import { PROXIES, resolveUrl } from './config.js';
 import { normName, getLogo } from './db.js';
 import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
 import { userPrefs, buildEPG, scrollToNow } from './ui.js';
@@ -96,7 +96,13 @@ export function resolveStreamUrl(url) {
                 var doc = new DOMParser().parseFromString(html, 'text/html');
                 var iframe = doc.querySelector('iframe');
                 if (iframe && iframe.getAttribute('src')) {
-                    resolve(iframe.getAttribute('src'));
+                    var finalSrc = iframe.getAttribute('src');
+                    if(typeof resolveUrl === 'function') {
+                        finalSrc = resolveUrl(finalSrc, url);
+                    } else {
+                        if (!finalSrc.startsWith('http')) finalSrc = new URL(finalSrc, url).href;
+                    }
+                    resolve(finalSrc);
                 } else {
                     resolve(url);
                 }
