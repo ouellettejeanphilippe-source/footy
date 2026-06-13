@@ -18,6 +18,7 @@ const ESPN_LEAGUES = {
   'copa del rey': 'soccer/esp.copa_del_rey',
   'dfb pokal': 'soccer/ger.dfb_pokal',
   'saudi pro league': 'soccer/ksa.1',
+  'fifa world cup': 'soccer/fifa.world',
   'nba': 'basketball/nba',
   'basketball': 'basketball/nba',
   'nhl': 'hockey/nhl',
