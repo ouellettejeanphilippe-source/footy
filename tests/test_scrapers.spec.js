@@ -2,16 +2,16 @@ import { test, expect } from '@playwright/test';
 
 // Define the scraper URLs from config
 const sites = {
-  SITE: 'https://footybite.vc/',
+  SITE: 'https://footybite.bid/',
   MLBITE_URL: 'https://nflbite.is/',
   MLBBITE_PLUS_URL: 'https://mlbbite.plus',
-  SPORTSURGE_URL: 'https://v2.sportsurge.net/home5/',
+  SPORTSURGE_URL: 'https://sportsurge.mom/',
   BUFFSTREAMS_URL: 'https://buffstreams.app/',
   STREAMEAST_URL: 'https://naturallyyou.fit/',
-  ONHOCKEY_URL: 'https://onhockey.tv/schedule_table.php',
+  ONHOCKEY_URL: 'https://www.onhockey.tv/',
   VIPLEAGUE_URL: 'https://vipleague.io/top-streaming',
-  METHSTREAMS_URL: 'https://methstreams.com/',
-  TOTALSPORTEK_URL: 'https://totalsportek-real.com/',
+  METHSTREAMS_URL: 'https://methstreams.gs/',
+  // TOTALSPORTEK_URL: 'https://totalsportek-real.com/',
   STREAMONSPORT_URL: 'https://www.stremonsport.net/'
 };
 

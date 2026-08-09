@@ -7,15 +7,15 @@ import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS } from './db.js';
 
 /* ══ CONFIG ═════════════════════════════ */
-export var SITE = 'https://home.footybite.vc/'; // Updated to new footybite.vc domain
+export var SITE = 'https://footybite.bid/'; // Updated to new footybite.bid domain
 export var MLBITE_URL = 'https://mlbbite.plus/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
 export var MLBBITE_PLUS_URL = 'https://mlbbite.plus/';
-export var SPORTSURGE_URL = 'https://v2.sportsurge.net/home5/';
+export var SPORTSURGE_URL = 'https://sportsurge.mom/';
 export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
 export var STREAMEAST_URL = 'https://travelland.info/';
-export var ONHOCKEY_URL = 'https://onhockey.tv/schedule_table.php';
+export var ONHOCKEY_URL = 'https://www.onhockey.tv/schedule_table.php';
 export var VIPLEAGUE_URL = 'https://www.vipleague.ws/';
-export var METHSTREAMS_URL = 'https://methstreams.com/';
+export var METHSTREAMS_URL = 'https://methstreams.gs/';
 export var TOTALSPORTEK_URL = 'https://totalsportekz.com/';
 export var STREAMONSPORT_URL = 'https://www.stremonsport.net/';
 
