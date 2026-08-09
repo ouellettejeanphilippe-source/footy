@@ -2,17 +2,17 @@ import { test, expect } from '@playwright/test';
 
 // Define the scraper URLs directly here for Playwright to avoid pulling in the whole DOM-dependent config
 const SCRAPERS_CONFIG = [
-  { name: 'Footybite', url: 'https://footybite.vc/' },
+  { name: 'Footybite', url: 'https://footybite.bid/' },
   // { name: 'MLBite', url: 'https://nflbite.is/' },
   { name: 'MLBite+', url: 'https://mlbbite.plus' },
-  { name: 'Sportsurge', url: 'https://v2.sportsurge.net/home5/' },
+  { name: 'Sportsurge', url: 'https://sportsurge.mom/' },
   { name: 'Buffstreams', url: 'https://app.buffstreams.is/indexcracked29' },
   { name: 'Streameast', url: 'https://naturallyyou.fit/' },
-  { name: 'OnHockey', url: 'https://onhockey.tv/schedule_table.php' },
+  { name: 'OnHockey', url: 'https://www.onhockey.tv/' },
   { name: 'VIPLeague', url: 'https://vipleague.io/top-streaming' },
-  // { name: 'Methstreams', url: 'https://methstreams.com/' },
-  { name: 'Totalsportek', url: 'https://totalsportek-real.com/' },
-  { name: 'Streamonsport', url: 'https://www.stremonsport.net/' }
+  // { name: 'Methstreams', url: 'https://methstreams.gs/' },
+  // { name: 'Totalsportek', url: 'https://totalsportek-real.com/' },
+  // { name: 'Streamonsport', url: 'https://www.stremonsport.net/' }
 ];
 
 test.describe('Scraper pages must have stream links or elements', () => {
