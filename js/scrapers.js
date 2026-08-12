@@ -934,32 +934,45 @@ export function parseVipleague(html) {
     var links = doc.querySelectorAll('a[href]');
     [].forEach.call(links, function(a) {
         var href = a.getAttribute('href');
-        if(href && href.includes('-streaming') && !href.includes('-links')) {
-            var urlParts = href.split('/').pop().split('-streaming')[0].split('-vs-');
-            if(urlParts.length >= 2) {
-                var home = urlParts[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
-                var away = urlParts.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
-                if(home && away) {
-                    var matchUrl = href;
-                    if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
-                        matchUrl = resolveUrl(matchUrl, VIPLEAGUE_URL);
-                    }
-                    if(matchUrl.startsWith('http') && !matches.find(m => m.matchUrl === matchUrl)) {
-                        matches.push({
-                            id: 'vip_' + matches.length,
-                            league: 'Sports',
-                            flag: lgFlag('Sports'),
-                            color: lgColor('Sports'),
-                            homeTeam: getOfficialTeamName(home),
-                            awayTeam: getOfficialTeamName(away),
-                            matchUrl: matchUrl,
-                            startTime: '00:00',
-                            status: 'upcoming',
-                            streamLinks: [],
-                            streamsLoaded: false,
-                            source: 'vipleague'
-                        });
-                    }
+        // Vipleague (now liveleagues.me) uses /tag-home-vs-away-live
+        if(href && ((href.includes('-streaming') && !href.includes('-links')) || (href.includes('/tag-') && href.includes('-vs-') && href.endsWith('-live')))) {
+            var home = '';
+            var away = '';
+
+            if (href.includes('-streaming')) {
+                var urlParts = href.split('/').pop().split('-streaming')[0].split('-vs-');
+                if(urlParts.length >= 2) {
+                    home = urlParts[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
+                    away = urlParts.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
+                }
+            } else if (href.includes('/tag-')) {
+                var urlParts = href.split('/tag-')[1].replace('-live', '').split('-vs-');
+                if(urlParts.length >= 2) {
+                    home = urlParts[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
+                    away = urlParts.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).trim();
+                }
+            }
+
+            if(home && away) {
+                var matchUrl = href;
+                if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
+                    matchUrl = resolveUrl(matchUrl, VIPLEAGUE_URL);
+                }
+                if(matchUrl.startsWith('http') && !matches.find(m => m.matchUrl === matchUrl)) {
+                    matches.push({
+                        id: 'vip_' + matches.length,
+                        league: 'Sports',
+                        flag: lgFlag('Sports'),
+                        color: lgColor('Sports'),
+                        homeTeam: getOfficialTeamName(home),
+                        awayTeam: getOfficialTeamName(away),
+                        matchUrl: matchUrl,
+                        startTime: '00:00',
+                        status: 'upcoming',
+                        streamLinks: [],
+                        streamsLoaded: false,
+                        source: 'vipleague'
+                    });
                 }
             }
         }
