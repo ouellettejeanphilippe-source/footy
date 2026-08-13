@@ -91,6 +91,86 @@ export function resolveStreamUrl(url) {
             return;
         }
 
+        // Execute saved custom rules from the Scraper Investigator
+        var customRules = safeStorageGetJSON('custom_scraper_rules', {});
+        var domainKeys = Object.keys(customRules);
+        var matchingDomainId = null;
+        for (var i = 0; i < domainKeys.length; i++) {
+            if (url.indexOf(domainKeys[i]) > -1 || (typeof SCRAPERS_CONFIG !== 'undefined' && SCRAPERS_CONFIG.find(s => s.id === domainKeys[i] && url.indexOf(s.url) > -1))) {
+                matchingDomainId = domainKeys[i];
+                break;
+            }
+        }
+
+        if (matchingDomainId && customRules[matchingDomainId] && customRules[matchingDomainId].steps && customRules[matchingDomainId].steps.length > 0) {
+            lg('Executing custom rule sequence for', matchingDomainId);
+
+            function executeStep(currentUrl, stepIndex) {
+                if (stepIndex >= customRules[matchingDomainId].steps.length) {
+                    resolve(currentUrl); // Reached the end without finding iframe somehow
+                    return;
+                }
+
+                var step = customRules[matchingDomainId].steps[stepIndex];
+
+                fetchPage(currentUrl).then(function(html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+
+                    if (step.type === 'click_link') {
+                        // Find matching link
+                        var links = doc.querySelectorAll('a[href]');
+                        var nextUrl = null;
+                        for (var i=0; i<links.length; i++) {
+                            var h = links[i].getAttribute('href');
+                            if (!h || h.startsWith('javascript')) continue;
+                            var t = links[i].textContent.replace(/\s+/g, ' ').trim();
+                            if (h.includes(step.href) || (step.textMatch && t.includes(step.textMatch))) {
+                                nextUrl = h;
+                                break;
+                            }
+                        }
+
+                        if (nextUrl) {
+                            var fullUrl = typeof resolveUrl === 'function' ? resolveUrl(nextUrl, currentUrl) : (nextUrl.startsWith('http') ? nextUrl : new URL(nextUrl, currentUrl).href);
+                            executeStep(fullUrl, stepIndex + 1);
+                        } else {
+                            resolve(currentUrl); // Failed to find link
+                        }
+                    } else if (step.type === 'iframe_select') {
+                        var iframes = doc.querySelectorAll('iframe');
+                        var targetIframe = null;
+
+                        if (iframes.length > step.iframeIndex) {
+                            targetIframe = iframes[step.iframeIndex];
+                        } else if (iframes.length > 0) {
+                            targetIframe = iframes[0]; // fallback to first
+                        }
+
+                        if (targetIframe && targetIframe.getAttribute('src')) {
+                            var finalSrc = targetIframe.getAttribute('src');
+                            if(typeof resolveUrl === 'function') {
+                                finalSrc = resolveUrl(finalSrc, currentUrl);
+                            } else {
+                                if (!finalSrc.startsWith('http')) finalSrc = new URL(finalSrc, currentUrl).href;
+                            }
+                            resolve(finalSrc);
+                        } else {
+                            resolve(currentUrl); // Failed to find iframe
+                        }
+                    } else {
+                        resolve(currentUrl); // Unknown step type
+                    }
+                }).catch(function(e) {
+                    lg('Rule execution failed at step ' + stepIndex, e.message);
+                    resolve(currentUrl);
+                });
+            }
+
+            executeStep(url, 0);
+            return;
+        }
+
+        // Hardcoded Fallback: OnHockey
         if (url.indexOf('onhockey.tv') >= 0) {
             fetchPage(url).then(function(html) {
                 var doc = new DOMParser().parseFromString(html, 'text/html');

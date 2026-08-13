@@ -109,6 +109,36 @@
   <div class="dbg-body" id="dbgbody"><div style="color:var(--muted);font-size:13px">Lance un chargement d'abord.</div></div>
 </div>
 
+<!-- SCRAPER INVESTIGATOR MODAL -->
+<div class="mbg" id="investigator-modal" style="display:none;" onclick="if(event.target===this) { this.style.display='none'; document.getElementById('investigator-content').innerHTML=''; }">
+  <div class="modal" style="max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="mhd" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 15px 20px;">
+      <div class="mi"><div class="mn">🕵️ Scraper Investigator</div></div>
+      <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="document.getElementById('investigator-modal').style.display='none'; document.getElementById('investigator-content').innerHTML='';">✕ Fermer</button>
+    </div>
+    <div style="padding: 15px 20px; display: flex; gap: 10px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <input type="text" id="investigator-url" placeholder="URL de la page à analyser (ex: https://site.com/match)" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px;">
+        <button class="btn g" style="padding: 10px 20px;" onclick="window.investigateUrl(document.getElementById('investigator-url').value)">Analyser</button>
+    </div>
+
+    <div style="padding: 10px 20px; background: rgba(255,165,0,0.1); border-bottom: 1px solid rgba(255,165,0,0.3); font-size: 13px; color: #ffcc00;">
+        <strong>Séquence enregistrée :</strong>
+        <div id="investigator-sequence" style="margin-top: 5px; font-family: monospace; display: flex; flex-direction: column; gap: 4px;">
+            <div style="color: rgba(255,255,255,0.5);">Aucune action (Démarrez l'analyse)</div>
+        </div>
+    </div>
+
+    <div id="investigator-content" style="flex: 1; overflow-y: auto; padding: 20px; font-size: 13px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 40px;">Entrez une URL pour commencer l'investigation du DOM.</div>
+    </div>
+
+    <div style="padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn" style="padding: 8px 16px;" onclick="window.investigatorClearSequence()">Réinitialiser</button>
+        <button class="btn g" style="padding: 8px 16px; background: var(--accent); color: #fff;" onclick="window.investigatorSaveRules()">Sauvegarder les règles</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="mbg" id="mbg" onclick="if(event.target===this)closeMod()">
   <div class="modal">
@@ -293,7 +323,21 @@
             </div>
           </div>
 
-          <!-- 4. Sauvegarde & Importation -->
+          <!-- 4. Scraper Investigator -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🕵️ Scraper Investigator & Debug</div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); flex: 1; min-width: 200px;">
+                Outil interactif pour configurer manuellement l'extraction de vidéos et résoudre les erreurs de flux inaccessibles.
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn" style="padding:8px 16px; font-size:13px; background:rgba(255,165,0,0.2); color:orange; border-color:rgba(255,165,0,0.5);" onclick="window.openInvestigatorModal()">Lancer l'Investigator</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Sauvegarde & Importation -->
           <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
             <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">💾 Sauvegarde & Importation</div>
 
@@ -404,5 +448,5 @@
         <div style="text-align:center; color:var(--muted); margin-top:20px;">Chargement...</div>
     </div>
 </div>
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js">window.applyFilter = applyFilter;</script>
 </body></html>
