@@ -57,3 +57,4 @@
 - Refonte visuelle de la carte de match dans `js/ui.js` (mode Scoreboard).
 - Simplification du bouton Multivision dans la liste de flux en icône carrée simple.
 - Correction du scroll mobile pour `#modal-left-col` (retrait de la couleur de fond fixe et du sticky) dans `styles.css`.
+- 2024-05-18 - Implemented frontend UI for the Scraper Investigator inside the options modal, integrating interactive DOM selection to dynamically build custom scraper rules bypassing X-Frame-Options.
