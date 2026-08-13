@@ -2951,7 +2951,7 @@ export function investigatorClearSequence() {
     investigatorSequence = [];
     investigatorCurrentUrl = '';
     document.getElementById('investigator-url').value = '';
-    document.getElementById('investigator-content').innerHTML = '<div style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 40px;">Entrez une URL pour commencer l'investigation du DOM.</div>';
+    document.getElementById('investigator-content').innerHTML = '<div style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 40px;">Entrez une URL pour commencer l\'investigation du DOM.</div>';
     renderInvestigatorSequence();
 }
 
