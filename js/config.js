@@ -12,12 +12,12 @@ export var MLBITE_URL = 'https://mlbbite.plus/'; // nflbite.is is dead, using nf
 export var MLBBITE_PLUS_URL = 'https://mlbbite.plus/';
 export var SPORTSURGE_URL = 'https://sportsurge.mom/';
 export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
-export var STREAMEAST_URL = 'https://travelland.info/';
+export var STREAMEAST_URL = 'https://contestbuff.info/';
 export var ONHOCKEY_URL = 'https://www.onhockey.tv/schedule_table.php';
-export var VIPLEAGUE_URL = 'https://www.vipleague.ws/';
+export var VIPLEAGUE_URL = 'https://www.vipleague.lc/';
 export var METHSTREAMS_URL = 'https://methstreams.gs/';
 export var TOTALSPORTEK_URL = 'https://totalsportekz.com/';
-export var STREAMONSPORT_URL = 'https://www.stremonsport.net/';
+export var STREAMONSPORT_URL = 'https://streamonsport.info/';
 
 
 // Dynamic Domain Resolution
