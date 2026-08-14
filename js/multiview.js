@@ -2706,7 +2706,8 @@ export function renderSourcesStatus() {
         html += '<div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0;">' +
                   '<div style="display:flex; align-items:center; gap: 8px;">' +
                       '<span style="font-size: 14px;">' + icon + '</span>' +
-                      '<span style="font-weight: bold; color: var(--text);">' + esc(s.name) + '</span>' +
+                      '<a href="https://' + esc(s.name) + '" target="_blank" style="font-weight: bold; color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--muted);">' + esc(s.name) + '</a>' +
+                      '<button class="btn o" title="Investigate" style="padding: 2px 6px; font-size: 11px; margin-left: 4px;" onclick="window.openInvestigatorModal(); window.investigateUrl(\'https://' + escJs(s.name) + '\');">🕵️</button>' +
                   '</div>' +
                   '<div style="display:flex; align-items:center; gap: 10px; font-size: 12px;">' +
                       '<span style="color: ' + color + ';">' + esc(s.message) + '</span>' +
