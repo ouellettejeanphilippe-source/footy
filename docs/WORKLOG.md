@@ -1,7 +1,11 @@
+
 ## En cours
 - Adding League of Legends (LoL) VOD extraction and display directly within the match stream modal for finished matches.
 
 ## Fait
+- 2026-06-07 - Implemented advanced Next.js JSON payload parsing in `js/scrapers.js` for Footybite, Streameast, and MLBite to correctly extract match schedules from their new React-based architecture.
+- 2026-06-07 - Enhanced `scrapeMatchFlux` to parse embedded stream links and iframes directly from script tags and Next.js payloads on individual match pages, bypassing Cloudflare 403 blocks on direct DOM loads.
+
 
 * **2026-06-07**: Correction du bogue critique provoquant des erreurs 404 (GitHub Pages) dans le Multiview. Import et utilisation globale de `resolveUrl` au sein de `resolveStreamUrl` dans `js/utils.js` pour imposer des URLs de flux absolues strictes (`https://`).
 
