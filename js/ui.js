@@ -1682,6 +1682,7 @@ export function closeMod(){
 
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
 export var userPrefs = {
+  deepResolve: false,
   bgStyle: 'gradient',
   iconPack: 'standard',
   c1: '#000000',

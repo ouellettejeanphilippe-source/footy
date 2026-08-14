@@ -2459,6 +2459,9 @@ export function initPrefs() {
   var selHdr = document.getElementById('pref-hdr-style');
   if(selHdr) selHdr.value = userPrefs.hdrStyle || 'transparent';
 
+  var cbDeepResolve = document.getElementById('pref-deep-resolve');
+  if(cbDeepResolve) cbDeepResolve.checked = !!userPrefs.deepResolve;
+
   var effectsContainer = document.getElementById('pref-ui-effects-container');
   if(effectsContainer) {
       var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
@@ -2492,6 +2495,7 @@ export function applyUserPrefs() {
   var opacSel = document.getElementById('pref-card-opacity');
   var effectsContainer = document.getElementById('pref-ui-effects-container');
   var removeBlackCb = document.getElementById('pref-remove-black');
+  var deepResolveCb = document.getElementById('pref-deep-resolve');
 
   if(bgStyleSel) userPrefs.bgStyle = bgStyleSel.value;
   if(c1Sel) userPrefs.c1 = c1Sel.value;
@@ -2513,6 +2517,7 @@ export function applyUserPrefs() {
   if(darkenSel) userPrefs.bgDarken = darkenSel.value;
 
   if(removeBlackCb) userPrefs.removeBlack = removeBlackCb.checked;
+  if(deepResolveCb) userPrefs.deepResolve = deepResolveCb.checked;
 
   if(effectsContainer) {
       var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
