@@ -50,7 +50,7 @@ export function parseStreameast(html){
                   if(ampm === 'AM' && h === 12) h = 0;
 
                   // It's ET time, we keep it as is (or convert based on logic if needed, but our standard seems to accept local/ET depending on source)
-                  startTime = pad(h) + ':' + pad(m);
+                  startTime = pad(h) + ':' + (m.length === 1 ? '0' + m : m);
               }
           }
 
@@ -154,6 +154,65 @@ export function parseStreameast(html){
               }
           }
       });
+  }
+
+
+  // Next.js Payload fallback for Streameast
+  if (matches.length === 0) {
+      try {
+          var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
+          var matchData;
+          var concatenatedData = "";
+
+          while ((matchData = scriptRegex.exec(html)) !== null) {
+              var chunk = matchData[1];
+              chunk = chunk.replace(/\\"/g, '"')
+                           .replace(/\\\\/g, '\\')
+                           .replace(/\\n/g, '\n');
+              concatenatedData += chunk;
+          }
+
+          var matchUrlRegex = /\{"href":"(\/[a-z0-9-]+-streams[^"]*)"[^}]*?children":\[(?:\["\$","div"[\s\S]*?)?"children":"([^"]+)"[\s\S]*?"children":"(Starts in [^"]+|Match started|Live|FT)"[\s\S]*?"children":"([^"]+)"/gi;
+          var mData;
+
+          while ((mData = matchUrlRegex.exec(concatenatedData)) !== null) {
+              var href = mData[1];
+              var home = mData[2];
+              var timeStr = mData[3];
+              var away = mData[4];
+
+              var startTime = '00:00';
+              if (timeStr.toLowerCase().indexOf('starts in') > -1) {
+                  var startsInM = timeStr.match(/Starts in (?:(\d+)hr:)?(\d+)min/i);
+                  if (startsInM) {
+                      var n = new Date();
+                      var hAdd = startsInM[1] ? parseInt(startsInM[1]) : 0;
+                      var mAdd = startsInM[2] ? parseInt(startsInM[2]) : 0;
+                      n.setMinutes(n.getMinutes() + mAdd);
+                      n.setHours(n.getHours() + hAdd);
+                      startTime = pad(n.getHours()) + ':' + pad(n.getMinutes());
+                  }
+              }
+
+              var matchUrl = resolveUrl(href, STREAMEAST_URL);
+
+              matches.push({
+                  id: 'se_nx_' + Math.random().toString(36).substr(2, 9),
+                  league: formatLeagueName('Sports'),
+                  flag: lgFlag('Sports'),
+                  color: lgColor('Sports'),
+                  homeTeam: getOfficialTeamName(home),
+                  awayTeam: getOfficialTeamName(away),
+                  startTime: startTime,
+                  durationMinutes: getLeagueDuration('Sports'),
+                  status: 'upcoming',
+                  matchUrl: matchUrl,
+                  streamLinks: [],
+                  streamsLoaded: false,
+                  source: 'streameast'
+              });
+          }
+      } catch(e) { }
   }
 
   lg('Streameast extraits', matches.length);
@@ -803,6 +862,55 @@ export function parseBuffstreams(html){
       } catch(e) {}
   }
 
+
+
+  // Buffstreams doesn't use Next.js, it uses regular DOM but categories. Let's make sure it parses links with -vs- or teams.
+  if (matches.length === 0) {
+      var links2 = doc.querySelectorAll('a[href]');
+      [].forEach.call(links2, function(a) {
+          var href = a.getAttribute('href') || '';
+          if(href && (href.includes('-vs-') || href.includes('stream') || href.includes('live'))) {
+              var text = a.textContent.replace(/\s+/g, ' ').replace(/[\n\r]/g, '').trim();
+              if(!text) {
+                  // try to find text inside
+                  var span = a.querySelector('span');
+                  if(span) text = span.textContent.trim();
+              }
+              var teams = text.split(/\s+vs\s+|\s+v\s+|\s+-\s+/i);
+
+              if(teams.length >= 2 && text.length > 5 && text.length < 80 && text.toLowerCase().indexOf('stream') === -1) {
+                  var home = teams[0].replace(/stream|live/ig, '').trim();
+                  var away = teams.slice(1).join(' ').replace(/stream|live/ig, '').trim();
+
+                  if(home && away && home.length > 2 && away.length > 2) {
+                      var matchUrl = href;
+                      if(!matchUrl.startsWith('http') && !matchUrl.startsWith('javascript')) {
+                          matchUrl = resolveUrl(matchUrl, BUFFSTREAMS_URL);
+                      }
+
+                      if(matchUrl.startsWith('http') && !matches.find(function(m) { return m.matchUrl === matchUrl; })) {
+                          matches.push({
+                              id: 'buff_fb_' + matches.length,
+                              league: formatLeagueName('Sports'),
+                              flag: lgFlag('Sports'),
+                              color: lgColor('Sports'),
+                              homeTeam: getOfficialTeamName(home),
+                              awayTeam: getOfficialTeamName(away),
+                              matchUrl: matchUrl,
+                              startTime: '00:00',
+                              status: 'upcoming',
+                              streamLinks: [],
+                              streamsLoaded: false,
+                              source: 'buffstreams'
+                          });
+                      }
+                  }
+              }
+          }
+      });
+  }
+
+
   lg('Buffstreams extraits', matches.length);
   return matches;
 }
@@ -1101,11 +1209,8 @@ export function parseMlbbite(html) {
     try {
         var doc = new DOMParser().parseFromString(html, "text/html");
 
-        // MLBBite new format: <a href="/watch/..." class="inline-match-item"> or similar
-        // Just find any link that looks like a match link if .inline-match-item is missing
-        var items = doc.querySelectorAll(".inline-match-item, a[href*='/watch/live/']");
+        var items = doc.querySelectorAll(".inline-match-item, a[href*='/watch/live/'], a[href*='/match/']");
 
-        // Remove duplicates based on href
         var uniqueItems = [];
         var hrefs = new Set();
         [].forEach.call(items, function(el) {
@@ -1128,13 +1233,11 @@ export function parseMlbbite(html) {
             var status = "upcoming";
             var startTime = "00:00";
 
-            // Try different team selectors depending on mlbbite layout
             var teams = el.querySelectorAll(".team---item b, .team-name, .name");
             if (teams.length >= 2) {
                 home = teams[0].textContent.trim();
                 away = teams[1].textContent.trim();
             } else {
-                // Try parsing from the URL: /watch/live/san-francisco-giants-at-tampa-bay-rays-5-free-live-stream
                 var urlMatch = href.match(/live\/([a-z0-9-]+)-(?:at|vs)-([a-z0-9-]+?)(?:-\d*-?free-live-stream(?:s)?|-live-stream)?(?:\.html|\/)?$/);
                 if (urlMatch) {
                     away = urlMatch[1].replace(/-/g, ' ');
@@ -1142,148 +1245,247 @@ export function parseMlbbite(html) {
                 }
             }
 
+            if (home === "TBD") {
+                 var elText = el.textContent.replace(/\s+/g, ' ').trim();
+                 var splitT = elText.split(/ vs | v | - /i);
+                 if(splitT.length >= 2) {
+                     home = splitT[0];
+                     away = splitT.slice(1).join(' ');
+                 }
+            }
+
             if (home === "TBA" && away === "TBA") return;
 
-            // Find logos
-            var imgs = el.querySelectorAll(".img img, img.logo");
-            var homeLogo = imgs.length > 0 ? imgs[0].getAttribute("src") : null;
-            var awayLogo = imgs.length > 1 ? imgs[1].getAttribute("src") : null;
-
-            var scoreEl = el.querySelector(".first-team-result, .score");
-            if (scoreEl) {
-                var s = scoreEl.textContent.trim().split("-");
-                if (s.length === 2) {
-                    score = [parseInt(s[0]), parseInt(s[1])];
-                }
-            }
-
-            var statusEl = el.querySelector(".result-status-text, .status");
-            if (statusEl) {
-                var sTxt = statusEl.textContent.toLowerCase();
-                if (sTxt.indexOf("live") !== -1 || sTxt.indexOf("in progress") !== -1 || sTxt.indexOf("top") !== -1 || sTxt.indexOf("bot") !== -1) {
-                    status = "live";
-                } else if (sTxt.indexOf("finished") !== -1 || sTxt.indexOf("ft") !== -1 || sTxt.indexOf("final") !== -1) {
-                    status = "finished";
-                }
-            }
-
             var dateEl = el.querySelector(".match-date, .time");
-            if (dateEl && !scoreEl) {
+            if (dateEl) {
                 var rawTime = dateEl.textContent.trim();
                 var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
                 if (timeM) {
                     startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
                 }
-            } else if (dateEl && dateEl.hasAttribute("title") && status === "upcoming") {
-                var rawTime = dateEl.getAttribute("title").trim() || dateEl.textContent.trim();
-                var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
-                if (timeM) {
-                    startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
-                }
             }
-
-            var streamLinks = [];
 
             matches.push({
                 id: "mlbbite_" + i,
                 homeTeam: getOfficialTeamName(home),
                 awayTeam: getOfficialTeamName(away),
-                homeLogo: homeLogo,
-                awayLogo: awayLogo,
                 status: status,
                 score: score,
                 startTime: startTime,
                 matchUrl: matchUrl,
-                streamLinks: streamLinks,
+                streamLinks: [],
                 streamsLoaded: false,
                 league: "MLB",
                 source: "mlbbite"
             });
         });
+
+        // Next.js fallback for MLBite just in case they switched
+        if (matches.length === 0) {
+            var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
+            var matchData;
+            var concatenatedData = "";
+
+            while ((matchData = scriptRegex.exec(html)) !== null) {
+                var chunk = matchData[1];
+                chunk = chunk.replace(/\\"/g, '"')
+                             .replace(/\\\\/g, '\\')
+                             .replace(/\\n/g, '\n');
+                concatenatedData += chunk;
+            }
+
+            var matchUrlRegex = /\{"href":"(\/[a-z0-9-]+-streams[^"]*|\/game\/[^"]*)"[^}]*?children":\[(?:\["\$","div"[\s\S]*?)?"children":"([^"]+)"[\s\S]*?"children":"(Starts in [^"]+|Match started|Live|FT)"[\s\S]*?"children":"([^"]+)"/gi;
+            var mData;
+
+            while ((mData = matchUrlRegex.exec(concatenatedData)) !== null) {
+                var href2 = mData[1];
+                var home2 = mData[2];
+                var timeStr2 = mData[3];
+                var away2 = mData[4];
+
+                var startTime2 = '00:00';
+                if (timeStr2.toLowerCase().indexOf('starts in') > -1) {
+                    var startsInM = timeStr2.match(/Starts in (?:(\d+)hr:)?(\d+)min/i);
+                    if (startsInM) {
+                        var n = new Date();
+                        var hAdd = startsInM[1] ? parseInt(startsInM[1]) : 0;
+                        var mAdd = startsInM[2] ? parseInt(startsInM[2]) : 0;
+                        n.setMinutes(n.getMinutes() + mAdd);
+                        n.setHours(n.getHours() + hAdd);
+                        startTime2 = pad(n.getHours()) + ':' + pad(n.getMinutes());
+                    }
+                }
+
+                var matchUrl2 = resolveUrl(href2, MLBBITE_PLUS_URL);
+
+                matches.push({
+                    id: 'mlbbite_nx_' + Math.random().toString(36).substr(2, 9),
+                    league: formatLeagueName('MLB'),
+                    flag: lgFlag('MLB'),
+                    color: lgColor('MLB'),
+                    homeTeam: getOfficialTeamName(home2),
+                    awayTeam: getOfficialTeamName(away2),
+                    startTime: startTime2,
+                    durationMinutes: getLeagueDuration('MLB'),
+                    status: 'upcoming',
+                    matchUrl: matchUrl2,
+                    streamLinks: [],
+                    streamsLoaded: false,
+                    source: 'mlbbite'
+                });
+            }
+        }
     } catch (e) {}
     lg("MLBBite extraits", matches.length);
     return matches;
 }
 
 export function parseFootybite(html){
-  var doc = new DOMParser().parseFromString(html, 'text/html');
   var matches = [];
-  var possibleMatches = doc.querySelectorAll('a[href*="/game/"]');
+  try {
+      var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
+      var match;
+      var concatenatedData = "";
 
-  // Extract logos dynamically if we have them
-  extractFootybiteLogos(doc);
-
-  [].forEach.call(possibleMatches, function(el, i) {
-      // Find spans which contain teams and times
-      var spans = el.querySelectorAll('span');
-      if (spans.length < 2) return;
-
-      var home = '';
-      var away = '';
-      var timeStr = '';
-
-      if (spans.length === 3) {
-          home = spans[0].textContent.trim();
-          away = '';
-          timeStr = spans[1].textContent.trim();
-      } else if (spans.length >= 4) {
-          home = spans[0].textContent.trim();
-          timeStr = spans[1].textContent.trim();
-          away = spans[2].textContent.trim();
+      while ((match = scriptRegex.exec(html)) !== null) {
+          var chunk = match[1];
+          chunk = chunk.replace(/\\"/g, '"')
+                       .replace(/\\\\/g, '\\')
+                       .replace(/\\n/g, '\n');
+          concatenatedData += chunk;
       }
 
-      if (!home) return;
+      var gameRegex = /\{"href":"(\/game\/[^"]+)"[^}]*?children":\[(?:\["\$","div"[\s\S]*?)?"children":"([^"]+)"[\s\S]*?"children":"(Starts in [^"]+|Match started|Live|FT)"[\s\S]*?"children":"([^"]+)"/g;
+      var gMatch;
 
-      var startTime = '00:00';
-      var status = 'upcoming';
-      var score = null;
-      var minute = null;
+      while ((gMatch = gameRegex.exec(concatenatedData)) !== null) {
+          var href = gMatch[1];
+          var home = gMatch[2];
+          var timeStr = gMatch[3];
+          var away = gMatch[4];
 
-      if (timeStr.toLowerCase().indexOf('starts in') > -1) {
-          var startsInM = timeStr.match(/Starts in (?:(\d+)hr:)?(\d+)min/i);
-          if (startsInM) {
-              var n = new Date();
-              var hAdd = startsInM[1] ? parseInt(startsInM[1]) : 0;
-              var mAdd = startsInM[2] ? parseInt(startsInM[2]) : 0;
-              n.setMinutes(n.getMinutes() + mAdd);
-              n.setHours(n.getHours() + hAdd);
-              startTime = pad(n.getHours()) + ':' + pad(n.getMinutes());
-              status = 'upcoming';
+          var startTime = '00:00';
+          var status = 'upcoming';
+          var minute = null;
+
+          if (timeStr.toLowerCase().indexOf('starts in') > -1) {
+              var startsInM = timeStr.match(/Starts in (?:(\d+)hr:)?(\d+)min/i);
+              if (startsInM) {
+                  var n = new Date();
+                  var hAdd = startsInM[1] ? parseInt(startsInM[1]) : 0;
+                  var mAdd = startsInM[2] ? parseInt(startsInM[2]) : 0;
+                  n.setMinutes(n.getMinutes() + mAdd);
+                  n.setHours(n.getHours() + hAdd);
+                  startTime = pad(n.getHours()) + ':' + pad(n.getMinutes());
+              }
+          } else if (timeStr.toLowerCase().indexOf('match started') > -1 || timeStr.toLowerCase().indexOf('live') > -1) {
+              var n2 = new Date();
+              startTime = pad(n2.getHours()) + ':' + pad(n2.getMinutes());
+              status = 'live';
+          } else if (timeStr.toLowerCase().indexOf('ft') > -1 || timeStr.toLowerCase().indexOf('full') > -1) {
+              status = 'finished';
+              minute = 'FT';
           }
-      } else if (timeStr.toLowerCase().indexOf('match started') > -1 || timeStr.toLowerCase().indexOf('live') > -1) {
-          var n2 = new Date();
-          startTime = pad(n2.getHours()) + ':' + pad(n2.getMinutes());
-          status = 'live';
-      } else if (timeStr.toLowerCase().indexOf('ft') > -1 || timeStr.toLowerCase().indexOf('full') > -1) {
-          status = 'finished';
-          minute = 'FT';
+
+          var matchUrl = href.startsWith("http") ? href : resolveUrl(href, SITE);
+          var league = 'Football'; // Fallback
+
+          matches.push({
+              id: 'fb_nx_' + Math.random().toString(36).substr(2, 9),
+              league: formatLeagueName(league),
+              flag: lgFlag(league),
+              color: lgColor(league),
+              homeTeam: getOfficialTeamName(home),
+              awayTeam: getOfficialTeamName(away),
+              startTime: startTime,
+              durationMinutes: getLeagueDuration(league),
+              status: status,
+              minute: minute,
+              matchUrl: matchUrl,
+              streamLinks: [],
+              streamsLoaded: false,
+              source: 'footybite'
+          });
       }
+  } catch(e) { }
 
-      var matchUrl = resolveUrl(el.getAttribute('href') || '', SITE);
+  // Fallback to legacy DOM parsing if Next.js extraction yields nothing
+  if (matches.length === 0) {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var possibleMatches = doc.querySelectorAll('a[href*="/game/"]');
 
-      // Guessing league based on sport name if possible, default 'Football'
-      var league = 'Football';
-      if (home.toLowerCase().indexOf('gp') > -1 || home.toLowerCase().indexOf('sprint race') > -1) {
-          league = 'F1';
-      }
+      extractFootybiteLogos(doc);
 
-      matches.push({
-          id: 'fb_fb_' + i,
-          league: formatLeagueName(league),
-          flag: lgFlag(league),
-          color: lgColor(league),
-          homeTeam: getOfficialTeamName(home),
-          awayTeam: getOfficialTeamName(away),
-          startTime: startTime,
-          durationMinutes: getLeagueDuration(league),
-          status: status,
-          score: score,
-          minute: minute,
-          matchUrl: matchUrl,
-          streamLinks: [],
-          streamsLoaded: false
+      [].forEach.call(possibleMatches, function(el, i) {
+          var spans = el.querySelectorAll('span');
+          if (spans.length < 2) return;
+
+          var home = '';
+          var away = '';
+          var timeStr = '';
+
+          if (spans.length === 3) {
+              home = spans[0].textContent.trim();
+              away = '';
+              timeStr = spans[1].textContent.trim();
+          } else if (spans.length >= 4) {
+              home = spans[0].textContent.trim();
+              timeStr = spans[1].textContent.trim();
+              away = spans[2].textContent.trim();
+          }
+
+          if (!home) return;
+
+          var startTime = '00:00';
+          var status = 'upcoming';
+          var score = null;
+          var minute = null;
+
+          if (timeStr.toLowerCase().indexOf('starts in') > -1) {
+              var startsInM = timeStr.match(/Starts in (?:(\d+)hr:)?(\d+)min/i);
+              if (startsInM) {
+                  var n = new Date();
+                  var hAdd = startsInM[1] ? parseInt(startsInM[1]) : 0;
+                  var mAdd = startsInM[2] ? parseInt(startsInM[2]) : 0;
+                  n.setMinutes(n.getMinutes() + mAdd);
+                  n.setHours(n.getHours() + hAdd);
+                  startTime = pad(n.getHours()) + ':' + pad(n.getMinutes());
+                  status = 'upcoming';
+              }
+          } else if (timeStr.toLowerCase().indexOf('match started') > -1 || timeStr.toLowerCase().indexOf('live') > -1) {
+              var n2 = new Date();
+              startTime = pad(n2.getHours()) + ':' + pad(n2.getMinutes());
+              status = 'live';
+          } else if (timeStr.toLowerCase().indexOf('ft') > -1 || timeStr.toLowerCase().indexOf('full') > -1) {
+              status = 'finished';
+              minute = 'FT';
+          }
+
+          var matchUrl = resolveUrl(el.getAttribute('href') || '', SITE);
+          var league = 'Football';
+          if (home.toLowerCase().indexOf('gp') > -1 || home.toLowerCase().indexOf('sprint race') > -1) {
+              league = 'F1';
+          }
+
+          matches.push({
+              id: 'fb_fb_' + i,
+              league: formatLeagueName(league),
+              flag: lgFlag(league),
+              color: lgColor(league),
+              homeTeam: getOfficialTeamName(home),
+              awayTeam: getOfficialTeamName(away),
+              startTime: startTime,
+              durationMinutes: getLeagueDuration(league),
+              status: status,
+              score: score,
+              minute: minute,
+              matchUrl: matchUrl,
+              streamLinks: [],
+              streamsLoaded: false,
+              source: 'footybite'
+          });
       });
-  });
+  }
 
   lg('Matchs extraits', matches.length);
   return matches;
@@ -1474,6 +1676,44 @@ export function scrapeMatchFlux(m, forceRefresh){
     }
 
         // StreamEast specific logic (Next.js data extraction)
+
+    // Footybite subpage specific Next.js logic for streams
+    if (m.source === 'footybite' || m.matchUrl.includes('footybite')) {
+        var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
+        var match;
+        var concatenatedData = "";
+
+        while ((match = scriptRegex.exec(html)) !== null) {
+            var chunk = match[1];
+            chunk = chunk.replace(/\\"/g, '"')
+                         .replace(/\\\\/g, '\\')
+                         .replace(/\\n/g, '\n');
+            concatenatedData += chunk;
+        }
+
+        try {
+            // Find anything that looks like "url":"https://..." inside the payload
+            var urlRegex = /"url":"(https?:\/\/[^"]+)"/g;
+            var urlMatch;
+            var serverIndex = 1;
+
+            while ((urlMatch = urlRegex.exec(concatenatedData)) !== null) {
+                var streamUrl = urlMatch[1];
+                if (!streamUrl.includes('w3.org') && !streamUrl.includes('cloudflare') && !streamUrl.includes('dashgenius') && !streamUrl.includes('gstatic')) {
+                    links.push({
+                        name: 'Serveur ' + serverIndex,
+                        quality: 'HD',
+                        lang: 'MULTI',
+                        url: streamUrl,
+                        icon: '📺',
+                        scrapeContext: { blockText: streamUrl, pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+                    });
+                    serverIndex++;
+                }
+            }
+        } catch(e) {}
+    }
+
     if (m.source === 'streameast' || m.matchUrl.includes('istreameast') || m.matchUrl.includes('streameast')) {
         var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
         var match;
@@ -1567,6 +1807,33 @@ export function scrapeMatchFlux(m, forceRefresh){
             }
         });
     }
+
+
+    // Buffstreams and MLBite/Methstreams and VIPLeague fallback handling
+    // Try to find generic data URLs inside any script tag if iframe searching fails
+    var scriptElements = doc.querySelectorAll('script');
+    scriptElements.forEach(function(script) {
+        var text = script.textContent || '';
+        if (text.includes('iframeStreams') || text.includes('directStreams') || text.includes('url":"http')) {
+             var streamRegex = /"url":"(https?:\/\/[^"]+)"/g;
+             var sMatch;
+             var serverIndex = 1;
+             while ((sMatch = streamRegex.exec(text)) !== null) {
+                 var streamUrl = sMatch[1];
+                 if (!streamUrl.includes('w3.org') && !streamUrl.includes('cloudflare')) {
+                     links.push({
+                         name: 'Source ' + serverIndex,
+                         quality: 'HD',
+                         lang: 'MULTI',
+                         url: streamUrl,
+                         icon: '📺',
+                         scrapeContext: { blockText: 'Script JSON Extraction', pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+                     });
+                     serverIndex++;
+                 }
+             }
+        }
+    });
 
     // 1. Chercher des iframes directs
     var iframes = doc.querySelectorAll('iframe');
