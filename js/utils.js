@@ -202,37 +202,19 @@ export function fetchPage(url){
     var i=0,errs=[];
     var maxTries = 3; // Try a maximum of 3 proxies to avoid long hangs
 
-    // OnHockey specific: skip allorigins since it strips headers and fails/timeouts for schedule_table.php
-    if (url.indexOf('onhockey.tv') >= 0) {
-        i = 1;
-    }
-
     function next(){
       if(i>=PROXIES.length || i>=maxTries){reject(new Error(errs.join('\n')));return;}
       var pu=PROXIES[i++](url);
       lg('Proxy '+i,pu.slice(0,70)+'…');
 
-      var headers = {};
-      if(!pu.includes('codetabs')) { headers = {'Accept':'text/html,*/*'}; }
-      // Note: Custom headers (X-Requested-With, Referer) were previously injected for onhockey.tv,
-      // but they now cause CORS preflight OPTIONS requests to fail on api.codetabs.com with 400 Bad Request.
-      // Removing them allows the proxy GET request to succeed normally.
+      var headers = {'Accept':'text/html,*/*'};
 
       // Use a slightly shorter timeout for each proxy try so we don't hang too long on bad proxies
       fetch(pu,{signal:AbortSignal.timeout(8000),headers:headers})
         .then(function(r){
+          // Specifically check for 403 or 429 to quickly fall back to the next proxy
           if(!r.ok){errs.push('HTTP '+r.status+' p'+i);next();return null;}
-          return r.text().then(t => {
-            if (pu.indexOf('allorigins.win/get') > -1) {
-                try {
-                    let j = JSON.parse(t);
-                    return j.contents;
-                } catch(e) {
-                    return t;
-                }
-            }
-            return t;
-          });
+          return r.text();
         })
         .then(function(t){
           if(t===null) return;

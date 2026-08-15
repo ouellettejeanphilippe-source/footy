@@ -22,7 +22,7 @@ test.describe('Scraper endpoints verification', () => {
       const response = await request.get(url, { timeout: 15000 }).catch(e => null);
       if (!response || !response.ok()) {
          console.log(`Failed to fetch ${url} directly, trying with codetabs proxy...`);
-         const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+         const proxyUrl = `https://corsproxy.org/?${encodeURIComponent(url)}`;
          const proxyResp = await request.get(proxyUrl, { timeout: 15000 });
          expect(proxyResp.ok()).toBeTruthy();
       } else {
