@@ -344,10 +344,17 @@ export function fetchPage(url){
         })
         .then(function(t){
           if(t===null) return;
-          if(!t||t.length<200){errs.push('Vide p'+i+' ('+t.length+'c)');next();return;}
+          if(!t||t.length<200){
+              // Don't log length errors for very small JSON responses like match scores
+              if(t.startsWith('{') || t.startsWith('[')) {
+                  // Valid JSON, skip length check
+              } else {
+                  errs.push('Vide p'+i+' ('+t.length+'c)');next();return;
+              }
+          }
 
-          // API AllOrigins returns a 522/520 as text sometimes but with a 200/502 status, catch it
-          if(t.indexOf('Oops... Request Timeout') >= 0 || t.indexOf('500 Internal Server Error') >= 0 || t.indexOf('502 Bad Gateway') >= 0 || t.indexOf('522 Connection timed out') >= 0) {
+          // Catch common proxy error pages
+          if(t.indexOf('Oops... Request Timeout') >= 0 || t.indexOf('500 Internal Server Error') >= 0 || t.indexOf('502 Bad Gateway') >= 0 || t.indexOf('522 Connection timed out') >= 0 || t.indexOf('cloudflare') >= 0 && t.indexOf('301 Moved') >= 0) {
               errs.push('Proxy Error Content p'+i);
               next();
               return;
