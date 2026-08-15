@@ -390,7 +390,10 @@
 
        <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px;">
           <span style="color:var(--muted); font-size: 14px; font-weight: bold;">Historique des requêtes</span>
-          <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
+          <div style="display:flex; gap: 8px;">
+              <button class="btn o" style="padding: 6px 12px; font-size: 13px; border-color: var(--accent); color: var(--accent);" onclick="window.exportDebugLogs()">📥 Exporter les logs de debug</button>
+              <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
+          </div>
        </div>
        <div id="scrape-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; min-height: 300px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
           <!-- Logs will be populated here -->

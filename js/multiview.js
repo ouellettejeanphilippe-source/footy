@@ -1,5 +1,6 @@
 import { fetchPage } from './utils.js';
 import { DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
+import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder, saveCustomLgOrder, toggleFavTeam } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
@@ -2719,6 +2720,38 @@ export function renderSourcesStatus() {
     container.innerHTML = html;
 }
 
+export function exportDebugLogs() {
+    try {
+        var exportData = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            sourcesStatus: sourcesStatus,
+            scrapeLogs: scrapeLogs,
+            manualLogs: manualStreamLogs,
+            proxies: PROXIES ? PROXIES.map(function(p) { return p.toString(); }) : []
+        };
+
+        var jsonString = JSON.stringify(exportData, null, 2);
+        var blob = new Blob([jsonString], {type: "application/json"});
+        var url = URL.createObjectURL(blob);
+
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'jmtv-debug-logs-' + new Date().toISOString().slice(0,10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            window.showToast("Logs exportés avec succès !");
+        }, 100);
+    } catch (e) {
+        window.showToast("Erreur lors de l'exportation des logs.");
+        console.error("Export error:", e);
+    }
+}
+
 export function renderScrapeLogs() {
     renderSourcesStatus();
     var container = document.getElementById('scrape-logs-container');
@@ -3156,6 +3189,7 @@ window.PALETTES = PALETTES;
 window.buildSwatches = buildSwatches;
 window.renderSourcesStatus = renderSourcesStatus;
 window.renderScrapeLogs = renderScrapeLogs;
+window.exportDebugLogs = exportDebugLogs;
 window.openOptionsPage = openOptionsPage;
 window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
