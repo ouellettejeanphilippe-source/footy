@@ -284,12 +284,6 @@ export function buildEPG(matches){
       fragment.appendChild(errBoxElement);
   }
 
-  if (S.filter === 'live' || S.filter === 'upcoming') {
-      epgContainer.style.display = 'block';
-      epgContainer.style.padding = '0';
-      epgContainer.style.overflowY = 'auto';
-      epgContainer.style.height = '100%';
-      epgContainer.style.WebkitOverflowScrolling = 'touch';
 
       var renderMatches = function(matchesToRender, container, titleStr, isCollapsible, sectionId) {
           if (!matchesToRender || matchesToRender.length === 0) return;
@@ -487,6 +481,14 @@ export function buildEPG(matches){
           });
           return grid;
       };
+
+  if (S.filter === 'live' || S.filter === 'upcoming') {
+      epgContainer.style.display = 'block';
+      epgContainer.style.padding = '0';
+      epgContainer.style.overflowY = 'auto';
+      epgContainer.style.height = '100%';
+      epgContainer.style.WebkitOverflowScrolling = 'touch';
+
 
       // Split live and upcoming in 60 mins and later today if filter is live
       if (S.filter === 'live') {
@@ -876,11 +878,17 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
 
 var mainLeagues = [];
 var autresLeagues = [];
+var autresFluxMatchesEpg = [];
 
 leagues.forEach(function(lg) {
     if (!lg) return;
     if ((!DEFAULT_LEAGUES[(lg.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(lg.league||'').toUpperCase()]) && lg.league !== 'FAVORIS' && lg.league !== 'EN DIRECT') || lg.league === 'Autres Flux') {
         autresLeagues.push(lg);
+        if (lg.matches) {
+            lg.matches.forEach(function(m) {
+                autresFluxMatchesEpg.push(m);
+            });
+        }
     } else {
         mainLeagues.push(lg);
     }
@@ -888,58 +896,48 @@ leagues.forEach(function(lg) {
 
 renderTimelineGuide(mainLeagues, fragment);
 
-if (autresLeagues.length > 0) {
+if (autresFluxMatchesEpg.length > 0) {
     var sectionId = 'autresStreamsEpg';
     if (S.collapsedSections[sectionId] === undefined) {
         S.collapsedSections[sectionId] = true;
     }
 
-    var autresSecTitle = document.createElement('div');
-    autresSecTitle.style.cssText = 'padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px; margin-top: 24px; display: flex; align-items: center; gap: 8px; cursor: pointer;';
+    // Reuse the renderMatches function we hoisted out to render them as cards
+    // even though we are in EPG timeline mode
+    var autresContainer = renderMatches(autresFluxMatchesEpg, fragment, "Autres streams", true, sectionId);
 
-    var isCollapsed = S.collapsedSections[sectionId];
+    // Flatten nested grids if needed, similar to how it works in Live tab
+    if (autresContainer) {
+        var defaultGrid = autresContainer;
 
-    var icon = document.createElement('span');
-    icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
-    icon.style.transition = 'transform 0.2s';
-    if (isCollapsed) {
-        icon.style.transform = 'rotate(-90deg)';
-    }
-    autresSecTitle.appendChild(icon);
+        if (!S.collapsedSections[sectionId]) {
+            defaultGrid.innerHTML = '';
+            defaultGrid.className = 'autres-streams-sub-container';
+            defaultGrid.style.display = 'block';
 
-    var textSpan = document.createElement('span');
-    textSpan.textContent = "Autres streams";
-    autresSecTitle.appendChild(textSpan);
-    fragment.appendChild(autresSecTitle);
+            var secondaryLeagues = {};
+            autresFluxMatchesEpg.forEach(function(m) {
+                var lgStr = m.scrapedLeagueName || 'Autres Flux';
+                if (!secondaryLeagues[lgStr]) secondaryLeagues[lgStr] = [];
+                secondaryLeagues[lgStr].push(m);
+            });
 
-    var autresWrapperContainer = document.createElement('div');
-    autresWrapperContainer.style.display = isCollapsed ? 'none' : 'block';
-    fragment.appendChild(autresWrapperContainer);
+            Object.keys(secondaryLeagues).sort().forEach(function(lgStr) {
+                var subSectionId = 'autresStreamsEpg_' + lgStr.replace(/[^a-zA-Z0-9]/g, '');
+                if (S.collapsedSections[subSectionId] === undefined) {
+                    S.collapsedSections[subSectionId] = true;
+                }
 
-    var autresRendered = false;
+                var sortedMatches = secondaryLeagues[lgStr].sort(function(a, b) {
+                    if (!a.startTime && !b.startTime) return 0;
+                    if (!a.startTime) return 1;
+                    if (!b.startTime) return -1;
+                    return a.startTime.localeCompare(b.startTime);
+                });
 
-    var toggleAutres = function() {
-        S.collapsedSections[sectionId] = !S.collapsedSections[sectionId];
-        if (S.collapsedSections[sectionId]) {
-            icon.style.transform = 'rotate(-90deg)';
-            autresWrapperContainer.style.display = 'none';
-        } else {
-            icon.style.transform = '';
-            autresWrapperContainer.style.display = 'block';
-            if (!autresRendered) {
-                renderTimelineGuide(autresLeagues, autresWrapperContainer);
-                autresRendered = true;
-                updateNowLine();
-            }
+                renderMatches(sortedMatches, defaultGrid, lgStr, true, subSectionId);
+            });
         }
-    };
-
-    autresSecTitle.addEventListener('click', toggleAutres);
-
-    // If initially expanded, render it
-    if (!isCollapsed) {
-        renderTimelineGuide(autresLeagues, autresWrapperContainer);
-        autresRendered = true;
     }
 }
 
@@ -1682,7 +1680,6 @@ export function closeMod(){
 
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
 export var userPrefs = {
-  deepResolve: false,
   bgStyle: 'gradient',
   iconPack: 'standard',
   c1: '#000000',

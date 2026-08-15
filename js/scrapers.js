@@ -172,7 +172,7 @@ export function parseStreameast(html){
               concatenatedData += chunk;
           }
 
-          var matchUrlRegex = /\{"href":"(\/[a-z0-9-]+-streams[^"]*)"[^}]*?children":\[(?:\["\$","div"[\s\S]*?)?"children":"([^"]+)"[\s\S]*?"children":"(Starts in [^"]+|Match started|Live|FT)"[\s\S]*?"children":"([^"]+)"/gi;
+          var matchUrlRegex = /"href":"(\/[a-z0-9-]+-streams[^"]*)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"/gi;
           var mData;
 
           while ((mData = matchUrlRegex.exec(concatenatedData)) !== null) {
@@ -1294,7 +1294,7 @@ export function parseMlbbite(html) {
                 concatenatedData += chunk;
             }
 
-            var matchUrlRegex = /\{"href":"(\/[a-z0-9-]+-streams[^"]*|\/game\/[^"]*)"[^}]*?children":\[(?:\["\$","div"[\s\S]*?)?"children":"([^"]+)"[\s\S]*?"children":"(Starts in [^"]+|Match started|Live|FT)"[\s\S]*?"children":"([^"]+)"/gi;
+            var matchUrlRegex = /"href":"(\/[a-z0-9-]+-streams[^"]*|\/game\/[^"]*)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"/gi;
             var mData;
 
             while ((mData = matchUrlRegex.exec(concatenatedData)) !== null) {
@@ -1355,7 +1355,7 @@ export function parseFootybite(html){
           concatenatedData += chunk;
       }
 
-      var gameRegex = /\{"href":"(\/game\/[^"]+)"[^}]*?children":\[(?:\["\$","div"[\s\S]*?)?"children":"([^"]+)"[\s\S]*?"children":"(Starts in [^"]+|Match started|Live|FT)"[\s\S]*?"children":"([^"]+)"/g;
+      var gameRegex = /"href":"(\/game\/[^"]+)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"(?:(?!"href":)[\s\S])*?"children":"([^"]+)"/g;
       var gMatch;
 
       while ((gMatch = gameRegex.exec(concatenatedData)) !== null) {
@@ -1692,10 +1692,11 @@ export function scrapeMatchFlux(m, forceRefresh){
         }
 
         try {
-            // Find anything that looks like "url":"https://..." inside the payload
+            var serverIndex = 1;
+
+            // Legacy / alternate direct extraction
             var urlRegex = /"url":"(https?:\/\/[^"]+)"/g;
             var urlMatch;
-            var serverIndex = 1;
 
             while ((urlMatch = urlRegex.exec(concatenatedData)) !== null) {
                 var streamUrl = urlMatch[1];
@@ -1710,6 +1711,44 @@ export function scrapeMatchFlux(m, forceRefresh){
                     });
                     serverIndex++;
                 }
+            }
+
+            // Stream arrays matching directStreams and iframeStreams
+            var directMatch = /"directStreams":(\[.*?\])/.exec(concatenatedData);
+            var iframeMatch = /"iframeStreams":(\[.*?\])/.exec(concatenatedData);
+
+            if (directMatch) {
+                var directStreams = JSON.parse(directMatch[1]);
+                directStreams.forEach(function(s) {
+                    if (s.link && !links.find(l => l.url === s.link)) {
+                        links.push({
+                            name: 'Serveur ' + serverIndex + (s.name ? ' - ' + s.name : ''),
+                            quality: extractQuality((s.name || '') + ' ' + (s.quality || '')),
+                            lang: 'MULTI',
+                            url: s.link,
+                            icon: '📺',
+                            scrapeContext: { blockText: JSON.stringify(s), pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+                        });
+                        serverIndex++;
+                    }
+                });
+            }
+
+            if (iframeMatch) {
+                var iframeStreams = JSON.parse(iframeMatch[1]);
+                iframeStreams.forEach(function(s) {
+                    if (s.src && !links.find(l => l.url === s.src)) {
+                        links.push({
+                            name: 'Serveur ' + serverIndex + (s.name ? ' - ' + s.name : ''),
+                            quality: 'HD',
+                            lang: 'MULTI',
+                            url: s.src,
+                            icon: '📺',
+                            scrapeContext: { blockText: JSON.stringify(s), pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+                        });
+                        serverIndex++;
+                    }
+                });
             }
         } catch(e) {}
     }
