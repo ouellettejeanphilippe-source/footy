@@ -24,7 +24,7 @@ test.describe('Scraper pages must have stream links or elements', () => {
         response = await page.goto(site.url, { timeout: 15000, waitUntil: 'domcontentloaded' });
       } catch (e) {
         console.log(`Direct navigation to ${site.url} failed, trying proxy...`);
-        const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(site.url)}`;
+        const proxyUrl = `https://corsproxy.org/?${encodeURIComponent(site.url)}`;
         try {
             response = await page.goto(proxyUrl, { timeout: 15000, waitUntil: 'domcontentloaded' });
         } catch(e2) {
