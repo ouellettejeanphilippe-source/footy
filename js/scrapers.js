@@ -1751,6 +1751,45 @@ export function scrapeMatchFlux(m, forceRefresh){
                 });
             }
         } catch(e) {}
+
+        // Site-Specific DOM Fallback for Footybite
+        if (links.length === 0 && (m.source === 'footybite' || m.matchUrl.includes('footybite'))) {
+            var fbBtns = doc.querySelectorAll('a');
+            [].forEach.call(fbBtns, function(btn) {
+                var url = btn.getAttribute('href');
+                if (url && url.indexOf('http') === 0 && (btn.textContent.trim().toLowerCase() === 'watch' || url.toLowerCase().includes('stream'))) {
+                    var wrapper = btn.closest('div');
+                    var name = wrapper ? wrapper.textContent.replace(btn.textContent, '').trim() : 'Serveur';
+                    if (!name) name = 'Serveur';
+
+                    var quality = extractQuality(name);
+                    var lang = 'MULTI';
+                    if (name.toLowerCase().includes('english')) lang = 'EN';
+                    if (name.toLowerCase().includes('spanish')) lang = 'ES';
+
+                    // Cleanup name for UI display
+                    var cleanName = name.replace(/\s*-\s*english.*/i, '')
+                                        .replace(/\s*·\s*english.*/i, '')
+                                        .replace(/\s*-\s*spanish.*/i, '')
+                                        .replace(/\s*·\s*spanish.*/i, '')
+                                        .replace(/\s*-\s*HD/i, '')
+                                        .replace(/\s*·\s*HD/i, '')
+                                        .trim();
+                    if (!cleanName) cleanName = 'Serveur';
+
+                    if (!links.find(l => l.url === url)) {
+                        links.push({
+                            name: cleanName,
+                            quality: quality,
+                            lang: lang,
+                            url: url,
+                            icon: '📺',
+                            scrapeContext: { blockText: name + ' ' + url, pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+                        });
+                    }
+                }
+            });
+        }
     }
 
     if (m.source === 'streameast' || m.matchUrl.includes('istreameast') || m.matchUrl.includes('streameast')) {
