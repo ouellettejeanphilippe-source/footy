@@ -3,6 +3,9 @@
 - Adding League of Legends (LoL) VOD extraction and display directly within the match stream modal for finished matches.
 
 ## Fait
+- Fix Footybite stream extraction fallback in `scrapeMatchFlux` to parse DOM structure when Next.js payload is missing.
+- Note for future scrapers: Added explicit site-specific fallback pattern inside `scrapeMatchFlux` to allow bypassing generic class-based extraction if Cloudflare blocks Next.js payloads.
+- Update `scrape_schedule.yml` Github Action to trigger on `push` to `main`, ensuring `schedule.json` updates automatically and first load is fast.
 - 2026-06-07 - Implemented advanced Next.js JSON payload parsing in `js/scrapers.js` for Footybite, Streameast, and MLBite to correctly extract match schedules from their new React-based architecture.
 - 2026-06-07 - Enhanced `scrapeMatchFlux` to parse embedded stream links and iframes directly from script tags and Next.js payloads on individual match pages, bypassing Cloudflare 403 blocks on direct DOM loads.
 
@@ -20,6 +23,9 @@
 ## En cours
 
 ## Fait
+- Fix Footybite stream extraction fallback in `scrapeMatchFlux` to parse DOM structure when Next.js payload is missing.
+- Note for future scrapers: Added explicit site-specific fallback pattern inside `scrapeMatchFlux` to allow bypassing generic class-based extraction if Cloudflare blocks Next.js payloads.
+- Update `scrape_schedule.yml` Github Action to trigger on `push` to `main`, ensuring `schedule.json` updates automatically and first load is fast.
 - 2026-05-28 - Ajout d'attributs `aria-label` aux boutons avec des icônes uniquement dans `index.html`, `js/ui.js`, et `js/multiview.js` pour améliorer l'accessibilité.
 - Optimizing array iterations (forEach, map, filter, find) to traditional for loops to improve performance and reduce resource usage.
 - 2026-05-18 - Fix robust URL parsing using getDomain with a custom fallback and a new resolveUrl helper in js/config.js to resolve scrapers missing protocol bugs without error. Replaced naive new URL try/catch blocks in js/scrapers.js.
@@ -31,6 +37,9 @@
 - 2024-05-16 - Correction du bug undefined BP/BC et mise à jour des statistiques par défaut (statsToCompare) dans js/ui.js pour correspondre aux Team Stats affichées par ESPN pour chaque sport (Soccer, Hockey, MLB, etc.), regroupées dans la section Voir les statistiques de la saison.
 
 ## Fait
+- Fix Footybite stream extraction fallback in `scrapeMatchFlux` to parse DOM structure when Next.js payload is missing.
+- Note for future scrapers: Added explicit site-specific fallback pattern inside `scrapeMatchFlux` to allow bypassing generic class-based extraction if Cloudflare blocks Next.js payloads.
+- Update `scrape_schedule.yml` Github Action to trigger on `push` to `main`, ensuring `schedule.json` updates automatically and first load is fast.
 - 2024-05-18 - Mettre "Manches" au lieu de "Temps" pour le baseball dans la section des scores.
 - 2024-05-15 - Fixed premature stream scraping blocks by introducing a `hasEnoughStreams` check in `fetchSubPages` (background scraper) and `openMod` (foreground modal). This ensures matches that were checked too early and had 0 streams are eligible for re-scraping later, solving the missing streams issue.
 - 2026-05-15 - Ajout de logs de debug détaillés (diagnosticScrape), persistance des streams manuels (via saveStreamCache), fonction globale copyToClipboard et affichage des logs multilignes dans le Multiview.
@@ -47,6 +56,9 @@
 - Ou mettre une photo ou un texte de preview du match si ESPN ou autre peut en fournir?
 
 ## Fait
+- Fix Footybite stream extraction fallback in `scrapeMatchFlux` to parse DOM structure when Next.js payload is missing.
+- Note for future scrapers: Added explicit site-specific fallback pattern inside `scrapeMatchFlux` to allow bypassing generic class-based extraction if Cloudflare blocks Next.js payloads.
+- Update `scrape_schedule.yml` Github Action to trigger on `push` to `main`, ensuring `schedule.json` updates automatically and first load is fast.
 - 2024-05-18 - Mettre "Manches" au lieu de "Temps" pour le baseball dans la section des scores.
 - 2024-05-15 - Fixed "Autres Flux" display toggling in grid views and separated it into a dedicated collapsible section at the bottom of the "En direct" tab.
 - 2024-05-15 - Removed arbitrary stream bounds limiting in `scrapeMatchFlux` and updated stream quantity threshold to 1000 so that every game will have every stream displayed.
