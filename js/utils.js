@@ -170,22 +170,71 @@ export function resolveStreamUrl(url) {
             return;
         }
 
-        // Standard Hardcoded Fallback: OnHockey
-        if (url.indexOf('onhockey.tv') >= 0) {
+        // Standard Hardcoded Fallback for Aggregate Sites
+        var lowerUrl = url.toLowerCase();
+        var isAggregateSite = lowerUrl.includes('footybite') || lowerUrl.includes('livematchhub') || lowerUrl.includes('totalsportek') || lowerUrl.includes('streameast') || lowerUrl.includes('buffstreams') || lowerUrl.includes('methstreams') || lowerUrl.includes('vipleague') || lowerUrl.includes('sportsurge') || lowerUrl.includes('mlbbite') || lowerUrl.includes('nflbite') || lowerUrl.includes('streamonsport') || lowerUrl.includes('onhockey');
+
+        if (isAggregateSite && typeof fetchPage === 'function') {
             fetchPage(url).then(function(html) {
                 var doc = new DOMParser().parseFromString(html, 'text/html');
-                var iframe = doc.querySelector('iframe');
-                if (iframe && iframe.getAttribute('src')) {
-                    var finalSrc = iframe.getAttribute('src');
+
+                // 1. Try to find an iframe directly
+                var iframes = doc.querySelectorAll('iframe');
+                var bestIframeSrc = null;
+                for (var i = 0; i < iframes.length; i++) {
+                    var src = iframes[i].getAttribute('src');
+                    if (src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
+                        bestIframeSrc = src;
+                        break;
+                    }
+                }
+
+                if (bestIframeSrc) {
+                    var finalSrc = bestIframeSrc;
                     if(typeof resolveUrl === 'function') {
                         finalSrc = resolveUrl(finalSrc, url);
                     } else {
                         if (!finalSrc.startsWith('http')) finalSrc = new URL(finalSrc, url).href;
                     }
                     resolve(finalSrc);
-                } else {
-                    resolve(url);
+                    return;
                 }
+
+                // 2. Try to parse Next.js payloads (Footybite, Streameast, Buffstreams)
+                var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
+                var matchData;
+                var concatenatedData = "";
+                while ((matchData = scriptRegex.exec(html)) !== null) {
+                    var chunk = matchData[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
+                    concatenatedData += chunk;
+                }
+
+                if (concatenatedData) {
+                    var directMatch = /"directStreams":(\[.*?\])/.exec(concatenatedData);
+                    var iframeMatch = /"iframeStreams":(\[.*?\])/.exec(concatenatedData);
+
+                    var streams = [];
+                    if (iframeMatch) {
+                        try { streams = streams.concat(JSON.parse(iframeMatch[1])); } catch(e) {}
+                    }
+                    if (directMatch) {
+                        try { streams = streams.concat(JSON.parse(directMatch[1])); } catch(e) {}
+                    }
+
+                    var validStream = streams.find(function(s) { return s.src || s.link; });
+                    if (validStream) {
+                        var streamUrl = validStream.src || validStream.link;
+                        if(typeof resolveUrl === 'function') {
+                            streamUrl = resolveUrl(streamUrl, url);
+                        } else {
+                            if (!streamUrl.startsWith('http')) streamUrl = new URL(streamUrl, url).href;
+                        }
+                        resolve(streamUrl);
+                        return;
+                    }
+                }
+
+                resolve(url);
             }).catch(function(e) {
                 resolve(url);
             });
