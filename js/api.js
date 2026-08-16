@@ -135,20 +135,70 @@ export function setApiTargetDate(d) {
   window.TARGET_DATE = d;
 }
 
-export function getApiFirstMatches(targetDate) {
+export function getApiFirstMatches(targetDate, forceRefresh) {
   var targetDateObj = targetDate || new Date();
   var targetDateStr = getEstDateStrFromDate(targetDateObj);
   var todayStr = getEspnDateStr(targetDateObj);
   var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
 
-  var needsFullFetch = !cache || cache.fetchDate !== todayStr;
-
-  var promises = [];
-  var baseMatches = [];
+  var needsFullFetch = !cache || cache.fetchDate !== todayStr || forceRefresh;
 
   if (!needsFullFetch && cache && cache.matches) {
-      baseMatches = cache.matches;
+      return Promise.resolve(cache.matches);
   }
+
+  // Always try to load the server-generated schedule.json on startup for today
+  if (!forceRefresh && targetDateStr === getEstDateStrFromDate(new Date())) {
+      return fetch('data/schedule.json?t=' + Date.now())
+          .then(function(res) {
+              if (!res.ok) throw new Error("JSON Cache not found");
+              return res.json();
+          })
+          .then(function(cacheData) {
+              if (cacheData && cacheData.fetchDate === todayStr && cacheData.matches) {
+                  safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, matches: cacheData.matches });
+
+                  // Setup periodic background refresh for live scores (every 5 mins)
+                  if (!window._backgroundRefreshStarted) {
+                      window._backgroundRefreshStarted = true;
+                      setInterval(function() {
+                          backgroundUpdateGuide(new Date());
+                      }, 5 * 60 * 1000); // 5 minutes
+                  }
+
+                  return cacheData.matches;
+              } else {
+                  throw new Error("Cache outdated");
+              }
+          })
+          .catch(function(err) {
+              // Fallback if schedule.json is missing or invalid: do it the old way.
+              return fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr);
+          });
+  }
+
+  return fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr);
+}
+
+export function backgroundUpdateGuide(targetDateObj) {
+    var todayStr = getEspnDateStr(targetDateObj || new Date());
+    var targetDateStr = getEstDateStrFromDate(targetDateObj || new Date());
+
+    return fetchAndProcessApiMatches(targetDateObj || new Date(), todayStr, targetDateStr).then(function(matches) {
+        if (typeof window.updateLiveScores === 'function') {
+            window.updateLiveScores(matches); // Pass the updated matches array
+        }
+        return matches;
+    }).catch(function(err) {
+        console.error("Background update failed", err);
+    });
+}
+
+window.backgroundUpdateGuide = backgroundUpdateGuide;
+
+function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
+  var promises = [];
+  var baseMatches = [];
 
   var baseMatchesById = {};
   for (var i = 0; i < baseMatches.length; i++) {
@@ -242,298 +292,58 @@ export function getApiFirstMatches(targetDate) {
       });
   }
 
-  if (needsFullFetch || baseMatches.length === 0) {
-      if (targetDateStr === getEstDateStrFromDate(new Date())) {
-          promises.push(
-              fetch('data/schedule.json?t=' + Date.now()).then(function(res) {
-                  if (!res.ok) throw new Error("JSON Cache not found");
-                  return res.json();
-              }).then(function(cacheData) {
-                  if (cacheData && cacheData.fetchDate === todayStr && cacheData.leagues) {
-                      cacheData.leagues.forEach(function(lgData) {
-                          if (!lgData || !lgData.data || !lgData.data.events) return;
-                          processEspnData(lgData.data, lgData.path);
-                      });
+  // Always fetch directly when falling back to this method
+  espnPaths.forEach(function(path) {
+      promises.push(
+        fetchEspnSchedule(path, todayStr).then(function(data) {
+          if(!data || !data.events) return;
+          processEspnData(data, path);
+        })
+      );
+  });
 
-                      // Trigger background fetch to update live scores and statuses silently
-                      setTimeout(function() {
-                          espnPaths.forEach(function(path) {
-                              fetchEspnSchedule(path, todayStr).then(function(data) {
-                                  if(!data || !data.events) return;
-                                  processEspnData(data, path);
-                                  if (typeof window.updateLiveScores === 'function') {
-                                      window.updateLiveScores();
-                                  }
-                              }).catch(function() {});
-                          });
-                      }, 1000);
-                  } else {
-                      throw new Error("Cache outdated");
-                  }
-              }).catch(function(err) {
-                  var directPromises = [];
-                  espnPaths.forEach(function(path) {
-                      directPromises.push(
-                        fetchEspnSchedule(path, todayStr).then(function(data) {
-                          if(!data || !data.events) return;
-                          processEspnData(data, path);
-                        })
-                      );
+  promises.push(
+      Promise.all([
+          fetchPage('https://www.thepwhl.com/en/schedule').catch(function() { return ''; }),
+          fetchPage('https://www.thepwhl.com/en/schedule-25-26').catch(function() { return ''; })
+      ]).then(function(htmls) {
+          var allMatches = [];
+          var seenIds = new Set();
+
+          htmls.forEach(function(html) {
+              if (html) {
+                  var matches = parsePWHLSchedule(html);
+                  matches.forEach(function(m) {
+                      if (!seenIds.has(m.id)) {
+                          seenIds.add(m.id);
+                          allMatches.push(m);
+                      }
                   });
-                  return Promise.all(directPromises);
-              })
-          );
-      } else {
-          espnPaths.forEach(function(path) {
-              promises.push(
-                fetchEspnSchedule(path, todayStr).then(function(data) {
-                  if(!data || !data.events) return;
-                  processEspnData(data, path);
-                })
-              );
+              }
           });
-      }
 
-      promises.push(
-          Promise.all([
-              fetchPage('https://www.thepwhl.com/en/schedule').catch(function() { return ''; }),
-              fetchPage('https://www.thepwhl.com/en/schedule-25-26').catch(function() { return ''; })
-          ]).then(function(htmls) {
-              var allMatches = [];
-              var seenIds = new Set();
+          if (allMatches.length > 0) {
+              var pwhlMatches = allMatches;
+              pwhlMatches.forEach(function(m) {
+                  m.flag = lgFlag('PWHL');
+                  m.color = lgColor('PWHL');
+                  m.source = 'api';
+                  m.league = formatLeagueName('PWHL');
 
-              htmls.forEach(function(html) {
-                  if (html) {
-                      var matches = parsePWHLSchedule(html);
-                      matches.forEach(function(m) {
-                          if (!seenIds.has(m.id)) {
-                              seenIds.add(m.id);
-                              allMatches.push(m);
-                          }
-                      });
+
+                  var dateObj = new Date(m.date);
+                  m.matchDate = getEstDateStrFromDate(dateObj);
+                  m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+
+                  m.status = m.time === 'LIVE' ? 'live' : 'upcoming';
+                  if (m.isFinished || (m.isFinished === undefined && m.homeScore && m.awayScore && m.status !== 'live')) {
+                       m.status = 'finished';
+                       if (m.homeScore && m.awayScore) m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
+                  } else if (m.homeScore && m.awayScore && (m.status === 'live' || m.isFinished === undefined)) {
+                       m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
+                  } else {
+                       m.score = null;
                   }
-              });
-
-              if (allMatches.length > 0) {
-                  var pwhlMatches = allMatches;
-                  pwhlMatches.forEach(function(m) {
-                      m.flag = lgFlag('PWHL');
-                      m.color = lgColor('PWHL');
-                      m.source = 'api';
-                      m.league = formatLeagueName('PWHL');
-
-
-                      var dateObj = new Date(m.date);
-                      m.matchDate = getEstDateStrFromDate(dateObj);
-                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
-
-                      m.status = m.time === 'LIVE' ? 'live' : 'upcoming';
-                      if (m.isFinished || (m.isFinished === undefined && m.homeScore && m.awayScore && m.status !== 'live')) {
-                           m.status = 'finished';
-                           if (m.homeScore && m.awayScore) m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
-                      } else if (m.homeScore && m.awayScore && (m.status === 'live' || m.isFinished === undefined)) {
-                           m.score = [parseInt(m.homeScore), parseInt(m.awayScore)];
-                      } else {
-                           m.score = null;
-                      }
-
-                      var existingIdx = baseMatches.findIndex(function(existing) {
-                          return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
-                      });
-
-                      if (existingIdx >= 0) {
-                          baseMatches[existingIdx].status = m.status;
-                          baseMatches[existingIdx].score = m.score;
-                          baseMatches[existingIdx].startTime = m.startTime;
-                      } else {
-                          baseMatches.push(m);
-                      }
-                  });
-              }
-          }).catch(function(e) { console.error('Error fetching PWHL API schedule', e); lg('Error fetching PWHL API schedule', e); })
-      );
-
-      // Synthesize weekly WWE shows that might not be on wwe.com/events, or could disappear when live.
-      var dateObjTarget = new Date(targetDateStr + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
-      var dayOfWeekTarget = dateObjTarget.getUTCDay();
-
-      var synthesizedWWE = [];
-      if (dayOfWeekTarget === 1) { // Monday
-          synthesizedWWE.push({ id: 'wwe_raw_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDateStr, startTime: '20:00' });
-      } else if (dayOfWeekTarget === 2) { // Tuesday
-          synthesizedWWE.push({ id: 'wwe_nxt_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDateStr, startTime: '20:00' });
-      } else if (dayOfWeekTarget === 5) { // Friday
-          synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Smackdown', matchDate: targetDateStr, startTime: '20:00' });
-      }
-
-      synthesizedWWE.forEach(function(m) {
-          m.flag = lgFlag('WWE');
-          m.color = lgColor('WWE');
-          m.source = 'api';
-          m.league = formatLeagueName('WWE');
-          m.status = 'upcoming';
-          m.score = null;
-          baseMatches.push(m);
-      });
-
-      promises.push(
-          fetchPage('https://ics.ecal.com/ecal-sub/6a1306ca7b50220002db8201/Formula%201.ics').catch(function() { return ''; }).then(function(icsText) {
-              if (icsText) {
-                  var matches = parseF1Ics(icsText);
-                  matches.forEach(function(m) {
-                      m.flag = lgFlag('F1');
-                      m.color = lgColor('F1');
-                      m.source = 'api';
-                      m.league = formatLeagueName('F1');
-
-                      var dateObj = new Date(m.date);
-                      m.matchDate = getEstDateStrFromDate(dateObj);
-                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
-
-                      var now = new Date();
-                      var durationMs = 120 * 60 * 1000; // 2 hours default
-
-                      if (now > new Date(dateObj.getTime() + durationMs)) {
-                          m.status = 'finished';
-                      } else if (now >= dateObj) {
-                          m.status = 'live';
-                      } else {
-                          m.status = 'upcoming';
-                      }
-
-                      m.score = null;
-
-                      if (m.matchDate === targetDateStr) {
-                          var existingIdx = baseMatches.findIndex(function(existing) {
-                              return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
-                          });
-
-                          if (existingIdx >= 0) {
-                              baseMatches[existingIdx].status = m.status;
-                              baseMatches[existingIdx].startTime = m.startTime;
-                          } else {
-                              baseMatches.push(m);
-                          }
-                      }
-                  });
-              }
-          }).catch(function(e) { console.error('Error fetching F1 ICS schedule', e); lg('Error fetching F1 ICS schedule', e); })
-      );
-
-      promises.push(
-          fetchPage('https://ics.ecal.com/ecal-sub/6a130e1f7b50220002db8220/INDYCAR.ics').catch(function() { return ''; }).then(function(icsText) {
-              if (icsText) {
-                  var matches = parseIndycarIcs(icsText);
-                  matches.forEach(function(m) {
-                      m.flag = lgFlag('INDYCAR');
-                      m.color = lgColor('INDYCAR');
-                      m.source = 'api';
-                      m.league = formatLeagueName('INDYCAR');
-
-                      var dateObj = new Date(m.date);
-                      m.matchDate = getEstDateStrFromDate(dateObj);
-                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
-
-                      var now = new Date();
-                      var durationMs = 120 * 60 * 1000; // 2 hours default
-
-                      if (now > new Date(dateObj.getTime() + durationMs)) {
-                          m.status = 'finished';
-                      } else if (now >= dateObj) {
-                          m.status = 'live';
-                      } else {
-                          m.status = 'upcoming';
-                      }
-
-                      m.score = null;
-
-                      if (m.matchDate === targetDateStr) {
-                          var existingIdx = baseMatches.findIndex(function(existing) {
-                              return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
-                          });
-
-                          if (existingIdx >= 0) {
-                              baseMatches[existingIdx].status = m.status;
-                              baseMatches[existingIdx].startTime = m.startTime;
-                          } else {
-                              baseMatches.push(m);
-                          }
-                      }
-                  });
-              }
-          }).catch(function(e) { console.error('Error fetching IndyCar ICS schedule', e); lg('Error fetching IndyCar ICS schedule', e); })
-      );
-
-      promises.push(
-          fetchPage('https://calendar.google.com/calendar/ical/335cea66edf27097e6a689c1067382ac1cd69f6795cac889f2acf87911f0d473%40group.calendar.google.com/public/basic.ics').catch(function() { return ''; }).then(function(icsText) {
-              if (icsText) {
-                  var matches = parseWWEIcs(icsText);
-                  matches.forEach(function(m) {
-                      m.flag = lgFlag('WWE');
-                      m.color = lgColor('WWE');
-                      m.source = 'api';
-                      m.league = formatLeagueName('WWE');
-                      if (m.matchDate === targetDateStr) {
-                          baseMatches.push(m);
-                      }
-                  });
-              }
-          }).catch(function(e) { console.error('Error fetching WWE ICS schedule', e); lg('Error fetching WWE ICS schedule', e); })
-      );
-
-      promises.push(
-          fetchLolEsportsSchedule(todayStr).then(function(data) {
-              if(!data || !data.data || !data.data.schedule || !data.data.schedule.events) return;
-              data.data.schedule.events.forEach(function(ev) {
-                  if (ev.type !== 'match') return;
-                  if (!ev.match) return;
-
-                  var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds', 'CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
-                  if (!ev.league || !ev.league.name) return;
-                  if (!targetLeagues.includes(ev.league.name.toUpperCase()) && !targetLeagues.includes(ev.league.name)) return;
-
-                  var dateObj = new Date(ev.startTime);
-                  var matchDate = getEstDateStrFromDate(dateObj);
-
-                  // Use todayStr or targetDate since targetDateStr is not defined here yet
-                  var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
-                  if (matchDate !== matchDateTarget) return;
-
-                  var startTime = getEstTimeStrFromDate(dateObj);
-
-                  var status = 'upcoming';
-                  if (ev.state === 'inProgress') status = 'live';
-                  else if (ev.state === 'completed') status = 'finished';
-
-                  var score = null;
-                  if (status !== 'upcoming' && ev.match.teams && ev.match.teams.length >= 2) {
-                      var homeWins = ev.match.teams[0].result ? ev.match.teams[0].result.gameWins : 0;
-                      var awayWins = ev.match.teams[1].result ? ev.match.teams[1].result.gameWins : 0;
-                      score = [homeWins, awayWins];
-                  }
-
-                  if (!ev.match.teams || ev.match.teams.length < 2 || !ev.match.teams[0] || !ev.match.teams[1]) return;
-
-                  var m = {
-                      id: 'lol_' + ev.match.id,
-                      league: formatLeagueName(ev.league.name),
-                      flag: lgFlag(ev.league.name),
-                      color: lgColor(ev.league.name),
-                      homeTeam: ev.match.teams[0].name || 'TBD',
-                      awayTeam: ev.match.teams[1].name || 'TBD',
-                      matchDate: matchDate,
-                      homeLogo: ev.match.teams[0].image || null,
-                      awayLogo: ev.match.teams[1].image || null,
-                      startTime: startTime,
-                      durationMinutes: getLeagueDuration(ev.league.name),
-                      status: status,
-                      score: score,
-                      minute: null,
-                      streamLinks: [],
-                      streamsLoaded: false,
-                      source: 'api',
-                      isPlayoff: ev.blockName && ev.blockName.toLowerCase().indexOf('playoff') > -1
-                  };
 
                   var existingIdx = baseMatches.findIndex(function(existing) {
                       return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
@@ -547,208 +357,286 @@ export function getApiFirstMatches(targetDate) {
                       baseMatches.push(m);
                   }
               });
+          }
+      }).catch(function(e) { console.error('Error fetching PWHL API schedule', e); lg('Error fetching PWHL API schedule', e); })
+  );
 
-              return fetchLolEsportsLiveStreams().then(function(liveData) {
-                  if (!liveData || !liveData.data || !liveData.data.schedule || !liveData.data.schedule.events) return;
-                  liveData.data.schedule.events.forEach(function(liveEv) {
-                      if (liveEv.type !== 'match') return;
-                      var matchId = 'lol_' + liveEv.match.id;
-                      var matchObj = baseMatches.find(function(m) { return m.id === matchId; });
-                      if (!matchObj && liveEv.match && liveEv.match.teams && liveEv.match.teams.length >= 2 && liveEv.match.teams[0] && liveEv.match.teams[1]) {
-                          var targetLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'Worlds', 'CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
-                          if (liveEv.league && liveEv.league.name && (targetLeagues.includes(liveEv.league.name.toUpperCase()) || targetLeagues.includes(liveEv.league.name))) {
-                              var dateObj = new Date(liveEv.startTime);
-                              var matchDateTarget = targetDate ? getEstDateStrFromDate(targetDate) : getEstDateStrFromDate(new Date());
-                              var startTime = getEstTimeStrFromDate(dateObj);
+  // Synthesize weekly WWE shows that might not be on wwe.com/events, or could disappear when live.
+  var dateObjTarget = new Date(targetDateStr + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
+  var dayOfWeekTarget = dateObjTarget.getUTCDay();
 
-                              var status = 'live'; // Since it's in getLive
+  var synthesizedWWE = [];
+  if (dayOfWeekTarget === 1) { // Monday
+      synthesizedWWE.push({ id: 'wwe_raw_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDateStr, startTime: '20:00' });
+  } else if (dayOfWeekTarget === 2) { // Tuesday
+      synthesizedWWE.push({ id: 'wwe_nxt_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDateStr, startTime: '20:00' });
+  } else if (dayOfWeekTarget === 5) { // Friday
+      synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'SmackDown', matchDate: targetDateStr, startTime: '20:00' });
+  } else if (dayOfWeekTarget === 3) { // Wednesday
+      synthesizedWWE.push({ id: 'aew_dynamite_' + targetDateStr, homeTeam: 'AEW', awayTeam: 'Dynamite', matchDate: targetDateStr, startTime: '20:00' });
+  }
 
-                              var score = null;
-                              if (liveEv.match.teams[0].result && liveEv.match.teams[1].result) {
-                                  score = [liveEv.match.teams[0].result.gameWins || 0, liveEv.match.teams[1].result.gameWins || 0];
-                              }
+  synthesizedWWE.forEach(function(m) {
+      m.league = formatLeagueName(m.homeTeam === 'AEW' ? 'AEW' : 'WWE');
+      m.flag = lgFlag(m.league);
+      m.color = lgColor(m.league);
+      m.source = 'api';
+      m.status = 'upcoming';
+      m.durationMinutes = getLeagueDuration(m.league);
+      var existingIdx = baseMatches.findIndex(function(existing) {
+          return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
+      });
+      if (existingIdx === -1) {
+          baseMatches.push(m);
+      }
+  });
 
-                              matchObj = {
-                                  id: matchId,
-                                  league: formatLeagueName(liveEv.league.name),
-                                  flag: lgFlag(liveEv.league.name),
-                                  color: lgColor(liveEv.league.name),
-                                  homeTeam: liveEv.match.teams[0].name || 'TBD',
-                                  awayTeam: liveEv.match.teams[1].name || 'TBD',
-                                  matchDate: matchDateTarget, // Force it to show on target date
-                                  homeLogo: liveEv.match.teams[0].image || null,
-                                  awayLogo: liveEv.match.teams[1].image || null,
-                                  startTime: startTime,
-                                  durationMinutes: getLeagueDuration(liveEv.league.name),
-                                  status: status,
-                                  score: score,
-                                  minute: null,
-                                  streamLinks: [],
-                                  streamsLoaded: false,
-                                  source: 'api',
-                                  isPlayoff: liveEv.blockName && liveEv.blockName.toLowerCase().indexOf('playoff') > -1
-                              };
-                              baseMatches.push(matchObj);
-                          }
+
+  // Fetch F1 Schedule
+  promises.push(
+      fetchPage('https://ics.ecal.com/ecal-sub/65cfbda721adce1847679093/Formula%201.ics').then(function(icsData) {
+          if (icsData) {
+              var f1Events = parseF1Ics(icsData, targetDateStr);
+              f1Events.forEach(function(m) {
+                  m.flag = lgFlag('F1');
+                  m.color = lgColor('F1');
+                  m.source = 'api';
+                  m.league = formatLeagueName('F1');
+                  m.status = 'upcoming';
+                  m.durationMinutes = getLeagueDuration('F1');
+
+                  var existingIdx = baseMatches.findIndex(function(existing) {
+                      return isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate;
+                  });
+
+                  if (existingIdx >= 0) {
+                      baseMatches[existingIdx].startTime = m.startTime;
+                  } else {
+                      baseMatches.push(m);
+                  }
+              });
+          }
+      }).catch(function(e) { console.error('Error fetching F1 ICS schedule', e); lg('Error fetching F1 ICS schedule', e); })
+  );
+
+  // Fetch IndyCar Schedule
+  promises.push(
+      fetchPage('https://www.indycar.com/-/media/Files/2024/ICS/INDYCAR.ics').then(function(icsData) {
+          if (icsData) {
+              var indyEvents = parseIndycarIcs(icsData, targetDateStr);
+              indyEvents.forEach(function(m) {
+                  m.flag = lgFlag('IndyCar');
+                  m.color = lgColor('IndyCar');
+                  m.source = 'api';
+                  m.league = formatLeagueName('IndyCar');
+                  m.status = 'upcoming';
+                  m.durationMinutes = getLeagueDuration('IndyCar');
+
+                  var existingIdx = baseMatches.findIndex(function(existing) {
+                      return isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate;
+                  });
+
+                  if (existingIdx >= 0) {
+                      baseMatches[existingIdx].startTime = m.startTime;
+                  } else {
+                      baseMatches.push(m);
+                  }
+              });
+          }
+      }).catch(function(e) { console.error('Error fetching IndyCar ICS schedule', e); lg('Error fetching IndyCar ICS schedule', e); })
+  );
+
+  // Fetch WWE PLE Schedule
+  promises.push(
+      fetchPage('https://wwe.com/events').then(function(html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var scripts = doc.querySelectorAll('script');
+          var evtData = null;
+          for(var i=0; i<scripts.length; i++) {
+              if (scripts[i].textContent.includes('window.__PRELOADED_STATE__')) {
+                  var js_m = scripts[i].textContent.match(/window\.__PRELOADED_STATE__\s*=\s*(\{.*?\});/);
+                  if (js_m && js_m[1]) {
+                      try {
+                          var st = JSON.parse(js_m[1]);
+                          evtData = st;
+                          break;
+                      }catch(e){}
+                  }
+              }
+          }
+          if (evtData && evtData.events && evtData.events.events) {
+              var evList = evtData.events.events;
+              evList.forEach(function(ev) {
+                  var dateObj = new Date(ev.startDate);
+                  var evDateStr = getEstDateStrFromDate(dateObj);
+                  if (evDateStr === targetDateStr) {
+                      var title = ev.title || ev.description || 'WWE Event';
+                      if (title.toLowerCase().includes('raw') || title.toLowerCase().includes('smackdown') || title.toLowerCase().includes('nxt')) {
+                          return; // Handled by weekly synthesizer above
                       }
+                      var matchObj = {
+                          id: 'wwe_ple_' + ev.id,
+                          homeTeam: 'WWE',
+                          awayTeam: title.replace(/^wwe\s+/i, '').trim(),
+                          matchDate: evDateStr,
+                          startTime: ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2),
+                          league: formatLeagueName('WWE'),
+                          flag: lgFlag('WWE'),
+                          color: lgColor('WWE'),
+                          source: 'api',
+                          status: 'upcoming',
+                          durationMinutes: getLeagueDuration('WWE')
+                      };
 
-                      if (matchObj && liveEv.streams) {
-                          liveEv.streams.forEach(function(stream) {
-                              var url = '';
-                              if (stream.provider === 'twitch') {
-                                  url = 'https://www.twitch.tv/' + stream.parameter;
-                              } else if (stream.provider === 'youtube') {
-                                  url = 'https://www.youtube.com/watch?v=' + stream.parameter;
-                              }
+                      var existingIdx = baseMatches.findIndex(function(existing) {
+                          return existing.id === matchObj.id || (isMatch(existing.homeTeam, matchObj.homeTeam) && isMatch(existing.awayTeam, matchObj.awayTeam) && existing.matchDate === matchObj.matchDate);
+                      });
+                      if (existingIdx === -1) {
+                          baseMatches.push(matchObj);
+                      }
+                  }
+              });
+          }
+      }).catch(function(e) { console.error('Error fetching WWE events schedule', e); lg('Error fetching WWE events schedule', e); })
+  );
 
-                              if (url && !matchObj.streamLinks.find(function(s) { return s.url === url; })) {
-                                  var language = stream.mediaLocale && stream.mediaLocale.englishName ? stream.mediaLocale.englishName : stream.locale;
-                                  matchObj.streamLinks.push({
-                                      name: stream.provider + ' (' + language + ')',
-                                      url: url,
-                                      res: '1080p',
-                                      lang: language,
-                                      type: 'video',
-                                      source: 'api'
+  var targetLeagues = ['lcs', 'lec', 'lck', 'lpl', 'pcs', 'vcs', 'ljl', 'lla', 'cblol', 'world_championship', 'msi'];
+
+  promises.push(
+      fetchLolEsportsSchedule(targetDateObj).then(function(data) {
+          if (!data || !data.data || !data.data.schedule || !data.data.schedule.events) return;
+          data.data.schedule.events.forEach(function(ev) {
+              if (ev.type !== 'match') return;
+              if (!ev.match || !ev.match.teams || ev.match.teams.length < 2) return;
+              if (!ev.league || !ev.league.slug) return;
+
+              var leagueSlug = ev.league.slug.toLowerCase();
+              if (targetLeagues.indexOf(leagueSlug) === -1) return;
+
+              var dateObj = new Date(ev.startTime);
+              var mDate = getEstDateStrFromDate(dateObj);
+              if (mDate !== targetDateStr) return;
+
+              var t1 = ev.match.teams[0];
+              var t2 = ev.match.teams[1];
+
+              var status = ev.state === 'inProgress' ? 'live' : (ev.state === 'completed' ? 'finished' : 'upcoming');
+              var score = null;
+              if (status !== 'upcoming') {
+                  score = [t1.result && t1.result.gameWins ? t1.result.gameWins : 0, t2.result && t2.result.gameWins ? t2.result.gameWins : 0];
+              }
+
+              var m = {
+                  id: 'lol_' + ev.match.id,
+                  league: formatLeagueName(ev.league.name),
+                  flag: lgFlag(ev.league.name),
+                  color: lgColor(ev.league.name),
+                  homeTeam: t1.name || t1.code,
+                  awayTeam: t2.name || t2.code,
+                  homeLogo: t1.image,
+                  awayLogo: t2.image,
+                  matchDate: mDate,
+                  startTime: ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2),
+                  durationMinutes: getLeagueDuration(ev.league.name),
+                  status: status,
+                  score: score,
+                  source: 'api'
+              };
+
+              var existingIdx = baseMatches.findIndex(function(existing) { return existing.id === m.id; });
+              if (existingIdx >= 0) {
+                  baseMatches[existingIdx].status = m.status;
+                  baseMatches[existingIdx].score = m.score;
+                  baseMatches[existingIdx].startTime = m.startTime;
+              } else {
+                  baseMatches.push(m);
+              }
+          });
+
+          // Fetch LoL live events to get stream links
+          return fetchLolEsportsLiveStreams().then(function(liveData) {
+              if (!liveData || !liveData.data || !liveData.data.schedule || !liveData.data.schedule.events) return;
+              liveData.data.schedule.events.forEach(function(liveEv) {
+                  if (liveEv.type !== 'match') return;
+                  var liveMatchId = 'lol_' + liveEv.match.id;
+                  var existingIdx = baseMatches.findIndex(function(existing) { return existing.id === liveMatchId; });
+
+                  if (existingIdx >= 0) {
+                      baseMatches[existingIdx].status = 'live';
+                      if (liveEv.streams && liveEv.streams.length > 0) {
+                          if (!baseMatches[existingIdx].streamLinks) baseMatches[existingIdx].streamLinks = [];
+                          liveEv.streams.forEach(function(s) {
+                              var sUrl = null;
+                              if (s.provider === 'youtube') sUrl = 'https://youtube.com/watch?v=' + s.parameter;
+                              if (s.provider === 'twitch') sUrl = 'https://twitch.tv/' + s.parameter;
+
+                              if (sUrl && !baseMatches[existingIdx].streamLinks.some(function(sl){ return sl.url === sUrl; })) {
+                                  baseMatches[existingIdx].streamLinks.push({
+                                      name: s.locale ? ('(' + s.locale + ') ' + s.provider) : s.provider,
+                                      url: sUrl,
+                                      quality: '1080p',
+                                      source: 'lol_esports'
                                   });
                               }
                           });
-                          if (matchObj.streamLinks.length > 0) {
-                              matchObj.streamsLoaded = true;
-                          }
                       }
-                  });
+                  } else {
+                       // Live match not found in today's schedule (might have started yesterday or API date mismatch)
+                       // Add it manually to today's base matches if it's in target leagues
+                       if (liveEv.league && liveEv.league.slug && targetLeagues.indexOf(liveEv.league.slug.toLowerCase()) > -1) {
+                           if (!liveEv.match || !liveEv.match.teams || liveEv.match.teams.length < 2) return;
+                           var lt1 = liveEv.match.teams[0];
+                           var lt2 = liveEv.match.teams[1];
+                           var lDateObj = new Date(liveEv.startTime);
+
+                           var lm = {
+                              id: liveMatchId,
+                              league: formatLeagueName(liveEv.league.name),
+                              flag: lgFlag(liveEv.league.name),
+                              color: lgColor(liveEv.league.name),
+                              homeTeam: lt1.name || lt1.code,
+                              awayTeam: lt2.name || lt2.code,
+                              homeLogo: lt1.image,
+                              awayLogo: lt2.image,
+                              matchDate: targetDateStr, // Force today's date so it appears
+                              startTime: ('0' + lDateObj.getHours()).slice(-2) + ':' + ('0' + lDateObj.getMinutes()).slice(-2),
+                              durationMinutes: getLeagueDuration(liveEv.league.name),
+                              status: 'live',
+                              score: [lt1.result && lt1.result.gameWins ? lt1.result.gameWins : 0, lt2.result && lt2.result.gameWins ? lt2.result.gameWins : 0],
+                              source: 'api',
+                              streamLinks: []
+                          };
+
+                          if (liveEv.streams && liveEv.streams.length > 0) {
+                              liveEv.streams.forEach(function(s) {
+                                  var sUrl = null;
+                                  if (s.provider === 'youtube') sUrl = 'https://youtube.com/watch?v=' + s.parameter;
+                                  if (s.provider === 'twitch') sUrl = 'https://twitch.tv/' + s.parameter;
+                                  if (sUrl) {
+                                      lm.streamLinks.push({
+                                          name: s.locale ? ('(' + s.locale + ') ' + s.provider) : s.provider,
+                                          url: sUrl,
+                                          quality: '1080p',
+                                          source: 'lol_esports'
+                                      });
+                                  }
+                              });
+                          }
+                          baseMatches.push(lm);
+                       }
+                  }
               });
-          }).catch(function(e) { console.error('Error fetching LoL schedule', e); lg('Error fetching LoL schedule', e); })
-      );
+          }).catch(function(e) { console.error('Error fetching LoL live streams', e); lg('Error fetching LoL live streams', e); });
 
-      promises.push(
-          fetchPage('https://www.wwe.com/events').catch(function() { return ''; }).then(function(html) {
-              if (html) {
-                  var matches = parseWWEEvents(html);
-                  matches.forEach(function(m) {
-                      m.flag = lgFlag('WWE');
-                      m.color = lgColor('WWE');
-                      m.source = 'api';
-                      m.league = formatLeagueName('WWE');
+      }).catch(function(e) { console.error('Error fetching LoL schedule', e); lg('Error fetching LoL schedule', e); })
+  );
 
-                      var dateObj = new Date(m.date);
-                      m.matchDate = getEstDateStrFromDate(dateObj);
-                      m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
-                      if (m.startTime === '00:00') {
-                          m.startTime = '20:00';
-                      }
-
-                      m.status = 'upcoming';
-                      m.score = null;
-
-                      if (m.matchDate === targetDateStr) {
-                          var existingIdx = baseMatches.findIndex(function(existing) {
-                              return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
-                          });
-
-                          if (existingIdx >= 0) {
-                              // It might be a synthesized match (like Raw/SmackDown). Update its info if we scraped better data.
-                              baseMatches[existingIdx].status = m.status;
-                              baseMatches[existingIdx].startTime = m.startTime;
-                          } else {
-                              baseMatches.push(m);
-                          }
-                      }
-                  });
-              }
-          }).catch(function(e) { console.error('Error fetching WWE events schedule', e); lg('Error fetching WWE events schedule', e); })
-      );
-  } else {
-      espnPaths.forEach(function(path) {
-          promises.push(
-            fetchEspnSchedule(path, todayStr).then(function(data) {
-            if(!data || !data.events) return;
-            data.events.forEach(function(ev) {
-              var leagueName = data.leagues && data.leagues[0] ? data.leagues[0].name : path;
-              var isRacing = leagueName && (leagueName.toLowerCase().indexOf('f1') > -1 || leagueName.toLowerCase().indexOf('indycar') > -1 || path.indexOf('racing') > -1) || path.indexOf('racing') > -1;
-              var compsToProcess = isRacing ? ev.competitions : (ev.competitions.length > 0 ? [ev.competitions[0]] : []);
-
-              compsToProcess.forEach(function(comp) {
-                if(!comp) return;
-
-                if (!isRacing) {
-                  if(!comp.competitors) return;
-                  var home = comp.competitors.find(function(c){return c.homeAway==='home';});
-                  var away = comp.competitors.find(function(c){return c.homeAway==='away';});
-                  if(!home || !away) return;
-                }
-
-              var status = 'upcoming';
-              if(ev.status.type.state === 'in') status = 'live';
-              if(ev.status.type.state === 'post') status = 'finished';
-
-              var score = null;
-              if(status !== 'upcoming' && !isRacing) {
-                var homeScoreObj = comp.competitors.find(function(c){return c.homeAway==='home';});
-                var awayScoreObj = comp.competitors.find(function(c){return c.homeAway==='away';});
-                if (homeScoreObj && awayScoreObj && homeScoreObj.score !== undefined && awayScoreObj.score !== undefined) {
-                    score = [parseInt(homeScoreObj.score), parseInt(awayScoreObj.score)];
-                }
-              }
-
-              var minute = null;
-              if(status === 'live' && ev.status.displayClock) {
-                minute = ev.status.displayClock;
-              } else if(status === 'live' && ev.status.period) {
-                minute = 'P' + ev.status.period;
-              }
-
-              var isPlayoff = ev.season && ev.season.type === 3;
-
-              var matchId = isRacing ? 'espn_' + ev.id + '_' + comp.id : 'espn_' + ev.id;
-              var existingMatch = baseMatchesById[matchId];
-              if (existingMatch) {
-                  existingMatch.status = status;
-                  existingMatch.score = score;
-                  existingMatch.minute = minute;
-                  existingMatch.isPlayoff = isPlayoff;
-              }
-              }); // end compsToProcess
-            });
-          })
-        );
+  return Promise.all(promises).then(function() {
+      baseMatches.sort(function(a, b) {
+          return (a.startTime > b.startTime) ? 1 : ((a.startTime < b.startTime) ? -1 : 0);
       });
-  }
-
-  return Promise.allSettled(promises).then(function(){
-    var filtered = filterBuggyMatches(baseMatches);
-
-    // Inject stream cache before returning
-    filtered.forEach(function(m) {
-        var cachedStreams = getStreamCache(m.id);
-        if (cachedStreams && cachedStreams.length > 0) {
-            if (!m.streamLinks) m.streamLinks = [];
-            var combinedLinks = m.streamLinks.slice();
-            cachedStreams.forEach(function(cs) {
-                if (!combinedLinks.find(function(ex) { return ex.url === cs.url; })) {
-                    combinedLinks.push(cs);
-                }
-            });
-            m.streamLinks = combinedLinks;
-            m.streamsLoaded = true;
-        }
-    });
-
-    try {
-        var fetchDateToSave = todayStr;
-        if (!needsFullFetch && cache && cache.fetchDate) {
-            fetchDateToSave = cache.fetchDate; // Keep original fetch date if not full fetch
-        }
-        var cacheData = filtered.map(function(m) {
-            // we no longer want to strip out streams if they exist so they aren't lost on refresh
-            return Object.assign({}, m);
-        });
-        safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, matches: cacheData });
-    } catch (e) {
-        console.error('Failed to cache calendar:', e);
-    }
-    return filtered;
+      safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, matches: baseMatches });
+      return baseMatches;
   });
 }
 
