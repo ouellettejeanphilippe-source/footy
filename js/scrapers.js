@@ -1701,6 +1701,7 @@ export function scrapeMatchFlux(m, forceRefresh){
             while ((urlMatch = urlRegex.exec(concatenatedData)) !== null) {
                 var streamUrl = urlMatch[1];
                 if (!streamUrl.includes('w3.org') && !streamUrl.includes('cloudflare') && !streamUrl.includes('dashgenius') && !streamUrl.includes('gstatic')) {
+                    if (isMatchOrLeaguePage(streamUrl, m)) continue;
                     links.push({
                         name: 'Serveur ' + serverIndex,
                         quality: 'HD',
@@ -1721,6 +1722,7 @@ export function scrapeMatchFlux(m, forceRefresh){
                 var directStreams = JSON.parse(directMatch[1]);
                 directStreams.forEach(function(s) {
                     if (s.link && !links.find(l => l.url === s.link)) {
+                        if (isMatchOrLeaguePage(s.link, m)) return;
                         links.push({
                             name: 'Serveur ' + serverIndex + (s.name ? ' - ' + s.name : ''),
                             quality: extractQuality((s.name || '') + ' ' + (s.quality || '')),
@@ -1738,6 +1740,7 @@ export function scrapeMatchFlux(m, forceRefresh){
                 var iframeStreams = JSON.parse(iframeMatch[1]);
                 iframeStreams.forEach(function(s) {
                     if (s.src && !links.find(l => l.url === s.src)) {
+                        if (isMatchOrLeaguePage(s.src, m)) return;
                         links.push({
                             name: 'Serveur ' + serverIndex + (s.name ? ' - ' + s.name : ''),
                             quality: 'HD',
@@ -1778,6 +1781,7 @@ export function scrapeMatchFlux(m, forceRefresh){
                     if (!cleanName) cleanName = 'Serveur';
 
                     if (!links.find(l => l.url === url)) {
+                        if (isMatchOrLeaguePage(url, m)) return;
                         links.push({
                             name: cleanName,
                             quality: quality,
@@ -1817,6 +1821,7 @@ export function scrapeMatchFlux(m, forceRefresh){
                 if (Array.isArray(directStreams)) {
                     directStreams.forEach(function(s) {
                         if (s.link) {
+                            if (isMatchOrLeaguePage(s.link, m)) return;
                             var langStr = (s.language || '').toLowerCase();
                             links.push({
                                 name: 'Server ' + serverIndex + ' - ' + (s.name || 'Flux'),
@@ -1834,6 +1839,7 @@ export function scrapeMatchFlux(m, forceRefresh){
                 if (Array.isArray(iframeStreams)) {
                     iframeStreams.forEach(function(s) {
                         if (s.src) {
+                            if (isMatchOrLeaguePage(s.src, m)) return;
                             links.push({
                                 name: 'Server ' + serverIndex + ' - ' + (s.name || 'Flux'),
                                 quality: 'HD',
@@ -1899,6 +1905,7 @@ export function scrapeMatchFlux(m, forceRefresh){
              while ((sMatch = streamRegex.exec(text)) !== null) {
                  var streamUrl = sMatch[1];
                  if (!streamUrl.includes('w3.org') && !streamUrl.includes('cloudflare')) {
+                     if (isMatchOrLeaguePage(streamUrl, m)) continue;
                      links.push({
                          name: 'Source ' + serverIndex,
                          quality: 'HD',
@@ -1918,6 +1925,7 @@ export function scrapeMatchFlux(m, forceRefresh){
     [].forEach.call(iframes, function(ifr) {
         var src = ifr.getAttribute('src');
         if(src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
+            if (isMatchOrLeaguePage(src, m)) return;
             links.push({
                 name: 'Lecteur direct',
                 quality: 'HD',
@@ -1969,6 +1977,7 @@ export function scrapeMatchFlux(m, forceRefresh){
             var rowText = row.textContent.toLowerCase();
             var qual = extractQuality(rowText);
 
+            if (isMatchOrLeaguePage(url, m)) return;
             links.push({
                 name: name,
                 quality: qual,
@@ -2039,6 +2048,7 @@ export function scrapeMatchFlux(m, forceRefresh){
               }
               if (isOtherMatch) return;
 
+              if (isMatchOrLeaguePage(url, m)) return;
               links.push({
                  name:name,
                  quality: extractQuality((btn.parentElement ? btn.parentElement.textContent : btn.textContent) + ' ' + url),
@@ -2062,6 +2072,7 @@ export function scrapeMatchFlux(m, forceRefresh){
             if(url.indexOf('http') === 0) {
                 var lowerUrl = url.toLowerCase();
                 if (!lowerUrl.includes('1xbet') && !lowerUrl.includes('bet365') && !lowerUrl.includes('ads') && lowerUrl.length >= 5) {
+                    if (isMatchOrLeaguePage(url, m)) return;
                     links.push({
                         name: 'Lecteur caché',
                         quality: 'HD',
@@ -2132,6 +2143,47 @@ export function scrapeMatchFlux(m, forceRefresh){
       }, 0);
     });
   });
+}
+
+function isMatchOrLeaguePage(urlStr, m) {
+    if (!urlStr || typeof urlStr !== 'string') return false;
+    var u = urlStr.toLowerCase();
+
+    // Si l'url est exactement celle du match, c'est la page du match, pas un flux
+    if (m && m.matchUrl && u === m.matchUrl.toLowerCase()) return true;
+
+    // Si ça pointe vers une page de base du domaine connu
+    var isSelfDomain = false;
+    if (m && m.matchUrl) {
+        try {
+            var domainMatchUrl = new URL(m.matchUrl).hostname.replace('www.', '');
+            var domainUrlStr = new URL(urlStr).hostname.replace('www.', '');
+            if (domainMatchUrl === domainUrlStr) isSelfDomain = true;
+        } catch(e) {}
+    }
+
+    // Autoriser explicitement les pages embed / player (même sur le même domaine)
+    if (u.includes('/embed') || u.includes('/player') || u.includes('player.php') || u.includes('.m3u8')) return false;
+
+    // Détection de motifs d'URL de pages de match ou de ligue
+    if (u.includes('-vs-') ||
+        u.includes('/game/') ||
+        u.includes('/tag-') ||
+        (u.includes('-stream') && !u.includes('iframe') && !u.includes('/embed') && !u.includes('.php')) ||
+        (u.includes('-live') && !u.includes('iframe') && !u.includes('/embed') && !u.includes('.php')) ||
+        u.includes('/category/') ||
+        u.includes('/sports/')) {
+        return true;
+    }
+
+    // Si c'est sur le même domaine, et que ça ressemble à une page de match
+    if (isSelfDomain && !u.includes('iframe') && !u.includes('embed') && !u.includes('player') && urlStr.length > 20) {
+        if (u.endsWith('-streaming') || u.endsWith('-live') || u.includes('/match/')) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 export function updateMatchUiAfterScrape(m) {
