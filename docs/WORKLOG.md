@@ -23,6 +23,7 @@
 ## En cours
 
 ## Fait
+- Update `scrape_schedule.yml` Github Action to change schedule to 09:00 UTC (4 AM EST).
 - Fix Footybite stream extraction fallback in `scrapeMatchFlux` to parse DOM structure when Next.js payload is missing.
 - Note for future scrapers: Added explicit site-specific fallback pattern inside `scrapeMatchFlux` to allow bypassing generic class-based extraction if Cloudflare blocks Next.js payloads.
 - Update `scrape_schedule.yml` Github Action to trigger on `push` to `main`, ensuring `schedule.json` updates automatically and first load is fast.

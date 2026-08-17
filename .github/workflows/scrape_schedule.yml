@@ -2,7 +2,7 @@ name: Daily ESPN Schedule Scraper
 
 on:
   schedule:
-    - cron: '0 10 * * *' # 10:00 UTC = 6:00 AM EST
+    - cron: '0 9 * * *' # 09:00 UTC = 4:00 AM EST / 5:00 AM EDT
   workflow_dispatch:
   push:
     branches:
