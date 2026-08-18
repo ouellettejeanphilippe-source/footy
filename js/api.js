@@ -74,7 +74,13 @@ export function getEspnPath(leagueName) {
 }
 
 export function getEspnDateStr(d) {
-  return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
+  var formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+  });
+  return formatter.format(d).replace(/-/g, '');
 }
 
 export function fetchEspnSchedule(leaguePath, dateStr) {
