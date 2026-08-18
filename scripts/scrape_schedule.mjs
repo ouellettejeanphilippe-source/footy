@@ -10,7 +10,13 @@ global.window = dom.window;
 function pad(n) { return n < 10 ? '0' + n : n; }
 
 function getEspnDateStr(d) {
-  return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate());
+    var formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    return formatter.format(d).replace(/-/g, '');
 }
 
 function getEstDateStrFromDate(d) {
