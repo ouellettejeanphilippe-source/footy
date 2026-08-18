@@ -20,18 +20,13 @@ function getEspnDateStr(d) {
 }
 
 function getEstDateStrFromDate(d) {
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    var formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/New_York',
-        year: 'numeric', month: '2-digit', day: '2-digit'
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
     });
-    const parts = formatter.formatToParts(d);
-    let yy, mm, dd;
-    parts.forEach(p => {
-        if(p.type === 'year') yy = p.value;
-        if(p.type === 'month') mm = p.value;
-        if(p.type === 'day') dd = p.value;
-    });
-    return `${yy}-${mm}-${dd}`;
+    return formatter.format(d);
 }
 
 function getEstTimeStrFromDate(d) {
@@ -256,8 +251,6 @@ function parsePWHLSchedule(html) {
 // MAIN RUN
 async function run() {
     const targetDate = new Date();
-    // Move forward/backward hours to ensure EST sync for script runs
-    targetDate.setUTCHours(targetDate.getUTCHours() - 5);
     const todayStr = getEspnDateStr(targetDate);
     const targetDateStr = getEstDateStrFromDate(targetDate);
 
