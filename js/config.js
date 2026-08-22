@@ -91,11 +91,7 @@ export const SCRAPERS_CONFIG = [
 export var PROXIES = [
   function(u){ return 'https://corsproxy.org/?'+encodeURIComponent(u); },
   function(u){ return 'https://proxy.cors.sh/'+u; },
-  function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); },
-
-  // corsproxy.io now blocks streaming domains with 403. Removed for reliability.
-  // We can add a fallback proxy like thingproxy, but it's often unreliable.
-
+  function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); }
 ];
 
 /* ══ COULEURS ═══════════════════════════ */
