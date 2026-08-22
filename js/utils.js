@@ -277,7 +277,7 @@ export function fetchPage(url){
           }
 
           // Catch common proxy error pages
-          if(t.indexOf('Oops... Request Timeout') >= 0 || t.indexOf('500 Internal Server Error') >= 0 || t.indexOf('502 Bad Gateway') >= 0 || t.indexOf('522 Connection timed out') >= 0 || t.indexOf('cloudflare') >= 0 && t.indexOf('301 Moved') >= 0) {
+          if(t.indexOf('Oops... Request Timeout') >= 0 || t.indexOf('500 Internal Server Error') >= 0 || t.indexOf('502 Bad Gateway') >= 0 || t.indexOf('522 Connection timed out') >= 0 || (t.indexOf('cloudflare') >= 0 && t.indexOf('301 Moved') >= 0) || t.indexOf('hidemy.name') >= 0 || t.indexOf('Performance & security by Cloudflare') >= 0) {
               errs.push('Proxy Error Content p'+i);
               next();
               return;
