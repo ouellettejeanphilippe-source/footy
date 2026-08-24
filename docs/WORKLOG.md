@@ -2,6 +2,7 @@
 ## En cours
 
 ## Fait
+- 2026-08-24 - Updated `LEAGUE_ALIASES` in `js/db.js` and `scripts/scrape_schedule.mjs` to map full ESPN league names (e.g. English Premier League, Spanish LaLiga, Italian Serie A, German Cup, Portuguese Primeira Liga, MLB) to standard league keys recognized by `DEFAULT_LEAGUES` and `OTHER_LEAGUES`. Regenerated `data/schedule.json` to fix guide categorizations.
 - 2026-06-08 - Audit complet du calendrier des ligues et mise à jour des domaines de streaming. Restauration des endpoints fonctionnels pour Streameast (naturallyyou.fit), OnHockey (onhockey.tv) et StreamOnSport (streamonsport.pro) dans domains.json, js/config.js et tests. Ajout du support de mise en forme et icônes pour AEW et MotoGP dans js/db.js.
 - Fix Footybite stream extraction fallback in `scrapeMatchFlux` to parse DOM structure when Next.js payload is missing.
 - Note for future scrapers: Added explicit site-specific fallback pattern inside `scrapeMatchFlux` to allow bypassing generic class-based extraction if Cloudflare blocks Next.js payloads.

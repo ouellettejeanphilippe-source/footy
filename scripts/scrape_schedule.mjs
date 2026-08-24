@@ -42,6 +42,80 @@ function getEstTimeStrFromDate(d) {
     return formatter.format(d);
 }
 
+const LEAGUE_ALIASES = {
+  'fifa world cup': 'world cup',
+  'formula 1': 'f1',
+  'nba': 'nba',
+  'nhl': 'nhl',
+  'nfl': 'nfl',
+  'mlb': 'mlb',
+  'cfl': 'cfl',
+  'major league baseball': 'mlb',
+  'mls': 'mls',
+  'major league soccer': 'mls',
+  'pl': 'premier league',
+  'epl': 'premier league',
+  'champions league': 'uefa champions league',
+  'europa league': 'uefa europa league',
+  'conference league': 'uefa europa conference league',
+  'efl cup': 'league cup',
+  'carabao cup': 'league cup',
+  'english carabao cup': 'league cup',
+  'english league cup': 'league cup',
+  'english fa cup': 'fa cup',
+  'spanish copa del rey': 'copa del rey',
+  'german dfb-pokal': 'dfb pokal',
+  'german dfb pokal': 'dfb pokal',
+  'german cup': 'dfb pokal',
+  'dutch eredivisie': 'eredivisie',
+  'portuguese primeira liga': 'primeira liga',
+  'nations league': 'uefa nations league',
+  'german bundesliga': 'bundesliga',
+  'english premier league': 'premier league',
+  'french ligue 1': 'ligue 1',
+  'spanish laliga': 'la liga',
+  'spanish la liga': 'la liga',
+  'italian serie a': 'serie a'
+};
+
+const LEAGUE_FORMAT_NAMES = {
+    'nba': 'NBA',
+    'nhl': 'NHL',
+    'nfl': 'NFL',
+    'mlb': 'MLB',
+    'cfl': 'CFL',
+    'mls': 'MLS',
+    'premier league': 'Premier League',
+    'la liga': 'La Liga',
+    'serie a': 'Serie A',
+    'bundesliga': 'Bundesliga',
+    'ligue 1': 'Ligue 1',
+    'uefa champions league': 'Champions League',
+    'uefa europa league': 'Europa League',
+    'uefa europa conference league': 'Conference League',
+    'eredivisie': 'Eredivisie',
+    'primeira liga': 'Primeira Liga',
+    'uefa nations league': 'Nations League',
+    'fa cup': 'FA Cup',
+    'league cup': 'League Cup',
+    'copa del rey': 'Copa del Rey',
+    'dfb pokal': 'DFB Pokal',
+    'saudi pro league': 'Saudi Pro League',
+    'f1': 'F1'
+};
+
+function formatLeagueName(league) {
+    if (!league) return 'Autres Flux';
+    var lower = league.toLowerCase().trim();
+    if (LEAGUE_ALIASES[lower]) {
+        lower = LEAGUE_ALIASES[lower];
+    }
+    if (LEAGUE_FORMAT_NAMES[lower]) {
+        return LEAGUE_FORMAT_NAMES[lower].toUpperCase();
+    }
+    return lower.replace(/-/g, ' ').toUpperCase();
+}
+
 const ESPN_LEAGUES = {
   'premier league': 'soccer/eng.1',
   'la liga': 'soccer/esp.1',
@@ -98,8 +172,6 @@ const ESPN_LEAGUES = {
   'tennis': 'tennis/atp',
   'golf': 'golf/pga'
 };
-
-function formatLeagueName(l) { return l ? l.replace(/-/g, ' ').toUpperCase() : 'UNKNOWN'; }
 function getLeagueDuration(league) {
     if(!league) return 105;
     const l = league.toLowerCase();
