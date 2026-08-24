@@ -3,16 +3,16 @@ import { test, expect } from '@playwright/test';
 // Define the scraper URLs from config
 const sites = {
   SITE: 'https://footybite.bid/',
-  MLBITE_URL: 'https://nflbite.is/',
-  MLBBITE_PLUS_URL: 'https://mlbbite.plus',
+  MLBITE_URL: 'https://mlbbite.plus/',
+  MLBBITE_PLUS_URL: 'https://mlbbite.plus/',
   SPORTSURGE_URL: 'https://sportsurge.mom/',
-  BUFFSTREAMS_URL: 'https://buffstreams.app/',
+  BUFFSTREAMS_URL: 'https://app.buffstreams.is/indexcracked29',
   STREAMEAST_URL: 'https://naturallyyou.fit/',
-  ONHOCKEY_URL: 'https://www.onhockey.tv/',
-  VIPLEAGUE_URL: 'https://vipleague.io/top-streaming',
+  ONHOCKEY_URL: 'https://onhockey.tv/',
+  VIPLEAGUE_URL: 'https://www.vipleague.lc/',
   METHSTREAMS_URL: 'https://methstreams.gs/',
-  // TOTALSPORTEK_URL: 'https://totalsportek-real.com/',
-  STREAMONSPORT_URL: 'https://www.stremonsport.net/'
+  TOTALSPORTEK_URL: 'https://totalsportekz.com/',
+  STREAMONSPORT_URL: 'https://streamonsport.pro/'
 };
 
 test.describe('Scraper endpoints verification', () => {

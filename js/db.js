@@ -55,7 +55,7 @@ export function lgFlag(n){
   if(l.indexOf('nhl') >= 0 || l.indexOf('hockey') >= 0 || l.indexOf('pwhl') >= 0 || l.indexOf('qmjhl') >= 0 || l.indexOf('lhjmq') >= 0 || l.indexOf('ahl') >= 0 || l.indexOf('echl') >= 0 || l.indexOf('ncaa') >= 0) return '🏒';
   if(l.indexOf('f1') >= 0 || l.indexOf('formula 1') >= 0 || l.indexOf('indycar') >= 0 || l.indexOf('indy') >= 0 || l.indexOf('racing') >= 0) return '🏎️';
   if(l.indexOf('motogp') >= 0 || l.indexOf('moto gp') >= 0) return '🏍️';
-  if(l.indexOf('wwe') >= 0 || l.indexOf('wrestling') >= 0 || l.indexOf('ufc') >= 0 || l.indexOf('mma') >= 0 || l.indexOf('boxing') >= 0) return '🥊';
+  if(l.indexOf('wwe') >= 0 || l.indexOf('aew') >= 0 || l.indexOf('wrestling') >= 0 || l.indexOf('ufc') >= 0 || l.indexOf('mma') >= 0 || l.indexOf('boxing') >= 0) return '🥊';
   if(l.indexOf('tennis') >= 0) return '🎾';
   if(l.indexOf('rugby') >= 0) return '🏉';
   if(l.indexOf('golf') >= 0) return '⛳';
@@ -237,6 +237,7 @@ export var OTHER_LEAGUES = {
     'FIFA WOMEN\'S WORLD CUP': { icon: '⚽' },
     'NWSL': { icon: '⚽' },
     'WWE': { icon: '🥊' },
+    'AEW': { icon: '🥊' },
     'ECHL': { icon: '🏒' },
     'NCAA': { icon: '🎓' },
     'WNBA': { icon: '🏀' },
@@ -286,6 +287,8 @@ export var LEAGUE_FORMAT_NAMES = {
     'dfb pokal': 'DFB Pokal',
     'saudi pro league': 'Saudi Pro League',
     'f1': 'F1',
+    'motogp': 'MotoGP',
+    'aew': 'AEW',
     'pwhl': 'PWHL',
     'lhjmq': 'LHJMQ',
     'ahl': 'AHL',
