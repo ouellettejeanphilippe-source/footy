@@ -1,8 +1,8 @@
 
 ## En cours
-- Adding League of Legends (LoL) VOD extraction and display directly within the match stream modal for finished matches.
 
 ## Fait
+- 2026-06-08 - Audit complet du calendrier des ligues et mise à jour des domaines de streaming. Restauration des endpoints fonctionnels pour Streameast (naturallyyou.fit), OnHockey (onhockey.tv) et StreamOnSport (streamonsport.pro) dans domains.json, js/config.js et tests. Ajout du support de mise en forme et icônes pour AEW et MotoGP dans js/db.js.
 - Fix Footybite stream extraction fallback in `scrapeMatchFlux` to parse DOM structure when Next.js payload is missing.
 - Note for future scrapers: Added explicit site-specific fallback pattern inside `scrapeMatchFlux` to allow bypassing generic class-based extraction if Cloudflare blocks Next.js payloads.
 - Update `scrape_schedule.yml` Github Action to trigger on `push` to `main`, ensuring `schedule.json` updates automatically and first load is fast.
