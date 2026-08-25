@@ -2145,12 +2145,15 @@ export function scrapeMatchFlux(m, forceRefresh){
   });
 }
 
-function isMatchOrLeaguePage(urlStr, m) {
+export function isMatchOrLeaguePage(urlStr, m) {
     if (!urlStr || typeof urlStr !== 'string') return false;
     var u = urlStr.toLowerCase();
 
     // Si l'url est exactement celle du match, c'est la page du match, pas un flux
     if (m && m.matchUrl && u === m.matchUrl.toLowerCase()) return true;
+
+    // Autoriser explicitement les pages embed / player / direct streams
+    if (u.includes('/embed') || u.includes('/player') || u.includes('player.php') || u.includes('embed.php') || u.includes('stream.php') || u.includes('play.php') || u.includes('.m3u8') || u.includes('.mpd') || u.includes('youtube.com/embed') || u.includes('player.twitch.tv')) return false;
 
     // Si ça pointe vers une page de base du domaine connu
     var isSelfDomain = false;
@@ -2162,23 +2165,26 @@ function isMatchOrLeaguePage(urlStr, m) {
         } catch(e) {}
     }
 
-    // Autoriser explicitement les pages embed / player (même sur le même domaine)
-    if (u.includes('/embed') || u.includes('/player') || u.includes('player.php') || u.includes('.m3u8')) return false;
-
     // Détection de motifs d'URL de pages de match ou de ligue
     if (u.includes('-vs-') ||
+        u.includes('-v-') ||
         u.includes('/game/') ||
+        u.includes('/match/') ||
+        u.includes('/matches/') ||
         u.includes('/tag-') ||
-        (u.includes('-stream') && !u.includes('iframe') && !u.includes('/embed') && !u.includes('.php')) ||
-        (u.includes('-live') && !u.includes('iframe') && !u.includes('/embed') && !u.includes('.php')) ||
+        u.includes('/schedule/') ||
         u.includes('/category/') ||
-        u.includes('/sports/')) {
+        u.includes('/sports/') ||
+        u.includes('/sport/') ||
+        u.includes('/league/') ||
+        (u.includes('-stream') && !u.includes('iframe') && !u.includes('/embed') && !u.includes('.php')) ||
+        (u.includes('-live') && !u.includes('iframe') && !u.includes('/embed') && !u.includes('.php'))) {
         return true;
     }
 
     // Si c'est sur le même domaine, et que ça ressemble à une page de match
-    if (isSelfDomain && !u.includes('iframe') && !u.includes('embed') && !u.includes('player') && urlStr.length > 20) {
-        if (u.endsWith('-streaming') || u.endsWith('-live') || u.includes('/match/')) {
+    if (isSelfDomain && !u.includes('iframe') && !u.includes('embed') && !u.includes('player') && !u.includes('.php') && urlStr.length > 20) {
+        if (u.endsWith('-streaming') || u.endsWith('-live') || u.includes('/match/') || u.includes('/teams/')) {
             return true;
         }
     }

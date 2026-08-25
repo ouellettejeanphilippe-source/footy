@@ -4,11 +4,11 @@ import { test, expect } from '@playwright/test';
 const SCRAPERS_CONFIG = [
   { name: 'Footybite', url: 'https://footybite.bid/' },
   { name: 'MLBite+', url: 'https://mlbbite.plus/' },
-  { name: 'Sportsurge', url: 'https://sportsurge.mom/' },
+  { name: 'Sportsurge', url: 'https://sportsurge.net/' },
   { name: 'Buffstreams', url: 'https://app.buffstreams.is/indexcracked29' },
-  { name: 'Streameast', url: 'https://naturallyyou.fit/' },
+  { name: 'Streameast', url: 'https://v2.streameast.ga/' },
   { name: 'OnHockey', url: 'https://onhockey.tv/' },
-  { name: 'VIPLeague', url: 'https://www.vipleague.lc/' }
+  { name: 'VIPLeague', url: 'https://vipleague.im/' }
 ];
 
 test.describe('Scraper pages must have stream links or elements', () => {
