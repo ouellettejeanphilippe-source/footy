@@ -10,11 +10,11 @@ import { getLogo, normName, STATIC_TEAMS } from './db.js';
 export var SITE = 'https://footybite.bid/'; // Updated to new footybite.bid domain
 export var MLBITE_URL = 'https://mlbbite.plus/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
 export var MLBBITE_PLUS_URL = 'https://mlbbite.plus/';
-export var SPORTSURGE_URL = 'https://sportsurge.mom/';
+export var SPORTSURGE_URL = 'https://sportsurge.net/';
 export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
-export var STREAMEAST_URL = 'https://naturallyyou.fit/';
+export var STREAMEAST_URL = 'https://v2.streameast.ga/';
 export var ONHOCKEY_URL = 'https://onhockey.tv/';
-export var VIPLEAGUE_URL = 'https://www.vipleague.lc/';
+export var VIPLEAGUE_URL = 'https://vipleague.im/';
 export var METHSTREAMS_URL = 'https://methstreams.gs/';
 export var TOTALSPORTEK_URL = 'https://totalsportekz.com/';
 export var STREAMONSPORT_URL = 'https://streamonsport.pro/';

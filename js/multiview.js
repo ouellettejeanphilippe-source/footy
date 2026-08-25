@@ -6,7 +6,7 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
-import { scrapeMatchFlux } from './scrapers.js';
+import { scrapeMatchFlux, isMatchOrLeaguePage } from './scrapers.js';
 import { loadAll } from './main.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
@@ -1442,6 +1442,9 @@ export function updateMultivisionLayout() {
             resolveStreamUrl(url).then(function(finalUrl) {
                 if (s._currentUrl !== url) return;
                 container.innerHTML = '';
+
+                var isTopLevel = isMatchOrLeaguePage(finalUrl);
+
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
                 iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;';
@@ -1449,6 +1452,20 @@ export function updateMultivisionLayout() {
                 iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
                 iframe.src = finalUrl;
                 container.appendChild(iframe);
+
+                if (isTopLevel) {
+                    var helperOverlay = document.createElement('div');
+                    helperOverlay.className = 'mv-embed-helper';
+                    helperOverlay.style.cssText = 'position:absolute;bottom:10px;left:10px;right:10px;z-index:20;background:rgba(20,20,20,0.9);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 12px;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px);box-shadow:0 4px 12px rgba(0,0,0,0.5);';
+                    helperOverlay.innerHTML = '<span style="font-weight:600;">⚠️ Si l\'embed est bloqué (Firefox / X-Frame) :</span>' +
+                        '<div style="display:flex;gap:6px;align-items:center;">' +
+                        '<button onclick="window.open(\'' + escJs(finalUrl) + '\', \'_blank\'); event.stopPropagation();" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-weight:bold;">🔗 Ouvrir</button>' +
+                        '<button onclick="installTampermonkey(); event.stopPropagation();" style="background:rgba(255,255,255,0.1);color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">🧩 Script</button>' +
+                        '<button onclick="this.parentElement.parentElement.remove(); event.stopPropagation();" style="background:transparent;color:var(--muted);border:none;cursor:pointer;">✕</button>' +
+                        '</div>';
+                    container.appendChild(helperOverlay);
+                }
+
                 cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
                 cell.addEventListener('mouseup', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
                 cell.addEventListener('mouseleave', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
