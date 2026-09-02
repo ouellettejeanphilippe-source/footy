@@ -1,0 +1,45 @@
+name: Capture source HTML (diagnostic)
+
+on:
+  push:
+    branches: [ "claude/match-links-access-5gmco2" ]
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch homepages and one match page per source
+        run: |
+          mkdir -p out
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
+          get() { # name url
+            curl -sS -L -m 25 -A "$UA" -o "out/$1.html" -w "$1 status=%{http_code} final=%{url_effective} bytes=%{size_download}\n" "$2" || echo "$1 curl failed"
+          }
+          get footybite https://footybite.bid/
+          get mlbbite https://mlbbite.plus/
+          get sportsurge https://v2.sportsurge.net/
+          get sportsurge_welcome https://v2.sportsurge.net/welcome/
+          get buffstreams https://app.buffstreams.is/indexcracked29
+          get vipleague https://vipleague.vg/vl
+          get vipleague_root https://vipleague.vg/
+          get methstreams https://methstreams.gs/
+          get streamonsport https://streamonsport.pro/
+          get onhockey_direct https://onhockey.tv/
+          curl -sS -m 25 -H "Origin: https://ouellettejeanphilippe-source.github.io" -o out/onhockey_corssh.html -w "onhockey via cors.sh status=%{http_code} bytes=%{size_download}\n" "https://proxy.cors.sh/https://onhockey.tv/" || true
+          get streameast_ga https://v2.streameast.ga/
+          get gostreameast https://v2.gostreameast.is/
+          get thestreameast https://thestreameast.fun/
+          get sportsurge_ws https://sportsurge.ws/
+          get totalsportek_to https://totalsportek.to/
+          # match pages: first /game/ link on footybite, first match link on mlbbite / buffstreams / methstreams / vipleague
+          fb=$(grep -o '"href":"/game/[^"]*"' out/footybite.html | head -1 | sed 's/"href":"//;s/"$//'); echo "footybite game=$fb"; [ -n "$fb" ] && get footybite_match "https://footybite.bid$fb"
+          mb=$(grep -o 'href="[^"]*"' out/mlbbite.html | grep -i -m1 'vs\|-v-\|/game\|/match\|stream' | sed 's/href="//;s/"$//'); echo "mlbbite link=$mb"; case "$mb" in http*) get mlbbite_match "$mb";; /*) get mlbbite_match "https://mlbbite.plus$mb";; esac
+          bs=$(grep -o 'href="[^"]*"' out/buffstreams.html | grep -i -m1 'vs\|-v-\|/game\|/match\|stream' | sed 's/href="//;s/"$//'); echo "buffstreams link=$bs"; case "$bs" in http*) get buffstreams_match "$bs";; /*) get buffstreams_match "https://app.buffstreams.is$bs";; esac
+          ms=$(grep -o 'href="[^"]*"' out/methstreams.html | grep -i -m1 'vs\|-v-\|/game\|/match\|/live' | sed 's/href="//;s/"$//'); echo "methstreams link=$ms"; case "$ms" in http*) get methstreams_match "$ms";; /*) get methstreams_match "https://methstreams.gs$ms";; esac
+          vp=$(grep -o 'href="[^"]*"' out/vipleague.html | grep -i -m1 'vs\|-v-\|/game\|/match\|stream' | sed 's/href="//;s/"$//'); echo "vipleague link=$vp"; case "$vp" in http*) get vipleague_match "$vp";; /*) get vipleague_match "https://vipleague.vg$vp";; esac
+          ss=$(grep -o 'href="[^"]*"' out/sportsurge.html out/sportsurge_welcome.html | sed 's/^[^:]*:href="//;s/"$//' | grep -i -m1 'vs\|-v-\|/game\|/match\|/stream\|/sports/\|/nba\|/mlb\|/soccer'); echo "sportsurge link=$ss"; case "$ss" in http*) get sportsurge_match "$ss";; /*) get sportsurge_match "https://v2.sportsurge.net$ss";; esac
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-html
+          path: out/
