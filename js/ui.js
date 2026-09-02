@@ -423,12 +423,21 @@ export function buildEPG(matches){
 
                   var statusHtml = '';
                   if(m.status === 'live') {
-                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
+                      // « 0:00 » remonté par certaines API n'apprend rien : on affiche l'état.
+                      var minuteTxt = m.minute && !/^0+[:h]?0*$/.test(String(m.minute).trim()) ? esc(m.minute) : 'DIRECT';
+                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+minuteTxt+'</span></div>';
                   } else if(m.status === 'finished') {
                       statusHtml = '<div class="status-text"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
                   } else {
                       statusHtml = '<div class="status-text"><span class="status-minute">'+m.startTime+'</span></div>';
                   }
+
+                  /* Nombre de flux : l'information qui décide d'un clic (un match sans flux
+                     n'est pas regardable). Affiché seulement quand on en connaît. */
+                  var streamCount = (m.streamLinks || []).length;
+                  var streamsHtml = streamCount > 0
+                      ? '<div class="card-streams" title="' + streamCount + ' flux disponibles">▶ ' + streamCount + '</div>'
+                      : '';
 
                   var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
                   var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
@@ -439,8 +448,9 @@ export function buildEPG(matches){
                   var homeLogoHtmlPrime = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
                   var awayLogoHtmlPrime = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
 
-                  var streamsBadgePrime = "";
-                  var lgBadge = '<div class="prime-league-badge">'+(lg.flag || lgFlag(lg.league) || '')+'</div>';
+                  // Le nom de la ligue manquait : une icône seule ne dit pas de quelle compétition il s'agit.
+                  var lgBadge = '<div class="prime-league-badge"><span class="plb-ic">' + (lg.flag || lgFlag(lg.league) || '') + '</span>'
+                              + '<span class="plb-name">' + esc(lg.league || '') + '</span></div>';
 
                   var homeFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>';
                   var awayFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>';
@@ -461,6 +471,7 @@ export function buildEPG(matches){
 
                   b.innerHTML = '<div class="prime-thumbnail" style="background:'+cardBg+';">'
                               +   lgBadge
+                              +   streamsHtml
 
                               +   '<div class="prime-logos">'
                               +     logosHtml
@@ -521,6 +532,11 @@ export function buildEPG(matches){
               renderMatches(sorted, host, k, true, subId);
           });
       };
+
+  /* Les contrôles de zoom (« Maintenant », ± ) ne pilotent que la grille temporelle du
+     Guide. Ailleurs ils flottaient au-dessus des cartes sans rien faire : on les réserve
+     à la vue concernée (voir .zoom-controls dans styles.css). */
+  document.body.classList.toggle('view-timeline', S.filter === 'all');
 
   if (S.filter === 'live' || S.filter === 'upcoming') {
       epgContainer.style.display = 'block';

@@ -419,14 +419,13 @@ export function applyFilter(f){
       toggleMultiviewPip();
   }
 
+  /* Les contrôles « Maintenant » et ± pilotent uniquement la grille temporelle du Guide.
+     Dans En direct et À venir ils flottaient au-dessus des cartes sans aucun effet (et
+     masquaient l'heure des matchs sur mobile). La visibilité est désormais portée par
+     body.view-timeline (styles.css) ; on retire le style en ligne qui l'écrasait. */
   var zoomEpg = document.querySelector('.zoom-controls');
-  if (zoomEpg) {
-      if (f === 'all' || f === 'live' || f === 'upcoming') {
-          zoomEpg.style.display = 'flex';
-      } else {
-          zoomEpg.style.display = 'none';
-      }
-  }
+  if (zoomEpg) zoomEpg.style.removeProperty('display');
+  document.body.classList.toggle('view-timeline', f === 'all');
 
   if (f === 'options') {
       openOptionsPage();

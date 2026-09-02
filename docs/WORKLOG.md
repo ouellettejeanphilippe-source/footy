@@ -2,6 +2,12 @@
 ## En cours
 
 ## Fait
+- 2026-09-02 - Interface : densité des cartes et informations de décision.
+  - Cartes de match : la vignette 16/9 mangeait ~210 px pour deux logos → ratio 2.4/1 (`--card-aspect`), hauteur de carte 257 → 202 px.
+  - Informations ajoutées sur la carte : **nom de la ligue** (l'icône seule ne disait pas de quelle compétition il s'agissait) et **nombre de flux disponibles** (`▶ N`), qui décide du clic.
+  - Statut en direct : « 0:00 » renvoyé par certaines API est remplacé par « DIRECT ».
+  - Contrôles de zoom (« Maintenant », ±) : ils flottaient au-dessus des cartes dans En direct et À venir sans aucun effet, et masquaient l'heure des matchs sur mobile. Ils sont désormais réservés à la grille temporelle du Guide (`body.view-timeline`), la visibilité étant portée par le CSS et non plus par un style en ligne.
+  - Vérifié dans Chromium : 1 colonne à 360/390 px, 2 à 768, 3 à 1024/1440/1920, aucun débordement horizontal, aucune erreur JS, contrôles de zoom visibles uniquement dans le Guide.
 - 2026-09-02 - Ligues : classement principal/secondaire/ignoré réglable, séparation dans l'interface, couverture des sources.
   - `js/db.js` : `leagueTier(league, overrides)` et `defaultLeagueTier` — source de vérité unique du niveau d'une ligue. Retrait de `FIFA WORLD CUP` d'`OTHER_LEAGUES` (inatteignable : l'alias la ramène à `WORLD CUP`, déjà principale).
   - `js/state.js` : `leagueTiers` (localStorage `league_tiers`), `setLeagueTier`, `resetLeagueTiers`. Le choix de l'utilisateur prime sur les listes par défaut.
