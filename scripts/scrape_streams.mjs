@@ -68,7 +68,7 @@ const config = await import('../js/config.js');
 const utils = await import('../js/utils.js');
 const match = await import('../js/match.js');
 
-const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate } = config;
+const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked } = config;
 const { fetchPage } = utils;
 
 const parsers = {
@@ -148,7 +148,15 @@ if (!NO_SUBPAGES) {
         while (idx < queue.length) {
             const m = queue[idx++];
             const urls = [m.matchUrl].concat(Array.isArray(m.altUrls) ? m.altUrls : [])
-                .filter((u) => u && !SCRAPERS_CONFIG.some((sc) => sc.url === u)); // pages d'accueil (ex. OnHockey) déjà traitées
+                .filter((u) => u && !SCRAPERS_CONFIG.some((sc) => sc.url === u)) // pages d'accueil (ex. OnHockey) déjà traitées
+                .filter((u) => {
+                    // Hôtes qui refusent systématiquement serveurs et proxys (voir js/config.js) :
+                    // on ne télécharge pas leur page, mais on garde le lien, ouvrable par
+                    // l'utilisateur depuis son navigateur.
+                    if (!isMatchPageBlocked(u)) return true;
+                    m.streamLinks = (m.streamLinks || []).concat(scrapers.matchPageFallbackLink(u, m.streamLinks));
+                    return false;
+                });
             m.pagesTried = urls.length; m.pagesOk = 0; m.scrapeError = null;
             for (const u of urls) {
                 try {

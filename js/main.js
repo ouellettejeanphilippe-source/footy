@@ -258,7 +258,17 @@ async function loadAllRun(isBackground, forceScrape){
       // Async scrape sites
       var nowTime = Date.now();
       var isToday = (TARGET_DATE.toDateString() === new Date().toDateString());
-      var skipScraping = !isToday || (!forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000));
+      /* Le cache serveur (data/streams.json) agrège déjà les huit sources toutes les
+         heures, sans proxy et de façon déterministe. Le scraping en direct des pages de
+         liste n'est donc qu'un secours : on ne l'exécute que si ce cache manque, est vide
+         ou date de plus de trois heures (workflow GitHub en panne). Cela supprime des
+         centaines de requêtes via proxys CORS à chaque chargement, qui étaient la
+         principale cause de lenteur et de variation du nombre de liens. */
+      var prefetchInfo = window.prefetchedStreamsInfo;
+      var prefetchUsable = !!(prefetchInfo && prefetchInfo.count > 0 && prefetchInfo.ageMin !== null && prefetchInfo.ageMin < 180);
+      var skipScraping = !isToday
+          || (!forceScrape && (prefetchUsable || nowTime - window.lastScrapeTime < 15 * 60 * 1000));
+      if (prefetchUsable && !forceScrape) lg('Cache serveur utilisé', prefetchInfo.count + ' matchs, ' + prefetchInfo.ageMin + ' min — scraping en direct inutile');
 
       if (skipScraping) {
                     // Just merge with existing scrapedMatches and update API
@@ -292,12 +302,17 @@ async function loadAllRun(isBackground, forceScrape){
           // Run background fetch completely asynchronously so it never blocks the UI
           setTimeout(function() {
 
-            // Only fetch sub pages for main leagues by default at startup
-            var startupMatches = S.matches.filter(function(m) {
-                var t = leagueTier(m.league);
-                return t === 'main' || t === 'secondary';
-            });
-            fetchSubPages(startupMatches);
+            /* Pré-scraping des pages de match au démarrage : une centaine de requêtes via
+               proxys CORS. Inutile quand le cache serveur fournit déjà les liens ; le
+               scraping d'un match précis reste déclenché à l'ouverture de sa fiche
+               (scrapeMatchFlux). On ne le lance donc qu'en mode secours. */
+            if (!prefetchUsable) {
+                var startupMatches = S.matches.filter(function(m) {
+                    var t = leagueTier(m.league);
+                    return t === 'main' || t === 'secondary';
+                });
+                fetchSubPages(startupMatches);
+            }
 
           }, 0);
 
@@ -449,12 +464,17 @@ async function loadAllRun(isBackground, forceScrape){
                           requestAnimationFrame(processChunk);
                       } else {
 
-            // Only fetch sub pages for main leagues by default at startup
-            var startupMatches = S.matches.filter(function(m) {
-                var t = leagueTier(m.league);
-                return t === 'main' || t === 'secondary';
-            });
-            fetchSubPages(startupMatches);
+            /* Pré-scraping des pages de match au démarrage : une centaine de requêtes via
+               proxys CORS. Inutile quand le cache serveur fournit déjà les liens ; le
+               scraping d'un match précis reste déclenché à l'ouverture de sa fiche
+               (scrapeMatchFlux). On ne le lance donc qu'en mode secours. */
+            if (!prefetchUsable) {
+                var startupMatches = S.matches.filter(function(m) {
+                    var t = leagueTier(m.league);
+                    return t === 'main' || t === 'secondary';
+                });
+                fetchSubPages(startupMatches);
+            }
 
                       }
                   }
@@ -463,12 +483,17 @@ async function loadAllRun(isBackground, forceScrape){
               } else {
                   buildEPG(S.matches);
                   setTimeout(function() {
-            // Only fetch sub pages for main leagues by default at startup
-            var startupMatches = S.matches.filter(function(m) {
-                var t = leagueTier(m.league);
-                return t === 'main' || t === 'secondary';
-            });
-            fetchSubPages(startupMatches);
+            /* Pré-scraping des pages de match au démarrage : une centaine de requêtes via
+               proxys CORS. Inutile quand le cache serveur fournit déjà les liens ; le
+               scraping d'un match précis reste déclenché à l'ouverture de sa fiche
+               (scrapeMatchFlux). On ne le lance donc qu'en mode secours. */
+            if (!prefetchUsable) {
+                var startupMatches = S.matches.filter(function(m) {
+                    var t = leagueTier(m.league);
+                    return t === 'main' || t === 'secondary';
+                });
+                fetchSubPages(startupMatches);
+            }
  }, 0);
               }
                         }, 0);

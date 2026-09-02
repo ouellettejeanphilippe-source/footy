@@ -2,6 +2,13 @@
 ## En cours
 
 ## Fait
+- 2026-09-02 - Allègement : une seule voie de mise à jour des liens, requêtes inutiles supprimées.
+  - Constat mesuré sur une exécution serveur complète : **376 requêtes échouées sur 562** (67 %). `footybite.bid` échouait **58 fois sur 58** (403 Cloudflare sur `/game/`), les miroirs Streameast **14 fois sur 15** (429). Côté navigateur, chaque chargement lançait le scraping en direct des huit sources puis le pré-scraping d'une centaine de pages de match, le tout via proxys CORS à 3-8 s de délai.
+  - **Le cache serveur devient la source principale.** `data/streams.json` agrège déjà les huit sources chaque heure, sans proxy et de façon déterministe. Le scraping en direct des pages de liste et le pré-scraping au démarrage ne s'exécutent plus que si ce cache manque, est vide ou dépasse trois heures (workflow GitHub en panne). Le scraping d'un match précis reste déclenché à l'ouverture de sa fiche.
+  - `MATCH_PAGE_BLOCKED_HOSTS` / `isMatchPageBlocked` (`js/config.js`) : Footybite et les miroirs Streameast ne sont plus téléchargés (serveur comme client), mais leur lien reste proposé — ces pages s'ouvrent normalement dans le navigateur de l'utilisateur, via le bouton ↗. `matchPageFallbackLink` factorise ce lien.
+  - Sous-pages mortes retirées : `methstreams.gs/league/nhlstreams` et `/league/cfbstreams` redirigent vers crackstreams.mx qui répond 404.
+  - Résultats : requêtes serveur **376 échecs → 10**, pages de match **100 % de réussite** (footybite 72/72, buffstreams 64/64, vipleague 20/20). Dans le navigateur : **0 requête via proxy, 0 vers les sites sources**, premier rendu en 3,8 s, 136 matchs et 176 liens affichés.
+  - Données finales : 181 liens, 0 doublon, 0 page d'index, 0 libellé parasite, provenance renseignée sur 181/181 (contre 104/161), qualité honnête (150 inconnues, 31 réellement annoncées) au lieu de « HD » partout.
 - 2026-09-02 - Audit du système de liens (association, doublons, métadonnées).
   - Constat sur les données réelles : 4 doublons dans un même match, 5 adresses attachées à plusieurs matchs, 8 liens pointant sur `ms.buffstream.io/index-version-27` (l'accueil du site, pas un flux), 3 libellés parasites. 138 liens sur 151 en langue « MULTI », 90 avec un nom générique, qualité « HD » sur presque tout car c'est le défaut des parseurs.
   - Cause : le nettoyage et l'enrichissement n'existaient que dans `extractStreamLinks`. Les liens construits directement par `parseOnHockey` et `parseStreameast` n'y passaient pas.

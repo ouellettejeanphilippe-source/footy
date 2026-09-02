@@ -205,6 +205,16 @@ async function main() {
     assert.deepStrictEqual(scrapers.finalizeStreamLinks(null), [], 'entrée vide tolérée');
     ok('finalizeStreamLinks : entonnoir commun à toutes les sources');
 
+    // ── Hôtes dont les pages de match ne répondent jamais ──────────────────
+    const cfg = await import('../js/config.js');
+    assert.strictEqual(cfg.isMatchPageBlocked('https://footybite.bid/game/qatar-vs-oman-1'), true);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://www.streameast.ms/mlb/a-vs-b/'), true);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://v2.gostreameast.is/mlb/a-vs-b/'), true);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://app.buffstreams.is/mlb-streams/x-live-stream'), false);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://methstreams.gs/stream/a-vs-b'), false);
+    assert.strictEqual(cfg.isMatchPageBlocked('pas-une-url'), false);
+    ok('isMatchPageBlocked : Footybite et Streameast écartés, les autres gardés');
+
     console.log(`unit_scrapers: ${n} groupes de tests OK`);
     process.exit(0);
 }

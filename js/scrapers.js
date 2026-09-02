@@ -1,5 +1,5 @@
 import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo } from './match.js';
@@ -1759,6 +1759,17 @@ export function normalizeStreamUrl(url) {
    liens, dédoublonne réellement et renseigne site / chaîne / qualité / langue.
    Avant, seule l'extraction générique nettoyait et enrichissait : un tiers des liens
    arrivaient sans provenance, avec une qualité « HD » inventée par défaut. */
+/* Lien de repli vers la page du match sur le site source : ce n'est pas un lecteur
+   intégrable, mais l'utilisateur peut l'ouvrir dans un onglet. Renvoie un tableau vide
+   si ce lien est déjà présent. */
+export function matchPageFallbackLink(matchUrl, existing) {
+    if (!matchUrl) return [];
+    if ((existing || []).some(function(l) { return l && l.url === matchUrl; })) return [];
+    var siteName = matchUrl;
+    try { siteName = new URL(matchUrl).hostname.replace(/^(www|v2)\./, ''); } catch (e) {}
+    return [{ name: 'Page du match sur ' + siteName, quality: '', lang: '', url: matchUrl, icon: '🔗', topLevel: true }];
+}
+
 export function finalizeStreamLinks(links) {
     var seen = {};
     var out = [];
@@ -2303,7 +2314,9 @@ export function extractStreamLinks(html, m) {
 export function scrapeMatchFlux(m, forceRefresh, deep){
   // deep=true (fiche de match ouverte) : on lit aussi les pages du même match sur les autres sources (altUrls)
   if (deep && Array.isArray(m.altUrls) && m.altUrls.length) {
-      var extra = m.altUrls.slice(0, 4);
+      // On n'interroge pas les hôtes qui refusent systématiquement (voir js/config.js) :
+      // c'était jusqu'ici jusqu'à 4 attentes de proxy pour rien à l'ouverture d'une fiche.
+      var extra = m.altUrls.filter(function(u) { return !isMatchPageBlocked(u); }).slice(0, 4);
       var mainP = scrapeMatchFlux(m, forceRefresh, false);
       return mainP.catch(function() {}).then(function() {
           return Promise.allSettled(extra.map(function(u) {
@@ -2331,6 +2344,18 @@ export function scrapeMatchFlux(m, forceRefresh, deep){
           updateMatchUiAfterScrape(m);
           return Promise.resolve();
       }
+  }
+
+  /* Page du match elle-même : inutile de la télécharger quand son hôte refuse
+     systématiquement les serveurs et les proxys (Footybite /game/ en 403, miroirs
+     Streameast en 429). On garde malgré tout le lien : dans le navigateur de
+     l'utilisateur, ces pages s'ouvrent normalement (bouton ↗). Les flux intégrables du
+     match viennent, eux, des autres sources via altUrls. */
+  if (isMatchPageBlocked(m.matchUrl)) {
+      m.streamLinks = m.streamLinks || [];
+      m.streamLinks = m.streamLinks.concat(matchPageFallbackLink(m.matchUrl, m.streamLinks));
+      m.streamsLoaded = true;
+      return Promise.resolve(m.streamLinks);
   }
 
   // Timeout for individual match scrape
@@ -2629,6 +2654,7 @@ window.parseSportsDbEvents = parseSportsDbEvents;
 window.describeStreamLink = describeStreamLink;
 window.isIndexPageUrl = isIndexPageUrl;
 window.finalizeStreamLinks = finalizeStreamLinks;
+window.matchPageFallbackLink = matchPageFallbackLink;
 window.parseSportsurge = parseSportsurge;
 window.parseOnHockey = parseOnHockey;
 window.parseBuffstreams = parseBuffstreams;
