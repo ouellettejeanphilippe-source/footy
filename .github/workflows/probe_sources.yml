@@ -1,0 +1,39 @@
+name: Probe stream sources (diagnostic)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Direct fetch of each streaming domain
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
+          for u in https://footybite.bid/ https://mlbbite.plus/ https://sportsurge.net/ https://app.buffstreams.is/indexcracked29 https://v2.streameast.ga/ https://onhockey.tv/ https://vipleague.im/ https://methstreams.gs/ https://totalsportekz.com/ https://streamonsport.pro/; do
+            echo "=== DIRECT $u"
+            curl -sS -L -m 25 -A "$UA" -o /tmp/body.html -w "status=%{http_code} final=%{url_effective} bytes=%{size_download}\n" "$u" || echo "curl failed"
+            grep -o -i -m1 "<title>[^<]*</title>" /tmp/body.html || true
+            grep -o -i -m1 "cloudflare\|just a moment\|hidemy\|parked\|for sale\|domain" /tmp/body.html | head -3 || true
+            echo "anchors=$(grep -o -i '<a ' /tmp/body.html | wc -l) nextjs=$(grep -c '__next_f' /tmp/body.html || true)"
+          done
+      - name: Fetch through each CORS proxy (as the browser app does)
+        run: |
+          ORIGIN="https://ouellettejeanphilippe-source.github.io"
+          probe() {
+            local label="$1" url="$2"
+            echo "--- $label"
+            curl -sS -m 25 -H "Origin: $ORIGIN" -H "Accept: text/html,*/*" -o /tmp/p.html -w "status=%{http_code} bytes=%{size_download} ct=%{content_type}\n" "$url" || echo "curl failed"
+            head -c 300 /tmp/p.html | tr '\n' ' '; echo
+            echo "anchors=$(grep -o -i '<a ' /tmp/p.html | wc -l) hidemy=$(grep -c 'hidemy.name' /tmp/p.html || true) cf=$(grep -c 'Performance & security by Cloudflare' /tmp/p.html || true)"
+          }
+          for t in https://example.com/ https://footybite.bid/ https://sportsurge.net/ https://v2.streameast.ga/ https://vipleague.im/ https://onhockey.tv/ https://mlbbite.plus/ https://app.buffstreams.is/indexcracked29 https://methstreams.gs/ https://totalsportekz.com/ https://streamonsport.pro/; do
+            echo "=== TARGET $t"
+            enc=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "$t")
+            probe "corsproxy.org" "https://corsproxy.org/?$enc"
+            probe "proxy.cors.sh" "https://proxy.cors.sh/$t"
+            probe "allorigins raw" "https://api.allorigins.win/raw?url=$enc"
+            probe "codetabs" "https://api.codetabs.com/v1/proxy?quest=$t"
+            probe "corsproxy.io" "https://corsproxy.io/?$enc"
+            probe "corsfix" "https://proxy.corsfix.com/?$t"
+          done
