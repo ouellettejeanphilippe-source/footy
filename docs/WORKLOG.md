@@ -2,6 +2,7 @@
 ## En cours
 
 ## Fait
+- 2026-09-02 - Fenêtre de match : l'en-tête était vide (rien n'indiquait la rencontre ni la compétition ouverte) → icône, ligue et affiche du match. « 0:00 » sous le score remplacé par « DIRECT » via `formatLiveMinute` (`js/ui.js`), partagé avec les cartes.
 - 2026-09-02 - Interface : densité des cartes et informations de décision.
   - Cartes de match : la vignette 16/9 mangeait ~210 px pour deux logos → ratio 2.4/1 (`--card-aspect`), hauteur de carte 257 → 202 px.
   - Informations ajoutées sur la carte : **nom de la ligue** (l'icône seule ne disait pas de quelle compétition il s'agissait) et **nombre de flux disponibles** (`▶ N`), qui décide du clic.

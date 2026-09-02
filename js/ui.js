@@ -139,6 +139,14 @@ export function getOriginalMatchId(id) {
     return id;
 }
 
+/* Libellé d'état d'un match en cours. Plusieurs API renvoient « 0:00 » ou « 0' » comme
+   minute de jeu, ce qui n'apprend rien : on retombe alors sur « DIRECT ». */
+export function formatLiveMinute(m) {
+    var raw = m && m.minute ? String(m.minute).trim() : '';
+    if (!raw || /^0+\s*[:'h]?\s*0*$/.test(raw)) return 'DIRECT';
+    return raw;
+}
+
 export function buildEPG(matches){
   // Current time minus 15 minutes to treat soon-to-start matches as "live"
   var now = new Date();
@@ -423,9 +431,7 @@ export function buildEPG(matches){
 
                   var statusHtml = '';
                   if(m.status === 'live') {
-                      // « 0:00 » remonté par certaines API n'apprend rien : on affiche l'état.
-                      var minuteTxt = m.minute && !/^0+[:h]?0*$/.test(String(m.minute).trim()) ? esc(m.minute) : 'DIRECT';
-                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+minuteTxt+'</span></div>';
+                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+esc(formatLiveMinute(m))+'</span></div>';
                   } else if(m.status === 'finished') {
                       statusHtml = '<div class="status-text"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
                   } else {
@@ -1056,7 +1062,15 @@ export function openMod(m,col){
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
 
 
-  document.getElementById('mname').innerHTML = '';
+  /* L'en-tête était vide : rien n'indiquait la rencontre ni la compétition ouverte,
+     alors que la fenêtre est l'écran de choix d'un flux. */
+  var titleTxt = m.awayTeam ? (m.homeTeam + ' — ' + m.awayTeam) : m.homeTeam;
+  document.getElementById('mname').innerHTML =
+      '<span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">'
+    + '<span style="font-size:14px; flex-shrink:0;">' + (m.flag || lgFlag(m.league) || '') + '</span>'
+    + '<span style="font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--muted); flex-shrink:0;">' + esc(m.league || '') + '</span>'
+    + '<span style="font-size:15px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(titleTxt) + '</span>'
+    + '</span>';
   document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam;
 
 
@@ -1294,7 +1308,7 @@ export function openMod(m,col){
 
   var statusHtml = '';
   if(m.status === 'live') {
-      statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; margin-top:8px;"><span class="mb-ld" style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
+      statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; margin-top:8px;"><span class="mb-ld" style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+esc(formatLiveMinute(m))+'</span></div>';
   } else if(m.status === 'finished') {
       statusHtml = '<div class="status-text" style="color:var(--muted); font-size:14px; font-weight:600; text-align:center; margin-top:8px;"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
   } else {
