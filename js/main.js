@@ -1,9 +1,9 @@
-import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder } from './state.js';
+import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague } from './config.js';
-import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
+import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
 import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
 import { isMatchPair } from './match.js';
@@ -156,8 +156,9 @@ export function fetchSourcePages(scraper, sports) {
 
 /* Charge data/streams.json (généré toutes les heures par GitHub Actions) : liste de matchs
    déjà associés à leur page et à leurs flux. Servi depuis la même origine, donc sans proxy. */
-export function loadPrefetchedStreams() {
-    return fetch('data/streams.json?t=' + Math.floor(Date.now() / 300000))
+export function loadPrefetchedStreams(force) {
+    // Clé de cache par tranche de 5 min ; `force` (bouton des Options) lit la version fraîche.
+    return fetch('data/streams.json?t=' + (force ? Date.now() : Math.floor(Date.now() / 300000)), force ? { cache: 'no-cache' } : undefined)
         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function(data) {
             if (!data || !Array.isArray(data.matches)) throw new Error('format');
@@ -256,7 +257,8 @@ export async function loadAll(isBackground, forceScrape){
 
             // Only fetch sub pages for main leagues by default at startup
             var startupMatches = S.matches.filter(function(m) {
-                return DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || m.league === 'FAVORIS' || m.league === 'EN DIRECT';
+                var t = leagueTier(m.league);
+                return t === 'main' || t === 'secondary';
             });
             fetchSubPages(startupMatches);
 
@@ -412,7 +414,8 @@ export async function loadAll(isBackground, forceScrape){
 
             // Only fetch sub pages for main leagues by default at startup
             var startupMatches = S.matches.filter(function(m) {
-                return DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || m.league === 'FAVORIS' || m.league === 'EN DIRECT';
+                var t = leagueTier(m.league);
+                return t === 'main' || t === 'secondary';
             });
             fetchSubPages(startupMatches);
 
@@ -425,7 +428,8 @@ export async function loadAll(isBackground, forceScrape){
                   setTimeout(function() {
             // Only fetch sub pages for main leagues by default at startup
             var startupMatches = S.matches.filter(function(m) {
-                return DEFAULT_LEAGUES[(m.league||'').toUpperCase()] || m.league === 'FAVORIS' || m.league === 'EN DIRECT';
+                var t = leagueTier(m.league);
+                return t === 'main' || t === 'secondary';
             });
             fetchSubPages(startupMatches);
  }, 0);
@@ -645,28 +649,51 @@ export function renderFavPage() {
     var leaguesContainer = document.getElementById('fav-leagues-list');
     if (leaguesContainer) {
         var lgHtml = '';
-        var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
+        var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES);
 
-        // Ensure all mainLeagues are in the list
-        var allLgs = Object.keys(DEFAULT_LEAGUES);
+        // Toutes les ligues connues : principales, secondaires, plus celles vues dans la
+        // grille du jour (une ligue absente des listes reste réglable par l'utilisateur).
+        var allLgs = Object.keys(DEFAULT_LEAGUES).concat(Object.keys(OTHER_LEAGUES || {}));
+        if (typeof S !== 'undefined' && S.matches) {
+            S.matches.forEach(function(m) {
+                var k = (m.league || '').toUpperCase();
+                if (k && k !== 'FAVORIS' && k !== 'EN DIRECT' && k !== 'AUTRES FLUX' && allLgs.indexOf(k) === -1) allLgs.push(k);
+            });
+        }
         allLgs.forEach(function(l) {
             if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
         });
+
+        var tierBtn = function(lgKey, tier, label, title, current) {
+            var on = current === tier;
+            var bg = on ? (tier === 'main' ? 'var(--accent)' : tier === 'secondary' ? '#5a5a7a' : 'var(--red)') : 'rgba(255,255,255,0.05)';
+            return '<button class="btn o" title="' + title + '" aria-pressed="' + on + '" onclick="setLeagueTierPref(\'' + escJs(lgKey) + '\', \'' + tier + '\')"'
+                 + ' style="padding:3px 8px; font-size:11px; border-radius:6px; white-space:nowrap; background:' + bg + '; color:' + (on ? '#fff' : 'var(--muted)') + ';">' + label + '</button>';
+        };
 
         displayOrder.forEach(function(lgKey, idx) {
             var lgIcon = getLeagueIcon(lgKey);
             var isFirst = idx === 0;
             var isLast = idx === displayOrder.length - 1;
+            var curTier = leagueTier(lgKey);
+            var isCustom = curTier !== defaultLeagueTier(lgKey);
+            var tierCtrl = '<div style="display:flex; gap:4px; flex-wrap:wrap;">'
+                + tierBtn(lgKey, 'main', 'Principale', 'Afficher parmi les ligues principales', curTier)
+                + tierBtn(lgKey, 'secondary', 'Secondaire', 'Regrouper dans la section « Ligues secondaires »', curTier)
+                + tierBtn(lgKey, 'ignored', 'Ignorée', 'Masquer cette ligue partout', curTier)
+                + (isCustom ? '<button class="btn o" title="Revenir au réglage par défaut" onclick="setLeagueTierPref(\'' + escJs(lgKey) + '\', \'\')" style="padding:3px 6px; font-size:11px; border-radius:6px;">↺</button>' : '')
+                + '</div>';
 
-            lgHtml += '<div draggable="true" ondragstart="handleDragStartLg(event, \'' + escJs(lgKey) + '\')" ondragend="handleDragEndLg(event)" ondragover="handleDragOverLg(event)" ondrop="handleDropLg(event, \'' + escJs(lgKey) + '\')" ondragenter="handleDragEnterLg(event)" ondragleave="handleDragLeaveLg(event)" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); cursor: grab;">'
-                   + '<div style="display:flex; align-items:center; gap:8px; pointer-events:none;">'
+            lgHtml += '<div draggable="true" ondragstart="handleDragStartLg(event, \'' + escJs(lgKey) + '\')" ondragend="handleDragEndLg(event)" ondragover="handleDragOverLg(event)" ondrop="handleDropLg(event, \'' + escJs(lgKey) + '\')" ondragenter="handleDragEnterLg(event)" ondragleave="handleDragLeaveLg(event)" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); cursor: grab; flex-wrap:wrap; gap:8px;">'
+                   + '<div style="display:flex; align-items:center; gap:8px; pointer-events:none; min-width:120px; flex:1;">'
                    + '<span style="font-size:16px; pointer-events:none;">' + lgIcon + '</span>'
                    + '<span style="font-size:14px; font-weight:bold; pointer-events:none;">' + esc(lgKey) + '</span>'
                    + '</div>'
                    + '<div style="display:flex; gap:4px;">'
-                   + '<button class="btn o" style="padding:4px; font-size:12px; opacity:' + (isFirst ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', -1)" ' + (isFirst ? 'disabled' : '') + '>▲</button>'
-                   + '<button class="btn o" style="padding:4px; font-size:12px; opacity:' + (isLast ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', 1)" ' + (isLast ? 'disabled' : '') + '>▼</button>'
+                   + '<button class="btn o" aria-label="Monter ' + esc(lgKey) + '" style="padding:4px; font-size:12px; opacity:' + (isFirst ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', -1)" ' + (isFirst ? 'disabled' : '') + '>▲</button>'
+                   + '<button class="btn o" aria-label="Descendre ' + esc(lgKey) + '" style="padding:4px; font-size:12px; opacity:' + (isLast ? '0.3' : '1') + ';" onclick="moveLeagueOrder(\'' + escJs(lgKey) + '\', 1)" ' + (isLast ? 'disabled' : '') + '>▼</button>'
                    + '</div>'
+                   + tierCtrl
                    + '</div>';
         });
         leaguesContainer.innerHTML = lgHtml;
@@ -764,8 +791,10 @@ export function renderFavPage() {
 
         var sortedLeagues = Object.keys(teamsByLeague).sort(function(a,b) {
             if (a === b) return 0;
-            if ((!DEFAULT_LEAGUES[(a||'').toUpperCase()] && !OTHER_LEAGUES[(a||'').toUpperCase()]) || a === 'Autres') return 1;
-            if ((!DEFAULT_LEAGUES[(b||'').toUpperCase()] && !OTHER_LEAGUES[(b||'').toUpperCase()]) || b === 'Autres') return -1;
+            var tA = leagueTier(a), tB = leagueTier(b);
+            var rA = tA === 'main' ? 0 : (tA === 'secondary' ? 1 : 2);
+            var rB = tB === 'main' ? 0 : (tB === 'secondary' ? 1 : 2);
+            if (rA !== rB) return rA - rB;
 
             var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
 
@@ -926,6 +955,23 @@ export function resetLgOrder() {
     renderFavPage();
 }
 
+/* Classe une ligue en principale / secondaire / ignorée (chaîne vide = valeur par défaut),
+   puis reconstruit la grille pour que le changement soit visible immédiatement. */
+export function setLeagueTierPref(lgKey, tier) {
+    setLeagueTier(lgKey, tier);
+    renderFavPage();
+    if (typeof buildEPG === 'function' && S && S.matches) buildEPG(S.matches);
+    var labels = { main: 'principale', secondary: 'secondaire', ignored: 'ignorée' };
+    showToast(lgKey + ' : ' + (labels[tier] || 'réglage par défaut'));
+}
+
+export function resetLeagueTiersPref() {
+    resetLeagueTiers();
+    renderFavPage();
+    if (typeof buildEPG === 'function' && S && S.matches) buildEPG(S.matches);
+    showToast('Classement des ligues réinitialisé');
+}
+
 export function switchFavTab(tab) {
     var container = document.getElementById('fav-container');
     var tabTeams = document.getElementById('fav-tab-teams');
@@ -1030,6 +1076,8 @@ window.handleDragLeaveLg = handleDragLeaveLg;
 window.handleDropLg = handleDropLg;
 window.moveLeagueOrder = moveLeagueOrder;
 window.resetLgOrder = resetLgOrder;
+window.setLeagueTierPref = setLeagueTierPref;
+window.resetLeagueTiersPref = resetLeagueTiersPref;
 window.filterFavTeams = filterFavTeams;
 window.switchFavTab = switchFavTab;
 

@@ -115,17 +115,29 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .match-card.finished:hover { filter: grayscale(0.2) opacity(1); }
 
 /* PRIME VIDEO STYLE CARDS (now flattened for 2026 pro look) */
-.prime-thumbnail { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-card, 8px); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.15s ease, filter 0.15s, box-shadow 0.15s; display: flex; background-color: var(--bg2); }
+.prime-thumbnail { position: relative; width: 100%; aspect-ratio: var(--card-aspect, 2.4 / 1); border-radius: var(--radius-card, 8px); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.15s ease, filter 0.15s, box-shadow 0.15s; display: flex; background-color: var(--bg2); }
 .prime-thumbnail::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 100%); pointer-events: none; mix-blend-mode: overlay; z-index: 5; }
 
-.prime-league-badge { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); border-radius: 6px; padding: 4px 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 16px; border: 1px solid rgba(255,255,255,0.1); }
-.prime-league-badge img { height: 16px; object-fit: contain; }
+.prime-league-badge { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; align-items: center; gap: 5px; max-width: calc(100% - 90px); background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); border-radius: 6px; padding: 3px 7px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 13px; border: 1px solid rgba(255,255,255,0.12); }
+.prime-league-badge img { height: 14px; object-fit: contain; }
+.prime-league-badge .plb-ic { font-size: 13px; line-height: 1; flex-shrink: 0; }
+/* Nom de la ligue : information de décision, tronquée plutôt que masquée */
+.prime-league-badge .plb-name { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Nombre de flux disponibles, en haut à droite de la vignette */
+.card-streams { position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 3px 7px; font-size: 11px; font-weight: 700; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+/* Sous 480 px, le nom de la ligue prend trop de place à côté des logos */
+@media (max-width: 480px) {
+  .prime-league-badge { max-width: calc(100% - 80px); }
+  .prime-league-badge .plb-name { max-width: 110px; }
+}
 
 .prime-logos { position: absolute; inset: 0; display: flex; z-index: 2; pointer-events: none; }
 .prime-logo-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; }
 .prime-logo-wrapper.home { padding-right: 15%; }
 .prime-logo-wrapper.away { padding-left: 15%; }
-.prime-logo { width: 50%; max-height: 60%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
+.prime-logo { width: 42%; max-height: 72%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
 
 .prime-info { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; color: #fff; padding: 0 4px; }
 .prime-col-teams { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
@@ -699,7 +711,9 @@ body[data-icon-pack="sharp"] .ic-close {
   bottom: 20px;
   right: 20px;
   z-index: 100;
-  display: flex;
+  /* Ces contrôles ne pilotent que la grille temporelle du Guide : ailleurs ils
+     flottaient au-dessus des cartes sans effet (voir body.view-timeline plus bas). */
+  display: none;
   align-items: center;
   background: rgba(0,0,0,0.8);
   border-radius: 8px;
@@ -707,6 +721,7 @@ body[data-icon-pack="sharp"] .ic-close {
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   border: 1px solid rgba(255,255,255,0.2);
 }
+body.view-timeline .zoom-controls { display: flex; }
 .zoom-btn {
   background: transparent;
   border: none;

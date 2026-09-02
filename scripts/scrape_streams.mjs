@@ -167,13 +167,15 @@ if (!NO_SUBPAGES) {
                     m.scrapeError = (m.scrapeError ? m.scrapeError + ' | ' : '') + hostOf(u) + ': ' + err;
                 }
             }
-            // Les liens "Page du match sur X" (repli quand la page n'expose aucun lecteur) : un seul par site,
-            // et seulement si aucun vrai lecteur n'a été trouvé.
+            // Les liens de repli "Page du match sur X" (quand une page n'expose aucun lecteur) : un seul
+            // par site, et seulement si aucun vrai lecteur n'a été trouvé. Les autres liens topLevel
+            // (pages de miroirs Streameast, ouvertes dans un onglet) sont toujours conservés.
+            const isFallback = (l) => l.topLevel && /^Page du match/.test(l.name || '');
             const real = (m.streamLinks || []).filter((l) => !l.topLevel);
-            if (real.length) m.streamLinks = real;
+            if (real.length) m.streamLinks = (m.streamLinks || []).filter((l) => !isFallback(l));
             else {
                 const seenHosts = {};
-                m.streamLinks = (m.streamLinks || []).filter((l) => { const h = hostOf(l.url); if (seenHosts[h]) return false; seenHosts[h] = true; return true; });
+                m.streamLinks = (m.streamLinks || []).filter((l) => { if (!isFallback(l)) return true; const h = hostOf(l.url); if (seenHosts[h]) return false; seenHosts[h] = true; return true; });
             }
             done++;
             if (done % 25 === 0) console.log(`  ... ${done}/${queue.length} pages de match`);

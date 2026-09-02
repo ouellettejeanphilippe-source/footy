@@ -224,6 +224,68 @@ export function parseStreameast(html){
 
 /* ══ PARSE ONHOCKEY ═══════════════════ */
 
+/* TheSportsDB (clé publique gratuite « 3 ») : seule source trouvée pour la WWE, l'AEW et la
+   boxe, qu'ESPN n'expose pas du tout (son répertoire ne contient ni wwe ni boxing, et
+   sports/wwe/wwe comme boxing/boxing renvoient HTTP 400).
+   Endpoint : /eventsday.php?d=AAAA-MM-JJ&s=Fighting -> WWE, AEW, Boxing, UFC, ONE, Sumo...
+   `strTimestamp` est en UTC ; on convertit en heure de l'Est, fuseau de référence de la grille.
+   Un événement « A vs B » est scindé en deux camps pour l'affichage des cartes. */
+export function parseSportsDbEvents(json, targetDateStr) {
+    var out = [];
+    var events = json && Array.isArray(json.events) ? json.events : [];
+    for (var i = 0; i < events.length; i++) {
+        var ev = events[i];
+        if (!ev || !ev.strEvent) continue;
+        if (String(ev.strPostponed || '').toLowerCase() === 'yes') continue;
+
+        /* Date/heure. strTimestamp est en UTC. Attention : quand l'heure n'est pas connue,
+           TheSportsDB met « 00:00:00 », ce qui ferait basculer l'événement à la veille une
+           fois converti en heure de l'Est. On ne convertit donc que si une heure réelle
+           existe (strTime renseignée, ou strTimeLocal fournie comme pour « NXT #853 » à
+           20:00 locales) ; sinon on garde la date telle quelle, à une heure de soirée. */
+        var hasRealTime = (ev.strTime && ev.strTime !== '00:00:00') || (ev.strTimeLocal && ev.strTimeLocal !== '');
+        var when = null, matchDate = null, startTime = null;
+        if (ev.strTimestamp && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ev.strTimestamp)) when = new Date(ev.strTimestamp + 'Z');
+        else if (ev.dateEvent) when = new Date(ev.dateEvent + 'T00:00:00Z');
+        if (!when || isNaN(when.getTime())) continue;
+
+        if (hasRealTime) {
+            matchDate = getEstDateStrFromDate(when);
+            startTime = getEstTimeStrFromDate(when);
+        } else {
+            matchDate = ev.dateEvent || getEstDateStrFromDate(when);
+            startTime = '20:00'; // heure inconnue : ces cartes sont diffusées en soirée
+        }
+        if (targetDateStr && matchDate !== targetDateStr) continue;
+
+        var title = String(ev.strEvent).replace(/\s+/g, ' ').trim();
+        var home = title, away = '';
+        var vs = title.split(/\s+vs\.?\s+/i);
+        if (vs.length === 2 && vs[0].trim() && vs[1].trim()) { home = vs[0].trim(); away = vs[1].trim(); }
+
+        var league = ev.strLeague || ev.strSport || 'Autres';
+        out.push({
+            id: 'tsdb_' + (ev.idEvent || i),
+            league: formatLeagueName(league),
+            flag: lgFlag(league),
+            color: lgColor(league),
+            homeTeam: getOfficialTeamName(home),
+            awayTeam: away ? getOfficialTeamName(away) : '',
+            startTime: startTime,
+            matchDate: matchDate,
+            durationMinutes: getLeagueDuration(league),
+            status: 'upcoming',
+            venue: ev.strVenue || '',
+            poster: ev.strThumb || ev.strPoster || '',
+            matchUrl: null,
+            streamLinks: [],
+            streamsLoaded: false,
+            source: 'api'
+        });
+    }
+    return out;
+}
+
 export function parseF1Ics(txt) {
     var matches = [];
     try {
@@ -547,6 +609,11 @@ export function parseSportsurge(html, pageUrl) {
   var matches = [];
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var base = pageUrl || SPORTSURGE_URL;
+  // Le site déclare <base href="https://v2.sportsurge.net/"> : ses liens relatifs
+  // ("watch-63082-…-8/") se résolvent à la racine, PAS sous /watch-<sport>-streams/
+  // (sinon 404 : c'est ce qui vidait les pages de match côté serveur).
+  var baseEl = doc.querySelector('base[href]');
+  if (baseEl && /^https?:\/\//i.test(baseEl.getAttribute('href') || '')) base = baseEl.getAttribute('href');
   var rows = doc.querySelectorAll('a.match-row[href]');
   [].forEach.call(rows, function(a) {
       var href = a.getAttribute('href') || '';
@@ -2393,6 +2460,7 @@ window.parseF1Ics = parseF1Ics;
 window.parseIndycarIcs = parseIndycarIcs;
 window.parsePWHLSchedule = parsePWHLSchedule;
 window.parseWWEIcs = parseWWEIcs;
+window.parseSportsDbEvents = parseSportsDbEvents;
 window.parseSportsurge = parseSportsurge;
 window.parseOnHockey = parseOnHockey;
 window.parseBuffstreams = parseBuffstreams;

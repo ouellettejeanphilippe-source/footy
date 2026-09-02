@@ -75,7 +75,19 @@ const LEAGUE_ALIASES = {
   'french ligue 1': 'ligue 1',
   'spanish laliga': 'la liga',
   'spanish la liga': 'la liga',
-  'italian serie a': 'serie a'
+  'italian serie a': 'serie a',
+  // Noms renvoyés par ESPN / TheSportsDB ramenés aux clés connues de
+  // DEFAULT_LEAGUES / OTHER_LEAGUES (sinon la ligue tombe dans « Autres »).
+  'women\'s national basketball association': 'wnba',
+  'pga tour': 'pga',
+  'french top 14': 'top 14',
+  'gallagher prem': 'premiership rugby',
+  'ultimate fighting championship': 'ufc',
+  'indycar series': 'indycar',
+  'nascar cup series': 'nascar',
+  'ncaa - football': 'ncaa football',
+  'ncaa - men\'s basketball': 'ncaa men\'s basketball',
+  'ncaa - women\'s basketball': 'ncaa women\'s basketball'
 };
 
 const LEAGUE_FORMAT_NAMES = {
@@ -101,7 +113,21 @@ const LEAGUE_FORMAT_NAMES = {
     'copa del rey': 'Copa del Rey',
     'dfb pokal': 'DFB Pokal',
     'saudi pro league': 'Saudi Pro League',
-    'f1': 'F1'
+    'f1': 'F1',
+  'pga': 'PGA',
+  'ufc': 'UFC',
+  'atp': 'ATP',
+  'wta': 'WTA',
+  'indycar': 'IndyCar',
+  'nascar': 'NASCAR',
+  'boxing': 'Boxing',
+  'tennis': 'Tennis',
+  'golf': 'Golf',
+  'mma': 'MMA',
+  'wwe': 'WWE',
+  'one': 'ONE',
+  'nxt': 'NXT',
+  'urc': 'URC'
 };
 
 function formatLeagueName(league) {
@@ -116,7 +142,13 @@ function formatLeagueName(league) {
     return lower.replace(/-/g, ' ').toUpperCase();
 }
 
+/* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
+   Les deux listes DOIVENT rester identiques : tests/unit_leagues.test.js le vérifie.
+   Chaque chemin a été testé (scoreboard HTTP 200) ; les endpoints morts (wwe/wwe,
+   boxing/boxing, hockey/…-professional-hockey-league renvoient 400) ont été retirés :
+   WWE et la boxe viennent des agrégateurs, la PWHL de thepwhl.com (parsePWHLSchedule). */
 const ESPN_LEAGUES = {
+  // Soccer
   'premier league': 'soccer/eng.1',
   'la liga': 'soccer/esp.1',
   'serie a': 'soccer/ita.1',
@@ -135,42 +167,52 @@ const ESPN_LEAGUES = {
   'dfb pokal': 'soccer/ger.dfb_pokal',
   'saudi pro league': 'soccer/ksa.1',
   'fifa world cup': 'soccer/fifa.world',
+  'fifa women\'s world cup': 'soccer/fifa.wwc',
+  'nwsl': 'soccer/usa.nwsl',
+  // Basketball
   'nba': 'basketball/nba',
   'basketball': 'basketball/nba',
-  'nhl': 'hockey/nhl',
-  'hockey': 'hockey/nhl',
-  'ice hockey': 'hockey/nhl',
-  'nfl': 'football/nfl',
-  'american football': 'football/nfl',
-  'american-football': 'football/nfl',
-  'mlb': 'baseball/mlb',
-  'baseball': 'baseball/mlb',
-  'cfl': 'football/cfl',
-  'world baseball classic': 'baseball/world-baseball-classic',
+  'wnba': 'basketball/wnba',
+  'euroleague': 'basketball/euroleague',
   'fiba world cup': 'basketball/fiba',
   'ncaa men\'s basketball': 'basketball/mens-college-basketball',
   'olympics men\'s basketball': 'basketball/mens-olympics-basketball',
   'ncaa women\'s basketball': 'basketball/womens-college-basketball',
-  'ncaa football': 'football/college-football',
+  // Hockey
+  'nhl': 'hockey/nhl',
+  'hockey': 'hockey/nhl',
+  'ice hockey': 'hockey/nhl',
   'world hockey championships': 'hockey/hockey-world-cup',
   'world cup of hockey': 'hockey/hockey-world-cup',
   'ncaa men\'s ice hockey': 'hockey/mens-college-hockey',
   'olympics men\'s ice hockey': 'hockey/olympics-mens-ice-hockey',
   'olympics women\'s ice hockey': 'hockey/olympics-womens-ice-hockey',
   'ncaa women\'s hockey': 'hockey/womens-college-hockey',
-  'pwhl': 'hockey/womens-professional-hockey-league',
+  // Football américain et baseball
+  'nfl': 'football/nfl',
+  'american football': 'football/nfl',
+  'american-football': 'football/nfl',
+  'cfl': 'football/cfl',
+  'ncaa football': 'football/college-football',
+  'mlb': 'baseball/mlb',
+  'baseball': 'baseball/mlb',
+  'world baseball classic': 'baseball/world-baseball-classic',
+  // Sports mécaniques
   'f1': 'racing/f1',
   'formula 1': 'racing/f1',
   'formula-1': 'racing/f1',
-  'nascar': 'racing/nascar-premier',
   'indycar': 'racing/irl',
-  'wwe': 'wwe/wwe',
-  'aew': 'wwe/wwe',
-  'boxing': 'boxing/boxing',
+  'nascar': 'racing/nascar-premier',
+  // Combat, tennis, golf, rugby
   'mma': 'mma/ufc',
   'ufc': 'mma/ufc',
   'tennis': 'tennis/atp',
-  'golf': 'golf/pga'
+  'atp': 'tennis/atp',
+  'wta': 'tennis/wta',
+  'golf': 'golf/pga',
+  'pga': 'golf/pga',
+  'top 14': 'rugby/270559',
+  'premiership rugby': 'rugby/267979'
 };
 function getLeagueDuration(league) {
     if(!league) return 105;
@@ -203,7 +245,7 @@ function lgColor(l) { return LEAGUE_COLORS[l ? l.toLowerCase() : ''] || '#444'; 
 // Fetch APIs
 async function fetchPage(url) {
     try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
         if(!res.ok) return null;
         return await res.text();
     } catch(e) {
@@ -211,10 +253,16 @@ async function fetchPage(url) {
     }
 }
 
+/* ESPN refuse (403) l'User-Agent par défaut de Node comme les UA imitant un navigateur :
+   son pare-feu rejette « je suis Chrome » venant d'un client qui n'en est pas un.
+   Un UA de robot honnête, avec une URL de contact, est accepté. */
+const UA = 'footy-schedule/1.0 (+https://github.com/ouellettejeanphilippe-source/footy)';
+const JSON_HEADERS = { 'User-Agent': UA, 'Accept': 'application/json' };
+
 async function fetchEspnSchedule(leaguePath, dateStr) {
   const url = `https://site.api.espn.com/apis/site/v2/sports/${leaguePath}/scoreboard?dates=${dateStr}`;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const res = await fetch(url, { headers: JSON_HEADERS, signal: AbortSignal.timeout(10000) });
     if (!res.ok) return null;
     return { path: leaguePath, data: await res.json() };
   } catch (e) { return null; }
@@ -223,7 +271,7 @@ async function fetchEspnSchedule(leaguePath, dateStr) {
 async function fetchLolEsportsSchedule() {
     const url = 'https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US';
     try {
-        const res = await fetch(url, { headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' }, signal: AbortSignal.timeout(10000) });
+        const res = await fetch(url, { headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z', 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
         return await res.json();
     } catch(e) { return null; }
 }
@@ -231,7 +279,7 @@ async function fetchLolEsportsSchedule() {
 async function fetchLolEsportsLiveStreams() {
     const url = 'https://esports-api.lolesports.com/persisted/gw/getLive?hl=en-US';
     try {
-        const res = await fetch(url, { headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' }, signal: AbortSignal.timeout(10000) });
+        const res = await fetch(url, { headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z', 'User-Agent': UA }, signal: AbortSignal.timeout(10000) });
         return await res.json();
     } catch(e) { return null; }
 }
@@ -489,6 +537,50 @@ async function run() {
             };
             if(!baseMatches.find(x => x.id === m.id)) baseMatches.push(m);
         });
+    }
+
+    /* Combat (WWE, AEW, boxe, UFC, ONE...) : ESPN n'expose aucun de ces sports (son
+       répertoire ne contient ni wwe ni boxing ; sports/wwe/wwe et boxing/boxing -> HTTP 400).
+       TheSportsDB les fournit. Miroir de parseSportsDbEvents (js/scrapers.js) : garder les
+       deux versions alignées. */
+    try {
+        const fightRes = await fetch(`https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${targetDateStr}&s=Fighting`, { headers: JSON_HEADERS, signal: AbortSignal.timeout(10000) });
+        const fightData = fightRes.ok ? await fightRes.json() : null;
+        const events = fightData && Array.isArray(fightData.events) ? fightData.events : [];
+        let added = 0;
+        for (const ev of events) {
+            if (!ev || !ev.strEvent) continue;
+            if (String(ev.strPostponed || '').toLowerCase() === 'yes') continue;
+            // Même règle que parseSportsDbEvents : ne convertir que si l'heure est connue,
+            // sinon « 00:00:00 » ferait basculer l'événement à la veille en heure de l'Est.
+            const hasRealTime = (ev.strTime && ev.strTime !== '00:00:00') || (ev.strTimeLocal && ev.strTimeLocal !== '');
+            let when = null;
+            if (ev.strTimestamp && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(ev.strTimestamp)) when = new Date(ev.strTimestamp + 'Z');
+            else if (ev.dateEvent) when = new Date(ev.dateEvent + 'T00:00:00Z');
+            if (!when || isNaN(when.getTime())) continue;
+            const mDate = hasRealTime ? getEstDateStrFromDate(when) : (ev.dateEvent || getEstDateStrFromDate(when));
+            const mTime = hasRealTime ? getEstTimeStrFromDate(when) : '20:00';
+            if (mDate !== targetDateStr) continue;
+
+            const title = String(ev.strEvent).replace(/\s+/g, ' ').trim();
+            let home = title, away = '';
+            const vs = title.split(/\s+vs\.?\s+/i);
+            if (vs.length === 2 && vs[0].trim() && vs[1].trim()) { home = vs[0].trim(); away = vs[1].trim(); }
+            const league = ev.strLeague || ev.strSport || 'Autres';
+
+            const m = {
+                id: 'tsdb_' + (ev.idEvent || title),
+                league: formatLeagueName(league), flag: lgFlag(league), color: lgColor(league),
+                homeTeam: getOfficialTeamName(home), awayTeam: away ? getOfficialTeamName(away) : '',
+                matchDate: mDate, startTime: mTime,
+                durationMinutes: getLeagueDuration(league), status: 'upcoming',
+                venue: ev.strVenue || '', source: 'api'
+            };
+            if (!baseMatches.find(x => x.id === m.id)) { baseMatches.push(m); added++; }
+        }
+        console.log(`TheSportsDB (Fighting) : ${added} événements`);
+    } catch (e) {
+        console.log('TheSportsDB indisponible :', e && e.message ? e.message : e);
     }
 
     baseMatches.sort((a,b) => a.startTime > b.startTime ? 1 : -1);

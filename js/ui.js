@@ -6,7 +6,7 @@ import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from '.
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
-import { DEFAULT_LEAGUES, OTHER_LEAGUES, lgFlag } from './db.js';
+import { DEFAULT_LEAGUES, OTHER_LEAGUES, lgFlag, leagueTier } from './db.js';
 
 /* ══ DIAGNOSTIC SCRAPE ══════════════════ */
 export function diagnosticScrape(matchId, url) {
@@ -139,6 +139,14 @@ export function getOriginalMatchId(id) {
     return id;
 }
 
+/* Libellé d'état d'un match en cours. Plusieurs API renvoient « 0:00 » ou « 0' » comme
+   minute de jeu, ce qui n'apprend rien : on retombe alors sur « DIRECT ». */
+export function formatLiveMinute(m) {
+    var raw = m && m.minute ? String(m.minute).trim() : '';
+    if (!raw || /^0+\s*[:'h]?\s*0*$/.test(raw)) return 'DIRECT';
+    return raw;
+}
+
 export function buildEPG(matches){
   // Current time minus 15 minutes to treat soon-to-start matches as "live"
   var now = new Date();
@@ -214,8 +222,10 @@ export function buildEPG(matches){
       if (b === 'EN DIRECT') return 1;
 
       // Ensure 'Autres Flux' is always sorted last globally in the main feed
-        if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(a||'').toUpperCase()])) return 1;
-      if (!DEFAULT_LEAGUES[(b||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(b||'').toUpperCase()])) return -1;
+      // Niveau d'abord : principales, puis secondaires, puis flux non identifiés
+      var rankA = { main: 0, secondary: 1 }[leagueTier(a)] !== undefined ? { main: 0, secondary: 1 }[leagueTier(a)] : 2;
+      var rankB = { main: 0, secondary: 1 }[leagueTier(b)] !== undefined ? { main: 0, secondary: 1 }[leagueTier(b)] : 2;
+      if (rankA !== rankB) return rankA - rankB;
 
       // Custom League Order User Preference
       var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
@@ -344,8 +354,9 @@ export function buildEPG(matches){
 
           var lgOrder = Object.keys(lgMap);
           lgOrder.sort(function(a, b) {
-              if (!DEFAULT_LEAGUES[(a||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(a||'').toUpperCase()])) return 1;
-              if (!DEFAULT_LEAGUES[(b||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(b||'').toUpperCase()])) return -1;
+              var rkA = { main: 0, secondary: 1 }[leagueTier(a)]; if (rkA === undefined) rkA = 2;
+              var rkB = { main: 0, secondary: 1 }[leagueTier(b)]; if (rkB === undefined) rkB = 2;
+              if (rkA !== rkB) return rkA - rkB;
               var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
               var allLgs = Object.keys(DEFAULT_LEAGUES);
               allLgs.forEach(function(l) {
@@ -420,12 +431,19 @@ export function buildEPG(matches){
 
                   var statusHtml = '';
                   if(m.status === 'live') {
-                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
+                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+esc(formatLiveMinute(m))+'</span></div>';
                   } else if(m.status === 'finished') {
                       statusHtml = '<div class="status-text"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
                   } else {
                       statusHtml = '<div class="status-text"><span class="status-minute">'+m.startTime+'</span></div>';
                   }
+
+                  /* Nombre de flux : l'information qui décide d'un clic (un match sans flux
+                     n'est pas regardable). Affiché seulement quand on en connaît. */
+                  var streamCount = (m.streamLinks || []).length;
+                  var streamsHtml = streamCount > 0
+                      ? '<div class="card-streams" title="' + streamCount + ' flux disponibles">▶ ' + streamCount + '</div>'
+                      : '';
 
                   var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
                   var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
@@ -436,8 +454,9 @@ export function buildEPG(matches){
                   var homeLogoHtmlPrime = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
                   var awayLogoHtmlPrime = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
 
-                  var streamsBadgePrime = "";
-                  var lgBadge = '<div class="prime-league-badge">'+(lg.flag || lgFlag(lg.league) || '')+'</div>';
+                  // Le nom de la ligue manquait : une icône seule ne dit pas de quelle compétition il s'agit.
+                  var lgBadge = '<div class="prime-league-badge"><span class="plb-ic">' + (lg.flag || lgFlag(lg.league) || '') + '</span>'
+                              + '<span class="plb-name">' + esc(lg.league || '') + '</span></div>';
 
                   var homeFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>';
                   var awayFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>';
@@ -458,6 +477,7 @@ export function buildEPG(matches){
 
                   b.innerHTML = '<div class="prime-thumbnail" style="background:'+cardBg+';">'
                               +   lgBadge
+                              +   streamsHtml
 
                               +   '<div class="prime-logos">'
                               +     logosHtml
@@ -482,6 +502,48 @@ export function buildEPG(matches){
           return grid;
       };
 
+      /* Section repliable regroupée par sous-titre (ligues secondaires, autres flux).
+         Remplace trois blocs identiques : rend d'abord la liste à plat, puis, si la
+         section est dépliée, la redécoupe par groupe (ligue) trié par heure. */
+      var renderGroupedSection = function(matchesToRender, container, titleStr, sectionId, defaultCollapsed, groupKeyFn) {
+          if (!matchesToRender || matchesToRender.length === 0) return;
+          if (S.collapsedSections[sectionId] === undefined) S.collapsedSections[sectionId] = !!defaultCollapsed;
+
+          var host = renderMatches(matchesToRender, container, titleStr + ' (' + matchesToRender.length + ')', true, sectionId);
+          if (!host || S.collapsedSections[sectionId]) return;
+
+          host.innerHTML = '';
+          host.className = 'autres-streams-sub-container';
+          host.style.display = 'block';
+
+          var groups = {};
+          matchesToRender.forEach(function(m) {
+              var k = groupKeyFn(m) || 'Autres Flux';
+              if (!groups[k]) groups[k] = [];
+              groups[k].push(m);
+          });
+
+          Object.keys(groups).sort().forEach(function(k) {
+              var subId = sectionId + '_' + k.replace(/[^a-zA-Z0-9]/g, '');
+              if (S.collapsedSections[subId] === undefined) S.collapsedSections[subId] = !!defaultCollapsed;
+              var sorted = groups[k].slice().sort(function(a, b) {
+                  var wa = a.status === 'live' ? 0 : (a.status === 'finished' ? 2 : 1);
+                  var wb = b.status === 'live' ? 0 : (b.status === 'finished' ? 2 : 1);
+                  if (wa !== wb) return wa - wb;
+                  if (!a.startTime && !b.startTime) return 0;
+                  if (!a.startTime) return 1;
+                  if (!b.startTime) return -1;
+                  return a.startTime.localeCompare(b.startTime);
+              });
+              renderMatches(sorted, host, k, true, subId);
+          });
+      };
+
+  /* Les contrôles de zoom (« Maintenant », ± ) ne pilotent que la grille temporelle du
+     Guide. Ailleurs ils flottaient au-dessus des cartes sans rien faire : on les réserve
+     à la vue concernée (voir .zoom-controls dans styles.css). */
+  document.body.classList.toggle('view-timeline', S.filter === 'all');
+
   if (S.filter === 'live' || S.filter === 'upcoming') {
       epgContainer.style.display = 'block';
       epgContainer.style.padding = '0';
@@ -496,6 +558,7 @@ export function buildEPG(matches){
           var liveNow = [];
           var upNext = [];
           var laterToday = [];
+          var secondaryMatches = [];
           var autresFluxMatches = [];
 
           var now = new Date();
@@ -504,12 +567,20 @@ export function buildEPG(matches){
           var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
           filtered.forEach(function(m) {
+              var tier = leagueTier(m.league);
+              if (tier === 'ignored') return; // ligue masquée par l'utilisateur
+
               if (favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]) {
                   favorisAujourdhui.push(m);
               }
 
-              if ((!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') || m.league === 'Autres Flux') {
+              if (tier === 'other' || m.league === 'Autres Flux') {
                   autresFluxMatches.push(m);
+                  return;
+              }
+
+              if (tier === 'secondary') {
+                  secondaryMatches.push(m);
                   return;
               }
 
@@ -536,113 +607,29 @@ export function buildEPG(matches){
           if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live");
           if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure");
           if (laterToday.length > 0) renderMatches(laterToday, fragment, "Plus tard aujourd'hui", true, 'laterToday');
-          if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0) {
+          if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0 && secondaryMatches.length === 0) {
               epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
           }
-          if (autresFluxMatches.length > 0) {
-              if (S.collapsedSections['autresStreams'] === undefined) {
-                  S.collapsedSections['autresStreams'] = true;
-              }
-
-                            // Render the parent "Autres streams" category
-              var autresContainer = renderMatches(autresFluxMatches, fragment, "Autres streams", true, 'autresStreams');
-
-              // If the user has expanded "Autres streams", group and display the specific leagues inside it
-              if (autresContainer) {
-                  // Remove the match-grid class from defaultGrid so that renderMatches doesn't append nested grids into a grid.
-                  // Since renderMatches returns the grid itself if there was no title wrapper, we just use it directly.
-                  var defaultGrid = autresContainer;
-
-                  // If it's expanded, render sub-leagues inside it.
-                  if (!S.collapsedSections['autresStreams']) {
-                      defaultGrid.innerHTML = ''; // Clear out the flattened matches
-                      defaultGrid.className = 'autres-streams-sub-container'; // Make it a normal block wrapper
-                      defaultGrid.style.display = 'block';
-
-                      var secondaryLeagues = {};
-                      autresFluxMatches.forEach(function(m) {
-                          var lg = m.scrapedLeagueName || 'Autres Flux';
-                          if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
-                          secondaryLeagues[lg].push(m);
-                      });
-
-                      // Group matches by time or league as requested ("Should find a way to match the times...")
-                      // We will sort leagues alphabetically
-                      Object.keys(secondaryLeagues).sort().forEach(function(lg) {
-                          var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
-                          if (S.collapsedSections[subSectionId] === undefined) {
-                              S.collapsedSections[subSectionId] = true;
-                          }
-
-                          // Sort matches by time before passing them to renderMatches
-                          var sortedMatches = secondaryLeagues[lg].sort(function(a, b) {
-                              if (!a.startTime && !b.startTime) return 0;
-                              if (!a.startTime) return 1;
-                              if (!b.startTime) return -1;
-                              return a.startTime.localeCompare(b.startTime);
-                          });
-
-                          renderMatches(sortedMatches, defaultGrid, lg, true, subSectionId);
-                      });
-                  }
-              }
-          }
+          // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
+          renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesLive', false, function(m) { return m.league; });
+          renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
+              function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
       } else {
           // Render matches normally for upcoming
           var mainMatches = [];
+          var secondaryMatches = [];
           var autresFluxMatches = [];
           filtered.forEach(function(m) {
-              if ((!DEFAULT_LEAGUES[(m.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(m.league||'').toUpperCase()]) && m.league !== 'FAVORIS' && m.league !== 'EN DIRECT') || m.league === 'Autres Flux') {
-                  autresFluxMatches.push(m);
-              } else {
-                  mainMatches.push(m);
-              }
+              var tier = leagueTier(m.league);
+              if (tier === 'ignored') return;
+              if (tier === 'other' || m.league === 'Autres Flux') autresFluxMatches.push(m);
+              else if (tier === 'secondary') secondaryMatches.push(m);
+              else mainMatches.push(m);
           });
           renderMatches(mainMatches, fragment, "");
-          if (autresFluxMatches.length > 0) {
-              if (S.collapsedSections['autresStreams'] === undefined) {
-                  S.collapsedSections['autresStreams'] = true;
-              }
-
-                            // Render the parent "Autres streams" category
-              var autresContainer = renderMatches(autresFluxMatches, fragment, "Autres streams", true, 'autresStreams');
-
-              // If the user has expanded "Autres streams", group and display the specific leagues inside it
-              if (autresContainer) {
-                  // Remove the match-grid class from defaultGrid so that renderMatches doesn't append nested grids into a grid.
-                  var defaultGrid = autresContainer;
-
-                  if (!S.collapsedSections['autresStreams']) {
-                      defaultGrid.innerHTML = '';
-                      defaultGrid.className = 'autres-streams-sub-container'; // Make it a normal block wrapper
-                      defaultGrid.style.display = 'block';
-
-                      var secondaryLeagues = {};
-                      autresFluxMatches.forEach(function(m) {
-                          var lg = m.scrapedLeagueName || 'Autres Flux';
-                          if (!secondaryLeagues[lg]) secondaryLeagues[lg] = [];
-                          secondaryLeagues[lg].push(m);
-                      });
-
-                      Object.keys(secondaryLeagues).sort().forEach(function(lg) {
-                          var subSectionId = 'autresStreams_' + lg.replace(/[^a-zA-Z0-9]/g, '');
-                          if (S.collapsedSections[subSectionId] === undefined) {
-                              S.collapsedSections[subSectionId] = true;
-                          }
-
-                          // Sort matches by time
-                          var sortedMatches = secondaryLeagues[lg].sort(function(a, b) {
-                              if (!a.startTime && !b.startTime) return 0;
-                              if (!a.startTime) return 1;
-                              if (!b.startTime) return -1;
-                              return a.startTime.localeCompare(b.startTime);
-                          });
-
-                          renderMatches(sortedMatches, defaultGrid, lg, true, subSectionId);
-                      });
-                  }
-              }
-          }
+          renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesUpcoming', false, function(m) { return m.league; });
+          renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
+              function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
       }
 
   } else { // Timeline EPG
@@ -877,69 +864,55 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
 };
 
 var mainLeagues = [];
-var autresLeagues = [];
+var secondaryLeaguesEpg = [];
 var autresFluxMatchesEpg = [];
 
 leagues.forEach(function(lg) {
     if (!lg) return;
-    if ((!DEFAULT_LEAGUES[(lg.league||'').toUpperCase()] && (!OTHER_LEAGUES || !OTHER_LEAGUES[(lg.league||'').toUpperCase()]) && lg.league !== 'FAVORIS' && lg.league !== 'EN DIRECT') || lg.league === 'Autres Flux') {
-        autresLeagues.push(lg);
-        if (lg.matches) {
-            lg.matches.forEach(function(m) {
-                autresFluxMatchesEpg.push(m);
-            });
-        }
-    } else {
-        mainLeagues.push(lg);
+    var tier = leagueTier(lg.league);
+    if (tier === 'ignored') return;            // ligue masquée par l'utilisateur
+    if (tier === 'secondary') { secondaryLeaguesEpg.push(lg); return; }
+    if (tier === 'other' || lg.league === 'Autres Flux') {
+        if (lg.matches) lg.matches.forEach(function(m) { autresFluxMatchesEpg.push(m); });
+        return;
     }
+    mainLeagues.push(lg);
 });
 
 renderTimelineGuide(mainLeagues, fragment);
 
-if (autresFluxMatchesEpg.length > 0) {
-    var sectionId = 'autresStreamsEpg';
-    if (S.collapsedSections[sectionId] === undefined) {
-        S.collapsedSections[sectionId] = true;
+/* Ligues secondaires : leur propre grille temporelle, sous un titre repliable,
+   pour qu'elles restent lisibles sans se mélanger aux ligues principales. */
+if (secondaryLeaguesEpg.length > 0) {
+    var secId = 'secondaryLeaguesEpg';
+    if (S.collapsedSections[secId] === undefined) S.collapsedSections[secId] = false;
+    var secCount = secondaryLeaguesEpg.reduce(function(n, lg) { return n + (lg.matches ? lg.matches.length : 0); }, 0);
+
+    var secTitle = document.createElement('div');
+    secTitle.style.cssText = 'padding:16px 24px 8px; font-weight:bold; font-size:18px; color:var(--text); border-bottom:1px solid var(--border); margin:16px 0; display:flex; align-items:center; gap:8px; cursor:pointer;';
+    var secChev = document.createElement('span');
+    secChev.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    secChev.style.transition = 'transform 0.2s';
+    secTitle.appendChild(secChev);
+    var secLabel = document.createElement('span');
+    secLabel.textContent = 'Ligues secondaires (' + secCount + ')';
+    secTitle.appendChild(secLabel);
+    fragment.appendChild(secTitle);
+
+    var secWrap = renderTimelineGuide(secondaryLeaguesEpg, fragment);
+    if (S.collapsedSections[secId]) {
+        secChev.style.transform = 'rotate(-90deg)';
+        if (secWrap) secWrap.style.display = 'none';
     }
-
-    // Reuse the renderMatches function we hoisted out to render them as cards
-    // even though we are in EPG timeline mode
-    var autresContainer = renderMatches(autresFluxMatchesEpg, fragment, "Autres streams", true, sectionId);
-
-    // Flatten nested grids if needed, similar to how it works in Live tab
-    if (autresContainer) {
-        var defaultGrid = autresContainer;
-
-        if (!S.collapsedSections[sectionId]) {
-            defaultGrid.innerHTML = '';
-            defaultGrid.className = 'autres-streams-sub-container';
-            defaultGrid.style.display = 'block';
-
-            var secondaryLeagues = {};
-            autresFluxMatchesEpg.forEach(function(m) {
-                var lgStr = m.scrapedLeagueName || 'Autres Flux';
-                if (!secondaryLeagues[lgStr]) secondaryLeagues[lgStr] = [];
-                secondaryLeagues[lgStr].push(m);
-            });
-
-            Object.keys(secondaryLeagues).sort().forEach(function(lgStr) {
-                var subSectionId = 'autresStreamsEpg_' + lgStr.replace(/[^a-zA-Z0-9]/g, '');
-                if (S.collapsedSections[subSectionId] === undefined) {
-                    S.collapsedSections[subSectionId] = true;
-                }
-
-                var sortedMatches = secondaryLeagues[lgStr].sort(function(a, b) {
-                    if (!a.startTime && !b.startTime) return 0;
-                    if (!a.startTime) return 1;
-                    if (!b.startTime) return -1;
-                    return a.startTime.localeCompare(b.startTime);
-                });
-
-                renderMatches(sortedMatches, defaultGrid, lgStr, true, subSectionId);
-            });
-        }
-    }
+    secTitle.addEventListener('click', function() {
+        S.collapsedSections[secId] = !S.collapsedSections[secId];
+        secChev.style.transform = S.collapsedSections[secId] ? 'rotate(-90deg)' : '';
+        if (secWrap) secWrap.style.display = S.collapsedSections[secId] ? 'none' : '';
+    });
 }
+
+renderGroupedSection(autresFluxMatchesEpg, fragment, "Autres streams", 'autresStreamsEpg', true,
+    function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
 
   // Note: we can remove the old gl/glh DOM grid lines because we added repeating-linear-gradient in CSS!
   } // End of else block for timeline EPG
@@ -1089,7 +1062,15 @@ export function openMod(m,col){
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
 
 
-  document.getElementById('mname').innerHTML = '';
+  /* L'en-tête était vide : rien n'indiquait la rencontre ni la compétition ouverte,
+     alors que la fenêtre est l'écran de choix d'un flux. */
+  var titleTxt = m.awayTeam ? (m.homeTeam + ' — ' + m.awayTeam) : m.homeTeam;
+  document.getElementById('mname').innerHTML =
+      '<span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">'
+    + '<span style="font-size:14px; flex-shrink:0;">' + (m.flag || lgFlag(m.league) || '') + '</span>'
+    + '<span style="font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--muted); flex-shrink:0;">' + esc(m.league || '') + '</span>'
+    + '<span style="font-size:15px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(titleTxt) + '</span>'
+    + '</span>';
   document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam;
 
 
@@ -1327,7 +1308,7 @@ export function openMod(m,col){
 
   var statusHtml = '';
   if(m.status === 'live') {
-      statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; margin-top:8px;"><span class="mb-ld" style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+(m.minute?esc(m.minute):'LIVE')+'</span></div>';
+      statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; margin-top:8px;"><span class="mb-ld" style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+esc(formatLiveMinute(m))+'</span></div>';
   } else if(m.status === 'finished') {
       statusHtml = '<div class="status-text" style="color:var(--muted); font-size:14px; font-weight:600; text-align:center; margin-top:8px;"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
   } else {

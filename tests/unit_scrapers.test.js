@@ -81,6 +81,19 @@ async function main() {
     assert.strictEqual(empty[0].topLevel, true);
     ok('repli "Page du match" marqué topLevel');
 
+    // ── Sportsurge : <base href> ───────────────────────────────────────────
+    const ssList = `<html><head><base href="https://v2.sportsurge.net/"></head><body>
+      <a href="watch-63082-baseball-san-diego-padres-cincinnati-reds-8/" class="match-row" title="San Diego Padres - Cincinnati Reds">
+        <span class="match-row-team-name">San Diego Padres</span><span class="match-row-team-name">Cincinnati Reds</span>
+        <span class="match-time" data-timestamp="1788367200">12:40</span><span class="match-row-mobile-category">Baseball</span></a>
+    </body></html>`;
+    const ssm = scrapers.parseSportsurge(ssList, 'https://v2.sportsurge.net/watch-baseball-streams/');
+    assert.strictEqual(ssm.length, 1);
+    assert.strictEqual(ssm[0].matchUrl, 'https://v2.sportsurge.net/watch-63082-baseball-san-diego-padres-cincinnati-reds-8/');
+    const ssm2 = scrapers.parseSportsurge(ssList.replace(/<base[^>]*>/, ''), 'https://v2.sportsurge.net/watch-baseball-streams/');
+    assert.strictEqual(ssm2[0].matchUrl, 'https://v2.sportsurge.net/watch-baseball-streams/watch-63082-baseball-san-diego-padres-cincinnati-reds-8/');
+    ok('parseSportsurge résout les liens relatifs contre <base href>');
+
     // ── MLBBite ────────────────────────────────────────────────────────────
     const mlbHtml = `<div>
       <a href="/watch/live/san-diego-padres-at-cincinnati-reds-15-free-live-stream" class="inline-match-item live-background match-with-result">

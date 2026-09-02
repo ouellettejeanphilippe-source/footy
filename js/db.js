@@ -190,7 +190,19 @@ export var LEAGUE_ALIASES = {
   'premiership rugby': 'premiership rugby',
   'super rugby': 'super rugby',
     'six nations': 'six nations',
-    'world cup': 'world cup'
+    'world cup': 'world cup',
+    // Noms renvoyés par ESPN / TheSportsDB ramenés aux clés connues de
+    // DEFAULT_LEAGUES / OTHER_LEAGUES (sinon la ligue tombe dans « Autres »).
+    'women\'s national basketball association': 'wnba',
+    'pga tour': 'pga',
+    'french top 14': 'top 14',
+    'gallagher prem': 'premiership rugby',
+    'ultimate fighting championship': 'ufc',
+    'indycar series': 'indycar',
+    'nascar cup series': 'nascar',
+    'ncaa - football': 'ncaa football',
+    'ncaa - men\'s basketball': 'ncaa men\'s basketball',
+    'ncaa - women\'s basketball': 'ncaa women\'s basketball'
 };
 export var DEFAULT_LEAGUES = {
     'WORLD CUP': { icon: '⚽' },
@@ -243,7 +255,8 @@ export var OTHER_LEAGUES = {
     'OLYMPICS MEN\'S ICE HOCKEY': { icon: '🏒' },
     'OLYMPICS WOMEN\'S ICE HOCKEY': { icon: '🏒' },
     'NCAA WOMEN\'S HOCKEY': { icon: '🏒' },
-    'FIFA WORLD CUP': { icon: '⚽' },
+    // 'FIFA WORLD CUP' n'est pas listée ici : LEAGUE_ALIASES la ramène à 'world cup',
+    // qui est une ligue principale. L'y remettre créerait un doublon inatteignable.
     'FIFA WOMEN\'S WORLD CUP': { icon: '⚽' },
     'NWSL': { icon: '⚽' },
     'WWE': { icon: '🥊' },
@@ -272,6 +285,33 @@ export var OTHER_LEAGUES = {
     'SNOOKER': { icon: '🎱' },
     'CYCLING': { icon: '🚴' }
 };
+
+/* Niveau d'une ligue, unique source de vérité pour la séparation de l'interface :
+     'main'      -> ligue principale, affichée en premier ;
+     'secondary' -> ligue secondaire, regroupée dans sa propre section ;
+     'ignored'   -> masquée partout (choix de l'utilisateur uniquement) ;
+     'other'     -> flux agrégé non identifié ("Autres streams").
+   Le choix de l'utilisateur (Favoris -> Ligues, stocké dans league_tiers) prime sur les
+   listes par défaut DEFAULT_LEAGUES / OTHER_LEAGUES. FAVORIS et EN DIRECT sont des
+   sections synthétiques : jamais masquées, toujours principales. */
+export function leagueTier(league, overrides) {
+    var key = String(league || '').toUpperCase().trim();
+    if (!key) return 'other';
+    if (key === 'FAVORIS' || key === 'EN DIRECT') return 'main';
+    var ov = overrides || (typeof window !== 'undefined' ? window.leagueTierOverrides : null) || {};
+    var chosen = ov[key];
+    if (chosen === 'main' || chosen === 'secondary' || chosen === 'ignored' || chosen === 'other') return chosen;
+    if (key === 'AUTRES' || key === 'AUTRES FLUX') return 'other';
+    if (DEFAULT_LEAGUES[key]) return 'main';
+    if (OTHER_LEAGUES && OTHER_LEAGUES[key]) return 'secondary';
+    return 'other';
+}
+
+/* Niveau par défaut d'une ligue, en ignorant le choix de l'utilisateur (pour l'interface
+   de réglage : savoir si une valeur est personnalisée). */
+export function defaultLeagueTier(league) {
+    return leagueTier(league, {});
+}
 
 export var LEAGUE_FORMAT_NAMES = {
     'nba': 'NBA',
@@ -329,7 +369,20 @@ export var LEAGUE_FORMAT_NAMES = {
     'ncaa women\'s hockey': 'NCAA Women\'s Hockey',
     'fifa world cup': 'FIFA World Cup',
     'fifa women\'s world cup': 'FIFA Women\'s World Cup',
-    'nwsl': 'NWSL'
+    'nwsl': 'NWSL',
+    'pga': 'PGA',
+    'ufc': 'UFC',
+    'atp': 'ATP',
+    'wta': 'WTA',
+    'indycar': 'IndyCar',
+    'nascar': 'NASCAR',
+    'boxing': 'Boxing',
+    'tennis': 'Tennis',
+    'golf': 'Golf',
+    'mma': 'MMA',
+    'wwe': 'WWE',
+    'one': 'ONE',
+    'nxt': 'NXT'
 };
 export function formatLeagueName(league) {
     if (!league) return 'Autres Flux';
@@ -520,6 +573,8 @@ window.LEAGUE_ALIASES = LEAGUE_ALIASES;
 window.LEAGUE_FORMAT_NAMES = LEAGUE_FORMAT_NAMES;
 window.DEFAULT_LEAGUES = DEFAULT_LEAGUES;
 window.OTHER_LEAGUES = OTHER_LEAGUES;
+window.leagueTier = leagueTier;
+window.defaultLeagueTier = defaultLeagueTier;
 window.formatLeagueName = formatLeagueName;
 window._normCache = _normCache;
 window.getLogo = getLogo;
