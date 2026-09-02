@@ -2,6 +2,8 @@ name: Probe stream sources (diagnostic)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ "claude/match-links-access-5gmco2" ]
 
 jobs:
   probe:
