@@ -1050,6 +1050,9 @@ export var QI ={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
 export function renderFluxItem(s, i, m) {
     var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"')";
+    // Lien "topLevel" (page de match d'un miroir Streameast, repli "Page du match sur …") : la page
+    // refuse l'iframe (défi Cloudflare / X-Frame-Options), on l'ouvre dans un nouvel onglet.
+    if (s.topLevel) ev = "window.open('"+escJs(s.url||'#')+"','_blank','noopener');event.preventDefault();event.stopPropagation();";
 
     var addMvEv = "";
     if (window.multiviewPendingAction && window.multiviewPendingAction.type === 'replace') {
@@ -1068,7 +1071,7 @@ export function renderFluxItem(s, i, m) {
     return '<div class="si" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.15s; margin-bottom: 12px; padding-right:8px;">'
       +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
       +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-      +'<div class="si-inf" style="flex:1; overflow:hidden;"><div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+'</div></div>'
+      +'<div class="si-inf" style="flex:1; overflow:hidden;"><div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+(s.topLevel?' <span title="S\'ouvre dans un nouvel onglet" style="opacity:.6;">↗</span>':'')+'</div></div>'
       +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
       +'</a>'
       +'<div style="display:flex; align-items:center; padding:8px; gap:2px; margin-left:auto;">'

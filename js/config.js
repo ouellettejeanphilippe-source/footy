@@ -114,7 +114,11 @@ export const SCRAPERS_CONFIG = [
         { path: 'boxinglivestreams14', sports: ['boxing'] }, { path: 'mmacracked24', sports: ['mma'] }, { path: 'motor-streams-live-10', sports: ['f1', 'motor'] }
     ] },
     { name: 'Streameast', url: STREAMEAST_URL, id: 'streameast' },
-    { name: 'OnHockey', url: ONHOCKEY_URL, id: 'onhockey' },
+    // L'accueil d'OnHockey n'est qu'un jeu de cadres (frameset) : la grille des matchs et
+    // leurs lecteurs sont dans schedule_table.php (le site exige un Referer onhockey.tv).
+    { name: 'OnHockey', url: ONHOCKEY_URL, id: 'onhockey', homepageHasMatches: false, pages: [
+        { path: 'schedule_table.php', sports: ['nhl'] }
+    ] },
     { name: 'VIPLeague', url: VIPLEAGUE_URL, id: 'vipleague' },
     { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams', homepageHasMatches: false, pages: [
         { path: 'league/soccerstreams', sports: ['soccer'] }, { path: 'league/nflstreams', sports: ['nfl'] }, { path: 'league/nbastreams', sports: ['nba'] },

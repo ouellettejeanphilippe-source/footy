@@ -103,3 +103,20 @@ Cache mémoire 45 s, dédoublonnage des requêtes en cours, essai direct puis pr
 
 ### Sources (`SCRAPERS_CONFIG`, `js/config.js`)
 Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (pages par ligue), Streameast (liste de miroirs), OnHockey, VIPLeague (`/live-now-streaming`), Methstreams (`/league/<x>streams`). `domains.json` (branche main) surcharge les URLs et les miroirs (`MIRRORS`) sans redéploiement.
+
+## Extraction des lecteurs (exploration du 2026-09-02)
+
+| Source | Liste des matchs | Page de match | Lecteur obtenu |
+|---|---|---|---|
+| Footybite | accueil (payload Next.js) OK | `/game/…` : Cloudflare 403 depuis un serveur | aucun côté serveur ; flux fusionnés depuis les autres sources (`altUrls`) |
+| MLBBite | accueil OK (statut, heure relative) | HTML sans tableau de flux (rempli côté serveur pour les navigateurs seulement) | repli `Page du match` (`topLevel`) |
+| Sportsurge | pages `/watch-<sport>-streams/` (OK depuis GitHub, Cloudflare ailleurs) | `.stream-item[data-href]` + `.stream-row-spec` | ~15 lecteurs tiers par match |
+| Buffstreams | pages par ligue | une iframe `embedsports.me/<sport>/<slug>-stream-1` | lecteur embarquable (exige un referrer, pas de `sandbox`) |
+| Streameast | `v2.gostreameast.is` = liste de miroirs | miroirs : 429 « 1015 » côté serveur | lien de miroir, ouvert dans un onglet (`topLevel`) |
+| OnHockey | `schedule_table.php` (Referer obligatoire) | — (liens dans la grille) | `np_stream400.php?channel=…` déballé en lecteur direct, `np_youtube.php` → `youtube.com/embed/` |
+| VIPLeague | `/live-now-streaming` | lecteur chargé par `stream.bun.min.js` (obfusqué, blob chiffré) | repli `Page du match` (`topLevel`) |
+| Methstreams | `/league/<x>streams` | `const allStreams = [...]` | embedindia.st, streame.center |
+
+- `unwrapOnHockeyPlayer(href)`, `isJunkStreamHost(host, path)` (`js/scrapers.js`) : exportés, testés dans `tests/unit_scrapers.test.js`.
+- Un lien `topLevel: true` (pages de miroirs, repli « Page du match ») est ouvert par `renderFluxItem` (`js/ui.js`) dans un nouvel onglet au lieu du Multiview.
+- `data/streams.json` contient en plus `fetch` (compteurs de requêtes), `playerHosts` (lecteurs par hôte), `sources[].matchPagesOk/matchPagesFail` et `matches[].scrapeError` pour diagnostiquer un run GitHub Actions sans relire les logs.
