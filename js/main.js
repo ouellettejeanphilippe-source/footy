@@ -168,13 +168,19 @@ export function loadPrefetchedStreams(force) {
             list.forEach(function(m) { m.prefetched = true; m.streamsLoaded = !!(m.streamLinks && m.streamLinks.length); });
             window.prefetchedStreamMatches = list;
             window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [] };
+            window.prefetchedStreamsLoadedAt = Date.now();
             (data.sources || []).forEach(function(src) {
                 if (src && src.url) updateSourceStatus(getDomain(src.url), src.ok ? 'success' : 'warning', src.matches || 0, (src.ok ? 'serveur OK' : 'serveur: ' + (src.error || 'échec')) + (ageMin !== null ? ' (' + ageMin + ' min)' : ''));
             });
             lg('Flux pré-calculés', list.length + ' matchs, généré il y a ' + ageMin + ' min');
             return list;
         })
-        .catch(function(e) { lg('Flux pré-calculés indisponibles', e.message); window.prefetchedStreamMatches = []; return []; });
+        .catch(function(e) {
+            lg('Flux pré-calculés indisponibles', e.message);
+            window.prefetchedStreamMatches = [];
+            window.prefetchedStreamsLoadedAt = Date.now(); // sinon on réessaierait à chaque passe
+            return [];
+        });
 }
 
 var loadInFlight = null;
@@ -207,8 +213,16 @@ async function loadAllRun(isBackground, forceScrape){
   if (!window.hasLoadedOnce && !isBackground) {
       await fetchRemoteConfig();
   }
-  if (!window.prefetchedStreamMatches || !isBackground) {
-      await loadPrefetchedStreams();
+  /* Le cache serveur (data/streams.json) est régénéré chaque heure. La condition
+     précédente (`!window.prefetchedStreamMatches || !isBackground`) ne le relisait
+     jamais lors d'une passe d'arrière-plan : après le premier chargement la variable
+     reste définie, même quand elle vaut []. Une session laissée ouverte plusieurs
+     heures restait donc sur les liens du démarrage. On le relit quand il a plus de
+     10 minutes, en forçant pour contourner la clé de cache de 5 minutes. */
+  var prefetchAge = window.prefetchedStreamsLoadedAt ? Date.now() - window.prefetchedStreamsLoadedAt : Infinity;
+  var prefetchStale = prefetchAge > 10 * 60 * 1000;
+  if (!window.prefetchedStreamMatches || !isBackground || prefetchStale) {
+      await loadPrefetchedStreams(prefetchStale);
   }
   setupMultivisionUI();
 
@@ -522,7 +536,7 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
       // Delay to ensure the initial cache render doesn't block the dynamic domain fetch
       setTimeout(() => loadAll(true, false), 10);
   } else {
-      loadAll(window.hasLoadedOnce, false);
+      loadAll(false, false); // premier chargement sans cache : passe visible, avec l'écran d'attente
   }
 
   // Background auto-update every 60 seconds
