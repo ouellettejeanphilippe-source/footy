@@ -2,6 +2,15 @@
 ## En cours
 
 ## Fait
+- 2026-09-02 - Exploration des sites sources (accès Web) et corrections de l'extraction des liens/vidéos.
+  - Constats (depuis un serveur / GitHub Actions) : Footybite bloque ses pages `/game/` (Cloudflare 403, l'accueil passe) ; Sportsurge passe depuis les runners GitHub mais pas depuis tous les centres de données ; Streameast (tous miroirs) répond 429 « error code 1015 » aux serveurs ; MLBBite et VIPLeague ne mettent aucun lecteur dans le HTML (VIPLeague : script obfusqué `stream.bun.min.js` + blob chiffré ; MLBBite : tableau `.streams-table-new` jamais rempli côté serveur) ; OnHockey : l'accueil est un frameset, la grille est dans `schedule_table.php` (403 sans Referer) ; Buffstreams et OnHockey pointent vers le lecteur `embedsports.me/<sport>/<slug>-stream-N` (exige un referrer et refuse l'attribut `sandbox`) ; Methstreams expose `allStreams` (embedindia.st, streame.center).
+  - `js/scrapers.js` : `unwrapOnHockeyPlayer` (np_stream400.php / np_youtube.php → lecteur direct), heure OnHockey (GMT → Est), `isJunkStreamHost` + nettoyage (réseaux sociaux, clones partenaires « Watch on … », lecteurs `/?stream_id=` conservés), iframes nommées par leur hôte, MLBBite statut live/terminé + heure relative (« 15 minutes from now »), liens Streameast marqués `topLevel`.
+  - `js/config.js` : OnHockey → `homepageHasMatches:false`, page `schedule_table.php`.
+  - `js/ui.js` `renderFluxItem` : les liens `topLevel` s'ouvrent dans un nouvel onglet (↗).
+  - `scripts/scrape_streams.mjs` : en-tête Referer par site, statistiques de requêtes (`fetch`), hôtes des lecteurs (`playerHosts`), pages de match OK/KO par source, `scrapeError` et `topLevel` conservés dans `data/streams.json`, un seul lien de repli « Page du match » par site.
+  - `tests/unit_scrapers.test.js` (jsdom, sans réseau) ajouté à `npm test`.
+  - Workflow `scrape_streams.yml` déclenché manuellement sur main (premier run OK : 113 matchs).
+  - Restant : Footybite/Streameast/VIPLeague/MLBBite n'exposent pas de lecteur exploitable depuis un serveur ; leurs liens restent des pages à ouvrir dans un onglet. Sportsurge dépend de l'IP du runner.
 - 2026-09-02 - Refonte de la recherche de liens (plus aucun flux trouvé depuis fin août : proxys CORS morts ou payants, domaines saisis/migrés).
   - `js/fetcher.js` (nouveau, pur, testé) : liste des transports (direct + proxys + proxy perso/clés API), détection des pages d'erreur renvoyées en HTTP 200, santé/ordre des proxys.
   - `js/utils.js` `fetchPage` réécrit : cache 45 s + dédoublonnage des requêtes, essai direct puis proxys en « hedging » (3 s), tous les transports essayés, proxys défaillants relégués 3 min.

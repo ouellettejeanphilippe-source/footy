@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js && node tests/unit_fetcher.test.js && npx playwright test tests/test_scrapers_extract.spec.js",
+    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js && node tests/unit_fetcher.test.js && node tests/unit_scrapers.test.js && npx playwright test tests/test_scrapers_extract.spec.js",
     "scrape:streams": "node scripts/scrape_streams.mjs"
   },
   "devDependencies": {
@@ -19,7 +19,7 @@
   },
   "name": "app",
   "version": "1.0.0",
-  "description": "Ce document décrit l'architecture complète, la philosophie et les éléments clés de l'application **Guide des Sports**. Il sert de référence exhaustive pour comprendre comment l'application est construite.",
+  "description": "Ce document d\u00e9crit l'architecture compl\u00e8te, la philosophie et les \u00e9l\u00e9ments cl\u00e9s de l'application **Guide des Sports**. Il sert de r\u00e9f\u00e9rence exhaustive pour comprendre comment l'application est construite.",
   "main": "multiview-cleaner.user.js",
   "directories": {
     "doc": "docs",

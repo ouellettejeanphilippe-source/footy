@@ -59,7 +59,8 @@ export function parseStreameast(html){
               quality: extractQuality(playerLink) === 'SD' ? 'HD' : extractQuality(playerLink),
               lang: 'MULTI',
               url: playerLink,
-              icon: '📺'
+              icon: '📺',
+              topLevel: true
           }];
 
           var l = category.toLowerCase().replace(/-/g, ' ');
@@ -125,7 +126,8 @@ export function parseStreameast(html){
                           quality: 'HD',
                           lang: 'MULTI',
                           url: streamUrl,
-                          icon: '📺'
+                          icon: '📺',
+                          topLevel: true // page du miroir (défi Cloudflare) : s'ouvre dans un onglet, pas en iframe
                       }],
                       streamsLoaded: false,
                       matchUrl: streamUrl,
@@ -145,7 +147,7 @@ export function parseStreameast(html){
                       startTime: '00:00',
                       durationMinutes: getLeagueDuration('Sports'),
                       status: 'upcoming',
-                      streamLinks: [{ name: 'Streameast - Flux', quality: extractQuality(href), lang: 'MULTI', url: streamUrl2, icon: '📺' }],
+                      streamLinks: [{ name: 'Streameast - Flux', quality: extractQuality(href), lang: 'MULTI', url: streamUrl2, icon: '📺', topLevel: true }],
                       streamsLoaded: false,
                       matchUrl: streamUrl2,
                       source: 'streameast'
@@ -601,6 +603,29 @@ export function parseSportsurge(html, pageUrl) {
   return matches;
 }
 
+/* OnHockey enveloppe chaque lecteur dans une page pleine de pubs :
+     np_stream400.php?channel=//embedsports.me/nhl/nhl-network-stream-1  -> https://embedsports.me/nhl/...
+     np_youtube.php?channel=SfoxJmONsPQ                                   -> https://www.youtube.com/embed/SfoxJmONsPQ
+   On renvoie directement le lecteur (embarquable dans le Multiview) ; l'enveloppe reste
+   utilisée si le paramètre est absent ou illisible. */
+export function unwrapOnHockeyPlayer(href) {
+    var url = String(href || '').trim();
+    var qm = /^(?:https?:\/\/[^/]+\/)?(np_[a-z0-9_]+\.php)\?(?:.*&)?channel=([^&#]+)/i.exec(url);
+    if (qm) {
+        var wrapper = qm[1].toLowerCase();
+        var channel = qm[2];
+        try { channel = decodeURIComponent(channel); } catch(e) {}
+        channel = channel.trim();
+        if (wrapper === 'np_youtube.php' && /^[A-Za-z0-9_-]{6,}$/.test(channel)) return 'https://www.youtube.com/embed/' + channel;
+        if (/^\/\//.test(channel)) return 'https:' + channel;
+        if (/^https?:\/\//i.test(channel)) return channel;
+        if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(channel)) return 'https://' + channel;
+    }
+    if (url.indexOf('//') === 0) return 'https:' + url;
+    if (url.indexOf('http') !== 0) return resolveUrl(url, 'https://onhockey.tv/');
+    return url;
+}
+
 export function parseOnHockey(html) {
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var matches = [];
@@ -678,12 +703,7 @@ export function parseOnHockey(html) {
                                   var href = linkEl.getAttribute('href');
                                   if (!href) continue;
 
-                                  var streamUrl = href;
-                                  if (streamUrl.indexOf('//') === 0) {
-                                      streamUrl = 'https:' + streamUrl;
-                                  } else if (streamUrl.indexOf('http') !== 0) {
-                                      streamUrl = resolveUrl(streamUrl, 'https://onhockey.tv/');
-                                  }
+                                  var streamUrl = unwrapOnHockeyPlayer(href);
 
                                   var linkName = (linkEl.title || linkEl.textContent || 'Flux').trim();
                                   var finalName = 'OnHockey ' + (currentCategory ? currentCategory + ' - ' : '') + linkName;
@@ -699,15 +719,15 @@ export function parseOnHockey(html) {
                           }
                       }
 
-                      // Try to extract start time if available
+                      // Heure : "<text class='game_hour'>15</text>:00" dans la 1re cellule, affichée en GMT
+                      // (le site décale ensuite en JS selon le fuseau choisi) -> convertie en heure de l'Est.
                       var startTimeStr = '00:00';
-                      var hourEl = row.querySelector('.game_hour') || tds[0];
-                      if (hourEl) {
-                           var timeText = hourEl.textContent.trim();
-                           var timeParts = timeText.match(/(\d+):(\d+)/);
-                           if (timeParts) {
-                               startTimeStr = timeParts[1].padStart(2, '0') + ':' + timeParts[2];
-                           }
+                      var timeText = (tds[0].textContent || '').replace(/\s+/g, '');
+                      var timeParts = timeText.match(/(\d{1,2}):(\d{2})/);
+                      if (timeParts) {
+                          var gmt = new Date(TARGET_DATE.getTime());
+                          gmt.setUTCHours(parseInt(timeParts[1], 10), parseInt(timeParts[2], 10), 0, 0);
+                          startTimeStr = getEstTimeStrFromDate(gmt);
                       }
 
                       matches.push({
@@ -752,12 +772,7 @@ export function parseOnHockey(html) {
                   var href = linkEl.getAttribute('href');
                   if (!href) continue;
 
-                  var streamUrl = href;
-                  if (streamUrl.indexOf('//') === 0) {
-                      streamUrl = 'https:' + streamUrl;
-                  } else if (streamUrl.indexOf('http') !== 0) {
-                      streamUrl = resolveUrl(streamUrl, 'https://onhockey.tv/');
-                  }
+                  var streamUrl = unwrapOnHockeyPlayer(href);
 
                   streamLinksArr.push({
                       name: 'OnHockey ' + (linkEl.title || linkEl.textContent || 'Flux').trim(),
@@ -1086,12 +1101,24 @@ export function parseMlbbite(html) {
 
             var dateEl = el.querySelector(".match-date, .time");
             if (dateEl) {
-                var rawTime = dateEl.textContent.trim();
+                var rawTime = (dateEl.getAttribute('title') || dateEl.textContent).replace(/\s+/g, ' ').trim();
                 var timeM = rawTime.match(/(\d{1,2}):(\d{2})/);
                 if (timeM) {
                     startTime = timeM[1].padStart(2, "0") + ":" + timeM[2];
+                } else {
+                    // Le site n'affiche qu'un délai relatif : "15 minutes from now", "2 hours from now", "9 minutes ago"
+                    var relM = rawTime.match(/(\d+)\s*(minute|hour|day)s?\s*(from now|ago)/i);
+                    if (relM) {
+                        var delta = parseInt(relM[1], 10) * (relM[2].toLowerCase() === 'hour' ? 60 : relM[2].toLowerCase() === 'day' ? 1440 : 1);
+                        var when = new Date(Date.now() + (relM[3].toLowerCase() === 'ago' ? -delta : delta) * 60000);
+                        startTime = getEstTimeStrFromDate(when);
+                    }
                 }
             }
+            var statusEl = el.querySelector(".result-status-text");
+            var statusTxt = statusEl ? statusEl.textContent.trim().toLowerCase() : '';
+            if (/\blive\b/.test(statusTxt) || /\blive-background\b/.test(el.className || '')) status = "live";
+            else if (/finished|final|ended|\bft\b/.test(statusTxt)) status = "finished";
 
             matches.push({
                 id: "mlbbite_" + i,
@@ -1531,6 +1558,18 @@ export function fetchSubPages(matches){
 /* Extraction pure des liens de flux depuis le HTML d'une page de match.
    Aucune E/S ni DOM global (hormis DOMParser) : réutilisée par scrapeMatchFlux côté client
    et par scripts/scrape_streams.mjs côté serveur (GitHub Actions). */
+/* Hôtes qui ne sont jamais des lecteurs : réseaux sociaux ("Follow us"), messageries, et les
+   clones partenaires que MLBBite/Methstreams affichent en pied de page ("Watch on …") : ce sont
+   des pages de match d'autres agrégateurs, pas des flux. */
+var JUNK_STREAM_HOSTS = /(^|\.)(x\.com|twitter\.com|facebook\.com|instagram\.com|tiktok\.com|t\.me|telegram\.(me|org)|discord\.(gg|com)|reddit\.com|youtube\.com|youtu\.be|chatango\.com|thestreameast\.top|isportsurge\.ws|mybuffstreams\.plus|crackstreams\.page|footybite\.ir|methstreams\.click|1stream\.ws|thetvapp\.plus|nflbite\.im|nbabite\.im|totalsportek\.bet)$/i;
+export function isJunkStreamHost(hostname, path) {
+    var h = String(hostname || '').toLowerCase();
+    if (!JUNK_STREAM_HOSTS.test(h)) return false;
+    // les lecteurs YouTube embarqués restent valides
+    if (/youtube\.com$/.test(h) && /^\/embed\//.test(path || '')) return false;
+    return true;
+}
+
 export function extractStreamLinks(html, m) {
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
@@ -1821,8 +1860,9 @@ export function extractStreamLinks(html, m) {
         var src = ifr.getAttribute('src');
         if(src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
             if (isMatchOrLeaguePage(src, m)) return;
+            var ifrHost = ''; try { ifrHost = new URL(src).hostname.replace(/^www\./, ''); } catch(e) {}
             links.push({
-                name: 'Lecteur direct',
+                name: 'Lecteur direct' + (ifrHost ? ' · ' + ifrHost : ''),
                 quality: 'HD',
                 lang: 'MULTI',
                 url: src,
@@ -2000,7 +2040,8 @@ export function extractStreamLinks(html, m) {
         try {
             var pu = new URL(u);
             var path = pu.pathname || '/';
-            if (path === '/' || path === '') return false; // page d'accueil d'un site : jamais un lecteur
+            if (isJunkStreamHost(pu.hostname, path)) return false; // réseaux sociaux, clones partenaires
+            if ((path === '/' || path === '') && !pu.search) return false; // page d'accueil d'un site : jamais un lecteur (mais "/?stream_id=…" est un lecteur)
             var isPartner = partnerHosts.some(function(ph) { return pu.hostname.indexOf(ph) >= 0; });
             // Pages de navigation (catégories / ligues) : "…streams", "…streams15", "indexcracked29", "…cracked15"
             if (/\/[a-z-]*(streams?|cracked)\d*\/?$/i.test(path) && !/-vs-|\/game\/|\/watch|\/stream\//i.test(path)) return false;
