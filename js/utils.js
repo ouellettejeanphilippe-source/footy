@@ -1,6 +1,7 @@
 import { fetchSubPages } from './scrapers.js';
 import { S } from './state.js';
 import { PROXIES, resolveUrl } from './config.js';
+import { inspectPageContent, orderProxies, recordProxyResult, DEFAULT_PROXY_TIMEOUT } from './fetcher.js';
 import { normName, getLogo } from './db.js';
 import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
 import { userPrefs, buildEPG, scrollToNow } from './ui.js';
@@ -246,51 +247,127 @@ export function resolveStreamUrl(url) {
 
 /* ══ FETCH ══════════════════════════════ */
 
-export function fetchPage(url){
-  return new Promise(function(resolve,reject){
-    var i=0,errs=[];
-    var maxTries = 3; // Try a maximum of 3 proxies to avoid long hangs
+/* ══ FETCH PAGE (direct + proxys CORS) ══════════════════════════════
+   Stratégie :
+   1. Cache mémoire court (45 s) + dédoublonnage des requêtes en cours : plusieurs
+      appelants (modal, fetchSubPages, resolveStreamUrl) partagent le même téléchargement.
+   2. Transports essayés dans l'ordre de santé (voir js/fetcher.js) : direct d'abord
+      (échoue vite en CORS, réussit côté serveur), puis chaque proxy.
+   3. Requêtes "hedgées" : si un transport ne répond pas sous HEDGE_DELAY, le suivant
+      est lancé en parallèle ; la première réponse valide gagne, les autres sont annulées.
+   4. Validation du contenu (inspectPageContent) : un HTTP 200 qui contient une page
+      d'erreur de proxy est traité comme un échec et le proxy est relégué 3 minutes.
+*/
+var PAGE_CACHE = {};
+var PAGE_CACHE_TTL = 45 * 1000;
+var PAGE_CACHE_MAX = 80;
+var INFLIGHT = {};
+var HEDGE_DELAY = 3000;
+var proxyHealth = safeStorageGetJSON('proxy_health', {}) || {};
 
-    function next(){
-      if(i>=PROXIES.length || i>=maxTries){reject(new Error(errs.join('\n')));return;}
-      var pu=PROXIES[i++](url);
-      lg('Proxy '+i,pu.slice(0,70)+'…');
+function pruneCache() {
+    var keys = Object.keys(PAGE_CACHE);
+    if (keys.length <= PAGE_CACHE_MAX) return;
+    keys.sort(function(a, b) { return PAGE_CACHE[a].t - PAGE_CACHE[b].t; });
+    for (var i = 0; i < keys.length - PAGE_CACHE_MAX; i++) delete PAGE_CACHE[keys[i]];
+}
 
-      var headers = {'Accept':'text/html,*/*'};
+export function getProxyHealth() { return proxyHealth; }
+export function resetProxyHealth() { proxyHealth = {}; safeStorageRemove('proxy_health'); }
 
-      // Use a slightly shorter timeout for each proxy try so we don't hang too long on bad proxies
-      fetch(pu,{signal:AbortSignal.timeout(8000),headers:headers})
-        .then(function(r){
-          // Specifically check for 403 or 429 to quickly fall back to the next proxy
-          if(!r.ok){errs.push('HTTP '+r.status+' p'+i);next();return null;}
-          return r.text();
-        })
-        .then(function(t){
-          if(t===null) return;
-          if(!t||t.length<200){
-              // Don't log length errors for very small JSON responses like match scores
-              if(t.startsWith('{') || t.startsWith('[')) {
-                  // Valid JSON, skip length check
-              } else {
-                  errs.push('Vide p'+i+' ('+t.length+'c)');next();return;
-              }
-          }
+function noteProxy(proxy, url, ok) {
+    recordProxyResult(proxyHealth, proxy, url, ok, Date.now());
+    safeStorageSetJSON('proxy_health', proxyHealth);
+}
 
-          // Catch common proxy error pages
-          if(t.indexOf('Oops... Request Timeout') >= 0 || t.indexOf('500 Internal Server Error') >= 0 || t.indexOf('502 Bad Gateway') >= 0 || t.indexOf('522 Connection timed out') >= 0 || (t.indexOf('cloudflare') >= 0 && t.indexOf('301 Moved') >= 0) || t.indexOf('hidemy.name') >= 0 || t.indexOf('Performance & security by Cloudflare') >= 0) {
-              errs.push('Proxy Error Content p'+i);
-              next();
-              return;
-          }
+export function fetchPage(url, opts){
+  opts = opts || {};
+  var now = Date.now();
+  if (!opts.force) {
+      var cached = PAGE_CACHE[url];
+      if (cached && now - cached.t < PAGE_CACHE_TTL) return Promise.resolve(cached.html);
+      if (INFLIGHT[url]) return INFLIGHT[url];
+  }
 
-          lg('OK proxy '+i,'len='+t.length);
-          S.proxy='proxy '+i;
-          resolve(t);
-        })
-        .catch(function(e){errs.push(e.message+' p'+i);next();});
+  var p = new Promise(function(resolve, reject){
+    var order = orderProxies(PROXIES, proxyHealth, url, Date.now());
+    var errs = [], launched = 0, pending = 0, done = false, hedgeTimer = null;
+    var controllers = [];
+
+    function finish(html, proxy) {
+        if (done) return;
+        done = true;
+        clearTimeout(hedgeTimer);
+        controllers.forEach(function(c) { try { c.abort(); } catch(e) {} });
+        noteProxy(proxy, url, true);
+        lg('OK ' + proxy.id, 'len=' + html.length);
+        S.proxy = proxy.id;
+        resolve(html);
     }
-    next();
+
+    function fail(proxy, msg, proxyFault) {
+        if (done) return;
+        errs.push(proxy.id + ': ' + msg);
+        if (proxyFault !== false) noteProxy(proxy, url, false);
+        pending--;
+        clearTimeout(hedgeTimer);
+        launchNext();
+    }
+
+    function launchNext() {
+        if (done) return;
+        if (launched >= order.length) {
+            if (pending === 0) { done = true; reject(new Error(errs.join('\n') || 'Aucun transport disponible')); }
+            return;
+        }
+        var proxy = order[launched++];
+        var pu;
+        try { pu = proxy.build(url); } catch(e) { errs.push(proxy.id + ': ' + e.message); launchNext(); return; }
+        pending++;
+        lg('Essai ' + proxy.id, pu.slice(0, 70) + '…');
+
+        var ctrl = new AbortController();
+        controllers.push(ctrl);
+        var timeout = setTimeout(function() { ctrl.abort(); }, proxy.timeout || DEFAULT_PROXY_TIMEOUT);
+        var headers = { 'Accept': 'text/html,*/*' };
+        if (proxy.headers) { for (var h in proxy.headers) headers[h] = proxy.headers[h]; }
+
+        var status = 0;
+        fetch(pu, { signal: ctrl.signal, headers: headers, credentials: 'omit' })
+          .then(function(r) {
+              status = r.status;
+              if (!r.ok) throw new Error('HTTP ' + r.status);
+              return r.text();
+          })
+          .then(function(t) {
+              clearTimeout(timeout);
+              if (done) return;
+              if (proxy.parse) { try { t = proxy.parse(t); } catch(e) { throw new Error('réponse illisible'); } }
+              var bad = inspectPageContent(t);
+              if (bad) { fail(proxy, bad.reason, bad.proxyFault); return; }
+              finish(t, proxy);
+          })
+          .catch(function(e) {
+              clearTimeout(timeout);
+              if (done) return;
+              var msg = e && e.name === 'AbortError' ? 'délai dépassé' : (e && e.message ? e.message : String(e));
+              // Un 4xx du site cible n'est pas une preuve de défaillance du proxy ;
+              // les erreurs réseau, délais et 5xx le sont.
+              var proxyFault = !(status >= 400 && status < 500 && status !== 429);
+              fail(proxy, msg, proxyFault);
+          });
+
+        // Hedging : si ce transport traîne, on lance le suivant en parallèle
+        hedgeTimer = setTimeout(launchNext, HEDGE_DELAY);
+    }
+    launchNext();
   });
+
+  INFLIGHT[url] = p;
+  p.then(function(html) { PAGE_CACHE[url] = { t: Date.now(), html: html }; pruneCache(); })
+   .catch(function() {})
+   .then(function() { if (INFLIGHT[url] === p) delete INFLIGHT[url]; });
+  return p;
 }
 
 /* ══ TOAST ══════════════════════════════ */
@@ -572,6 +649,8 @@ window.getLeagueDuration = getLeagueDuration;
 window.escJs = escJs;
 window.lg = lg;
 window.fetchPage = fetchPage;
+window.getProxyHealth = getProxyHealth;
+window.resetProxyHealth = resetProxyHealth;
 window.showToast = showToast;
 window.applyFilter = applyFilter;
 window.openMultiviewTab = openMultiviewTab;

@@ -26,6 +26,9 @@ export function mergeMatches(mainList, newList) {
           }
         }
 
+        // Autres pages de match (autres sources) : conservées pour extraire leurs flux plus tard
+        mergeAltUrls(mm, nm);
+
         // Update logos if the new source has them and we don't
         if(!mm.homeLogo && nm.homeLogo && nm.homeLogo.indexOf('default') === -1) {
             mm.homeLogo = nm.homeLogo;
@@ -55,6 +58,20 @@ export function mergeMatches(mainList, newList) {
   }
 
   return mainList;
+}
+
+/* Ajoute à `target.altUrls` la page de match et les altUrls de `other`, sans doublon. */
+export function mergeAltUrls(target, other) {
+  if (!target || !other) return;
+  var urls = [];
+  if (other.matchUrl) urls.push(other.matchUrl);
+  if (Array.isArray(other.altUrls)) urls = urls.concat(other.altUrls);
+  if (!urls.length) return;
+  if (!target.matchUrl) { target.matchUrl = urls.shift(); }
+  target.altUrls = target.altUrls || [];
+  urls.forEach(function(u) {
+    if (u && u !== target.matchUrl && target.altUrls.indexOf(u) < 0) target.altUrls.push(u);
+  });
 }
 
 /* ══ SIMILARITY ALGORITHM ════════════ */

@@ -84,3 +84,22 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 
 ### Changements $(date +'%d %B %Y') - Gestion de la dépendance du cache des logos
 - `ensureLogoCache()` ajoutée à `js/utils.js` pour éviter une dépendance cyclique au moment de l'initialisation de `STATIC_LOGOS_RAW` qui bloquait l'appel à `normName()` exporté depuis `js/config.js`. `getLogo` effectue désormais un appel "lazy" vers ce cache pour sécuriser le retour des URLs.
+
+## Recherche de liens de streams (mise à jour 2026-09-02)
+
+Pipeline en quatre étapes, avec une base « hors proxy » :
+
+1. **Pré-calcul serveur** : `.github/workflows/scrape_streams.yml` exécute chaque heure `scripts/scrape_streams.mjs`, qui importe les parseurs du client (`js/scrapers.js`) dans un DOM simulé (jsdom), télécharge les pages des sources (accueil + sous-pages par sport), extrait les flux des pages de match (`extractStreamLinks`) et écrit `data/streams.json`.
+2. **Chargement client** : `loadPrefetchedStreams()` (`js/main.js`) lit `data/streams.json` depuis la même origine (aucun proxy) et fusionne ces matchs dans la grille ESPN (`mergeFluxToApi`). Les liens existent donc même si tous les proxys CORS sont morts.
+3. **Rafraîchissement en direct** : `fetchSourcePages()` télécharge, pour chaque source, l'accueil (avec miroirs) et les sous-pages des sports du jour (`getSourcePages`, `sportOfLeague` dans `js/config.js`) via `fetchPage`.
+4. **Flux par match** : `scrapeMatchFlux(m, force, deep)` lit la page du match (et, depuis la fiche, les pages du même match sur les autres sources : `m.altUrls`, remplies par `mergeAltUrls` dans `js/match.js`).
+
+### `js/fetcher.js`
+- **Rôle** : helpers purs de `fetchPage` : `buildProxyList` (direct, proxy personnalisé, cors.sh, corsproxy.io avec clé, allorigins, codetabs), `inspectPageContent` (pages d'erreur de proxy en HTTP 200), `orderProxies`/`recordProxyResult` (santé, relégation 3 min).
+- **Dépend de** : rien. **Utilisé par** : `js/utils.js`, `js/config.js`, `tests/unit_fetcher.test.js`.
+
+### `fetchPage(url, {force})` (`js/utils.js`)
+Cache mémoire 45 s, dédoublonnage des requêtes en cours, essai direct puis proxys en « hedging » (nouveau transport lancé après 3 s sans réponse), validation du contenu, santé persistée dans `localStorage.proxy_health`. Réglages utilisateur : `custom_proxy_url`, `cors_sh_api_key`, `corsproxy_io_api_key` (Options → Réseau & Proxys).
+
+### Sources (`SCRAPERS_CONFIG`, `js/config.js`)
+Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (pages par ligue), Streameast (liste de miroirs), OnHockey, VIPLeague (`/live-now-streaming`), Methstreams (`/league/<x>streams`). `domains.json` (branche main) surcharge les URLs et les miroirs (`MIRRORS`) sans redéploiement.
