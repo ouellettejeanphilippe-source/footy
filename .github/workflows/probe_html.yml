@@ -35,6 +35,19 @@ jobs:
           get thestreameast https://thestreameast.fun/
           get sportsurge_ws https://sportsurge.ws/
           get totalsportek_to https://totalsportek.to/
+          get sportsurge_mlb https://v2.sportsurge.net/watch-baseball-streams/
+          get sportsurge_nfl https://v2.sportsurge.net/watch-nfl-streams/
+          get soccersurge https://soccersurge.io/
+          get buffstreams_mlb https://app.buffstreams.is/mlb-streams-live-10
+          get buffstreams_nfl https://app.buffstreams.is/nfl-streams-live-10
+          get methstreams_mlb https://methstreams.gs/league/mlbstreams
+          get methstreams_schedule https://methstreams.gs/category/schedule
+          get vipleague_live https://vipleague.vg/live-now-streaming
+          get streameast_match https://www.streameast.ga/mlb/san-diego-padres-vs-cincinnati-reds-3/
+          curl -sS -m 25 -H "Origin: https://ouellettejeanphilippe-source.github.io" -o out/footybite_match_corssh.html -w "footybite match via cors.sh status=%{http_code} bytes=%{size_download}\n" "https://proxy.cors.sh/https://footybite.bid/game/qatar-vs-oman-2481555781" || true
+          curl -sS -m 25 -H "Origin: https://ouellettejeanphilippe-source.github.io" -o out/streameast_match_corssh.html -w "streameast match via cors.sh status=%{http_code} bytes=%{size_download}\n" "https://proxy.cors.sh/https://www.streameast.ga/mlb/san-diego-padres-vs-cincinnati-reds-3/" || true
+          vw=$(grep -o 'href="/watch/[^"]*"' out/vipleague_live.html | head -1 | sed 's/href="//;s/"$//'); echo "vipleague watch=$vw"; [ -n "$vw" ] && get vipleague_watch "https://vipleague.vg$vw"
+          mm=$(grep -o 'href="/watch/live/[^"]*"' out/mlbbite.html | head -1 | sed 's/href="//;s/"$//'); echo "mlbbite watch=$mm"; [ -n "$mm" ] && get mlbbite_watch "https://mlbbite.plus$mm"
           # match pages: first /game/ link on footybite, first match link on mlbbite / buffstreams / methstreams / vipleague
           fb=$(grep -o 'href[^/]*/game/[^"\\]*' out/footybite.html | head -1 | sed 's/.*\(\/game\/[^"\\]*\).*/\1/'); echo "footybite game=$fb"; [ -n "$fb" ] && get footybite_match "https://footybite.bid$fb"
           mb=$(grep -o 'href="[^"]*"' out/mlbbite.html | grep -i -m1 'vs\|-v-\|/game\|/match\|stream' | sed 's/href="//;s/"$//'); echo "mlbbite link=$mb"; case "$mb" in http*) get mlbbite_match "$mb";; /*) get mlbbite_match "https://mlbbite.plus$mb";; esac
