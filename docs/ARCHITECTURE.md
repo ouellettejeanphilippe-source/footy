@@ -120,3 +120,7 @@ Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (p
 - `unwrapOnHockeyPlayer(href)`, `isJunkStreamHost(host, path)` (`js/scrapers.js`) : exportés, testés dans `tests/unit_scrapers.test.js`.
 - Un lien `topLevel: true` (pages de miroirs, repli « Page du match ») est ouvert par `renderFluxItem` (`js/ui.js`) dans un nouvel onglet au lieu du Multiview.
 - `data/streams.json` contient en plus `fetch` (compteurs de requêtes), `playerHosts` (lecteurs par hôte), `sources[].matchPagesOk/matchPagesFail` et `matches[].scrapeError` pour diagnostiquer un run GitHub Actions sans relire les logs.
+
+### Relance manuelle du cache serveur (Options → Réseau & Proxys)
+- `openStreamsWorkflow()` (`js/multiview.js`) ouvre `STREAMS_WORKFLOW_URL` (`js/config.js`) : la page GitHub Actions du workflow horaire, dont le bouton « Run workflow » régénère `data/streams.json` en ≈ 2 min.
+- `reloadPrefetchedStreams()` (`js/multiview.js`) appelle `loadPrefetchedStreams(true)` (`js/main.js`, lecture sans cache) puis `loadAll(true, false)` pour refusionner les liens dans la grille ; `renderProxyStatus()` affiche matchs, liens, sources OK et âge du cache.

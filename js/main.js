@@ -156,8 +156,9 @@ export function fetchSourcePages(scraper, sports) {
 
 /* Charge data/streams.json (généré toutes les heures par GitHub Actions) : liste de matchs
    déjà associés à leur page et à leurs flux. Servi depuis la même origine, donc sans proxy. */
-export function loadPrefetchedStreams() {
-    return fetch('data/streams.json?t=' + Math.floor(Date.now() / 300000))
+export function loadPrefetchedStreams(force) {
+    // Clé de cache par tranche de 5 min ; `force` (bouton des Options) lit la version fraîche.
+    return fetch('data/streams.json?t=' + (force ? Date.now() : Math.floor(Date.now() / 300000)), force ? { cache: 'no-cache' } : undefined)
         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function(data) {
             if (!data || !Array.isArray(data.matches)) throw new Error('format');

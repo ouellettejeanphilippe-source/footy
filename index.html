@@ -240,6 +240,13 @@
             <button class="btn" onclick="saveProxySettings()">💾 Enregistrer et retester</button>
             <button class="btn o" onclick="resetProxyHealth(); showToast('Historique des proxys réinitialisé'); renderProxyStatus();">♻️ Réinitialiser l'historique des proxys</button>
           </div>
+          <div style="font-size:13px; color:var(--muted); line-height:1.5; margin-top:4px;">
+            Le cache serveur est recalculé chaque heure (à :17 UTC). Pour le relancer tout de suite : ouvrez le workflow sur GitHub, cliquez « Run workflow », puis rechargez les liens ici environ deux minutes plus tard.
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn o" onclick="openStreamsWorkflow()" title="Ouvre la page GitHub Actions du workflow (bouton « Run workflow »)">▶️ Lancer le calcul sur GitHub</button>
+            <button class="btn o" id="btn-reload-prefetched" onclick="reloadPrefetchedStreams()" title="Relit data/streams.json sans attendre">🔄 Recharger les liens serveur</button>
+          </div>
         </div>
       </div>
 

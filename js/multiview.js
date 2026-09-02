@@ -7,7 +7,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage } from './scrapers.js';
-import { loadAll } from './main.js';
+import { loadAll, loadPrefetchedStreams } from './main.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -2890,8 +2890,42 @@ export function renderProxyStatus() {
         return state + ' ' + esc(p.label || p.id);
     });
     var info = window.prefetchedStreamsInfo;
-    var pre = info && info.generatedAt ? ('Cache serveur : ' + info.count + ' matchs, généré il y a ' + info.ageMin + ' min. ') : 'Cache serveur : indisponible. ';
+    var pre = 'Cache serveur : indisponible. ';
+    if (info && info.generatedAt) {
+        var srcOk = (info.sources || []).filter(function(s) { return s && s.ok; }).length;
+        var srcAll = (info.sources || []).length;
+        var streams = 0;
+        (window.prefetchedStreamMatches || []).forEach(function(m) { streams += (m.streamLinks || []).length; });
+        pre = 'Cache serveur : ' + info.count + ' matchs, ' + streams + ' liens, ' + srcOk + '/' + srcAll + ' sources, généré il y a ' + info.ageMin + ' min. ';
+    }
     el.innerHTML = pre + 'Proxys : ' + (parts.join(' · ') || 'aucun');
+}
+
+/* Ouvre la page GitHub Actions du workflow horaire : le bouton « Run workflow » y lance
+   un calcul immédiat de data/streams.json (le site étant statique, l'app ne peut pas
+   appeler l'API GitHub sans jeton). */
+export function openStreamsWorkflow() {
+    var url = window.STREAMS_WORKFLOW_URL || 'https://github.com/ouellettejeanphilippe-source/footy/actions/workflows/scrape_streams.yml';
+    window.open(url, '_blank', 'noopener');
+    showToast('Sur GitHub : « Run workflow », puis revenez et cliquez « Recharger les liens serveur » (≈ 2 min).');
+}
+
+/* Relit data/streams.json tout de suite (sans attendre la tranche de 5 min) et refusionne
+   les liens dans la grille. */
+export function reloadPrefetchedStreams() {
+    var btn = document.getElementById('btn-reload-prefetched');
+    if (btn) btn.disabled = true;
+    var before = window.prefetchedStreamsInfo ? window.prefetchedStreamsInfo.generatedAt : null;
+    return loadPrefetchedStreams(true).then(function(list) {
+        var info = window.prefetchedStreamsInfo || {};
+        renderProxyStatus();
+        if (!info.generatedAt) showToast('Cache serveur indisponible pour le moment.');
+        else if (before && info.generatedAt === before) showToast('Cache serveur inchangé (généré il y a ' + info.ageMin + ' min). Le workflow tourne encore ?');
+        else showToast('Liens serveur rechargés : ' + list.length + ' matchs (il y a ' + info.ageMin + ' min).');
+        if (typeof window.loadAll === 'function') return window.loadAll(true, false);
+    }).catch(function(e) {
+        showToast('Rechargement impossible : ' + (e && e.message ? e.message : e));
+    }).then(function() { if (btn) btn.disabled = false; });
 }
 
 export function saveProxySettings() {
@@ -3251,6 +3285,8 @@ window.buildSwatches = buildSwatches;
 window.renderSourcesStatus = renderSourcesStatus;
 window.initProxySettings = initProxySettings;
 window.renderProxyStatus = renderProxyStatus;
+window.openStreamsWorkflow = openStreamsWorkflow;
+window.reloadPrefetchedStreams = reloadPrefetchedStreams;
 window.saveProxySettings = saveProxySettings;
 window.renderScrapeLogs = renderScrapeLogs;
 window.exportDebugLogs = exportDebugLogs;

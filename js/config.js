@@ -67,6 +67,10 @@ export function getSourceCandidates(id) {
     return out;
 }
 
+/* Dépôt GitHub de l'application : page du workflow qui pré-calcule data/streams.json. */
+export var REPO_URL = 'https://github.com/ouellettejeanphilippe-source/footy';
+export var STREAMS_WORKFLOW_URL = REPO_URL + '/actions/workflows/scrape_streams.yml';
+
 // Dynamic Domain Resolution
 export async function fetchRemoteConfig() {
     try {
@@ -182,6 +186,7 @@ window.sportOfLeague = sportOfLeague;
 window.getSourcePages = getSourcePages;
 window.getSourceCandidates = getSourceCandidates;
 window.SOURCE_MIRRORS = SOURCE_MIRRORS;
+window.STREAMS_WORKFLOW_URL = STREAMS_WORKFLOW_URL;
 window.rebuildProxies = rebuildProxies;
 window.getProxySettings = getProxySettings;
     return PROXIES;
