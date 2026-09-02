@@ -547,6 +547,11 @@ export function parseSportsurge(html, pageUrl) {
   var matches = [];
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var base = pageUrl || SPORTSURGE_URL;
+  // Le site déclare <base href="https://v2.sportsurge.net/"> : ses liens relatifs
+  // ("watch-63082-…-8/") se résolvent à la racine, PAS sous /watch-<sport>-streams/
+  // (sinon 404 : c'est ce qui vidait les pages de match côté serveur).
+  var baseEl = doc.querySelector('base[href]');
+  if (baseEl && /^https?:\/\//i.test(baseEl.getAttribute('href') || '')) base = baseEl.getAttribute('href');
   var rows = doc.querySelectorAll('a.match-row[href]');
   [].forEach.call(rows, function(a) {
       var href = a.getAttribute('href') || '';
