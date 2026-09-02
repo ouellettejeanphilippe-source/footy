@@ -168,13 +168,19 @@ export function loadPrefetchedStreams(force) {
             list.forEach(function(m) { m.prefetched = true; m.streamsLoaded = !!(m.streamLinks && m.streamLinks.length); });
             window.prefetchedStreamMatches = list;
             window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [] };
+            window.prefetchedStreamsLoadedAt = Date.now();
             (data.sources || []).forEach(function(src) {
                 if (src && src.url) updateSourceStatus(getDomain(src.url), src.ok ? 'success' : 'warning', src.matches || 0, (src.ok ? 'serveur OK' : 'serveur: ' + (src.error || 'échec')) + (ageMin !== null ? ' (' + ageMin + ' min)' : ''));
             });
             lg('Flux pré-calculés', list.length + ' matchs, généré il y a ' + ageMin + ' min');
             return list;
         })
-        .catch(function(e) { lg('Flux pré-calculés indisponibles', e.message); window.prefetchedStreamMatches = []; return []; });
+        .catch(function(e) {
+            lg('Flux pré-calculés indisponibles', e.message);
+            window.prefetchedStreamMatches = [];
+            window.prefetchedStreamsLoadedAt = Date.now(); // sinon on réessaierait à chaque passe
+            return [];
+        });
 }
 
 var loadInFlight = null;
@@ -207,8 +213,16 @@ async function loadAllRun(isBackground, forceScrape){
   if (!window.hasLoadedOnce && !isBackground) {
       await fetchRemoteConfig();
   }
-  if (!window.prefetchedStreamMatches || !isBackground) {
-      await loadPrefetchedStreams();
+  /* Le cache serveur (data/streams.json) est régénéré chaque heure. La condition
+     précédente (`!window.prefetchedStreamMatches || !isBackground`) ne le relisait
+     jamais lors d'une passe d'arrière-plan : après le premier chargement la variable
+     reste définie, même quand elle vaut []. Une session laissée ouverte plusieurs
+     heures restait donc sur les liens du démarrage. On le relit quand il a plus de
+     10 minutes, en forçant pour contourner la clé de cache de 5 minutes. */
+  var prefetchAge = window.prefetchedStreamsLoadedAt ? Date.now() - window.prefetchedStreamsLoadedAt : Infinity;
+  var prefetchStale = prefetchAge > 10 * 60 * 1000;
+  if (!window.prefetchedStreamMatches || !isBackground || prefetchStale) {
+      await loadPrefetchedStreams(prefetchStale);
   }
   setupMultivisionUI();
 
@@ -244,7 +258,17 @@ async function loadAllRun(isBackground, forceScrape){
       // Async scrape sites
       var nowTime = Date.now();
       var isToday = (TARGET_DATE.toDateString() === new Date().toDateString());
-      var skipScraping = !isToday || (!forceScrape && (nowTime - window.lastScrapeTime < 15 * 60 * 1000));
+      /* Le cache serveur (data/streams.json) agrège déjà les huit sources toutes les
+         heures, sans proxy et de façon déterministe. Le scraping en direct des pages de
+         liste n'est donc qu'un secours : on ne l'exécute que si ce cache manque, est vide
+         ou date de plus de trois heures (workflow GitHub en panne). Cela supprime des
+         centaines de requêtes via proxys CORS à chaque chargement, qui étaient la
+         principale cause de lenteur et de variation du nombre de liens. */
+      var prefetchInfo = window.prefetchedStreamsInfo;
+      var prefetchUsable = !!(prefetchInfo && prefetchInfo.count > 0 && prefetchInfo.ageMin !== null && prefetchInfo.ageMin < 180);
+      var skipScraping = !isToday
+          || (!forceScrape && (prefetchUsable || nowTime - window.lastScrapeTime < 15 * 60 * 1000));
+      if (prefetchUsable && !forceScrape) lg('Cache serveur utilisé', prefetchInfo.count + ' matchs, ' + prefetchInfo.ageMin + ' min — scraping en direct inutile');
 
       if (skipScraping) {
                     // Just merge with existing scrapedMatches and update API
@@ -278,12 +302,17 @@ async function loadAllRun(isBackground, forceScrape){
           // Run background fetch completely asynchronously so it never blocks the UI
           setTimeout(function() {
 
-            // Only fetch sub pages for main leagues by default at startup
-            var startupMatches = S.matches.filter(function(m) {
-                var t = leagueTier(m.league);
-                return t === 'main' || t === 'secondary';
-            });
-            fetchSubPages(startupMatches);
+            /* Pré-scraping des pages de match au démarrage : une centaine de requêtes via
+               proxys CORS. Inutile quand le cache serveur fournit déjà les liens ; le
+               scraping d'un match précis reste déclenché à l'ouverture de sa fiche
+               (scrapeMatchFlux). On ne le lance donc qu'en mode secours. */
+            if (!prefetchUsable) {
+                var startupMatches = S.matches.filter(function(m) {
+                    var t = leagueTier(m.league);
+                    return t === 'main' || t === 'secondary';
+                });
+                fetchSubPages(startupMatches);
+            }
 
           }, 0);
 
@@ -435,12 +464,17 @@ async function loadAllRun(isBackground, forceScrape){
                           requestAnimationFrame(processChunk);
                       } else {
 
-            // Only fetch sub pages for main leagues by default at startup
-            var startupMatches = S.matches.filter(function(m) {
-                var t = leagueTier(m.league);
-                return t === 'main' || t === 'secondary';
-            });
-            fetchSubPages(startupMatches);
+            /* Pré-scraping des pages de match au démarrage : une centaine de requêtes via
+               proxys CORS. Inutile quand le cache serveur fournit déjà les liens ; le
+               scraping d'un match précis reste déclenché à l'ouverture de sa fiche
+               (scrapeMatchFlux). On ne le lance donc qu'en mode secours. */
+            if (!prefetchUsable) {
+                var startupMatches = S.matches.filter(function(m) {
+                    var t = leagueTier(m.league);
+                    return t === 'main' || t === 'secondary';
+                });
+                fetchSubPages(startupMatches);
+            }
 
                       }
                   }
@@ -449,12 +483,17 @@ async function loadAllRun(isBackground, forceScrape){
               } else {
                   buildEPG(S.matches);
                   setTimeout(function() {
-            // Only fetch sub pages for main leagues by default at startup
-            var startupMatches = S.matches.filter(function(m) {
-                var t = leagueTier(m.league);
-                return t === 'main' || t === 'secondary';
-            });
-            fetchSubPages(startupMatches);
+            /* Pré-scraping des pages de match au démarrage : une centaine de requêtes via
+               proxys CORS. Inutile quand le cache serveur fournit déjà les liens ; le
+               scraping d'un match précis reste déclenché à l'ouverture de sa fiche
+               (scrapeMatchFlux). On ne le lance donc qu'en mode secours. */
+            if (!prefetchUsable) {
+                var startupMatches = S.matches.filter(function(m) {
+                    var t = leagueTier(m.league);
+                    return t === 'main' || t === 'secondary';
+                });
+                fetchSubPages(startupMatches);
+            }
  }, 0);
               }
                         }, 0);
@@ -522,7 +561,7 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
       // Delay to ensure the initial cache render doesn't block the dynamic domain fetch
       setTimeout(() => loadAll(true, false), 10);
   } else {
-      loadAll(window.hasLoadedOnce, false);
+      loadAll(false, false); // premier chargement sans cache : passe visible, avec l'écran d'attente
   }
 
   // Background auto-update every 60 seconds

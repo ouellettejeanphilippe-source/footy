@@ -126,11 +126,23 @@ export const SCRAPERS_CONFIG = [
     { name: 'VIPLeague', url: VIPLEAGUE_URL, id: 'vipleague' },
     { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams', homepageHasMatches: false, pages: [
         { path: 'league/soccerstreams', sports: ['soccer'] }, { path: 'league/nflstreams', sports: ['nfl'] }, { path: 'league/nbastreams', sports: ['nba'] },
-        { path: 'league/nhlstreams', sports: ['nhl'] }, { path: 'league/mlbstreams', sports: ['mlb'] }, { path: 'league/mmastreams', sports: ['mma'] },
-        { path: 'league/boxingstreams', sports: ['boxing'] }, { path: 'league/cfbstreams', sports: ['cfb'] }, { path: 'league/f1streams', sports: ['f1'] },
+        // league/nhlstreams et league/cfbstreams redirigent vers crackstreams.mx qui répond 404 : retirées.
+        { path: 'league/mlbstreams', sports: ['mlb'] }, { path: 'league/mmastreams', sports: ['mma'] },
+        { path: 'league/boxingstreams', sports: ['boxing'] }, { path: 'league/f1streams', sports: ['f1'] },
         { path: 'league/wnbastreams', sports: ['wnba'] }, { path: 'league/wwestreams', sports: ['wwe'] }, { path: 'league/aew', sports: ['wwe'] }, { path: 'league/ncaab', sports: ['ncaab'] }
     ] }
 ];
+
+/* Hôtes dont les pages de match ne répondent jamais depuis un serveur ou un proxy CORS :
+   les interroger coûte un aller-retour et un délai d'attente pour rien.
+   Mesuré le 2026-09-02 sur une exécution complète : footybite.bid a échoué 58 fois sur 58
+   (403 Cloudflare sur /game/, alors que son accueil passe), les miroirs Streameast 14 fois
+   sur 15 (429 « error code 1015 »). Leurs matchs restent découverts par l'accueil, et
+   leurs flux récupérés via les pages du même match sur les autres sources (altUrls). */
+export var MATCH_PAGE_BLOCKED_HOSTS = /(^|\.)(footybite\.[a-z.]+|(the)?streameast\.[a-z.]+|gostreameast\.[a-z.]+)$/i;
+export function isMatchPageBlocked(url) {
+    try { return MATCH_PAGE_BLOCKED_HOSTS.test(new URL(url).hostname); } catch (e) { return false; }
+}
 
 /* Sport « canonique » d'une ligue (clé utilisée par SCRAPERS_CONFIG[].pages[].sports). */
 export function sportOfLeague(league) {
@@ -185,6 +197,7 @@ window.applySourceUrl = applySourceUrl;
 window.sportOfLeague = sportOfLeague;
 window.getSourcePages = getSourcePages;
 window.getSourceCandidates = getSourceCandidates;
+window.isMatchPageBlocked = isMatchPageBlocked;
 window.SOURCE_MIRRORS = SOURCE_MIRRORS;
 window.STREAMS_WORKFLOW_URL = STREAMS_WORKFLOW_URL;
 window.rebuildProxies = rebuildProxies;

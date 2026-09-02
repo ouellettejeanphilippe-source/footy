@@ -124,6 +124,97 @@ async function main() {
     assert.strictEqual(se[0].streamLinks[0].topLevel, true);
     ok('parseStreameast : liens des miroirs en ouverture externe');
 
+    // ── Métadonnées d'un lien : site, chaîne, qualité, langue ──────────────
+    const d1 = scrapers.describeStreamLink('https://embedsports.me/nfl/nfl-network-stream-1', 'Lecteur direct');
+    assert.strictEqual(d1.site, 'embedsports.me');
+    assert.strictEqual(d1.channel, 'NFL Network');
+    const d2 = scrapers.describeStreamLink('https://embedsports.me/fia-f1/sky-sports-f1-sky-f1-stream-1', '');
+    assert.strictEqual(d2.channel, 'Sky Sports F1', 'la chaîne la plus spécifique gagne');
+    const d3 = scrapers.describeStreamLink('https://x.tv/rds-montreal', 'RDS 1080p');
+    assert.strictEqual(d3.channel, 'RDS');
+    assert.strictEqual(d3.quality, '1080p');
+    assert.strictEqual(d3.lang, 'FR');
+    const d4 = scrapers.describeStreamLink('https://edge52.dc.beltelecom.by/ngtrk/smil:belarus5.smil/playlist.m3u8', '');
+    assert.strictEqual(d4.channel, 'Belarus 5');
+    const d5 = scrapers.describeStreamLink('https://dudestream1.com/ekiy25', 'Sportsurge · Dudestream1');
+    assert.strictEqual(d5.channel, '', 'aucune chaîne inventée quand rien ne la nomme');
+    assert.strictEqual(d5.quality, '', 'pas de qualité inventée');
+    const d6 = scrapers.describeStreamLink('https://embedsports.me/mlb/reds-vs-padres-stream-1', 'Flux');
+    assert.strictEqual(d6.channel, '', 'une adresse « équipe-vs-équipe » n\'est pas une chaîne');
+    assert.strictEqual(scrapers.describeStreamLink('pas-une-url', 'x').site, '');
+    ok('describeStreamLink : site, chaîne, qualité, langue');
+
+    // ── Pages d'index et adresses équivalentes ─────────────────────────────
+    assert.strictEqual(scrapers.isIndexPageUrl('https://ms.buffstream.io/index-version-27'), true);
+    assert.strictEqual(scrapers.isIndexPageUrl('https://site.tv/index.php'), true);
+    assert.strictEqual(scrapers.isIndexPageUrl('https://site.tv/embed/index'), true);
+    assert.strictEqual(scrapers.isIndexPageUrl('https://embedsports.me/nfl/nfl-network-stream-1'), false);
+    assert.strictEqual(scrapers.isIndexPageUrl('pas-une-url'), false);
+    ok('isIndexPageUrl');
+
+    assert.strictEqual(scrapers.normalizeStreamUrl('https://WWW.Site.tv/embed/1/'), scrapers.normalizeStreamUrl('http://site.tv/embed/1'));
+    assert.notStrictEqual(scrapers.normalizeStreamUrl('https://site.tv/a'), scrapers.normalizeStreamUrl('https://site.tv/b'));
+    ok('normalizeStreamUrl');
+
+    // ── Nettoyage complet dans extractStreamLinks ──────────────────────────
+    const ctx = { matchUrl: 'https://app.buffstreams.is/ncaab-streams/atlanta-dream-w-live-stream', homeTeam: 'Atlanta Dream W', awayTeam: 'Minnesota Lynx W', league: 'WNBA', source: 'buffstreams' };
+    const messyHtml = `<html><body>
+      <iframe src="https://ms.buffstream.io/index-version-27"></iframe>
+      <a href="https://ms.buffstream.io/index-version-27" target="_blank">Regarder</a>
+      <a href="https://embedsports.me/wnba/atlanta-dream-vs-minnesota-lynx-stream-1" target="_blank">Click if you want to watch a different game!</a>
+      <a href="https://embedsports.me/wnba/dream-vs-lynx-stream-2" target="_blank">Flux 720p english</a>
+      <a href="https://WWW.embedsports.me/wnba/dream-vs-lynx-stream-2/" target="_blank">Doublon déguisé</a>
+    </body></html>`;
+    const cleaned = scrapers.extractStreamLinks(messyHtml, ctx);
+    const cleanedUrls = cleaned.map((l) => l.url);
+    assert.ok(!cleanedUrls.some((u) => /index-version-27/.test(u)), 'page d\'index écartée: ' + cleanedUrls.join(','));
+    assert.ok(!cleaned.some((l) => /Click if you want/i.test(l.name)), 'libellé parasite écarté');
+    const uniq = new Set(cleaned.map((l) => scrapers.normalizeStreamUrl(l.url)));
+    assert.strictEqual(uniq.size, cleaned.length, 'aucun doublon après normalisation');
+    const s2 = cleaned.find((l) => /stream-2/.test(l.url));
+    assert.ok(s2, 'le flux annoncé reste présent');
+    assert.strictEqual(s2.quality, '720p');
+    assert.strictEqual(s2.lang, 'EN');
+    assert.strictEqual(s2.site, 'embedsports.me');
+    ok('extractStreamLinks : index, libellés parasites, doublons, métadonnées');
+
+    // ── L'entonnoir s'applique aussi aux liens construits par les parseurs ──
+    const bruts = [
+        { name: 'OnHockey (opens in a new tab)', url: 'https://x.tv/a', quality: 'HD', lang: 'MULTI' },
+        { name: 'OnHockey Belarus 5', url: 'https://edge52.dc.beltelecom.by/ngtrk/smil:belarus5.smil/playlist.m3u8', quality: 'HD', lang: 'MULTI' },
+        { name: 'Flux', url: 'https://ms.buffstream.io/index-version-27', quality: 'HD' },
+        { name: 'RDS', url: 'https://x.tv/rds-1080p', quality: 'SD', lang: 'MULTI' },
+        { name: 'Doublon', url: 'https://X.TV/rds-1080p/', quality: 'HD' },
+        { name: 'Sans protocole', url: '//x.tv/b', quality: 'HD' },
+        { name: 'Déjà mesuré', url: 'https://x.tv/c', quality: '720p', lang: 'EN' }
+    ];
+    const fin = scrapers.finalizeStreamLinks(bruts);
+    const finUrls = fin.map((l) => l.url);
+    assert.ok(!finUrls.some((u) => /index-version/.test(u)), 'page d\'index écartée');
+    assert.ok(!fin.some((l) => /opens in a new tab/i.test(l.name)), 'libellé parasite écarté');
+    assert.ok(!finUrls.some((u) => u.indexOf('//x.tv/b') === 0), 'adresse sans protocole écartée');
+    assert.strictEqual(finUrls.filter((u) => /rds-1080p/i.test(u)).length, 1, 'doublon casse/barre finale fusionné');
+    const bel = fin.find((l) => /beltelecom/.test(l.url));
+    assert.strictEqual(bel.channel, 'Belarus 5');
+    assert.strictEqual(bel.site, 'edge52.dc.beltelecom.by');
+    assert.strictEqual(bel.quality, '', 'le « HD » par défaut du parseur est retiré faute de preuve');
+    const rds = fin.find((l) => /rds/i.test(l.url));
+    assert.strictEqual(rds.quality, '1080p');
+    assert.strictEqual(rds.lang, 'FR');
+    assert.strictEqual(fin.find((l) => /\/c$/.test(l.url)).quality, '720p', 'une qualité déjà mesurée est conservée');
+    assert.deepStrictEqual(scrapers.finalizeStreamLinks(null), [], 'entrée vide tolérée');
+    ok('finalizeStreamLinks : entonnoir commun à toutes les sources');
+
+    // ── Hôtes dont les pages de match ne répondent jamais ──────────────────
+    const cfg = await import('../js/config.js');
+    assert.strictEqual(cfg.isMatchPageBlocked('https://footybite.bid/game/qatar-vs-oman-1'), true);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://www.streameast.ms/mlb/a-vs-b/'), true);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://v2.gostreameast.is/mlb/a-vs-b/'), true);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://app.buffstreams.is/mlb-streams/x-live-stream'), false);
+    assert.strictEqual(cfg.isMatchPageBlocked('https://methstreams.gs/stream/a-vs-b'), false);
+    assert.strictEqual(cfg.isMatchPageBlocked('pas-une-url'), false);
+    ok('isMatchPageBlocked : Footybite et Streameast écartés, les autres gardés');
+
     console.log(`unit_scrapers: ${n} groupes de tests OK`);
     process.exit(0);
 }

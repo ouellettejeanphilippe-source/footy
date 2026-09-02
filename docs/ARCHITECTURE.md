@@ -145,3 +145,20 @@ Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (p
 - **TheSportsDB** (`parseSportsDbEvents`, `js/scrapers.js`) : WWE, AEW, boxe, UFC, ONE — sports absents d'ESPN. Les événements sans heure (`strTime` à `00:00:00`) gardent leur date et reçoivent 20:00, sinon la conversion UTC → Est les ferait basculer à la veille.
 - **PWHL** : thepwhl.com (`parsePWHLSchedule`), aucune API publique.
 - **Esports** : API lolesports.
+
+## Mise à jour des liens : une seule voie (2026-09-02)
+
+Auparavant six chemins concurrents alimentaient `m.streamLinks`. Il n'en reste que deux :
+
+1. **Cache serveur, automatique.** `data/streams.json`, régénéré chaque heure par GitHub Actions, agrège les huit sources sans proxy. `loadPrefetchedStreams(force)` le lit au démarrage puis dès qu'il dépasse 10 minutes.
+2. **Scraping d'un match, à la demande.** `scrapeMatchFlux` s'exécute à l'ouverture d'une fiche de match.
+
+Le scraping en direct des pages de liste (`fetchSourcePages`) et le pré-scraping au démarrage (`fetchSubPages`) ne servent plus que de secours : `prefetchUsable` dans `loadAll` les déclenche uniquement si le cache manque, est vide ou dépasse trois heures.
+
+`loadAll` est protégé contre le chevauchement : une passe d'arrière-plan lancée pendant qu'une autre tourne réutilise la promesse en cours.
+
+### Hôtes jamais interrogés
+`isMatchPageBlocked` (`js/config.js`) écarte Footybite et les miroirs Streameast du téléchargement : mesurés à 58 échecs sur 58 et 14 sur 15. Leur lien reste proposé à l'utilisateur, dont le navigateur y accède sans problème.
+
+### Entonnoir des liens
+`finalizeStreamLinks` (`js/scrapers.js`) est le passage obligé de tout lien, quelle que soit sa provenance : écarte les pages d'index et les libellés parasites, dédoublonne sur l'adresse normalisée, puis renseigne site, chaîne de télévision, qualité et langue via `describeStreamLink`.

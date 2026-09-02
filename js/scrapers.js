@@ -1,5 +1,5 @@
 import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo } from './match.js';
@@ -54,14 +54,14 @@ export function parseStreameast(html){
               }
           }
 
-          var streamLinks = [{
+          var streamLinks = finalizeStreamLinks([{
               name: 'Streameast - Flux',
               quality: extractQuality(playerLink) === 'SD' ? 'HD' : extractQuality(playerLink),
               lang: 'MULTI',
               url: playerLink,
               icon: '📺',
               topLevel: true
-          }];
+          }]);
 
           var l = category.toLowerCase().replace(/-/g, ' ');
 
@@ -797,6 +797,7 @@ export function parseOnHockey(html) {
                           startTimeStr = getEstTimeStrFromDate(gmt);
                       }
 
+                      streamLinksArr = finalizeStreamLinks(streamLinksArr);
                       matches.push({
                           id: 'onhockey_' + Date.now() + '_' + matchIndex++,
                           league: formatLeagueName(leagueName),
@@ -1637,6 +1638,174 @@ export function isJunkStreamHost(hostname, path) {
     return true;
 }
 
+/* Chaînes de télévision reconnues dans l'adresse ou le libellé d'un lecteur.
+   Ordre important : les entrées les plus spécifiques d'abord (« sky sports f1 » avant
+   « sky sports »), sinon la moins précise gagnerait. */
+var TV_CHANNELS = [
+    ['sky sports f1', 'Sky Sports F1'], ['sky sports main event', 'Sky Sports Main Event'],
+    ['sky sports football', 'Sky Sports Football'], ['sky sports arena', 'Sky Sports Arena'],
+    ['sky sports action', 'Sky Sports Action'], ['sky sports', 'Sky Sports'], ['sky f1', 'Sky Sports F1'],
+    ['nfl redzone', 'NFL RedZone'], ['redzone', 'NFL RedZone'],
+    ['nfl network', 'NFL Network'], ['nflnetwork', 'NFL Network'],
+    ['nhl network', 'NHL Network'], ['nhlnetwork', 'NHL Network'],
+    ['nba tv', 'NBA TV'], ['nbatv', 'NBA TV'],
+    ['mlb network', 'MLB Network'], ['mlbnetwork', 'MLB Network'],
+    ['espn deportes', 'ESPN Deportes'], ['espnu', 'ESPNU'], ['espn2', 'ESPN2'], ['espn', 'ESPN'],
+    ['tsn', 'TSN'], ['rds', 'RDS'], ['sportsnet', 'Sportsnet'],
+    ['bein sports', 'beIN Sports'], ['beinsports', 'beIN Sports'], ['bein', 'beIN Sports'],
+    ['fox sports', 'Fox Sports'], ['foxsports', 'Fox Sports'],
+    ['tnt sports', 'TNT Sports'], ['tntsports', 'TNT Sports'],
+    ['dazn', 'DAZN'], ['peacock', 'Peacock'], ['paramount', 'Paramount+'],
+    ['prime video', 'Prime Video'], ['amazon prime', 'Prime Video'],
+    ['canal+', 'Canal+'], ['canalplus', 'Canal+'], ['eurosport', 'Eurosport'],
+    ['belarus 5', 'Belarus 5'], ['belarus5', 'Belarus 5'],
+    ['usa network', 'USA Network'], ['abc', 'ABC'], ['cbs', 'CBS'], ['nbc', 'NBC']
+];
+
+var LANG_HINTS = [
+    [/\b(english|anglais|\ben\b|uk|usa|\bus\b)\b/i, 'EN'],
+    [/\b(french|fran[cç]ais|\bfr\b|rds|canal\+)\b/i, 'FR'],
+    [/\b(spanish|espa[nñ]ol|\bes\b|deportes)\b/i, 'ES'],
+    [/\b(german|deutsch|\bde\b)\b/i, 'DE'],
+    [/\b(italian|italiano|\bit\b)\b/i, 'IT'],
+    [/\b(portuguese|portugu[eê]s|\bpt\b|brasil)\b/i, 'PT'],
+    [/\b(arabic|arab|\bar\b)\b/i, 'AR']
+];
+
+/* Décrit un lien de lecteur à partir de son adresse et de son libellé :
+     site    : hôte lisible (« embedsports.me »), pour savoir d'où vient le flux ;
+     channel : chaîne de télévision diffusée, quand elle est identifiable ;
+     quality : uniquement si l'adresse ou le libellé l'annonce réellement ;
+     lang    : langue déduite du libellé, de la chaîne ou du pays dans l'adresse.
+   Ces informations servent à choisir un flux sans l'ouvrir. */
+export function describeStreamLink(url, label) {
+    var out = { site: '', channel: '', quality: '', lang: '' };
+    var host = '', path = '';
+    try { var u = new URL(url); host = u.hostname.replace(/^www\./, ''); path = decodeURIComponent(u.pathname + u.search); }
+    catch (e) { path = String(url || ''); }
+    out.site = host;
+
+    var slug = path.replace(/[_+%]/g, ' ').replace(/[/.-]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+    var text = (String(label || '') + ' ' + slug).toLowerCase();
+
+    // Une adresse « équipe-vs-équipe » désigne un match, pas une chaîne.
+    var looksLikeMatch = /\bvs\b|\bv\b\s|-vs-/.test(path.toLowerCase());
+    for (var i = 0; i < TV_CHANNELS.length; i++) {
+        var needle = TV_CHANNELS[i][0];
+        if (text.indexOf(needle) >= 0) {
+            if (looksLikeMatch && /^(abc|cbs|nbc|espn|tsn|rds)$/.test(needle)) continue; // trop court pour trancher
+            out.channel = TV_CHANNELS[i][1];
+            break;
+        }
+    }
+
+    var qm = /\b(4k|2160p?|1440p|1080p|720p|480p|360p|full ?hd|uhd)\b/i.exec(text);
+    if (qm) {
+        var q = qm[1].toLowerCase();
+        out.quality = q === 'full hd' || q === 'fullhd' ? '1080p' : (q === 'uhd' ? '4K' : q.toUpperCase().replace('P', 'p'));
+    } else if (/\bhd\b/i.test(String(label || ''))) {
+        out.quality = 'HD';
+    }
+
+    for (var j = 0; j < LANG_HINTS.length; j++) {
+        if (LANG_HINTS[j][0].test(text)) { out.lang = LANG_HINTS[j][1]; break; }
+    }
+    if (!out.lang && out.channel) {
+        if (/rds|canal\+/i.test(out.channel)) out.lang = 'FR';
+        else if (/espn deportes/i.test(out.channel)) out.lang = 'ES';
+    }
+    return out;
+}
+
+/* Libellés qui ne désignent jamais un flux.
+   Deux familles, volontairement séparées :
+     - des phrases parasites qui peuvent apparaître n'importe où dans le libellé, souvent
+       accolées au nom de la source (« OnHockey (opens in a new tab) ») ;
+     - des mots de navigation qui ne sont parasites qu'en tête de libellé, sinon on
+       écarterait à tort un flux légitime nommé « Home ice feed » par exemple. */
+var JUNK_LABEL_ANYWHERE = /(opens in a new tab|click if you want|watch a different game|regarder un autre match)/i;
+var JUNK_LABEL_PREFIX = /^(voir tous|see all|more games|autres matchs|home|accueil|menu)\b/i;
+function isJunkStreamLabel(name) {
+    var t = String(name || '').trim();
+    if (!t) return false;
+    return JUNK_LABEL_ANYWHERE.test(t) || JUNK_LABEL_PREFIX.test(t);
+}
+
+/* Adresses qui pointent vers l'accueil ou une page d'index d'un site de lecteurs plutôt
+   que vers un flux : « index-version-27 », « /index.php », « /home ». Elles arrivaient
+   attachées à plusieurs matchs différents, ce qui trompait l'utilisateur. */
+export function isIndexPageUrl(url) {
+    var path = '';
+    try { path = new URL(url).pathname.toLowerCase(); } catch (e) { return false; }
+    if (/^\/?(index|home|accueil)([.-][a-z0-9-]*)?\/?$/.test(path)) return true;
+    if (/\/index([.-][a-z0-9-]*)?(\.[a-z]+)?$/.test(path)) return true;
+    return false;
+}
+
+/* Deux adresses ne différant que par le protocole, « www. », une barre finale ou la
+   casse de l'hôte désignent le même lecteur : on les compare sous forme normalisée. */
+export function normalizeStreamUrl(url) {
+    var raw = String(url || '').trim();
+    try {
+        var u = new URL(raw);
+        var host = u.hostname.toLowerCase().replace(/^www\./, '');
+        var path = u.pathname.replace(/\/+$/, '');
+        return host + path + (u.search || '');
+    } catch (e) { return raw.toLowerCase().replace(/\/+$/, ''); }
+}
+
+/* Passage obligé de tout lien de lecteur, quelle que soit sa provenance (extraction
+   générique, parseur OnHockey, parseur Streameast, cache serveur). Il écarte les faux
+   liens, dédoublonne réellement et renseigne site / chaîne / qualité / langue.
+   Avant, seule l'extraction générique nettoyait et enrichissait : un tiers des liens
+   arrivaient sans provenance, avec une qualité « HD » inventée par défaut. */
+/* Lien de repli vers la page du match sur le site source : ce n'est pas un lecteur
+   intégrable, mais l'utilisateur peut l'ouvrir dans un onglet. Renvoie un tableau vide
+   si ce lien est déjà présent. */
+export function matchPageFallbackLink(matchUrl, existing) {
+    if (!matchUrl) return [];
+    if ((existing || []).some(function(l) { return l && l.url === matchUrl; })) return [];
+    var siteName = matchUrl;
+    try { siteName = new URL(matchUrl).hostname.replace(/^(www|v2)\./, ''); } catch (e) {}
+    return [{ name: 'Page du match sur ' + siteName, quality: '', lang: '', url: matchUrl, icon: '🔗', topLevel: true }];
+}
+
+export function finalizeStreamLinks(links) {
+    var seen = {};
+    var out = [];
+    (links || []).forEach(function(l) {
+        if (!l || !l.url || typeof l.url !== 'string') return;
+        var u = l.url.trim();
+        if (u.indexOf('http') !== 0) return;
+        if (isJunkStreamLabel(l.name)) return;
+        if (isIndexPageUrl(u)) return;
+
+        var key = normalizeStreamUrl(u);
+        if (seen[key]) return;
+        seen[key] = true;
+
+        l.url = u;
+        l.name = String(l.name || 'Flux').replace(/\s+/g, ' ').trim();
+        if (l.name.length > 60) l.name = l.name.slice(0, 57) + '...';
+
+        var info = describeStreamLink(u, l.name);
+        l.site = info.site;
+        if (info.channel) l.channel = info.channel;
+
+        /* Qualité : les parseurs mettaient « HD » ou « SD » par défaut, si bien que le
+           badge affichait la même chose pour tout le monde. On ne garde une valeur que
+           si l'adresse ou le libellé l'annonce vraiment ; sinon le badge est masqué. */
+        if (info.quality) l.quality = info.quality;
+        else if (!/\d{3,4}p|4k|kbps/i.test(String(l.quality || ''))) l.quality = '';
+
+        if (info.lang) l.lang = info.lang;
+        else l.lang = String(l.lang || '').toUpperCase() === 'MULTI' ? 'MULTI' : String(l.lang || '').toUpperCase();
+
+        out.push(l);
+    });
+    return out;
+}
+
 export function extractStreamLinks(html, m) {
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
@@ -2097,6 +2266,7 @@ export function extractStreamLinks(html, m) {
     // (images, feuilles de style, racine du site, pages d'accueil des agrégateurs partenaires).
     var selfOrigin = '';
     try { selfOrigin = new URL(m.matchUrl).origin; } catch(e) {}
+    var seenNormalized = {};
     var partnerHosts = ['footybite', 'nbabite', 'nflbite', 'mlbbite', 'totalsportek', 'sportsurge', 'buffstreams', 'streameast', 'methstreams', 'vipleague', 'hesgoal'];
     links = links.filter(function(l) {
         if (!l || !l.url || typeof l.url !== 'string') return false;
@@ -2104,6 +2274,13 @@ export function extractStreamLinks(html, m) {
         var low = u.toLowerCase().split('?')[0];
         if (/\.(png|jpe?g|gif|svg|webp|ico|css|js|json|xml|txt|woff2?)$/.test(low)) return false;
         if (selfOrigin && (u === selfOrigin || u === selfOrigin + '/')) return false;
+        if (isJunkStreamLabel(l.name)) return false; // « Click if you want… », « (opens in a new tab) »
+        if (isIndexPageUrl(u)) return false;                              // accueil / index d'un site de lecteurs
+        // Dédoublonnage réel : deux adresses ne différant que par le protocole, « www. »
+        // ou une barre finale étaient conservées toutes les deux.
+        var key = normalizeStreamUrl(u);
+        if (seenNormalized[key]) return false;
+        seenNormalized[key] = true;
         try {
             var pu = new URL(u);
             var path = pu.pathname || '/';
@@ -2114,11 +2291,10 @@ export function extractStreamLinks(html, m) {
             if (/\/[a-z-]*(streams?|cracked)\d*\/?$/i.test(path) && !/-vs-|\/game\/|\/watch|\/stream\//i.test(path)) return false;
             if (isPartner && u !== m.matchUrl && !/-vs-|\/game\/|\/watch|\/stream\/|\/embed|\/(mlb|nba|nfl|nhl|soccer|ufc|mma|boxing|f1)\/[a-z0-9-]+/i.test(path)) return false; // lien interne d'un agrégateur
         } catch(e) { return false; }
-        l.url = u;
-        l.name = String(l.name || 'Flux').replace(/\s+/g, ' ').trim();
-        if (l.name.length > 60) l.name = l.name.slice(0, 57) + '...';
         return true;
     });
+
+    links = finalizeStreamLinks(links); // dédoublonnage, faux liens, provenance
 
     // 6. Ultime fallback : Si la source ne donne vraiment aucun autre flux et qu'on a le matchUrl.
     if(links.length===0 && m.matchUrl){
@@ -2138,7 +2314,9 @@ export function extractStreamLinks(html, m) {
 export function scrapeMatchFlux(m, forceRefresh, deep){
   // deep=true (fiche de match ouverte) : on lit aussi les pages du même match sur les autres sources (altUrls)
   if (deep && Array.isArray(m.altUrls) && m.altUrls.length) {
-      var extra = m.altUrls.slice(0, 4);
+      // On n'interroge pas les hôtes qui refusent systématiquement (voir js/config.js) :
+      // c'était jusqu'ici jusqu'à 4 attentes de proxy pour rien à l'ouverture d'une fiche.
+      var extra = m.altUrls.filter(function(u) { return !isMatchPageBlocked(u); }).slice(0, 4);
       var mainP = scrapeMatchFlux(m, forceRefresh, false);
       return mainP.catch(function() {}).then(function() {
           return Promise.allSettled(extra.map(function(u) {
@@ -2166,6 +2344,18 @@ export function scrapeMatchFlux(m, forceRefresh, deep){
           updateMatchUiAfterScrape(m);
           return Promise.resolve();
       }
+  }
+
+  /* Page du match elle-même : inutile de la télécharger quand son hôte refuse
+     systématiquement les serveurs et les proxys (Footybite /game/ en 403, miroirs
+     Streameast en 429). On garde malgré tout le lien : dans le navigateur de
+     l'utilisateur, ces pages s'ouvrent normalement (bouton ↗). Les flux intégrables du
+     match viennent, eux, des autres sources via altUrls. */
+  if (isMatchPageBlocked(m.matchUrl)) {
+      m.streamLinks = m.streamLinks || [];
+      m.streamLinks = m.streamLinks.concat(matchPageFallbackLink(m.matchUrl, m.streamLinks));
+      m.streamsLoaded = true;
+      return Promise.resolve(m.streamLinks);
   }
 
   // Timeout for individual match scrape
@@ -2461,6 +2651,10 @@ window.parseIndycarIcs = parseIndycarIcs;
 window.parsePWHLSchedule = parsePWHLSchedule;
 window.parseWWEIcs = parseWWEIcs;
 window.parseSportsDbEvents = parseSportsDbEvents;
+window.describeStreamLink = describeStreamLink;
+window.isIndexPageUrl = isIndexPageUrl;
+window.finalizeStreamLinks = finalizeStreamLinks;
+window.matchPageFallbackLink = matchPageFallbackLink;
 window.parseSportsurge = parseSportsurge;
 window.parseOnHockey = parseOnHockey;
 window.parseBuffstreams = parseBuffstreams;
