@@ -177,7 +177,30 @@ export function loadPrefetchedStreams(force) {
         .catch(function(e) { lg('Flux pré-calculés indisponibles', e.message); window.prefetchedStreamMatches = []; return []; });
 }
 
-export async function loadAll(isBackground, forceScrape){
+var loadInFlight = null;
+
+/* Six déclencheurs appellent un chargement complet : démarrage, minuterie de 5 minutes,
+   changement de date, bouton « Réessayer », enregistrement des réglages réseau et
+   rechargement du cache serveur. Rien n'empêchait deux passes de se chevaucher : chacune
+   fusionne ses flux dans la même grille (mergeFluxToApi n'ajoute que ce qui manque), donc
+   le nombre de liens affichés changeait d'un instant à l'autre selon l'ordre d'arrivée.
+   Une passe d'arrière-plan est désormais ignorée si une autre est déjà en cours ; une
+   passe demandée par l'utilisateur (premier plan, ou rafraîchissement forcé) passe
+   toujours, car elle réinitialise l'état. */
+export function loadAll(isBackground, forceScrape) {
+    if (loadInFlight && isBackground && !forceScrape) {
+        lg('Chargement déjà en cours', 'passe d\'arrière-plan ignorée');
+        return loadInFlight;
+    }
+    var p = loadAllRun(isBackground, forceScrape);
+    loadInFlight = p;
+    Promise.resolve(p).catch(function() {}).then(function() {
+        if (loadInFlight === p) loadInFlight = null;
+    });
+    return p;
+}
+
+async function loadAllRun(isBackground, forceScrape){
   if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
 
   // Load dynamic domain configuration on initial load
