@@ -2745,7 +2745,8 @@ export function exportDebugLogs() {
             sourcesStatus: sourcesStatus,
             scrapeLogs: scrapeLogs,
             manualLogs: manualStreamLogs,
-            proxies: PROXIES ? PROXIES.map(function(p) { return p.toString(); }) : []
+            proxies: PROXIES ? PROXIES.map(function(p) { return p.id || p.toString(); }) : [],
+            proxyHealth: (typeof window.getProxyHealth === 'function') ? window.getProxyHealth() : null
         };
 
         var jsonString = JSON.stringify(exportData, null, 2);
@@ -2863,7 +2864,50 @@ export function openOptionsPage() {
         buildSwatches();
 
         initPrefs();
+        initProxySettings();
     }
+}
+
+/* ── Réglages réseau (proxy personnalisé, clés API) ─────────────────────── */
+export function initProxySettings() {
+    var st = (typeof window.getProxySettings === 'function') ? window.getProxySettings() : {};
+    var a = document.getElementById('pref-custom-proxy'); if (a) a.value = st.customProxy || '';
+    var b = document.getElementById('pref-cors-sh-key'); if (b) b.value = st.corsShKey || '';
+    var c = document.getElementById('pref-corsproxy-io-key'); if (c) c.value = st.corsProxyIoKey || '';
+    renderProxyStatus();
+}
+
+export function renderProxyStatus() {
+    var el = document.getElementById('proxy-status');
+    if (!el) return;
+    var list = window.PROXIES || [];
+    var health = (typeof window.getProxyHealth === 'function') ? window.getProxyHealth() : {};
+    var parts = list.filter(function(p) { return !p.direct; }).map(function(p) {
+        var h = health[p.id];
+        var state = '⚪';
+        if (h && h.lastOk && (!h.lastFail || h.lastOk >= h.lastFail)) state = '🟢';
+        else if (h && h.lastFail) state = (Date.now() - h.lastFail < 3 * 60 * 1000) ? '🔴' : '🟠';
+        return state + ' ' + esc(p.label || p.id);
+    });
+    var info = window.prefetchedStreamsInfo;
+    var pre = info && info.generatedAt ? ('Cache serveur : ' + info.count + ' matchs, généré il y a ' + info.ageMin + ' min. ') : 'Cache serveur : indisponible. ';
+    el.innerHTML = pre + 'Proxys : ' + (parts.join(' · ') || 'aucun');
+}
+
+export function saveProxySettings() {
+    var read = function(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+    var custom = read('pref-custom-proxy');
+    if (custom && !/^https?:\/\//i.test(custom)) { showToast('Le proxy doit commencer par http(s)://'); return; }
+    try {
+        localStorage.setItem('custom_proxy_url', custom);
+        localStorage.setItem('cors_sh_api_key', read('pref-cors-sh-key'));
+        localStorage.setItem('corsproxy_io_api_key', read('pref-corsproxy-io-key'));
+    } catch (e) {}
+    if (typeof window.rebuildProxies === 'function') window.rebuildProxies();
+    if (typeof window.resetProxyHealth === 'function') window.resetProxyHealth();
+    renderProxyStatus();
+    showToast('Réglages réseau enregistrés. Nouvelle recherche de streams...');
+    if (typeof window.loadAll === 'function') window.loadAll(true, true);
 }
 
 export function openLogsPage() {
@@ -3205,6 +3249,9 @@ window.applyUserBgStyleOnly = applyUserBgStyleOnly;
 window.PALETTES = PALETTES;
 window.buildSwatches = buildSwatches;
 window.renderSourcesStatus = renderSourcesStatus;
+window.initProxySettings = initProxySettings;
+window.renderProxyStatus = renderProxyStatus;
+window.saveProxySettings = saveProxySettings;
 window.renderScrapeLogs = renderScrapeLogs;
 window.exportDebugLogs = exportDebugLogs;
 window.openOptionsPage = openOptionsPage;

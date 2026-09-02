@@ -210,6 +210,39 @@
       <!-- Options Tab -->
       <div id="stab-options" style="display:flex; flex-direction:column; gap:24px;">
 
+      <!-- Réseau & Proxys (recherche de streams) -->
+      <div>
+        <div style="font-weight:bold; font-size:18px; margin-bottom:16px; color:var(--text); display:flex; align-items:center; gap:8px;">
+          🌐
+          Réseau &amp; Proxys (recherche de streams)
+        </div>
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:13px; color:var(--muted); line-height:1.5;">
+            Les liens des matchs sont d'abord lus depuis le cache calculé chaque heure sur GitHub (aucun proxy requis), puis rafraîchis en direct via des proxys CORS publics.
+            Ces proxys ferment ou deviennent payants régulièrement : vous pouvez indiquer ici votre propre proxy (ex. un Cloudflare Worker) ou des clés API, qui seront essayés en premier.
+          </div>
+          <div id="proxy-status" style="font-size:12px; color:var(--muted2);"></div>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--text);">
+            Proxy personnalisé (URL, <code>{url}</code> optionnel)
+            <input type="text" id="pref-custom-proxy" placeholder="https://mon-proxy.workers.dev/?url={url}" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border2); background:var(--btn-bg); color:var(--text); font-size:13px;">
+          </label>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--text);">
+              Clé API cors.sh (optionnel)
+              <input type="text" id="pref-cors-sh-key" placeholder="temp_xxxxxxxx" autocomplete="off" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border2); background:var(--btn-bg); color:var(--text); font-size:13px;">
+            </label>
+            <label style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--text);">
+              Clé API corsproxy.io (optionnel)
+              <input type="text" id="pref-corsproxy-io-key" placeholder="clé du tableau de bord corsproxy.io" autocomplete="off" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border2); background:var(--btn-bg); color:var(--text); font-size:13px;">
+            </label>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn" onclick="saveProxySettings()">💾 Enregistrer et retester</button>
+            <button class="btn o" onclick="resetProxyHealth(); showToast('Historique des proxys réinitialisé'); renderProxyStatus();">♻️ Réinitialiser l'historique des proxys</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Personalization Settings -->
       <div>
         <div style="font-weight:bold; font-size:18px; margin-bottom:16px; color:var(--text); display:flex; align-items:center; gap:8px;">

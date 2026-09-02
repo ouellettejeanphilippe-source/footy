@@ -5,20 +5,67 @@ import { globalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS } from './db.js';
+import { buildProxyList } from './fetcher.js';
 
 /* ══ CONFIG ═════════════════════════════ */
 export var SITE = 'https://footybite.bid/'; // Updated to new footybite.bid domain
-export var MLBITE_URL = 'https://mlbbite.plus/'; // nflbite.is is dead, using nflbite.is as a working fallback on the same network
 export var MLBBITE_PLUS_URL = 'https://mlbbite.plus/';
-export var SPORTSURGE_URL = 'https://sportsurge.net/';
+export var SPORTSURGE_URL = 'https://v2.sportsurge.net/'; // sportsurge.net redirige vers v2.sportsurge.net/welcome/
 export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
-export var STREAMEAST_URL = 'https://v2.streameast.ga/';
+export var STREAMEAST_URL = 'https://v2.gostreameast.is/'; // v2.streameast.ga renvoie 429 depuis sept. 2026
 export var ONHOCKEY_URL = 'https://onhockey.tv/';
-export var VIPLEAGUE_URL = 'https://vipleague.im/';
+export var VIPLEAGUE_URL = 'https://vipleague.vg/live-now-streaming'; // vipleague.im/.io/.cc redirigent vers vipleague.vg ; la grille est sur /live-now-streaming
 export var METHSTREAMS_URL = 'https://methstreams.gs/';
-export var TOTALSPORTEK_URL = 'https://totalsportekz.com/';
-export var STREAMONSPORT_URL = 'https://streamonsport.pro/';
 
+
+/* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
+   Surchargés par la clé MIRRORS de domains.json. */
+export var SOURCE_MIRRORS = {
+    footybite: ['https://footybite.bid/'],
+    mlbbite: ['https://mlbbite.plus/'],
+    sportsurge: ['https://v2.sportsurge.net/', 'https://sportsurge.net/'],
+    buffstreams: ['https://app.buffstreams.is/indexcracked29'],
+    streameast: ['https://v2.gostreameast.is/', 'https://v2.streameast.ga/'],
+    onhockey: ['https://onhockey.tv/'],
+    vipleague: ['https://vipleague.vg/live-now-streaming', 'https://vipleague.io/live-now-streaming', 'https://vipleague.cc/live-now-streaming'],
+    methstreams: ['https://methstreams.gs/']
+};
+
+var SOURCE_VAR_NAMES = {
+    footybite: 'SITE', mlbbite: 'MLBBITE_PLUS_URL', sportsurge: 'SPORTSURGE_URL',
+    buffstreams: 'BUFFSTREAMS_URL', streameast: 'STREAMEAST_URL', onhockey: 'ONHOCKEY_URL', vipleague: 'VIPLEAGUE_URL',
+    methstreams: 'METHSTREAMS_URL'
+};
+
+/* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
+   pour que les parseurs résolvent les liens relatifs contre le bon domaine. */
+export function applySourceUrl(id, url) {
+    if (!id || !url) return;
+    switch (id) {
+        case 'footybite': SITE = url; break;
+        case 'mlbbite': MLBBITE_PLUS_URL = url; break;
+        case 'sportsurge': SPORTSURGE_URL = url; break;
+        case 'buffstreams': BUFFSTREAMS_URL = url; break;
+        case 'streameast': STREAMEAST_URL = url; break;
+        case 'onhockey': ONHOCKEY_URL = url; break;
+        case 'vipleague': VIPLEAGUE_URL = url; break;
+        case 'methstreams': METHSTREAMS_URL = url; break;
+        default: return;
+    }
+    if (typeof window !== 'undefined') window[SOURCE_VAR_NAMES[id]] = url;
+    for (var i = 0; i < SCRAPERS_CONFIG.length; i++) {
+        if (SCRAPERS_CONFIG[i].id === id) SCRAPERS_CONFIG[i].url = url;
+    }
+}
+
+/* Liste ordonnée des URLs à essayer pour une source : URL courante puis miroirs. */
+export function getSourceCandidates(id) {
+    var current = null;
+    for (var i = 0; i < SCRAPERS_CONFIG.length; i++) if (SCRAPERS_CONFIG[i].id === id) current = SCRAPERS_CONFIG[i].url;
+    var out = current ? [current] : [];
+    (SOURCE_MIRRORS[id] || []).forEach(function(u) { if (out.indexOf(u) < 0) out.push(u); });
+    return out;
+}
 
 // Dynamic Domain Resolution
 export async function fetchRemoteConfig() {
@@ -27,45 +74,15 @@ export async function fetchRemoteConfig() {
         var res = await fetch(remoteConfigUrl, { cache: 'no-cache' });
         if (res.ok) {
             var data = await res.json();
-            if (data.SITE) SITE = data.SITE;
-            if (data.MLBITE_URL) MLBITE_URL = data.MLBITE_URL;
-            if (data.MLBBITE_PLUS_URL) MLBBITE_PLUS_URL = data.MLBBITE_PLUS_URL;
-            if (data.SPORTSURGE_URL) SPORTSURGE_URL = data.SPORTSURGE_URL;
-            if (data.BUFFSTREAMS_URL) BUFFSTREAMS_URL = data.BUFFSTREAMS_URL;
-            if (data.STREAMEAST_URL) STREAMEAST_URL = data.STREAMEAST_URL;
-            if (data.ONHOCKEY_URL) ONHOCKEY_URL = data.ONHOCKEY_URL;
-            if (data.VIPLEAGUE_URL) VIPLEAGUE_URL = data.VIPLEAGUE_URL;
-            if (data.METHSTREAMS_URL) METHSTREAMS_URL = data.METHSTREAMS_URL;
-            if (data.TOTALSPORTEK_URL) TOTALSPORTEK_URL = data.TOTALSPORTEK_URL;
-            if (data.STREAMONSPORT_URL) STREAMONSPORT_URL = data.STREAMONSPORT_URL;
-
-            // Re-sync global bindings
-            window.SITE = SITE;
-            window.MLBITE_URL = MLBITE_URL;
-            window.MLBBITE_PLUS_URL = MLBBITE_PLUS_URL;
-            window.SPORTSURGE_URL = SPORTSURGE_URL;
-            window.BUFFSTREAMS_URL = BUFFSTREAMS_URL;
-            window.STREAMEAST_URL = STREAMEAST_URL;
-            window.ONHOCKEY_URL = ONHOCKEY_URL;
-            window.VIPLEAGUE_URL = VIPLEAGUE_URL;
-            window.METHSTREAMS_URL = METHSTREAMS_URL;
-            window.TOTALSPORTEK_URL = TOTALSPORTEK_URL;
-            window.STREAMONSPORT_URL = STREAMONSPORT_URL;
-
-            // Re-sync the config array
-            SCRAPERS_CONFIG.forEach(function(s) {
-                if (s.id === 'footybite') s.url = SITE;
-                if (s.id === 'nflbite') s.url = MLBITE_URL;
-                if (s.id === 'mlbbite') s.url = MLBBITE_PLUS_URL;
-                if (s.id === 'sportsurge') s.url = SPORTSURGE_URL;
-                if (s.id === 'buffstreams') s.url = BUFFSTREAMS_URL;
-                if (s.id === 'streameast') s.url = STREAMEAST_URL;
-                if (s.id === 'onhockey') s.url = ONHOCKEY_URL;
-                if (s.id === 'vipleague') s.url = VIPLEAGUE_URL;
-                if (s.id === 'methstreams') s.url = METHSTREAMS_URL;
-                if (s.id === 'totalsportek') s.url = TOTALSPORTEK_URL;
-                if (s.id === 'streamonsport') s.url = STREAMONSPORT_URL;
-            });
+            var keyToId = { SITE: 'footybite', MLBBITE_PLUS_URL: 'mlbbite', SPORTSURGE_URL: 'sportsurge',
+                BUFFSTREAMS_URL: 'buffstreams', STREAMEAST_URL: 'streameast', ONHOCKEY_URL: 'onhockey', VIPLEAGUE_URL: 'vipleague',
+                METHSTREAMS_URL: 'methstreams' };
+            Object.keys(keyToId).forEach(function(k) { if (data[k]) applySourceUrl(keyToId[k], data[k]); });
+            if (data.MIRRORS && typeof data.MIRRORS === 'object') {
+                Object.keys(data.MIRRORS).forEach(function(id) {
+                    if (Array.isArray(data.MIRRORS[id]) && data.MIRRORS[id].length) SOURCE_MIRRORS[id] = data.MIRRORS[id].slice();
+                });
+            }
             console.log('Dynamic domains loaded successfully from remote config.');
         }
     } catch(e) {
@@ -74,25 +91,97 @@ export async function fetchRemoteConfig() {
 }
 
 
+/* Sources de streams.
+   - url    : page d'accueil (résolution des liens relatifs, miroirs).
+   - pages  : sous-pages par sport à lire en plus (les sites listent maintenant leurs matchs
+              par ligue). Chaque entrée donne le chemin relatif et les sports couverts ;
+              le client ne lit que les pages des sports présents dans la grille du jour,
+              le script serveur les lit toutes.
+   - homepageHasMatches : false quand l'accueil n'est qu'un menu (inutile de le parser). */
 export const SCRAPERS_CONFIG = [
     { name: 'Footybite', url: SITE, id: 'footybite' },
-    { name: 'MLBite', url: MLBITE_URL, id: 'nflbite' },
     { name: 'MLBite+', url: MLBBITE_PLUS_URL, id: 'mlbbite' },
-    { name: 'Sportsurge', url: SPORTSURGE_URL, id: 'sportsurge' },
-    { name: 'Buffstreams', url: BUFFSTREAMS_URL, id: 'buffstreams' },
+    { name: 'Sportsurge', url: SPORTSURGE_URL, id: 'sportsurge', homepageHasMatches: false, pages: [
+        { path: 'watch-nfl-streams/', sports: ['nfl'] }, { path: 'watch-cfb-streams/', sports: ['cfb'] }, { path: 'watch-cfl-streams/', sports: ['cfl'] },
+        { path: 'watch-basketball-streams/', sports: ['nba'] }, { path: 'watch-wnba-streams/', sports: ['wnba'] }, { path: 'watch-ncaab-streams/', sports: ['ncaab'] },
+        { path: 'watch-baseball-streams/', sports: ['mlb'] }, { path: 'watch-hockey-streams/', sports: ['nhl'] },
+        { path: 'watch-mma-streams/', sports: ['mma'] }, { path: 'watch-boxing-streams/', sports: ['boxing'] }, { path: 'watch-wwe-streams/', sports: ['wwe'] },
+        { path: 'watch-rugby-streams/', sports: ['rugby'] }, { path: 'watch-ufl-streams/', sports: ['nfl'] }
+    ] },
+    { name: 'Buffstreams', url: BUFFSTREAMS_URL, id: 'buffstreams', homepageHasMatches: false, pages: [
+        { path: 'mlb-streams-live-10', sports: ['mlb'] }, { path: 'nfl-streams-live-10', sports: ['nfl'] }, { path: 'nbabuffstreams15', sports: ['nba'] },
+        { path: 'nhl-streams-live-10', sports: ['nhl'] }, { path: 'cfb-streams-live-10', sports: ['cfb'] }, { path: 'ncaamstreams', sports: ['ncaab'] },
+        { path: 'boxinglivestreams14', sports: ['boxing'] }, { path: 'mmacracked24', sports: ['mma'] }, { path: 'motor-streams-live-10', sports: ['f1', 'motor'] }
+    ] },
     { name: 'Streameast', url: STREAMEAST_URL, id: 'streameast' },
     { name: 'OnHockey', url: ONHOCKEY_URL, id: 'onhockey' },
     { name: 'VIPLeague', url: VIPLEAGUE_URL, id: 'vipleague' },
-    { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams' },
-    { name: 'Totalsportek', url: TOTALSPORTEK_URL, id: 'totalsportek' },
-    { name: 'Streamonsport', url: STREAMONSPORT_URL, id: 'streamonsport' }
+    { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams', homepageHasMatches: false, pages: [
+        { path: 'league/soccerstreams', sports: ['soccer'] }, { path: 'league/nflstreams', sports: ['nfl'] }, { path: 'league/nbastreams', sports: ['nba'] },
+        { path: 'league/nhlstreams', sports: ['nhl'] }, { path: 'league/mlbstreams', sports: ['mlb'] }, { path: 'league/mmastreams', sports: ['mma'] },
+        { path: 'league/boxingstreams', sports: ['boxing'] }, { path: 'league/cfbstreams', sports: ['cfb'] }, { path: 'league/f1streams', sports: ['f1'] },
+        { path: 'league/wnbastreams', sports: ['wnba'] }, { path: 'league/wwestreams', sports: ['wwe'] }, { path: 'league/aew', sports: ['wwe'] }, { path: 'league/ncaab', sports: ['ncaab'] }
+    ] }
 ];
 
-export var PROXIES = [
-  function(u){ return 'https://corsproxy.org/?'+encodeURIComponent(u); },
-  function(u){ return 'https://proxy.cors.sh/'+u; },
-  function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); }
-];
+/* Sport « canonique » d'une ligue (clé utilisée par SCRAPERS_CONFIG[].pages[].sports). */
+export function sportOfLeague(league) {
+    var l = String(league || '').toLowerCase();
+    if (!l) return 'other';
+    if (/(nhl|pwhl|khl|ahl|shl|liiga)|hockey|lhjmq|qmjhl/.test(l)) return 'nhl';
+    if (/mlb|baseball/.test(l)) return 'mlb';
+    if (/wnba/.test(l)) return 'wnba';
+    if (/ncaa.*basket|college basket|ncaab/.test(l)) return 'ncaab';
+    if (/nba|basket/.test(l)) return 'nba';
+    if (/cfl/.test(l)) return 'cfl';
+    if (/ncaa.*foot|college foot|cfb/.test(l)) return 'cfb';
+    if (/nfl|ufl|american football/.test(l)) return 'nfl';
+    if (/ufc|mma|bellator|pfl/.test(l)) return 'mma';
+    if (/box/.test(l)) return 'boxing';
+    if (/wwe|aew|tna|wrestl/.test(l)) return 'wwe';
+    if (/f1|formula/.test(l)) return 'f1';
+    if (/motogp|indycar|nascar|motor/.test(l)) return 'motor';
+    if (/rugby/.test(l)) return 'rugby';
+    if (/cricket/.test(l)) return 'cricket';
+    if (/tennis|atp|wta/.test(l)) return 'tennis';
+    if (/golf|pga/.test(l)) return 'golf';
+    if (/(lcs|lec|lpl|lck|msi|worlds|cblol|ljl|pcs|vcs|lla|tcl|lcp|nlc)|league of legends|esport/.test(l)) return 'esports';
+    if (/league|liga|serie|cup|coupe|mls|bundesliga|ligue|champions|europa|copa|premier|eredivisie|primeira|uefa|fifa|conmebol|concacaf|saudi|soccer|football|super lig|pokal|nations/.test(l)) return 'soccer';
+    return 'other';
+}
+
+/* Pages à télécharger pour une source. `sports` = liste des sports à couvrir (null = tous). */
+export function getSourcePages(scraper, sports) {
+    var out = [];
+    if (scraper.homepageHasMatches !== false) out.push({ url: scraper.url, sport: null });
+    (scraper.pages || []).forEach(function(pg) {
+        if (sports && !pg.sports.some(function(sp) { return sports.indexOf(sp) >= 0; })) return;
+        var url = resolveUrl(pg.path, scraper.url);
+        if (!out.some(function(o) { return o.url === url; })) out.push({ url: url, sport: pg.sports[0] });
+    });
+    return out;
+}
+
+/* Transports pour fetchPage : direct + proxys CORS publics, plus, si l'utilisateur
+   les a renseignés dans les Options, un proxy personnalisé et des clés API.
+   La liste est reconstruite par rebuildProxies() quand ces réglages changent. */
+export function getProxySettings() {
+    var read = function(k) { try { return (localStorage.getItem(k) || '').trim(); } catch(e) { return ''; } };
+    return { customProxy: read('custom_proxy_url'), corsShKey: read('cors_sh_api_key'), corsProxyIoKey: read('corsproxy_io_api_key') };
+}
+export var PROXIES = buildProxyList(getProxySettings());
+export function rebuildProxies() {
+    PROXIES = buildProxyList(getProxySettings());
+    window.PROXIES = PROXIES;
+window.applySourceUrl = applySourceUrl;
+window.sportOfLeague = sportOfLeague;
+window.getSourcePages = getSourcePages;
+window.getSourceCandidates = getSourceCandidates;
+window.SOURCE_MIRRORS = SOURCE_MIRRORS;
+window.rebuildProxies = rebuildProxies;
+window.getProxySettings = getProxySettings;
+    return PROXIES;
+}
 
 /* ══ COULEURS ═══════════════════════════ */
 
@@ -852,7 +941,6 @@ export function sortFluxLinks(links) {
 
 // Global bindings for HTML compatibility
 window.SITE = SITE;
-window.MLBITE_URL = MLBITE_URL;
 window.MLBBITE_PLUS_URL = MLBBITE_PLUS_URL;
 window.SPORTSURGE_URL = SPORTSURGE_URL;
 window.BUFFSTREAMS_URL = BUFFSTREAMS_URL;
@@ -860,8 +948,6 @@ window.STREAMEAST_URL = STREAMEAST_URL;
 window.ONHOCKEY_URL = ONHOCKEY_URL;
 window.VIPLEAGUE_URL = VIPLEAGUE_URL;
 window.METHSTREAMS_URL = METHSTREAMS_URL;
-window.TOTALSPORTEK_URL = TOTALSPORTEK_URL;
-window.STREAMONSPORT_URL = STREAMONSPORT_URL;
 window.PROXIES = PROXIES;
 window.toggleGlobalStats = toggleGlobalStats;
 window.openGlobalStatsFromMatch = openGlobalStatsFromMatch;

@@ -1,7 +1,7 @@
 import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
-import { isMatch, isMatchPair } from './match.js';
+import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
 import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
@@ -668,6 +668,7 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
                 });
             }
             if(sm.matchUrl && !am.matchUrl) am.matchUrl = sm.matchUrl;
+            mergeAltUrls(am, sm);
 
             // For time and status, trust API (am) over scraped (sm),
             // but if API somehow has no time and sm does, use sm time.

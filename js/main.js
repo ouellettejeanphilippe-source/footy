@@ -2,9 +2,9 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
-import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig } from './config.js';
+import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
-import { parseFootybite, parseNflbite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseTotalsportek, parseStreamonsport, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
+import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
 import { mergeMatches } from './match.js';
 import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
@@ -116,12 +116,75 @@ export function updateLiveScores(matches) {
     processChunk();
 }
 
+/* Télécharge les pages d'une source (accueil + sous-pages par sport pertinentes) en
+   essayant l'URL courante puis ses miroirs pour la page d'accueil. Quand un miroir répond,
+   il devient l'URL courante de la source (applySourceUrl). Résout en [{url, html}]. */
+export function fetchSourcePages(scraper, sports) {
+    var candidates = getSourceCandidates(scraper.id);
+    var errs = [];
+    var i = 0;
+    function tryBase() {
+        if (i >= candidates.length) return Promise.reject(new Error(errs.join(' | ') || 'Aucune URL'));
+        var url = candidates[i++];
+        return fetchPage(url).then(function(html) {
+            if (url !== scraper.url) {
+                lg('Miroir actif ' + scraper.id, url);
+                applySourceUrl(scraper.id, url);
+            }
+            return { url: url, html: html };
+        }).catch(function(e) {
+            errs.push(getDomain(url) + ': ' + (e && e.message ? e.message.split('\n')[0] : e));
+            return tryBase();
+        });
+    }
+    return tryBase().then(function(home) {
+        var pages = getSourcePages(scraper, sports).filter(function(pg) { return pg.url !== home.url; });
+        var out = scraper.homepageHasMatches === false ? [] : [home];
+        // Sous-pages en parallèle (petit nombre : seulement les sports du jour)
+        return Promise.allSettled(pages.map(function(pg) {
+            return fetchPage(pg.url).then(function(html) { return { url: pg.url, html: html }; });
+        })).then(function(res) {
+            res.forEach(function(r, k) {
+                if (r.status === 'fulfilled') out.push(r.value);
+                else lg('Sous-page KO ' + scraper.id, pages[k].url + ' ' + (r.reason && r.reason.message ? r.reason.message.split('\n')[0] : ''));
+            });
+            if (out.length === 0) throw new Error('Aucune page exploitable (' + pages.length + ' sous-pages en échec)');
+            return out;
+        });
+    });
+}
+
+/* Charge data/streams.json (généré toutes les heures par GitHub Actions) : liste de matchs
+   déjà associés à leur page et à leurs flux. Servi depuis la même origine, donc sans proxy. */
+export function loadPrefetchedStreams() {
+    return fetch('data/streams.json?t=' + Math.floor(Date.now() / 300000))
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(data) {
+            if (!data || !Array.isArray(data.matches)) throw new Error('format');
+            var ageMin = data.generatedAt ? Math.round((Date.now() - new Date(data.generatedAt).getTime()) / 60000) : null;
+            var todayStr = getEstDateStrFromDate(new Date());
+            var list = data.matches.filter(function(m) { return !m.matchDate || m.matchDate === todayStr; });
+            list.forEach(function(m) { m.prefetched = true; m.streamsLoaded = !!(m.streamLinks && m.streamLinks.length); });
+            window.prefetchedStreamMatches = list;
+            window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [] };
+            (data.sources || []).forEach(function(src) {
+                if (src && src.url) updateSourceStatus(getDomain(src.url), src.ok ? 'success' : 'warning', src.matches || 0, (src.ok ? 'serveur OK' : 'serveur: ' + (src.error || 'échec')) + (ageMin !== null ? ' (' + ageMin + ' min)' : ''));
+            });
+            lg('Flux pré-calculés', list.length + ' matchs, généré il y a ' + ageMin + ' min');
+            return list;
+        })
+        .catch(function(e) { lg('Flux pré-calculés indisponibles', e.message); window.prefetchedStreamMatches = []; return []; });
+}
+
 export async function loadAll(isBackground, forceScrape){
   if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
 
   // Load dynamic domain configuration on initial load
   if (!window.hasLoadedOnce && !isBackground) {
       await fetchRemoteConfig();
+  }
+  if (!window.prefetchedStreamMatches || !isBackground) {
+      await loadPrefetchedStreams();
   }
   setupMultivisionUI();
 
@@ -161,7 +224,9 @@ export async function loadAll(isBackground, forceScrape){
 
       if (skipScraping) {
                     // Just merge with existing scrapedMatches and update API
-          var finalMatches = mergeFluxToApi(apiMatches, isToday ? (window.lastScrapedMatches || []) : [], true);
+          var prev = isToday ? (window.lastScrapedMatches || []) : [];
+          if (isToday && window.prefetchedStreamMatches && window.prefetchedStreamMatches.length) prev = mergeMatches(window.prefetchedStreamMatches.slice(), prev);
+          var finalMatches = mergeFluxToApi(apiMatches, prev, true);
 
           // Persist the updated scores/statuses back to cache even when skipping scraping
           var todayStr = getEspnDateStr(TARGET_DATE || new Date());
@@ -200,42 +265,50 @@ export async function loadAll(isBackground, forceScrape){
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
       }
 
+            // Sports présents dans la grille du jour : limite les sous-pages à télécharger
+            var todaySports = [];
+            apiMatches.forEach(function(am) { var sp = sportOfLeague(am.league); if (todaySports.indexOf(sp) < 0) todaySports.push(sp); });
+
             return Promise.allSettled(
-          SCRAPERS_CONFIG.map(function(scraper) { return fetchPage(scraper.url); })
+          SCRAPERS_CONFIG.map(function(scraper) { return fetchSourcePages(scraper, todaySports); })
       ).then(function(results) {
           if (!results) return;
           if (!isBackground) { stepOk(2);  }
 
 
-          // Check for failures and notify user
+          // Check for failures and notify user (un seul toast regroupé)
           var sources = SCRAPERS_CONFIG.map(function(s) { return s.url; });
+          var failedDomains = [];
           results.forEach(function(r, idx) {
               if (r.status === 'rejected') {
                   var domain = getDomain(sources[idx]);
                   console.error('Failed to fetch:', sources[idx], r.reason);
                   var errMsg = (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion');
                   addScrapeLog(sources[idx], 'error', errMsg);
-                  updateSourceStatus(domain, 'error', 0, errMsg);
-                  setTimeout(function() { showToast('Échec de la connexion à ' + domain); }, idx * 1000);
+                  updateSourceStatus(domain, 'error', 0, errMsg.split('\n')[0]);
+                  failedDomains.push(domain);
               } else {
                   addScrapeLog(sources[idx], 'success', '');
               }
           });
+          if (failedDomains.length > 0 && failedDomains.length < SCRAPERS_CONFIG.length) {
+              showToast('Sources injoignables : ' + failedDomains.join(', '));
+          } else if (failedDomains.length === SCRAPERS_CONFIG.length) {
+              showToast('Aucune source de streams joignable (proxys CORS hors service ?). Liens pré-calculés utilisés.');
+          }
 
-          var scrapedMatches = [];
+          // Flux pré-calculés côté serveur (data/streams.json) : servent de base même si tous les proxys sont morts
+          var scrapedMatches = window.prefetchedStreamMatches ? window.prefetchedStreamMatches.slice() : [];
 
                     var scraperFunctions = {
               'footybite': parseFootybite,
-              'nflbite': parseNflbite,
               'mlbbite': parseMlbbite,
               'sportsurge': parseSportsurge,
               'buffstreams': parseBuffstreams,
               'streameast': parseStreameast,
               'onhockey': parseOnHockey,
               'vipleague': parseVipleague,
-              'methstreams': parseMethstreams,
-              'totalsportek': parseTotalsportek,
-              'streamonsport': parseStreamonsport
+              'methstreams': parseMethstreams
           };
           var tasks = SCRAPERS_CONFIG.map(function(sc) {
               return { fn: scraperFunctions[sc.id], url: sc.url, id: sc.id };
@@ -250,9 +323,14 @@ export async function loadAll(isBackground, forceScrape){
                   return new Promise(function(resolve) {
                       setTimeout(function() {
                           if (results[idx] && results[idx].status === 'fulfilled' && results[idx].value) {
-                              if (task.setRaw) S.raw = results[idx].value;
                               try {
-                                  var m = task.fn(results[idx].value);
+                                  var pages = results[idx].value;
+                                  var m = [];
+                                  pages.forEach(function(pg) {
+                                      var parsed = [];
+                                      try { parsed = task.fn(pg.html, pg.url) || []; } catch(pe) { console.error('Parse error', task.id, pg.url, pe); }
+                                      m = mergeMatches(m, parsed);
+                                  });
                                   var matchedCount = 0;
                                   m.forEach(function(scrapedMatch) {
                                       if (apiMatches.find(function(am) { return isMatchPair(am, scrapedMatch); })) {
@@ -390,7 +468,9 @@ if ('serviceWorker' in navigator) {
 }
 
 
-(function(){
+// Démarrage automatique de l'app (désactivé quand le module est importé côté serveur,
+// par ex. par scripts/scrape_streams.mjs qui ne veut que les parseurs).
+if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
   var n = new Date();
   var todayStr = getEspnDateStr(TARGET_DATE || new Date());
 

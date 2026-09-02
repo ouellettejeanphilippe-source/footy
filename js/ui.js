@@ -1428,7 +1428,7 @@ export function openMod(m,col){
               m.streamLinks = [];
               m.streamsLoaded = false;
 
-              scrapeMatchFlux(m, true).finally(function() {
+              scrapeMatchFlux(m, true, true).finally(function() {
                   if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {
                       openMod(m, col);
                   }
@@ -1509,7 +1509,7 @@ export function openMod(m,col){
 
       // Force load the streams for this specific match right away if they aren't loaded yet
       lg('Force loading flux', m.homeTeam);
-      scrapeMatchFlux(m).then(function() {
+      scrapeMatchFlux(m, false, true).then(function() {
           lg('Force loaded flux ok', m.homeTeam);
           m.streamsLoaded = true;
           if (document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {

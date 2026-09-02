@@ -4,11 +4,11 @@ import { test, expect } from '@playwright/test';
 const SCRAPERS_CONFIG = [
   { name: 'Footybite', url: 'https://footybite.bid/' },
   { name: 'MLBite+', url: 'https://mlbbite.plus/' },
-  { name: 'Sportsurge', url: 'https://sportsurge.net/' },
+  { name: 'Sportsurge', url: 'https://v2.sportsurge.net/' },
   { name: 'Buffstreams', url: 'https://app.buffstreams.is/indexcracked29' },
-  { name: 'Streameast', url: 'https://v2.streameast.ga/' },
+  { name: 'Streameast', url: 'https://v2.gostreameast.is/' },
   { name: 'OnHockey', url: 'https://onhockey.tv/' },
-  { name: 'VIPLeague', url: 'https://vipleague.im/' }
+  { name: 'VIPLeague', url: 'https://vipleague.vg/' }
 ];
 
 test.describe('Scraper pages must have stream links or elements', () => {
@@ -20,7 +20,7 @@ test.describe('Scraper pages must have stream links or elements', () => {
         response = await page.goto(site.url, { timeout: 15000, waitUntil: 'domcontentloaded' });
       } catch (e) {
         console.log(`Direct navigation to ${site.url} failed, trying proxy...`);
-        const proxyUrl = `https://corsproxy.org/?${encodeURIComponent(site.url)}`;
+        const proxyUrl = `https://proxy.cors.sh/${site.url}`;
         try {
             response = await page.goto(proxyUrl, { timeout: 15000, waitUntil: 'domcontentloaded' });
         } catch(e2) {
