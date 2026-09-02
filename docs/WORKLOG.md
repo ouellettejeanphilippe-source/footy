@@ -2,6 +2,8 @@
 ## En cours
 
 ## Fait
+- 2026-09-02 - Nombre de flux instable d'un rechargement à l'autre : six déclencheurs appellent un chargement complet (démarrage, minuterie de 5 min, changement de date, « Réessayer », réglages réseau, rechargement du cache serveur) et rien n'empêchait deux passes de se chevaucher. Chacune fusionne ses liens dans la même grille, d'où un compte qui bougeait selon l'ordre d'arrivée des proxys. `loadAll` (`js/main.js`) est scindé en une garde et `loadAllRun` : une passe d'arrière-plan lancée pendant qu'une autre tourne renvoie la promesse en cours au lieu de refaire le travail ; une passe premier plan ou forcée reste toujours autorisée. Vérifié dans Chromium : cinq passes simultanées se replient sur une seule (146 flux avant et après), premier plan non bloqué.
+  - Reste inhérent au fonctionnement : le nombre de liens grandit pendant une session à mesure que le scraping d'arrière-plan répond, et varie d'un rechargement à l'autre selon les proxys CORS qui répondent dans le délai. Le cache serveur, lui, est déterministe.
 - 2026-09-02 - Fenêtre de match : l'en-tête était vide (rien n'indiquait la rencontre ni la compétition ouverte) → icône, ligue et affiche du match. « 0:00 » sous le score remplacé par « DIRECT » via `formatLiveMinute` (`js/ui.js`), partagé avec les cartes.
 - 2026-09-02 - Interface : densité des cartes et informations de décision.
   - Cartes de match : la vignette 16/9 mangeait ~210 px pour deux logos → ratio 2.4/1 (`--card-aspect`), hauteur de carte 257 → 202 px.
