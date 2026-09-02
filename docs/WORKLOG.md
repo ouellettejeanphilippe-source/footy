@@ -2,6 +2,14 @@
 ## En cours
 
 ## Fait
+- 2026-09-02 - Audit du système de liens (association, doublons, métadonnées).
+  - Constat sur les données réelles : 4 doublons dans un même match, 5 adresses attachées à plusieurs matchs, 8 liens pointant sur `ms.buffstream.io/index-version-27` (l'accueil du site, pas un flux), 3 libellés parasites. 138 liens sur 151 en langue « MULTI », 90 avec un nom générique, qualité « HD » sur presque tout car c'est le défaut des parseurs.
+  - Cause : le nettoyage et l'enrichissement n'existaient que dans `extractStreamLinks`. Les liens construits directement par `parseOnHockey` et `parseStreameast` n'y passaient pas.
+  - `finalizeStreamLinks` (`js/scrapers.js`) devient l'entonnoir unique : écarte les pages d'index (`isIndexPageUrl`) et les libellés parasites (phrases parasites n'importe où, mots de navigation en tête seulement), dédoublonne sur l'adresse normalisée (`normalizeStreamUrl` : protocole, `www.`, barre finale, casse), puis renseigne site / chaîne / qualité / langue via `describeStreamLink` (35 chaînes reconnues, les plus spécifiques d'abord). Appelé aussi par le script serveur.
+  - Qualité : les parseurs mettaient « HD » ou « SD » par défaut ; la valeur n'est gardée que si l'adresse ou le libellé l'annonce. Le badge est masqué sinon.
+  - Interface : chaque ligne de flux affiche la chaîne, le site et la langue sous son nom.
+  - Clic sur une ligne : n'ouvre plus jamais un onglet externe (c'était imposé aux liens `topLevel`). Un bouton ↗ dédié, disponible pour tous les flux, est ajouté à côté du bouton Multivision.
+  - Tests : `tests/unit_scrapers.test.js` passe de 8 à 13 groupes.
 - 2026-09-02 - Audit des sept appels de chargement. Deux défauts corrigés :
   - **Cache serveur jamais relu pendant une session** : la condition `!window.prefetchedStreamMatches || !isBackground` ne relisait jamais `data/streams.json` lors d'une passe d'arrière-plan, la variable restant définie (même vide) après le premier chargement. Une session ouverte plusieurs heures restait sur les liens du démarrage alors que le fichier est régénéré chaque heure. Relecture forcée dès qu'il a plus de 10 minutes (`prefetchedStreamsLoadedAt`).
   - **Bouton « Réessayer »** : `loadAll(window.hasLoadedOnce, true)` valait `loadAll(true, true)` après le premier chargement, donc une passe d'arrière-plan sans réinitialisation d'état ni relecture du cache. Devient `loadAll(false, true)`.

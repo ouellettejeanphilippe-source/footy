@@ -160,13 +160,16 @@ if (!NO_SUBPAGES) {
                     const links = scrapers.extractStreamLinks(html, ctx) || [];
                     const clean = links
                         .filter((l) => l && l.url)
-                        .map((l) => ({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, source: l.source || m.source, topLevel: !!l.topLevel }));
+                        .map((l) => ({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, site: l.site, channel: l.channel, source: l.source || m.source, topLevel: !!l.topLevel }));
                     m.streamLinks = (m.streamLinks || []).concat(clean.filter((c) => !(m.streamLinks || []).some((e) => e.url === c.url)));
                 } catch (e) {
                     const err = String(e && e.message ? e.message : e).split('\n')[0].slice(0, 120);
                     m.scrapeError = (m.scrapeError ? m.scrapeError + ' | ' : '') + hostOf(u) + ': ' + err;
                 }
             }
+            // Entonnoir commun (js/scrapers.js) : faux liens, doublons réels, provenance.
+            m.streamLinks = scrapers.finalizeStreamLinks(m.streamLinks || []);
+
             // Les liens de repli "Page du match sur X" (quand une page n'expose aucun lecteur) : un seul
             // par site, et seulement si aucun vrai lecteur n'a été trouvé. Les autres liens topLevel
             // (pages de miroirs Streameast, ouvertes dans un onglet) sont toujours conservés.
@@ -214,7 +217,8 @@ const out = {
         matchUrl: m.matchUrl,
         altUrls: Array.isArray(m.altUrls) ? m.altUrls : [],
         scrapeError: m.scrapeError || null,
-        streamLinks: (m.streamLinks || []).map((l) => Object.assign({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, source: l.source || m.source }, l.topLevel ? { topLevel: true } : {}))
+        streamLinks: (m.streamLinks || []).map((l) => Object.assign({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, source: l.source || m.source },
+            l.site ? { site: l.site } : {}, l.channel ? { channel: l.channel } : {}, l.topLevel ? { topLevel: true } : {}))
     }))
 };
 fs.mkdirSync('data', { recursive: true });

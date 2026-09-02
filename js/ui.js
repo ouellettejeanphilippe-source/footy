@@ -1023,9 +1023,11 @@ export var QI ={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
 export function renderFluxItem(s, i, m) {
     var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"')";
-    // Lien "topLevel" (page de match d'un miroir Streameast, repli "Page du match sur …") : la page
-    // refuse l'iframe (défi Cloudflare / X-Frame-Options), on l'ouvre dans un nouvel onglet.
-    if (s.topLevel) ev = "window.open('"+escJs(s.url||'#')+"','_blank','noopener');event.preventDefault();event.stopPropagation();";
+    /* Ouvrir un onglet au clic sur la ligne était imposé aux liens « topLevel » : c'est
+       désagréable et imprévisible. Le clic garde donc partout le comportement normal
+       (lecteur / Multivision), et l'ouverture externe devient un bouton dédié à côté
+       du bouton Multivision, disponible pour tous les flux. */
+    var openExtEv = "window.open('"+escJs(s.url||'#')+"','_blank','noopener');event.stopPropagation();event.preventDefault();";
 
     var addMvEv = "";
     if (window.multiviewPendingAction && window.multiviewPendingAction.type === 'replace') {
@@ -1044,13 +1046,27 @@ export function renderFluxItem(s, i, m) {
     return '<div class="si" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.15s; margin-bottom: 12px; padding-right:8px;">'
       +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
       +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-      +'<div class="si-inf" style="flex:1; overflow:hidden;"><div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+(s.topLevel?' <span title="S\'ouvre dans un nouvel onglet" style="opacity:.6;">↗</span>':'')+'</div></div>'
-      +'<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+(s.quality||'SD')+'</span>'
+      +'<div class="si-inf" style="flex:1; overflow:hidden;">'
+        +'<div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+(s.topLevel?' <span title="Cette page refuse souvent l\'affichage intégré : préférez le bouton ↗" style="opacity:.55; font-size:11px;">(page du site)</span>':'')+'</div>'
+        /* Provenance du flux : chaîne diffusée, site hébergeur et langue. Sans cela, deux
+           lignes nommées « Lecteur direct » étaient indistinguables. */
+        +((s.channel || s.site || (s.lang && !/^multi$/i.test(s.lang)))
+            ? '<div class="si-meta" style="font-size:11px; color:var(--muted); margin-top:2px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">'
+              + (s.channel ? '<span style="font-weight:700; color:var(--text);">📡 '+esc(s.channel)+'</span>' : '')
+              + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
+              + (s.lang && !/^multi$/i.test(s.lang) ? '<span style="border:1px solid var(--border2); border-radius:4px; padding:0 4px;">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
+              + '</div>'
+            : '')
+      +'</div>'
+      /* Badge de qualité seulement quand elle est réellement connue : afficher « SD »
+         ou « HD » par défaut sur chaque ligne ne distinguait rien. */
+      +(s.quality ? '<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+esc(s.quality)+'</span>' : '')
       +'</a>'
       +'<div style="display:flex; align-items:center; padding:8px; gap:2px; margin-left:auto;">'
         +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>'
         +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>'
         +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="width:28px; height:28px; border-radius:8px; background:rgba(255,255,255,0.05); border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center; margin-left:4px;">⊞</button>'
+        +'<button title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet" onclick="'+openExtEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(s.topLevel?'rgba(255,255,255,0.14)':'rgba(255,255,255,0.05)')+'; border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center;">↗</button>'
       +'</div>'
       +'</div>';
 }
