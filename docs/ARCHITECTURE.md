@@ -124,3 +124,24 @@ Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (p
 ### Relance manuelle du cache serveur (Options → Réseau & Proxys)
 - `openStreamsWorkflow()` (`js/multiview.js`) ouvre `STREAMS_WORKFLOW_URL` (`js/config.js`) : la page GitHub Actions du workflow horaire, dont le bouton « Run workflow » régénère `data/streams.json` en ≈ 2 min.
 - `reloadPrefetchedStreams()` (`js/multiview.js`) appelle `loadPrefetchedStreams(true)` (`js/main.js`, lecture sans cache) puis `loadAll(true, false)` pour refusionner les liens dans la grille ; `renderProxyStatus()` affiche matchs, liens, sources OK et âge du cache.
+
+## Classement des ligues (2026-09-02)
+
+`leagueTier(league, overrides)` (`js/db.js`) est la seule source de vérité :
+
+| Niveau | Origine | Effet |
+|---|---|---|
+| `main` | `DEFAULT_LEAGUES` | en tête d'En direct et du Guide |
+| `secondary` | `OTHER_LEAGUES` | section « Ligues secondaires », grille temporelle distincte dans le Guide |
+| `ignored` | choix de l'utilisateur seulement | masquée partout, jamais scrapée |
+| `other` | ligue inconnue | section « Autres streams » (repliée) |
+
+- Le choix de l'utilisateur (Favoris → Ligues) est stocké dans `localStorage.league_tiers` et prime sur les listes par défaut : `setLeagueTier` / `resetLeagueTiers` (`js/state.js`), `setLeagueTierPref` (`js/main.js`). `defaultLeagueTier` sert à savoir si une valeur est personnalisée.
+- `FAVORIS` et `EN DIRECT` sont des sections synthétiques : toujours `main`, jamais masquables.
+- `renderGroupedSection` (`js/ui.js`) rend toute section repliable regroupée par ligue ; utilisée par « Ligues secondaires » et « Autres streams ».
+
+### Sources de calendrier
+- **ESPN** : `ESPN_LEAGUES` est dupliqué dans `js/api.js` et `scripts/scrape_schedule.mjs` ; `tests/unit_leagues.test.js` échoue si les deux listes (ou les alias) divergent. ESPN renvoie 403 à l'User-Agent par défaut de Node et aux UA imitant un navigateur : le script serveur s'annonce comme robot avec une URL de contact.
+- **TheSportsDB** (`parseSportsDbEvents`, `js/scrapers.js`) : WWE, AEW, boxe, UFC, ONE — sports absents d'ESPN. Les événements sans heure (`strTime` à `00:00:00`) gardent leur date et reçoivent 20:00, sinon la conversion UTC → Est les ferait basculer à la veille.
+- **PWHL** : thepwhl.com (`parsePWHLSchedule`), aucune API publique.
+- **Esports** : API lolesports.

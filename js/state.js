@@ -69,6 +69,26 @@ if (customLgOrder.length > 0 && !v2Migrated) {
 }
 
 
+/* Classement des ligues choisi par l'utilisateur : { 'NHL': 'main' | 'secondary' | 'ignored' }.
+   Ne contient que les écarts par rapport aux valeurs par défaut (DEFAULT_LEAGUES /
+   OTHER_LEAGUES) ; `leagueTier` (js/db.js) le lit via window.leagueTierOverrides. */
+export var leagueTiers = safeStorageGetJSON('league_tiers', {}) || {};
+window.leagueTierOverrides = leagueTiers;
+
+export function setLeagueTier(league, tier) {
+    var key = String(league || '').toUpperCase().trim();
+    if (!key) return;
+    if (tier) leagueTiers[key] = tier; else delete leagueTiers[key];
+    window.leagueTierOverrides = leagueTiers;
+    safeStorageSetJSON('league_tiers', leagueTiers);
+}
+
+export function resetLeagueTiers() {
+    Object.keys(leagueTiers).forEach(function(k) { delete leagueTiers[k]; });
+    window.leagueTierOverrides = leagueTiers;
+    safeStorageSetJSON('league_tiers', leagueTiers);
+}
+
 export function saveCustomLgOrder() {
     safeStorageSetJSON('custom_lg_order', customLgOrder);
 }

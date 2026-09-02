@@ -184,12 +184,18 @@
         <!-- Colonne de droite: Ordre des ligues -->
         <div class="fav-col-right" style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 16px;">
             <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
-                <h3 style="margin-top:0; margin-bottom:8px; font-size:16px; color:var(--text); display:flex; justify-content:space-between; align-items:center;">
-                    Ordre des Ligues
-                    <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="resetLgOrder()">Réinitialiser</button>
+                <h3 style="margin-top:0; margin-bottom:8px; font-size:16px; color:var(--text); display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                    Ligues
+                    <span style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="resetLgOrder()">Réinitialiser l'ordre</button>
+                        <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="resetLeagueTiersPref()">Réinitialiser le classement</button>
+                    </span>
                 </h3>
-                <p style="font-size:12px; color:var(--muted); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px;">
-                    Réorganisez l'ordre d'affichage des ligues dans le Live et le Guide.
+                <p style="font-size:12px; color:var(--muted); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; line-height:1.5;">
+                    Glissez pour réordonner. Pour chaque ligue :
+                    <b>Principale</b> l'affiche en tête du Live et du Guide,
+                    <b>Secondaire</b> la regroupe dans la section « Ligues secondaires »,
+                    <b>Ignorée</b> la masque partout. ↺ revient au réglage par défaut.
                 </p>
                 <div id="fav-leagues-list" style="display: flex; flex-direction: column; gap: 8px;">
                     <!-- Rempli par app.js -->

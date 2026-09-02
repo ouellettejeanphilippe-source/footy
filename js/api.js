@@ -2,12 +2,18 @@ import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
 import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
-import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, getStreamCache } from './scrapers.js';
+import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, parseSportsDbEvents, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
+/* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
+   Les deux listes DOIVENT rester identiques : tests/unit_leagues.test.js le vérifie.
+   Chaque chemin a été testé (scoreboard HTTP 200) ; les endpoints morts (wwe/wwe,
+   boxing/boxing, hockey/…-professional-hockey-league renvoient 400) ont été retirés :
+   WWE et la boxe viennent des agrégateurs, la PWHL de thepwhl.com (parsePWHLSchedule). */
 export var ESPN_LEAGUES = {
+  // Soccer
   'premier league': 'soccer/eng.1',
   'la liga': 'soccer/esp.1',
   'serie a': 'soccer/ita.1',
@@ -25,32 +31,53 @@ export var ESPN_LEAGUES = {
   'copa del rey': 'soccer/esp.copa_del_rey',
   'dfb pokal': 'soccer/ger.dfb_pokal',
   'saudi pro league': 'soccer/ksa.1',
+  'fifa world cup': 'soccer/fifa.world',
+  'fifa women\'s world cup': 'soccer/fifa.wwc',
+  'nwsl': 'soccer/usa.nwsl',
+  // Basketball
   'nba': 'basketball/nba',
   'basketball': 'basketball/nba',
-  'nhl': 'hockey/nhl',
-  'hockey': 'hockey/nhl',
-  'ice hockey': 'hockey/nhl',
-  'nfl': 'football/nfl',
-  'american football': 'football/nfl',
-  'american-football': 'football/nfl',
-  'mlb': 'baseball/mlb',
-  'baseball': 'baseball/mlb',
-  'cfl': 'football/cfl',
-  'world baseball classic': 'baseball/world-baseball-classic',
+  'wnba': 'basketball/wnba',
+  'euroleague': 'basketball/euroleague',
   'fiba world cup': 'basketball/fiba',
   'ncaa men\'s basketball': 'basketball/mens-college-basketball',
   'olympics men\'s basketball': 'basketball/mens-olympics-basketball',
   'ncaa women\'s basketball': 'basketball/womens-college-basketball',
-  'ncaa football': 'football/college-football',
+  // Hockey
+  'nhl': 'hockey/nhl',
+  'hockey': 'hockey/nhl',
+  'ice hockey': 'hockey/nhl',
   'world hockey championships': 'hockey/hockey-world-cup',
   'world cup of hockey': 'hockey/hockey-world-cup',
   'ncaa men\'s ice hockey': 'hockey/mens-college-hockey',
   'olympics men\'s ice hockey': 'hockey/olympics-mens-ice-hockey',
   'olympics women\'s ice hockey': 'hockey/olympics-womens-ice-hockey',
   'ncaa women\'s hockey': 'hockey/womens-college-hockey',
-  'fifa world cup': 'soccer/fifa.world',
-  'fifa women\'s world cup': 'soccer/fifa.wwc',
-  'nwsl': 'soccer/usa.nwsl'
+  // Football américain et baseball
+  'nfl': 'football/nfl',
+  'american football': 'football/nfl',
+  'american-football': 'football/nfl',
+  'cfl': 'football/cfl',
+  'ncaa football': 'football/college-football',
+  'mlb': 'baseball/mlb',
+  'baseball': 'baseball/mlb',
+  'world baseball classic': 'baseball/world-baseball-classic',
+  // Sports mécaniques
+  'f1': 'racing/f1',
+  'formula 1': 'racing/f1',
+  'formula-1': 'racing/f1',
+  'indycar': 'racing/irl',
+  'nascar': 'racing/nascar-premier',
+  // Combat, tennis, golf, rugby
+  'mma': 'mma/ufc',
+  'ufc': 'mma/ufc',
+  'tennis': 'tennis/atp',
+  'atp': 'tennis/atp',
+  'wta': 'tennis/wta',
+  'golf': 'golf/pga',
+  'pga': 'golf/pga',
+  'top 14': 'rugby/270559',
+  'premiership rugby': 'rugby/267979'
 };
 
 var _leaguePathCache = Object.create(null);
@@ -367,36 +394,56 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
       }).catch(function(e) { console.error('Error fetching PWHL API schedule', e); lg('Error fetching PWHL API schedule', e); })
   );
 
-  // Synthesize weekly WWE shows that might not be on wwe.com/events, or could disappear when live.
-  var dateObjTarget = new Date(targetDateStr + "T12:00:00Z"); // Use noon UTC to reliably get the day of week for the target date string
-  var dayOfWeekTarget = dateObjTarget.getUTCDay();
+  /* Combat (WWE, AEW, boxe, UFC, ONE...) : ESPN n'expose aucun de ces sports — son
+     répertoire ne contient ni « wwe » ni « boxing », et sports/wwe/wwe comme
+     boxing/boxing renvoient HTTP 400. TheSportsDB les fournit (CORS ouvert, appel direct).
+     Voir parseSportsDbEvents (js/scrapers.js). */
+  var addFightIfNew = function(m) {
+      var existingIdx = baseMatches.findIndex(function(existing) {
+          if (existing.matchDate !== m.matchDate) return false;
+          return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam));
+      });
+      if (existingIdx === -1) baseMatches.push(m);
+      return existingIdx === -1;
+  };
 
-  var synthesizedWWE = [];
-  if (dayOfWeekTarget === 1) { // Monday
-      synthesizedWWE.push({ id: 'wwe_raw_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'Raw', matchDate: targetDateStr, startTime: '20:00' });
-  } else if (dayOfWeekTarget === 2) { // Tuesday
-      synthesizedWWE.push({ id: 'wwe_nxt_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'NXT', matchDate: targetDateStr, startTime: '20:00' });
-  } else if (dayOfWeekTarget === 5) { // Friday
-      synthesizedWWE.push({ id: 'wwe_smackdown_' + targetDateStr, homeTeam: 'WWE', awayTeam: 'SmackDown', matchDate: targetDateStr, startTime: '20:00' });
-  } else if (dayOfWeekTarget === 3) { // Wednesday
-      synthesizedWWE.push({ id: 'aew_dynamite_' + targetDateStr, homeTeam: 'AEW', awayTeam: 'Dynamite', matchDate: targetDateStr, startTime: '20:00' });
-  }
-
-  synthesizedWWE.forEach(function(m) {
-      m.league = formatLeagueName(m.homeTeam === 'AEW' ? 'AEW' : 'WWE');
+  /* Repli quand TheSportsDB ne répond pas : les rendez-vous hebdomadaires de catch, qui
+     reviennent aux mêmes jours. Utilisé uniquement si la vraie source n'a rien donné,
+     sinon on afficherait un doublon à côté de l'événement réel (« NXT #853 »). */
+  var addWeeklyWrestlingFallback = function() {
+      var dateObjTarget = new Date(targetDateStr + 'T12:00:00Z'); // midi UTC : jour de semaine fiable
+      var byDay = {
+          1: { id: 'wwe_raw_', home: 'WWE', away: 'Raw' },
+          2: { id: 'wwe_nxt_', home: 'WWE', away: 'NXT' },
+          3: { id: 'aew_dynamite_', home: 'AEW', away: 'Dynamite' },
+          5: { id: 'wwe_smackdown_', home: 'WWE', away: 'SmackDown' }
+      };
+      var show = byDay[dateObjTarget.getUTCDay()];
+      if (!show) return;
+      var m = { id: show.id + targetDateStr, homeTeam: show.home, awayTeam: show.away, matchDate: targetDateStr, startTime: '20:00' };
+      m.league = formatLeagueName(show.home);
       m.flag = lgFlag(m.league);
       m.color = lgColor(m.league);
       m.source = 'api';
       m.status = 'upcoming';
       m.durationMinutes = getLeagueDuration(m.league);
-      var existingIdx = baseMatches.findIndex(function(existing) {
-          return existing.id === m.id || (isMatch(existing.homeTeam, m.homeTeam) && isMatch(existing.awayTeam, m.awayTeam) && existing.matchDate === m.matchDate);
-      });
-      if (existingIdx === -1) {
-          baseMatches.push(m);
-      }
-  });
+      addFightIfNew(m);
+  };
 
+  promises.push(
+      fetch('https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + targetDateStr + '&s=Fighting')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+            var fights = data ? parseSportsDbEvents(data, targetDateStr) : [];
+            fights.forEach(addFightIfNew);
+            lg('Combat (TheSportsDB)', fights.length + ' événements');
+            var hasWrestling = fights.some(function(m) { return /^(WWE|AEW)$/i.test(m.league); });
+            if (!hasWrestling) addWeeklyWrestlingFallback();
+        }).catch(function(e) {
+            lg('TheSportsDB indisponible', e && e.message ? e.message : e);
+            addWeeklyWrestlingFallback();
+        })
+  );
 
   // Fetch F1 Schedule
   promises.push(
