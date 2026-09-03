@@ -226,6 +226,34 @@ export function resolveBlockedEmbed(url, proxyFetch, registry) {
    document l'origine de l'application (donc l'accès à son stockage et à son DOM). */
 export var EMBED_SANDBOX = 'allow-scripts allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
 
+/* Bac à sable des lecteurs ORDINAIRES du Multivision (ceux chargés par `src`, pas les
+   documents reconstruits).
+
+   Ce que le script utilisateur faisait à la main dans la page tierce — écraser
+   `window.open`, intercepter les clics vers `target="_blank"` — le navigateur le fait ici
+   de façon déclarative, pour TOUT LE MONDE : sans extension, sous Firefox comme sous
+   Chrome, et à travers l'origine croisée que du JavaScript de l'application ne peut de
+   toute façon pas franchir. Le refus vient du navigateur, donc un lecteur ne peut pas le
+   contourner en redéfinissant ce qu'on aurait écrasé.
+
+   Ce qui est ACCORDÉ, et pourquoi chaque jeton est nécessaire :
+   - `allow-scripts` : les lecteurs sont du JavaScript.
+   - `allow-same-origin` : sans lui le document tombe en origine opaque et perd ses
+     cookies, son stockage et ses requêtes vers son propre domaine — la plupart des
+     lecteurs cessent de fonctionner. Sur une iframe *d'origine croisée* c'est sans
+     danger : le couple `allow-scripts` + `allow-same-origin` ne redonne accès qu'à sa
+     propre origine, jamais à celle de l'application. (C'est justement pourquoi le
+     document RECONSTRUIT, lui, ne l'obtient pas : il vit à notre origine.)
+   - `allow-forms`, `allow-pointer-lock`, `allow-orientation-lock`, `allow-presentation` :
+     choix de qualité, plein écran et diffusion Chromecast.
+
+   Ce qui est REFUSÉ, et c'est tout l'intérêt :
+   - `allow-popups` et `allow-popups-to-escape-sandbox` : plus de popunder publicitaire.
+   - `allow-top-navigation*` : un lecteur ne peut plus détourner l'onglet entier vers une
+     page de pub — le travers le plus pénible de ces sites.
+   - `allow-modals` : plus d'`alert()` bloquante venue d'une régie. */
+export var PLAYER_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
+
 if (typeof window !== 'undefined') {
   window.getBridgeStatus = getBridgeStatus;
   window.resolveBlockedEmbed = resolveBlockedEmbed;
