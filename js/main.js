@@ -1,10 +1,11 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder, setLeagueTier, resetLeagueTiers } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet } from './utils.js';
+import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
-import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, updateMatchUiAfterScrape, fetchSubPages } from './scrapers.js';
+import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, updateMatchUiAfterScrape, fetchSubPages, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
+import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
 import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
@@ -167,8 +168,31 @@ export function loadPrefetchedStreams(force) {
             var list = data.matches.filter(function(m) { return !m.matchDate || m.matchDate === todayStr; });
             list.forEach(function(m) { m.prefetched = true; m.streamsLoaded = !!(m.streamLinks && m.streamLinks.length); });
             window.prefetchedStreamMatches = list;
-            window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [] };
+            window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {} };
             window.prefetchedStreamsLoadedAt = Date.now();
+
+            /* Politique d'intégration relevée côté serveur (en-têtes X-Frame-Options /
+               CSP frame-ancestors, illisibles depuis le navigateur). On l'injecte dans
+               le registre appris : le classement « iframe ou onglet » repose ainsi sur
+               une mesure réelle dès le premier chargement, sans attendre qu'un échec
+               visible l'apprenne à l'utilisateur. */
+            var policy = data.hostPolicy || {};
+            var reg = getEmbedRegistry();
+            var known = 0;
+            Object.keys(policy).forEach(function(host) {
+                var p = policy[host];
+                if (!p || p.embeddable === null || p.embeddable === undefined) return;
+                if (p.embeddable) {
+                    noteEmbedResult(reg, host, true);
+                } else {
+                    // Deux refus sans succès font basculer l'hôte (voir noteEmbedResult) ;
+                    // une seule mesure serveur suffit à faire foi, donc on la compte double.
+                    noteEmbedResult(reg, host, false);
+                    noteEmbedResult(reg, host, false);
+                }
+                known++;
+            });
+            if (known) { saveEmbedRegistry(); lg('Politique d\'intégration', known + ' hôtes connus du serveur'); }
             (data.sources || []).forEach(function(src) {
                 if (src && src.url) updateSourceStatus(getDomain(src.url), src.ok ? 'success' : 'warning', src.matches || 0, (src.ok ? 'serveur OK' : 'serveur: ' + (src.error || 'échec')) + (ageMin !== null ? ' (' + ageMin + ' min)' : ''));
             });
@@ -539,6 +563,12 @@ if ('serviceWorker' in navigator) {
 if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
   var n = new Date();
   var todayStr = getEspnDateStr(TARGET_DATE || new Date());
+
+  // Une clé de cache par jour visité, jamais purgée jusqu'ici : voir
+  // purgeStaleCalendarCache (js/utils.js). On garde hier et aujourd'hui.
+  var yEst = new Date(n); yEst.setDate(yEst.getDate() - 1);
+  var removed = purgeStaleCalendarCache([getEspnDateStr(n), getEspnDateStr(yEst)]);
+  if (removed) lg('Cache calendrier nettoyé', removed + ' jour(s) obsolète(s)');
 
   var lst = safeStorageGet('last_scrape_time');
   var lsm = safeStorageGetJSON('last_scraped_matches');

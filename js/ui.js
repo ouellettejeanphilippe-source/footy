@@ -1022,11 +1022,13 @@ export var QC ={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
 export var QI ={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
 export function renderFluxItem(s, i, m) {
-    var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"')";
-    /* Ouvrir un onglet au clic sur la ligne était imposé aux liens « topLevel » : c'est
-       désagréable et imprévisible. Le clic garde donc partout le comportement normal
-       (lecteur / Multivision), et l'ouverture externe devient un bouton dédié à côté
-       du bouton Multivision, disponible pour tous les flux. */
+    var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"',"+(s.topLevel?'true':'false')+")";
+    /* Le clic garde le comportement normal (lecteur / Multivision) pour tout lien
+       intégrable. Pour un lien classé « page » — une page de match, qui répond
+       X-Frame-Options et ne s'affichera jamais dans une iframe — il ouvre un onglet :
+       l'envoyer dans le lecteur ne produisait que l'écran « Firefox ne peut pas ouvrir
+       cette page ». Le classement vient du moteur d'extraction (js/extractors.js) et du
+       registre appris, pas d'une supposition de l'interface. */
     var openExtEv = "window.open('"+escJs(s.url||'#')+"','_blank','noopener');event.stopPropagation();event.preventDefault();";
 
     var addMvEv = "";
@@ -1047,7 +1049,7 @@ export function renderFluxItem(s, i, m) {
       +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
       +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
       +'<div class="si-inf" style="flex:1; overflow:hidden;">'
-        +'<div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+(s.topLevel?' <span title="Cette page refuse souvent l\'affichage intégré : préférez le bouton ↗" style="opacity:.55; font-size:11px;">(page du site)</span>':'')+'</div>'
+        +'<div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+(s.topLevel?' <span title="Cette page refuse l\'affichage intégré : le clic l\'ouvre dans un onglet" style="font-size:10px; letter-spacing:.04em; text-transform:uppercase; border:1px solid var(--border2); border-radius:4px; padding:1px 5px; margin-left:6px; color:var(--muted); white-space:nowrap;">onglet</span>':'')+'</div>'
         /* Provenance du flux : chaîne diffusée, site hébergeur et langue. Sans cela, deux
            lignes nommées « Lecteur direct » étaient indistinguables. */
         +((s.channel || s.site || (s.lang && !/^multi$/i.test(s.lang)))
