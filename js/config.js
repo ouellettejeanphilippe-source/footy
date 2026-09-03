@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { escJs, esc, lg, pad, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
-import { isMatch, stringSimilarity } from './match.js';
+import { isMatch } from './match.js';
 import { globalStatsInterval, setGlobalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';

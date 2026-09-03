@@ -1,4 +1,3 @@
-import { esc } from './utils.js';
 import { TEAM_DATA } from './teams.js';
 
 export var STATIC_TEAMS = [];
@@ -93,8 +92,39 @@ export function lgFlag(n){
 
 
 
+/* Clés de TEAM_DATA normalisées une seule fois, pour la correspondance partielle de
+   getTeamColors. Construction paresseuse : normName s'appuie sur TEAM_ALIASES et
+   LEAGUE_ALIASES, définis plus bas dans ce module. Les entrées sans couleurs sont
+   écartées — la boucle d'origine les traversait sans jamais rien en tirer. */
+var _normKeyIndex = null;
+function normKeyIndex() {
+    if (_normKeyIndex) return _normKeyIndex;
+    _normKeyIndex = [];
+    for (var key in TEAM_DATA) {
+        if (!TEAM_DATA[key] || !TEAM_DATA[key].colors) continue;
+        var nk = normName(key);
+        if (nk.length > 0) _normKeyIndex.push([nk, key]);
+    }
+    return _normKeyIndex;
+}
+
+/* Résultats mémorisés. TEAM_DATA, TEAM_ALIASES et NORM_TEAM_KEYS sont figés après le
+   chargement du module : pour un même nom, la réponse ne change jamais. La grille est
+   reconstruite à chaque passe de rafraîchissement (toutes les 60 s) sur les mêmes noms
+   d'équipes, et chaque carte interroge deux fois cette fonction — plus une fois par
+   appel de getLogo qui retombe sur elle. */
+var _teamColorsCache = Object.create(null);
+
 export function getTeamColors(teamName) {
     if (!teamName) return ['#333333', '#ffffff'];
+    var memo = _teamColorsCache[teamName];
+    if (memo) return memo;
+    var result = computeTeamColors(teamName);
+    _teamColorsCache[teamName] = result;
+    return result;
+}
+
+function computeTeamColors(teamName) {
     var lowerName = teamName.toLowerCase().trim();
     if (TEAM_DATA[lowerName] && TEAM_DATA[lowerName].colors) {
         return TEAM_DATA[lowerName].colors;
@@ -113,11 +143,19 @@ export function getTeamColors(teamName) {
         return TEAM_DATA[aliasKey].colors;
     }
 
-    for (var key in TEAM_DATA) {
-        var normKey = normName(key);
-        if (normKey.length > 0 && norm.length > 0 && (norm === normKey || norm.includes(normKey) || normKey.includes(norm))) {
-            if (TEAM_DATA[key] && TEAM_DATA[key].colors) {
-                return TEAM_DATA[key].colors;
+    /* Repli par correspondance partielle. Il parcourait les 821 entrées de TEAM_DATA en
+       appelant normName sur chaque clé, à chaque appel non résolu — soit deux fois par
+       carte de match, plus une fois par appel de getLogo qui retombe ici. Les clés
+       normalisées sont désormais calculées une seule fois. L'ordre du tableau est celui
+       de `for...in` sur TEAM_DATA (ordre d'insertion des clés de type chaîne), donc la
+       première correspondance trouvée reste exactement la même qu'avant. */
+    var index = normKeyIndex();
+    for (var ni = 0; ni < index.length; ni++) {
+        var normKey = index[ni][0];
+        if (norm.length > 0 && (norm === normKey || norm.includes(normKey) || normKey.includes(norm))) {
+            var entry = TEAM_DATA[index[ni][1]];
+            if (entry && entry.colors) {
+                return entry.colors;
             }
         }
     }

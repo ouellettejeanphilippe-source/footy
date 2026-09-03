@@ -88,6 +88,26 @@ test('les onglets Live et Guide se rendent sans exception', async ({ page }) => 
   expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length)).toBeGreaterThan(0);
 });
 
+test('les boutons de navigation atteignent chaque vue', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+
+  /* La vue « À venir » a longtemps été inatteignable : applyFilter('upcoming') et sa
+     branche de rendu existaient, mais aucun bouton ne les appelait. On clique ici les
+     vrais boutons de la barre de navigation, pas applyFilter directement. */
+  for (const [id, filter] of [['filter-live', 'live'], ['filter-upcoming', 'upcoming'], ['filter-all', 'all']]) {
+    const button = page.locator('#' + id);
+    await expect(button, `le bouton ${id} doit exister dans la barre de navigation`).toHaveCount(1);
+    await button.click();
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => window.S.filter), `#${id} doit activer le filtre ${filter}`).toBe(filter);
+    await expect(button).toHaveClass(/active-toggle/);
+    expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length),
+      `la vue ${filter} doit afficher des matchs`).toBeGreaterThan(0);
+  }
+
+  expect(pageErrors, 'aucune exception en naviguant :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 test('aucun débordement horizontal sur mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const pageErrors = await bootOffline(page);

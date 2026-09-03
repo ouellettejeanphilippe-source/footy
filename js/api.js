@@ -1,10 +1,10 @@
-import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
+import { lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier } from './db.js';
 import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
-import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, parseSportsDbEvents, getStreamCache } from './scrapers.js';
+import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
-import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 /* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
@@ -137,26 +137,6 @@ export function fetchLolEsportsEventDetails(id) {
         headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' },
         signal: AbortSignal.timeout(8000)
     }).then(function(res) { return res.json(); }).catch(function(){ return null; });
-}
-
-export function filterBuggyMatches(matches) {
-    var today = new Date();
-    var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
-
-    return matches.filter(function(m) {
-        var lowerHome = m.homeTeam.toLowerCase();
-        var lowerAway = m.awayTeam.toLowerCase();
-        var isWWE = lowerHome.includes('wwe') || lowerAway.includes('wwe') || m.league.toLowerCase().includes('wwe');
-        var isRaw = lowerHome.includes('raw') || lowerAway.includes('raw');
-        var isSmackdown = lowerHome.includes('smackdown') || lowerAway.includes('smackdown');
-
-        // Note: The previous logic aggressively filtered Raw/SmackDown by dayOfWeek,
-        // which caused legitimate WWE streams (now parsed accurately from wwe.com/events)
-        // to vanish. We no longer filter WWE by day of week here to allow the official schedule to dictate visibility.
-        // If other buggy stream matching rules are needed in the future, they should go here.
-
-        return true;
-    });
 }
 
 
@@ -1103,7 +1083,6 @@ export function fetchLeagueStandings(leagueName, seasonType) {
 window.ESPN_LEAGUES = ESPN_LEAGUES;
 window.getEspnDateStr = getEspnDateStr;
 window.fetchEspnSchedule = fetchEspnSchedule;
-window.filterBuggyMatches = filterBuggyMatches;
 window.TARGET_DATE = TARGET_DATE;
 window.setApiTargetDate = setApiTargetDate;
 window.getApiFirstMatches = getApiFirstMatches;

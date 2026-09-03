@@ -36,6 +36,10 @@
 
 <div class="nav-links" id="nav-links">
       <button class="nav-btn" id="filter-live" onclick="applyFilter('live')">Live</button>
+      <!-- La vue « À venir » (liste de tous les matchs du jour, par opposition à la grille
+           temporelle du Guide) existait dans applyFilter et buildEPG, mais aucun bouton ne
+           l'appelait : elle était inatteignable depuis l'interface. -->
+      <button class="nav-btn" id="filter-upcoming" onclick="applyFilter('upcoming')">À venir</button>
       <button class="nav-btn" id="filter-all" onclick="applyFilter('all')">Guide</button>
       <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">Lecteur</button>
 

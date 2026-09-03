@@ -21,8 +21,7 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 ├── multiview-cleaner.user.js # Script utilisateur pour nettoyer/encadrer les streams vidéo
 ├── package.json          # Dépendances de développement (Playwright, jsdom, express)
 ├── run_checks.py         # Script Python pour automatiser les tests locaux
-├── sw.js                 # Service worker (gestion du cache PWA)
-└── [Multitude de scripts de patchs] # ex: fix_*.py, check_*.py, *.js -> À NETTOYER
+└── sw.js                 # Service worker (gestion du cache PWA)
 
 ## Modules et responsabilités
 
@@ -73,7 +72,6 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 
 ## Points d'attention
 - **Doublons potentiels** : Fonctions `cacheLogo` présentes deux fois dans `index.html`. Présence de fonctions internes s'appelant de manière quasi-identique.
-- **Dette de Patchs (Fichiers poubelles)** : Nombre énorme de scripts de "fix/test" à la racine (e.g., `fix_favorites_rendering.js`, `update_render.js`, `test_sort.js`, `fix_psg.py`, `check_custom_lg.py`). À classer, supprimer ou déplacer dans un sous-dossier de tests.
 - **Fichier monstrueux** : `index.html` nécessite un découpage modulaire d'urgence.
 ### Source Status Tracking
 - `sourcesStatus`: Global array storing the latest status of each scraped source domain (`name`, `status`, `matchCount`, `message`, `time`).
@@ -219,3 +217,33 @@ de repli. Seules les requêtes GET dont la réponse est `ok` et `basic` sont sto
 coquille pré-chargée couvre désormais l'application entière (CSS + 14 modules JS +
 `data/*.json`), fichier par fichier pour qu'une ressource absente ne fasse pas échouer
 l'installation : l'application démarre et affiche ses matchs sans réseau.
+
+## Tests et surveillance (2026-09-03)
+
+Deux natures de vérification, volontairement séparées :
+
+| Commande | Contenu | Réseau | Déclenchement |
+|---|---|---|---|
+| `npm test` | 8 fichiers unitaires + `tests/test_app_boot.spec.js` | aucun (le test de démarrage coupe tout le trafic sortant) | `.github/workflows/tests.yml`, sur chaque push et « pull request » |
+| `npm run test:domains` | `tests/test_domains.spec.js` | visite les vrais sites sources | `.github/workflows/domains-watch.yml`, chaque jour à 05:00 UTC + manuel |
+
+La surveillance des domaines lit `SCRAPERS_CONFIG` et `SOURCE_MIRRORS` dans
+`js/config.js` plutôt que de recopier les adresses : les deux fichiers qu'elle remplace
+portaient chacun leur propre liste, déjà désynchronisée du code. Elle ne bloque plus les
+« pull requests » car son résultat dépend de l'adresse IP d'exécution (Cloudflare répond
+403/429/520 aux centres de données) autant que de l'état réel des sites.
+
+## Graphe de modules
+
+`js/db.js` (→ `teams.js` seulement), `js/teams.js`, `js/match.js`, `js/fetcher.js` et
+`js/extractors.js` sont hors de tout cycle. Le reste forme un nœud :
+`utils ↔ config ↔ ui ↔ multiview ↔ main ↔ scrapers ↔ api`.
+
+Conséquence concrète à connaître avant d'importer un de ces modules ailleurs (script
+serveur, test) : **l'ordre d'évaluation dépend du module par lequel on entre dans le
+graphe.** En production le point d'entrée est `js/main.js` et l'ordre est correct ;
+entrer par `js/config.js` évalue `js/multiview.js` avant que `js/ui.js` n'ait initialisé
+`userPrefs`, ce qui faisait planter `initPrefs()` (appelé au chargement du module). Les
+deux fonctions concernées tolèrent désormais l'absence de `userPrefs`, mais la fragilité
+de fond demeure : la sortir demande de déplacer les effets de bord de chargement, pas
+d'ajouter des gardes.

@@ -2,9 +2,8 @@ import { fetchSubPages } from './scrapers.js';
 import { S } from './state.js';
 import { PROXIES, resolveUrl } from './config.js';
 import { inspectPageContent, orderProxies, recordProxyResult, DEFAULT_PROXY_TIMEOUT } from './fetcher.js';
-import { normName, getLogo } from './db.js';
 import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
-import { userPrefs, buildEPG, scrollToNow } from './ui.js';
+import { userPrefs, buildEPG } from './ui.js';
 import { openFavPage } from './main.js';
 
 /* ══ HELPERS ═══════════════════════════ */

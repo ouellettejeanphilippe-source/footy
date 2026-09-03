@@ -1,4 +1,4 @@
-import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder, setLeagueTier, resetLeagueTiers } from './state.js';
+import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
@@ -1194,7 +1194,7 @@ window.filterFavTeams = filterFavTeams;
 window.switchFavTab = switchFavTab;
 
 export function applyTargetDate(d) {
-    window.setApiTargetDate(d);
+    setApiTargetDate(d);
 
     var now = new Date();
     var isToday = (d.toDateString() === now.toDateString());

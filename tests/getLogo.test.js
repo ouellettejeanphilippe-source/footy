@@ -106,6 +106,27 @@ if (typeof teamColorPair !== 'function') {
 });
 console.log('✅ [PASS] teamColorPair renvoie toujours une paire complète');
 
+/* getTeamColors mémorise ses résultats et s'appuie sur un index des clés normalisées
+   construit une seule fois (les 821 entrées de TEAM_DATA étaient sinon reparcourues,
+   normName compris, à chaque appel non résolu). On vérifie que le repli par
+   correspondance partielle fonctionne toujours et que la mémoïsation est stable. */
+const getTeamColors = sandbox.getTeamColors;
+if (typeof getTeamColors !== 'function') {
+    console.error("getTeamColors is not a function in the loaded context");
+    process.exit(1);
+}
+assert.deepStrictEqual(getTeamColors('Arsenal'), ['#ff0000', '#ffffff'], 'correspondance exacte');
+assert.deepStrictEqual(getTeamColors('Chelsea FC'), ['#0000ff', '#ffffff'], 'correspondance partielle (suffixe)');
+assert.deepStrictEqual(getTeamColors('gunners'), ['#ff0000', '#ffffff'], 'correspondance par alias');
+assert.deepStrictEqual(getTeamColors('Algeria'), ['#5bbd19'], 'la donnée d\'origine est renvoyée telle quelle');
+const unknownFirst = getTeamColors('Équipe Totalement Inconnue');
+assert.ok(Array.isArray(unknownFirst) && /^hsl\(/.test(unknownFirst[0]), 'repli sur une couleur dérivée du nom');
+// Deux appels successifs doivent donner exactement le même résultat (mémoïsation).
+['Arsenal', 'Chelsea FC', 'gunners', 'Algeria', 'Équipe Totalement Inconnue'].forEach(function (n) {
+    assert.deepStrictEqual(getTeamColors(n), getTeamColors(n), 'résultat instable pour ' + n);
+});
+console.log('✅ [PASS] getTeamColors : correspondances et mémoïsation stables');
+
 const tests = [
     {
         name: "Null input",

@@ -2695,53 +2695,6 @@ export function updateMatchUiAfterScrape(m) {
 }
 
 
-/* Remonte les siblings/parents pour trouver le header de ligue */
-export function findLeagueHeader(el) {
-    var curr = el;
-    while (curr && curr !== document.body) {
-        if (curr.classList && curr.classList.contains('my-1') && curr.querySelector('.img-icone')) {
-            var span = curr.querySelector('span');
-            if (span) return span.textContent.trim();
-        }
-        var prev = curr.previousElementSibling;
-        while (prev) {
-            if (prev.tagName === 'H2') return prev.textContent.trim();
-            if (prev.classList && prev.classList.contains('my-1') && prev.querySelector('.img-icone')) {
-                var spanPrev = prev.querySelector('span');
-                if (spanPrev) return spanPrev.textContent.trim();
-            }
-            if (prev.classList && prev.classList.contains('league-header')) {
-                var text = prev.textContent.replace(/\s+/g, ' ').trim();
-                return text;
-            }
-            if (prev.classList && prev.classList.contains('text-dark-light')) {
-                return prev.textContent.trim();
-            }
-            if (prev.querySelector && prev.querySelector('.text-dark-light')) {
-                var aChild = prev.querySelector('.text-dark-light');
-                if (aChild) return aChild.textContent.trim();
-            }
-            prev = prev.previousElementSibling;
-        }
-        curr = curr.parentElement;
-    }
-    return null;
-}
-
-/* Convert UK time to EST */
-export function getEstTime(ukTimeStr){
-    var parts = ukTimeStr.split(':');
-    if(parts.length !== 2) return ukTimeStr;
-    var h = parseInt(parts[0], 10);
-    var m = parseInt(parts[1], 10);
-    // UK is UTC+0 or +1 (BST). EST is UTC-5 or EDT is UTC-4.
-    // Usually a 5 hours difference.
-    var estH = h - 5;
-    if(estH < 0) estH += 24;
-    estH = estH % 24;
-    return pad(estH) + ':' + pad(m);
-}
-
 
 
 // Global bindings for HTML compatibility
@@ -2768,7 +2721,5 @@ window.saveStreamCache = saveStreamCache;
 window.fetchSubPages = fetchSubPages;
 window.scrapeMatchFlux = scrapeMatchFlux;
 window.updateMatchUiAfterScrape = updateMatchUiAfterScrape;
-window.findLeagueHeader = findLeagueHeader;
-window.getEstTime = getEstTime;
 window.recordEmbedResult = recordEmbedResult;
 window.getEmbedRegistry = getEmbedRegistry;

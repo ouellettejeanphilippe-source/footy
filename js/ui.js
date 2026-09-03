@@ -1,12 +1,12 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
-import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak, resolveStreamUrl } from './utils.js';
-import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from './api.js';
+import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
+import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
-import { DEFAULT_LEAGUES, OTHER_LEAGUES, lgFlag, leagueTier } from './db.js';
+import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
    dans les boucles de rendu. Alias stable pour pouvoir journaliser depuis celles-ci. */
