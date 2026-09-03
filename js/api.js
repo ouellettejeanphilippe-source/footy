@@ -1,6 +1,6 @@
 import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
+import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier } from './db.js';
 import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
 import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, parseSportsDbEvents, getStreamCache } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
@@ -431,7 +431,10 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
   };
 
   promises.push(
-      fetch('https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + targetDateStr + '&s=Fighting')
+      /* Sans délai maximal, cette requête était la seule du lot à pouvoir suspendre
+         Promise.all indéfiniment (les autres appels ESPN/LoL portent déjà un
+         AbortSignal.timeout de 8 s) : le calendrier entier restait alors en attente. */
+      fetch('https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + targetDateStr + '&s=Fighting', { signal: AbortSignal.timeout(8000) })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
             var fights = data ? parseSportsDbEvents(data, targetDateStr) : [];
@@ -698,6 +701,19 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
 
   if (typeof window.streamMissingCounts === 'undefined') window.streamMissingCounts = {};
 
+  /* Ligues déjà couvertes par la grille officielle. Un flux non fusionné dont la ligue
+     figure ici est un doublon potentiel (la fusion a échoué sur les noms d'équipes) :
+     il reste dans « Autres streams », conformément au principe API-First. Mais quand
+     l'API ne renvoie rien du tout pour cette ligue — ESPN injoignable, ou ligue absente
+     d'ESPN_LEAGUES — aucun doublon n'est possible et le match garde son vrai nom de
+     ligue, donc sa place dans le Guide. Sans cela, une panne d'ESPN faisait basculer
+     toute la grille (NFL, MLB, NBA…) dans une section repliée « Autres streams ». */
+  var apiLeagues = {};
+  for (var ai = 0; ai < apiMatches.length; ai++) {
+      var alKey = String(apiMatches[ai].league || '').toUpperCase().trim();
+      if (alKey) apiLeagues[alKey] = true;
+  }
+
   scrapedMatches.forEach(function(sm) {
 
       var matched = false;
@@ -762,10 +778,18 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          sm.id = 'scraped_' + encodeURIComponent(determStr);
          if (!sm.matchDate) sm.matchDate = targetDateStr;
          sm.scrapedLeagueName = sm.league ? formatLeagueName(sm.league) : 'Autres Flux';
-         sm.league = 'Autres Flux';
+         var keepLeague = sm.scrapedLeagueName !== 'Autres Flux'
+             && leagueTier(sm.scrapedLeagueName) !== 'other'
+             && !apiLeagues[sm.scrapedLeagueName.toUpperCase()];
+         sm.league = keepLeague ? sm.scrapedLeagueName : 'Autres Flux';
          sm.streamsLoaded = true;
-         sm.flag = '📡';
-         sm.color = '#555555';
+         if (!keepLeague) {
+             sm.flag = '📡';
+             sm.color = '#555555';
+         } else {
+             if (!sm.flag) sm.flag = lgFlag(sm.league);
+             if (!sm.color) sm.color = lgColor(sm.league);
+         }
 
          apiMatches.push(sm);
 

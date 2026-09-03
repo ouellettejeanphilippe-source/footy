@@ -1,5 +1,5 @@
 import { fetchPage } from './utils.js';
-import { DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
+import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder, saveCustomLgOrder, toggleFavTeam } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
@@ -2654,7 +2654,10 @@ export function buildSwatches() {
     if (typeof favTeams !== 'undefined') {
         Object.keys(favTeams).forEach(function(teamName) {
             if (favTeams[teamName] === 1) {
-                var colors = getTeamColors(teamName); // from config.js
+                /* getTeamColors (js/db.js, et non config.js) renvoyait une seule couleur
+                   pour 25 équipes : la palette de ces favoris était silencieusement
+                   ignorée. teamColorPair complète toujours la paire. */
+                var colors = teamColorPair(teamName);
                 if (colors && colors.length >= 2) {
                     var c1 = colors[0];
                     var accent = colors[1];

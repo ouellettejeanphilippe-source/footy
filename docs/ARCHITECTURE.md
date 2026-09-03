@@ -40,9 +40,9 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 ### `sw.js`
 - **Rôle** : Service Worker fournissant les capacités PWA.
 - **Exporte** : Rien (s'attache à `self`).
-- **Dépend de** : Fichiers racines statiques (`index.html`, `manifest.json`).
+- **Dépend de** : la coquille de l'application (`index.html`, `manifest.json`, `styles.css`, `tv.css`, les 14 modules de `js/`, `data/streams.json`, `data/schedule.json`).
 - **Utilisé par** : `index.html` (enregistrement du SW).
-- **Notes** : Très basique, met en cache uniquement `index.html` et `manifest.json`.
+- **Notes** : réseau d'abord, cache en repli. Voir « Service Worker » plus bas.
 
 ### `multiview-cleaner.user.js`
 - **Rôle** : Script Tampermonkey injecté dans les iframes de stream (cross-origin si possible/configuré) pour bloquer les popups, masquer les pubs via CSS, et gérer le volume audio/click to focus via `postMessage`.
@@ -67,9 +67,9 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 
 ## Service Worker
 - **Chemin** : `./sw.js`
-- **Version actuelle** : `sports-guide-v2` (Variable `CACHE_NAME`)
-- **Liste des assets précachés** : `./index.html`, `./manifest.json`
-- **Stratégies par route** : Stratégie globale de mise en cache à l'installation (Cache-Only lors du fetch pour le moment, ce qui est basique).
+- **Version actuelle** : `sports-guide-v3` (variable `CACHE_NAME` — à incrémenter à chaque modification du fichier)
+- **Liste des assets précachés** (`APP_SHELL`) : `index.html`, `manifest.json`, `styles.css`, `tv.css`, les 14 modules de `js/`, `data/streams.json`, `data/schedule.json` — ajoutés un par un, une ressource absente ne fait pas échouer l'installation.
+- **Stratégie** : réseau d'abord, cache en repli, sur les seules requêtes GET de même origine. La clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) et seules les réponses `ok` et `basic` sont stockées.
 
 ## Points d'attention
 - **Doublons potentiels** : Fonctions `cacheLogo` présentes deux fois dans `index.html`. Présence de fonctions internes s'appelant de manière quasi-identique.
@@ -171,3 +171,51 @@ Le scraping en direct des pages de liste (`fetchSourcePages`) et le pré-scrapin
 
 ### Entonnoir des liens
 `finalizeStreamLinks` (`js/scrapers.js`) est le passage obligé de tout lien, quelle que soit sa provenance : écarte les pages d'index et les libellés parasites, dédoublonne sur l'adresse normalisée, puis renseigne site, chaîne de télévision, qualité et langue via `describeStreamLink`.
+
+## Robustesse du rendu et du démarrage (2026-09-03)
+
+### Le rendu du guide ne peut plus effacer l'application
+`buildEPG` (`js/ui.js`) vide `#marea` avant de le reconstruire, or `#ov` (l'indicateur de
+chargement) et `#errbox` (le message d'erreur et son bouton « Réessayer ») vivent à
+l'intérieur de `#marea` : une exception en cours de rendu les faisait disparaître
+définitivement, et tout `document.getElementById('ov').style` ultérieur plantait — y
+compris celui du `.finally` de `loadAll`, ce qui empêchait `window.hasLoadedOnce` et
+l'événement `loadSequenceComplete`, donc l'actualisation automatique des scores.
+
+Trois barrières, dans cet ordre :
+1. `getLogo` / `teamColorPair` (`js/db.js`) : la paire de couleurs d'une équipe est
+   toujours complète, même pour les 25 entrées de `TEAM_DATA` qui n'en déclarent qu'une.
+2. `renderMatches` (`js/ui.js`) construit chaque carte dans un `try/catch` : sur des
+   données agrégées, un match malformé est ignoré et journalisé, jamais fatal.
+3. `buildEPG` enveloppe `buildEPGInner` et réinstalle `#ov`/`#errbox` si le rendu échoue ;
+   `hideLoadingOverlay()` / `showLoadError()` (`js/main.js`) sont les seuls points
+   d'accès à ces éléments et tolèrent leur absence.
+
+`tests/test_app_boot.spec.js` verrouille l'ensemble : réseau externe entièrement coupé,
+il vérifie que l'application démarre, rend des cartes, conserve `#ov`/`#errbox`, traverse
+les huit onglets sans exception et ne déborde pas horizontalement à 390 px. C'est le
+premier test qui exécute réellement l'application ; il est déterministe (aucun site tiers).
+
+### Aucune requête ne peut suspendre le démarrage
+Toute requête réseau attendue sur le chemin du premier rendu porte un délai maximal :
+`fetchRemoteConfig` (`js/config.js`, `REMOTE_CONFIG_TIMEOUT_MS` = 5 s via `AbortController`)
+et chaque entrée du `Promise.all` du calendrier (`js/api.js`, `AbortSignal.timeout(8000)`,
+TheSportsDB incluse). Un réseau qui avale les requêtes au lieu de les refuser ne bloque
+donc plus l'application.
+
+### Flux non appariés : `mergeFluxToApi` (`js/api.js`)
+Un flux qui ne correspond à aucun match de la grille officielle reste rangé dans
+« Autres Flux » — c'est le principe API-First (un échec de fusion ne doit pas produire de
+doublon visible). **Exception** : si l'API ne renvoie aucun match pour cette ligue (ESPN
+injoignable, ou ligue absente d'`ESPN_LEAGUES`), aucun doublon n'est possible et le match
+garde le nom de ligue lu dans `data/streams.json`, donc sa place dans le Guide. Couvert
+par `tests/unit_merge.test.js`.
+
+### Service worker (`sw.js`, `sports-guide-v3`)
+Réseau d'abord, cache en repli. La clé de cache d'une requête de même origine ignore sa
+chaîne de requête : `data/streams.json?t=…` et `data/schedule.json?t=…` changent d'adresse
+à chaque chargement et créaient sinon une entrée de plus par passage, sans jamais servir
+de repli. Seules les requêtes GET dont la réponse est `ok` et `basic` sont stockées. La
+coquille pré-chargée couvre désormais l'application entière (CSS + 14 modules JS +
+`data/*.json`), fichier par fichier pour qu'une ressource absente ne fasse pas échouer
+l'installation : l'application démarre et affiche ses matchs sans réseau.

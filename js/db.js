@@ -128,6 +128,15 @@ export function getTeamColors(teamName) {
     return ['hsl('+hue+', 60%, 30%)', '#ffffff'];
 }
 
+/* 25 des 821 entrées de TEAM_DATA ne déclarent qu'une seule couleur (les sélections
+   nationales surtout). getTeamColors renvoyait alors un tableau d'un élément et tout
+   appelant qui lit colors[1] plantait. La paire est désormais toujours complète. */
+export function teamColorPair(teamName) {
+    var c = getTeamColors(teamName);
+    if (!Array.isArray(c)) return ['#333333', '#ffffff'];
+    return [c[0] || '#333333', c[1] || '#ffffff'];
+}
+
 export var LEAGUE_ALIASES = {
   'fifa world cup': 'world cup',
   'coupe du monde': 'world cup',
@@ -466,7 +475,7 @@ export function getLogo(teamName) {
         return TEAM_DATA[aliasKey].logo;
     }
 
-    var colors = getTeamColors(teamName);
+    var colors = teamColorPair(teamName);
     var bg = colors[0].replace('#', '');
     if (bg.startsWith('hsl')) bg = '333333';
     var fg = colors[1].replace('#', '');
@@ -588,6 +597,7 @@ window.lgFlag = lgFlag;
 window.TEAM_COLORS = TEAM_COLORS;
 window.STATIC_TEAMS = STATIC_TEAMS;
 window.getTeamColors = getTeamColors;
+window.teamColorPair = teamColorPair;
 window.TEAM_ALIASES = TEAM_ALIASES;
 window.LEAGUE_ALIASES = LEAGUE_ALIASES;
 window.LEAGUE_FORMAT_NAMES = LEAGUE_FORMAT_NAMES;

@@ -42,6 +42,14 @@ const MOCK_TEAM_DATA = {
         name: 'Chelsea',
         // No logo provided, should trigger fallback with these colors
         colors: ['#0000ff', '#ffffff']
+    },
+    // 25 des 821 équipes réelles (sélections nationales surtout) ne déclarent qu'une
+    // seule couleur. getTeamColors renvoyait alors un tableau d'un seul élément et
+    // getLogo plantait sur colors[1].replace(...) — ce qui interrompait le rendu de
+    // toute la grille (buildEPG), pas seulement de la carte fautive.
+    'algeria': {
+        name: 'Algeria',
+        colors: ['#5bbd19']
     }
 };
 
@@ -76,11 +84,27 @@ try {
 }
 
 const getLogo = sandbox.getLogo;
+const teamColorPair = sandbox.teamColorPair;
 
 if (typeof getLogo !== 'function') {
     console.error("getLogo is not a function in the loaded context");
     process.exit(1);
 }
+
+if (typeof teamColorPair !== 'function') {
+    console.error("teamColorPair is not a function in the loaded context");
+    process.exit(1);
+}
+
+// teamColorPair complète toujours la paire, quelle que soit la donnée d'origine.
+[['Algeria', '#5bbd19'], ['Arsenal', '#ff0000'], ['Inconnu XYZ', null]].forEach(function (c) {
+    const pair = teamColorPair(c[0]);
+    assert.ok(Array.isArray(pair) && pair.length >= 2, 'teamColorPair(' + c[0] + ') doit renvoyer deux couleurs');
+    assert.ok(typeof pair[0] === 'string' && pair[0], 'couleur de fond manquante pour ' + c[0]);
+    assert.ok(typeof pair[1] === 'string' && pair[1], 'couleur de texte manquante pour ' + c[0]);
+    if (c[1]) assert.strictEqual(pair[0], c[1]);
+});
+console.log('✅ [PASS] teamColorPair renvoie toujours une paire complète');
 
 const tests = [
     {
@@ -122,6 +146,16 @@ const tests = [
         name: "Unknown team fallback to ui-avatars with default colors",
         input: "Jules FC",
         expected: "https://ui-avatars.com/api/?name=Jules%20FC&background=333333&color=ffffff&size=200&font-size=0.4"
+    },
+    {
+        name: "Équipe sans logo et à une seule couleur (Algeria) - ne doit pas planter",
+        input: "Algeria",
+        expected: "https://ui-avatars.com/api/?name=Algeria&background=5bbd19&color=ffffff&size=200&font-size=0.4"
+    },
+    {
+        name: "Nom inconnu contenant une équipe à une seule couleur (correspondance floue)",
+        input: "Algeria U21",
+        expected: "https://ui-avatars.com/api/?name=Algeria%20U21&background=5bbd19&color=ffffff&size=200&font-size=0.4"
     }
 ];
 
