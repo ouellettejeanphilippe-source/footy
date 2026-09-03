@@ -44,7 +44,24 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - **Notes** : réseau d'abord, cache en repli. Voir « Service Worker » plus bas.
 
 ### `multiview-cleaner.user.js`
-- **Rôle** : Script Tampermonkey injecté dans les iframes de stream (cross-origin si possible/configuré) pour bloquer les popups, masquer les pubs via CSS, et gérer le volume audio/click to focus via `postMessage`.
+- **Rôle** : Script Tampermonkey injecté dans les iframes de stream (cross-origin si possible/configuré) pour masquer les pubs via CSS, et gérer le volume audio/click to focus via `postMessage`. Il sert aussi de pont de téléchargement (`GM_xmlhttpRequest`) dans la fenêtre principale.
+
+#### Ce qui a été repris par l'application, et ce qui ne peut pas l'être
+
+La ligne de partage est simple : **manipuler le DOM d'une page tierce exige l'extension**
+(l'origine croisée l'interdit à tout JavaScript de l'application), mais **ce que le
+navigateur applique de façon déclarative peut vivre dans le site**, donc profiter à tout
+le monde, sans extension et sous Firefox.
+
+| Fonction du script | Peut vivre dans le site ? |
+|---|---|
+| `injectPopupBlocker` (écrase `window.open`, intercepte les clics `target="_blank"`) | **Oui — fait** : l'attribut `sandbox` (`PLAYER_SANDBOX`) sur l'iframe du lecteur. Appliqué par le navigateur, donc infranchissable par le lecteur, là où un `window.open` écrasé peut être redéfini. |
+| `injectStyles`, `cleanEverythingOutside`, `removeInvisibleOverlays`, `getPlayerBase`, l'observateur de pubs | **Non, sauf sur une page reconstruite.** Ces fonctions lisent et modifient le DOM du site tiers ; l'origine croisée l'interdit. L'exception est le document `srcdoc` du tour de passe-passe, que l'application écrit elle-même et où cette logique pourrait être injectée comme l'est déjà la cale. |
+| `extractM3u8Url`, `addMobileCastSupport` | **Non pour le second** (il lui faut l'élément `<video>` de la page tierce). Le premier pourrait tourner sur le HTML déjà téléchargé par le pont. |
+| Le pont `GM_xmlhttpRequest` | **Non, par construction** : c'est précisément le privilège d'extension qui échappe à la politique d'origine croisée et porte les cookies du navigateur. C'est sa seule raison d'être. |
+
+Le script reste donc utile pour le nettoyage visuel et le pont ; le blocage des popups,
+lui, n'en dépend plus.
 - **Exporte** : Rien, s'exécute automatiquement dans le DOM ciblé.
 
 ### `run_checks.py`
