@@ -144,6 +144,20 @@ if (!NO_SUBPAGES) {
     const queue = all.slice(0, LIMIT);
     const CONCURRENCY = 6;
     let idx = 0, done = 0;
+
+    /* Plusieurs matchs peuvent partager la même page de match : c'est le cas
+       normal d'OnHockey depuis que ses matchs pointent vers schedule_table.php
+       (sa seule grille) plutôt que vers l'accueil du site. Sans ce cache, chaque
+       match relançait sa propre requête `force: true` vers la même adresse — 24
+       requêtes identiques en quelques secondes, qui se faisaient elles-mêmes
+       ralentir/bloquer (429) par le site. Une entrée par URL, partagée par tous
+       les matchs qui la citent. */
+    const pageHtmlCache = new Map();
+    function fetchPageOnce(u) {
+        if (!pageHtmlCache.has(u)) pageHtmlCache.set(u, fetchPage(u, { force: true }));
+        return pageHtmlCache.get(u);
+    }
+
     async function worker() {
         while (idx < queue.length) {
             const m = queue[idx++];
@@ -160,15 +174,21 @@ if (!NO_SUBPAGES) {
             m.pagesTried = urls.length; m.pagesOk = 0; m.scrapeError = null;
             for (const u of urls) {
                 try {
-                    const html = await fetchPage(u, { force: true });
+                    const html = await fetchPageOnce(u);
                     m.pagesOk++;
                     let srcId = m.source;
                     try { const host = new URL(u).hostname; const sc = SCRAPERS_CONFIG.find((c) => host.indexOf(new URL(c.url).hostname.replace(/^(www|v2|app)\./, '')) >= 0); if (sc) srcId = sc.id; } catch (e) {}
                     const ctx = Object.assign({}, m, { matchUrl: u, source: srcId, streamLinks: [] });
                     const links = scrapers.extractStreamLinks(html, ctx) || [];
+                    /* `srcId` (calculé juste au-dessus) est le domaine réellement visité pour
+                       CETTE page — `m.source` reste le site qui a DÉCOUVERT le match dans la
+                       grille, souvent différent quand `u` est un altUrl. Un lien trouvé sur
+                       une page buffstreams attachée à un match découvert par footybite doit
+                       porter "buffstreams", pas "footybite" : sinon chaque source qui fusionne
+                       dans une autre voit ses liens crédités à la mauvaise source. */
                     const clean = links
                         .filter((l) => l && l.url)
-                        .map((l) => ({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, site: l.site, channel: l.channel, source: l.source || m.source, topLevel: !!l.topLevel }));
+                        .map((l) => ({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, site: l.site, channel: l.channel, source: l.source || srcId, topLevel: !!l.topLevel }));
                     m.streamLinks = (m.streamLinks || []).concat(clean.filter((c) => !(m.streamLinks || []).some((e) => e.url === c.url)));
                 } catch (e) {
                     const err = String(e && e.message ? e.message : e).split('\n')[0].slice(0, 120);
@@ -195,9 +215,22 @@ if (!NO_SUBPAGES) {
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 }
 
+/* Compter par `m.source` (la source qui a DÉCOUVERT le match) donnait 0 pour
+   toute source dont les matchs fusionnent dans l'entrée d'une autre — le cas
+   normal dès que deux sites listent le même match, puisque mergeMatches ne
+   garde qu'une entrée. Une source pouvait ainsi lire "0 flux" alors que ses
+   liens étaient bien là, simplement comptés sous le nom d'une autre. Chaque
+   lien porte son propre `source` (site qui l'a réellement fourni) : c'est sur
+   ce champ qu'il faut compter, pas sur le match qui l'héberge. */
+const linksBySource = {};
+for (const m of all) for (const l of (m.streamLinks || [])) {
+    if (l.topLevel) continue;
+    const s = l.source || 'inconnu';
+    linksBySource[s] = (linksBySource[s] || 0) + 1;
+}
 for (const rep of sourcesReport) {
     const mine = all.filter((m) => m.source === rep.id);
-    rep.streams = mine.reduce((n, m) => n + ((m.streamLinks || []).filter((l) => !l.topLevel).length), 0);
+    rep.streams = linksBySource[rep.id] || 0;
     rep.matchPagesOk = mine.reduce((n, m) => n + (m.pagesOk || 0), 0);
     rep.matchPagesFail = mine.reduce((n, m) => n + Math.max(0, (m.pagesTried || 0) - (m.pagesOk || 0)), 0);
     const firstErr = mine.map((m) => m.scrapeError).find(Boolean);

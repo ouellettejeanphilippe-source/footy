@@ -3,7 +3,7 @@ import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './ex
 import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
-import { getTeamInfo } from './match.js';
+import { getTeamInfo, isMatchPair } from './match.js';
 import { S, addScrapeLog, favTeams, matchCardCache } from './state.js';
 import { renderFluxItem } from './ui.js';
 
