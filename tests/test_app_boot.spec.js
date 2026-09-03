@@ -46,6 +46,14 @@ async function bootOffline(page) {
   await page.route('**/*', (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
   await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
+  /* `window.hasLoadedOnce` est posé dans le `.finally` de loadAll, mais le rendu final
+     atterrit dans le DOM 50 à 150 ms plus tard (mesuré sur six démarrages). Un test qui
+     lisait le DOM dès ce drapeau tombait donc sur une grille encore vide, au hasard de la
+     machine — les assertions sur les cartes ne passaient que par chance. On attend les
+     cartes elles-mêmes ; l'absence de rendu reste une vraie erreur, signalée par le
+     dépassement de délai. */
+  await page.waitForFunction(() => document.querySelectorAll('.match-card, .mb').length > 0,
+    null, { timeout: 30000 });
   return pageErrors;
 }
 

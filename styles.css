@@ -924,6 +924,10 @@ body.cards-poster .prime-league-badge .plb-name { max-width: 74px; font-size: 10
   border-radius: 999px; width: 20px; height: 20px; cursor: pointer; font-size: 11px; line-height: 1;
 }
 .mv-trick-badge button:hover { background: var(--accent); }
+/* Vert quand le lecteur a été extrait (lecture normale) ; neutre pour une page
+   reconstruite, dont l'affichage peut être partiel. */
+.mv-trick-badge.ok { border-color: rgba(52,199,89,0.55); }
+.mv-trick-badge.ok > span { color: #34c759; }
 
 .mv-embed-helper {
   position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 20;

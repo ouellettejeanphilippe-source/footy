@@ -58,7 +58,7 @@ Pour garantir une expérience optimale, sans interruptions indésirables ni pop-
 
 L'application utilise un script externe (*Multiview cleaner*) conçu pour interagir avec les lecteurs vidéo intégrés (iframes). Son rôle est d'automatiser certaines actions (comme la fermeture de calques superposés) et d'assurer une lecture continue.
 
-Depuis la version 1.2, il sert aussi de **pont d'affichage** : certaines pages répondent `X-Frame-Options: DENY`, ce qui fait refuser leur affichage encadré par le navigateur lui-même — Firefox comme Chrome — avant même que la moindre ligne de JavaScript ne s'exécute. Le script télécharge alors la page pour l'application, qui la reconstruit dans le lecteur (voir Options → Réseau & Proxys → « Reconstruire les pages non intégrables »). Sans le script, l'application se rabat sur les proxys CORS, plus fragiles. Si la page fabrique son lecteur depuis une adresse chiffrée, le tour échoue et l'ouverture en onglet reste proposée.
+Depuis la version 1.2, il sert aussi de **pont d'affichage** : certaines pages répondent `X-Frame-Options: DENY`, ce qui fait refuser leur affichage encadré par le navigateur lui-même — Firefox comme Chrome — avant même que la moindre ligne de JavaScript ne s'exécute. Le script télécharge alors la page pour l'application, qui **en extrait le lecteur** et le joue directement — ou, à défaut, reconstruit la page dans le lecteur (voir Options → Réseau & Proxys → « Reconstruire les pages non intégrables »). Sans le script, l'application se rabat sur les proxys CORS, plus fragiles. Si la page fabrique son lecteur depuis une adresse chiffrée, le tour échoue et l'ouverture en onglet reste proposée.
 
 **Comment l'installer :**
 1. Installez l'extension **Tampermonkey** sur votre navigateur.

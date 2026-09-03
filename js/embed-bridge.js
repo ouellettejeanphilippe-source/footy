@@ -25,10 +25,22 @@
       (`js/utils.js`). Plus fragile (les proxys tombent, Cloudflare les bloque) mais
       sans rien à installer.
 
-   Ce que le tour ne peut pas faire, et qu'il ne faut pas promettre : si la page ne
-   contient pas le lecteur mais le fabrique à partir d'une adresse chiffrée ou d'un
-   appel authentifié à son propre domaine, le document reconstruit affichera une page
-   vide. Le repli reste l'ouverture en onglet, proposée dans l'interface.
+   Deux issues une fois la page en main, dans cet ordre :
+
+   A. **Extraire le lecteur** (`extractPlayers`, js/extractors.js). C'est le cas courant
+      et de loin le meilleur : les liens classés « page » sont presque tous des pages de
+      match d'agrégateurs, dont tout l'intérêt est le lecteur en `<iframe>` à
+      l'intérieur — et ces hôtes de lecteurs, eux, acceptent l'encadrement (relevé
+      `hostPolicy` de data/streams.json : embedsports.me, streame.center, tnt-usa.biz,
+      dudestream1.com… tous `embeddable: true`). On charge donc cette adresse dans une
+      iframe ordinaire : vraie origine, cookies, référent — le lecteur fonctionne comme
+      s'il avait été trouvé directement, sans page reconstruite ni bac à sable.
+   B. **Reconstruire la page** en `srcdoc`, seulement si aucun lecteur n'en ressort.
+
+   Ce que le tour ne peut pas faire : si la page fabrique son lecteur à partir d'une
+   adresse chiffrée (VIPLeague et son `stream.bun.min.js` obfusqué, seule source du
+   relevé dans ce cas) ou d'un appel authentifié à son propre domaine, ni l'extraction
+   ni la reconstruction n'aboutissent. Le repli reste l'ouverture en onglet.
 
    Sécurité du document reconstruit. Il est posé dans une iframe `sandbox` SANS
    `allow-same-origin` : son origine est opaque, il ne peut donc lire ni le
@@ -37,8 +49,11 @@
    `localStorage` y lève une exception à la moindre lecture, ce que beaucoup de lecteurs
    ne supportent pas : la cale injectée en tête de document leur en fournit un factice.
 
-   Module sans dépendance (comme js/fetcher.js et js/extractors.js) : le téléchargeur de
-   repli lui est passé en argument par js/multiview.js. */
+   Ce module n'importe que `js/extractors.js`, lui-même hors de tout cycle : le
+   téléchargeur de repli (`fetchPage`) et le registre d'intégrabilité lui sont passés en
+   argument par js/multiview.js pour qu'il le reste. */
+
+import { extractPlayers, hostOf } from './extractors.js';
 
 var BRIDGE_HELLO = 'mv_bridge_hello';
 var BRIDGE_READY = 'mv_bridge_ready';
@@ -145,10 +160,42 @@ export function buildEmbedDocument(html, finalUrl) {
   return '<!doctype html><html><head>' + head + '</head><body>' + doc + '</body></html>';
 }
 
-/* Point d'entrée du Multivision : rend le document à poser dans `srcdoc`, ou null si
-   aucun canal n'a abouti. `proxyFetch` est `fetchPage` (js/utils.js), passé en argument
-   pour garder ce module hors du graphe de dépendances de l'application. */
-export function resolveBlockedEmbed(url, proxyFetch) {
+/* En deçà de cette taille, une réponse sans lecteur n'est pas une page de match mais un
+   fragment d'erreur de proxy : la reconstruire donnerait une iframe vide. */
+export var MIN_REBUILDABLE_LENGTH = 200;
+
+/* Meilleur lecteur intégrable trouvé dans une page téléchargée, ou null.
+
+   Un candidat n'est retenu que s'il est classé `embed` par le moteur (donc jugé
+   affichable en iframe) ET hébergé ailleurs que la page elle-même : un lien vers le
+   même hôte retomberait sur l'en-tête qui nous a bloqués au départ. */
+export function pickEmbeddablePlayer(html, pageUrl, registry) {
+  var players;
+  try {
+    players = extractPlayers(html, pageUrl, { registry: registry, limit: 12 });
+  } catch (e) {
+    return null;
+  }
+  var pageHost = hostOf(pageUrl);
+  for (var i = 0; i < players.length; i++) {
+    if (players[i].kind !== 'embed') continue;
+    if (hostOf(players[i].url) === pageHost) continue;
+    return players[i];
+  }
+  return null;
+}
+
+/* Point d'entrée du Multivision. Rend :
+   - `{ playerUrl }` quand un lecteur intégrable a pu être extrait de la page (cas
+     courant, et le seul qui donne une lecture normale : iframe ordinaire, vraie
+     origine, cookies, référent) ;
+   - `{ srcdoc }` quand la page ne livre pas de lecteur et doit être reconstruite ;
+   - `null` si aucun canal n'a abouti.
+
+   `proxyFetch` est `fetchPage` (js/utils.js) et `registry` le registre d'intégrabilité
+   (js/scrapers.js), passés en argument pour garder ce module hors du graphe de
+   dépendances de l'application. */
+export function resolveBlockedEmbed(url, proxyFetch, registry) {
   var attempt = bridge.available
     ? fetchViaBridge(url)
     : Promise.reject(new Error('script utilisateur absent'));
@@ -156,10 +203,19 @@ export function resolveBlockedEmbed(url, proxyFetch) {
   return attempt.catch(function (bridgeErr) {
     if (typeof proxyFetch !== 'function') throw bridgeErr;
     return proxyFetch(url).then(function (html) {
-      if (!html || String(html).length < 200) throw new Error('page vide via proxy');
+      if (!html) throw new Error('réponse vide via proxy');
       return { html: html, finalUrl: url, via: 'proxy' };
     });
   }).then(function (res) {
+    /* L'extraction passe en premier et sans condition de taille : une page de match
+       tient parfois en quelques centaines d'octets et n'en contient pas moins le
+       lecteur, qui est tout ce qu'on lui demande. Le plancher ne sert qu'à décider
+       si ce qu'on a ramené vaut la peine d'être reconstruit : un fragment d'erreur
+       de proxy afficherait sinon une iframe vide sans que l'utilisateur sache que
+       le tour a échoué. */
+    var player = pickEmbeddablePlayer(res.html, res.finalUrl, registry);
+    if (player) return { playerUrl: player.url, label: player.label || '', via: res.via };
+    if (String(res.html).length < MIN_REBUILDABLE_LENGTH) throw new Error('page trop courte pour être reconstruite');
     return { srcdoc: buildEmbedDocument(res.html, res.finalUrl), via: res.via };
   }).catch(function () {
     return null;
@@ -173,4 +229,5 @@ export var EMBED_SANDBOX = 'allow-scripts allow-forms allow-presentation allow-p
 if (typeof window !== 'undefined') {
   window.getBridgeStatus = getBridgeStatus;
   window.resolveBlockedEmbed = resolveBlockedEmbed;
+  window.pickEmbeddablePlayer = pickEmbeddablePlayer;
 }

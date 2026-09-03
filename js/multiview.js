@@ -6,7 +6,7 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
-import { scrapeMatchFlux, isMatchOrLeaguePage } from './scrapers.js';
+import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX } from './embed-bridge.js';
 
@@ -16,17 +16,22 @@ import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX } 
    chargement du module pour ne pas rater son bonjour. */
 initEmbedBridge();
 
-/* Bandeau discret quand le tour de passe-passe a réussi : l'utilisateur doit savoir que
-   ce qu'il voit est une page reconstruite (donc potentiellement partielle), et par quel
-   canal — le script utilisateur passe là où les proxys échouent. */
-function buildTrickBadge(via, finalUrl) {
+/* Bandeau discret quand le tour de passe-passe a réussi. L'utilisateur doit savoir ce
+   qu'il regarde et par quel canal :
+   - « lecteur » : le lecteur a été extrait de la page et joue normalement — c'est le bon
+     cas, celui qu'on vise ;
+   - « page » : aucun lecteur n'en est ressorti, on affiche la page reconstruite, qui peut
+     être partielle. */
+function buildTrickBadge(via, finalUrl, mode, playerUrl) {
+    var canal = (via === 'script') ? 'le script utilisateur' : 'un proxy CORS';
     var badge = document.createElement('div');
-    badge.className = 'mv-trick-badge';
-    badge.title = 'Page reconstruite localement (X-Frame-Options contourné) via '
-        + (via === 'script' ? 'le script utilisateur' : 'un proxy CORS')
-        + '. Si le lecteur reste vide, ouvrez le lien dans un onglet.';
-    badge.innerHTML = '<span>🎩 ' + (via === 'script' ? 'script' : 'proxy') + '</span>'
-        + '<button aria-label="Ouvrir dans un onglet" title="Ouvrir dans un onglet">↗</button>';
+    badge.className = 'mv-trick-badge' + (mode === 'lecteur' ? ' ok' : '');
+    badge.title = mode === 'lecteur'
+        ? 'Lecteur extrait de la page (' + canal + ') et joué directement : ' + (playerUrl || '')
+        : 'Page reconstruite localement via ' + canal + ' — aucun lecteur n\'en est ressorti, '
+          + 'l\'affichage peut être partiel. Si elle reste vide, ouvrez le lien dans un onglet.';
+    badge.innerHTML = '<span>🎩 ' + esc(mode === 'lecteur' ? 'lecteur' : 'page') + '</span>'
+        + '<button aria-label="Ouvrir la page dans un onglet" title="Ouvrir la page dans un onglet">↗</button>';
     badge.querySelector('button').addEventListener('click', function(ev) {
         ev.stopPropagation();
         window.open(finalUrl, '_blank', 'noopener');
@@ -1531,13 +1536,21 @@ export function updateMultivisionLayout() {
                     loader.innerHTML = '<div class="spinner"></div><div>🎩 Tour de passe-passe : cette page refuse l\'affichage intégré, on la reconstruit…</div>';
                     container.appendChild(loader);
 
-                    resolveBlockedEmbed(finalUrl, fetchPage).then(function(res) {
+                    var registry = (typeof getEmbedRegistry === 'function') ? getEmbedRegistry() : null;
+                    resolveBlockedEmbed(finalUrl, fetchPage, registry).then(function(res) {
                         if (s._currentUrl !== url) return;
                         if (loader.parentNode) loader.remove();
-                        if (res && res.srcdoc) {
+                        if (res && res.playerUrl) {
+                            /* Cas courant : la page contenait son lecteur. On charge le
+                               lecteur lui-même, dans une iframe ORDINAIRE — vraie origine,
+                               cookies, référent. C'est une lecture normale, pas un
+                               document reconstruit : rien à mettre en bac à sable. */
+                            iframe.src = res.playerUrl;
+                            container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
+                        } else if (res && res.srcdoc) {
                             iframe.setAttribute('sandbox', EMBED_SANDBOX);
                             iframe.srcdoc = res.srcdoc;
-                            container.appendChild(buildTrickBadge(res.via, finalUrl));
+                            container.appendChild(buildTrickBadge(res.via, finalUrl, 'page'));
                         } else {
                             iframe.src = finalUrl;
                             container.appendChild(buildTrickFailureBar(finalUrl));

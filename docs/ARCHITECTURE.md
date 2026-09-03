@@ -236,7 +236,8 @@ portaient chacun leur propre liste, déjà désynchronisée du code. Elle ne blo
 ## Graphe de modules
 
 `js/db.js` (→ `teams.js` seulement), `js/teams.js`, `js/match.js`, `js/fetcher.js`,
-`js/extractors.js`, `js/links.js` et `js/embed-bridge.js` sont hors de tout cycle. Le reste forme un nœud :
+`js/extractors.js`, `js/links.js` et `js/embed-bridge.js` (qui n'importe que
+`js/extractors.js`) sont hors de tout cycle. Le reste forme un nœud :
 `utils ↔ config ↔ ui ↔ multiview ↔ main ↔ scrapers ↔ api`.
 
 Conséquence concrète à connaître avant d'importer un de ces modules ailleurs (script
@@ -314,6 +315,20 @@ distante, donc plus d'en-tête à faire respecter.
 2. **Proxys CORS** existants (`fetchPage`, `js/utils.js`), passés en argument à
    `resolveBlockedEmbed` pour garder ce module hors du graphe de dépendances.
 
+Une fois la page en main, **deux issues, dans cet ordre** :
+
+**A. Extraire le lecteur** — `pickEmbeddablePlayer` passe le HTML à `extractPlayers`
+(`js/extractors.js`) et retient le premier candidat classé `embed` **hébergé ailleurs que
+la page** (un lecteur du même hôte retomberait sur l'en-tête qui a bloqué au départ).
+L'adresse obtenue est chargée dans une **iframe ordinaire** : vraie origine, cookies,
+référent — une lecture normale, sans document reconstruit ni bac à sable. C'est le cas
+courant : sur le relevé du 3 septembre 2026, **674 des 1131 liens (60 %) sont classés
+« page »**, et ce sont presque tous des pages de match d'agrégateurs dont l'intérêt est
+le lecteur tiers à l'intérieur — lequel accepte l'encadrement (`hostPolicy` :
+`embedsports.me`, `streame.center`, `tnt-usa.biz`, `dudestream1.com`… tous
+`embeddable: true`).
+
+**B. Reconstruire la page** en `srcdoc`, seulement si aucun lecteur n'en ressort.
 `buildEmbedDocument(html, finalUrl)` injecte `<base href>` (sans quoi toutes les adresses
 relatives viseraient l'application), retire les balises `<meta http-equiv>` CSP de la
 page d'origine, et pose en tête une cale : `localStorage`/`sessionStorage` factices
@@ -331,6 +346,22 @@ Réglage : Options → Réseau & Proxys → « Reconstruire les pages non intég
 (`js/multiview.js`) propose l'ouverture en onglet, dont le clic alimente le registre
 d'intégrabilité comme avant.
 
-**Limite à connaître** : si la page ne contient pas son lecteur mais le fabrique depuis
-une adresse chiffrée ou un appel authentifié à son propre domaine, le document
-reconstruit reste vide. Le tour n'est pas un décodeur.
+### Pourquoi les liens sont refusés (relevé du 3 septembre 2026)
+
+Sur les 674 liens « page » de `data/streams.json`, croisés avec `hostPolicy` (que le
+script serveur remplit en lisant réellement les en-têtes) :
+
+| Motif | Liens | Ce que le tour y change |
+|---|---|---|
+| `X-Frame-Options` / `frame-ancestors` | 294 (43 %) | la page se télécharge quand même : extraction ou reconstruction |
+| Cloudflare 403 / 429 | 242 (35 %) | **le canal script le lève** (cookies du navigateur), là où un proxy est refoulé |
+| Hôte non sondé | 138 (20 %) | — |
+
+Le chiffrement du lecteur, souvent invoqué, ne concerne qu'**une source sur huit** :
+VIPLeague et son `stream.bun.min.js` obfusqué. Ce n'est donc pas le cas courant, mais
+c'est bien la limite du procédé.
+
+**Limite à connaître** : quand la page fabrique son lecteur depuis une adresse chiffrée
+(VIPLeague) ou un appel authentifié à son propre domaine, ni l'extraction ni la
+reconstruction n'aboutissent. Le tour n'est pas un décodeur ; le repli reste l'ouverture
+en onglet.
