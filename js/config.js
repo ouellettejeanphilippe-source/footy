@@ -1,6 +1,6 @@
 import { S } from './state.js';
 import { escJs, esc, lg, pad, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
-import { isMatch, stringSimilarity } from './match.js';
+import { isMatch } from './match.js';
 import { globalStatsInterval, setGlobalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';
@@ -72,10 +72,19 @@ export var REPO_URL = 'https://github.com/ouellettejeanphilippe-source/footy';
 export var STREAMS_WORKFLOW_URL = REPO_URL + '/actions/workflows/scrape_streams.yml';
 
 // Dynamic Domain Resolution
+/* Ce fetch est attendu (await) tout au début du premier chargement : tant qu'il ne
+   répond pas, l'application n'affiche aucun match. Sans délai maximal, un réseau qui
+   avale la requête au lieu de la refuser (portail captif, pare-feu d'entreprise,
+   mandataire mal configuré) bloquait le démarrage indéfiniment. domains.json n'est
+   qu'une surcharge optionnelle des domaines : au-delà de 5 s on démarre sans lui. */
+export const REMOTE_CONFIG_TIMEOUT_MS = 5000;
+
 export async function fetchRemoteConfig() {
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function() { ctrl.abort(); }, REMOTE_CONFIG_TIMEOUT_MS) : null;
     try {
         var remoteConfigUrl = 'https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/domains.json';
-        var res = await fetch(remoteConfigUrl, { cache: 'no-cache' });
+        var res = await fetch(remoteConfigUrl, ctrl ? { cache: 'no-cache', signal: ctrl.signal } : { cache: 'no-cache' });
         if (res.ok) {
             var data = await res.json();
             var keyToId = { SITE: 'footybite', MLBBITE_PLUS_URL: 'mlbbite', SPORTSURGE_URL: 'sportsurge',
@@ -91,6 +100,8 @@ export async function fetchRemoteConfig() {
         }
     } catch(e) {
         console.log('Failed to fetch dynamic domain config, using local fallbacks.');
+    } finally {
+        if (timer) clearTimeout(timer);
     }
 }
 

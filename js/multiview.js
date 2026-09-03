@@ -1,10 +1,10 @@
 import { fetchPage } from './utils.js';
-import { DEFAULT_LEAGUES, OTHER_LEAGUES } from './db.js';
+import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
-import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder, saveCustomLgOrder, toggleFavTeam } from './state.js';
+import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
-import { getOriginalMatchId, QI, QC, userPrefs, openMod, closeMod, buildEPG } from './ui.js';
+import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
@@ -1838,35 +1838,6 @@ export function removeFromMultivision(idx) {
     // Do not auto-close multiview when empty, keep the empty state visible
 }
 
-export function clearMultivision() {
-    activeMvIdx = null;
-    mvFlux = []; saveMultivisionState(); updateMultivisionLayout();
-    // Do not auto-close multiview when clearing all
-}
-
-export function hideMultivision() {
-    var mvc = document.getElementById('mv-container');
-    var epg = document.getElementById('epg');
-
-    // Clear pending actions when closing multiview
-    window.multiviewPendingAction = null;
-    if(!mvc || !epg) return;
-
-    mvc.style.display = 'none';
-    epg.style.display = 'flex';
-    epg.style.paddingRight = '0';
-    var sf = document.getElementById('sport-filters-container');
-    if(sf) sf.style.display = 'flex';
-    mvc.classList.remove('mv-pip');
-
-    var mvBtn = document.getElementById('mv-toggle-btn');
-    if(mvBtn) {
-        mvBtn.classList.remove('active-toggle');
-        mvBtn.style = '';
-    }
-    applyFilter(S.filter); // Re-apply current tab style
-}
-
 export function toggleMultiview() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
@@ -2143,6 +2114,7 @@ export function openFlux(e, eu, en, mid, isPage){
 }
 
 export function applyBgStyle() {
+  if (!userPrefs) return; // voir initPrefs : cycle d'imports ui <-> multiview
   var s = userPrefs.bgStyle || 'gradient';
 
   // Icon Pack
@@ -2239,6 +2211,13 @@ export function applyBgStyle() {
 }
 
 export function initPrefs() {
+  /* `userPrefs` vient de js/ui.js, qui participe au cycle d'imports
+     ui -> multiview -> ui : selon le module par lequel on entre dans le graphe, ce
+     module-ci peut être évalué avant que ui.js n'ait initialisé `userPrefs`, et
+     `initPrefs()` — appelé au chargement de ce fichier — plantait alors sur un
+     `undefined`. En production, main.js est le point d'entrée et l'ordre est bon ;
+     ailleurs (script serveur, test qui importe js/config.js), il ne l'était pas. */
+  if (!userPrefs) return;
   var saved = safeStorageGetJSON('user_prefs');
   if (saved) { Object.assign(userPrefs, saved); }
 
@@ -2654,7 +2633,10 @@ export function buildSwatches() {
     if (typeof favTeams !== 'undefined') {
         Object.keys(favTeams).forEach(function(teamName) {
             if (favTeams[teamName] === 1) {
-                var colors = getTeamColors(teamName); // from config.js
+                /* getTeamColors (js/db.js, et non config.js) renvoyait une seule couleur
+                   pour 25 équipes : la palette de ces favoris était silencieusement
+                   ignorée. teamColorPair complète toujours la paire. */
+                var colors = teamColorPair(teamName);
                 if (colors && colors.length >= 2) {
                     var c1 = colors[0];
                     var accent = colors[1];
@@ -2946,7 +2928,7 @@ export function reloadPrefetchedStreams() {
         if (!info.generatedAt) showToast('Cache serveur indisponible pour le moment.');
         else if (before && info.generatedAt === before) showToast('Cache serveur inchangé (généré il y a ' + info.ageMin + ' min). Le workflow tourne encore ?');
         else showToast('Liens serveur rechargés : ' + list.length + ' matchs (il y a ' + info.ageMin + ' min).');
-        if (typeof window.loadAll === 'function') return window.loadAll(true, false);
+        return loadAll(true, false);
     }).catch(function(e) {
         showToast('Rechargement impossible : ' + (e && e.message ? e.message : e));
     }).then(function() { if (btn) btn.disabled = false; });
@@ -2965,7 +2947,7 @@ export function saveProxySettings() {
     if (typeof window.resetProxyHealth === 'function') window.resetProxyHealth();
     renderProxyStatus();
     showToast('Réglages réseau enregistrés. Nouvelle recherche de streams...');
-    if (typeof window.loadAll === 'function') window.loadAll(true, true);
+    loadAll(true, true);
 }
 
 export function openLogsPage() {
@@ -3292,8 +3274,6 @@ window.applyMvAudioState = applyMvAudioState;
 window.updateMultivisionLayout = updateMultivisionLayout;
 window.addToMultivision = addToMultivision;
 window.removeFromMultivision = removeFromMultivision;
-window.clearMultivision = clearMultivision;
-window.hideMultivision = hideMultivision;
 window.toggleMultiview = toggleMultiview;
 window.toggleDocumentPiP = toggleDocumentPiP;
 window.toggleTheaterMode = toggleTheaterMode;

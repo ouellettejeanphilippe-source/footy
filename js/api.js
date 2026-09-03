@@ -1,10 +1,10 @@
-import { pad, lg, getLeagueDuration, fetchPage, esc } from './utils.js';
+import { lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName } from './db.js';
+import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier } from './db.js';
 import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
-import { parsePWHLSchedule, parseWWEIcs, parseF1Ics, parseIndycarIcs, parseSportsDbEvents, getStreamCache } from './scrapers.js';
+import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
-import { safeStorageGet, safeStorageSet, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 /* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
@@ -137,26 +137,6 @@ export function fetchLolEsportsEventDetails(id) {
         headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' },
         signal: AbortSignal.timeout(8000)
     }).then(function(res) { return res.json(); }).catch(function(){ return null; });
-}
-
-export function filterBuggyMatches(matches) {
-    var today = new Date();
-    var dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
-
-    return matches.filter(function(m) {
-        var lowerHome = m.homeTeam.toLowerCase();
-        var lowerAway = m.awayTeam.toLowerCase();
-        var isWWE = lowerHome.includes('wwe') || lowerAway.includes('wwe') || m.league.toLowerCase().includes('wwe');
-        var isRaw = lowerHome.includes('raw') || lowerAway.includes('raw');
-        var isSmackdown = lowerHome.includes('smackdown') || lowerAway.includes('smackdown');
-
-        // Note: The previous logic aggressively filtered Raw/SmackDown by dayOfWeek,
-        // which caused legitimate WWE streams (now parsed accurately from wwe.com/events)
-        // to vanish. We no longer filter WWE by day of week here to allow the official schedule to dictate visibility.
-        // If other buggy stream matching rules are needed in the future, they should go here.
-
-        return true;
-    });
 }
 
 
@@ -431,7 +411,10 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
   };
 
   promises.push(
-      fetch('https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + targetDateStr + '&s=Fighting')
+      /* Sans délai maximal, cette requête était la seule du lot à pouvoir suspendre
+         Promise.all indéfiniment (les autres appels ESPN/LoL portent déjà un
+         AbortSignal.timeout de 8 s) : le calendrier entier restait alors en attente. */
+      fetch('https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + targetDateStr + '&s=Fighting', { signal: AbortSignal.timeout(8000) })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
             var fights = data ? parseSportsDbEvents(data, targetDateStr) : [];
@@ -698,6 +681,19 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
 
   if (typeof window.streamMissingCounts === 'undefined') window.streamMissingCounts = {};
 
+  /* Ligues déjà couvertes par la grille officielle. Un flux non fusionné dont la ligue
+     figure ici est un doublon potentiel (la fusion a échoué sur les noms d'équipes) :
+     il reste dans « Autres streams », conformément au principe API-First. Mais quand
+     l'API ne renvoie rien du tout pour cette ligue — ESPN injoignable, ou ligue absente
+     d'ESPN_LEAGUES — aucun doublon n'est possible et le match garde son vrai nom de
+     ligue, donc sa place dans le Guide. Sans cela, une panne d'ESPN faisait basculer
+     toute la grille (NFL, MLB, NBA…) dans une section repliée « Autres streams ». */
+  var apiLeagues = {};
+  for (var ai = 0; ai < apiMatches.length; ai++) {
+      var alKey = String(apiMatches[ai].league || '').toUpperCase().trim();
+      if (alKey) apiLeagues[alKey] = true;
+  }
+
   scrapedMatches.forEach(function(sm) {
 
       var matched = false;
@@ -762,10 +758,18 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          sm.id = 'scraped_' + encodeURIComponent(determStr);
          if (!sm.matchDate) sm.matchDate = targetDateStr;
          sm.scrapedLeagueName = sm.league ? formatLeagueName(sm.league) : 'Autres Flux';
-         sm.league = 'Autres Flux';
+         var keepLeague = sm.scrapedLeagueName !== 'Autres Flux'
+             && leagueTier(sm.scrapedLeagueName) !== 'other'
+             && !apiLeagues[sm.scrapedLeagueName.toUpperCase()];
+         sm.league = keepLeague ? sm.scrapedLeagueName : 'Autres Flux';
          sm.streamsLoaded = true;
-         sm.flag = '📡';
-         sm.color = '#555555';
+         if (!keepLeague) {
+             sm.flag = '📡';
+             sm.color = '#555555';
+         } else {
+             if (!sm.flag) sm.flag = lgFlag(sm.league);
+             if (!sm.color) sm.color = lgColor(sm.league);
+         }
 
          apiMatches.push(sm);
 
@@ -1079,7 +1083,6 @@ export function fetchLeagueStandings(leagueName, seasonType) {
 window.ESPN_LEAGUES = ESPN_LEAGUES;
 window.getEspnDateStr = getEspnDateStr;
 window.fetchEspnSchedule = fetchEspnSchedule;
-window.filterBuggyMatches = filterBuggyMatches;
 window.TARGET_DATE = TARGET_DATE;
 window.setApiTargetDate = setApiTargetDate;
 window.getApiFirstMatches = getApiFirstMatches;

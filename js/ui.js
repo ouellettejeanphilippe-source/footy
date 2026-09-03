@@ -1,12 +1,16 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
-import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak, resolveStreamUrl } from './utils.js';
-import { TARGET_DATE, fetchGameStats, renderScorersHtml, fetchTeamInfo } from './api.js';
+import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
+import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
-import { DEFAULT_LEAGUES, OTHER_LEAGUES, lgFlag, leagueTier } from './db.js';
+import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
+
+/* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
+   dans les boucles de rendu. Alias stable pour pouvoir journaliser depuis celles-ci. */
+const logLine = lg;
 
 /* ══ DIAGNOSTIC SCRAPE ══════════════════ */
 export function diagnosticScrape(matchId, url) {
@@ -147,7 +151,33 @@ export function formatLiveMinute(m) {
     return raw;
 }
 
+/* Un seul match malformé (nom d'équipe manquant, couleur absente…) ne doit pas
+   effacer tout le guide : buildEPGInner vide #marea avant de le reconstruire, et
+   #ov / #errbox y vivent. Une exception laissait donc l'application sur un écran
+   vide, sans overlay ni bouton « Réessayer ». On restaure ici ce qui a pu être
+   construit, puis on relance l'erreur pour qu'elle reste visible en console. */
 export function buildEPG(matches){
+  try {
+    buildEPGInner(matches);
+  } catch (e) {
+    var container = document.getElementById('marea');
+    var ov = document.getElementById('ov');
+    var errbox = document.getElementById('errbox');
+    if (container && !ov) { var o = document.createElement('div'); o.className = 'ov'; o.id = 'ov'; o.style.display = 'none'; container.appendChild(o); }
+    if (container && !errbox) {
+      var b = document.createElement('div'); b.className = 'err'; b.id = 'errbox';
+      b.innerHTML = '<div style="font-size:36px">📡</div><div class="err-msg" id="errmsg"></div>'
+        + '<div class="err-code" id="errcode" style="display:none"></div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">'
+        + '<button class="btn g" onclick="loadAll(false, true)">↺ Réessayer</button></div>';
+      container.appendChild(b);
+    }
+    logLine('Erreur de rendu du guide', e && (e.stack || e.message) || String(e));
+    throw e;
+  }
+}
+
+function buildEPGInner(matches){
   // Current time minus 15 minutes to treat soon-to-start matches as "live"
   var now = new Date();
   var currentEst = getEstTimeStrFromDate(now);
@@ -396,6 +426,7 @@ export function buildEPG(matches){
               grid.appendChild(lHdr);
 
               lg.matches.forEach(function(m) {
+                try {
                   var b = document.createElement('div');
                   b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
                   b.id = 'mb-'+m.id;
@@ -497,6 +528,10 @@ export function buildEPG(matches){
 
                   b.addEventListener('click', function(){ openMod(m, lgCol); });
                   grid.appendChild(b);
+                } catch (cardErr) {
+                  /* Données agrégées : un match malformé est ignoré, pas fatal. */
+                  logLine('Carte de match ignorée', (m && m.id ? m.id + ' — ' : '') + (cardErr && cardErr.message || cardErr));
+                }
               });
           });
           return grid;

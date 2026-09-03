@@ -1,4 +1,4 @@
-import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, saveCustomLgOrder, setLeagueTier, resetLeagueTiers } from './state.js';
+import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
@@ -230,6 +230,30 @@ export function loadAll(isBackground, forceScrape) {
     return p;
 }
 
+/* #ov et #errbox vivent dans #marea, que buildEPG vide à chaque rendu. Toute lecture
+   directe de document.getElementById('ov').style plantait donc dès que le guide avait
+   été rendu une fois — et l'exception, levée depuis le .finally de loadAll, empêchait
+   window.hasLoadedOnce et l'événement loadSequenceComplete (donc l'actualisation
+   automatique des scores toutes les 60 s). Toutes les lectures passent par ces aides. */
+function hideLoadingOverlay() {
+  var ov = document.getElementById('ov');
+  if (ov) ov.style.display = 'none';
+}
+
+function showLoadError(message) {
+  var lines = String(message || 'Erreur').split('\n');
+  var msg = document.getElementById('errmsg');
+  if (msg) msg.textContent = lines[0];
+  var ec = document.getElementById('errcode');
+  if (ec) {
+    if (lines.length > 1) { ec.textContent = lines.slice(1).join('\n'); ec.style.display = 'block'; }
+    else { ec.style.display = 'none'; }
+  }
+  var box = document.getElementById('errbox');
+  if (box) box.classList.add('show');
+  else showToast(lines[0]);
+}
+
 async function loadAllRun(isBackground, forceScrape){
   if (!isBackground) { S.log=[];S.raw='';S.matches=[];S.proxy=''; }
 
@@ -272,7 +296,7 @@ async function loadAllRun(isBackground, forceScrape){
   } else {
       showToast('Actualisation des matchs en arrière-plan...');
       // Ensure it is definitely hidden if we've already loaded once
-      document.getElementById('ov').style.display='none';
+      hideLoadingOverlay();
   }
 
   getApiFirstMatches(TARGET_DATE).then(function(apiMatches) {
@@ -320,7 +344,7 @@ async function loadAllRun(isBackground, forceScrape){
               updateLiveScores(S.matches); // New function to update scores smoothly
           }
 
-          if (!isBackground) { document.getElementById('ov').style.display='none'; }
+          if (!isBackground) { hideLoadingOverlay(); }
           window.dispatchEvent(new Event('loadSequenceComplete'));
 
           // Run background fetch completely asynchronously so it never blocks the UI
@@ -451,7 +475,7 @@ async function loadAllRun(isBackground, forceScrape){
           setMatches(finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
           }));
-          if (!isBackground) { document.getElementById('ov').style.display='none'; }
+          if (!isBackground) { hideLoadingOverlay(); }
 
           // Populate sports filter
           var sports = {};
@@ -527,15 +551,11 @@ async function loadAllRun(isBackground, forceScrape){
       });
   }).catch(function(err){
       if (err === 'SKIP_SCRAPING_SUCCESS') return; // Smooth update finished, no errors to show
-      if (!isBackground) { document.getElementById('ov').style.display='none'; }
-      var lines=(err.message||'Erreur').split('\n');
-      document.getElementById('errmsg').textContent=lines[0];
-      var ec=document.getElementById('errcode');
-      if(lines.length>1){ec.textContent=lines.slice(1).join('\n');ec.style.display='block';}
-      document.getElementById('errbox').classList.add('show');
+      if (!isBackground) { hideLoadingOverlay(); }
+      showLoadError(err && err.message);
   }).finally(function(){
       if(btn) btn.disabled=false;
-            if (!isBackground) { document.getElementById('ov').style.display='none'; }
+            if (!isBackground) { hideLoadingOverlay(); }
       if (!safeStorageGet('hasSeenScriptModal')) {
           safeStorageSet('hasSeenScriptModal', 'true');
           setTimeout(function() { installTampermonkey(); }, 500);
@@ -1174,7 +1194,7 @@ window.filterFavTeams = filterFavTeams;
 window.switchFavTab = switchFavTab;
 
 export function applyTargetDate(d) {
-    window.setApiTargetDate(d);
+    setApiTargetDate(d);
 
     var now = new Date();
     var isToday = (d.toDateString() === now.toDateString());

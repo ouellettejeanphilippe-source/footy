@@ -132,11 +132,6 @@ export function getTeamInfo(name) {
     return { city: name, teamName: name };
 }
 
-export function isMatchContext(name1, name2, contextText) {
-    if (isMatch(name1, name2)) return true;
-    return false;
-}
-
 export function isMatchPair(m1, m2) {
   return debugMatchPair(m1, m2).isMatch;
 }

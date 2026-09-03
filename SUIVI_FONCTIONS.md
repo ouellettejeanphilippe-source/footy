@@ -1,6 +1,11 @@
-# 📜 Dictionnaire et Cartographie des Fonctions JavaScript (`app.js`)
+# 📜 Dictionnaire et Cartographie des Fonctions JavaScript
 
-Ce document contient la liste exhaustive des fonctions présentes dans l'application (`app.js`), avec leur rôle et leurs dépendances (appels). Il a été mis à jour automatiquement pour auditer les fonctions.
+Ce document contient la liste des fonctions de l'application avec leur rôle et leurs dépendances (appels).
+
+> ⚠️ **Ce dictionnaire n'est pas régénéré automatiquement et a pris du retard.** Il décrit encore un fichier
+> `app.js` unique, alors que le code est découpé depuis en modules (`js/*.js`) ; les listes « Appelle » et
+> « Appelée par » ne sont donc plus fiables. Vérifiez toujours par un `grep` dans `js/` avant de vous y fier.
+> Mise à jour du 2026-09-03 : les six fonctions mortes supprimées du code en ont été retirées.
 
 ## 🔍 Résumé de l'Audit
 
@@ -18,7 +23,6 @@ Ces fonctions ont été trouvées dans le code mais n'étaient pas documentées 
 * `applyUserPrefs`
 * `buildSwatches`
 * `cacheLogo`
-* `clearMultivision`
 * `closeListener`
 * `closePinnedStats`
 * `fallbackToIframe`
@@ -27,8 +31,6 @@ Ces fonctions ont été trouvées dans le code mais n'étaient pas documentées 
 * `fetchGameStats`
 * `fetchLeagueStandings`
 * `fetchTeamStats`
-* `filterBuggyMatches`
-* `findLeagueHeader`
 * `findSchedule`
 * `focusStream`
 * `formatLeagueName`
@@ -42,7 +44,6 @@ Ces fonctions ont été trouvées dans le code mais n'étaient pas documentées 
 * `getSortTime`
 * `getStreamCache`
 * `getTeamColors`
-* `hideMultivision`
 * `initPrefs`
 * `installTampermonkey`
 * `isMatchPair`
@@ -155,7 +156,7 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelle :** `toggleMultiviewPip`, `openOptionsPage`, `openLogsPage`, `openScriptPage`, `buildEPG`
 
-**Appelée par :** `hideMultivision`
+**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
 
 ### `applyMvAudioState`
 **Description:** *(Nouvelle fonction non documentée)*
@@ -219,13 +220,6 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 **Appelle :** `normName`
 
 **Appelée par :** `fetchAndCacheLogoDynamically`, `findSchedule`, `extractFootybiteLogos`, `mergeMatches`, `updateMatchDataFromApi`, `getApiFirstMatches`
-
-### `clearMultivision`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** `saveMultivisionState`, `updateMultivisionLayout`
-
-**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
 
 ### `closeListener`
 **Description:** *(Nouvelle fonction non documentée)*
@@ -333,20 +327,6 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelée par :** `openGlobalStats`
 
-### `filterBuggyMatches`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** *(Aucune fonction interne)*
-
-**Appelée par :** `getApiFirstMatches`
-
-### `findLeagueHeader`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** *(Aucune fonction interne)*
-
-**Appelée par :** `parseFootybite`
-
 ### `findSchedule`
 **Description:** *(Nouvelle fonction non documentée)*
 
@@ -378,7 +358,7 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 ### `getApiFirstMatches`
 **Description:** Fonction orchestratrice. Récupère le calendrier depuis ESPN pour la date cible (en incluant la veille et le lendemain pour les fuseaux horaires) et construit le tableau de base `matches`.
 
-**Appelle :** `getEspnDateStr`, `fetchEspnSchedule`, `getEstTimeStrFromDate`, `getEstDateStrFromDate`, `formatLeagueName`, `lgFlag`, `lgColor`, `getOfficialTeamName`, `getLeagueDuration`, `cacheLogo`, `isMatch`, `updateMatchDataFromApi`, `fetchPage`, `parsePWHLSchedule`, `lg`, `filterBuggyMatches`
+**Appelle :** `getEspnDateStr`, `fetchEspnSchedule`, `getEstTimeStrFromDate`, `getEstDateStrFromDate`, `formatLeagueName`, `lgFlag`, `lgColor`, `getOfficialTeamName`, `getLeagueDuration`, `cacheLogo`, `isMatch`, `updateMatchDataFromApi`, `fetchPage`, `parsePWHLSchedule`, `lg`
 
 **Appelée par :** `loadAll`
 
@@ -402,13 +382,6 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 **Appelle :** *(Aucune fonction interne)*
 
 **Appelée par :** `parseOnHockey`, `getApiFirstMatches`, `mergeFluxToApi`, `loadAll`
-
-### `getEstTime`
-**Description:** Convertit une heure du Royaume-Uni (généralement fournie par les sites de moissonnage) en EST (environ -5h).
-
-**Appelle :** `pad`
-
-**Appelée par :** `parseFootybite`
 
 ### `getEstTimeStrFromDate`
 **Description:** Retourne l'heure (HH:MM) dans le fuseau horaire EST, en gérant le bogue de minuit (24:00 -> 00:00).
@@ -465,13 +438,6 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 **Appelle :** `normName`
 
 **Appelée par :** `getLogo`, `buildEPG`, `renderMatches`, `showMatchSelector`
-
-### `hideMultivision`
-**Description:** *(Nouvelle fonction non documentée)*
-
-**Appelle :** `applyFilter`
-
-**Appelée par :** *(Événement DOM, callback externe, ou Script global)*
 
 ### `initPrefs`
 **Description:** *(Nouvelle fonction non documentée)*
@@ -646,7 +612,7 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelle :** *(Aucune fonction interne)*
 
-**Appelée par :** `getEstTimeStrFromDate`, `parseStreameast`, `parseFootybite`, `getEspnDateStr`, `getEstTime`, `buildEPG`
+**Appelée par :** `getEstTimeStrFromDate`, `parseStreameast`, `parseFootybite`, `getEspnDateStr`, `buildEPG`
 
 ### `parseBuffstreams`
 **Description:** Extrait les matchs de Buffstreams via une expression régulière lisant les données JSON injectées dans la page.
@@ -658,7 +624,7 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 ### `parseFootybite`
 **Description:** Extrait chirurgicalement la liste des matchs de Footybite en analysant `.div-child-box`, `.txt-team`, `.time-txt`.
 
-**Appelle :** `lg`, `extractFootybiteLogos`, `pad`, `getEstTime`, `formatLeagueName`, `lgFlag`, `lgColor`, `getOfficialTeamName`, `getLeagueDuration`, `findLeagueHeader`
+**Appelle :** `lg`, `extractFootybiteLogos`, `pad`, `formatLeagueName`, `lgFlag`, `lgColor`, `getOfficialTeamName`, `getLeagueDuration`
 
 **Appelée par :** `loadAll`
 
@@ -800,7 +766,7 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelle :** *(Aucune fonction interne)*
 
-**Appelée par :** `showFluxSelector`, `moveMultiviewStream`, `focusStream`, `updateMultivisionLayout`, `addToMultivision`, `removeFromMultivision`, `clearMultivision`, `openFlux`
+**Appelée par :** `showFluxSelector`, `moveMultiviewStream`, `focusStream`, `updateMultivisionLayout`, `addToMultivision`, `removeFromMultivision`, `openFlux`
 
 ### `saveStreamCache`
 **Description:** *(Nouvelle fonction non documentée)*
@@ -1017,7 +983,7 @@ Ces fonctions étaient documentées mais ne se trouvent plus dans le code actuel
 
 **Appelle :** `fallbackToIframe`, `focusStream`, `saveMultivisionState`, `updateMultivisionLayout`, `getDomain`, `esc`, `escJs`, `applyMvFocusStyling`, `applyMvAudioState`
 
-**Appelée par :** `showFluxSelector`, `toggleMultiviewPip`, `moveMultiviewStream`, `restoreMultivisionState`, `focusStream`, `updateMultivisionLayout`, `addToMultivision`, `removeFromMultivision`, `clearMultivision`, `toggleMultiview`, `openFlux`
+**Appelée par :** `showFluxSelector`, `toggleMultiviewPip`, `moveMultiviewStream`, `restoreMultivisionState`, `focusStream`, `updateMultivisionLayout`, `addToMultivision`, `removeFromMultivision`, `toggleMultiview`, `openFlux`
 
 ### `updateMvGameModeStats`
 **Description:** *(Nouvelle fonction non documentée)*
