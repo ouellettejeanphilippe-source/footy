@@ -5,6 +5,10 @@ export var STATIC_TEAMS = [];
 export var TEAM_COLORS = {};
 export var TEAM_ALIASES = {};
 export var NORM_TEAM_KEYS = {};
+/* Alias vus sur au moins deux équipes distinctes : voir la construction de
+   TEAM_ALIASES ci-dessous. Une fois marqué ici, un alias ne rejoint plus
+   jamais TEAM_ALIASES, même si une équipe ultérieure le déclare seule. */
+var AMBIGUOUS_ALIASES = {};
 
 for (var key in TEAM_DATA) {
     var data = TEAM_DATA[key];
@@ -23,7 +27,23 @@ for (var key in TEAM_DATA) {
     }
     if (data.aliases) {
         for (var i = 0; i < data.aliases.length; i++) {
-            TEAM_ALIASES[data.aliases[i]] = key;
+            var a = data.aliases[i];
+            if (Object.prototype.hasOwnProperty.call(TEAM_ALIASES, a) && TEAM_ALIASES[a] !== key) {
+                // Alias déjà pris par une AUTRE équipe : c'est un court identifiant partagé
+                // ("rangers", "man", "bos"...) entre plusieurs clubs/franchises distincts,
+                // pas un vrai doublon. `TEAM_ALIASES[a] = key` écrasait silencieusement
+                // l'entrée précédente au profit de la dernière équipe déclarée dans
+                // teams.js — "Rangers" résolvait toujours vers Texas Rangers (MLB), qui
+                // apparaît après Queens Park Rangers et les New York Rangers dans le
+                // fichier, y compris pour un match de football écossais. On retire
+                // l'alias plutôt que de deviner : `getOfficialTeamName` renvoie alors le
+                // nom d'origine, non résolu mais jamais faux.
+                AMBIGUOUS_ALIASES[a] = true;
+                delete TEAM_ALIASES[a];
+                continue;
+            }
+            if (AMBIGUOUS_ALIASES[a]) continue;
+            TEAM_ALIASES[a] = key;
         }
     }
 }

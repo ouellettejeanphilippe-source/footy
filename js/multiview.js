@@ -2104,17 +2104,16 @@ export function openFlux(e, eu, en, mid, isPage){
   var m = S.matchMap.get(String(mid));
   var matchName = m ? (m.homeTeam + ' vs ' + m.awayTeam) : name;
 
-  /* Lien classé « page » : le site répond X-Frame-Options et n'apparaîtra jamais
-     dans le lecteur. On ouvre un onglet plutôt que de laisser l'utilisateur devant
-     un message d'erreur du navigateur. Le glissement dans le Multivision reste
-     possible via le bouton ⊞ pour qui veut tout de même essayer. */
-  if (isPage && !window.multiviewPendingAction) {
-      window.open(url, '_blank', 'noopener');
-      var mbgPage = document.getElementById('mbg');
-      if (mbgPage) mbgPage.classList.remove('open');
-      showToast('Ouvert dans un onglet : cette page refuse l\'affichage intégré');
-      return;
-  }
+  /* `isPage` (lien classé « page » par le registre d'intégrabilité, cf.
+     js/extractors.js) a longtemps ouvert un nouvel onglet automatiquement ici.
+     Sur certains navigateurs mobiles, ce window.open() n'aboutissait qu'à un
+     onglet vide — le blocage du site apparaît une fois DANS l'iframe, jamais au
+     moment où le navigateur ouvre l'onglet lui-même, donc rien ne garantit que
+     l'ouverture externe fonctionne mieux que l'iframe. Tout passe désormais par
+     le Multivision comme n'importe quel autre flux, y compris les liens « page » :
+     le badge « onglet » (js/ui.js: renderFluxItem) et le bouton dédié ↗ à côté de
+     chaque flux restent le moyen explicite de sortir de l'application pour qui le
+     souhaite, mais ce n'est plus jamais automatique. */
 
   if (window.multiviewPendingAction) {
       var action = window.multiviewPendingAction;
