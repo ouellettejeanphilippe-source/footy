@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { escJs, esc, lg, pad, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
 import { isMatch, stringSimilarity } from './match.js';
-import { globalStatsInterval } from './multiview.js';
+import { globalStatsInterval, setGlobalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS } from './db.js';
@@ -193,6 +193,14 @@ export var PROXIES = buildProxyList(getProxySettings());
 export function rebuildProxies() {
     PROXIES = buildProxyList(getProxySettings());
     window.PROXIES = PROXIES;
+    return PROXIES;
+}
+
+/* Ces liaisons étaient collées DANS le corps de rebuildProxies : elles n'étaient donc
+   posées que si la fonction s'exécutait, et elle ne pouvait pas s'exécuter puisque son
+   seul appelant passe par window.rebuildProxies, qu'elle était censée définir.
+   Conséquences : enregistrer un proxy ou une clé d'API n'avait aucun effet avant un
+   rechargement complet, et l'écran Options n'affichait jamais les valeurs déjà saisies. */
 window.applySourceUrl = applySourceUrl;
 window.sportOfLeague = sportOfLeague;
 window.getSourcePages = getSourcePages;
@@ -202,8 +210,8 @@ window.SOURCE_MIRRORS = SOURCE_MIRRORS;
 window.STREAMS_WORKFLOW_URL = STREAMS_WORKFLOW_URL;
 window.rebuildProxies = rebuildProxies;
 window.getProxySettings = getProxySettings;
-    return PROXIES;
-}
+window.gstatsGoBack = gstatsGoBack;
+window.toggleGlobalStats = toggleGlobalStats;
 
 /* ══ COULEURS ═══════════════════════════ */
 
@@ -227,36 +235,73 @@ window.getProxySettings = getProxySettings;
 
 export function toggleGlobalStats() {
     var sidebar = document.getElementById('global-stats-sidebar');
-    if (sidebar.style.transform === 'translateX(0px)') {
-        sidebar.style.transform = 'translateX(100%)';
-    }
+    if (!sidebar) return;
+    sidebar.style.transform = 'translateX(100%)';
+    gstatsHistory = [];
+    updateGstatsBackBtn();
 }
 
-export function openGlobalStatsFromMatch(mid) {
+/* Pile de navigation de la barre latérale. Depuis la fiche d'un match, chaque logo
+   ouvre onclick="openGlobalStats(...)" la fiche de l'équipe : le bouton « ← Retour »
+   existe dans index.html pour revenir au match, mais gstatsGoBack() n'était défini
+   nulle part — le clic levait une ReferenceError silencieuse dans la console, et rien
+   ne rendait le bouton visible de toute façon. */
+var gstatsHistory = [];
+export var currentGstatsView = null;
+
+export function updateGstatsBackBtn() {
+    var backBtn = document.getElementById('gstats-back-btn');
+    if (backBtn) backBtn.style.display = gstatsHistory.length > 0 ? '' : 'none';
+}
+
+export function pushGstatsView(view) {
+    gstatsHistory.push(view);
+    if (gstatsHistory.length > 10) gstatsHistory.shift();
+    updateGstatsBackBtn();
+}
+
+export function gstatsGoBack() {
+    var prev = gstatsHistory.pop();
+    updateGstatsBackBtn();
+    if (!prev) { toggleGlobalStats(); return; }
+    if (prev.type === 'match') openGlobalStatsFromMatch(prev.id, true);
+    else if (prev.type === 'team') openGlobalStats(prev.name, true);
+}
+
+export function openGlobalStatsFromMatch(mid, isBack) {
     var m = S.matchMap.get(String(mid));
     if (!m) return;
     var sidebar = document.getElementById('global-stats-sidebar');
     sidebar.style.transform = 'translateX(0px)';
     var content = document.getElementById('gstats-content');
     var title = document.getElementById('gstats-title');
-    var backBtn = document.getElementById('gstats-back-btn');
 
+    /* globalStatsInterval est importé de multiview.js : en modules ES, une liaison
+       importée est en lecture seule et toute affectation lève « Assignment to constant
+       variable ». La barre de statistiques cassait donc systématiquement sur un match
+       EN DIRECT, seul cas où la minuterie est armée. On passe par un setter. */
     if (globalStatsInterval) {
         clearInterval(globalStatsInterval);
-        globalStatsInterval = null;
+        setGlobalStatsInterval(null);
     }
     if (m.status === 'live') {
-        globalStatsInterval = setInterval(function() {
+        setGlobalStatsInterval(setInterval(function() {
             if (document.getElementById('global-stats-sidebar').style.transform === 'translateX(0px)' && document.getElementById('gstats-title').textContent.indexOf(m.homeTeam) > -1) {
                 openGlobalStatsFromMatch(mid); // just call it again quietly to update
             } else {
                 clearInterval(globalStatsInterval);
+                setGlobalStatsInterval(null);
             }
-        }, 300000);
+        }, 300000));
     }
 
+    // isBack ne rejoue pas l'empilement (déjà fait par gstatsGoBack), mais la vue
+    // courante doit rester exacte : sinon un aller-retour suivant pousserait la
+    // mauvaise vue dans l'historique.
+    currentGstatsView = { type: 'match', id: mid };
+    updateGstatsBackBtn();
+
     title.textContent = m.homeTeam + ' vs ' + m.awayTeam;
-    backBtn.style.display = 'none';
 
     content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Chargement des données du match...</div>';
 
@@ -402,16 +447,20 @@ export function openGlobalStatsFromMatch(mid) {
     });
 }
 
-export function openGlobalStats(teamName) {
+export function openGlobalStats(teamName, isBack) {
     var sidebar = document.getElementById('global-stats-sidebar');
     sidebar.style.transform = 'translateX(0px)';
     var content = document.getElementById('gstats-content');
     var title = document.getElementById('gstats-title');
-    var backBtn = document.getElementById('gstats-back-btn');
 
     if (teamName) {
+        // Venant d'une fiche de match, on garde de quoi y revenir (mais pas en
+        // rejouant un retour : gstatsGoBack a déjà dépilé cette entrée).
+        if (!isBack && currentGstatsView) pushGstatsView(currentGstatsView);
+        currentGstatsView = { type: 'team', name: teamName };
+        updateGstatsBackBtn();
+
         title.textContent = teamName;
-        backBtn.style.display = 'none';
         content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Chargement de la fiche de ' + esc(teamName) + '...</div>';
 
         fetchTeamStats(teamName);

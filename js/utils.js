@@ -41,6 +41,28 @@ export function safeStorageRemove(key) {
     } catch(e) {}
 }
 
+/* La grille complète (matchs + liens fusionnés) est mise en cache sous une clé par
+   jour consulté (`api_calendar_cache_YYYYMMDD`), et rien ne les supprimait jamais :
+   quelques centaines de kilo-octets s'ajoutaient à chaque nouvelle date visitée
+   jusqu'à ce que le quota du navigateur (5 Mo) saute — après quoi toute écriture,
+   y compris les préférences, échoue en silence (voir safeStorageSet). On garde
+   aujourd'hui et hier (le fuseau Est peut différer du fuseau local en soirée) et on
+   purge le reste, une fois au démarrage. */
+export function purgeStaleCalendarCache(keepDateStrs) {
+    try {
+        var keep = {}; (keepDateStrs || []).forEach(function(d) { keep[d] = true; });
+        var toRemove = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('api_calendar_cache_') === 0 && !keep[k.slice('api_calendar_cache_'.length)]) {
+                toRemove.push(k);
+            }
+        }
+        toRemove.forEach(function(k) { localStorage.removeItem(k); });
+        return toRemove.length;
+    } catch (e) { return 0; }
+}
+
 export function safeStorageSetJSON(key, value) {
     safeStorageSet(key, JSON.stringify(value));
 }
@@ -644,6 +666,7 @@ window.safeStorageSet = safeStorageSet;
 window.safeStorageGetJSON = safeStorageGetJSON;
 window.safeStorageSetJSON = safeStorageSetJSON;
 window.safeStorageRemove = safeStorageRemove;
+window.purgeStaleCalendarCache = purgeStaleCalendarCache;
 window.getLeagueDuration = getLeagueDuration;
 window.escJs = escJs;
 window.lg = lg;
@@ -721,3 +744,12 @@ export function copyToClipboard(text) {
     }
 }
 window.copyToClipboard = copyToClipboard;
+
+/* Panneau de débogage (#dbg, styles.css .dbg.open). Son bouton de fermeture
+   (onclick="closeDbg()" dans index.html) référençait une fonction qui n'existait
+   nulle part : le clic levait une ReferenceError. */
+export function closeDbg() {
+    var dbg = document.getElementById('dbg');
+    if (dbg) dbg.classList.remove('open');
+}
+window.closeDbg = closeDbg;

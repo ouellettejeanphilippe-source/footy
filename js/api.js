@@ -366,7 +366,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
 
                   var dateObj = new Date(m.date);
                   m.matchDate = getEstDateStrFromDate(dateObj);
-                  m.startTime = ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2);
+                  m.startTime = getEstTimeStrFromDate(dateObj);
 
                   m.status = m.time === 'LIVE' ? 'live' : 'upcoming';
                   if (m.isFinished || (m.isFinished === undefined && m.homeScore && m.awayScore && m.status !== 'live')) {
@@ -532,7 +532,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
                           homeTeam: 'WWE',
                           awayTeam: title.replace(/^wwe\s+/i, '').trim(),
                           matchDate: evDateStr,
-                          startTime: ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2),
+                          startTime: getEstTimeStrFromDate(dateObj),
                           league: formatLeagueName('WWE'),
                           flag: lgFlag('WWE'),
                           color: lgColor('WWE'),
@@ -589,7 +589,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
                   homeLogo: t1.image,
                   awayLogo: t2.image,
                   matchDate: mDate,
-                  startTime: ('0' + dateObj.getHours()).slice(-2) + ':' + ('0' + dateObj.getMinutes()).slice(-2),
+                  startTime: getEstTimeStrFromDate(dateObj),
                   durationMinutes: getLeagueDuration(ev.league.name),
                   status: status,
                   score: score,
@@ -652,7 +652,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
                               homeLogo: lt1.image,
                               awayLogo: lt2.image,
                               matchDate: targetDateStr, // Force today's date so it appears
-                              startTime: ('0' + lDateObj.getHours()).slice(-2) + ':' + ('0' + lDateObj.getMinutes()).slice(-2),
+                              startTime: getEstTimeStrFromDate(lDateObj),
                               durationMinutes: getLeagueDuration(liveEv.league.name),
                               status: 'live',
                               score: [lt1.result && lt1.result.gameWins ? lt1.result.gameWins : 0, lt2.result && lt2.result.gameWins ? lt2.result.gameWins : 0],

@@ -207,12 +207,62 @@ for (const rep of sourcesReport) {
 const playerHosts = {};
 for (const m of all) for (const l of (m.streamLinks || [])) { const h = hostOf(l.url); playerHosts[h] = (playerHosts[h] || 0) + 1; }
 
+/* ── Politique d'intégration, lue à la source ──────────────────────────────
+   Le client ne peut pas savoir si une adresse s'affichera dans une <iframe> :
+   c'est le serveur distant qui le décide (X-Frame-Options, CSP frame-ancestors),
+   et un navigateur ne laisse pas lire ces en-têtes depuis la page. Ici, si :
+   on interroge chaque hôte de lecteur une fois et on publie le verdict. Le client
+   sait alors AVANT d'afficher quoi que ce soit s'il doit intégrer le lecteur ou
+   ouvrir un onglet — c'est ce qui supprime l'écran « … ne peut pas ouvrir cette
+   page » au lieu de le rattraper après coup. */
+function readFramePolicy(headers) {
+    const xfo = String(headers.get('x-frame-options') || '').toLowerCase().trim();
+    if (xfo.includes('deny') || xfo.includes('sameorigin')) return { embeddable: false, reason: 'X-Frame-Options: ' + xfo };
+    const csp = String(headers.get('content-security-policy') || '');
+    const fa = /frame-ancestors([^;]*)/i.exec(csp);
+    if (fa) {
+        const value = fa[1].trim().toLowerCase();
+        if (!value || value === "'none'") return { embeddable: false, reason: 'frame-ancestors: ' + (value || "'none'") };
+        if (!value.includes('*') && !value.includes('https:')) return { embeddable: false, reason: 'frame-ancestors: ' + value.slice(0, 60) };
+    }
+    return { embeddable: true, reason: xfo || fa ? 'en-têtes permissifs' : 'aucun en-tête restrictif' };
+}
+
+const hostPolicy = {};
+const hostsToProbe = Object.keys(playerHosts).filter(Boolean);
+await Promise.all(hostsToProbe.map(async (host) => {
+    // On interroge une adresse réellement observée pour cet hôte : certains
+    // serveurs ne posent leurs en-têtes que sur les chemins de lecteur.
+    let sample = null;
+    for (const m of all) for (const l of (m.streamLinks || [])) { if (!sample && hostOf(l.url) === host) sample = l.url; }
+    if (!sample) return;
+    try {
+        const r = await realFetch(sample, { headers: { 'User-Agent': UA }, redirect: 'follow' });
+        const p = readFramePolicy(r.headers);
+        hostPolicy[host] = { embeddable: p.embeddable, reason: p.reason, status: r.status };
+        try { if (r.body && r.body.cancel) await r.body.cancel(); } catch (e) {}
+    } catch (e) {
+        hostPolicy[host] = { embeddable: null, reason: 'injoignable : ' + String(e && e.message ? e.message : e).slice(0, 60) };
+    }
+}));
+
+/* Un lien dont l'hôte refuse l'intégration est marqué `topLevel` dès le fichier :
+   l'interface l'ouvrira dans un onglet sans jamais tenter l'iframe. */
+let markedNonEmbeddable = 0;
+for (const m of all) {
+    for (const l of (m.streamLinks || [])) {
+        const pol = hostPolicy[hostOf(l.url)];
+        if (pol && pol.embeddable === false && !l.topLevel) { l.topLevel = true; markedNonEmbeddable++; }
+    }
+}
+
 // ── 3. Écriture ───────────────────────────────────────────────────────────
 const out = {
     generatedAt: new Date().toISOString(),
     date: today,
     fetch: fetchStats,
     playerHosts: Object.fromEntries(Object.entries(playerHosts).sort((a, b) => b[1] - a[1]).slice(0, 40)),
+    hostPolicy: hostPolicy,
     sources: sourcesReport,
     matches: all.map((m) => ({
         source: m.source,
@@ -235,4 +285,6 @@ const totalStreams = out.matches.reduce((n, m) => n + m.streamLinks.filter((l) =
 console.log(`\ndata/streams.json : ${out.matches.length} matchs, ${totalStreams} flux, sources OK : ${sourcesReport.filter((s) => s.ok).map((s) => s.id).join(', ') || 'aucune'}`);
 console.log('Pages de match : ' + sourcesReport.map((s) => `${s.id} ${s.matchPagesOk || 0}/${(s.matchPagesOk || 0) + (s.matchPagesFail || 0)}`).join(', '));
 console.log('Requêtes : ' + JSON.stringify(fetchStats) + ' | lecteurs : ' + JSON.stringify(out.playerHosts));
+const refuse = Object.entries(hostPolicy).filter(([, p]) => p.embeddable === false).map(([h]) => h);
+console.log(`Integration : ${Object.keys(hostPolicy).length} hotes sondes, ${refuse.length} refusent l'iframe` + (refuse.length ? ' (' + refuse.join(', ') + ')' : '') + `, ${markedNonEmbeddable} liens marques onglet`);
 process.exit(0);

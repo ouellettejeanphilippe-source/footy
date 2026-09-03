@@ -17,6 +17,9 @@ export var mvGameModeInterval = null;
 export var gmCurrentTab = 'stats'; // 'stats' | 'scores'
 export var gmPinnedMatches = safeStorageGetJSON('gmPinnedMatches', []);
 export var globalStatsInterval = null;
+/* Les autres modules ne peuvent pas affecter une liaison importée : ils passent par ce
+   setter (même motif que setCustomLgOrder / setLeagueTier). */
+export function setGlobalStatsInterval(v) { globalStatsInterval = v; window.globalStatsInterval = v; }
 export var currentGlobalStatsMatchId = null;
 export var activeMvStatsCards = [];
 
@@ -1454,12 +1457,22 @@ export function updateMultivisionLayout() {
                 container.appendChild(iframe);
 
                 if (isTopLevel) {
+                    var embedHost = ''; try { embedHost = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (e) {}
+                    /* Un clic ici est le seul signal fiable qu'un navigateur donne : le
+                       DOM d'une iframe cross-origin refusée par X-Frame-Options reste
+                       illisible en JavaScript (pas d'événement d'erreur distinct d'un
+                       chargement normal), donc l'application ne peut pas le détecter
+                       elle-même. Mais si l'utilisateur clique « Ouvrir » depuis CET
+                       avertissement, c'est qu'il a constaté l'échec — on l'enregistre
+                       dans le registre appris (js/scrapers.js: getEmbedRegistry) pour
+                       que ce lien s'ouvre directement en onglet la prochaine fois. */
+                    var recordEv = embedHost ? "if(window.recordEmbedResult){window.recordEmbedResult('" + escJs(embedHost) + "', false);}" : '';
                     var helperOverlay = document.createElement('div');
                     helperOverlay.className = 'mv-embed-helper';
                     helperOverlay.style.cssText = 'position:absolute;bottom:10px;left:10px;right:10px;z-index:20;background:rgba(20,20,20,0.9);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 12px;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px);box-shadow:0 4px 12px rgba(0,0,0,0.5);';
                     helperOverlay.innerHTML = '<span style="font-weight:600;">⚠️ Si l\'embed est bloqué (Firefox / X-Frame) :</span>' +
                         '<div style="display:flex;gap:6px;align-items:center;">' +
-                        '<button onclick="window.open(\'' + escJs(finalUrl) + '\', \'_blank\'); event.stopPropagation();" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-weight:bold;">🔗 Ouvrir</button>' +
+                        '<button onclick="' + recordEv + 'window.open(\'' + escJs(finalUrl) + '\', \'_blank\'); event.stopPropagation();" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-weight:bold;">🔗 Ouvrir</button>' +
                         '<button onclick="installTampermonkey(); event.stopPropagation();" style="background:rgba(255,255,255,0.1);color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">🧩 Script</button>' +
                         '<button onclick="this.parentElement.parentElement.remove(); event.stopPropagation();" style="background:transparent;color:var(--muted);border:none;cursor:pointer;">✕</button>' +
                         '</div>';
@@ -2083,13 +2096,25 @@ export async function toggleDocumentPiP() {
 
 
 /* ══ OPEN FLUX (MULTIVISION) ═══════════ */
-export function openFlux(e, eu, en, mid){
+export function openFlux(e, eu, en, mid, isPage){
   mid = getOriginalMatchId(mid);
   if(e) e.preventDefault();
   var url=decodeURIComponent(eu), name=decodeURIComponent(en);
 
   var m = S.matchMap.get(String(mid));
   var matchName = m ? (m.homeTeam + ' vs ' + m.awayTeam) : name;
+
+  /* Lien classé « page » : le site répond X-Frame-Options et n'apparaîtra jamais
+     dans le lecteur. On ouvre un onglet plutôt que de laisser l'utilisateur devant
+     un message d'erreur du navigateur. Le glissement dans le Multivision reste
+     possible via le bouton ⊞ pour qui veut tout de même essayer. */
+  if (isPage && !window.multiviewPendingAction) {
+      window.open(url, '_blank', 'noopener');
+      var mbgPage = document.getElementById('mbg');
+      if (mbgPage) mbgPage.classList.remove('open');
+      showToast('Ouvert dans un onglet : cette page refuse l\'affichage intégré');
+      return;
+  }
 
   if (window.multiviewPendingAction) {
       var action = window.multiviewPendingAction;

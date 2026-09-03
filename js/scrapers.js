@@ -1,4 +1,5 @@
-import { pad, getLeagueDuration, lg, fetchPage } from './utils.js';
+import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './extractors.js';
 import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
@@ -693,6 +694,17 @@ export function unwrapOnHockeyPlayer(href) {
     return url;
 }
 
+/* OnHockey n'a pas de page par match : sa grille et ses lecteurs vivent tous dans
+   schedule_table.php (l'accueil n'est qu'un frameset). Pointer les matchs vers
+   l'accueil les rendait inexploitables — le script serveur écarte les adresses qui
+   sont l'accueil d'une source, si bien qu'aucune page n'était jamais relue et que
+   les matchs dont le lecteur n'est publié qu'à l'approche du coup d'envoi restaient
+   vides jusqu'au lendemain. En pointant vers la grille elle-même, le serveur ET
+   l'ouverture d'une fiche la relisent et récupèrent les lecteurs parus depuis. */
+export function ONHOCKEY_SCHEDULE_URL() {
+    return resolveUrl('schedule_table.php', ONHOCKEY_URL);
+}
+
 export function parseOnHockey(html) {
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var matches = [];
@@ -808,7 +820,7 @@ export function parseOnHockey(html) {
                           status: 'upcoming',
                           streamLinks: streamLinksArr,
                           streamsLoaded: streamLinksArr.length > 0,
-                          matchUrl: ONHOCKEY_URL,
+                          matchUrl: ONHOCKEY_SCHEDULE_URL(),
                           source: 'onhockey',
                           matchDate: getEstDateStrFromDate(TARGET_DATE)
                       });
@@ -871,7 +883,7 @@ export function parseOnHockey(html) {
                   status: 'upcoming',
                   streamLinks: streamLinksArr,
                   streamsLoaded: streamLinksArr.length > 0,
-                  matchUrl: ONHOCKEY_URL,
+                  matchUrl: ONHOCKEY_SCHEDULE_URL(),
                           source: 'onhockey',
                   matchDate: getEstDateStrFromDate(TARGET_DATE)
               });
@@ -1526,6 +1538,38 @@ export function saveStreamCache(mid, streams) {
     safeStorageSetJSON('stream_cache', globalCache);
 }
 
+/* ══ REGISTRE D'INTÉGRABILITÉ ══════════════════════════════════════════════
+   Quels hôtes acceptent d'être affichés dans une <iframe> ? Ce n'est pas
+   devinable depuis l'adresse : c'est le serveur distant qui le décide, par ses
+   en-têtes X-Frame-Options / frame-ancestors, illisibles depuis une iframe
+   cross-origin en JavaScript. Deux sources l'alimentent : le script serveur, qui
+   lit ces en-têtes directement (readFramePolicy, scripts/scrape_streams.mjs) et
+   les publie dans data/streams.json — c'est la source fiable ; et le lecteur
+   Multivision, qui enregistre un refus quand l'utilisateur clique « Ouvrir dans
+   un onglet » depuis l'avertissement affiché sur un lien classé « page »
+   (js/multiview.js: fallbackToIframe) — un signal plus rare mais couvrant les
+   hôtes que le serveur n'a pas sondés. Le verdict est persisté et réinjecté dans
+   la notation : c'est ce qui rend l'extraction adaptative plutôt que figée dans
+   une liste écrite à la main. */
+var _embedRegistry = null;
+export function getEmbedRegistry() {
+    if (_embedRegistry) return _embedRegistry;
+    var stored = safeStorageGetJSON('embed_registry', null);
+    _embedRegistry = (stored && stored.players) ? stored : createRegistry();
+    return _embedRegistry;
+}
+export function saveEmbedRegistry() {
+    safeStorageSetJSON('embed_registry', getEmbedRegistry());
+}
+/* Appelé par le lecteur : `embedded` vaut false quand l'iframe est restée vide
+   (X-Frame-Options). Deux refus sans aucun succès suffisent à basculer l'hôte
+   en ouverture d'onglet pour tous ses liens, présents et futurs. */
+export function recordEmbedResult(host, embedded) {
+    if (!host) return;
+    noteEmbedResult(getEmbedRegistry(), host, embedded);
+    saveEmbedRegistry();
+}
+
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 export function fetchSubPages(matches){
   var now = new Date();
@@ -1605,7 +1649,11 @@ export function fetchSubPages(matches){
     }
     while(active<concurrency && queue.length>0){
       active++;
-      var m=queue.shift();
+      /* `let` et non `var` : avec var, une seule variable était partagée par les cinq
+         promesses en vol, si bien que le rappel d'échec marquait `streamsLoaded` sur le
+         DERNIER match dépilé — celui qui avait réellement échoué restait bloqué en
+         chargement, précisément ce que le commentaire ci-dessous prétend éviter. */
+      let m=queue.shift();
       scrapeMatchFlux(m).then(function(){
         active--;
         setTimeout(next, 0);
@@ -2294,13 +2342,65 @@ export function extractStreamLinks(html, m) {
         return true;
     });
 
+    /* 5 bis. Moteur générique (js/extractors.js).
+       Les branches ci-dessus connaissent chacune un site et lui donnent de bons
+       libellés ; elles restent donc en place. Mais elles ne voient rien d'un site
+       qu'elles ne connaissent pas, et rien d'un site connu qui a changé de DOM —
+       c'est ce qui laissait des sources entières à zéro lien. Le moteur repasse
+       donc sur la même page sans rien savoir d'elle : iframes, boutons qui
+       remplacent l'iframe (data-* ou onclick), blobs JSON, adresses encodées,
+       liens vers un autre domaine. Ce qu'il trouve en plus est ajouté ; ce que
+       les branches avaient déjà trouvé garde son libellé et reçoit le classement
+       du moteur. */
+    var engineLinks = [];
+    try {
+        engineLinks = extractPlayers(html, m.matchUrl, { doc: doc, matchUrl: m.matchUrl, registry: getEmbedRegistry() });
+    } catch (e) { lg('Moteur d\'extraction en échec', e && e.message ? e.message : e); }
+
+    var byCanon = {};
+    links.forEach(function(l) { if (l && l.url) byCanon[canonical(l.url)] = l; });
+
+    engineLinks.forEach(function(p) {
+        var existing = byCanon[canonical(p.url)];
+        if (existing) {
+            /* Déjà trouvé par une branche : on ne touche pas au libellé, mais le
+               classement du moteur fait autorité — c'est lui qui décide si le lien
+               peut vivre dans une iframe ou doit s'ouvrir dans un onglet. */
+            existing.topLevel = p.kind === 'page';
+            existing.via = p.via;
+            existing.score = p.score;
+            return;
+        }
+        var host = ''; try { host = new URL(p.url).hostname.replace(/^www\./, ''); } catch (e) {}
+        links.push({
+            name: p.label || ('Lecteur' + (host ? ' · ' + host : '')),
+            quality: extractQuality(p.label || ''),
+            lang: 'MULTI',
+            url: p.url,
+            icon: p.kind === 'embed' ? '▶️' : '🔗',
+            topLevel: p.kind === 'page',
+            via: p.via,
+            score: p.score,
+            scrapeContext: { blockText: (p.reasons || []).join(' · '), pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+        });
+        byCanon[canonical(p.url)] = links[links.length - 1];
+    });
+
     links = finalizeStreamLinks(links); // dédoublonnage, faux liens, provenance
+
+    /* Les lecteurs intégrables d'abord : c'est ce que l'utilisateur peut réellement
+       regarder sans quitter l'application. Les pages à ouvrir en onglet ensuite. */
+    links.sort(function(a, b) {
+        var ta = a.topLevel ? 1 : 0, tb = b.topLevel ? 1 : 0;
+        if (ta !== tb) return ta - tb;
+        return (b.score || 0) - (a.score || 0);
+    });
 
     // 6. Ultime fallback : Si la source ne donne vraiment aucun autre flux et qu'on a le matchUrl.
     if(links.length===0 && m.matchUrl){
         var siteName = m.matchUrl;
         try { siteName = new URL(m.matchUrl).hostname.replace(/^(www|v2)\./, ''); } catch(e) {}
-        links.push({name:'Page du match sur ' + siteName, quality:'HD', lang:'Multi', url:m.matchUrl, icon:'🔗', topLevel: true});
+        links.push({name:'Page du match sur ' + siteName, quality:'', lang:'', url:m.matchUrl, icon:'🔗', topLevel: true});
     }
 
     // Populate pageLinksContext for all contexts
@@ -2670,3 +2770,5 @@ window.scrapeMatchFlux = scrapeMatchFlux;
 window.updateMatchUiAfterScrape = updateMatchUiAfterScrape;
 window.findLeagueHeader = findLeagueHeader;
 window.getEstTime = getEstTime;
+window.recordEmbedResult = recordEmbedResult;
+window.getEmbedRegistry = getEmbedRegistry;
