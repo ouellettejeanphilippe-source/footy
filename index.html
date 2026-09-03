@@ -62,6 +62,7 @@
   <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
     <button class="btn" id="sport-menu-btn" onclick="toggleSportFilters(event)" style="display:none; align-self:flex-start; padding:8px 16px; font-size:16px; border-radius:8px;">☰ Ligues</button>
     <button class="btn" style="padding: 4px 10px; font-size: 13px; height: 30px;" onclick="backgroundUpdateGuide()" title="Rafraîchir les scores en direct">↻</button>
+    <button class="btn" id="btn-find-missing" style="padding: 4px 10px; font-size: 13px; height: 30px; margin-left: 6px;" onclick="findMissingLinks()" title="Relance la recherche de liens pour les matchs qui n'en ont aucun">🔎 Liens manquants</button>
       <div id="date-selector" style="display:flex; align-items:center; gap: 8px; margin-left: auto;">
         <button class="btn" aria-label="Date précédente" style="padding: 4px 10px;" onclick="changeTargetDate(-1)">❮</button>
         <div style="position: relative;">
@@ -71,6 +72,7 @@
         <button class="btn" aria-label="Date suivante" style="padding: 4px 10px;" onclick="changeTargetDate(1)">❯</button>
     </div>
   </div>
+  <div class="missing-scan" id="missing-scan-progress" style="display:none;"></div>
   <div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;scrollbar-width:none;flex-wrap:nowrap;">
     <!-- Buttons generated dynamically -->
   </div>
@@ -256,6 +258,10 @@
           <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
             <button class="btn o" onclick="openStreamsWorkflow()" title="Ouvre la page GitHub Actions du workflow (bouton « Run workflow »)">▶️ Lancer le calcul sur GitHub</button>
             <button class="btn o" id="btn-reload-prefetched" onclick="reloadPrefetchedStreams()" title="Relit data/streams.json sans attendre">🔄 Recharger les liens serveur</button>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer;" title="Une page qui répond X-Frame-Options est refusée par le navigateur avant tout script, Firefox compris. Le tour consiste à télécharger son HTML par le script utilisateur (ou, à défaut, un proxy CORS) et à le poser dans le lecteur via srcdoc, où il n'y a plus d'en-tête à faire respecter.">
+              <input type="checkbox" id="pref-embed-trick" checked onchange="applyUserPrefs()">
+              🎩 Reconstruire les pages non intégrables dans le Multivision
+            </label>
           </div>
         </div>
       </div>
@@ -287,6 +293,14 @@
           <!-- 2. Style des Cartes -->
           <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
             <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">🃏 Style des Cartes</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Forme des cartes<br><span style="font-size:11px; opacity:.7;">L'affiche verticale range les sections en rails horizontaux, à la Netflix.</span></div>
+              <select id="pref-card-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="auto" selected>Automatique (affiche sur mobile)</option>
+                <option value="poster">Affiche verticale (2:3)</option>
+                <option value="wide">Carte large (2,4:1)</option>
+              </select>
+            </div>
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div style="font-size:13px; color:var(--muted);">Couleur des cartes de match</div>
               <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
@@ -424,6 +438,16 @@
           <span style="color:var(--muted); font-size: 14px; font-weight: bold;">État des Sources (Dernier Scraping)</span>
           <div id="sources-status-container" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 13px; display: flex; flex-direction: column; gap: 6px;">
              <div style="color: var(--muted2); text-align: center;">Aucune donnée (Scraping en attente...)</div>
+          </div>
+       </div>
+
+       <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+             <span style="color:var(--muted); font-size: 14px; font-weight: bold;">Liens par domaine primaire</span>
+             <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="renderDomainStats()">↻ Recalculer</button>
+          </div>
+          <div id="domain-stats-container" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 13px;">
+             <div style="color: var(--muted2); text-align: center;">Aucun lien chargé pour le moment.</div>
           </div>
        </div>
 

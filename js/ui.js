@@ -2,6 +2,7 @@ import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFl
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
+import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux } from './scrapers.js';
@@ -156,6 +157,40 @@ export function formatLiveMinute(m) {
    #ov / #errbox y vivent. Une exception laissait donc l'application sur un écran
    vide, sans overlay ni bouton « Réessayer ». On restaure ici ce qui a pu être
    construit, puis on relance l'erreur pour qu'elle reste visible en console. */
+/* Forme des cartes de match : « affiche » verticale (2/3, à la Netflix) ou « large »
+   (16:6,7, la forme historique). Le réglage par défaut suit l'écran — l'affiche est
+   faite pour le pouce et le portrait, la carte large pour une souris et un moniteur —
+   et l'utilisateur peut le forcer dans Options → Style des Cartes.
+
+   Une seule classe sur <body> pilote toute la mise en page (voir styles.css) : le HTML
+   des cartes est identique dans les deux formes, ce qui évite d'entretenir deux
+   générateurs de cartes divergents. */
+export function cardShapePref() {
+  var pref = (userPrefs && userPrefs.cardShape) || 'auto';
+  if (pref === 'poster' || pref === 'wide') return pref;
+  return (typeof window !== 'undefined' && window.matchMedia
+    && window.matchMedia('(max-width: 900px)').matches) ? 'poster' : 'wide';
+}
+
+export function applyCardShape() {
+  if (typeof document === 'undefined') return;
+  document.body.classList.toggle('cards-poster', cardShapePref() === 'poster');
+}
+
+/* Le mode « auto » dépend de la largeur : une rotation d'écran doit changer la forme
+   sans recharger l'application. */
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', function() {
+    var before = document.body.classList.contains('cards-poster');
+    applyCardShape();
+    if (before !== document.body.classList.contains('cards-poster')) {
+      /* Rien à re-générer : la classe suffit. On rafraîchit seulement la ligne du temps,
+         dont la position dépend de la largeur réelle. */
+      if (typeof updateNowLine === 'function') updateNowLine();
+    }
+  });
+}
+
 export function buildEPG(matches){
   try {
     buildEPGInner(matches);
@@ -331,9 +366,18 @@ function buildEPGInner(matches){
           var grid = document.createElement('div');
           grid.className = 'match-grid';
 
+          /* En affiche verticale (cartes « à la Netflix »), une section devient un rail
+             qui défile horizontalement : sur un téléphone, la grille d'origine n'affichait
+             que trois matchs par écran, tout le reste exigeant un long défilement vertical.
+             Le rail en montre une dizaine et garde les sections suivantes atteignables.
+             Le bouton « Tout voir » du titre déplie le rail en grille pour qui préfère. */
+          var railId = sectionId || ('sec_' + String(titleStr || '').replace(/[^a-zA-Z0-9]/g, ''));
+          if (titleStr) grid.setAttribute('data-rail', railId);
+          if (titleStr && S.expandedSections[railId]) grid.classList.add('expanded');
+
           if (titleStr) {
               var secTitle = document.createElement('div');
-              secTitle.style.cssText = 'padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;';
+              secTitle.className = 'section-title';
 
               if (isCollapsible) {
                   secTitle.style.cursor = 'pointer';
@@ -370,6 +414,26 @@ function buildEPGInner(matches){
               }
               textSpan.textContent = prefix + titleStr;
               secTitle.appendChild(textSpan);
+
+              /* Bascule rail ↔ grille, visible seulement en affiche verticale (CSS). */
+              var railBtn = document.createElement('button');
+              railBtn.type = 'button';
+              railBtn.className = 'rail-toggle';
+              var syncRailBtn = function() {
+                  var open = !!S.expandedSections[railId];
+                  railBtn.textContent = open ? '⇥ Rail' : '⊞ Tout voir';
+                  railBtn.setAttribute('aria-pressed', open ? 'true' : 'false');
+                  grid.classList.toggle('expanded', open);
+              };
+              syncRailBtn();
+              grid._railBtn = railBtn;
+              railBtn.addEventListener('click', function(ev) {
+                  ev.stopPropagation();
+                  S.expandedSections[railId] = !S.expandedSections[railId];
+                  syncRailBtn();
+              });
+              secTitle.appendChild(railBtn);
+
               container.appendChild(secTitle);
           }
 
@@ -470,11 +534,13 @@ function buildEPGInner(matches){
                   }
 
                   /* Nombre de flux : l'information qui décide d'un clic (un match sans flux
-                     n'est pas regardable). Affiché seulement quand on en connaît. */
+                     n'est pas regardable). Quand il n'y en a aucun, le badge devient le
+                     bouton qui lance la recherche — auparavant il fallait ouvrir la fiche
+                     du match et attendre, sans savoir que c'était là que ça se passait. */
                   var streamCount = (m.streamLinks || []).length;
                   var streamsHtml = streamCount > 0
-                      ? '<div class="card-streams" title="' + streamCount + ' flux disponibles">▶ ' + streamCount + '</div>'
-                      : '';
+                      ? '<div class="card-streams" data-mid="' + esc(String(m.id)) + '" title="' + streamCount + ' flux disponibles">▶ ' + streamCount + '</div>'
+                      : '<button type="button" class="card-streams card-streams-search" data-mid="' + esc(String(m.id)) + '" title="Aucun lien : chercher maintenant" aria-label="Chercher des liens pour ce match" onclick="cardSearchLinks(event, \'' + escJs(m.id) + '\')">🔎</button>';
 
                   var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
                   var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
@@ -547,6 +613,10 @@ function buildEPGInner(matches){
           var host = renderMatches(matchesToRender, container, titleStr + ' (' + matchesToRender.length + ')', true, sectionId);
           if (!host || S.collapsedSections[sectionId]) return;
 
+          /* Cette section n'est plus un rail mais un conteneur de sous-sections, chacune
+             avec son propre rail et son propre bouton : celui du titre englobant n'a plus
+             rien à déplier, on le retire plutôt que de le laisser sans effet. */
+          if (host._railBtn && host._railBtn.parentNode) host._railBtn.remove();
           host.innerHTML = '';
           host.className = 'autres-streams-sub-container';
           host.style.display = 'block';
@@ -578,6 +648,7 @@ function buildEPGInner(matches){
      Guide. Ailleurs ils flottaient au-dessus des cartes sans rien faire : on les réserve
      à la vue concernée (voir .zoom-controls dans styles.css). */
   document.body.classList.toggle('view-timeline', S.filter === 'all');
+  applyCardShape();
 
   if (S.filter === 'live' || S.filter === 'upcoming') {
       epgContainer.style.display = 'block';
@@ -1081,7 +1152,9 @@ export function renderFluxItem(s, i, m) {
     var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
     var depEv = "toggleDomainPref('"+escJs(dom)+"', 'dep', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
 
-    return '<div class="si" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.15s; margin-bottom: 12px; padding-right:8px;">'
+    /* Domaine primaire porté par la ligne : c'est ce qui permet aux pastilles de filtre
+       (renderDomainChips) de masquer les autres sans re-générer la liste. */
+    return '<div class="si" data-dom="'+esc(primaryDomain(s.url))+'" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.15s; margin-bottom: 12px; padding-right:8px;">'
       +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
       +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
       +'<div class="si-inf" style="flex:1; overflow:hidden;">'
@@ -1107,6 +1180,50 @@ export function renderFluxItem(s, i, m) {
         +'<button title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet" onclick="'+openExtEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(s.topLevel?'rgba(255,255,255,0.14)':'rgba(255,255,255,0.05)')+'; border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center;">↗</button>'
       +'</div>'
       +'</div>';
+}
+
+/* Répartition des liens d'un match par domaine primaire, en pastilles de filtre.
+
+   Sur un match bien fourni la liste dépasse trente lignes, presque toutes intitulées
+   « Lecteur direct » ou du nom d'une chaîne : savoir combien de liens vient de quel
+   fournisseur — et n'afficher que ceux-là — est ce qui rend la liste exploitable.
+
+   Seuls les six premiers domaines ont leur pastille ; la queue (un lien chacun, souvent
+   vingt domaines vus une seule fois) est repliée dans une pastille « Autres ». Sans
+   cela, la rangée de pastilles repoussait la liste des flux sous le bas de l'écran d'un
+   téléphone — l'inverse du service rendu. */
+export var DOM_CHIPS_MAX = 6;
+
+export function renderDomainChips(m) {
+  var links = (m && m.streamLinks) || [];
+  var stats = matchDomainStats(m);
+  if (stats.length < 2 || links.length < 6) return '';
+
+  var head = stats.slice(0, DOM_CHIPS_MAX);
+  var tail = stats.slice(DOM_CHIPS_MAX);
+
+  var chip = function(doms, label, count, title) {
+    return '<button type="button" class="dom-chip" data-doms="' + esc(doms.join(',')) + '"'
+      + (title ? ' title="' + esc(title) + '"' : '')
+      + ' onclick="filterFluxByDomain(this.getAttribute(\'data-doms\'))">'
+      + esc(label) + ' <b>' + count + '</b></button>';
+  };
+
+  var html = '<button type="button" class="dom-chip active" data-doms="" onclick="filterFluxByDomain(\'\')">Tous <b>'
+    + links.length + '</b></button>';
+
+  html += head.map(function(d) {
+    return chip([d.domain], d.domain, d.links, d.embeds + ' intégrables · ' + d.pages + ' pages');
+  }).join('');
+
+  if (tail.length) {
+    var rest = tail.reduce(function(n, d) { return n + d.links; }, 0);
+    html += chip(tail.map(function(d) { return d.domain; }),
+      'Autres (' + tail.length + ')', rest,
+      tail.map(function(d) { return d.domain + ' ×' + d.links; }).join(', '));
+  }
+
+  return '<div class="dom-chips">' + html + '</div>';
 }
 
 export function openMod(m,col){
@@ -1574,6 +1691,7 @@ export function openMod(m,col){
           }
           contentHtml += '</div>';
       } else {
+          contentHtml += renderDomainChips(m);
           contentHtml += sortedLinks.map(function(s,i){
               return renderFluxItem(s, i, m);
           }).join('');
@@ -1740,11 +1858,14 @@ if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
 window.diagnosticScrape = diagnosticScrape;
 window.getOriginalMatchId = getOriginalMatchId;
 window.buildEPG = buildEPG;
+window.applyCardShape = applyCardShape;
+window.cardShapePref = cardShapePref;
 window.updateNowLine = updateNowLine;
 window.scrollToNow = scrollToNow;
 window.QC = QC;
 window.QI = QI;
 window.renderFluxItem = renderFluxItem;
+window.renderDomainChips = renderDomainChips;
 window.openMod = openMod;
 window.closeMod = closeMod;
 window.userPrefs = userPrefs;

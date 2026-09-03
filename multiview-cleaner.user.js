@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Supprime tous les éléments inutiles (pubs, chats, headers) pour ne garder que la vidéo sur les sites de streaming, idéal pour le Multiview.
+// @version      1.2
+// @description  Nettoie les lecteurs encadres dans le Multiview, et sert de pont pour afficher les pages qui refusent l'iframe (X-Frame-Options), Firefox inclus.
 // @author       Jules
 // @match        *://*/*
 // @allFrames    true
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @grant        GM.xmlHttpRequest
+// @connect      *
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -473,4 +475,94 @@
     // Arrêter de chercher après 15 secondes pour économiser les ressources
     setTimeout(() => clearInterval(interval), 15000);
 
+})();
+
+/* ═══ PONT D'AFFICHAGE (fenetre principale de l'application) ═══════════════════
+
+   Un serveur qui repond `X-Frame-Options: DENY` fait refuser l'affichage encadre par
+   le navigateur lui-meme, avant tout JavaScript : ni l'application ni ce script ne
+   peuvent lever ce refus depuis l'iframe. Le seul contournement est de ne pas laisser
+   le navigateur charger l'adresse dans l'iframe — on telecharge le HTML par un canal
+   que `X-Frame-Options` ne regit pas (cet en-tete ne concerne QUE l'encadrement), et
+   l'application le pose dans l'iframe via `srcdoc` (voir js/embed-bridge.js).
+
+   GM_xmlhttpRequest est ce canal : il ignore la politique d'origine croisee et envoie
+   les cookies du navigateur, donc il passe la ou un proxy CORS se fait refouler. Ce
+   bloc s'execute uniquement dans la fenetre principale de l'application (jamais dans
+   une iframe, jamais sur un autre site) et seulement apres que l'application se soit
+   annoncee : aucun autre site ne peut s'en servir pour lire des pages a la place de
+   l'utilisateur. */
+(function () {
+    'use strict';
+
+    if (window.self !== window.top) return;
+
+    var GM_FETCH = (typeof GM_xmlhttpRequest === 'function') ? GM_xmlhttpRequest
+        : (typeof GM !== 'undefined' && GM && typeof GM.xmlHttpRequest === 'function') ? GM.xmlHttpRequest
+        : null;
+    if (!GM_FETCH) return;
+
+    var VERSION = '1.2';
+    var MAX_BYTES = 4 * 1024 * 1024;
+
+    function isGuideApp() {
+        // L'application est reconnue a sa structure, pas a son adresse : elle tourne
+        // aussi bien depuis GitHub Pages qu'en local ou dans l'application Android.
+        return !!(document.querySelector('#marea') && document.querySelector('.epg'));
+    }
+
+    function announce() {
+        window.postMessage({ __mvBridge: 'mv_bridge_ready', version: VERSION }, '*');
+    }
+
+    window.addEventListener('message', function (e) {
+        // Meme fenetre uniquement : postMessage d'une autre origine porte une source
+        // differente, et l'application ne s'adresse qu'a elle-meme.
+        if (e.source !== window) return;
+        var d = e.data;
+        if (!d || typeof d !== 'object' || !d.__mvBridge) return;
+        if (!isGuideApp()) return;
+
+        if (d.__mvBridge === 'mv_bridge_hello') { announce(); return; }
+
+        if (d.__mvBridge === 'mv_bridge_fetch' && d.id && typeof d.url === 'string') {
+            if (!/^https?:\/\//i.test(d.url)) {
+                window.postMessage({ __mvBridge: 'mv_bridge_page', id: d.id, ok: false, error: 'adresse invalide' }, '*');
+                return;
+            }
+            try {
+                GM_FETCH({
+                    method: 'GET',
+                    url: d.url,
+                    timeout: 15000,
+                    headers: { 'Referer': d.url },
+                    onload: function (res) {
+                        var body = res && typeof res.responseText === 'string' ? res.responseText : '';
+                        if (body.length > MAX_BYTES) body = body.slice(0, MAX_BYTES);
+                        window.postMessage({
+                            __mvBridge: 'mv_bridge_page',
+                            id: d.id,
+                            ok: !!body && res.status >= 200 && res.status < 400,
+                            html: body,
+                            finalUrl: (res && res.finalUrl) || d.url,
+                            error: body ? '' : ('HTTP ' + (res && res.status))
+                        }, '*');
+                    },
+                    onerror: function () {
+                        window.postMessage({ __mvBridge: 'mv_bridge_page', id: d.id, ok: false, error: 'echec reseau' }, '*');
+                    },
+                    ontimeout: function () {
+                        window.postMessage({ __mvBridge: 'mv_bridge_page', id: d.id, ok: false, error: 'delai depasse' }, '*');
+                    }
+                });
+            } catch (err) {
+                window.postMessage({ __mvBridge: 'mv_bridge_page', id: d.id, ok: false, error: String(err && err.message || err) }, '*');
+            }
+        }
+    });
+
+    // L'application peut avoir fini de se charger avant ce script (@run-at document-idle) :
+    // on s'annonce aussi spontanement, sans attendre son bonjour.
+    if (isGuideApp()) announce();
+    else setTimeout(function () { if (isGuideApp()) announce(); }, 1500);
 })();
