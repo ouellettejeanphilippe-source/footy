@@ -1023,12 +1023,13 @@ export var QI ={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
 export function renderFluxItem(s, i, m) {
     var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"',"+(s.topLevel?'true':'false')+")";
-    /* Le clic garde le comportement normal (lecteur / Multivision) pour tout lien
-       intégrable. Pour un lien classé « page » — une page de match, qui répond
-       X-Frame-Options et ne s'affichera jamais dans une iframe — il ouvre un onglet :
-       l'envoyer dans le lecteur ne produisait que l'écran « Firefox ne peut pas ouvrir
-       cette page ». Le classement vient du moteur d'extraction (js/extractors.js) et du
-       registre appris, pas d'une supposition de l'interface. */
+    /* Le clic envoie toujours vers le Multivision, intégrable ou non : ouvrir
+       automatiquement un nouvel onglet pour les liens « page » ne faisait pas mieux
+       sur certains navigateurs mobiles (onglet vide). Le badge « onglet » ci-dessous
+       prévient que ce lien précis risque de refuser l'affichage intégré, et le
+       bouton dédié ↗ (à droite de la ligne) reste le moyen explicite de l'ouvrir
+       hors de l'application. Le classement lui-même vient du moteur d'extraction
+       (js/extractors.js) et du registre appris, pas d'une supposition de l'interface. */
     var openExtEv = "window.open('"+escJs(s.url||'#')+"','_blank','noopener');event.stopPropagation();event.preventDefault();";
 
     var addMvEv = "";

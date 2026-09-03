@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js && node tests/unit_fetcher.test.js && node tests/unit_extractors.test.js && node tests/unit_scrapers.test.js && node tests/unit_leagues.test.js && npx playwright test tests/test_scrapers_extract.spec.js",
+    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js && node tests/unit_fetcher.test.js && node tests/unit_extractors.test.js && node tests/unit_teamAliases.test.js && node tests/unit_scrapers.test.js && node tests/unit_leagues.test.js && npx playwright test tests/test_scrapers_extract.spec.js",
     "scrape:streams": "node scripts/scrape_streams.mjs"
   },
   "devDependencies": {
