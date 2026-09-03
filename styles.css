@@ -124,8 +124,19 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 /* Nom de la ligue : information de décision, tronquée plutôt que masquée */
 .prime-league-badge .plb-name { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Nombre de flux disponibles, en haut à droite de la vignette */
-.card-streams { position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 3px 7px; font-size: 11px; font-weight: 700; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+/* Nombre de flux disponibles, en haut à droite de la vignette. Quand il vaut zéro, le
+   même badge devient le bouton qui lance la recherche de liens pour ce match. */
+.card-streams { position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 3px 7px; font-size: 11px; font-weight: 700; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-family: inherit; }
+button.card-streams { cursor: pointer; }
+.card-streams-search { background: rgba(0,0,0,0.62); border-color: rgba(255,255,255,0.25); min-width: 30px; min-height: 26px; justify-content: center; font-size: 13px; }
+.card-streams-search:hover, .card-streams-search:focus-visible { background: var(--accent); border-color: var(--accent); }
+.card-streams-search[disabled] { opacity: 0.7; cursor: progress; }
+
+/* Titre de section (« Live », « À venir dans l'heure », nom de ligue…) */
+.section-title { padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.section-title > span:last-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-toggle { display: none; margin-left: auto; flex-shrink: 0; background: rgba(255,255,255,0.07); border: 1px solid var(--border2); color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; font-family: inherit; }
+.rail-toggle:hover { color: var(--text); background: rgba(255,255,255,0.12); }
 
 /* Sous 480 px, le nom de la ligue prend trop de place à côté des logos */
 @media (max-width: 480px) {
@@ -147,7 +158,6 @@ select.btn { appearance: none; -webkit-appearance: none; background: var(--bg3) 
 .prime-col-status { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; border-left: 1px solid var(--border); padding-left: 16px; flex-shrink: 0; color: var(--muted); font-size: 12px; font-weight: 600; gap: 4px; min-width: 50px; }
 .prime-col-status .live-indicator { color: var(--red); font-weight: 800; display: flex; align-items: center; gap: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
 .prime-col-status .mb-ld { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: blink 1s infinite; box-shadow: 0 0 8px var(--red); display: inline-block; }
-.prime-stream-count { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; font-size: 11px; z-index: 10; color: rgba(255,255,255,0.8); backdrop-filter: blur(4px); }
 
 /* LIGUE HEADER CSS */
 .lg-hdr { display: flex; position: sticky; left: 0; z-index: 35; align-items: center; padding: 12px 16px; gap: 10px; background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border); border-right: 1px solid var(--border2); cursor: pointer; width: var(--chan-w); flex-shrink: 0; }
@@ -783,3 +793,171 @@ body.view-timeline .zoom-controls { display: flex; }
   transition: .15s;
   border-radius: 50%;
 }
+
+/* ═══ AFFICHE VERTICALE (« à la Netflix ») ═══════════════════════════════════════
+   Activée par la classe `cards-poster` sur <body> (js/ui.js : applyCardShape), soit
+   automatiquement sous 900 px, soit par Options → Style des Cartes.
+
+   Pourquoi : la carte large (2,4 : 1) occupe toute la largeur d'un téléphone pour un
+   seul match — trois tenaient à l'écran, et lire la suite du programme demandait un
+   défilement interminable. L'affiche 2 : 3 en montre trois par écran de large, et la
+   section devient un rail horizontal : une dizaine de matchs à portée de pouce, sans
+   repousser les sections suivantes hors de vue.
+
+   Le HTML des cartes ne change pas : tout se joue ici. */
+
+body.cards-poster .match-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(146px, 42vw);
+  grid-template-columns: none;
+  gap: 12px;
+  padding: 4px 16px 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+body.cards-poster .match-grid::-webkit-scrollbar { display: none; }
+body.cards-poster .match-grid > * { scroll-snap-align: start; }
+
+/* « Tout voir » : le rail se déplie en grille, toujours en affiches. */
+body.cards-poster .match-grid.expanded {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
+  grid-auto-columns: auto;
+  overflow-x: visible;
+}
+body.cards-poster .rail-toggle { display: inline-block; }
+
+body.cards-poster .section-title {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  padding: 12px 16px 8px;
+  margin-bottom: 6px;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-bottom: none;
+  background: linear-gradient(to bottom, var(--bg, #000) 55%, transparent);
+}
+
+body.cards-poster .match-card { gap: 0; }
+body.cards-poster .prime-thumbnail { aspect-ratio: 2 / 3; border-radius: 12px; }
+
+/* Logos empilés : en portrait, côte à côte les réduirait à des vignettes illisibles. */
+body.cards-poster .prime-logos { flex-direction: column; padding: 26px 8px 74px; }
+body.cards-poster .prime-logo-wrapper.home,
+body.cards-poster .prime-logo-wrapper.away { padding: 0; }
+body.cards-poster .prime-logo { width: 62%; max-height: 90%; }
+
+/* Le bloc d'information passe en surimpression, sur un voile dégradé : c'est ce qui
+   donne l'affiche, et cela rend au visuel la hauteur que le texte prenait sous lui. */
+body.cards-poster .prime-info {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "teams scores" "status status";
+  gap: 2px 8px;
+  padding: 24px 10px 9px;
+  font-size: 12px;
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.94) 42%, rgba(0,0,0,0.72) 68%, transparent 100%);
+  pointer-events: none;
+}
+body.cards-poster .prime-col-teams { grid-area: teams; gap: 1px; }
+body.cards-poster .prime-col-scores { grid-area: scores; margin-right: 0; gap: 1px; }
+body.cards-poster .prime-col-status {
+  grid-area: status;
+  border-left: none;
+  border-top: 1px solid rgba(255,255,255,0.14);
+  padding: 5px 0 0;
+  margin-top: 4px;
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+/* L'étoile « favori » doit rester cliquable malgré la surimpression ; réduite, elle
+   rend au nom d'équipe la douzaine de pixels qui lui manquait pour tenir en entier. */
+body.cards-poster .prime-team-name button { pointer-events: auto; font-size: 11px !important; margin-right: 2px !important; }
+body.cards-poster .prime-team-name { font-size: 11.5px; letter-spacing: -0.01em; }
+body.cards-poster .prime-score { font-size: 12px; }
+
+/* La vignette porte l'ombre de la carte entière : sans elle, les affiches se fondent
+   les unes dans les autres sur un fond sombre. */
+body.cards-poster .prime-thumbnail { box-shadow: 0 6px 18px rgba(0,0,0,0.55); }
+body.cards-poster .match-card.live .prime-thumbnail { box-shadow: 0 6px 18px rgba(0,0,0,0.55), 0 0 0 2px var(--red); }
+
+/* Cibles tactiles : le badge de recherche de liens doit rester atteignable au pouce. */
+body.cards-poster .card-streams { top: 8px; right: 8px; padding: 4px 8px; }
+body.cards-poster .card-streams-search { min-width: 34px; min-height: 30px; }
+body.cards-poster .prime-league-badge { top: 8px; left: 8px; max-width: calc(100% - 56px); padding: 3px 6px; }
+body.cards-poster .prime-league-badge .plb-name { max-width: 74px; font-size: 10px; }
+
+@media (min-width: 620px) {
+  body.cards-poster .match-grid { grid-auto-columns: minmax(160px, 26vw); }
+  body.cards-poster .prime-league-badge .plb-name { max-width: 120px; }
+}
+@media (min-width: 900px) {
+  body.cards-poster .match-grid { grid-auto-columns: 200px; }
+  body.cards-poster .match-grid.expanded { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+}
+
+/* ═══ MULTIVISION : tour de passe-passe sur les pages non intégrables ═══════════ */
+.mv-trick-badge {
+  position: absolute; top: 8px; right: 8px; z-index: 20;
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(20,20,20,0.82); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px; padding: 3px 6px 3px 10px;
+  color: #fff; font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+  backdrop-filter: blur(8px);
+}
+.mv-trick-badge button {
+  background: rgba(255,255,255,0.12); border: none; color: #fff;
+  border-radius: 999px; width: 20px; height: 20px; cursor: pointer; font-size: 11px; line-height: 1;
+}
+.mv-trick-badge button:hover { background: var(--accent); }
+
+.mv-embed-helper {
+  position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  background: rgba(20,20,20,0.92); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+  padding: 8px 12px; color: #fff; font-size: 11px;
+  backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.mv-embed-helper > span:first-child { font-weight: 600; }
+.mv-embed-helper-actions { display: flex; gap: 6px; align-items: center; }
+.mv-embed-helper button { border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-family: inherit; background: rgba(255,255,255,0.1); color: #fff; }
+.mv-embed-helper button[data-act="open"] { background: var(--accent); font-weight: bold; }
+.mv-embed-helper button[data-act="close"] { background: transparent; color: var(--muted); }
+
+/* ═══ INVENTAIRE DES LIENS PAR DOMAINE PRIMAIRE ════════════════════════════════ */
+.domain-stats { display: flex; flex-direction: column; gap: 6px; }
+.domain-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 6px 8px; border-radius: 6px; background: rgba(255,255,255,0.03); }
+.domain-row .dr-name { font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.domain-row .dr-count { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.domain-row .dr-detail { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+.domain-row .dr-bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.domain-row .dr-bar > i { display: block; height: 100%; background: var(--accent); }
+
+/* Filtres par domaine dans la fiche de match. Une seule rangée qui défile : en
+   plusieurs lignes, elle repoussait la liste des flux hors de l'écran d'un téléphone. */
+.dom-chips { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-bottom: 10px; padding-bottom: 2px; }
+.dom-chips::-webkit-scrollbar { display: none; }
+.dom-chip { flex: 0 0 auto; }
+.dom-chip { background: rgba(255,255,255,0.06); border: 1px solid var(--border2); color: var(--muted); border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.dom-chip:hover { color: var(--text); }
+.dom-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Barre d'avancement du balayage « liens manquants » */
+.missing-scan { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); padding: 6px 16px; }
+.missing-scan .ms-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; min-width: 60px; }
+.missing-scan .ms-bar > i { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
+#btn-find-missing[disabled] { opacity: 0.6; cursor: progress; }

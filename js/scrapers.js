@@ -2594,22 +2594,28 @@ export function updateMatchUiAfterScrape(m) {
                         }
                     }
                     if (cached.snEl) {
-                        cached.snEl.textContent = sn + ' flux' + (sn > 1 ? 's' : '');
+                        // « flux » est invariable : l'ancien pluriel produisait « 2 fluxs ».
+                        cached.snEl.textContent = sn + ' flux';
                     }
 
-                    if (!cached.primeSnEl && sn > 0) {
-                        cached.primeSnEl = mb.querySelector('.prime-stream-count');
-                        if (!cached.primeSnEl) {
-                            var primeThumb = mb.querySelector('.prime-thumbnail');
-                            if (primeThumb) {
-                                cached.primeSnEl = document.createElement('div');
-                                cached.primeSnEl.className = 'prime-stream-count';
-                                primeThumb.appendChild(cached.primeSnEl);
-                            }
-                        }
+                    /* Badge de la vignette (.card-streams, js/ui.js). Une carte sans lien
+                       porte le bouton de recherche 🔎 : dès qu'un lien arrive, ce bouton
+                       redevient le compteur. Une seule pastille par carte — la version
+                       précédente en ajoutait une seconde (.prime-stream-count) en bas à
+                       droite, qui affichait la même chose au même moment. */
+                    if (!cached.primeSnEl) {
+                        cached.primeSnEl = mb.querySelector('.card-streams');
                     }
-                    if (cached.primeSnEl) {
-                        cached.primeSnEl.textContent = sn + ' flux';
+                    if (cached.primeSnEl && sn > 0) {
+                        if (cached.primeSnEl.tagName === 'BUTTON') {
+                            var span = document.createElement('div');
+                            span.className = 'card-streams';
+                            span.setAttribute('data-mid', String(m.id));
+                            cached.primeSnEl.parentNode.replaceChild(span, cached.primeSnEl);
+                            cached.primeSnEl = span;
+                        }
+                        cached.primeSnEl.textContent = '▶ ' + sn;
+                        cached.primeSnEl.title = sn + ' flux disponibles';
                     }
                 }
             });
@@ -2634,7 +2640,9 @@ export function updateMatchUiAfterScrape(m) {
                         linksHtml='<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.</div>';
                     } else {
                         var sortedLinks = sortFluxLinks(m.streamLinks);
-                        linksHtml=sortedLinks.map(function(s,idx){
+                        // Mêmes pastilles de filtre par domaine qu'au premier rendu (js/ui.js).
+                        linksHtml = (typeof window.renderDomainChips === 'function' ? window.renderDomainChips(m) : '');
+                        linksHtml += sortedLinks.map(function(s,idx){
                             return renderFluxItem(s, idx, m);
                         }).join('');
                     }

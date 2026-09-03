@@ -115,3 +115,70 @@ test('aucun débordement horizontal sur mobile', async ({ page }) => {
   expect(pageErrors).toEqual([]);
   expect(overflow.scrollW, 'la page ne défile pas horizontalement à 390 px').toBeLessThanOrEqual(overflow.innerW + 1);
 });
+
+/* L'affiche verticale (« à la Netflix ») est la mise en page de tout écran étroit :
+   c'est elle qu'il faut verrouiller, pas seulement l'absence de débordement. Le rail
+   doit défiler DANS sa section — un rail qui déborde du corps de page rendrait
+   l'application inutilisable au doigt, c'est le piège exact d'un `overflow-x` mal placé. */
+test('sur mobile, les sections deviennent des rails d\'affiches verticales', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pageErrors = await bootOffline(page);
+
+  const state = await page.evaluate(() => {
+    const grids = Array.from(document.querySelectorAll('.match-grid'));
+    const card = document.querySelector('.match-card .prime-thumbnail');
+    const rect = card ? card.getBoundingClientRect() : null;
+    /* Quelle section porte assez de matchs pour déborder dépend de l'heure et des
+       données du jour : on interroge donc toutes les sections plutôt que la première. */
+    const crowded = grids.filter((g) => g.querySelectorAll('.match-card').length >= 3);
+    return {
+      poster: document.body.classList.contains('cards-poster'),
+      grids: grids.length,
+      crowded: crowded.length,
+      railScrolls: crowded.some((g) => g.scrollWidth > g.clientWidth),
+      allScrollable: grids.every((g) => getComputedStyle(g).overflowX === 'auto'),
+      hasToggle: !!document.querySelector('.rail-toggle'),
+      ratio: rect ? rect.width / rect.height : 0,
+      bodyOverflow: document.body.scrollWidth - window.innerWidth
+    };
+  });
+
+  expect(pageErrors).toEqual([]);
+  expect(state.poster, 'la classe cards-poster est posée sous 900 px').toBeTruthy();
+  expect(state.ratio, 'la vignette est en portrait (2:3), pas en bandeau').toBeLessThan(1);
+  expect(state.grids, 'des sections de cartes sont rendues').toBeGreaterThan(0);
+  expect(state.allScrollable, 'chaque section défile horizontalement en rail').toBeTruthy();
+  if (state.crowded > 0) {
+    expect(state.railScrolls, 'un rail bien rempli déborde de sa largeur visible').toBeTruthy();
+  }
+  expect(state.hasToggle, 'le bouton « Tout voir » déplie le rail en grille').toBeTruthy();
+  expect(state.bodyOverflow, 'le rail défile dans sa section, pas dans la page').toBeLessThanOrEqual(1);
+});
+
+/* Le badge d'une carte sans lien est le raccourci de recherche : s'il disparaît, la
+   seule façon de relancer une recherche redevient l'ouverture de chaque fiche. */
+test('une carte sans lien porte le bouton de recherche, une carte pourvue son compteur', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+
+  const badges = await page.evaluate(() => {
+    const withLinks = document.querySelector('div.card-streams');
+    const without = document.querySelector('button.card-streams-search');
+    return {
+      counter: withLinks ? withLinks.textContent.trim() : null,
+      searchButton: !!without,
+      searchHandler: without ? without.getAttribute('onclick') : null,
+      handlerExists: typeof window.cardSearchLinks === 'function',
+      duplicates: document.querySelectorAll('.match-card').length > 0
+        && Array.from(document.querySelectorAll('.match-card'))
+             .every((c) => c.querySelectorAll('.card-streams').length <= 1)
+    };
+  });
+
+  expect(pageErrors).toEqual([]);
+  expect(badges.counter, 'le compteur de flux affiche « ▶ n »').toMatch(/^▶ \d+$/);
+  expect(badges.handlerExists, 'cardSearchLinks est exposé aux attributs onclick').toBeTruthy();
+  /* `data/streams.json` est régénéré chaque heure : rien ne garantit qu'un match sans
+     lien figure dans la grille du jour. On vérifie le badge quand il y en a un. */
+  if (badges.searchButton) expect(badges.searchHandler).toContain('cardSearchLinks');
+  expect(badges.duplicates, 'une seule pastille de flux par carte').toBeTruthy();
+});

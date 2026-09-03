@@ -34,6 +34,9 @@ Ce document décrit l'architecture complète, la philosophie et les éléments c
 
 ## 🏗️ Fonctionnalités Principales (UI/UX)
 
+-   **Cartes en affiche verticale (mobile)** : sous 900 px, chaque section devient un rail horizontal d'affiches 2 : 3 (à la Netflix) plutôt qu'une pile de bandeaux pleine largeur ; le bouton « Tout voir » d'un titre de section déplie son rail en grille. Réglable dans Options → Style des Cartes → Forme des cartes.
+-   **Liens manquants** : le badge d'une carte sans flux est le bouton 🔎 qui lance la recherche pour ce match ; « 🔎 Liens manquants » dans la barre d'outils balaie les matchs à venir qui n'en ont aucun.
+-   **Inventaire des liens par domaine primaire** (page Logs) : combien de liens, combien intégrables, combien de matchs couverts par fournisseur — les sous-domaines sont repliés sur le domaine enregistrable. La même répartition sert de filtre dans la fiche d'un match.
 -   **Grille EPG (Electronic Program Guide)** : L'interface principale est une ligne du temps stricte de 24h (00:00 à 23:59). Les événements sont positionnés en positionnement absolu (`left`, `width`) selon leur heure de début en EST (Eastern Standard Time) et leur durée.
 -   **Indicateur "Maintenant"** : Une ligne rouge indique l'heure actuelle sur la grille.
 -   **Lecteur Multivision** : Possibilité de regarder jusqu'à 4 lecteurs multimédias simultanément en *écran divisé*. Utilisation du glisser-déposer HTML5 pour réorganiser les lecteurs. Possibilité de recadrer ou changer la source d'un lecteur à la volée.
@@ -54,6 +57,8 @@ Pour garantir une expérience optimale, sans interruptions indésirables ni pop-
 ## 🔧 Script d'Installation (Tampermonkey)
 
 L'application utilise un script externe (*Multiview cleaner*) conçu pour interagir avec les lecteurs vidéo intégrés (iframes). Son rôle est d'automatiser certaines actions (comme la fermeture de calques superposés) et d'assurer une lecture continue.
+
+Depuis la version 1.2, il sert aussi de **pont d'affichage** : certaines pages répondent `X-Frame-Options: DENY`, ce qui fait refuser leur affichage encadré par le navigateur lui-même — Firefox comme Chrome — avant même que la moindre ligne de JavaScript ne s'exécute. Le script télécharge alors la page pour l'application, qui la reconstruit dans le lecteur (voir Options → Réseau & Proxys → « Reconstruire les pages non intégrables »). Sans le script, l'application se rabat sur les proxys CORS, plus fragiles. Si la page fabrique son lecteur depuis une adresse chiffrée, le tour échoue et l'ouverture en onglet reste proposée.
 
 **Comment l'installer :**
 1. Installez l'extension **Tampermonkey** sur votre navigateur.

@@ -8,8 +8,63 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
+import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX } from './embed-bridge.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
+
+/* Le pont du script utilisateur s'annonce de lui-même : on ouvre l'écoute dès le
+   chargement du module pour ne pas rater son bonjour. */
+initEmbedBridge();
+
+/* Bandeau discret quand le tour de passe-passe a réussi : l'utilisateur doit savoir que
+   ce qu'il voit est une page reconstruite (donc potentiellement partielle), et par quel
+   canal — le script utilisateur passe là où les proxys échouent. */
+function buildTrickBadge(via, finalUrl) {
+    var badge = document.createElement('div');
+    badge.className = 'mv-trick-badge';
+    badge.title = 'Page reconstruite localement (X-Frame-Options contourné) via '
+        + (via === 'script' ? 'le script utilisateur' : 'un proxy CORS')
+        + '. Si le lecteur reste vide, ouvrez le lien dans un onglet.';
+    badge.innerHTML = '<span>🎩 ' + (via === 'script' ? 'script' : 'proxy') + '</span>'
+        + '<button aria-label="Ouvrir dans un onglet" title="Ouvrir dans un onglet">↗</button>';
+    badge.querySelector('button').addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        window.open(finalUrl, '_blank', 'noopener');
+    });
+    return badge;
+}
+
+/* Le tour a échoué (aucun canal disponible, ou page vide) : l'iframe directe est tentée
+   quand même — certains hôtes classés « page » acceptent en réalité l'encadrement — et
+   ce bandeau donne la sortie explicite. Un clic sur « Ouvrir » vaut constat d'échec de
+   l'affichage intégré : on le note dans le registre d'intégrabilité (js/scrapers.js)
+   pour ne plus perdre de temps sur cet hôte. */
+function buildTrickFailureBar(finalUrl) {
+    var host = ''; try { host = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (e) {}
+    var bar = document.createElement('div');
+    bar.className = 'mv-embed-helper';
+    bar.innerHTML = '<span>⚠️ Page non intégrable et tour de passe-passe indisponible.</span>'
+        + '<span class="mv-embed-helper-actions">'
+        + '<button data-act="open">🔗 Ouvrir</button>'
+        + '<button data-act="script">🧩 Script</button>'
+        + '<button data-act="close" aria-label="Fermer">✕</button>'
+        + '</span>';
+    bar.addEventListener('click', function(ev) {
+        var act = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act');
+        if (!act) return;
+        ev.stopPropagation();
+        if (act === 'open') {
+            if (host && window.recordEmbedResult) window.recordEmbedResult(host, false);
+            window.open(finalUrl, '_blank', 'noopener');
+        } else if (act === 'script') {
+            if (typeof window.installTampermonkey === 'function') window.installTampermonkey();
+        } else {
+            bar.remove();
+        }
+    });
+    return bar;
+}
+
 
 /* ══ MULTIVIEW GAME MODE ═══════════════ */
 export var mvGameModeActive = false;
@@ -1439,6 +1494,18 @@ export function updateMultivisionLayout() {
         }
 
         // Helper function for fallback
+        /* Pose un flux dans la cellule.
+
+           Un lien classé « page » (isMatchOrLeaguePage, ou hôte connu du registre
+           d'intégrabilité) est refusé par le navigateur au moment même où l'iframe
+           charge son adresse : X-Frame-Options s'applique avant tout JavaScript, dans
+           Firefox comme ailleurs. L'ancienne interface se contentait donc d'un
+           avertissement « si l'embed est bloqué, ouvrez un onglet ». Le Multivision
+           tente désormais le seul contournement possible (js/embed-bridge.js) : on
+           télécharge la page par un canal que X-Frame-Options ne régit pas — le script
+           utilisateur, sinon les proxys CORS — et on la pose dans l'iframe via `srcdoc`,
+           où il n'y a plus d'adresse distante donc plus d'en-tête à faire respecter.
+           L'ouverture en onglet reste offerte quand le tour échoue. */
         function fallbackToIframe(url, container, cell, s) {
             container.innerHTML = '<div style="color:var(--muted); font-size:12px;">Extraction du lecteur...</div>';
             s._currentUrl = url;
@@ -1453,30 +1520,32 @@ export function updateMultivisionLayout() {
                 iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;';
                 iframe.setAttribute('allowfullscreen', 'true');
                 iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
-                iframe.src = finalUrl;
                 container.appendChild(iframe);
 
-                if (isTopLevel) {
-                    var embedHost = ''; try { embedHost = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (e) {}
-                    /* Un clic ici est le seul signal fiable qu'un navigateur donne : le
-                       DOM d'une iframe cross-origin refusée par X-Frame-Options reste
-                       illisible en JavaScript (pas d'événement d'erreur distinct d'un
-                       chargement normal), donc l'application ne peut pas le détecter
-                       elle-même. Mais si l'utilisateur clique « Ouvrir » depuis CET
-                       avertissement, c'est qu'il a constaté l'échec — on l'enregistre
-                       dans le registre appris (js/scrapers.js: getEmbedRegistry) pour
-                       que ce lien s'ouvre directement en onglet la prochaine fois. */
-                    var recordEv = embedHost ? "if(window.recordEmbedResult){window.recordEmbedResult('" + escJs(embedHost) + "', false);}" : '';
-                    var helperOverlay = document.createElement('div');
-                    helperOverlay.className = 'mv-embed-helper';
-                    helperOverlay.style.cssText = 'position:absolute;bottom:10px;left:10px;right:10px;z-index:20;background:rgba(20,20,20,0.9);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 12px;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px);box-shadow:0 4px 12px rgba(0,0,0,0.5);';
-                    helperOverlay.innerHTML = '<span style="font-weight:600;">⚠️ Si l\'embed est bloqué (Firefox / X-Frame) :</span>' +
-                        '<div style="display:flex;gap:6px;align-items:center;">' +
-                        '<button onclick="' + recordEv + 'window.open(\'' + escJs(finalUrl) + '\', \'_blank\'); event.stopPropagation();" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-weight:bold;">🔗 Ouvrir</button>' +
-                        '<button onclick="installTampermonkey(); event.stopPropagation();" style="background:rgba(255,255,255,0.1);color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">🧩 Script</button>' +
-                        '<button onclick="this.parentElement.parentElement.remove(); event.stopPropagation();" style="background:transparent;color:var(--muted);border:none;cursor:pointer;">✕</button>' +
-                        '</div>';
-                    container.appendChild(helperOverlay);
+                var trickEnabled = userPrefs.embedTrick !== false;
+
+                if (isTopLevel && trickEnabled) {
+                    var loader = document.createElement('div');
+                    loader.className = 'mv-trick-loader';
+                    loader.style.cssText = 'position:absolute;inset:0;z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#000;color:var(--muted);font-size:12px;text-align:center;padding:16px;';
+                    loader.innerHTML = '<div class="spinner"></div><div>🎩 Tour de passe-passe : cette page refuse l\'affichage intégré, on la reconstruit…</div>';
+                    container.appendChild(loader);
+
+                    resolveBlockedEmbed(finalUrl, fetchPage).then(function(res) {
+                        if (s._currentUrl !== url) return;
+                        if (loader.parentNode) loader.remove();
+                        if (res && res.srcdoc) {
+                            iframe.setAttribute('sandbox', EMBED_SANDBOX);
+                            iframe.srcdoc = res.srcdoc;
+                            container.appendChild(buildTrickBadge(res.via, finalUrl));
+                        } else {
+                            iframe.src = finalUrl;
+                            container.appendChild(buildTrickFailureBar(finalUrl));
+                        }
+                    });
+                } else {
+                    iframe.src = finalUrl;
+                    if (isTopLevel) container.appendChild(buildTrickFailureBar(finalUrl));
                 }
 
                 cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
@@ -2462,6 +2531,10 @@ export function initPrefs() {
   }
 
   if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
+  var selCardShape = document.getElementById('pref-card-shape');
+  if(selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
+  var cbTrick = document.getElementById('pref-embed-trick');
+  if(cbTrick) cbTrick.checked = userPrefs.embedTrick !== false;
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
       selAccentColor.value = userPrefs.accent || '#0a84ff';
@@ -2524,6 +2597,10 @@ export function applyUserPrefs() {
   if(c3Sel) userPrefs.c3 = c3Sel.value;
   if(cardSel) userPrefs.cardColor = cardSel.value;
   userPrefs.cardStyle = 'glass';
+  var cardShapeSel = document.getElementById('pref-card-shape');
+  if(cardShapeSel) userPrefs.cardShape = cardShapeSel.value;
+  var trickCb = document.getElementById('pref-embed-trick');
+  if(trickCb) userPrefs.embedTrick = trickCb.checked;
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');
@@ -2778,6 +2855,7 @@ export function exportDebugLogs() {
 
 export function renderScrapeLogs() {
     renderSourcesStatus();
+    if (typeof window.renderDomainStats === 'function') window.renderDomainStats();
     var container = document.getElementById('scrape-logs-container');
     if(!container) return;
     if(scrapeLogs.length === 0) {
@@ -2904,7 +2982,14 @@ export function renderProxyStatus() {
         (window.prefetchedStreamMatches || []).forEach(function(m) { streams += (m.streamLinks || []).length; });
         pre = 'Cache serveur : ' + info.count + ' matchs, ' + streams + ' liens, ' + srcOk + '/' + srcAll + ' sources, généré il y a ' + info.ageMin + ' min. ';
     }
-    el.innerHTML = pre + 'Proxys : ' + (parts.join(' · ') || 'aucun');
+    /* État du pont d'affichage : c'est lui qui décide si une page non intégrable pourra
+       être reconstruite dans le Multivision plutôt qu'ouverte en onglet (js/embed-bridge.js). */
+    var b = getBridgeStatus();
+    var bridgeTxt = b.available
+        ? '🎩 Pont script utilisateur : actif (v' + esc(String(b.version)) + ') — les pages non intégrables sont reconstruites.'
+        : '🎩 Pont script utilisateur : absent — repli sur les proxys CORS pour les pages non intégrables.';
+
+    el.innerHTML = pre + 'Proxys : ' + (parts.join(' · ') || 'aucun') + '<br>' + bridgeTxt;
 }
 
 /* Ouvre la page GitHub Actions du workflow horaire : le bouton « Run workflow » y lance

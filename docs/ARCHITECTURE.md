@@ -39,7 +39,7 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 ### `sw.js`
 - **Rôle** : Service Worker fournissant les capacités PWA.
 - **Exporte** : Rien (s'attache à `self`).
-- **Dépend de** : la coquille de l'application (`index.html`, `manifest.json`, `styles.css`, `tv.css`, les 14 modules de `js/`, `data/streams.json`, `data/schedule.json`).
+- **Dépend de** : la coquille de l'application (`index.html`, `manifest.json`, `styles.css`, `tv.css`, les 16 modules de `js/`, `data/streams.json`, `data/schedule.json`).
 - **Utilisé par** : `index.html` (enregistrement du SW).
 - **Notes** : réseau d'abord, cache en repli. Voir « Service Worker » plus bas.
 
@@ -66,8 +66,8 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 
 ## Service Worker
 - **Chemin** : `./sw.js`
-- **Version actuelle** : `sports-guide-v3` (variable `CACHE_NAME` — à incrémenter à chaque modification du fichier)
-- **Liste des assets précachés** (`APP_SHELL`) : `index.html`, `manifest.json`, `styles.css`, `tv.css`, les 14 modules de `js/`, `data/streams.json`, `data/schedule.json` — ajoutés un par un, une ressource absente ne fait pas échouer l'installation.
+- **Version actuelle** : `sports-guide-v4` (variable `CACHE_NAME` — à incrémenter à chaque modification du fichier)
+- **Liste des assets précachés** (`APP_SHELL`) : `index.html`, `manifest.json`, `styles.css`, `tv.css`, les 16 modules de `js/`, `data/streams.json`, `data/schedule.json` — ajoutés un par un, une ressource absente ne fait pas échouer l'installation.
 - **Stratégie** : réseau d'abord, cache en repli, sur les seules requêtes GET de même origine. La clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) et seules les réponses `ok` et `basic` sont stockées.
 
 ## Points d'attention
@@ -209,12 +209,12 @@ injoignable, ou ligue absente d'`ESPN_LEAGUES`), aucun doublon n'est possible et
 garde le nom de ligue lu dans `data/streams.json`, donc sa place dans le Guide. Couvert
 par `tests/unit_merge.test.js`.
 
-### Service worker (`sw.js`, `sports-guide-v3`)
+### Service worker (`sw.js`, `sports-guide-v4`)
 Réseau d'abord, cache en repli. La clé de cache d'une requête de même origine ignore sa
 chaîne de requête : `data/streams.json?t=…` et `data/schedule.json?t=…` changent d'adresse
 à chaque chargement et créaient sinon une entrée de plus par passage, sans jamais servir
 de repli. Seules les requêtes GET dont la réponse est `ok` et `basic` sont stockées. La
-coquille pré-chargée couvre désormais l'application entière (CSS + 14 modules JS +
+coquille pré-chargée couvre désormais l'application entière (CSS + 16 modules JS +
 `data/*.json`), fichier par fichier pour qu'une ressource absente ne fasse pas échouer
 l'installation : l'application démarre et affiche ses matchs sans réseau.
 
@@ -224,7 +224,7 @@ Deux natures de vérification, volontairement séparées :
 
 | Commande | Contenu | Réseau | Déclenchement |
 |---|---|---|---|
-| `npm test` | 8 fichiers unitaires + `tests/test_app_boot.spec.js` | aucun (le test de démarrage coupe tout le trafic sortant) | `.github/workflows/tests.yml`, sur chaque push et « pull request » |
+| `npm test` | 9 fichiers unitaires + `tests/test_app_boot.spec.js` | aucun (le test de démarrage coupe tout le trafic sortant) | `.github/workflows/tests.yml`, sur chaque push et « pull request » |
 | `npm run test:domains` | `tests/test_domains.spec.js` | visite les vrais sites sources | `.github/workflows/domains-watch.yml`, chaque jour à 05:00 UTC + manuel |
 
 La surveillance des domaines lit `SCRAPERS_CONFIG` et `SOURCE_MIRRORS` dans
@@ -235,8 +235,8 @@ portaient chacun leur propre liste, déjà désynchronisée du code. Elle ne blo
 
 ## Graphe de modules
 
-`js/db.js` (→ `teams.js` seulement), `js/teams.js`, `js/match.js`, `js/fetcher.js` et
-`js/extractors.js` sont hors de tout cycle. Le reste forme un nœud :
+`js/db.js` (→ `teams.js` seulement), `js/teams.js`, `js/match.js`, `js/fetcher.js`,
+`js/extractors.js`, `js/links.js` et `js/embed-bridge.js` sont hors de tout cycle. Le reste forme un nœud :
 `utils ↔ config ↔ ui ↔ multiview ↔ main ↔ scrapers ↔ api`.
 
 Conséquence concrète à connaître avant d'importer un de ces modules ailleurs (script
@@ -247,3 +247,90 @@ entrer par `js/config.js` évalue `js/multiview.js` avant que `js/ui.js` n'ait i
 deux fonctions concernées tolèrent désormais l'absence de `userPrefs`, mais la fragilité
 de fond demeure : la sortir demande de déplacer les effets de bord de chargement, pas
 d'ajouter des gardes.
+
+## Interface : forme des cartes et rails (2026-09-03)
+
+Deux formes de carte de match, une seule génération de HTML. `applyCardShape` (`js/ui.js`,
+appelée par `buildEPGInner` et au redimensionnement) pose ou retire la classe
+`cards-poster` sur `<body>` ; tout le reste est dans `styles.css`.
+
+| Forme | Quand | Mise en page |
+|---|---|---|
+| `wide` | ≥ 900 px, ou Options → Style des Cartes → « Carte large » | vignette 2,4 : 1, grille qui s'enroule, information sous la vignette |
+| `poster` | < 900 px (défaut « Automatique »), ou choix explicite | vignette 2 : 3, section en **rail horizontal** (`grid-auto-flow: column` + `overflow-x`), information en surimpression sur un voile dégradé |
+
+Le rail défile **dans sa section**, jamais dans la page : un `overflow-x` posé trop haut
+casserait la navigation au doigt sur toute l'application. `tests/test_app_boot.spec.js`
+vérifie les deux à la fois (le rail déborde, `document.body` non).
+
+`S.expandedSections` (`js/state.js`) retient les rails dépliés en grille par le bouton
+« Tout voir » du titre de section (`.rail-toggle`), le temps de la session.
+
+## `js/links.js` : inventaire des liens et recherche des manquants (2026-09-03)
+
+Module **sans aucun import** (comme `js/fetcher.js` et `js/extractors.js`) : il lit
+`window.S.matches` et appelle `scrapeMatchFlux` par la liaison globale que
+`js/scrapers.js` publie. C'est délibéré — `js/ui.js` s'en sert, et un import direct
+ajouterait une arête au nœud `utils ↔ config ↔ ui ↔ multiview ↔ main ↔ scrapers ↔ api`.
+
+- `primaryDomain(url)` : domaine **enregistrable**, pas le nom d'hôte. `getDomain`
+  (`js/config.js`) reste le bon outil pour les préférences par hôte, mais comptait
+  `embed1.exemple.com` et `embed2.exemple.com` comme deux fournisseurs. Suffixes publics
+  à deux niveaux courants gérés (`co.uk`, `com.br`…) ; une chaîne sans point rend `''`.
+- `streamDomainStats(matches)` / `matchDomainStats(m)` : par domaine, `links`, `embeds`,
+  `pages` (liens `topLevel`), `matches`, `hosts`. Trié par nombre de liens décroissant.
+- `matchesWithoutLinks(matches)` : matchs sans lien **et relançables** — les matchs
+  terminés (pages disparues des agrégateurs) et ceux sans page de match connue sont
+  exclus, interroger les sources pour eux ne peut rien donner.
+- `searchLinksForMatch(id)` (badge 🔎 d'une carte, via `cardSearchLinks`) et
+  `searchMissingLinks({limit, onProgress})` (bouton `#btn-find-missing` de la barre
+  d'outils) : relance `scrapeMatchFlux(m, true, true)`, en série et plafonné à
+  `MISSING_SCAN_LIMIT` (12) — sans plafond, un guide de 300 matchs lancerait 300
+  séquences de requêtes.
+- `renderDomainStats()` remplit `#domain-stats-container` (page Logs, rendu avec
+  `renderScrapeLogs`) ; `renderDomainChips` (`js/ui.js`) et `filterFluxByDomain`
+  filtrent la liste des flux d'une fiche par domaine (six pastilles au plus, la queue
+  repliée sous « Autres (n) »).
+
+## `js/embed-bridge.js` : afficher une page qui refuse l'iframe (2026-09-03)
+
+`X-Frame-Options: DENY` (ou `frame-ancestors 'none'`) fait refuser l'affichage **par le
+navigateur**, avant tout JavaScript : aucun attribut d'iframe, aucun `sandbox`, aucun
+script de page ne peut lever ce refus — dans Firefox comme dans Chrome. C'est pourquoi
+les liens `topLevel` n'avaient jusqu'ici qu'une issue, un nouvel onglet.
+
+Le contournement, et le seul : ne pas laisser le navigateur charger l'adresse dans
+l'iframe. On télécharge le HTML par un canal que cet en-tête ne régit pas (il ne concerne
+que l'encadrement) et on le pose via `srcdoc` — le document n'a alors plus d'adresse
+distante, donc plus d'en-tête à faire respecter.
+
+1. **Script utilisateur** (`multiview-cleaner.user.js` ≥ 1.2). Le script tourne aussi
+   dans la fenêtre principale de l'application, où il expose un pont : `postMessage`
+   `mv_bridge_hello` / `mv_bridge_ready` / `mv_bridge_fetch` / `mv_bridge_page`, et
+   `GM_xmlhttpRequest` pour le téléchargement (hors politique d'origine croisée, avec les
+   cookies du navigateur — il passe là où un proxy CORS se fait refouler par Cloudflare).
+   Le pont ne répond que dans la fenêtre principale et seulement si la page est
+   l'application (`#marea` + `.epg`) : aucun autre site ne peut s'en servir.
+2. **Proxys CORS** existants (`fetchPage`, `js/utils.js`), passés en argument à
+   `resolveBlockedEmbed` pour garder ce module hors du graphe de dépendances.
+
+`buildEmbedDocument(html, finalUrl)` injecte `<base href>` (sans quoi toutes les adresses
+relatives viseraient l'application), retire les balises `<meta http-equiv>` CSP de la
+page d'origine, et pose en tête une cale : `localStorage`/`sessionStorage` factices
+(obligatoire — l'iframe est en origine opaque, où toute lecture lève une exception) et
+`window.top === window.self` pour faire taire les gardes anti-encadrement.
+
+`EMBED_SANDBOX` n'accorde **jamais** `allow-same-origin` : le document reconstruit reste
+en origine opaque et ne peut lire ni le `localStorage` ni le DOM de l'application. C'est
+plus strict que l'iframe normale du Multivision, et `tests/unit_links.test.js` le
+verrouille.
+
+Réglage : Options → Réseau & Proxys → « Reconstruire les pages non intégrables »
+(`userPrefs.embedTrick`, activé par défaut) ; l'état du pont est affiché par
+`renderProxyStatus`. Quand aucun canal n'aboutit, `buildTrickFailureBar`
+(`js/multiview.js`) propose l'ouverture en onglet, dont le clic alimente le registre
+d'intégrabilité comme avant.
+
+**Limite à connaître** : si la page ne contient pas son lecteur mais le fabrique depuis
+une adresse chiffrée ou un appel authentifié à son propre domaine, le document
+reconstruit reste vide. Le tour n'est pas un décodeur.
