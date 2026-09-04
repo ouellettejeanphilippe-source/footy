@@ -72,6 +72,42 @@ async function main() {
     ok('le résultat du pont alimente le cache comme celui d\'un proxy');
   }
 
+  /* ── resolveStreamUrl ne double plus le moteur d'extraction ────────────────
+     Elle contenait un second extracteur écrit à la main (première <iframe> sans « ads »
+     dans le src, puis regex sur les charges Next.js), déclenché par une liste figée de
+     douze domaines. Ces sources changent d'adresse plusieurs fois par saison : la liste
+     cessait alors silencieusement de correspondre. Et quand elle correspondait, ce
+     moteur passait AVANT le moteur générique de js/extractors.js et le court-circuitait.
+
+     Elle ne garde donc que les conversions qu'aucun extracteur ne peut deviner, parce
+     qu'elles tiennent à la forme d'URL d'un service. */
+  {
+    // Une page d'agrégateur est rendue TELLE QUELLE : l'extraction revient au moteur
+    // générique, que les deux appelants enchaînent (resolveBlockedEmbed, scrapeMatchFlux).
+    for (const u of ['https://footybite.bid/game/alpha-vs-beta',
+                     'https://v2.sportsurge.net/watch-63166-cfb-a-b/',
+                     'https://methstreams.gs/league/nflstreams']) {
+      assert.strictEqual(await U.resolveStreamUrl(u), u, 'rendue telle quelle : ' + u);
+    }
+    ok('resolveStreamUrl ne tente plus d\'extraire elle-même sur les agrégateurs');
+  }
+  {
+    // Ce qu'elle garde : les formes d'URL propres à un service.
+    assert.strictEqual(await U.resolveStreamUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+      'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1');
+    const twitch = await U.resolveStreamUrl('https://www.twitch.tv/unechaine');
+    assert.ok(twitch.indexOf('player.twitch.tv/?channel=unechaine') > -1, 'Twitch : ' + twitch);
+    assert.ok(twitch.indexOf('parent=') > -1, 'Twitch exige le paramètre parent');
+    ok('resolveStreamUrl garde les conversions YouTube et Twitch');
+  }
+  {
+    // Entrées inexploitables : rendues telles quelles, sans exception.
+    for (const bad of ['', null, undefined, 42]) {
+      assert.strictEqual(await U.resolveStreamUrl(bad), bad);
+    }
+    ok('resolveStreamUrl tolère une entrée vide ou illisible');
+  }
+
   console.log('unit_fetchbridge: ' + n + ' groupes de tests OK');
   process.exit(0);
 }

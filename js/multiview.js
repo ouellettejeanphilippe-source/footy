@@ -1543,13 +1543,20 @@ export function updateMultivisionLayout() {
                 if (userPrefs.playerSandbox !== false) iframe.setAttribute('sandbox', PLAYER_SANDBOX);
                 container.appendChild(iframe);
 
-                var trickEnabled = userPrefs.embedTrick !== false;
+                /* Le réglage s'appelle « Reconstruire les pages non intégrables » : il
+                   gouverne la RECONSTRUCTION en `srcdoc`, pas l'extraction du lecteur.
+                   Extraire l'adresse du lecteur d'une page et la charger normalement
+                   n'est pas une reconstruction — c'est même la voie ordinaire, et la
+                   seule depuis que `resolveStreamUrl` ne fait plus cette extraction à la
+                   main. La gouverner par ce réglage privait de tout lecteur ceux qui
+                   l'avaient décoché. */
+                var rebuildEnabled = userPrefs.embedTrick !== false;
 
-                if (isTopLevel && trickEnabled) {
+                if (isTopLevel) {
                     var loader = document.createElement('div');
                     loader.className = 'mv-trick-loader';
                     loader.style.cssText = 'position:absolute;inset:0;z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#000;color:var(--muted);font-size:12px;text-align:center;padding:16px;';
-                    loader.innerHTML = '<div class="spinner"></div><div>🎩 Tour de passe-passe : cette page refuse l\'affichage intégré, on la reconstruit…</div>';
+                    loader.innerHTML = '<div class="spinner"></div><div>🎩 Cette page refuse l\'affichage intégré : on y cherche le lecteur…</div>';
                     container.appendChild(loader);
 
                     var registry = (typeof getEmbedRegistry === 'function') ? getEmbedRegistry() : null;
@@ -1563,7 +1570,7 @@ export function updateMultivisionLayout() {
                                document reconstruit : rien à mettre en bac à sable. */
                             iframe.src = res.playerUrl;
                             container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
-                        } else if (res && res.srcdoc) {
+                        } else if (res && res.srcdoc && rebuildEnabled) {
                             /* Non négociable, et indépendant de la préférence : ce
                                document vit à l'origine de l'application. Sans bac à
                                sable il lirait son localStorage et son DOM. */
@@ -1577,7 +1584,6 @@ export function updateMultivisionLayout() {
                     });
                 } else {
                     iframe.src = finalUrl;
-                    if (isTopLevel) container.appendChild(buildTrickFailureBar(finalUrl));
                 }
 
                 cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });

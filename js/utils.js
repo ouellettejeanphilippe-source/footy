@@ -193,77 +193,26 @@ export function resolveStreamUrl(url) {
             return;
         }
 
-        // Standard Hardcoded Fallback for Aggregate Sites
-        var lowerUrl = url.toLowerCase();
-        var isAggregateSite = lowerUrl.includes('footybite') || lowerUrl.includes('livematchhub') || lowerUrl.includes('totalsportek') || lowerUrl.includes('streameast') || lowerUrl.includes('buffstreams') || lowerUrl.includes('methstreams') || lowerUrl.includes('vipleague') || lowerUrl.includes('sportsurge') || lowerUrl.includes('mlbbite') || lowerUrl.includes('nflbite') || lowerUrl.includes('streamonsport') || lowerUrl.includes('onhockey');
+        /* Rien d'autre à faire ici : l'adresse est rendue telle quelle.
 
-        if (isAggregateSite && typeof fetchPage === 'function') {
-            fetchPage(url).then(function(html) {
-                var doc = new DOMParser().parseFromString(html, 'text/html');
+           Cette fonction contenait un second moteur d'extraction, écrit à la main :
+           première <iframe> dont le `src` ne contenait pas « ads », plus des expressions
+           régulières sur les charges Next.js (`directStreams`, `iframeStreams`). Il était
+           déclenché par une LISTE FIGÉE DE DOUZE DOMAINES (`isAggregateSite`) — or ces
+           sources changent d'adresse plusieurs fois par saison, et la liste cessait alors
+           silencieusement de correspondre.
 
-                // 1. Try to find an iframe directly
-                var iframes = doc.querySelectorAll('iframe');
-                var bestIframeSrc = null;
-                for (var i = 0; i < iframes.length; i++) {
-                    var src = iframes[i].getAttribute('src');
-                    if (src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
-                        bestIframeSrc = src;
-                        break;
-                    }
-                }
+           Tout cela est déjà fait, en mieux, par js/extractors.js : six stratégies de
+           récolte, un pointage, aucun nom de site en dur, et des tests. Et les deux
+           appelants de resolveStreamUrl enchaînent justement sur ce moteur —
+           `resolveBlockedEmbed` pour le Multivision, `scrapeMatchFlux` pour l'ajout
+           manuel d'un flux. Le moteur à la main passait donc AVANT le bon et le
+           court-circuitait quand il croyait avoir trouvé.
 
-                if (bestIframeSrc) {
-                    var finalSrc = bestIframeSrc;
-                    if(typeof resolveUrl === 'function') {
-                        finalSrc = resolveUrl(finalSrc, url);
-                    } else {
-                        if (!finalSrc.startsWith('http')) finalSrc = new URL(finalSrc, url).href;
-                    }
-                    resolve(finalSrc);
-                    return;
-                }
-
-                // 2. Try to parse Next.js payloads (Footybite, Streameast, Buffstreams)
-                var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
-                var matchData;
-                var concatenatedData = "";
-                while ((matchData = scriptRegex.exec(html)) !== null) {
-                    var chunk = matchData[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
-                    concatenatedData += chunk;
-                }
-
-                if (concatenatedData) {
-                    var directMatch = /"directStreams":(\[.*?\])/.exec(concatenatedData);
-                    var iframeMatch = /"iframeStreams":(\[.*?\])/.exec(concatenatedData);
-
-                    var streams = [];
-                    if (iframeMatch) {
-                        try { streams = streams.concat(JSON.parse(iframeMatch[1])); } catch(e) {}
-                    }
-                    if (directMatch) {
-                        try { streams = streams.concat(JSON.parse(directMatch[1])); } catch(e) {}
-                    }
-
-                    var validStream = streams.find(function(s) { return s.src || s.link; });
-                    if (validStream) {
-                        var streamUrl = validStream.src || validStream.link;
-                        if(typeof resolveUrl === 'function') {
-                            streamUrl = resolveUrl(streamUrl, url);
-                        } else {
-                            if (!streamUrl.startsWith('http')) streamUrl = new URL(streamUrl, url).href;
-                        }
-                        resolve(streamUrl);
-                        return;
-                    }
-                }
-
-                resolve(url);
-            }).catch(function(e) {
-                resolve(url);
-            });
-        } else {
-            resolve(url);
-        }
+           Restent ici les seules conversions qu'aucun extracteur ne peut deviner, parce
+           qu'elles tiennent à la forme d'URL d'un service : YouTube, Twitch, et les règles
+           définies par l'utilisateur dans l'Investigateur. */
+        resolve(url);
     });
 }
 
