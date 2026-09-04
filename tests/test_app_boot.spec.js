@@ -52,7 +52,22 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { if (server) await new Promise((r) => server.close(r)); });
 
+/* Instant de capture des données du dépôt. Les tests figent l'horloge du navigateur
+   dessus : sans cela, ce que l'onglet Live contient dépend de l'heure à laquelle la suite
+   tourne. C'était sans conséquence tant que le filtre gardait tout ce qui avait commencé
+   dans les 24 dernières heures ; depuis qu'il se limite au direct et à l'heure qui vient,
+   une exécution à 4 h du matin trouverait une grille vide et ferait échouer des tests qui
+   n'ont rien à voir. L'en-tête de ce fichier promet un test déterministe : le temps en
+   fait partie. La valeur est relue dans le fichier, qui est régénéré chaque heure. */
+function instantDesDonnees() {
+  const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'streams.json'), 'utf8'));
+  const t = Date.parse(d.generatedAt || '');
+  if (!Number.isFinite(t)) throw new Error('data/streams.json sans generatedAt exploitable');
+  return new Date(t);
+}
+
 async function bootOffline(page) {
+  await page.clock.setFixedTime(instantDesDonnees());
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   // Tout ce qui n'est pas servi localement est refusé : ni ESPN, ni proxy, ni site source.
