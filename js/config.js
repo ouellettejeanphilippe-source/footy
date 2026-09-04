@@ -16,6 +16,8 @@ export var STREAMEAST_URL = 'https://v2.gostreameast.is/'; // v2.streameast.ga r
 export var ONHOCKEY_URL = 'https://onhockey.tv/';
 export var VIPLEAGUE_URL = 'https://vipleague.vg/live-now-streaming'; // vipleague.im/.io/.cc redirigent vers vipleague.vg ; la grille est sur /live-now-streaming
 export var METHSTREAMS_URL = 'https://methstreams.gs/';
+/* Seule source à exposer une API JSON plutôt que des pages HTML à deviner. */
+export var STREAMED_URL = 'https://streamed.pk/';
 
 
 /* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
@@ -28,13 +30,14 @@ export var SOURCE_MIRRORS = {
     streameast: ['https://v2.gostreameast.is/', 'https://v2.streameast.ga/'],
     onhockey: ['https://onhockey.tv/'],
     vipleague: ['https://vipleague.vg/live-now-streaming', 'https://vipleague.io/live-now-streaming', 'https://vipleague.cc/live-now-streaming'],
-    methstreams: ['https://methstreams.gs/']
+    methstreams: ['https://methstreams.gs/'],
+    streamed: ['https://streamed.pk/', 'https://streamed.su/']
 };
 
 var SOURCE_VAR_NAMES = {
     footybite: 'SITE', mlbbite: 'MLBBITE_PLUS_URL', sportsurge: 'SPORTSURGE_URL',
     buffstreams: 'BUFFSTREAMS_URL', streameast: 'STREAMEAST_URL', onhockey: 'ONHOCKEY_URL', vipleague: 'VIPLEAGUE_URL',
-    methstreams: 'METHSTREAMS_URL'
+    methstreams: 'METHSTREAMS_URL', streamed: 'STREAMED_URL'
 };
 
 /* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
@@ -50,6 +53,7 @@ export function applySourceUrl(id, url) {
         case 'onhockey': ONHOCKEY_URL = url; break;
         case 'vipleague': VIPLEAGUE_URL = url; break;
         case 'methstreams': METHSTREAMS_URL = url; break;
+        case 'streamed': STREAMED_URL = url; break;
         default: return;
     }
     if (typeof window !== 'undefined') window[SOURCE_VAR_NAMES[id]] = url;
@@ -89,7 +93,7 @@ export async function fetchRemoteConfig() {
             var data = await res.json();
             var keyToId = { SITE: 'footybite', MLBBITE_PLUS_URL: 'mlbbite', SPORTSURGE_URL: 'sportsurge',
                 BUFFSTREAMS_URL: 'buffstreams', STREAMEAST_URL: 'streameast', ONHOCKEY_URL: 'onhockey', VIPLEAGUE_URL: 'vipleague',
-                METHSTREAMS_URL: 'methstreams' };
+                METHSTREAMS_URL: 'methstreams', STREAMED_URL: 'streamed' };
             Object.keys(keyToId).forEach(function(k) { if (data[k]) applySourceUrl(keyToId[k], data[k]); });
             if (data.MIRRORS && typeof data.MIRRORS === 'object') {
                 Object.keys(data.MIRRORS).forEach(function(id) {
@@ -135,6 +139,19 @@ export const SCRAPERS_CONFIG = [
         { path: 'schedule_table.php', sports: ['nhl'] }
     ] },
     { name: 'VIPLeague', url: VIPLEAGUE_URL, id: 'vipleague' },
+    /* API JSON : `pages` désigne ici des points d'API, pas des pages HTML. Le parseur
+       lit du JSON, et les flux vivent derrière un second appel posé en `matchUrl`.
+       Ajoutée pour trois trous mesurés dans le cache du 3 septembre 2026 : aucun match
+       de catch (AEW compris), 6 matchs de boxe et 43 de football universitaire, contre
+       102 pour cette seule source. */
+    { name: 'Streamed', url: STREAMED_URL, id: 'streamed', homepageHasMatches: false, pages: [
+        { path: 'api/matches/american-football', sports: ['cfb', 'nfl'] },
+        { path: 'api/matches/fight', sports: ['boxing', 'mma', 'wwe'] },
+        { path: 'api/matches/basketball', sports: ['nba', 'ncaab', 'wnba'] },
+        { path: 'api/matches/hockey', sports: ['nhl'] },
+        { path: 'api/matches/baseball', sports: ['mlb'] },
+        { path: 'api/matches/football', sports: ['soccer'] }
+    ] },
     { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams', homepageHasMatches: false, pages: [
         { path: 'league/soccerstreams', sports: ['soccer'] }, { path: 'league/nflstreams', sports: ['nfl'] }, { path: 'league/nbastreams', sports: ['nba'] },
         // league/nhlstreams et league/cfbstreams redirigent vers crackstreams.mx qui répond 404 : retirées.
@@ -153,6 +170,14 @@ export const SCRAPERS_CONFIG = [
 export var MATCH_PAGE_BLOCKED_HOSTS = /(^|\.)(footybite\.[a-z.]+|(the)?streameast\.[a-z.]+|gostreameast\.[a-z.]+)$/i;
 export function isMatchPageBlocked(url) {
     try { return MATCH_PAGE_BLOCKED_HOSTS.test(new URL(url).hostname); } catch (e) { return false; }
+}
+
+/* Un point d'API ne s'ouvre pas dans un onglet : on y verrait du JSON, pas un lecteur.
+   Le repli « Page du match sur X » n'a donc aucun sens pour ces adresses. Sans ce test,
+   les 31 matchs de football universitaire que streamed.pk annonce sans aucun flux
+   recevaient un lien mort qui se présentait comme jouable. */
+export function isApiEndpoint(url) {
+    try { return /(^|\/)api\//.test(new URL(url).pathname); } catch (e) { return false; }
 }
 
 /* Sport « canonique » d'une ligue (clé utilisée par SCRAPERS_CONFIG[].pages[].sports). */

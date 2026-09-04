@@ -262,6 +262,17 @@ export function harvestJsonBlobs(html, doc, base) {
     var out = [];
     var texts = [];
 
+    /* Corps entièrement JSON, parsé directement plutôt que poussé dans `texts`.
+       On ne lisait le JSON que dans les <script> d'une page : une API qui renvoie un
+       tableau ou un objet ne donnait donc aucun candidat. Et l'y pousser n'aurait rien
+       changé — `sliceJsonLiterals` n'isole que ce qui SUIT un « = » ou un « : », or un
+       corps qui est lui-même un tableau n'a rien devant lui. Ce sont pourtant les
+       sources les plus fiables à lire, puisqu'elles n'ont aucun HTML à deviner. */
+    var trimmed = String(html || '').trim();
+    if ((trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') && trimmed.length < MAX_LITERAL_LEN) {
+        try { walkJson(JSON.parse(trimmed), out, base, 0); } catch (e) {}
+    }
+
     // Next.js : charge utile découpée en morceaux à recoller avant de parser.
     var nextRe = /self\.__next_f\.push\(\[1,\s*"((?:[^"\\]|\\.)*)"\]\)/g;
     var chunk, joined = '';
@@ -338,6 +349,24 @@ export function sliceJsonLiterals(text) {
 
 /* Descente récursive : toute valeur d'apparence « adresse » est un candidat, et
    les clés voisines de son objet servent à le nommer (« Server 2 · 1080p EN »). */
+/* Une clé désigne-t-elle une adresse ? La liste `URL_KEYS` était comparée à
+   l'identique, si bien que `embedUrl`, `streamUrl` ou `videoSrc` — la façon dont les
+   API nomment couramment leurs adresses — n'étaient jamais reconnues. On accepte donc
+   aussi les clés qui se terminent par l'un de ces mots. Les images et autres fichiers
+   ainsi ramassés (`posterUrl`, `badgeUrl`) sont écartés plus loin par le pointage, qui
+   rejette déjà les extensions d'actifs. */
+export var URL_KEY_SUFFIXES = ['url', 'src', 'link', 'href', 'embed', 'stream', 'player'];
+
+export function isUrlKey(key) {
+    var k = String(key || '').toLowerCase();
+    if (URL_KEYS.indexOf(k) >= 0) return true;
+    for (var i = 0; i < URL_KEY_SUFFIXES.length; i++) {
+        var suf = URL_KEY_SUFFIXES[i];
+        if (k.length > suf.length && k.slice(-suf.length) === suf) return true;
+    }
+    return false;
+}
+
 export function walkJson(node, out, base, depth) {
     if (!node || depth > 8 || out.length > 400) return;
     if (Array.isArray(node)) {
@@ -356,7 +385,7 @@ export function walkJson(node, out, base, depth) {
 
     Object.keys(node).forEach(function (k) {
         var v = node[k];
-        if (typeof v === 'string' && URL_KEYS.indexOf(k.toLowerCase()) >= 0 && looksLikeUrlish(decodeMaybe(v))) {
+        if (typeof v === 'string' && isUrlKey(k) && looksLikeUrlish(decodeMaybe(v))) {
             var u = absolutize(decodeMaybe(v), base);
             if (u) out.push({ url: u, label: label.slice(0, 80), via: 'json' });
         } else if (v && typeof v === 'object') {
