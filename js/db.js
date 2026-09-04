@@ -462,7 +462,12 @@ export function formatLeagueName(league) {
     if (LEAGUE_FORMAT_NAMES[lower]) {
         formatted = LEAGUE_FORMAT_NAMES[lower];
     } else {
-        formatted = lower.replace(/\b\w/g, function(l){ return l.toUpperCase(); });
+        /* `\b\w` sans le drapeau `u` ne voit pas les lettres accentuées comme des
+           lettres : « pohár primátora » posait donc une frontière de mot juste avant le
+           « r » de « pohár », et rendait « PoháR PrimáTora ». On capitalise plutôt la
+           lettre qui suit un début de chaîne ou un séparateur, `\p{L}` couvrant tout
+           l'alphabet latin accentué. */
+        formatted = lower.replace(/(^|[\s'’\-–—/(),.])(\p{L})/gu, function(_, sep, ch){ return sep + ch.toUpperCase(); });
     }
 
     // Si la ligue n'est pas dans DEFAULT_LEAGUES ou OTHER_LEAGUES, on la laisse telle quelle

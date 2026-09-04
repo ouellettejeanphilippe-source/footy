@@ -88,6 +88,61 @@ async function main() {
     ok('sportOfLeague tolère une entrée vide ou inconnue');
   }
 
+  // ── Compétitions homonymes entre sports ───────────────────────────────────
+  {
+    const sc = await import('../js/scrapers.js');
+    const db = await import('../js/db.js');
+
+    /* « Champions League » existe en football ET en hockey. Rien dans le nom ne le dit,
+       et sportOfLeague — qui ne voit que le nom — le range en football à cause du mot
+       « league ». Sur le cache du 4 septembre, les six matchs de la Champions HOCKEY
+       League étaient donc classés et affichés avec le football. La source, elle, sait :
+       OnHockey ne diffuse que du hockey. */
+    assert.strictEqual(C.sportOfLeague('Champions League'), 'soccer', 'le nom seul reste ambigu');
+    assert.strictEqual(sc.qualifyLeagueForSport('Champions League', 'nhl', 'Hockey'),
+      'Champions Hockey League', 'le vrai nom est rétabli quand on le connaît');
+    assert.strictEqual(C.sportOfLeague('Champions Hockey League'), 'nhl',
+      'et le classement suit, sans nouvel argument à faire circuler');
+    ok('une compétition homonyme est qualifiée par le sport de sa source');
+  }
+  {
+    const sc = await import('../js/scrapers.js');
+    // Les noms génériques sont annotés...
+    for (const l of ['Club Friendly', 'Malmö Arena Cup', 'U20 Sm-Sarja']) {
+      const q = sc.qualifyLeagueForSport(l, 'nhl', 'Hockey');
+      assert.ok(q.indexOf('Hockey') > -1, l + ' devrait être annoté : ' + q);
+      assert.strictEqual(C.sportOfLeague(q), 'nhl', q + ' devrait se classer en hockey');
+    }
+    // ...mais une ligue déjà sans ambiguïté n'est pas touchée.
+    for (const l of ['Liiga', 'PWHL', 'KHL']) {
+      assert.strictEqual(sc.qualifyLeagueForSport(l, 'nhl', 'Hockey'), l, l + ' ne doit pas être annoté');
+    }
+    ok('seules les ligues ambiguës sont annotées');
+  }
+  {
+    const sc = await import('../js/scrapers.js');
+    // Entrées inexploitables : pas d'exception, pas d'annotation absurde.
+    assert.strictEqual(sc.qualifyLeagueForSport('', 'nhl', 'Hockey'), '');
+    assert.strictEqual(sc.qualifyLeagueForSport('Liiga', null, 'Hockey'), 'Liiga');
+    assert.strictEqual(sc.qualifyLeagueForSport('Liiga', 'nhl', null), 'Liiga');
+    ok('qualifyLeagueForSport tolère une entrée vide ou sans sport');
+  }
+
+  // ── Capitalisation des noms accentués ─────────────────────────────────────
+  {
+    const db = await import('../js/db.js');
+    /* `\b\w` sans le drapeau `u` ne considère pas les lettres accentuées comme des
+       lettres : une frontière de mot tombait donc au milieu de « pohár », juste avant
+       le « r », et le nom s'affichait « PoháR PrimáTora ». */
+    assert.strictEqual(db.formatLeagueName('pohár primátora'), 'Pohár Primátora');
+    assert.strictEqual(db.formatLeagueName('malmö arena cup'), 'Malmö Arena Cup');
+    assert.strictEqual(db.formatLeagueName('são paulo'), 'São Paulo');
+    // Et les cas ordinaires ne bougent pas.
+    assert.strictEqual(db.formatLeagueName('ligue 1'), 'Ligue 1');
+    assert.strictEqual(db.formatLeagueName('u20 sm-sarja'), 'U20 Sm-Sarja');
+    ok('les noms accentués sont capitalisés correctement');
+  }
+
   console.log('unit_sports: ' + n + ' groupes de tests OK');
   process.exit(0);
 }
