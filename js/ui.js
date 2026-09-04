@@ -1,4 +1,5 @@
-import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG } from './config.js';
+import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
+         minutesUntilStart, isLiveNow, startsWithin, LIVE_WINDOW_MIN } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
@@ -220,39 +221,12 @@ function buildEPGInner(matches){
   var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
   var filtered = matches.filter(function(m){
-    var isLiveOrSoon = m.status === 'live';
-    var isUpcomingInHour = false;
-    if(m.status === 'upcoming' && m.startTime) {
-        var mParts = m.startTime.split(':');
-        var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-
-        var diff = mMins - currentMins;
-        if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
-
-        // Live or soon (within 15 min or already started)
-        if(diff <= 15 && diff > -1440) {
-            isLiveOrSoon = true;
-        } else if (diff > 15 && diff <= 60) {
-            isUpcomingInHour = true;
-        }
-    }
-
-    // In Live tab: show live matches and matches starting in <= 60 mins
-    var isUpcomingIn60 = false;
-    if (m.status === 'upcoming' && m.startTime) {
-        var mParts = m.startTime.split(':');
-        var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-        var diff = mMins - currentMins;
-        if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
-        if (diff > 0 && diff <= 60) {
-            isUpcomingIn60 = true;
-        }
-    }
-
-
-    if (S.filter === 'live') {
-        if (!isLiveOrSoon && !isUpcomingIn60 && m.status !== 'live') return false;
-    }
+    /* Onglet Live : en cours, ou coup d'envoi dans l'heure. Rien d'autre.
+       L'ancien prédicat gardait tout ce qui avait commencé dans les 24 dernières
+       heures (`diff > -1440`) : un soir à 19:34, 128 matchs passaient à ce titre, dont
+       un de 01:00 le matin même, et 50 autres sur un statut `live` périmé — l'onglet
+       affichait plus de 200 matchs pour 2 réellement en cours. */
+    if (S.filter === 'live' && !isLiveNow(m, now) && !startsWithin(m, LIVE_WINDOW_MIN, now)) return false;
 
     if(S.searchQuery) {
         var q = normName(S.searchQuery);
@@ -380,36 +354,50 @@ function buildEPGInner(matches){
               secTitle.className = 'section-title';
 
               if (isCollapsible) {
-                  secTitle.style.cursor = 'pointer';
-                  var isCollapsed = S.collapsedSections[sectionId] || false;
+                  /* `chevron`, pas `icon` : une seconde `var icon` plus bas (l'icône de
+                     ligue) partageait la portée de fonction et écrasait celle-ci. Au clic,
+                     le gestionnaire trouvait une chaîne — ou `undefined` — à la place de
+                     l'élément, levait « Cannot set properties of undefined » avant la ligne
+                     qui masque la grille, et AUCUNE section ne se repliait : l'état basculait,
+                     l'affichage jamais. */
+                  var chevron = document.createElement('span');
+                  chevron.className = 'section-chevron';
+                  chevron.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+                  secTitle.appendChild(chevron);
 
-                  var icon = document.createElement('span');
-                  icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
-                  icon.style.transition = 'transform 0.2s';
-                  if (isCollapsed) {
-                      icon.style.transform = 'rotate(-90deg)';
-                      grid.style.display = 'none';
-                  }
-                  secTitle.appendChild(icon);
+                  /* Un titre qui se replie est un bouton : il doit s'annoncer comme tel
+                     aux lecteurs d'écran et répondre au clavier, pas seulement à la souris. */
+                  secTitle.setAttribute('role', 'button');
+                  secTitle.setAttribute('tabindex', '0');
 
-                  secTitle.addEventListener('click', function() {
+                  var syncCollapse = function() {
+                      var closed = !!S.collapsedSections[sectionId];
+                      secTitle.classList.toggle('collapsed', closed);
+                      secTitle.setAttribute('aria-expanded', closed ? 'false' : 'true');
+                      /* '' rend la valeur de la feuille de style, qui convient à une
+                         grille ; un conteneur de sous-sections, lui, a besoin de 'block'
+                         (renderGroupedSection le pose). On restitue ce qu'il avait. */
+                      grid.style.display = closed ? 'none' : (grid._openDisplay || '');
+                  };
+                  syncCollapse();
+
+                  var toggleCollapse = function(ev) {
+                      if (ev) ev.preventDefault();
                       S.collapsedSections[sectionId] = !S.collapsedSections[sectionId];
-                      if (S.collapsedSections[sectionId]) {
-                          icon.style.transform = 'rotate(-90deg)';
-                          grid.style.display = 'none';
-                      } else {
-                          icon.style.transform = '';
-                          grid.style.display = '';
-                      }
+                      syncCollapse();
+                  };
+                  secTitle.addEventListener('click', toggleCollapse);
+                  secTitle.addEventListener('keydown', function(ev) {
+                      if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') toggleCollapse(ev);
                   });
               }
 
               var textSpan = document.createElement('span');
               var prefix = '';
-              if (window.getLeagueIcon && titleStr && titleStr !== "Plus tard aujourd'hui" && titleStr !== "À venir dans l'heure" && titleStr !== "Autres streams" && titleStr !== "Favoris aujourd'hui" && titleStr !== "Live") {
-                  var icon = window.getLeagueIcon(titleStr);
-                  if (icon && icon !== '🏆') {
-                      prefix = icon + ' ';
+              if (window.getLeagueIcon && titleStr && titleStr !== "À venir dans l'heure" && titleStr !== "Autres streams" && titleStr !== "Favoris" && titleStr !== "Live") {
+                  var leagueIcon = window.getLeagueIcon(titleStr);
+                  if (leagueIcon && leagueIcon !== '🏆') {
+                      prefix = leagueIcon + ' ';
                   }
               }
               textSpan.textContent = prefix + titleStr;
@@ -611,7 +599,14 @@ function buildEPGInner(matches){
           if (S.collapsedSections[sectionId] === undefined) S.collapsedSections[sectionId] = !!defaultCollapsed;
 
           var host = renderMatches(matchesToRender, container, titleStr + ' (' + matchesToRender.length + ')', true, sectionId);
-          if (!host || S.collapsedSections[sectionId]) return;
+          if (!host) return;
+
+          /* Les sous-groupes sont construits même quand la section est repliée, et
+             seulement masqués. Auparavant on sortait ici : la section gardait alors la
+             grille à plat posée par renderMatches, si bien que la déplier montrait tous
+             les matchs en vrac au lieu des groupes par ligue — et le repli ne pouvait pas
+             se corriger tout seul puisque rien ne re-rendait au clic. */
+          var replie = !!S.collapsedSections[sectionId];
 
           /* Cette section n'est plus un rail mais un conteneur de sous-sections, chacune
              avec son propre rail et son propre bouton : celui du titre englobant n'a plus
@@ -619,7 +614,8 @@ function buildEPGInner(matches){
           if (host._railBtn && host._railBtn.parentNode) host._railBtn.remove();
           host.innerHTML = '';
           host.className = 'autres-streams-sub-container';
-          host.style.display = 'block';
+          host._openDisplay = 'block';
+          host.style.display = replie ? 'none' : 'block';
 
           var groups = {};
           matchesToRender.forEach(function(m) {
@@ -663,14 +659,10 @@ function buildEPGInner(matches){
           var favorisAujourdhui = [];
           var liveNow = [];
           var upNext = [];
-          var laterToday = [];
           var secondaryMatches = [];
           var autresFluxMatches = [];
 
           var now = new Date();
-          var currentEst = getEstTimeStrFromDate(now);
-          var currentParts = currentEst.split(':');
-          var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
 
           filtered.forEach(function(m) {
               var tier = leagueTier(m.league);
@@ -690,30 +682,20 @@ function buildEPGInner(matches){
                   return;
               }
 
-              if (m.status === 'live') {
-                  liveNow.push(m);
-              } else {
-                  if (m.startTime) {
-                      var mParts = m.startTime.split(':');
-                      var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-                      var diff = mMins - currentMins;
-                      if (currentMins >= 1380 && mMins <= 60) diff += 1440; // wrap around
-
-                      if (diff <= 60) {
-                          upNext.push(m);
-                      } else {
-                          laterToday.push(m);
-                      }
-                  } else {
-                      laterToday.push(m);
-                  }
-              }
+              /* Deux issues seulement, et elles couvrent tout ce que `filtered` a
+                 laissé passer : il n'y a plus de troisième panier « plus tard ». */
+              if (isLiveNow(m, now)) liveNow.push(m);
+              else upNext.push(m);
           });
-          if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, fragment, "Favoris aujourd'hui");
-          if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live");
-          if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure");
-          if (laterToday.length > 0) renderMatches(laterToday, fragment, "Plus tard aujourd'hui", true, 'laterToday');
-          if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && laterToday.length === 0 && secondaryMatches.length === 0) {
+          /* « Favoris aujourd'hui » aurait menti ici : la section ne peut plus contenir
+             que des favoris en cours ou imminents, comme le reste de l'onglet. */
+          /* Repliables comme les autres : l'onglet mêlait jusqu'ici des titres qui
+             réagissaient au clic et d'autres non, sans rien qui les distingue à l'œil.
+             Chaque section porte donc son chevron et retient son état. */
+          if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, fragment, "Favoris", true, 'liveFavoris');
+          if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live", true, 'liveNow');
+          if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure", true, 'liveUpNext');
+          if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
               epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
           }
           // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
@@ -846,19 +828,9 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               var b = document.createElement('div');
               b.id = 'mb-'+m.id;
 
-              var isLiveOrSoonLoc = m.status === 'live';
-              var now = new Date();
-              var currentEst = getEstTimeStrFromDate(now);
-              var currentParts = currentEst.split(':');
-              var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
-
-              if(m.status === 'upcoming' && m.startTime) {
-                  var mParts = m.startTime.split(':');
-                  var mMins = parseInt(mParts[0], 10) * 60 + parseInt(mParts[1], 10);
-                  var diff = mMins - currentMins;
-                  if (currentMins >= 1380 && mMins <= 60) diff += 1440;
-                  if(diff <= 15 && diff > -1440) isLiveOrSoonLoc = true;
-              }
+              // Même définition que l'onglet Live : la pastille et la liste ne peuvent
+              // pas se contredire.
+              var isLiveOrSoonLoc = isLiveNow(m);
 
               b.className = 'mb' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
               b.setAttribute('data-home', m.homeTeam);

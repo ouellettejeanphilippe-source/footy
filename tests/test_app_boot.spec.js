@@ -269,3 +269,107 @@ test('le bac à sable des lecteurs accorde le nécessaire et rien de plus', asyn
     'un document reconstruit avec allow-same-origin lirait le localStorage de l\'application')
     .not.toContain('allow-same-origin');
 });
+
+/* Les titres de section de l'onglet Live ne se repliaient pas : `renderMatches` déclarait
+   `var icon` pour le chevron puis une seconde fois, dans la MÊME portée de fonction, pour
+   l'icône de ligue. Au clic, le gestionnaire trouvait donc une chaîne — ou `undefined` — à
+   la place de l'élément, levait « Cannot set properties of undefined » avant la ligne qui
+   masque la grille, et aucune section ne bougeait. L'état basculait pourtant, si bien
+   qu'un test lisant `S.collapsedSections` aurait été vert : c'est l'affichage réel qu'il
+   faut regarder, et l'absence d'exception.
+
+   Un test de rendu ne voyait rien de tout cela, la page se construisant correctement. */
+test('chaque section repliable de l\'onglet Live répond au clic', async ({ page }) => {
+  /* Au premier démarrage, l'application propose le script utilisateur dans un modal
+     centré qui recouvre la grille et avale les clics — et le referme mal : il revient
+     après qu'on l'a fermé, si bien qu'on ne peut pas l'écarter depuis le test. On se
+     place donc dans la situation qui nous intéresse, celle d'un utilisateur qui l'a déjà
+     vu. Les clics restent de vrais clics, non forcés : le jour où un élément recouvrira
+     réellement les titres, ce test le dira. */
+  await page.addInitScript(() => {
+    try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {}
+  });
+  const pageErrors = await bootOffline(page);
+
+  const titres = page.locator('#marea .section-title[role="button"]');
+  const n = await titres.count();
+  expect(n, 'l\'onglet Live doit présenter des sections repliables').toBeGreaterThan(0);
+
+  let testes = 0;
+  for (let i = 0; i < n; i++) {
+    const t = titres.nth(i);
+    /* Une section imbriquée (les ligues sous « Autres streams ») disparaît quand on
+       replie sa parente : c'est le comportement voulu, pas une panne. On ne teste que
+       ce qui est réellement atteignable au moment où on y arrive. */
+    if (!(await t.isVisible())) continue;
+    testes++;
+    const nom = (await t.innerText()).replace(/\n.*/s, '').trim();
+
+    const avant = await t.evaluate((el) => getComputedStyle(el.nextElementSibling).display);
+    await t.click();
+    const pendant = await t.evaluate((el) => getComputedStyle(el.nextElementSibling).display);
+    expect(pendant, 'le clic sur « ' + nom + ' » doit changer l\'affichage').not.toBe(avant);
+    expect(await t.getAttribute('aria-expanded'), 'aria-expanded suit l\'état de « ' + nom + ' »')
+      .toBe(pendant === 'none' ? 'false' : 'true');
+
+    await t.click();   // et l'inverse remet en place
+    expect(await t.evaluate((el) => getComputedStyle(el.nextElementSibling).display),
+      'un second clic sur « ' + nom + ' » doit revenir à l\'état initial').toBe(avant);
+  }
+
+  expect(testes, 'au moins les sections de premier niveau doivent avoir été éprouvées')
+    .toBeGreaterThanOrEqual(3);
+
+  // Le clavier doit faire la même chose : un titre repliable s'annonce comme un bouton.
+  const premier = titres.first();
+  const ouvert = await premier.evaluate((el) => getComputedStyle(el.nextElementSibling).display);
+  await premier.focus();
+  await page.keyboard.press('Enter');
+  expect(await premier.evaluate((el) => getComputedStyle(el.nextElementSibling).display),
+    'la touche Entrée doit replier la section').not.toBe(ouvert);
+
+  expect(pageErrors, 'aucune exception ne doit être levée en manipulant les sections').toEqual([]);
+});
+
+/* L'onglet Live ne doit contenir que ce qui est en cours ou commence dans l'heure.
+   Il affichait plus de 200 matchs pour 2 réellement en cours, faute d'une borne basse :
+   le prédicat gardait tout ce qui avait commencé dans les 24 dernières heures. */
+test('l\'onglet Live ne montre que le direct et l\'heure qui vient', async ({ page }) => {
+  await bootOffline(page);
+
+  const { hors, vus, total, titres } = await page.evaluate(async () => {
+    const C = await import('./js/config.js');
+    const now = new Date();
+
+    /* Les cartes portent `id="mb-<id du match>"` : c'est le seul lien entre le DOM et
+       les données. Une première version cherchait `dataset.matchId`, qui n'existe pas —
+       l'ensemble des matchs rendus restait vide et le test passait sans rien vérifier. */
+    const rendus = new Set();
+    document.querySelectorAll('#marea .match-card[id^="mb-"]').forEach((c) => {
+      rendus.add(c.id.slice(3));
+    });
+
+    const hors = [];
+    let vus = 0;
+    (window.S.matches || []).forEach((m) => {
+      if (!rendus.has(String(m.id))) return;
+      vus++;
+      if (!C.isLiveNow(m, now) && !C.startsWithin(m, C.LIVE_WINDOW_MIN, now)) {
+        hors.push({ heure: m.startTime, statut: m.status, minutes: C.minutesUntilStart(m, now) });
+      }
+    });
+    return { hors: hors.slice(0, 8), vus, total: (window.S.matches || []).length,
+             titres: [...document.querySelectorAll('#marea .section-title')].map((t) => t.innerText.split('\n')[0].trim()) };
+  });
+
+  /* Sans cette garde, le test resterait vert le jour où l'identifiant des cartes
+     changerait : il ne vérifierait plus rien du tout. */
+  expect(vus, 'aucune carte rendue n\'a pu être reliée aux données : le test ne vérifierait rien')
+    .toBeGreaterThan(0);
+  expect(total, 'la grille de test doit contenir des matchs hors fenêtre à écarter')
+    .toBeGreaterThan(vus);
+
+  expect(hors, 'des matchs ni en cours ni imminents sont affichés dans Live').toEqual([]);
+  expect(titres.join(' | '), 'la section « plus tard » n\'a plus lieu d\'être dans Live')
+    .not.toContain('Plus tard');
+});
