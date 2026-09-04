@@ -254,8 +254,63 @@ export var EMBED_SANDBOX = 'allow-scripts allow-forms allow-presentation allow-p
    - `allow-modals` : plus d'`alert()` bloquante venue d'une régie. */
 export var PLAYER_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
 
+/* ─── Levée du bac à sable, par domaine ──────────────────────────────────────────────
+   Certains hôtes REFUSENT de jouer dans une iframe en bac à sable et affichent à la
+   place « SANDBOX IFRAME NOT ALLOWED » (relevé le 4 septembre 2026 sur la chaîne
+   tnt-sports.shop, sous Firefox). Le refus vient d'un script de la page imbriquée : rien
+   de lisible depuis l'application, qui n'a aucun accès au contenu d'une origine croisée.
+   La détection automatique est donc impossible — mais la levée, elle, est triviale.
+
+   D'où ce choix : le bac à sable reste posé par défaut, et l'utilisateur le lève d'un
+   geste sur la tuile concernée. Le domaine est retenu, la levée vaut donc une fois pour
+   toutes. C'est un compromis assumé : sur ce domaine, les fenêtres surgissantes et le
+   détournement d'onglet redeviennent possibles. */
+var SANDBOX_EXEMPT_KEY = 'playerSandboxExceptions';
+
+/* Adresse ABSOLUE exigée : sans base, une chaîne quelconque ne devient pas une adresse.
+   Résoudre contre `location` ferait porter la levée sur le domaine de l'application
+   elle-même, où elle n'a aucun sens — et une adresse relative désigne de toute façon la
+   même origine, donc une iframe que le bac à sable ne gêne pas. */
+export function sandboxHost(url) {
+    try { return new URL(String(url)).hostname.replace(/^www\./, '').toLowerCase(); }
+    catch (e) { return ''; }
+}
+
+function lireExceptions() {
+    try {
+        var brut = localStorage.getItem(SANDBOX_EXEMPT_KEY);
+        var lu = brut ? JSON.parse(brut) : null;
+        return (lu && typeof lu === 'object') ? lu : {};
+    } catch (e) { return {}; }
+}
+
+export function isSandboxExempt(url) {
+    var h = sandboxHost(url);
+    return !!(h && lireExceptions()[h]);
+}
+
+/* Bascule la levée pour le domaine de `url`. Rend le nouvel état (true = sans bac à
+   sable). Sans domaine lisible, rien à retenir : on ne fait rien. */
+export function toggleSandboxException(url) {
+    var h = sandboxHost(url);
+    if (!h) return false;
+    var ex = lireExceptions();
+    var neuf = !ex[h];
+    if (neuf) ex[h] = true; else delete ex[h];
+    try { localStorage.setItem(SANDBOX_EXEMPT_KEY, JSON.stringify(ex)); } catch (e) {}
+    return neuf;
+}
+
+/* Bac à sable à poser pour cette adresse, ou `null` s'il faut n'en poser aucun. */
+export function playerSandboxFor(url, prefActive) {
+    if (prefActive === false) return null;
+    return isSandboxExempt(url) ? null : PLAYER_SANDBOX;
+}
+
 if (typeof window !== 'undefined') {
   window.getBridgeStatus = getBridgeStatus;
   window.resolveBlockedEmbed = resolveBlockedEmbed;
   window.pickEmbeddablePlayer = pickEmbeddablePlayer;
+  window.toggleSandboxException = toggleSandboxException;
+  window.isSandboxExempt = isSandboxExempt;
 }

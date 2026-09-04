@@ -241,6 +241,24 @@ export var LEAGUE_ALIASES = {
   'ncaa': 'ncaa',
   'ncaa football': 'ncaa football',
   'ncaa basketball': 'ncaa men\'s basketball',
+
+  /* Football et basketball universitaires : un même championnat sous plusieurs sigles.
+
+     Relevé sur le cache du 4 septembre 2026 : « Cfb » (66 matchs), « Ncaaf » (55) et
+     « Ncaa Division 1 Football » (3) désignaient la NCAA Division I football et créaient
+     TROIS sections distinctes pour 124 matchs. Faute d'alias, chaque libellé retombait
+     aussi au niveau « other », donc dans « Autres streams ». Ramenés à « ncaa football »,
+     ils forment une seule section, reconnue comme ligue secondaire par OTHER_LEAGUES. */
+  'cfb': 'ncaa football',
+  'ncaaf': 'ncaa football',
+  'college football': 'ncaa football',
+  'ncaa division 1 football': 'ncaa football',
+  'ncaa division i football': 'ncaa football',
+  'ncaa fbs': 'ncaa football',
+  'ncaab': 'ncaa men\'s basketball',
+  'ncaam': 'ncaa men\'s basketball',
+  'college basketball': 'ncaa men\'s basketball',
+  'ncaaw': 'ncaa women\'s basketball',
   'wnba': 'wnba',
   'womens national basketball association': 'wnba',
   'iihf world championship': 'world hockey championships',
@@ -664,6 +682,142 @@ export function leagueOfTeamName(name) {
     }
     if (!data || !data.league) return '';
     return Array.isArray(data.league) ? data.league[0] : data.league;
+}
+
+/* ─── Appariement ligue / équipes / ville ────────────────────────────────────────────
+   Les trois axes se corrigent l'un l'autre : les équipes disent quelle est la ligue quand
+   la source ne donne que le nom du sport, et la ligue lève l'ambiguïté d'une ville seule.
+*/
+
+/* Libellés qu'une source met dans le champ « ligue » faute de mieux : ce sont des noms de
+   sport, pas des compétitions. La valeur est le sport attendu, tel que le renvoie
+   `sportOfTeamName` ; elle sert de garde-fou pour ne pas récupérer la ligue d'un autre
+   sport. Chaîne vide = aucun sport annoncé, donc aucune vérification possible. */
+export var GENERIC_LEAGUE_LABELS = {
+    'soccer': 'autre',
+    'futbol': 'autre',
+    'football': 'autre',
+    'baseball': 'baseball',
+    'hockey': 'hockey',
+    'ice hockey': 'hockey',
+    'basketball': 'basket',
+    'basket': 'basket',
+    'sports': '',
+    'sport': '',
+    'autres': '',
+    'autres flux': ''
+};
+
+export function isGenericLeagueLabel(league) {
+    var l = String(league || '').toLowerCase().trim();
+    return Object.prototype.hasOwnProperty.call(GENERIC_LEAGUE_LABELS, l);
+}
+
+/* Ligue déduite des deux équipes, quand la source n'a donné que le nom du sport.
+
+   Relevé sur le cache du 4 septembre 2026 : 209 matchs portaient un libellé générique
+   (« Soccer » 179, « Baseball » 29, « Sports » 1) ; 117 d'entre eux ont les DEUX équipes
+   dans la base, rattachées à la même ligue — les 29 matchs de « Baseball » sont tous des
+   matchs de MLB, affichés dans une section séparée de « MLB ».
+
+   Trois conditions, toutes nécessaires :
+     - les deux équipes sont connues et rattachées à la même ligue (une seule équipe ne
+       suffit pas : « Toronto FC » contre un club inconnu ne prouve pas la MLS) ;
+     - cette ligue relève bien du sport annoncé par le libellé générique ;
+     - ce n'est pas « Autres », qui n'est pas une compétition.
+   Sinon on rend le libellé d'origine inchangé. */
+export function leagueFromPairing(league, homeTeam, awayTeam) {
+    var brut = String(league || '').trim();
+    if (!isGenericLeagueLabel(brut)) return brut;
+
+    var ligueDom = leagueOfTeamName(homeTeam);
+    var ligueExt = leagueOfTeamName(awayTeam);
+    if (!ligueDom || !ligueExt) return brut;
+    if (ligueDom.toLowerCase() !== ligueExt.toLowerCase()) return brut;
+    if (/^autres?$/i.test(ligueDom.trim())) return brut;
+
+    var attendu = GENERIC_LEAGUE_LABELS[brut.toLowerCase()];
+    if (attendu && (sportOfTeamName(homeTeam) !== attendu || sportOfTeamName(awayTeam) !== attendu)) {
+        return brut;
+    }
+    return ligueDom;
+}
+
+/* Index « début de nom → équipes ». La ville n'est pas un champ de la base : dans les
+   ligues nord-américaines elle forme le début du nom (« New York » + « Mets »). On indexe
+   tous les préfixes, ce qui couvre aussi bien « Houston » que « New York ». */
+var CITY_TEAM_INDEX = null;
+function buildCityIndex() {
+    if (CITY_TEAM_INDEX) return CITY_TEAM_INDEX;
+    CITY_TEAM_INDEX = {};
+    for (var k in TEAM_DATA) {
+        var d = TEAM_DATA[k];
+        if (!d || !d.name) continue;
+        var lig = Array.isArray(d.league) ? d.league[0] : d.league;
+        if (!lig) continue;
+        var mots = String(d.name).split(/\s+/);
+        for (var n = 1; n < mots.length; n++) {
+            var prefixe = mots.slice(0, n).join(' ').toLowerCase();
+            (CITY_TEAM_INDEX[prefixe] = CITY_TEAM_INDEX[prefixe] || []).push({ name: d.name, league: String(lig).toLowerCase() });
+        }
+    }
+    return CITY_TEAM_INDEX;
+}
+
+/* Équipe désignée par une ville seule, levée par la ligue.
+
+   « Houston » est ambigu hors contexte — Texans, Astros, Rockets, Dynamo, et les Cougars
+   universitaires. Avec la ligue, il ne reste qu'un candidat, ou aucun : on n'invente rien.
+   Sans ligue connue, la fonction ne répond pas — c'est précisément le cas où l'ancienne
+   résolution par alias traversait les sports. */
+export function teamFromCityAndLeague(name, league) {
+    var v = String(name || '').toLowerCase().trim();
+    var lig = String(league || '').toLowerCase().trim();
+    if (!v || !lig) return '';
+    if (TEAM_DATA[v] || TEAM_ALIASES[v]) return '';   // déjà un nom d'équipe, pas une ville
+    var cands = buildCityIndex()[v];
+    if (!cands) return '';
+    var retenus = [];
+    for (var i = 0; i < cands.length; i++) {
+        if (cands[i].league !== lig) continue;
+        if (retenus.indexOf(cands[i].name) < 0) retenus.push(cands[i].name);
+    }
+    return retenus.length === 1 ? retenus[0] : '';
+}
+
+/* Les trois axes appliqués ensemble, dans l'ordre : les équipes précisent la ligue, puis
+   la ligue précise les équipes. Rend toujours un triplet complet, jamais de champ vide. */
+export function resolvePairing(match) {
+    var m = match || {};
+    var ligue = leagueFromPairing(m.league, m.homeTeam, m.awayTeam);
+
+    /* Deuxième passe, quand une seule équipe est connue et que l'autre est une ville
+       seule — « Baseball : Houston vs Detroit Tigers ». `leagueFromPairing` refuse, à
+       raison : une équipe ne prouve pas la ligue. Mais si la ville se résout SANS
+       ambiguïté dans la ligue de cette équipe, les deux se confirment mutuellement, et
+       c'est exactement le cas où l'ancien appariement par alias seul se trompait de
+       sport. Un doute d'un côté ou de l'autre, et rien ne bouge. */
+    if (isGenericLeagueLabel(ligue)) {
+        var ligDom = leagueOfTeamName(m.homeTeam);
+        var ligExt = leagueOfTeamName(m.awayTeam);
+        if (!!ligDom !== !!ligExt) {                      // exactement une des deux connue
+            var connue = ligDom || ligExt;
+            var nomEquipe = ligDom ? m.homeTeam : m.awayTeam;
+            var nomVille = ligDom ? m.awayTeam : m.homeTeam;
+            var attendu = GENERIC_LEAGUE_LABELS[String(ligue).toLowerCase().trim()];
+            if (!/^autres?$/i.test(String(connue).trim())
+                && teamFromCityAndLeague(nomVille, connue)
+                && (!attendu || sportOfTeamName(nomEquipe) === attendu)) {
+                ligue = connue;
+            }
+        }
+    }
+
+    return {
+        league: ligue,
+        homeTeam: teamFromCityAndLeague(m.homeTeam, ligue) || m.homeTeam,
+        awayTeam: teamFromCityAndLeague(m.awayTeam, ligue) || m.awayTeam
+    };
 }
 
 export function normName(n) {

@@ -1,6 +1,6 @@
 import { lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier } from './db.js';
+import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier, resolvePairing } from './db.js';
 import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
 import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
@@ -695,6 +695,15 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
   }
 
   scrapedMatches.forEach(function(sm) {
+
+      /* Appariement ligue / équipes / ville, AVANT la fusion avec la grille officielle :
+         un flux annoncé « Baseball — Cleveland vs Detroit » devient « MLB — Cleveland
+         Guardians vs Detroit Tigers », donc il a une chance de retrouver son match ESPN
+         au lieu de finir dans « Autres streams ». */
+      var apparie = resolvePairing(sm);
+      sm.league = apparie.league;
+      sm.homeTeam = apparie.homeTeam;
+      sm.awayTeam = apparie.awayTeam;
 
       var matched = false;
       for(var i=0; i<apiMatches.length; i++) {
