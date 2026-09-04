@@ -217,28 +217,42 @@ export function isApiEndpoint(url) {
 }
 
 /* Sport « canonique » d'une ligue (clé utilisée par SCRAPERS_CONFIG[].pages[].sports). */
+/* Sport « canonique » d'une ligue, à partir de son nom.
+
+   ATTENTION AUX ANCRES `\b` DE CE BLOC. Le fichier a contenu, à leur place, 36
+   caractères de contrôle « retour arrière » (U+0008) — le résultat d'un outil ayant
+   interprété l'échappement au lieu de l'écrire. Les expressions cherchaient alors ce
+   caractère de contrôle, qu'aucun nom de ligue ne contient : toutes les alternatives
+   ainsi encadrées étaient MORTES. Les sigles (mlb, nfl, cfb, nba, mma, f1, aew…) ne
+   correspondaient jamais, tandis que les mots entiers (baseball, hockey, soccer…)
+   passaient — d'où un diagnostic trompeur, puisque la moitié de la fonction marchait.
+   Relevé sur le cache du 4 septembre 2026 : **224 matchs sur 503 classés « other »**,
+   dont les 124 de football universitaire, 29 de MLB et 17 de NFL, qui atterrissaient
+   donc dans « Autres streams » au lieu de leur sport. Le défaut était invisible à la
+   relecture : `console.log` de la source affiche le retour arrière comme un effacement,
+   et le code semblait donc correct. `tests/unit_sports.test.js` le détecterait. */
 export function sportOfLeague(league) {
     var l = String(league || '').toLowerCase();
     if (!l) return 'other';
-    if (/(nhl|pwhl|khl|ahl|shl|liiga)|hockey|lhjmq|qmjhl/.test(l)) return 'nhl';
-    if (/mlb|baseball/.test(l)) return 'mlb';
-    if (/wnba/.test(l)) return 'wnba';
-    if (/ncaa.*basket|college basket|ncaab/.test(l)) return 'ncaab';
-    if (/nba|basket/.test(l)) return 'nba';
-    if (/cfl/.test(l)) return 'cfl';
-    if (/ncaa.*foot|college foot|cfb/.test(l)) return 'cfb';
-    if (/nfl|ufl|american football/.test(l)) return 'nfl';
-    if (/ufc|mma|bellator|pfl/.test(l)) return 'mma';
+    if (/\b(nhl|pwhl|khl|ahl|shl|liiga)\b|hockey|lhjmq|qmjhl/.test(l)) return 'nhl';
+    if (/\bmlb\b|baseball/.test(l)) return 'mlb';
+    if (/\bwnba\b/.test(l)) return 'wnba';
+    if (/ncaa.*basket|college basket|\bncaab\b/.test(l)) return 'ncaab';
+    if (/\bnba\b|basket/.test(l)) return 'nba';
+    if (/\bcfl\b/.test(l)) return 'cfl';
+    if (/ncaa.*foot|college foot|\bcfb\b|\bncaaf\b/.test(l)) return 'cfb';
+    if (/\bnfl\b|\bufl\b|american football/.test(l)) return 'nfl';
+    if (/\bufc\b|\bmma\b|bellator|\bpfl\b/.test(l)) return 'mma';
     if (/box/.test(l)) return 'boxing';
-    if (/wwe|aew|tna|wrestl/.test(l)) return 'wwe';
-    if (/f1|formula/.test(l)) return 'f1';
+    if (/\bwwe\b|\baew\b|\btna\b|wrestl/.test(l)) return 'wwe';
+    if (/\bf1\b|formula/.test(l)) return 'f1';
     if (/motogp|indycar|nascar|motor/.test(l)) return 'motor';
     if (/rugby/.test(l)) return 'rugby';
     if (/cricket/.test(l)) return 'cricket';
     if (/tennis|atp|wta/.test(l)) return 'tennis';
     if (/golf|pga/.test(l)) return 'golf';
-    if (/(lcs|lec|lpl|lck|msi|worlds|cblol|ljl|pcs|vcs|lla|tcl|lcp|nlc)|league of legends|esport/.test(l)) return 'esports';
-    if (/league|liga|serie|cup|coupe|mls|bundesliga|ligue|champions|europa|copa|premier|eredivisie|primeira|uefa|fifa|conmebol|concacaf|saudi|soccer|football|super lig|pokal|nations/.test(l)) return 'soccer';
+    if (/\b(lcs|lec|lpl|lck|msi|worlds|cblol|ljl|pcs|vcs|lla|tcl|lcp|nlc)\b|league of legends|esport/.test(l)) return 'esports';
+    if (/league|liga|serie|cup|coupe|\bmls\b|bundesliga|ligue|champions|europa|copa|premier|eredivisie|primeira|uefa|fifa|conmebol|concacaf|saudi|soccer|football|super lig|pokal|nations|friendly|primera|eliteserien|allsvenskan/.test(l)) return 'soccer';
     return 'other';
 }
 
