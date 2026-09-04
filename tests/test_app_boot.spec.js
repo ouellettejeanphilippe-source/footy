@@ -108,7 +108,7 @@ test('l\'application démarre et affiche des matchs sans réseau externe', async
 test('les onglets Live et Guide se rendent sans exception', async ({ page }) => {
   const pageErrors = await bootOffline(page);
 
-  for (const filter of ['all', 'live', 'upcoming', 'fav', 'options', 'logs', 'script', 'live']) {
+  for (const filter of ['all', 'live', 'fav', 'options', 'logs', 'script', 'live']) {
     await page.evaluate((f) => window.applyFilter(f), filter);
     await page.waitForTimeout(400);
   }
@@ -127,10 +127,10 @@ test('les onglets Live et Guide se rendent sans exception', async ({ page }) => 
 test('les boutons de navigation atteignent chaque vue', async ({ page }) => {
   const pageErrors = await bootOffline(page);
 
-  /* La vue « À venir » a longtemps été inatteignable : applyFilter('upcoming') et sa
-     branche de rendu existaient, mais aucun bouton ne les appelait. On clique ici les
-     vrais boutons de la barre de navigation, pas applyFilter directement. */
-  for (const [id, filter] of [['filter-live', 'live'], ['filter-upcoming', 'upcoming'], ['filter-all', 'all']]) {
+  /* On clique les vrais boutons de la barre de navigation, pas applyFilter directement :
+     une vue dont le bouton manque est inatteignable, quoi qu'en dise le code de rendu —
+     c'était le cas de « À venir », depuis retirée. */
+  for (const [id, filter] of [['filter-live', 'live'], ['filter-all', 'all']]) {
     const button = page.locator('#' + id);
     await expect(button, `le bouton ${id} doit exister dans la barre de navigation`).toHaveCount(1);
     await button.click();
@@ -387,4 +387,28 @@ test('l\'onglet Live ne montre que le direct et l\'heure qui vient', async ({ pa
   expect(hors, 'des matchs ni en cours ni imminents sont affichés dans Live').toEqual([]);
   expect(titres.join(' | '), 'la section « plus tard » n\'a plus lieu d\'être dans Live')
     .not.toContain('Plus tard');
+});
+
+/* La vue « À venir » n'était qu'une liste à plat du programme, que le Guide couvre déjà
+   sous forme de grille temporelle. Son bouton est retiré ; ce test vérifie qu'il ne
+   revient pas, et surtout qu'un appel résiduel à la vue disparue ne laisse pas une page
+   vide : `data-filter` porterait une valeur qu'aucune branche de rendu ne traite. */
+test('la vue « À venir » est retirée sans laisser de cul-de-sac', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+
+  await expect(page.locator('#filter-upcoming'),
+    'le bouton « À venir » ne doit plus figurer dans la navigation').toHaveCount(0);
+  await expect(page.locator('.nav-links'), 'ni son libellé').not.toContainText('À venir');
+
+  const apres = await page.evaluate(() => {
+    window.applyFilter('upcoming');
+    return { filtre: window.S.filter, attribut: document.body.getAttribute('data-filter') };
+  });
+  await page.waitForTimeout(600);
+
+  expect(apres.filtre, 'un appel à la vue disparue retombe sur le direct').toBe('live');
+  expect(apres.attribut, 'data-filter ne doit jamais rester sur une vue sans rendu').toBe('live');
+  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length),
+    'et la page reste peuplée plutôt que vide').toBeGreaterThan(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
