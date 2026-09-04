@@ -646,7 +646,9 @@ function buildEPGInner(matches){
   document.body.classList.toggle('view-timeline', S.filter === 'all');
   applyCardShape();
 
-  if (S.filter === 'live' || S.filter === 'upcoming') {
+  /* Le Guide (grille temporelle) couvre déjà le programme de la journée : la vue
+     « À venir », qui n'en était qu'une liste à plat, a été retirée de la navigation. */
+  if (S.filter === 'live') {
       epgContainer.style.display = 'block';
       epgContainer.style.padding = '0';
       epgContainer.style.overflowY = 'auto';
@@ -654,71 +656,53 @@ function buildEPGInner(matches){
       epgContainer.style.WebkitOverflowScrolling = 'touch';
 
 
-      // Split live and upcoming in 60 mins and later today if filter is live
-      if (S.filter === 'live') {
-          var favorisAujourdhui = [];
-          var liveNow = [];
-          var upNext = [];
-          var secondaryMatches = [];
-          var autresFluxMatches = [];
+      var favorisAujourdhui = [];
+      var liveNow = [];
+      var upNext = [];
+      var secondaryMatches = [];
+      var autresFluxMatches = [];
 
-          var now = new Date();
+      var now = new Date();
 
-          filtered.forEach(function(m) {
-              var tier = leagueTier(m.league);
-              if (tier === 'ignored') return; // ligue masquée par l'utilisateur
+      filtered.forEach(function(m) {
+          var tier = leagueTier(m.league);
+          if (tier === 'ignored') return; // ligue masquée par l'utilisateur
 
-              if (favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]) {
-                  favorisAujourdhui.push(m);
-              }
-
-              if (tier === 'other' || m.league === 'Autres Flux') {
-                  autresFluxMatches.push(m);
-                  return;
-              }
-
-              if (tier === 'secondary') {
-                  secondaryMatches.push(m);
-                  return;
-              }
-
-              /* Deux issues seulement, et elles couvrent tout ce que `filtered` a
-                 laissé passer : il n'y a plus de troisième panier « plus tard ». */
-              if (isLiveNow(m, now)) liveNow.push(m);
-              else upNext.push(m);
-          });
-          /* « Favoris aujourd'hui » aurait menti ici : la section ne peut plus contenir
-             que des favoris en cours ou imminents, comme le reste de l'onglet. */
-          /* Repliables comme les autres : l'onglet mêlait jusqu'ici des titres qui
-             réagissaient au clic et d'autres non, sans rien qui les distingue à l'œil.
-             Chaque section porte donc son chevron et retient son état. */
-          if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, fragment, "Favoris", true, 'liveFavoris');
-          if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live", true, 'liveNow');
-          if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure", true, 'liveUpNext');
-          if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
-              epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
+          if (favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]) {
+              favorisAujourdhui.push(m);
           }
-          // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
-          renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesLive', false, function(m) { return m.league; });
-          renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
-              function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
-      } else {
-          // Render matches normally for upcoming
-          var mainMatches = [];
-          var secondaryMatches = [];
-          var autresFluxMatches = [];
-          filtered.forEach(function(m) {
-              var tier = leagueTier(m.league);
-              if (tier === 'ignored') return;
-              if (tier === 'other' || m.league === 'Autres Flux') autresFluxMatches.push(m);
-              else if (tier === 'secondary') secondaryMatches.push(m);
-              else mainMatches.push(m);
-          });
-          renderMatches(mainMatches, fragment, "");
-          renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesUpcoming', false, function(m) { return m.league; });
-          renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
-              function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
+
+          if (tier === 'other' || m.league === 'Autres Flux') {
+              autresFluxMatches.push(m);
+              return;
+          }
+
+          if (tier === 'secondary') {
+              secondaryMatches.push(m);
+              return;
+          }
+
+          /* Deux issues seulement, et elles couvrent tout ce que `filtered` a
+             laissé passer : il n'y a plus de troisième panier « plus tard ». */
+          if (isLiveNow(m, now)) liveNow.push(m);
+          else upNext.push(m);
+      });
+      /* « Favoris aujourd'hui » aurait menti ici : la section ne peut plus contenir
+         que des favoris en cours ou imminents, comme le reste de l'onglet. */
+      /* Repliables comme les autres : l'onglet mêlait jusqu'ici des titres qui
+         réagissaient au clic et d'autres non, sans rien qui les distingue à l'œil.
+         Chaque section porte donc son chevron et retient son état. */
+      if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, fragment, "Favoris", true, 'liveFavoris');
+      if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live", true, 'liveNow');
+      if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure", true, 'liveUpNext');
+      if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
+          epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
       }
+      // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
+      renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesLive', false, function(m) { return m.league; });
+      renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
+          function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
+
 
   } else { // Timeline EPG
 

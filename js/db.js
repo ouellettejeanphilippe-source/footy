@@ -598,6 +598,27 @@ export function getOfficialTeamName(n, bypassFuzzyMatch) {
 
     return n;
 }
+/* Ligue déclarée pour un nom d'équipe dans TEAM_DATA, ou '' si inconnue.
+
+   Sert à départager des catégories que les sources mêlent : streamed.pk range tout le
+   football américain sous « american-football », universitaire et professionnel
+   confondus. Or ce sont les 32 clubs de la NFL qui sont recensés ici, pas les centaines
+   d'équipes universitaires : un nom qui y répond « nfl » est professionnel, un nom
+   inconnu de la base est, en football américain, universitaire. La base existante fait
+   donc le tri sans qu'on recopie une liste d'équipes à la main. */
+export function leagueOfTeamName(name) {
+    if (!name) return '';
+    var key = normName(name);
+    if (!key) return '';
+    var data = TEAM_DATA[key] || TEAM_DATA[String(name).toLowerCase().trim()];
+    if (!data) {
+        var alias = TEAM_ALIASES[String(name).toLowerCase().trim()];
+        if (alias) data = TEAM_DATA[alias];
+    }
+    if (!data || !data.league) return '';
+    return Array.isArray(data.league) ? data.league[0] : data.league;
+}
+
 export function normName(n) {
   if (!n) return '';
   var cached = _normCache[n];

@@ -399,9 +399,17 @@ export function showToast(msg){var t=document.getElementById('toast');document.g
 
 
 
+/* Vues atteignables depuis la navigation. « upcoming » a été retirée : le Guide couvre
+   déjà le programme de la journée, dont elle n'était qu'une liste à plat. */
+export var FILTERS = ['all','live','fav','options','logs','script'];
+
 export function applyFilter(f){
+  /* Un appel à une vue disparue (raccourci mémorisé, ancien code) laisserait sinon
+     `data-filter` sur une valeur que plus aucune branche de rendu ne traite, donc une
+     page vide sans message. On retombe sur le direct. */
+  if (FILTERS.indexOf(f) === -1) f = 'live';
   S.filter=f;
-  ['all','live','upcoming','fav','options','logs','script'].forEach(function(k){
+  FILTERS.forEach(function(k){
     var el=document.getElementById('filter-'+k);
     if(el){
         if (k===f) {
@@ -481,7 +489,7 @@ export function applyFilter(f){
 
       // Rebuild the UI to only contain the elements for the active filter
       if (typeof S !== 'undefined' && S.matches && S.matches.length > 0) {
-          if (f === 'all' || f === 'live' || f === 'upcoming') {
+          if (f === 'all' || f === 'live') {
               buildEPG(S.matches);
           }
       }
@@ -495,7 +503,7 @@ export function applyFilter(f){
 export function openMultiviewTab() {
     var favPage = document.getElementById('fav-page');
     if (favPage) favPage.style.display = 'none';
-    ['all','live','upcoming','fav','options','logs','script'].forEach(function(k){
+    FILTERS.forEach(function(k){
       var el=document.getElementById('filter-'+k);
       if(el){
           el.classList.remove('active-toggle');

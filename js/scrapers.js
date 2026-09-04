@@ -1,7 +1,7 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './extractors.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName } from './db.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint } from './config.js';
+import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
 import { S, addScrapeLog, favTeams, matchCardCache } from './state.js';
@@ -1127,6 +1127,115 @@ export function parseMethstreams(html, pageUrl) {
    .img-icone      → icône de ligue (20x)
 ═══════════════════════════════════════ */
 
+/* streamed.pk — la seule source qui expose une API JSON plutôt que des pages à deviner.
+
+   Pourquoi elle a été ajoutée : le catch n'était couvert par personne (0 match dans le
+   cache du 3 septembre 2026, les pages AEW/WWE de Methstreams étant des calendriers vides
+   qui annoncent « les liens sont ajoutés 1 h avant l'événement »), la boxe ne tenait qu'à
+   6 matchs, et le football universitaire à 43. Cette source seule annonce 102 matchs de
+   football américain et porte AEW, WWE, TNA, la boxe et l'UFC dans une même catégorie.
+
+   `/api/matches/<catégorie>` donne les matchs ; les flux vivent derrière un second appel,
+   `/api/stream/<source>/<id>`, qu'on pose en `matchUrl` : la phase 2 du script serveur le
+   télécharge comme n'importe quelle page et le moteur d'extraction y lit les `embedUrl`.
+   On ne fabrique PAS ces adresses à la main, bien que leur forme soit régulière : un
+   événement encore lointain est listé sans aucun flux (vérifié sur un combat de boxe à
+   venir), et les inventer donnerait des liens morts. */
+export function parseStreamed(json, pageUrl) {
+  var data;
+  try { data = JSON.parse(json); } catch (e) { return []; }
+  if (!Array.isArray(data)) return [];
+
+  var matches = [];
+  data.forEach(function(ev) {
+      if (!ev || !ev.title) return;
+      var sources = Array.isArray(ev.sources) ? ev.sources.filter(function(s) { return s && s.source && s.id; }) : [];
+      if (!sources.length) return;   // sans source, aucun flux à aller chercher
+
+      /* Les identifiants de flux portent la ligue (`live_cfb_…`, `live_nfl_…`), plus
+         précise que la catégorie de l'API qui met tout le football américain ensemble
+         et range AEW, WWE, boxe et UFC sous un même « fight ». */
+      var idHint = sources.map(function(s) { return s.id; }).join(' ');
+      var league = leagueOfStreamedEvent(ev, idHint);
+
+      var teams = String(ev.title).split(/\s+(?:vs\.?|-)\s+/i);
+      var home = (teams[0] || '').replace(/\s+/g, ' ').trim();
+      var away = teams.length > 1 ? teams.slice(1).join(' ').replace(/\s+/g, ' ').trim() : '';
+      if (!home) return;
+
+      var startTime = '00:00', matchDate = null, status = 'upcoming';
+      var ts = Number(ev.date);
+      if (isFinite(ts) && ts > 0) {
+          var d = new Date(ts);
+          startTime = getEstTimeStrFromDate(d);
+          matchDate = getEstDateStrFromDate(d);
+          if (Date.now() >= d.getTime() && Date.now() - d.getTime() < 4 * 3600 * 1000) status = 'live';
+      }
+
+      var api = (pageUrl || STREAMED_URL).replace(/\/api\/matches\/.*$/, '/');
+      var urls = sources.map(function(s) {
+          return resolveUrl('api/stream/' + encodeURIComponent(s.source) + '/' + encodeURIComponent(s.id), api);
+      });
+
+      matches.push({
+          id: 'std_' + String(ev.id || Math.random().toString(36).substr(2, 9)),
+          homeTeam: getOfficialTeamName(home),
+          awayTeam: away ? getOfficialTeamName(away) : '',
+          league: formatLeagueName(league),
+          flag: lgFlag(league),
+          color: lgColor(league),
+          startTime: startTime,
+          matchDate: matchDate,
+          durationMinutes: getLeagueDuration(league),
+          status: status,
+          matchUrl: urls[0],
+          altUrls: urls.slice(1),
+          streamLinks: [],
+          streamsLoaded: false,
+          source: 'streamed'
+      });
+  });
+  return matches;
+}
+
+/* Ligue d'un événement streamed.pk. L'ordre compte : « AEW Saturday Night Collision »
+   doit devenir AEW et non « Boxing » parce que la catégorie de l'API est « fight ». */
+export function leagueOfStreamedEvent(ev, idHint) {
+  var title = String((ev && ev.title) || '');
+  var hint = String(idHint || '');
+  if (/\baew\b/i.test(title)) return 'AEW';
+  if (/\bwwe\b|smackdown|wrestlemania|\bnxt\b|monday night raw/i.test(title)) return 'WWE';
+  if (/\btna\b|impact wrestling/i.test(title)) return 'TNA';
+  if (/\bufc\b|contender series|dana white/i.test(title)) return 'UFC';
+  if (/live_cfb/i.test(hint)) return 'CFB';
+  if (/live_nfl/i.test(hint)) return 'NFL';
+  if (/\bnfl\b/i.test(title)) return 'NFL';
+  if (/live_nba/i.test(hint)) return 'NBA';
+  if (/live_nhl/i.test(hint)) return 'NHL';
+  if (/live_mlb/i.test(hint)) return 'MLB';
+
+  var cat = String((ev && ev.category) || '');
+  if (cat === 'fight') return 'Boxing';
+  if (cat === 'american-football') {
+      /* La source mêle universitaire et professionnel sous une seule catégorie. Sans
+         indice dans l'identifiant, on interroge la base d'équipes : elle recense les 32
+         clubs de la NFL, pas les centaines d'équipes universitaires. Un nom qu'elle
+         reconnaît comme NFL l'est ; un nom qu'elle ignore est universitaire. Ranger un
+         match de NFL sous CFB fausserait la catégorie que l'utilisateur consulte le plus. */
+      var sides = String(title).split(/\s+(?:vs\.?|-|at)\s+/i);
+      for (var i = 0; i < sides.length; i++) {
+          if (leagueOfTeamName(sides[i].trim()) === 'nfl') return 'NFL';
+      }
+      return 'CFB';
+  }
+  if (cat === 'basketball') return 'Basketball';
+  if (cat === 'hockey') return 'Hockey';
+  if (cat === 'baseball') return 'Baseball';
+  if (cat === 'football') return 'Soccer';
+  if (cat === 'motor-sports') return 'Motor';
+  return cat ? cat.replace(/-/g, ' ') : 'Sports';
+}
+
 export function parseMlbbite(html) {
     var matches = [];
     try {
@@ -1812,6 +1921,9 @@ export function normalizeStreamUrl(url) {
    si ce lien est déjà présent. */
 export function matchPageFallbackLink(matchUrl, existing) {
     if (!matchUrl) return [];
+    // Un point d'API n'affiche que du JSON : le proposer comme page à ouvrir serait un
+    // lien mort déguisé en lien jouable.
+    if (isApiEndpoint(matchUrl)) return [];
     if ((existing || []).some(function(l) { return l && l.url === matchUrl; })) return [];
     var siteName = matchUrl;
     try { siteName = new URL(matchUrl).hostname.replace(/^(www|v2)\./, ''); } catch (e) {}
@@ -2396,8 +2508,9 @@ export function extractStreamLinks(html, m) {
         return (b.score || 0) - (a.score || 0);
     });
 
-    // 6. Ultime fallback : Si la source ne donne vraiment aucun autre flux et qu'on a le matchUrl.
-    if(links.length===0 && m.matchUrl){
+    // 6. Ultime fallback : Si la source ne donne vraiment aucun autre flux et qu'on a le
+    //    matchUrl — sauf s'il s'agit d'un point d'API, qui n'afficherait que du JSON.
+    if(links.length===0 && m.matchUrl && !isApiEndpoint(m.matchUrl)){
         var siteName = m.matchUrl;
         try { siteName = new URL(m.matchUrl).hostname.replace(/^(www|v2)\./, ''); } catch(e) {}
         links.push({name:'Page du match sur ' + siteName, quality:'', lang:'', url:m.matchUrl, icon:'🔗', topLevel: true});
