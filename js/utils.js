@@ -2,6 +2,7 @@ import { fetchSubPages } from './scrapers.js';
 import { S } from './state.js';
 import { PROXIES, resolveUrl } from './config.js';
 import { inspectPageContent, orderProxies, recordProxyResult, DEFAULT_PROXY_TIMEOUT } from './fetcher.js';
+import { getBridgeStatus, fetchViaBridge } from './embed-bridge.js';
 import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
 import { userPrefs, buildEPG } from './ui.js';
 import { openFavPage } from './main.js';
@@ -192,77 +193,26 @@ export function resolveStreamUrl(url) {
             return;
         }
 
-        // Standard Hardcoded Fallback for Aggregate Sites
-        var lowerUrl = url.toLowerCase();
-        var isAggregateSite = lowerUrl.includes('footybite') || lowerUrl.includes('livematchhub') || lowerUrl.includes('totalsportek') || lowerUrl.includes('streameast') || lowerUrl.includes('buffstreams') || lowerUrl.includes('methstreams') || lowerUrl.includes('vipleague') || lowerUrl.includes('sportsurge') || lowerUrl.includes('mlbbite') || lowerUrl.includes('nflbite') || lowerUrl.includes('streamonsport') || lowerUrl.includes('onhockey');
+        /* Rien d'autre à faire ici : l'adresse est rendue telle quelle.
 
-        if (isAggregateSite && typeof fetchPage === 'function') {
-            fetchPage(url).then(function(html) {
-                var doc = new DOMParser().parseFromString(html, 'text/html');
+           Cette fonction contenait un second moteur d'extraction, écrit à la main :
+           première <iframe> dont le `src` ne contenait pas « ads », plus des expressions
+           régulières sur les charges Next.js (`directStreams`, `iframeStreams`). Il était
+           déclenché par une LISTE FIGÉE DE DOUZE DOMAINES (`isAggregateSite`) — or ces
+           sources changent d'adresse plusieurs fois par saison, et la liste cessait alors
+           silencieusement de correspondre.
 
-                // 1. Try to find an iframe directly
-                var iframes = doc.querySelectorAll('iframe');
-                var bestIframeSrc = null;
-                for (var i = 0; i < iframes.length; i++) {
-                    var src = iframes[i].getAttribute('src');
-                    if (src && src.indexOf('http') === 0 && src.indexOf('ads') < 0) {
-                        bestIframeSrc = src;
-                        break;
-                    }
-                }
+           Tout cela est déjà fait, en mieux, par js/extractors.js : six stratégies de
+           récolte, un pointage, aucun nom de site en dur, et des tests. Et les deux
+           appelants de resolveStreamUrl enchaînent justement sur ce moteur —
+           `resolveBlockedEmbed` pour le Multivision, `scrapeMatchFlux` pour l'ajout
+           manuel d'un flux. Le moteur à la main passait donc AVANT le bon et le
+           court-circuitait quand il croyait avoir trouvé.
 
-                if (bestIframeSrc) {
-                    var finalSrc = bestIframeSrc;
-                    if(typeof resolveUrl === 'function') {
-                        finalSrc = resolveUrl(finalSrc, url);
-                    } else {
-                        if (!finalSrc.startsWith('http')) finalSrc = new URL(finalSrc, url).href;
-                    }
-                    resolve(finalSrc);
-                    return;
-                }
-
-                // 2. Try to parse Next.js payloads (Footybite, Streameast, Buffstreams)
-                var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
-                var matchData;
-                var concatenatedData = "";
-                while ((matchData = scriptRegex.exec(html)) !== null) {
-                    var chunk = matchData[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
-                    concatenatedData += chunk;
-                }
-
-                if (concatenatedData) {
-                    var directMatch = /"directStreams":(\[.*?\])/.exec(concatenatedData);
-                    var iframeMatch = /"iframeStreams":(\[.*?\])/.exec(concatenatedData);
-
-                    var streams = [];
-                    if (iframeMatch) {
-                        try { streams = streams.concat(JSON.parse(iframeMatch[1])); } catch(e) {}
-                    }
-                    if (directMatch) {
-                        try { streams = streams.concat(JSON.parse(directMatch[1])); } catch(e) {}
-                    }
-
-                    var validStream = streams.find(function(s) { return s.src || s.link; });
-                    if (validStream) {
-                        var streamUrl = validStream.src || validStream.link;
-                        if(typeof resolveUrl === 'function') {
-                            streamUrl = resolveUrl(streamUrl, url);
-                        } else {
-                            if (!streamUrl.startsWith('http')) streamUrl = new URL(streamUrl, url).href;
-                        }
-                        resolve(streamUrl);
-                        return;
-                    }
-                }
-
-                resolve(url);
-            }).catch(function(e) {
-                resolve(url);
-            });
-        } else {
-            resolve(url);
-        }
+           Restent ici les seules conversions qu'aucun extracteur ne peut deviner, parce
+           qu'elles tiennent à la forme d'URL d'un service : YouTube, Twitch, et les règles
+           définies par l'utilisateur dans l'Investigateur. */
+        resolve(url);
     });
 }
 
@@ -310,7 +260,40 @@ export function fetchPage(url, opts){
       if (INFLIGHT[url]) return INFLIGHT[url];
   }
 
-  var p = new Promise(function(resolve, reject){
+  /* Le pont du script utilisateur passe AVANT les proxys quand il est là.
+
+     Il n'est pas soumis à la politique d'origine croisée : il ne dépend donc d'aucun
+     service tiers, contrairement aux proxys CORS publics qui tombent tous en même temps.
+     Relevé du 4 septembre 2026, sur `example.com` comme sur les sites sources :
+     allorigins rend 500/522, codetabs 522, et proxy.cors.sh est passé derrière un
+     challenge Cloudflare qui rend 403 dès qu'un en-tête Origin est présent — c'est-à-dire
+     pour toute requête venue d'un navigateur. Les quatre transports étant hors service,
+     PLUS AUCUNE extraction ne fonctionnait : ni la recherche de flux d'un match, ni la
+     résolution d'un lien d'agrégateur, ni le tour de passe-passe, qui partagent tous
+     `fetchPage`.
+
+     Le pont existait déjà et était éprouvé, mais n'était câblé que dans le tour de
+     passe-passe. Le placer ici répare toutes ces voies d'un coup, pour qui a le script.
+     En cas d'échec on retombe sur les proxys : le pont n'est pas un point de passage
+     obligé, seulement le premier essayé. */
+  function fetchViaBridgeFirst() {
+      var bridge = null;
+      try { bridge = getBridgeStatus(); } catch (e) {}
+      if (!bridge || !bridge.available) return Promise.reject(new Error('pont absent'));
+      return fetchViaBridge(url).then(function(res) {
+          var html = res && res.html;
+          if (!html || String(html).length < 200) throw new Error('pont : réponse vide');
+          return html;
+      });
+  }
+
+  var p = fetchViaBridgeFirst().then(function(html) {
+      lg('OK pont script utilisateur', 'len=' + html.length);
+      S.proxy = 'script';
+      return html;
+  }).catch(function() { return fetchViaProxies(); });
+
+  function fetchViaProxies() { return new Promise(function(resolve, reject){
     var order = orderProxies(PROXIES, proxyHealth, url, Date.now());
     var errs = [], launched = 0, pending = 0, done = false, hedgeTimer = null;
     var controllers = [];
@@ -382,7 +365,7 @@ export function fetchPage(url, opts){
         hedgeTimer = setTimeout(launchNext, HEDGE_DELAY);
     }
     launchNext();
-  });
+  }); }
 
   INFLIGHT[url] = p;
   p.then(function(html) { PAGE_CACHE[url] = { t: Date.now(), html: html }; pruneCache(); })
