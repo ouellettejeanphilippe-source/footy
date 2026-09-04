@@ -34,7 +34,11 @@ export var SOURCE_MIRRORS = {
     streamed: ['https://streamed.pk/', 'https://streamed.su/']
 };
 
-var SOURCE_VAR_NAMES = {
+/* Clé de domains.json portant l'URL de chaque source. Exportée pour que le script
+   serveur puisse RÉÉCRIRE ce fichier quand il découvre qu'un domaine est mort et
+   qu'un miroir répond : sans cela, l'apprentissage restait dans l'exécution en cours
+   et chaque lancement repayait le délai d'attente du domaine mort. */
+export var SOURCE_VAR_NAMES = {
     footybite: 'SITE', mlbbite: 'MLBBITE_PLUS_URL', sportsurge: 'SPORTSURGE_URL',
     buffstreams: 'BUFFSTREAMS_URL', streameast: 'STREAMEAST_URL', onhockey: 'ONHOCKEY_URL', vipleague: 'VIPLEAGUE_URL',
     methstreams: 'METHSTREAMS_URL', streamed: 'STREAMED_URL'
@@ -60,6 +64,38 @@ export function applySourceUrl(id, url) {
     for (var i = 0; i < SCRAPERS_CONFIG.length; i++) {
         if (SCRAPERS_CONFIG[i].id === id) SCRAPERS_CONFIG[i].url = url;
     }
+}
+
+/* Faut-il retenir l'adresse qui a répondu comme nouvelle adresse principale ?
+
+   Répondre ne suffit pas : un domaine expiré puis racheté rend un 200 avec une page de
+   parking. Le promouvoir sur ce seul critère remplacerait une source vivante par une
+   source morte, en reléguant au passage le miroir qui marchait — l'inverse exact du
+   but. On exige donc qu'elle ait LIVRÉ DES MATCHS. */
+export function shouldPromoteSource(report, finding) {
+    if (!report || !finding) return false;
+    if (!finding.winner) return false;          // aucune adresse n'a répondu
+    if (!report.ok) return false;
+    return (report.matches || 0) > 0;
+}
+
+/* Nouvel ordre d'essai d'une source après une exécution, du plus prometteur au moins.
+
+   L'adresse qui a répondu passe en tête. Celles qui ont ÉCHOUÉ cette fois-ci vont en
+   queue plutôt que d'être supprimées : ces domaines reviennent souvent après une
+   coupure, mais tant qu'ils sont morts, les garder devant ferait repayer leur délai
+   d'attente à chaque exécution horaire. Les candidats ni gagnants ni testés (on s'arrête
+   au premier qui répond) gardent leur rang entre les deux.
+
+   Aucune adresse n'est inventée : la sortie est une permutation de l'entrée. */
+export function reorderCandidates(winner, candidates, dead) {
+    var list = (candidates || []).filter(function(u, i, a) { return u && a.indexOf(u) === i; });
+    if (!winner) return list;
+    var morts = dead || [];
+    var estMort = function(u) { return morts.indexOf(u) >= 0; };
+    return [winner]
+        .concat(list.filter(function(u) { return u !== winner && !estMort(u); }))
+        .concat(list.filter(function(u) { return u !== winner && estMort(u); }));
 }
 
 /* Liste ordonnée des URLs à essayer pour une source : URL courante puis miroirs. */

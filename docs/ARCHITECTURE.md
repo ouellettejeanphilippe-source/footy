@@ -43,6 +43,34 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - **Utilisé par** : `index.html` (enregistrement du SW).
 - **Notes** : réseau d'abord, cache en repli. Voir « Service Worker » plus bas.
 
+### Promotion automatique des miroirs
+
+Les domaines de ces sources changent plusieurs fois par saison : c'est la première cause
+de panne silencieuse. `domains.json` (racine du dépôt) est la surcharge vivante des
+adresses ; le navigateur la lit au démarrage depuis `raw.githubusercontent.com`.
+
+Jusqu'ici elle n'était mise à jour qu'à la main. `scripts/scrape_streams.mjs` **lit
+maintenant ce fichier au démarrage** (comme le navigateur) puis le **réécrit** avec ce
+qu'il a constaté, et le workflow horaire le commite au même titre que `data/streams.json`.
+
+Deux règles gouvernent l'écriture :
+
+1. **Aucune adresse n'est inventée.** La sortie de `reorderCandidates` est une
+   permutation de l'entrée : on réordonne les candidats déjà déclarés, jamais on n'en
+   découvre. Le script ne peut donc pas être détourné vers un domaine arbitraire.
+2. **Répondre ne suffit pas** (`shouldPromoteSource`). Un domaine expiré puis racheté rend
+   un 200 avec une page de parking ; le promouvoir remplacerait une source vivante par une
+   source morte en reléguant le miroir qui marchait. On exige des **matchs livrés**.
+
+Cette seconde règle vaut aussi pendant la lecture : le script ne s'arrête plus au premier
+succès HTTP, il passe au miroir suivant tant qu'aucun match ne sort. Une source en bonne
+santé livre dès le premier candidat et ne paie rien de plus ; seule une source en panne
+coûte des essais supplémentaires, ce qui est le moment où on veut les payer.
+
+Un domaine mort est **relégué en queue, pas supprimé** : ces adresses reviennent après une
+coupure, mais tant qu'elles sont mortes, les garder devant ferait repayer leur délai
+d'attente à chaque exécution horaire.
+
 ### `multiview-cleaner.user.js`
 - **Rôle** : Script Tampermonkey injecté dans les iframes de stream (cross-origin si possible/configuré) pour masquer les pubs via CSS, et gérer le volume audio/click to focus via `postMessage`. Il sert aussi de pont de téléchargement (`GM_xmlhttpRequest`) dans la fenêtre principale.
 
