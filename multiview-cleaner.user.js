@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  Nettoie les lecteurs encadres dans le Multiview, et sert de pont pour afficher les pages qui refusent l'iframe (X-Frame-Options), Firefox inclus.
+// @version      1.3
+// @description  Nettoie les lecteurs encadres dans le Multiview, remplace le bac a sable quand il est leve, et sert de pont pour afficher les pages qui refusent l'iframe (X-Frame-Options), Firefox inclus.
 // @author       Jules
 // @match        *://*/*
 // @allFrames    true
@@ -28,6 +28,22 @@
     let cleaned = false;
     let mainPlayerBase = null;
 
+    /* Ce que le bac à sable de l'iframe faisait, rendu ici à la main.
+
+       Certains hôtes REFUSENT de jouer dans une iframe en bac à sable et affichent
+       « SANDBOX IFRAME NOT ALLOWED » à la place du lecteur. Le Multivision offre donc de
+       lever le bac à sable pour ces domaines (bouton 🛡️ sur la tuile) — mais lever le bac
+       à sable, c'est rendre à la page ses fenêtres surgissantes et le droit de détourner
+       l'onglet entier.
+
+       Sauf si ce script tourne dans la page : il y est, lui, et il peut reprendre les deux
+       protections. C'est le seul endroit d'où c'est possible — l'application, séparée par
+       une origine croisée, ne peut rien imposer au contenu de l'iframe.
+
+       Ce n'est pas équivalent à un vrai bac à sable : une page peut redéfinir ce qu'on
+       écrase, et une CSP stricte peut refuser le script injecté. C'est un filet, pas un
+       mur. Mais entre lever le bac à sable avec ce script et le lever sans, la différence
+       est réelle. */
     function injectPopupBlocker() {
         // Injecter un script pour bloquer window.open dans le contexte de la page principale (hors bac à sable Tampermonkey)
         const script = document.createElement('script');
@@ -36,10 +52,57 @@
                 console.log('[Multiview Cleaner] Popup bloqué (window.open)');
                 return null;
             };
+
+            /* Détournement de l'onglet entier : le travers le plus pénible de ces sites, et
+               ce que 'allow-top-navigation' refusait quand le bac à sable était posé. On
+               rend 'window.top' et 'window.parent' inertes en écriture pour ce cadre.
+               Chaque piège est indépendant : si l'un est refusé par la page, les autres
+               tiennent quand même. */
+            try {
+                const bloque = (quoi) => {
+                    console.log('[Multiview Cleaner] Navigation de plus haut niveau bloquée (' + quoi + ')');
+                };
+                for (const cible of ['top', 'parent']) {
+                    try {
+                        const ref = window[cible];
+                        if (!ref || ref === window) continue;
+                        Object.defineProperty(window, cible, {
+                            configurable: true,
+                            get() {
+                                return new Proxy(ref, {
+                                    get(o, p) {
+                                        if (p === 'location') {
+                                            return new Proxy({}, {
+                                                get: (_, q) => (q === 'href' ? '' : () => bloque(cible + '.location.' + String(q))),
+                                                set: () => { bloque(cible + '.location'); return true; }
+                                            });
+                                        }
+                                        const v = Reflect.get(o, p);
+                                        return typeof v === 'function' ? v.bind(o) : v;
+                                    },
+                                    set(o, p) { if (p === 'location') { bloque(cible + '.location'); return true; } return Reflect.set(o, p, arguments[2]); }
+                                });
+                            }
+                        });
+                    } catch (e) {}
+                }
+            } catch (e) {}
         `;
         (document.head || document.documentElement).appendChild(script);
         // Clean up the script tag to keep DOM tidy
         script.remove();
+
+        /* Un lien 'target="_top"' ou '_parent' détourne l'onglet sans passer par
+           window.open : on le ramène au cadre courant. Le gestionnaire de clic ci-dessous
+           couvrait déjà '_blank', pas ceux-là. */
+        document.addEventListener('click', function(e) {
+            let t = e.target;
+            while (t && t.tagName !== 'A') t = t.parentElement;
+            if (t && (t.target === '_top' || t.target === '_parent')) {
+                t.target = '_self';
+                console.log('[Multiview Cleaner] Lien de détournement d\'onglet ramené au cadre', t.href);
+            }
+        }, true);
 
         // Intercepter et bloquer les clics sur les liens ouvrant de nouveaux onglets
         document.addEventListener('click', function(e) {

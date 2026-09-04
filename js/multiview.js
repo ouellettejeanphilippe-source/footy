@@ -97,13 +97,26 @@ function buildSandboxToggle(finalUrl, recharger) {
     btn.className = 'mv-sandbox-btn';
     var peindre = function() {
         var leve = isSandboxExempt(finalUrl);
+        /* Le script utilisateur tourne DANS la page tierce : lui seul peut y reprendre ce
+           que le bac à sable imposait — écraser `window.open`, neutraliser la navigation
+           de plus haut niveau. Quand il est là, lever le bac à sable ne laisse pas la page
+           sans garde-fou, et l'infobulle doit le dire : c'est ce qui distingue une levée
+           raisonnable d'une capitulation. */
+        var pont = false;
+        try { pont = !!(getBridgeStatus() || {}).available; } catch (e) {}
         btn.textContent = leve ? '🔓' : '🛡️';
         btn.classList.toggle('leve', leve);
+        btn.classList.toggle('couvert', leve && pont);
         btn.title = leve
-            ? 'Bac à sable LEVÉ pour ' + host + ' — fenêtres surgissantes et détournement '
-              + 'd\'onglet redeviennent possibles. Cliquez pour le remettre.'
+            ? 'Bac à sable LEVÉ pour ' + host + '. '
+              + (pont
+                 ? 'Le script utilisateur prend le relais dans la page : fenêtres surgissantes '
+                   + 'et détournement d\'onglet restent bloqués. Cliquez pour remettre le bac à sable.'
+                 : 'Sans le script utilisateur, plus rien ne bloque les fenêtres surgissantes ni '
+                   + 'le détournement d\'onglet. Cliquez pour remettre le bac à sable.')
             : 'Ce lecteur reste noir ou affiche « sandbox iframe not allowed » ? '
-              + 'Cliquez pour lever le bac à sable sur ' + host + ' et recharger.';
+              + 'Cliquez pour lever le bac à sable sur ' + host + ' et recharger.'
+              + (pont ? ' Le script utilisateur reprendra les protections.' : '');
         btn.setAttribute('aria-label', btn.title);
     };
     peindre();
@@ -1576,7 +1589,24 @@ export function updateMultivisionLayout() {
                 var lecteurPret = (s && typeof s.playerUrl === 'string' && /^https?:/i.test(s.playerUrl))
                     ? s.playerUrl : '';
 
-                var isTopLevel = !lecteurPret && isMatchOrLeaguePage(finalUrl);
+                /* Le serveur SAIT lesquels refusent l'iframe : le scraper horaire interroge
+                   chaque hôte et lit ses en-têtes (X-Frame-Options, CSP frame-ancestors),
+                   puis marque `topLevel` sur le lien. Le Multivision ignorait ce drapeau et
+                   ne se fiait qu'à la forme de l'adresse (isMatchOrLeaguePage) — une
+                   heuristique qui manque tout ce qui ne ressemble pas à une page de match.
+
+                   Relevé sur le cache du 4 septembre 2026 : 402 liens sur 1131 portaient
+                   `topLevel`, et pour eux le tour n'était JAMAIS tenté. L'iframe chargeait
+                   l'adresse bloquée et Firefox affichait sa propre page d'erreur (« … will
+                   not allow Firefox to display the page if another site has embedded it »),
+                   sans lecteur, sans bandeau, sans issue. Le cas signalé — v2.streameast.ch
+                   — est exactement celui-là : mesuré `X-Frame-Options: sameorigin` côté
+                   serveur, et pourtant chargé directement.
+
+                   La mesure prime donc sur l'heuristique, et l'heuristique reste en renfort
+                   pour les liens ajoutés à la main, que le serveur n'a jamais sondés. */
+                var bloqueParServeur = !!(s && s.topLevel);
+                var isTopLevel = !lecteurPret && (bloqueParServeur || isMatchOrLeaguePage(finalUrl));
 
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
