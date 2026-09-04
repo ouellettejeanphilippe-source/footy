@@ -23,7 +23,9 @@ initEmbedBridge();
    - « page » : aucun lecteur n'en est ressorti, on affiche la page reconstruite, qui peut
      être partielle. */
 function buildTrickBadge(via, finalUrl, mode, playerUrl) {
-    var canal = (via === 'script') ? 'le script utilisateur' : 'un proxy CORS';
+    var canal = (via === 'script') ? 'le script utilisateur'
+              : (via === 'serveur') ? 'la préparation horaire côté serveur'
+              : 'un proxy CORS';
     var badge = document.createElement('div');
     badge.className = 'mv-trick-badge' + (mode === 'lecteur' ? ' ok' : '');
     badge.title = mode === 'lecteur'
@@ -1562,7 +1564,19 @@ export function updateMultivisionLayout() {
                 if (s._currentUrl !== url) return;
                 container.innerHTML = '';
 
-                var isTopLevel = isMatchOrLeaguePage(finalUrl);
+                /* Lecteur déjà extrait par le scraper horaire (scripts/scrape_streams.mjs).
+                   C'est la voie normale depuis que l'extraction se fait côté serveur :
+                   Node ne connaît pas la politique d'origine croisée, il lit la page sans
+                   proxy ni script utilisateur, et écrit l'adresse du lecteur dans
+                   data/streams.json. Le navigateur n'a donc plus rien à télécharger — ce
+                   qui était le point de rupture : trois des quatre proxys CORS publics
+                   étaient morts, et sans le script installé il ne restait qu'un canal.
+                   Le tour côté client ne sert plus qu'aux liens ajoutés à la main et à
+                   ceux que la passe serveur n'a pas résolus. */
+                var lecteurPret = (s && typeof s.playerUrl === 'string' && /^https?:/i.test(s.playerUrl))
+                    ? s.playerUrl : '';
+
+                var isTopLevel = !lecteurPret && isMatchOrLeaguePage(finalUrl);
 
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
@@ -1637,6 +1651,19 @@ export function updateMultivisionLayout() {
                             container.appendChild(buildTrickFailureBar(finalUrl));
                         }
                     });
+                } else if (lecteurPret) {
+                    /* Le bac à sable et sa levée se rapportent au domaine DU LECTEUR :
+                       c'est lui qui joue, et lui qui refuserait d'être encadré. */
+                    var sbPret = playerSandboxFor(lecteurPret, userPrefs.playerSandbox);
+                    if (sbPret) iframe.setAttribute('sandbox', sbPret);
+                    else iframe.removeAttribute('sandbox');
+                    if (levee && levee.parentNode) levee.remove();
+                    var leveePret = buildSandboxToggle(lecteurPret, function() {
+                        fallbackToIframe(url, container, cell, s);
+                    });
+                    if (leveePret) container.appendChild(leveePret);
+                    iframe.src = lecteurPret;
+                    container.appendChild(buildTrickBadge('serveur', finalUrl, 'lecteur', lecteurPret));
                 } else {
                     iframe.src = finalUrl;
                 }

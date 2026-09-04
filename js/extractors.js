@@ -515,7 +515,19 @@ export function scoreCandidate(cand, ctx) {
     var pageHost = ctx.pageHost || hostOf(ctx.pageUrl || '');
     var path = '';
     var search = '';
-    try { var u = new URL(url); path = u.pathname || '/'; search = u.search || ''; } catch (e) { return { score: -999, kind: 'reject', reasons: ['adresse illisible'] }; }
+    var protocole = '';
+    try { var u = new URL(url); path = u.pathname || '/'; search = u.search || ''; protocole = u.protocol; } catch (e) { return { score: -999, kind: 'reject', reasons: ['adresse illisible'] }; }
+
+    /* Seul http(s) peut être un lecteur. `about:blank` passait : c'est une adresse
+       parfaitement valide pour `new URL`, sans hôte donc sans hôte suspect, et le simple
+       fait d'être trouvée dans une <iframe> lui donnait 45 points — assez pour dépasser
+       EMBED_THRESHOLD et être servie comme lecteur. Relevé le 4 septembre 2026 en sondant
+       les liens du cache : givemereddit.lat rendait « about:blank » comme meilleur
+       candidat, c'est-à-dire une tuile noire. Même raisonnement pour `javascript:`,
+       `data:` et `blob:`, qu'aucun lecteur légitime n'annonce comme source d'iframe. */
+    if (protocole !== 'http:' && protocole !== 'https:') {
+        return { score: -999, kind: 'reject', reasons: ['schéma non http : ' + protocole] };
+    }
 
     // Rejets nets : rien ne les rattrape.
     if (ASSET_RE.test(path)) return { score: -999, kind: 'reject', reasons: ['ressource statique'] };

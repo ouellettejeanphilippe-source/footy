@@ -348,6 +348,76 @@ for (const m of all) {
     }
 }
 
+/* ── Extraction des lecteurs, ICI plutôt que dans le navigateur ────────────
+   Le Multivision savait déjà extraire le lecteur d'une page qui refuse l'iframe —
+   l'extracteur (js/extractors.js) fonctionne, vérifié sur les pages réelles. Ce qui ne
+   fonctionnait pas, c'est le TRANSPORT : pour lire la page, le navigateur doit passer
+   par le script utilisateur ou par un proxy CORS public. Relevé le 4 septembre 2026 sur
+   la même cible, depuis un serveur, donc sans CORS en cause :
+
+     allorigins (raw)   HTTP 400
+     allorigins (json)  HTTP 522
+     codetabs           HTTP 522
+     proxy.cors.sh      HTTP 200 — le seul debout
+
+   Trois transports sur quatre étaient morts. Sans le script utilisateur installé, il ne
+   restait qu'un canal, et l'extraction échouait « toujours ».
+
+   Ici, rien de tout cela : Node ne connaît pas la politique d'origine croisée. On
+   télécharge chaque page de flux et on écrit l'adresse du lecteur dans le fichier. Le
+   navigateur n'a alors plus rien à télécharger ni à extraire — il charge directement le
+   lecteur. Le tour de passe-passe côté client reste en place pour les liens ajoutés à la
+   main et pour ceux que cette passe n'a pas résolus.
+
+   Mesuré sur le cache du 4 septembre : 120 liens en 21,6 s à concurrence 10, dont 34
+   livrent un lecteur intégrable. Borné en nombre et en temps pour rester dans l'heure. */
+const EXTRACT_CONCURRENCE = 12;
+const EXTRACT_MAX_LIENS = 700;
+const EXTRACT_TIMEOUT_MS = 12000;
+
+const extractors = await import('../js/extractors.js');
+
+const liensAResoudre = [];
+{
+    const vus = new Set();
+    for (const m of all) for (const l of (m.streamLinks || [])) {
+        if (!l.url || vus.has(l.url)) continue;
+        vus.add(l.url);
+        liensAResoudre.push(l.url);
+    }
+}
+const lecteurParLien = {};
+let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0;
+{
+    const cible = liensAResoudre.slice(0, EXTRACT_MAX_LIENS);
+    let curseur = 0;
+    const t0 = Date.now();
+    async function ouvrier() {
+        while (curseur < cible.length) {
+            const u = cible[curseur++];
+            try {
+                const r = await realFetch(u, {
+                    headers: { 'User-Agent': UA, 'Referer': refererFor(u) },
+                    redirect: 'follow',
+                    signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS)
+                });
+                const html = await r.text();
+                const cands = extractors.extractPlayers(html, u, { limit: 6 }) || [];
+                /* Même exigence que pickEmbeddablePlayer côté client : intégrable, et sur
+                   un autre hôte que la page — sinon on ne fait que réécrire l'adresse
+                   qu'on avait déjà. */
+                const hote = hostOf(u);
+                const gagnant = cands.find((c) => c.kind === 'embed' && hostOf(c.url) !== hote);
+                if (gagnant) { lecteurParLien[u] = gagnant.url; extraitsOk++; }
+                else extraitsVides++;
+            } catch (e) { extraitsErr++; }
+        }
+    }
+    await Promise.all(Array.from({ length: EXTRACT_CONCURRENCE }, ouvrier));
+    console.log(`Lecteurs extraits : ${extraitsOk}/${cible.length} liens sondés `
+        + `(${extraitsVides} sans lecteur, ${extraitsErr} injoignables) en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+}
+
 // ── 3. Écriture ───────────────────────────────────────────────────────────
 const out = {
     generatedAt: new Date().toISOString(),
@@ -368,7 +438,8 @@ const out = {
         altUrls: Array.isArray(m.altUrls) ? m.altUrls : [],
         scrapeError: m.scrapeError || null,
         streamLinks: (m.streamLinks || []).map((l) => Object.assign({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, source: l.source || m.source },
-            l.site ? { site: l.site } : {}, l.channel ? { channel: l.channel } : {}, l.topLevel ? { topLevel: true } : {}))
+            l.site ? { site: l.site } : {}, l.channel ? { channel: l.channel } : {}, l.topLevel ? { topLevel: true } : {},
+            lecteurParLien[l.url] ? { playerUrl: lecteurParLien[l.url] } : {}))
     }))
 };
 fs.mkdirSync('data', { recursive: true });
