@@ -841,8 +841,8 @@ export function parseOnHockey(html) {
                       matches.push({
                           id: 'onhockey_' + Date.now() + '_' + matchIndex++,
                           league: formatLeagueName(qualifyLeagueForSport(leagueName, 'nhl', 'Hockey')),
-                          homeTeam: getOfficialTeamName(home),
-                          awayTeam: getOfficialTeamName(away),
+                          homeTeam: getOfficialTeamName(home, false, 'hockey'),
+                          awayTeam: getOfficialTeamName(away, false, 'hockey'),
                           startTime: startTimeStr,
                           durationMinutes: getLeagueDuration('hockey'),
                           status: 'upcoming',
@@ -904,8 +904,8 @@ export function parseOnHockey(html) {
               matches.push({
                   id: 'onhockey_' + Date.now() + '_' + matchIndex++,
                   league: formatLeagueName(qualifyLeagueForSport(leagueName, 'nhl', 'Hockey')),
-                  homeTeam: getOfficialTeamName(home),
-                  awayTeam: getOfficialTeamName(away),
+                  homeTeam: getOfficialTeamName(home, false, 'hockey'),
+                  awayTeam: getOfficialTeamName(away, false, 'hockey'),
                   startTime: startTimeStr,
                   durationMinutes: getLeagueDuration('hockey'),
                   status: 'upcoming',

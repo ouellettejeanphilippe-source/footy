@@ -481,6 +481,12 @@ export function formatLeagueName(league) {
 }
 export var _normCache = {};
 
+/* Un blason authentique, par opposition à une vignette fabriquée à partir du nom.
+   Sert à départager deux entrées de la base qui désignent le même club. */
+export function isRealCrest(url) {
+    return !!url && String(url).indexOf('ui-avatars.com') < 0;
+}
+
 export function getLogo(teamName) {
     if(!teamName) return null;
     var lowerName = teamName.toLowerCase().trim();
@@ -501,17 +507,19 @@ export function getLogo(teamName) {
     var isEsports = targetLeagues.includes(lowerName) || lowerName.includes('esports') || lowerName.includes('e-sports');
     // the emoji fallback is handled by ui.js now using m.flag, but we could return 'emoji:🎮' here if we knew it's an esports team.
 
-    if (TEAM_DATA[lowerName] && TEAM_DATA[lowerName].logo) {
-        return TEAM_DATA[lowerName].logo;
-    }
-
+    /* La base contient des entrées EN DOUBLE, nées de noms mal analysés puis enregistrés
+       comme de nouvelles équipes : « parissaintgermain » à côté de « paris saint-germain »,
+       « rennes » à côté de « stade rennais », « blue jays » à côté de « toronto blue jays »,
+       « auxerre » à côté de « aj auxerre ». Le doublon ne porte qu'un blason généré, et
+       comme la recherche testait d'abord la clé exacte, il MASQUAIT le vrai blason du club.
+       On préfère donc, parmi les entrées qui se ramènent au même nom, celle qui a un vrai
+       blason. Relevé du 4 septembre : 4 clubs concernés. */
     var key = normName(teamName);
-    if (NORM_TEAM_KEYS[key]) {
-        var realKey = NORM_TEAM_KEYS[key];
-        if (TEAM_DATA[realKey] && TEAM_DATA[realKey].logo) {
-            return TEAM_DATA[realKey].logo;
-        }
-    }
+    var direct = TEAM_DATA[lowerName] && TEAM_DATA[lowerName].logo;
+    var viaNorm = NORM_TEAM_KEYS[key] && TEAM_DATA[NORM_TEAM_KEYS[key]] && TEAM_DATA[NORM_TEAM_KEYS[key]].logo;
+
+    if (direct && (isRealCrest(direct) || !viaNorm)) return direct;
+    if (viaNorm) return viaNorm;
 
     var aliasKey = TEAM_ALIASES[lowerName] || TEAM_ALIASES[key];
     if (aliasKey && TEAM_DATA[aliasKey] && TEAM_DATA[aliasKey].logo) {
@@ -544,8 +552,42 @@ if (typeof STATIC_TEAMS !== 'undefined') {
         }
     });
 }
-export function getOfficialTeamName(n, bypassFuzzyMatch) {
+/* Sport d'un nom d'équipe d'après la base, ou '' si inconnu. Sert à refuser une
+   résolution qui changerait de sport (voir getOfficialTeamName). */
+export function sportOfTeamName(name) {
+    var lig = leagueOfTeamName(name);
+    if (!lig) return '';
+    var l = String(lig).toLowerCase();
+    if (/nhl|hockey|khl|shl|liiga|ahl|pwhl/.test(l)) return 'hockey';
+    if (/nba|wnba|basket/.test(l)) return 'basket';
+    if (/mlb|baseball/.test(l)) return 'baseball';
+    if (/nfl|cfl|football americain|american football/.test(l)) return 'football-us';
+    return 'autre';
+}
+
+/* `sport` (3ᵉ argument) : sport du match, quand l'appelant le connaît.
+
+   Sans lui, la résolution est aveugle au contexte et traverse les sports. Cas relevé sur
+   le cache du 4 septembre : OnHockey annonce « Pelicans » pour un match de Liiga, et
+   l'alias « pelicans » — que seuls les New Orleans Pelicans revendiquent dans la base —
+   le résolvait en équipe NBA. La carte affichait donc « New Orleans Pelicans vs Vaasan
+   Sport » dans un championnat de hockey finlandais. Il ne s'agit pas d'une ambiguïté
+   entre deux entrées : le club de Lahti n'est simplement pas dans la base, et l'alias
+   d'un autre sport a comblé le vide.
+
+   Quand le sport est fourni et que la résolution aboutit à une équipe d'un AUTRE sport,
+   on rend le nom d'origine : non résolu, mais jamais faux — le même parti pris que pour
+   les alias ambigus plus haut dans ce module. */
+export function getOfficialTeamName(n, bypassFuzzyMatch, sport) {
     if (!n) return n;
+    if (sport) {
+        var resolu = getOfficialTeamName(n, bypassFuzzyMatch);
+        if (resolu && resolu !== n) {
+            var sr = sportOfTeamName(resolu);
+            if (sr && sr !== sport) return n;
+        }
+        return resolu;
+    }
 
     // For F1 Grand Prix events, remove the "F1 " prefix so it looks cleaner
     if (n.toLowerCase().startsWith('f1 ') || n.toLowerCase().includes('grand prix') || n.toLowerCase().includes('formula 1') || n.toLowerCase().includes('f1 - ')) {
@@ -676,7 +718,23 @@ window.STATIC_TEAM_MAP = STATIC_TEAM_MAP;
 window.getOfficialTeamName = getOfficialTeamName;
 window.normName = normName;
 
+/* Index des clés de TEAM_DATA par nom normalisé.
+
+   Plusieurs clés se ramènent au même nom, parce que des noms mal analysés ont été
+   enregistrés comme de nouvelles équipes : « parissaintgermain » à côté de
+   « paris saint-germain », « rennes » à côté de « stade rennais », « blue jays » à côté
+   de « toronto blue jays », « auxerre » à côté de « aj auxerre ». L'affectation simple
+   gardait la DERNIÈRE clé rencontrée — c'est-à-dire le doublon, qui ne porte qu'un blason
+   fabriqué à partir du nom. Le vrai blason du club était donc masqué.
+
+   On préfère l'entrée qui porte un vrai blason. À égalité, la première rencontrée gagne,
+   ce qui préserve l'ordre d'insertion de teams.js. */
 for (var key in TEAM_DATA) {
-    NORM_TEAM_KEYS[normName(key)] = key;
+    var nk = normName(key);
+    var dejaLa = NORM_TEAM_KEYS[nk];
+    if (!dejaLa) { NORM_TEAM_KEYS[nk] = key; continue; }
+    var ancienVrai = isRealCrest((TEAM_DATA[dejaLa] || {}).logo);
+    var nouveauVrai = isRealCrest((TEAM_DATA[key] || {}).logo);
+    if (nouveauVrai && !ancienVrai) NORM_TEAM_KEYS[nk] = key;
 }
 window.NORM_TEAM_KEYS = NORM_TEAM_KEYS;
