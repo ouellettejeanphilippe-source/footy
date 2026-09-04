@@ -1,6 +1,6 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './extractors.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
@@ -705,6 +705,34 @@ export function ONHOCKEY_SCHEDULE_URL() {
     return resolveUrl('schedule_table.php', ONHOCKEY_URL);
 }
 
+/* Qualifie le nom d'une compétition par le sport de la source qui la diffuse.
+
+   Beaucoup de noms existent dans plusieurs sports : « Champions League », « Club
+   Friendly », « Super Cup », « Malmö Arena Cup ». Rien dans le nom ne dit lequel, et
+   `sportOfLeague` — qui ne voit que le nom — les range tous en football à cause des mots
+   « league » et « cup ». Sur le cache du 4 septembre, les six matchs de la Champions
+   HOCKEY League étaient ainsi classés en football, et affichés avec lui.
+
+   Une source qui ne couvre qu'un sport connaît, elle, la réponse. La règle se corrige
+   donc d'elle-même : si le nom ne se classe pas déjà dans le sport de la source, on
+   l'annote. Une ligue déjà sans ambiguïté (« Liiga », « PWHL ») n'est pas touchée.
+
+   `sportOfLeague` lit ensuite le sport dans le nom annoté : le classement et l'affichage
+   sont corrigés du même coup, sans nouvel argument à faire circuler. */
+export var LEAGUE_REAL_NAMES = {
+    nhl: { 'champions league': 'Champions Hockey League' }
+};
+
+export function qualifyLeagueForSport(name, sport, sportWord) {
+    var n = String(name || '').trim();
+    if (!n || !sport || !sportWord) return n;
+    if (sportOfLeague(n) === sport) return n;   // déjà sans ambiguïté
+
+    var connu = (LEAGUE_REAL_NAMES[sport] || {})[n.toLowerCase()];
+    if (connu) return connu;
+    return n + ' (' + sportWord + ')';
+}
+
 export function parseOnHockey(html) {
   var doc = new DOMParser().parseFromString(html, 'text/html');
   var matches = [];
@@ -812,7 +840,7 @@ export function parseOnHockey(html) {
                       streamLinksArr = finalizeStreamLinks(streamLinksArr);
                       matches.push({
                           id: 'onhockey_' + Date.now() + '_' + matchIndex++,
-                          league: formatLeagueName(leagueName),
+                          league: formatLeagueName(qualifyLeagueForSport(leagueName, 'nhl', 'Hockey')),
                           homeTeam: getOfficialTeamName(home),
                           awayTeam: getOfficialTeamName(away),
                           startTime: startTimeStr,
@@ -875,7 +903,7 @@ export function parseOnHockey(html) {
 
               matches.push({
                   id: 'onhockey_' + Date.now() + '_' + matchIndex++,
-                  league: formatLeagueName(leagueName),
+                  league: formatLeagueName(qualifyLeagueForSport(leagueName, 'nhl', 'Hockey')),
                   homeTeam: getOfficialTeamName(home),
                   awayTeam: getOfficialTeamName(away),
                   startTime: startTimeStr,
