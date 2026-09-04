@@ -42,4 +42,8 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update hourly stream links cache"
-          file_pattern: "data/streams.json"
+          # domains.json est réécrit par le script quand un domaine meurt et qu'un
+          # miroir prend le relais : sans le commiter, l'apprentissage serait perdu à
+          # chaque exécution et le navigateur de l'utilisateur repartirait sur l'adresse
+          # morte, qu'il lit dans ce fichier au démarrage.
+          file_pattern: "data/streams.json domains.json"

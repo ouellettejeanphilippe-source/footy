@@ -52,18 +52,55 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { if (server) await new Promise((r) => server.close(r)); });
 
-/* Instant de capture des données du dépôt. Les tests figent l'horloge du navigateur
-   dessus : sans cela, ce que l'onglet Live contient dépend de l'heure à laquelle la suite
-   tourne. C'était sans conséquence tant que le filtre gardait tout ce qui avait commencé
-   dans les 24 dernières heures ; depuis qu'il se limite au direct et à l'heure qui vient,
-   une exécution à 4 h du matin trouverait une grille vide et ferait échouer des tests qui
-   n'ont rien à voir. L'en-tête de ce fichier promet un test déterministe : le temps en
-   fait partie. La valeur est relue dans le fichier, qui est régénéré chaque heure. */
+/* Instant sur lequel les tests figent l'horloge du navigateur.
+
+   Sans figeage, ce que l'onglet Live contient dépend de l'heure à laquelle la suite
+   tourne : depuis qu'il se limite au direct et à l'heure qui vient, une exécution à 4 h
+   du matin trouverait une grille vide et ferait échouer des tests qui n'ont rien à voir.
+
+   Une première version se calait sur le `generatedAt` du cache. Ce n'était pas assez :
+   le cache est régénéré chaque heure, et rien ne garantit qu'il y ait des matchs en
+   direct au moment précis où il a été produit — un cache de 5 h du matin donne une
+   grille vide, et le test des rails d'affiches tombe (constaté sur un cache généré à
+   23 h EST, où tout le programme était encore à venir).
+
+   On choisit donc l'instant D'APRÈS LES DONNÉES : celui où le plus de matchs sont en
+   cours ou imminents. Le calcul de l'heure locale passe par le même fuseau que
+   l'application (America/New_York), donc sans arithmétique d'heure d'été à la main. */
+const EST = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York', hourCycle: 'h23',
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+});
+
+function estParts(date) {
+  const p = Object.fromEntries(EST.formatToParts(date).map((x) => [x.type, x.value]));
+  return { jour: `${p.year}-${p.month}-${p.day}`, minutes: parseInt(p.hour, 10) * 60 + parseInt(p.minute, 10) };
+}
+
 function instantDesDonnees() {
-  const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'streams.json'), 'utf8'));
-  const t = Date.parse(d.generatedAt || '');
-  if (!Number.isFinite(t)) throw new Error('data/streams.json sans generatedAt exploitable');
-  return new Date(t);
+  const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'streams.json'), 'utf8'));
+  const matchs = (data.matches || []).filter((m) => /^\d{1,2}:\d{2}$/.test(m.startTime || ''));
+  const base = Date.parse(data.generatedAt || '');
+  if (!Number.isFinite(base)) throw new Error('data/streams.json sans generatedAt exploitable');
+  if (!matchs.length) return new Date(base);
+
+  // On balaie la journée par pas de 15 minutes et on retient l'instant le plus peuplé.
+  let meilleur = base, score = -1;
+  for (let pas = -24 * 4; pas <= 24 * 4; pas++) {
+    const t = base + pas * 15 * 60 * 1000;
+    const { jour, minutes } = estParts(new Date(t));
+    let n = 0;
+    for (const m of matchs) {
+      const [h, mn] = m.startTime.split(':').map(Number);
+      let diff = h * 60 + mn - minutes;
+      if (m.matchDate && m.matchDate !== jour) {
+        diff += Math.round((Date.parse(m.matchDate + 'T00:00:00Z') - Date.parse(jour + 'T00:00:00Z')) / 60000);
+      }
+      if (diff > -180 && diff <= 60) n++;   // en cours ou dans l'heure
+    }
+    if (n > score) { score = n; meilleur = t; }
+  }
+  return new Date(meilleur);
 }
 
 async function bootOffline(page) {
