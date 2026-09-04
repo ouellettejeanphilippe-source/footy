@@ -59,9 +59,17 @@ export var PLAYER_PATH_HINTS = [
     [/\/(watch|play)\b/i, 8]
 ];
 
-/* Chemins qui désignent une page de navigation (catégorie, ligue, index) plutôt
-   qu'un match ou un lecteur : « /nba-streams », « /indexcracked29 », « /league/x ». */
-export var NAV_PATH_RE = /\/[a-z-]*(streams?|cracked)\d*\/?$|\/(league|category|sport|sports|tag|schedule)\//i;
+/* Chemins qui désignent une page de navigation (catégorie, ligue, index) plutôt qu'un
+   match ou un lecteur : « /nba-streams », « /indexcracked29 », « /league/x ».
+   La classe autorise les chiffres : sans eux, « /watch-ligue-1-streams/ »,
+   « /watch-f1-streams/ » et « /watch-peruvian-liga-1-streams/ » passaient au travers, et
+   le menu du site se retrouvait attaché aux matchs comme s'il s'agissait de flux — un
+   match de football universitaire portait des liens vers la Ligue 1 et la F1. Relevé sur
+   le cache du 4 septembre 2026 : 180 liens de menu ainsi ramassés, pour 0 vrai lecteur
+   concerné par l'élargissement.
+   Les pages de match restent hors de portée grâce à l'exception posée à l'usage
+   (`-vs-`, `/game/`, `/embed`, `/watch/`) : « /watch/live/…-free-live-stream » la vise. */
+export var NAV_PATH_RE = /\/[a-z0-9-]*(streams?|cracked)\d*\/?$|\/(league|category|sport|sports|tag|schedule)\//i;
 
 export var EMBED_THRESHOLD = 30;   // au-dessus : jouable dans une iframe
 export var KEEP_THRESHOLD = 0;     // au-dessus : gardé, mais ouvert dans un onglet

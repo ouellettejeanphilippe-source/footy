@@ -187,6 +187,42 @@ async function main() {
         ok('même lecteur vu par deux stratégies → une entrée, provenance la plus forte');
     }
 
+    /* ── Navigation du site vs page de match ─────────────────────────────────
+       Le filtre de navigation n'acceptait que des slugs sans chiffre, si bien que
+       « /watch-ligue-1-streams/ » et « /watch-f1-streams/ » — le MENU de Sportsurge et
+       Soccersurge — étaient retenus comme des flux et attachés à n'importe quel match :
+       une rencontre de football universitaire portait des liens vers la Ligue 1 et la F1.
+       Relevé sur le cache du 4 septembre 2026 : 180 liens de menu ainsi ramassés. */
+    {
+        const PAGE = 'https://v2.sportsurge.net/watch-63166-cfb-rockford-regents-beloit-college/';
+        const ctx = { pageUrl: PAGE, pageHost: 'v2.sportsurge.net', matchUrl: PAGE, registry: null };
+        const verdict = (url) => X.scoreCandidate({ url, label: '', via: 'anchor' }, ctx).kind;
+
+        // Le menu du site, avec et sans chiffre dans le slug : rejeté dans les deux cas.
+        ['https://v2.sportsurge.net/watch-nfl-streams/',
+         'https://v2.sportsurge.net/watch-boxing-streams/',
+         'https://soccersurge.io/watch-ligue-1-streams/',
+         'https://soccersurge.io/watch-peruvian-liga-1-streams/',
+         'https://v2.sportsurge.net/watch-f1-streams/'].forEach((u) => {
+            assert.strictEqual(verdict(u), 'reject', 'page de menu retenue : ' + u);
+        });
+        ok('les pages de menu sont rejetées, chiffre dans le slug ou non');
+    }
+    {
+        /* L'élargissement ne devait pas emporter les vraies pages de match, qui finissent
+           elles aussi par « -stream ». C'est l'exception posée à l'usage (`/watch/`,
+           `-vs-`, `/game/`, `/embed`) qui les protège. */
+        const PAGE = 'https://mlbbite.plus/';
+        const ctx = { pageUrl: PAGE, pageHost: 'mlbbite.plus', matchUrl: PAGE, registry: null };
+        const verdict = (url) => X.scoreCandidate({ url, label: '', via: 'anchor' }, ctx).kind;
+
+        assert.notStrictEqual(verdict('https://mlbbite.plus/watch/live/milwaukee-brewers-at-chicago-cubs-34-free-live-stream'),
+            'reject', 'une page de match ne doit pas être prise pour du menu');
+        assert.notStrictEqual(verdict('https://embedsports.me/college-football/arkansas-pine-bluff-vs-25-missouri-stream-1'),
+            'reject', 'ni un lecteur dont le chemin finit par « stream-1 »');
+        ok('les pages de match et les lecteurs survivent au filtre de navigation');
+    }
+
     console.log(`\nTous les ${n} tests du moteur d'extraction passent.`);
 }
 
