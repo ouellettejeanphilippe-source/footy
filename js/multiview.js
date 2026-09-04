@@ -8,7 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
-import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX, PLAYER_SANDBOX } from './embed-bridge.js';
+import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX, PLAYER_SANDBOX, playerSandboxFor, isSandboxExempt, toggleSandboxException, sandboxHost } from './embed-bridge.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -79,6 +79,39 @@ function buildTrickFailureBar(finalUrl) {
         }
     });
     return bar;
+}
+
+/* Bouton de levée du bac à sable, posé sur chaque tuile.
+
+   Un hôte qui refuse de jouer en bac à sable affiche son propre message dans l'iframe
+   (« SANDBOX IFRAME NOT ALLOWED ») : l'application, qui n'a aucun accès au contenu d'une
+   origine croisée, ne peut ni le lire ni le deviner. Elle ne peut donc pas se rattraper
+   toute seule — d'où ce bouton, qui rend la manœuvre immédiate et la retient pour le
+   domaine. Il montre l'état courant : 🛡️ bac à sable posé, 🔓 levé. */
+function buildSandboxToggle(finalUrl, recharger) {
+    var host = sandboxHost(finalUrl);
+    if (!host) return null;
+    var btn = document.createElement('button');
+    btn.className = 'mv-sandbox-btn';
+    var peindre = function() {
+        var leve = isSandboxExempt(finalUrl);
+        btn.textContent = leve ? '🔓' : '🛡️';
+        btn.classList.toggle('leve', leve);
+        btn.title = leve
+            ? 'Bac à sable LEVÉ pour ' + host + ' — fenêtres surgissantes et détournement '
+              + 'd\'onglet redeviennent possibles. Cliquez pour le remettre.'
+            : 'Ce lecteur reste noir ou affiche « sandbox iframe not allowed » ? '
+              + 'Cliquez pour lever le bac à sable sur ' + host + ' et recharger.';
+        btn.setAttribute('aria-label', btn.title);
+    };
+    peindre();
+    btn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        toggleSandboxException(finalUrl);
+        peindre();
+        if (typeof recharger === 'function') recharger();
+    });
+    return btn;
 }
 
 
@@ -1540,8 +1573,14 @@ export function updateMultivisionLayout() {
                    chargement du document, le poser après ne changerait rien jusqu'au
                    rechargement suivant. La branche `srcdoc` le remplace ensuite par
                    EMBED_SANDBOX, plus strict, avant d'écrire son document. */
-                if (userPrefs.playerSandbox !== false) iframe.setAttribute('sandbox', PLAYER_SANDBOX);
+                var bacASable = playerSandboxFor(finalUrl, userPrefs.playerSandbox);
+                if (bacASable) iframe.setAttribute('sandbox', bacASable);
                 container.appendChild(iframe);
+
+                var levee = buildSandboxToggle(finalUrl, function() {
+                    fallbackToIframe(url, container, cell, s);
+                });
+                if (levee) container.appendChild(levee);
 
                 /* Le réglage s'appelle « Reconstruire les pages non intégrables » : il
                    gouverne la RECONSTRUCTION en `srcdoc`, pas l'extraction du lecteur.
@@ -1567,7 +1606,20 @@ export function updateMultivisionLayout() {
                             /* Cas courant : la page contenait son lecteur. On charge le
                                lecteur lui-même, dans une iframe ORDINAIRE — vraie origine,
                                cookies, référent. C'est une lecture normale, pas un
-                               document reconstruit : rien à mettre en bac à sable. */
+                               document reconstruit : rien à mettre en bac à sable.
+
+                               Le bac à sable et sa levée se rapportent alors au domaine
+                               DU LECTEUR, pas à celui de la page : c'est le lecteur qui
+                               refuse d'être encadré, et c'est donc son domaine que
+                               l'utilisateur exempte. */
+                            var sbLecteur = playerSandboxFor(res.playerUrl, userPrefs.playerSandbox);
+                            if (sbLecteur) iframe.setAttribute('sandbox', sbLecteur);
+                            else iframe.removeAttribute('sandbox');
+                            if (levee && levee.parentNode) levee.remove();
+                            var leveeLecteur = buildSandboxToggle(res.playerUrl, function() {
+                                fallbackToIframe(url, container, cell, s);
+                            });
+                            if (leveeLecteur) container.appendChild(leveeLecteur);
                             iframe.src = res.playerUrl;
                             container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
                         } else if (res && res.srcdoc && rebuildEnabled) {
@@ -1575,6 +1627,9 @@ export function updateMultivisionLayout() {
                                document vit à l'origine de l'application. Sans bac à
                                sable il lirait son localStorage et son DOM. */
                             iframe.setAttribute('sandbox', EMBED_SANDBOX);
+                            /* Aucune levée offerte ici : ce document vit à l'origine de
+                               l'application, le bac à sable n'y est pas négociable. */
+                            if (levee && levee.parentNode) levee.remove();
                             iframe.srcdoc = res.srcdoc;
                             container.appendChild(buildTrickBadge(res.via, finalUrl, 'page'));
                         } else {

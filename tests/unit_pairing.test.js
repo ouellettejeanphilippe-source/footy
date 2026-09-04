@@ -93,6 +93,75 @@ async function main() {
     ok('une équipe inconnue reçoit tout de même image et couleurs');
   }
 
+  // ── 3. Un libellé générique est une invitation à déduire, pas une ligue ───────
+  assert.strictEqual(db.isGenericLeagueLabel('Baseball'), true);
+  assert.strictEqual(db.isGenericLeagueLabel('Soccer'), true);
+  assert.strictEqual(db.isGenericLeagueLabel('MLB'), false);
+  assert.strictEqual(db.isGenericLeagueLabel('Ligue 1'), false);
+  ok('les noms de sport sont reconnus comme libellés génériques, pas les compétitions');
+
+  // ── 4. Les deux équipes désignent la ligue ────────────────────────────────────
+  /* Relevé du 4 septembre 2026 : 209 matchs portaient un libellé générique, dont les 29
+     de « Baseball » — tous de la MLB, affichés dans une section séparée de « MLB ». */
+  assert.strictEqual(db.leagueFromPairing('Baseball', 'Cleveland Guardians', 'Detroit Tigers'), 'mlb');
+  assert.strictEqual(db.leagueFromPairing('Soccer', 'Real Madrid', 'Real Betis'), 'la liga');
+  ok('deux équipes de la même ligue font remonter la ligue');
+
+  // ── 5. Une seule équipe connue ne suffit pas ──────────────────────────────────
+  assert.strictEqual(db.leagueFromPairing('Baseball', 'Detroit Tigers', 'Équipe Inconnue'), 'Baseball');
+  assert.strictEqual(db.leagueFromPairing('Soccer', 'Inconnu A', 'Inconnu B'), 'Soccer');
+  ok('une seule équipe connue, ou aucune, laisse le libellé intact');
+
+  // ── 6. La déduction ne traverse pas les sports ────────────────────────────────
+  /* Même famille de défaut que le point 1 : sans garde-fou, « Baseball » avec deux clubs
+     de football se verrait attribuer une ligue de football. */
+  assert.strictEqual(db.leagueFromPairing('Baseball', 'Real Madrid', 'Real Betis'), 'Baseball');
+  ok('le sport annoncé par le libellé est vérifié avant d\'accepter la ligue déduite');
+
+  // ── 7. Une ligue déjà nommée n'est jamais réécrite ────────────────────────────
+  assert.strictEqual(db.leagueFromPairing('Ligue 1', 'Real Madrid', 'Real Betis'), 'Ligue 1');
+  assert.strictEqual(db.leagueFromPairing('NHL', 'Detroit Tigers', 'Cleveland Guardians'), 'NHL');
+  ok('un libellé non générique passe tel quel, quoi que disent les équipes');
+
+  // ── 8. La ligue lève l'ambiguïté d'une ville seule ────────────────────────────
+  /* L'autre sens de l'appariement : « Houston » ne désigne rien à lui seul — Texans,
+     Astros, Rockets, Dynamo. Avec la ligue il ne reste qu'un candidat, ou aucun. */
+  assert.strictEqual(db.teamFromCityAndLeague('Houston', 'nfl'), 'Houston Texans');
+  assert.strictEqual(db.teamFromCityAndLeague('Houston', 'mlb'), 'Houston Astros');
+  assert.strictEqual(db.teamFromCityAndLeague('Houston', ''), '');
+  ok('une ville seule se résout par la ligue, et jamais sans elle');
+
+  // ── 9. Une ville ambiguë DANS la ligue reste non résolue ──────────────────────
+  /* « New York » compte deux équipes en MLB (Mets, Yankees) et trois en NFL : on
+     n'invente pas, le nom d'origine est conservé. */
+  assert.strictEqual(db.teamFromCityAndLeague('New York', 'mlb'), '');
+  assert.strictEqual(db.teamFromCityAndLeague('New York', 'nfl'), '');
+  ok('une ville que plusieurs équipes de la même ligue revendiquent n\'est pas tranchée');
+
+  // ── 10. Les trois axes appliqués ensemble ─────────────────────────────────────
+  var r = db.resolvePairing({ league: 'Baseball', homeTeam: 'Houston', awayTeam: 'Detroit Tigers' });
+  assert.strictEqual(r.league, 'mlb');
+  assert.strictEqual(r.homeTeam, 'Houston Astros');
+  assert.strictEqual(r.awayTeam, 'Detroit Tigers');
+  /* Rien à déduire : le triplet ressort intact, jamais vidé. */
+  var r2 = db.resolvePairing({ league: 'Soccer', homeTeam: 'Inconnu A', awayTeam: 'Inconnu B' });
+  assert.deepStrictEqual(r2, { league: 'Soccer', homeTeam: 'Inconnu A', awayTeam: 'Inconnu B' });
+  ok('resolvePairing enchaîne les deux sens et ne vide jamais un champ');
+
+  // ── 11. Un même championnat, un seul libellé ──────────────────────────────────
+  /* Relevé du 4 septembre 2026 : « Cfb » (66 matchs), « Ncaaf » (55) et « Ncaa Division 1
+     Football » (3) créaient TROIS sections pour un seul championnat, toutes classées au
+     niveau « other » faute d'alias, donc reléguées dans « Autres streams ». */
+  ['Cfb', 'CFB', 'Ncaaf', 'NCAAF', 'College Football', 'Ncaa Division 1 Football']
+    .forEach(function(v) {
+      assert.strictEqual(db.formatLeagueName(v), 'NCAA Football', v + ' devrait donner NCAA Football');
+    });
+  assert.strictEqual(db.leagueTier('NCAA Football'), 'secondary');
+  /* Idempotence : le libellé déjà normalisé doit repasser sans bouger, sinon le cache
+     déjà écrit dériverait à chaque chargement. */
+  assert.strictEqual(db.formatLeagueName(db.formatLeagueName('Cfb')), 'NCAA Football');
+  ok('les sigles du football universitaire se rejoignent sur une seule section, reconnue');
+
   console.log('unit_pairing: ' + n + ' groupes de tests OK');
   process.exit(0);
 }
