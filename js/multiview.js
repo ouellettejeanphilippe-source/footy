@@ -44,11 +44,22 @@ function buildTrickBadge(via, finalUrl, mode, playerUrl) {
    ce bandeau donne la sortie explicite. Un clic sur « Ouvrir » vaut constat d'échec de
    l'affichage intégré : on le note dans le registre d'intégrabilité (js/scrapers.js)
    pour ne plus perdre de temps sur cet hôte. */
+/* Bandeau d'échec. Le message distingue les deux causes, parce qu'elles n'appellent pas
+   la même action : si le pont du script est absent ET que les proxys sont hors service,
+   ce n'est pas cette page qui résiste — c'est que l'application n'a plus AUCUN moyen de
+   télécharger quoi que ce soit, et rien d'autre ne marchera non plus. Le 4 septembre
+   2026, les quatre transports étaient morts en même temps (allorigins 500/522, codetabs
+   522, proxy.cors.sh derrière un challenge Cloudflare) et l'interface n'en disait rien. */
 function buildTrickFailureBar(finalUrl) {
     var host = ''; try { host = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (e) {}
+    var pont = false;
+    try { pont = !!(getBridgeStatus() || {}).available; } catch (e) {}
+    var message = pont
+        ? '⚠️ Page non intégrable et tour de passe-passe indisponible.'
+        : '⚠️ Aucun moyen de télécharger la page : script utilisateur absent et proxys hors service.';
     var bar = document.createElement('div');
     bar.className = 'mv-embed-helper';
-    bar.innerHTML = '<span>⚠️ Page non intégrable et tour de passe-passe indisponible.</span>'
+    bar.innerHTML = '<span>' + esc(message) + '</span>'
         + '<span class="mv-embed-helper-actions">'
         + '<button data-act="open">🔗 Ouvrir</button>'
         + '<button data-act="script">🧩 Script</button>'
