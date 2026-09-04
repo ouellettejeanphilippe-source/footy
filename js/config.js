@@ -894,6 +894,75 @@ export function getEstDateStrFromDate(d) {
     return formatter.format(d);
 }
 
+/* Minutes signées entre maintenant et le coup d'envoi : négatif = déjà commencé.
+
+   Pourquoi une fonction plutôt que la soustraction d'heures qui traînait recopiée à
+   trois endroits : `startTime` est une heure du jour sans date, si bien qu'un match à
+   01:00 et un « maintenant » à 19:34 donnaient un écart de −1114 minutes. Le
+   rattrapage de minuit qui l'accompagnait (`if (currentMins >= 1380 && mMins <= 60)`)
+   ne couvrait que la fenêtre 23:00 → 01:00 et laissait passer tout le reste. Or les
+   matchs portent un `matchDate` : on s'en sert, et le décalage de jour se calcule sur
+   les dates civiles EST, sans que l'heure d'été n'intervienne puisqu'on ne prend
+   qu'une différence de jours entiers.
+
+   Rend `null` si l'heure est absente ou illisible — l'appelant décide quoi en faire
+   plutôt que d'hériter d'un 0 qui signifierait « commence maintenant ». */
+export function minutesUntilStart(m, now) {
+    var t = /^(\d{1,2}):(\d{2})$/.exec(String(m && m.startTime || '').trim());
+    if (!t) return null;
+    var startMins = parseInt(t[1], 10) * 60 + parseInt(t[2], 10);
+    if (startMins > 1439) return null;
+
+    now = now || new Date();
+    var cur = getEstTimeStrFromDate(now).split(':');
+    var diff = startMins - (parseInt(cur[0], 10) * 60 + parseInt(cur[1], 10));
+
+    var day = String(m && m.matchDate || '');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        var today = getEstDateStrFromDate(now);
+        if (day !== today) {
+            diff += Math.round((Date.parse(day + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 60000);
+        }
+    } else if (diff < -720) {
+        // Sans date, on retient l'occurrence la plus proche : à 23:30, un « 00:15 »
+        // est le lendemain, pas seize heures plus tôt.
+        diff += 1440;
+    }
+    return diff;
+}
+
+/* Un match commencé il y a plus de ce délai n'est plus en cours, quoi qu'en dise la
+   source. Quatre heures couvrent large : un match de football en dure deux, un match
+   de baseball ou un cinq sets rarement plus de quatre. Sans cette borne, un statut
+   `live` périmé — il y en avait 50 dans le cache d'un soir, dont un commencé 19 h plus
+   tôt — garde sa place dans l'onglet Live jusqu'au lendemain. */
+export var LIVE_MAX_DURATION_MIN = 240;
+
+/* « Dans l'heure » : la portée de l'onglet Live au-delà de ce qui est en cours. */
+export var LIVE_WINDOW_MIN = 60;
+
+/* Fenêtre d'avance pendant laquelle un match qui n'a pas encore commencé est déjà
+   montré comme en cours : le direct commence avant le coup d'envoi. */
+export var LIVE_GRACE_BEFORE_MIN = 15;
+
+/* En cours maintenant : soit la source l'annonce, soit l'heure est passée (ou tout
+   proche) — dans les deux cas à condition que ce ne soit pas terminé depuis longtemps. */
+export function isLiveNow(m, now) {
+    if (!m || m.status === 'finished') return false;
+    var diff = minutesUntilStart(m, now);
+    if (diff === null) return m.status === 'live';
+    if (diff <= -LIVE_MAX_DURATION_MIN) return false;
+    return m.status === 'live' || diff <= LIVE_GRACE_BEFORE_MIN;
+}
+
+/* À venir dans les `withinMin` minutes, et pas encore considéré comme en cours. */
+export function startsWithin(m, withinMin, now) {
+    if (!m || m.status === 'finished' || m.status === 'live') return false;
+    var diff = minutesUntilStart(m, now);
+    if (diff === null) return false;
+    return diff > LIVE_GRACE_BEFORE_MIN && diff <= withinMin;
+}
+
 export function getEstTimeStrFromDate(d) {
     // Force format extraction even if older browsers fallback to AM/PM despite hourCycle
     var str = estFormatter.format(d);

@@ -133,6 +133,17 @@ button.card-streams { cursor: pointer; }
 .card-streams-search[disabled] { opacity: 0.7; cursor: progress; }
 
 /* Titre de section (« Live », « À venir dans l'heure », nom de ligue…) */
+/* Chevron d'une section repliable. La rotation vit dans la feuille de style plutôt que
+   dans un `style.transform` posé par JavaScript : c'est ce couplage qui avait laissé les
+   toggles muets quand la variable du chevron s'est fait écraser. */
+.section-chevron { display:inline-flex; align-items:center; transition: transform .2s; flex:0 0 auto; }
+.section-title[role="button"] { cursor: pointer; user-select: none; }
+.section-title[role="button"]:hover { color: var(--text); }
+.section-title[role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+.section-title.collapsed .section-chevron { transform: rotate(-90deg); }
+/* Une section repliée n'a plus de rail à déplier : le bouton n'aurait aucun effet. */
+.section-title.collapsed .rail-toggle { display: none; }
+
 .section-title { padding: 16px 24px 8px; font-weight: bold; font-size: 18px; color: var(--text); border-bottom: 1px solid var(--border); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 .section-title > span:last-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-toggle { display: none; margin-left: auto; flex-shrink: 0; background: rgba(255,255,255,0.07); border: 1px solid var(--border2); color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; font-family: inherit; }
