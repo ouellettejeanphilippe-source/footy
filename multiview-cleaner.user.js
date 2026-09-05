@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Nettoie les lecteurs encadres dans le Multiview, remplace le bac a sable quand il est leve, et sert de pont pour afficher les pages qui refusent l'iframe (X-Frame-Options), Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -88,9 +88,12 @@
                 }
             } catch (e) {}
         `;
-        (document.head || document.documentElement).appendChild(script);
-        // Clean up the script tag to keep DOM tidy
-        script.remove();
+        var racine = document.head || document.documentElement;
+        if (racine) {
+            racine.appendChild(script);
+            // Clean up the script tag to keep DOM tidy
+            script.remove();
+        }
 
         /* Un lien 'target="_top"' ou '_parent' détourne l'onglet sans passer par
            window.open : on le ramène au cadre courant. Le gestionnaire de clic ci-dessous
@@ -170,7 +173,7 @@
                 height: 0 !important;
             }
         `;
-        document.head.appendChild(style);
+        (document.head || document.documentElement).appendChild(style);
     }
 
     function getPlayerBase(element) {
@@ -205,8 +208,22 @@
             levels++;
         }
 
-        // Par défaut, remonter de 2 niveaux pour garder les contrôles natifs ou wrappers simples
-        return element.parentElement ? (element.parentElement.parentElement || element.parentElement) : element;
+        /* Repli : remonter d'un ou deux niveaux pour garder les contrôles natifs et les
+           emballages simples — mais JAMAIS jusqu'à <body> ou <html>.
+
+           C'était le défaut principal du nettoyage. Sur une page où le lecteur n'a aucun
+           emballage reconnaissable — le cas courant : une <video> ou une <iframe> posée
+           près de la racine — ce repli rendait <body>. Or `cleanEverythingOutside` remonte
+           depuis cette base « tant qu'on n'est pas <body> » : partant DE <body>, la boucle
+           ne s'exécutait pas une seule fois et rien n'était masqué. Le script annonçait
+           pourtant « Page nettoyée avec succès » et se déclarait terminé, ce qui empêchait
+           toute nouvelle tentative. La tuile gardait donc tout le décor du site — bandeau,
+           boutons, avis — autour de la vidéo. */
+        var parent = element.parentElement;
+        if (!parent || parent === document.body || parent === document.documentElement) return element;
+        var grandParent = parent.parentElement;
+        if (grandParent && grandParent !== document.body && grandParent !== document.documentElement) return grandParent;
+        return parent;
     }
 
     function isSafeControlElement(node) {
@@ -253,6 +270,11 @@
 
         injectStyles();
         mainPlayerBase = getPlayerBase(target);
+        /* Ceinture et bretelles : si la base remonte quand même à la racine, on retombe
+           sur la cible elle-même. Une base égale à <body> ne masque rien du tout. */
+        if (!mainPlayerBase || mainPlayerBase === document.body || mainPlayerBase === document.documentElement) {
+            mainPlayerBase = target;
+        }
 
         let current = mainPlayerBase;
         while (current && current !== document.body) {
@@ -332,30 +354,6 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
-
-        // We handle this by checking if there's a stored 'mv_unmuted_state'
-        window.mvUnmutedState = false;
-        window.addEventListener('message', function(e) {
-            if (e.data === 'mv_mute') {
-                window.mvUnmutedState = false;
-                const mediaElements = document.querySelectorAll('video, audio');
-                mediaElements.forEach(el => {
-                    if (!el.muted || el.volume > 0) {
-                        el.muted = true;
-                        el.volume = 0;
-                    }
-                });
-            } else if (e.data === 'mv_unmute') {
-                window.mvUnmutedState = true;
-                const mediaElements = document.querySelectorAll('video, audio');
-                mediaElements.forEach(el => {
-                    if (el.muted || el.volume === 0) {
-                        el.muted = false;
-                        el.volume = 1;
-                    }
-                });
-            }
-        });
 
         function attachMediaListeners(mediaEl) {
             if (mediaEl.dataset.mvListenersAttached) return;
@@ -501,6 +499,34 @@
     }
 // ----------------------------
 
+    /* Écouteur des ordres de l'application, posé À LA RACINE.
+
+       Il vivait auparavant DANS `cleanEverythingOutside`, donc il n'existait qu'une fois
+       le nettoyage réussi. Sur une page où le lecteur n'a jamais été trouvé — le cas même
+       où l'utilisateur a besoin d'agir — la tuile n'obéissait donc à rien : ni couper le
+       son, ni nettoyer. */
+    window.mvUnmutedState = false;
+    window.addEventListener('message', function(e) {
+        /* Seule la fenêtre qui nous encadre commande. Sans ce filtre, n'importe quel
+           cadre de la page (une régie publicitaire, par exemple) pourrait nous piloter. */
+        if (e.source !== window.parent) return;
+
+        if (e.data === 'mv_mute' || e.data === 'mv_unmute') {
+            const couper = (e.data === 'mv_mute');
+            window.mvUnmutedState = !couper;
+            document.querySelectorAll('video, audio').forEach(el => {
+                el.muted = couper;
+                el.volume = couper ? 0 : 1;
+            });
+        } else if (e.data === 'mv_clean') {
+            /* Nettoyage à la demande. L'application l'envoie quand la tuile vient de se
+               charger et quand l'utilisateur lève le bac à sable : à ce moment-là le
+               lecteur apparaît souvent pour la première fois, longtemps après que la
+               recherche automatique a renoncé. */
+            relancerRecherche();
+        }
+    });
+
     function findAndClean() {
         if (cleaned) return;
 
@@ -526,17 +552,79 @@
         }
     }
 
-    // Exécuter périodiquement pour gérer le chargement dynamique
-    const interval = setInterval(() => {
-        if (cleaned) {
-            clearInterval(interval);
-            return;
-        }
-        findAndClean();
-    }, 500);
+    /* Recherche du lecteur.
 
-    // Arrêter de chercher après 15 secondes pour économiser les ressources
-    setTimeout(() => clearInterval(interval), 15000);
+       L'ancienne version sondait toutes les 500 ms puis ABANDONNAIT au bout de 15
+       secondes, définitivement. C'est trop court pour ces sites : le lecteur arrive au
+       bout d'une chaîne d'iframes imbriquées, et certains annoncent eux-mêmes « stream
+       will go live 30 minutes before the match starts ». Passé le délai, plus rien ne
+       relançait la recherche — la page restait entière autour de la vidéo, ce qui est
+       exactement ce que ce script est censé éviter.
+
+       Trois déclencheurs désormais, du moins cher au plus sûr :
+         - le sondage périodique, gardé pour les 15 premières secondes ;
+         - un observateur du DOM, qui ne coûte rien tant que rien n'arrive et réagit à
+           l'apparition tardive d'une <video> ou d'une <iframe> ;
+         - l'ordre `mv_clean` de l'application, qui relance tout.
+       L'observateur s'arrête de lui-même dès que le nettoyage a réussi. */
+    let interval = null;
+    let observateur = null;
+
+    function arreterRecherche() {
+        if (interval) { clearInterval(interval); interval = null; }
+        if (observateur) { observateur.disconnect(); observateur = null; }
+    }
+
+    /* Une exception dans la recherche ne doit JAMAIS emporter le script.
+
+       Ces pages sont hostiles et changent sans prévenir ; une seule erreur non rattrapée
+       tuait l'intervalle, l'observateur et toute possibilité de rattrapage — la tuile
+       restait entière autour de la vidéo, sans que rien ne le signale. On isole donc
+       chaque passe, et on continue. */
+    function chercherSansCasser() {
+        try { findAndClean(); }
+        catch (e) { console.log('[Multiview Cleaner] passe de nettoyage en échec :', e && e.message); }
+    }
+
+    function relancerRecherche() {
+        if (cleaned) return;
+        arreterRecherche();
+        chercherSansCasser();
+        if (cleaned) return;
+
+        interval = setInterval(() => {
+            if (cleaned) { arreterRecherche(); return; }
+            chercherSansCasser();
+        }, 500);
+        setTimeout(() => { if (interval) { clearInterval(interval); interval = null; } }, 15000);
+
+        /* Le sondage s'arrête, l'observateur reste : c'est lui qui rattrape un lecteur
+           qui n'arrive qu'au bout de plusieurs minutes.
+
+           `document.body` peut ne pas exister encore selon le moment où le gestionnaire
+           d'extensions injecte le script. Sans cette attente, l'observateur n'était jamais
+           posé et le rattrapage tardif ne marchait pas — le défaut même qu'on corrige. */
+        if (!document.body) {
+            document.addEventListener('DOMContentLoaded', () => { if (!cleaned) relancerRecherche(); }, { once: true });
+        } else {
+            observateur = new MutationObserver((mutations) => {
+                if (cleaned) { arreterRecherche(); return; }
+                for (const mut of mutations) {
+                    for (const n of mut.addedNodes) {
+                        if (n.nodeType !== 1) continue;
+                        if (n.tagName === 'VIDEO' || n.tagName === 'IFRAME'
+                            || (n.querySelector && n.querySelector('video, iframe'))) {
+                            chercherSansCasser();
+                            if (cleaned) { arreterRecherche(); return; }
+                        }
+                    }
+                }
+            });
+            observateur.observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
+    relancerRecherche();
 
 })();
 
@@ -565,7 +653,9 @@
         : null;
     if (!GM_FETCH) return;
 
-    var VERSION = '1.2';
+    /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
+       affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
+    var VERSION = '1.4';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

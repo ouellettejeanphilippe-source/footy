@@ -540,7 +540,14 @@ export function scoreCandidate(cand, ctx) {
 
     // Rejets nets : rien ne les rattrape.
     if (ASSET_RE.test(path)) return { score: -999, kind: 'reject', reasons: ['ressource statique'] };
+    /* YouTube n'est un lecteur que sur /embed/. Relevé le 5 septembre 2026 en sondant les
+       lecteurs préparés d'un match : 1stream.ws livrait « youtube.com/live_chat?v=… » —
+       le salon de discussion du direct, pas le direct. Même famille que les boîtes de
+       dialogue écartées plus haut, à ceci près que l'hôte, lui, est légitime. */
     if (JUNK_HOST_RE.test(host) && !(/youtube\.com$/.test(host) && /^\/embed\//.test(path))) return { score: -999, kind: 'reject', reasons: ['hôte jamais lecteur'] };
+    if (/(^|\.)youtube\.com$/.test(host) && !/^\/embed\//.test(path)) {
+        return { score: -999, kind: 'reject', reasons: ['YouTube hors /embed/ : ' + path] };
+    }
     if (BETTING_RE.test(url)) return { score: -999, kind: 'reject', reasons: ['pari / publicité'] };
     if ((path === '/' || path === '') && !search) return { score: -999, kind: 'reject', reasons: ['racine de site'] };
     if (/^\/?(index|home|accueil)([.-][a-z0-9-]*)?\/?$/i.test(path)) return { score: -999, kind: 'reject', reasons: ['page d\'index'] };
