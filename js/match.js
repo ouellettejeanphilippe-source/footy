@@ -151,7 +151,7 @@ export function debugMatchPair(m1, m2) {
   if (isRacingEvent1 || isRacingEvent2) {
       var combo1 = normName(m1.homeTeam + " " + m1.awayTeam);
       var combo2 = normName(m2.homeTeam + " " + m2.awayTeam);
-      if (isMatch(combo1, combo2) || combo1.includes(combo2) || combo2.includes(combo1)) {
+      if (isMatch(combo1, combo2, true) || combo1.includes(combo2) || combo2.includes(combo1)) {
           return { isMatch: true, reason: "Racing/Event direct combo match" };
       }
 
@@ -159,7 +159,7 @@ export function debugMatchPair(m1, m2) {
       var clean1 = combo1.replace(/(f1|formula1|grandprix|race|qualifying|practice|sprint|indycar|indy|wwe|mondaynightraw|smackdown|nxt)/g, '').trim();
       var clean2 = combo2.replace(/(f1|formula1|grandprix|race|qualifying|practice|sprint|indycar|indy|wwe|mondaynightraw|smackdown|nxt)/g, '').trim();
 
-      if (clean1 && clean2 && (clean1.includes(clean2) || clean2.includes(clean1) || isMatch(clean1, clean2))) {
+      if (clean1 && clean2 && (clean1.includes(clean2) || clean2.includes(clean1) || isMatch(clean1, clean2, true))) {
           return { isMatch: true, reason: "Racing/Event base name match (" + clean1 + " vs " + clean2 + ")" };
       }
   }
@@ -204,10 +204,10 @@ export function debugMatchPair(m1, m2) {
   var is2AwayTbd = m2.awayTeam === 'TBD' || m2.awayTeam === 'tbd' || m2A === '';
 
   if (is1AwayTbd || is2AwayTbd || is1HomeTbd || is2HomeTbd) {
-      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2H)) return { isMatch: true, reason: "Match (TBD)" };
-      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2A)) return { isMatch: true, reason: "Match inversé (TBD)" };
-      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2A)) return { isMatch: true, reason: "Match (TBD)" };
-      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2H)) return { isMatch: true, reason: "Match inversé (TBD)" };
+      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2H, true)) return { isMatch: true, reason: "Match (TBD)" };
+      if ((is1AwayTbd || is2AwayTbd) && isMatch(m1H, m2A, true)) return { isMatch: true, reason: "Match inversé (TBD)" };
+      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2A, true)) return { isMatch: true, reason: "Match (TBD)" };
+      if ((is1HomeTbd || is2HomeTbd) && isMatch(m1A, m2H, true)) return { isMatch: true, reason: "Match inversé (TBD)" };
       return { isMatch: false, reason: "Équipe manquante ou TBD sans correspondance" };
   }
 
@@ -365,7 +365,7 @@ export function isKnownDistinct(name1, name2) {
     return false;
 }
 
-export function isMatch(name1, name2) {
+export function isMatch(name1, name2, strict) {
   if (name1 === '' && name2 === '') return true;
   if (!name1 || !name2) return false;
   if (name1 === name2) return true;
@@ -377,8 +377,15 @@ export function isMatch(name1, name2) {
   // For example: 'manchestercity' and 'manchesterunited'
   if (isKnownDistinct(name1, name2)) return false;
 
-  // Check if one contains the other (e.g. 'manchester' in 'manchesterunited')
-  if (name1.includes(name2) || name2.includes(name1)) return true;
+  // Check if one contains the other (e.g. 'manchester' in 'manchesterunited').
+  // Skipped in `strict` mode: same risk as the sliding window below (see its comment) —
+  // 'rangers' is a genuine substring of 'queensparkrangers', 'austin' of 'austinfc',
+  // 'montana' of 'montanastate', etc., yet these are unrelated teams. Relevé le 5 septembre
+  // 2026 : après avoir corrigé la fenêtre glissante, 9 matchs (Rangers, Wigan Athletic,
+  // Queen's Park, Stephen F. Austin, Montana State, Arizona State, San Diego FC, New
+  // Mexico, Louisiana Tech — tous à l'équipe visiteuse vide) continuaient de disparaître
+  // par CETTE vérification-ci plutôt que par la fenêtre glissante.
+  if (!strict && (name1.includes(name2) || name2.includes(name1))) return true;
 
   // Check if they match by city or team name using TEAM_DATA
   var info1 = getTeamInfo(name1);
@@ -391,15 +398,18 @@ export function isMatch(name1, name2) {
 
   // If one name is just the city of the other
   if (norm1C && norm2C && norm1C === norm2C) {
-      // If one team doesn't have a distinct name (i.e. name == city) or they both have the same name
-      if (norm1N === norm1C || norm2N === norm2C || norm1N === norm2N || norm1N.includes(norm2N) || norm2N.includes(norm1N)) {
+      // If one team doesn't have a distinct name (i.e. name == city) or they both have the same name.
+      // The two `.includes(...)` legs are skipped in `strict` mode for the same reason as the plain
+      // containment check above: 'diego' (San Diego FC's poorly-split teamName) is a genuine substring
+      // of 'diego padres' (San Diego Padres), yet they are unrelated teams sharing only a city field.
+      if (norm1N === norm1C || norm2N === norm2C || norm1N === norm2N || (!strict && (norm1N.includes(norm2N) || norm2N.includes(norm1N)))) {
           return true;
       }
   }
 
   // If one name is just the team name of the other
   if (norm1N && norm2N && norm1N === norm2N && norm1N.length > 3) {
-      if (norm1C === norm1N || norm2C === norm2N || norm1C === norm2C || norm1C.includes(norm2C) || norm2C.includes(norm1C)) {
+      if (norm1C === norm1N || norm2C === norm2N || norm1C === norm2C || (!strict && (norm1C.includes(norm2C) || norm2C.includes(norm1C)))) {
           return true;
       }
   }
@@ -426,6 +436,20 @@ export function isMatch(name1, name2) {
   } else {
       if (sim > 0.75) return true; // increased threshold from 0.65
   }
+
+  /* Fenêtre glissante : deux mentions du MÊME nom, avec coquille ou tronqué (« tanpa »
+     pour « tampabaylightning »). En mode `strict`, sautée entièrement.
+
+     `strict` sert exactement au cas où l'un des deux matchs n'a qu'une équipe connue
+     (l'autre est vide/TBD) : on n'y compare alors plus deux mentions du même nom, mais
+     un nom face à TOUT le reste de la base — une correspondance par fragment y devient
+     un risque, pas un filet de sécurité. Relevé le 5 septembre 2026 sur les données
+     réelles de footybite : la fenêtre « rest » (tirée de « nottinghamforest ») obtient
+     80 % de similarité avec « brest », suffisant pour franchir le seuil de 70 %. Un match
+     Nottingham Forest à l'équipe visiteuse vide absorbait ainsi « Le Havre vs Brest » —
+     et Le Havre disparaissait du fichier, sans qu'aucune erreur ne le signale. 24 matchs
+     sur 180 se perdaient ainsi le même jour, dans la seule page d'accueil de footybite. */
+  if (strict) return false;
 
   // If one name is significantly longer but contains a typo-version of the shorter one
   // Handled by sliding window below...
