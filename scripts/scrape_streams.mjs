@@ -419,7 +419,26 @@ for (const m of all) {
    Mesuré sur le cache du 4 septembre : 120 liens en 21,6 s à concurrence 10, dont 34
    livrent un lecteur intégrable. Borné en nombre et en temps pour rester dans l'heure. */
 const EXTRACT_CONCURRENCE = 12;
-const EXTRACT_MAX_LIENS = 700;
+
+/* Plafond du nombre de liens sondés — la contrainte la PLUS coûteuse du fichier, et
+   longtemps la vraie cause des « flux non jouables ».
+
+   Relevé le 5 septembre 2026 sur le cache de production : 2152 adresses distinctes, mais
+   seules les 700 premières étaient sondées. Les 1452 autres n'avaient jamais la moindre
+   chance : sur 577 flux non jouables, 470 n'avaient tout simplement JAMAIS été essayés,
+   contre 107 réellement en échec. On croyait buter sur X-Frame-Options ; on butait
+   surtout sur ce nombre.
+
+   Le budget le permettait largement. Ce même run : 700 liens sondés en 56,8 s (dont
+   415 résolus, soit 59 %), pour un scrape complet de 3 min 58 s face à un plafond de
+   workflow de 20 minutes — plus de seize minutes inutilisées. Sonder les 2152 coûte
+   environ trois minutes de plus.
+
+   Le garde-fou devient temporel plutôt que numérique : c'est le temps qui menace le
+   workflow, pas le nombre. Un jour chargé peut donc tout sonder, et un jour anormal
+   s'arrête proprement au lieu de faire échouer l'exécution entière. */
+const EXTRACT_MAX_LIENS = 3000;
+const EXTRACT_BUDGET_MS = 8 * 60 * 1000;   // 8 min sur les 20 du workflow
 const EXTRACT_TIMEOUT_MS = 12000;
 
 const extractors = await import('../js/extractors.js');
@@ -521,8 +540,10 @@ let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0, extraitsMedia = 0, extra
     const cible = liensAResoudre.slice(0, EXTRACT_MAX_LIENS);
     let curseur = 0;
     const t0 = Date.now();
+    let abandonnesFauteDeTemps = 0;
     async function ouvrier() {
         while (curseur < cible.length) {
+            if (Date.now() - t0 > EXTRACT_BUDGET_MS) { abandonnesFauteDeTemps += cible.length - curseur; curseur = cible.length; break; }
             const u = cible[curseur++];
             try {
                 const trouve = await resoudreLecteurEnChaine(u);
@@ -538,7 +559,9 @@ let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0, extraitsMedia = 0, extra
     await Promise.all(Array.from({ length: EXTRACT_CONCURRENCE }, ouvrier));
     console.log(`Lecteurs extraits : ${extraitsOk}/${cible.length} liens sondés `
         + `(${extraitsMedia} flux directs, ${extraitsProfonds} trouves au-dela du premier saut, `
-        + `${extraitsVides} sans lecteur, ${extraitsErr} injoignables) en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+        + `${extraitsVides} sans lecteur, ${extraitsErr} injoignables) en ${((Date.now() - t0) / 1000).toFixed(1)} s`
+        + (abandonnesFauteDeTemps ? ` — ${abandonnesFauteDeTemps} laisses de cote, budget de ${EXTRACT_BUDGET_MS / 60000} min epuise` : '')
+        + ` [${liensAResoudre.length} adresses distinctes au total]`);
 }
 
 // ── 3. Écriture ───────────────────────────────────────────────────────────
