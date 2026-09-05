@@ -296,23 +296,35 @@ test('une carte sans lien porte le bouton de recherche, une carte pourvue son co
   expect(badges.duplicates, 'une seule pastille de flux par carte').toBeTruthy();
 });
 
-/* Le bac à sable des lecteurs (PLAYER_SANDBOX) a été retiré le 5 septembre 2026 : « quand
-   y'a le tag sandbox, ça chie » — beaucoup de sites détectent une iframe en bac à sable
-   et refusent de s'afficher, quels que soient les jetons accordés. Les deux tests qui
-   vérifiaient ce mécanisme sont retirés avec lui plutôt que laissés à vérifier du code
-   mort, ce qui donnerait l'impression trompeuse que la protection reste active.
+/* PLUS AUCUN attribut `sandbox` sur une iframe de lecteur, nulle part.
 
-   Le document RECONSTRUIT en `srcdoc`, lui, garde son bac à sable (EMBED_SANDBOX) :
-   contrairement au lecteur ordinaire, ce document vit à l'origine même de l'application
-   — sans bac à sable il lirait son localStorage et son DOM. Rien, côté site distant, ne
-   peut détecter ni contourner ce bac à sable puisqu'il ne s'agit pas de SA page mais
-   d'une copie que l'application a elle-même écrite : la plainte de l'utilisateur ne le
-   concerne donc pas. */
-test('le document reconstruit garde son bac à sable, sans allow-same-origin', async () => {
-  const { EMBED_SANDBOX } = await import('../js/embed-bridge.js');
-  expect(EMBED_SANDBOX.split(/\s+/),
-    'un document reconstruit avec allow-same-origin lirait le localStorage de l\'application')
-    .not.toContain('allow-same-origin');
+   Retiré en deux temps le 5 septembre 2026, sur demande répétée de l'utilisateur, capture
+   d'écran à l'appui. D'abord sur les lecteurs ordinaires (« quand y'a le tag sandbox, ça
+   chie ») ; puis sur le document RECONSTRUIT en `srcdoc`, qu'on avait cru hors d'atteinte
+   au motif que « rien, côté site distant, ne peut détecter ce bac à sable puisqu'il ne
+   s'agit pas de SA page mais d'une copie ». C'était faux : la copie contient SON code, qui
+   s'exécute à l'origine de l'application et voit parfaitement l'origine opaque, le
+   localStorage qui lève, et l'attribut lui-même sur `frameElement`. L'utilisateur a
+   renvoyé la preuve — « Sandbox detected, please remove sandbox attributes », en rouge, à
+   la place du lecteur.
+
+   Ce test remplace celui qui verrouillait l'ancien mécanisme : il verrouille l'absence,
+   sur la SOURCE plutôt que sur un rendu, pour attraper aussi les chemins qu'un démarrage
+   hors ligne ne traverse pas (la branche `srcdoc` n'est atteinte qu'après un tour réussi
+   sur une page bloquée, impossible à provoquer sans réseau). */
+test('aucune iframe de lecteur ne porte d\'attribut sandbox', async () => {
+  const fs = require('fs');
+  const path = require('path');
+  const racine = path.resolve(__dirname, '..');
+  for (const fichier of ['js/multiview.js', 'js/embed-bridge.js', 'index.html']) {
+    const src = fs.readFileSync(path.join(racine, fichier), 'utf8');
+    // Les occurrences en commentaire racontent l'histoire du retrait : on ne vise que le code.
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code, `${fichier} ne doit poser aucun attribut sandbox sur une iframe`)
+      .not.toMatch(/setAttribute\(\s*['"]sandbox['"]/);
+    expect(code, `${fichier} ne doit pas déclarer d'attribut sandbox en HTML`)
+      .not.toMatch(/<iframe[^>]*\ssandbox\s*=/i);
+  }
 });
 
 /* Les titres de section de l'onglet Live ne se repliaient pas : `renderMatches` déclarait

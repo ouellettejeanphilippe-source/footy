@@ -148,12 +148,20 @@ async function main() {
     ok('buildEmbedDocument injecte sa cale avant les scripts de la page');
   }
   {
-    // Le bac à sable ne doit jamais rendre son origine au document : avec
-    // allow-same-origin, la page reconstruite lirait le localStorage de l'application.
-    assert.ok(B.EMBED_SANDBOX.indexOf('allow-scripts') > -1);
-    assert.ok(B.EMBED_SANDBOX.indexOf('allow-same-origin') === -1,
-      'jamais allow-same-origin : le document reconstruit reste en origine opaque');
-    ok('le bac à sable du document reconstruit exclut allow-same-origin');
+    /* Le bac à sable du document reconstruit (EMBED_SANDBOX) a été retiré le 5 septembre
+       2026, capture d'écran à l'appui : « Sandbox detected, please remove sandbox
+       attributes », en rouge, à la place du lecteur. On avait cru le document reconstruit
+       hors d'atteinte — « ce n'est pas SA page mais une copie » — alors que la copie
+       contient SON code, qui s'exécute ici et voit l'origine opaque, le localStorage qui
+       lève et l'attribut lui-même sur `frameElement`.
+
+       Ce cas remplace la vérification de l'ancien mécanisme par celle de son absence :
+       laisser l'ancienne aurait fait croire à une protection encore active. La cale
+       injectée par buildEmbedDocument, elle, RESTE nécessaire — c'est elle qui fournit un
+       stockage factice et fait taire les gardes anti-encadrement de la page copiée. */
+    assert.strictEqual(B.EMBED_SANDBOX, undefined,
+      'plus aucun bac à sable exporté : le document reconstruit n\'en porte plus');
+    ok('le bac à sable du document reconstruit a bien disparu');
   }
 
   // ── 5. Extraction du lecteur avant reconstruction ─────────────────────────

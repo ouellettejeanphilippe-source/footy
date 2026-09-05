@@ -42,18 +42,18 @@
    relevé dans ce cas) ou d'un appel authentifié à son propre domaine, ni l'extraction
    ni la reconstruction n'aboutissent. Le repli reste l'ouverture en onglet.
 
-   Sécurité du document reconstruit. Il est posé dans une iframe `sandbox` SANS
-   `allow-same-origin` : son origine est opaque, il ne peut donc lire ni le
-   `localStorage` de l'application (préférences, favoris, cache) ni son DOM. C'est
-   volontairement plus strict que l'iframe normale du Multivision. En contrepartie
-   `localStorage` y lève une exception à la moindre lecture, ce que beaucoup de lecteurs
-   ne supportent pas : la cale injectée en tête de document leur en fournit un factice.
+   Sécurité du document reconstruit. Il n'a plus de bac à sable depuis le 5 septembre
+   2026 : les sites le détectaient et refusaient de jouer (« Sandbox detected, please
+   remove sandbox attributes »). Il vit donc à l'origine de l'application et peut lire
+   son `localStorage` (réglages et cache de matchs — aucun identifiant, aucun jeton) et
+   son DOM. C'est le prix assumé pour que la vidéo s'affiche ; popups et détournement
+   d'onglet restent bloqués par `multiview-cleaner.user.js` pour qui l'installe.
 
    Ce module n'importe que `js/extractors.js`, lui-même hors de tout cycle : le
    téléchargeur de repli (`fetchPage`) et le registre d'intégrabilité lui sont passés en
    argument par js/multiview.js pour qu'il le reste. */
 
-import { extractPlayers, hostOf } from './extractors.js';
+import { extractPlayers, hostOf, JUNK_HOST_RE, BETTING_RE, ASSET_RE } from './extractors.js';
 
 var BRIDGE_HELLO = 'mv_bridge_hello';
 var BRIDGE_READY = 'mv_bridge_ready';
@@ -125,11 +125,25 @@ export function fetchViaBridge(url, timeoutMs) {
   });
 }
 
-/* Cale injectée en tête du document reconstruit, avant tout script du site.
-   Elle ne « débloque » rien : elle rend seulement le document viable dans une origine
-   opaque (stockage factice) et fait taire les gardes anti-encadrement, qui vident la
-   page quand elles constatent `window.top !== window.self`. */
+/* Cale injectée en tête du document reconstruit, avant tout script du site. Elle fait
+   deux choses : taire les gardes anti-encadrement (qui vident la page dès qu'elles
+   constatent `window.top !== window.self`), et reconstruire à leur tour les iframes
+   imbriquées — sans quoi X-Frame-Options reprend la main un cran plus bas. */
+/* Profondeur maximale de reconstruction imbriquée. Trois niveaux couvrent les chaînes
+   observées (page de match → lecteur → lecteur du lecteur) sans risquer de partir en
+   cascade sur une page qui s'auto-référence. */
+export var MAX_PROFONDEUR_RECONSTRUCTION = 3;
+
+/* Nombre d'iframes reconstruites par document. Une page de streaming en compte souvent
+   une dizaine, dont une seule porte la vidéo : les autres sont des régies. Sans ce
+   plafond, une seule tuile déclencherait dix téléchargements par le pont. */
+var MAX_IFRAMES_PAR_DOC = 4;
+
 var SHIM = '<script>(function(){' +
+  /* Le vrai parent est capturé AVANT d'être masqué : les lignes suivantes font croire à
+     la page qu'elle est au premier plan (c'est ce qui fait taire ses gardes
+     anti-encadrement), mais la reconstruction imbriquée, elle, a besoin du vrai. */
+  'var P=null; try{P=window.parent;}catch(e){}' +
   'try{Object.defineProperty(window,"top",{get:function(){return window;},configurable:true});}catch(e){}' +
   'try{Object.defineProperty(window,"parent",{get:function(){return window;},configurable:true});}catch(e){}' +
   'try{Object.defineProperty(window,"frameElement",{get:function(){return null;},configurable:true});}catch(e){}' +
@@ -139,6 +153,40 @@ var SHIM = '<script>(function(){' +
   'try{window.localStorage.getItem("x");}catch(e){try{Object.defineProperty(window,"localStorage",{value:mem(),configurable:true});}catch(e2){}}' +
   'try{window.sessionStorage.getItem("x");}catch(e){try{Object.defineProperty(window,"sessionStorage",{value:mem(),configurable:true});}catch(e2){}}' +
   'window.open=function(){return null;};' +
+
+  /* ── Reconstruction des iframes IMBRIQUÉES ──────────────────────────────────
+     Recopier la page à notre origine supprime le cadre étranger du premier niveau,
+     donc X-Frame-Options ne s'y applique plus. Mais si cette page contient elle-même
+     une iframe vers son lecteur, CETTE iframe-là redevient d'origine croisée, et
+     l'en-tête reprend le dessus : c'est l'écran « Firefox Can't Open This Page » qui
+     revient un cran plus bas.
+
+     On applique donc le même remède à chaque niveau : on demande au parent (même
+     origine que ce document) d'aller chercher la page imbriquée — par le pont du
+     script utilisateur quand il est là, sinon par les proxys — et on l'inline à son
+     tour. Aucune origine étrangère n'est alors encadrée nulle part dans la chaîne,
+     et l'en-tête n'a plus de prise.
+
+     Ce que cela ne règle pas : les segments vidéo partiront avec NOTRE origine en
+     référent. Les CDN qui vérifient le référent refuseront encore — aucun script ne
+     peut réécrire cet en-tête depuis un navigateur. */
+  'var prof=(window.__mvProfondeur||0), faites=0;' +
+  'function absolu(u){try{return new URL(u,document.baseURI).href;}catch(e){return null;}}' +
+  'function reconstruire(f){' +
+    'if(!P||faites>=' + MAX_IFRAMES_PAR_DOC + '||prof>=' + MAX_PROFONDEUR_RECONSTRUCTION + ')return;' +
+    'if(f.__mvVue)return; var s=f.getAttribute("src"); if(!s)return;' +
+    'var u=absolu(s); if(!u||!/^https?:/i.test(u))return;' +
+    'try{if(!P.__mvIframeReconstructible(u))return;}catch(e){return;}' +
+    'f.__mvVue=1; faites++;' +
+    'try{P.__mvReconstruireIframe(u,prof+1).then(function(doc){' +
+      'if(!doc)return; try{f.removeAttribute("src"); f.srcdoc=doc;}catch(e){}' +
+    '}).catch(function(){});}catch(e){}' +
+  '}' +
+  'function balayer(){var l=document.getElementsByTagName("iframe");for(var i=0;i<l.length;i++)reconstruire(l[i]);}' +
+  'if(P&&P.__mvReconstruireIframe){balayer();' +
+    'try{new MutationObserver(balayer).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["src"]});}catch(e){}' +
+    'document.addEventListener("DOMContentLoaded",balayer);' +
+    'setTimeout(balayer,1500);}' +
   '})();<\/script>';
 
 /* Reconstruit un document affichable à partir du HTML téléchargé.
@@ -147,13 +195,16 @@ var SHIM = '<script>(function(){' +
    - les balises `<meta http-equiv="Content-Security-Policy">` sont retirées : elles
      s'appliquent au document reconstruit et y interdiraient souvent tout script.
    - la cale ci-dessus est placée en tête, donc avant les scripts du site. */
-export function buildEmbedDocument(html, finalUrl) {
+export function buildEmbedDocument(html, finalUrl, profondeur) {
   var doc = String(html || '');
 
   doc = doc.replace(/<meta[^>]+http-equiv\s*=\s*["']?(content-security-policy|x-frame-options)["']?[^>]*>/gi, '');
   doc = doc.replace(/<base\b[^>]*>/gi, '');
 
-  var head = '<base href="' + String(finalUrl || '').replace(/"/g, '&quot;') + '">' + SHIM;
+  /* La profondeur voyage AVEC le document : c'est elle qui arrête la cascade, puisque
+     chaque niveau reconstruit le suivant sans rien savoir de ceux d'au-dessus. */
+  var niveau = '<script>window.__mvProfondeur=' + (parseInt(profondeur, 10) || 0) + ';<\/script>';
+  var head = '<base href="' + String(finalUrl || '').replace(/"/g, '&quot;') + '">' + niveau + SHIM;
 
   if (/<head[^>]*>/i.test(doc)) return doc.replace(/<head([^>]*)>/i, '<head$1>' + head);
   if (/<html[^>]*>/i.test(doc)) return doc.replace(/<html([^>]*)>/i, '<html$1><head>' + head + '</head>');
@@ -195,7 +246,10 @@ export function pickEmbeddablePlayer(html, pageUrl, registry) {
    `proxyFetch` est `fetchPage` (js/utils.js) et `registry` le registre d'intégrabilité
    (js/scrapers.js), passés en argument pour garder ce module hors du graphe de
    dépendances de l'application. */
-export function resolveBlockedEmbed(url, proxyFetch, registry) {
+/* Le pont d'abord, les proxys ensuite : les deux seuls canaux qui ne subissent pas
+   X-Frame-Options, puisqu'ils ne font que TÉLÉCHARGER la page. Extrait ici parce que la
+   reconstruction imbriquée en a besoin exactement comme le tour de premier niveau. */
+export function recupererPage(url, proxyFetch) {
   var attempt = bridge.available
     ? fetchViaBridge(url)
     : Promise.reject(new Error('script utilisateur absent'));
@@ -206,7 +260,50 @@ export function resolveBlockedEmbed(url, proxyFetch, registry) {
       if (!html) throw new Error('réponse vide via proxy');
       return { html: html, finalUrl: url, via: 'proxy' };
     });
-  }).then(function (res) {
+  });
+}
+
+/* Faut-il reconstruire cette iframe imbriquée ? Une page de streaming en aligne souvent
+   une dizaine, dont une seule porte la vidéo : sans ce filtre on téléchargerait aussi
+   les régies publicitaires et les fenêtres de discussion, par le pont, à chaque tuile.
+   On réutilise les listes du moteur d'extraction plutôt que d'en tenir une seconde. */
+export function iframeReconstructible(url) {
+  var u = String(url || '');
+  if (!/^https?:/i.test(u)) return false;
+  if (BETTING_RE.test(u) || ASSET_RE.test(u)) return false;
+  var h = hostOf(u);
+  if (!h || JUNK_HOST_RE.test(h)) return false;
+  return true;
+}
+
+/* Passerelle offerte aux documents reconstruits : ils vivent à NOTRE origine, ils
+   peuvent donc nous appeler directement, sans postMessage.
+
+   C'est ce qui referme la dernière porte laissée à X-Frame-Options. Recopier une page
+   bloquée la sort de son origine, mais l'iframe qu'elle contient, elle, reste distante :
+   l'en-tête s'y applique de nouveau et l'écran « Firefox Can't Open This Page » revient
+   un cran plus bas. En reconstruisant aussi les niveaux imbriqués, plus aucune origine
+   étrangère n'est encadrée dans la chaîne — donc plus aucun en-tête à faire respecter.
+
+   Rien à installer pour en profiter : le pont du script utilisateur rend le
+   téléchargement plus fiable (IP de l'utilisateur, cookies, Cloudflare franchi), mais à
+   défaut les proxys CORS font le même travail. */
+export function installerReconstructionRecursive(proxyFetch) {
+  if (typeof window === 'undefined') return;
+  window.__mvIframeReconstructible = iframeReconstructible;
+  window.__mvReconstruireIframe = function (url, profondeur) {
+    var prof = parseInt(profondeur, 10) || 0;
+    if (prof >= MAX_PROFONDEUR_RECONSTRUCTION) return Promise.resolve(null);
+    if (!iframeReconstructible(url)) return Promise.resolve(null);
+    return recupererPage(url, proxyFetch).then(function (res) {
+      if (!res || !res.html || String(res.html).length < MIN_REBUILDABLE_LENGTH) return null;
+      return buildEmbedDocument(res.html, res.finalUrl, prof);
+    }).catch(function () { return null; });
+  };
+}
+
+export function resolveBlockedEmbed(url, proxyFetch, registry) {
+  return recupererPage(url, proxyFetch).then(function (res) {
     /* L'extraction passe en premier et sans condition de taille : une page de match
        tient parfois en quelques centaines d'octets et n'en contient pas moins le
        lecteur, qui est tout ce qu'on lui demande. Le plancher ne sert qu'à décider
@@ -216,23 +313,29 @@ export function resolveBlockedEmbed(url, proxyFetch, registry) {
     var player = pickEmbeddablePlayer(res.html, res.finalUrl, registry);
     if (player) return { playerUrl: player.url, label: player.label || '', via: res.via };
     if (String(res.html).length < MIN_REBUILDABLE_LENGTH) throw new Error('page trop courte pour être reconstruite');
-    return { srcdoc: buildEmbedDocument(res.html, res.finalUrl), via: res.via };
+    return { srcdoc: buildEmbedDocument(res.html, res.finalUrl, 0), via: res.via };
   }).catch(function () {
     return null;
   });
 }
 
-/* Bac à sable du document reconstruit : tout sauf `allow-same-origin`, qui rendrait au
-   document l'origine de l'application (donc l'accès à son stockage et à son DOM). */
-export var EMBED_SANDBOX = 'allow-scripts allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
+/* PLUS AUCUN attribut `sandbox` n'est posé sur une iframe de lecteur, nulle part.
 
-/* Le bac à sable des lecteurs ORDINAIRES (ceux chargés par `src`, pas les documents
-   reconstruits) a été retiré le 5 septembre 2026, à la demande explicite de
-   l'utilisateur : « quand y'a le tag sandbox, ça chie ». Beaucoup de ces sites
-   détectent une iframe en bac à sable — quels que soient les jetons accordés — et
-   refusent purement et simplement de s'afficher, ou de jouer. Le bénéfice visé
-   (bloquer popups et détournement d'onglet sans extension) ne valait pas ce coût : une
-   bonne partie des lecteurs ne démarrait plus du tout.
+   Retiré en deux temps le 5 septembre 2026, sur demande répétée de l'utilisateur
+   (« quand y'a le tag sandbox, ça chie »). D'abord sur les lecteurs ORDINAIRES (ceux
+   chargés par `src`) : beaucoup de ces sites détectent une iframe en bac à sable —
+   quels que soient les jetons accordés — et refusent de s'afficher ou de jouer.
+
+   Puis sur le document RECONSTRUIT en `srcdoc`, qu'on avait cru à l'abri : « rien, côté
+   site distant, ne peut détecter ce bac à sable puisqu'il ne s'agit pas de SA page mais
+   d'une copie ». C'était faux, et une capture d'écran l'a démenti — « Sandbox detected,
+   please remove sandbox attributes », en rouge, à la place du lecteur. La copie contient
+   SON code : il s'exécute ici et voit l'origine opaque, le localStorage qui lève, et
+   l'attribut lui-même sur `frameElement`. Seule son ABSENCE passe.
+
+   Le prix, assumé : un document reconstruit vit à l'origine de l'application et peut
+   donc lire son localStorage (réglages et cache de matchs — aucun identifiant, aucun
+   jeton) et son DOM.
 
    La protection contre les popups et le détournement d'onglet reste assurée par
    `multiview-cleaner.user.js` pour qui l'installe (il tourne DANS la page tierce, ce que
