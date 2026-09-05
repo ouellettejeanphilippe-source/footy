@@ -126,9 +126,14 @@ async function main() {
      test qui recopie la règle passe même si le scraper ne la porte plus. */
   const scraper = require('fs').readFileSync(
     require('path').join(__dirname, '..', 'scripts', 'scrape_streams.mjs'), 'utf8');
-  assert.ok(/const pol = hostPolicy\[h\];/.test(scraper),
-    'scrape_streams.mjs doit consulter hostPolicy pour l\'hôte du lecteur');
-  assert.ok(/return !\(pol && pol\.embeddable === false\);/.test(scraper),
+  /* La consultation passe désormais par politiqueDeCadre : elle rend la mesure déjà
+     faite pour un hôte du cache, et va la CHERCHER pour un hôte rencontré en cours de
+     chaîne (voir unit_chaine). C'est plus fort que l'ancienne lecture directe de la
+     table, qui laissait passer un hôte inconnu faute d'entrée — mais la propriété
+     protégée ici est la même : un lecteur mesuré non intégrable n'est jamais promu. */
+  assert.ok(/const pol = await politiqueDeCadre\(h, c\.url\);/.test(scraper),
+    'scrape_streams.mjs doit consulter la politique d\'intégration de l\'hôte du lecteur');
+  assert.ok(/if \(!\(pol && pol\.embeddable === false\)\) return \{ url: c\.url/.test(scraper),
     'scrape_streams.mjs doit écarter un lecteur dont l\'hôte est mesuré non intégrable');
   /* Et l'ordre compte : hostPolicy doit être rempli AVANT l'étape d'extraction, sinon la
      table est vide au moment où on l'interroge et le garde-fou ne filtre rien. */

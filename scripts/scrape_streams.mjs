@@ -433,8 +433,90 @@ const liensAResoudre = [];
         liensAResoudre.push(l.url);
     }
 }
+const MEDIA_DIRECT_RE = /\.(m3u8|mpd|mp4|webm|mov|m4v)(\?|#|$)/i;
+
+/* Nombre de sauts suivis dans une chaîne de lecteurs.
+
+   Ces pages ne livrent jamais leur flux du premier coup : Flexfitness pointe vers
+   clearstreamdv, qui encadre embed.sportspatrika.com, qui encadre channel.php, qui
+   encadre dlhd — relevé maillon par maillon le 5 septembre 2026. L'extraction s'arrêtait
+   au PREMIER saut : si le lecteur trouvé là refusait l'iframe, on n'écrivait rien et le
+   lien restait « ouvrir dans un onglet ». Or l'onglet est exactement ce que cette
+   application existe pour supprimer — son seul but est d'amener la vidéo DANS la tuile.
+
+   Trois sauts couvrent les chaînes observées sans faire exploser le budget horaire :
+   seuls les liens qui échouaient déjà descendent plus bas, les autres s'arrêtent au
+   premier saut comme avant. */
+const EXTRACT_MAX_SAUTS = 3;
+
+/* Politique d'intégration d'un hôte découvert EN COURS de chaîne : il n'était pas dans
+   le cache scrapé, donc pas dans la passe de sondage plus haut. Sans cette mesure à la
+   demande, on promouvait un lecteur vers un hôte jamais vérifié — c'est-à-dire qu'on
+   rendait au client le problème qu'on prétendait lui enlever. Une seule mesure par hôte,
+   mémorisée dans hostPolicy comme les autres. */
+async function politiqueDeCadre(host, url) {
+    if (hostPolicy[host]) return hostPolicy[host];
+    try {
+        const r = await realFetch(url, {
+            headers: { 'User-Agent': UA },
+            redirect: 'follow',
+            signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS)
+        });
+        const p = readFramePolicy(r.headers);
+        hostPolicy[host] = { embeddable: p.embeddable, reason: p.reason + ' (sondé en chaîne)', status: r.status };
+        try { if (r.body && r.body.cancel) await r.body.cancel(); } catch (e) {}
+    } catch (e) {
+        hostPolicy[host] = { embeddable: null, reason: 'injoignable en chaîne : ' + String(e && e.message ? e.message : e).slice(0, 50) };
+    }
+    return hostPolicy[host];
+}
+
+/* Suit une chaîne de lecteurs jusqu'à trouver quelque chose que le navigateur peut
+   VRAIMENT jouer dans la tuile, dans cet ordre de préférence :
+     1. une adresse média directe (.m3u8, .mp4…) — aucune iframe, donc aucun
+        X-Frame-Options à subir : c'est le résultat le plus solide ;
+     2. un lecteur sur un hôte qui accepte l'iframe ;
+     3. à défaut, on SUIT le meilleur candidat comme maillon suivant et on recommence.
+
+   Le point 3 est le changement de fond : les candidats classés « page » (score entre le
+   seuil de conservation et celui d'intégration) étaient jetés, alors que ce sont
+   précisément les maillons intermédiaires de ces chaînes. */
+async function resoudreLecteurEnChaine(depart) {
+    let url = depart;
+    let referer = refererFor(depart);
+    const vus = new Set([depart]);
+    for (let saut = 0; saut < EXTRACT_MAX_SAUTS; saut++) {
+        const r = await realFetch(url, {
+            headers: { 'User-Agent': UA, 'Referer': referer },
+            redirect: 'follow',
+            signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS)
+        });
+        const html = await r.text();
+        const cands = extractors.extractPlayers(html, url, { limit: 8 }) || [];
+        const hote = hostOf(url);
+
+        const media = cands.find((c) => MEDIA_DIRECT_RE.test(c.url));
+        if (media) return { url: media.url, sauts: saut + 1, media: true };
+
+        for (const c of cands) {
+            if (c.kind !== 'embed') continue;
+            const h = hostOf(c.url);
+            if (!h || h === hote) continue;
+            const pol = await politiqueDeCadre(h, c.url);
+            if (!(pol && pol.embeddable === false)) return { url: c.url, sauts: saut + 1, media: false };
+        }
+
+        const suivant = cands.find((c) => c.url && !vus.has(c.url) && hostOf(c.url) !== hote);
+        if (!suivant) return null;
+        vus.add(suivant.url);
+        referer = url;
+        url = suivant.url;
+    }
+    return null;
+}
+
 const lecteurParLien = {};
-let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0;
+let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0, extraitsMedia = 0, extraitsProfonds = 0;
 {
     const cible = liensAResoudre.slice(0, EXTRACT_MAX_LIENS);
     let curseur = 0;
@@ -443,43 +525,20 @@ let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0;
         while (curseur < cible.length) {
             const u = cible[curseur++];
             try {
-                const r = await realFetch(u, {
-                    headers: { 'User-Agent': UA, 'Referer': refererFor(u) },
-                    redirect: 'follow',
-                    signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS)
-                });
-                const html = await r.text();
-                const cands = extractors.extractPlayers(html, u, { limit: 6 }) || [];
-                /* Même exigence que pickEmbeddablePlayer côté client : intégrable, et sur
-                   un autre hôte que la page — sinon on ne fait que réécrire l'adresse
-                   qu'on avait déjà. */
-                const hote = hostOf(u);
-                /* Troisième exigence, propre au serveur : l'hôte du lecteur ne doit pas
-                   être un de ceux dont on vient de MESURER qu'ils refusent l'iframe. Sans
-                   elle on échangeait une page bloquée contre une autre page bloquée, et
-                   le client s'en apercevait trop tard — X-Frame-Options s'applique avant
-                   tout JavaScript. Relevé le 5 septembre 2026 sur le cache de production :
-                   34 liens promus vers un hôte mesuré non intégrable, dont 30 vers
-                   isportsurge.ws (« X-Frame-Options: sameorigin »).
-
-                   On essaie le candidat suivant ; si aucun ne convient, on n'écrit rien et
-                   le tour côté client reprend la main — ce qui est le bon repli, puisque
-                   lui sait reconstruire la page. */
-                const gagnant = cands.find((c) => {
-                    if (c.kind !== 'embed') return false;
-                    const h = hostOf(c.url);
-                    if (h === hote) return false;
-                    const pol = hostPolicy[h];
-                    return !(pol && pol.embeddable === false);
-                });
-                if (gagnant) { lecteurParLien[u] = gagnant.url; extraitsOk++; }
-                else extraitsVides++;
+                const trouve = await resoudreLecteurEnChaine(u);
+                if (trouve) {
+                    lecteurParLien[u] = trouve.url;
+                    extraitsOk++;
+                    if (trouve.media) extraitsMedia++;
+                    if (trouve.sauts > 1) extraitsProfonds++;
+                } else extraitsVides++;
             } catch (e) { extraitsErr++; }
         }
     }
     await Promise.all(Array.from({ length: EXTRACT_CONCURRENCE }, ouvrier));
     console.log(`Lecteurs extraits : ${extraitsOk}/${cible.length} liens sondés `
-        + `(${extraitsVides} sans lecteur, ${extraitsErr} injoignables) en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+        + `(${extraitsMedia} flux directs, ${extraitsProfonds} trouves au-dela du premier saut, `
+        + `${extraitsVides} sans lecteur, ${extraitsErr} injoignables) en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 }
 
 // ── 3. Écriture ───────────────────────────────────────────────────────────
