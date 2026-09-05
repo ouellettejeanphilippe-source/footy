@@ -1,6 +1,6 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './extractors.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
@@ -1145,6 +1145,77 @@ export function parseMethstreams(html, pageUrl) {
     return matches;
 }
 
+/* ══ PARSE FLEXFITNESS ════════════════
+   flexfitness.fit (2026, ajouté le 5 septembre 2026 : « ajouter flexfitness.fit pour
+   tout, dont college football ») : une seule page pour tous les sports, en sections :
+     <div class="sport-section" id="cfb"><h2>CFB</h2>
+       <div class="cards"><a class="card" href="/watch-live/<sport>/<ligue>/<a>-vs-<b>/<id>">
+         <h3><img alt="home">A vs B<img alt="away"></h3>
+         <div class="meta">LIGUE •  Month DD, YYYY • HH:MM AM/PM<span class="live-badge">Live</span></div>
+       </a></div></div>
+   Les événements à un seul nom (Grand Prix, etc.) n'ont pas de " vs " dans le <h3> :
+   homeTeam prend le titre entier, awayTeam reste vide (comme pour les autres sources
+   agrégées). Chaque page de match liste déjà ses flux en clair, sans traitement
+   spécifique dans extractStreamLinks (repère `.stream-link-card`). */
+export function parseFlexfitness(html, pageUrl) {
+    var matches = [];
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || FLEXFITNESS_URL;
+
+    var cards = doc.querySelectorAll('a.card[href*="/watch-live/"]');
+    [].forEach.call(cards, function(a) {
+        var href = a.getAttribute('href') || '';
+        var h3 = a.querySelector('h3');
+        var title = (h3 ? h3.textContent : a.textContent).replace(/\s+/g, ' ').trim();
+        var teams = title.split(/\s+vs\.?\s+/i);
+        var home = teams[0] ? teams[0].trim() : '';
+        var away = teams.length > 1 ? teams.slice(1).join(' vs ').trim() : '';
+        if (!home || home.length < 2) return;
+
+        var metaEl = a.querySelector('.meta');
+        var metaText = metaEl ? metaEl.textContent.replace(/\s+/g, ' ').trim() : '';
+        var parts = metaText.split('•').map(function(p) { return p.trim(); });
+        var league = parts[0] || 'Sports';
+
+        var matchDate = null, startTime = '00:00';
+        var dm = /([A-Za-z]+\s+\d{1,2},\s*\d{4})/.exec(metaText);
+        if (dm) {
+            var d = new Date(dm[1]);
+            if (!isNaN(d.getTime())) {
+                matchDate = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+            }
+        }
+        var tm = /(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(metaText);
+        if (tm) {
+            var hh = parseInt(tm[1], 10), mm = parseInt(tm[2], 10);
+            if (tm[3].toUpperCase() === 'PM' && hh < 12) hh += 12;
+            if (tm[3].toUpperCase() === 'AM' && hh === 12) hh = 0;
+            startTime = pad(hh) + ':' + pad(mm); // le site affiche l'heure de l'Est, comme Buffstreams/Methstreams
+        }
+
+        var matchUrl = href.indexOf('http') === 0 ? href : resolveUrl(href, base);
+        if (!matchUrl.startsWith('http') || matches.find(function(m) { return m.matchUrl === matchUrl; })) return;
+
+        matches.push({
+            id: 'flex_' + matches.length,
+            league: formatLeagueName(league),
+            flag: lgFlag(league),
+            color: lgColor(league),
+            homeTeam: getOfficialTeamName(home),
+            awayTeam: away ? getOfficialTeamName(away) : '',
+            matchUrl: matchUrl,
+            startTime: startTime,
+            matchDate: matchDate,
+            durationMinutes: getLeagueDuration(league),
+            status: a.querySelector('.live-badge') ? 'live' : 'upcoming',
+            streamLinks: [],
+            streamsLoaded: false,
+            source: 'flexfitness'
+        });
+    });
+    return matches;
+}
+
 /* ══ PARSER CHIRURGICAL ════════════════
    Classes footybite confirmées:
    .div-child-box  → chaque match (133x)
@@ -2251,6 +2322,31 @@ export function extractStreamLinks(html, m) {
         } catch(e) {}
     }
 
+    /* Flexfitness : chaque page de match liste déjà ses flux en clair, sans script à
+       décoder — le repli générique plus bas (boutons `target="_blank"`) les aurait
+       tout de même trouvés, mais avec un nom illisible (tout le texte de la carte,
+       détails de qualité compris). Repéré ici par la classe `.stream-link-card`,
+       indépendante de l'hôte : ne dépend pas du domaine flexfitness.fit, qui peut
+       changer comme les autres sources agrégées. */
+    var flexCards = doc.querySelectorAll('.stream-link-card[href]');
+    [].forEach.call(flexCards, function(card) {
+        var url = card.getAttribute('href');
+        if (!url || url.indexOf('http') !== 0) return;
+        if (isMatchOrLeaguePage(url, m)) return;
+        if (links.find(function(l) { return l.url === url; })) return;
+        var nameEl = card.querySelector('.stream-link-name');
+        var badgeEl = card.querySelector('.stream-link-badge');
+        var name = (nameEl ? nameEl.textContent : card.textContent).replace(/\s+/g, ' ').trim() || 'Flux';
+        links.push({
+            name: name,
+            quality: extractQuality((badgeEl ? badgeEl.textContent : '') + ' ' + name),
+            lang: 'MULTI',
+            url: url,
+            icon: '📺',
+            scrapeContext: { blockText: card.textContent || '', pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
+        });
+    });
+
     // Buffstreams and MLBite/Methstreams and VIPLeague fallback handling
     // Try to find generic data URLs inside any script tag if iframe searching fails
     var scriptElements = doc.querySelectorAll('script');
@@ -2455,7 +2551,7 @@ export function extractStreamLinks(html, m) {
     var selfOrigin = '';
     try { selfOrigin = new URL(m.matchUrl).origin; } catch(e) {}
     var seenNormalized = {};
-    var partnerHosts = ['footybite', 'nbabite', 'nflbite', 'mlbbite', 'totalsportek', 'sportsurge', 'buffstreams', 'streameast', 'methstreams', 'vipleague', 'hesgoal'];
+    var partnerHosts = ['footybite', 'nbabite', 'nflbite', 'mlbbite', 'totalsportek', 'sportsurge', 'buffstreams', 'streameast', 'methstreams', 'vipleague', 'hesgoal', 'flexfitness'];
     links = links.filter(function(l) {
         if (!l || !l.url || typeof l.url !== 'string') return false;
         var u = l.url.trim();
@@ -2623,6 +2719,7 @@ export function scrapeMatchFlux(m, forceRefresh, deep){
         else if (m.matchUrl.indexOf('onhockey') > -1) targetSource = 'onhockey';
         else if (m.matchUrl.indexOf('vipleague') > -1) targetSource = 'vipleague';
         else if (m.matchUrl.indexOf('methstreams') > -1) targetSource = 'methstreams';
+        else if (m.matchUrl.indexOf('flexfitness') > -1) targetSource = 'flexfitness';
     }
 
     links.forEach(function(newLink) {
