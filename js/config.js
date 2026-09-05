@@ -8,7 +8,19 @@ import { getLogo, normName, STATIC_TEAMS } from './db.js';
 import { buildProxyList } from './fetcher.js';
 
 /* ══ CONFIG ═════════════════════════════ */
-export var SITE = 'https://footybite.bid/'; // Updated to new footybite.bid domain
+/* footybite.im plutôt que .bid, et ce n'est pas un détail de miroir.
+
+   Les DEUX servent l'accueil (le .bid y redirige vers le .im), mais seul le .im sert les
+   pages de match : relevé le 5 septembre 2026 sur huit pages, .im rend 200 huit fois sur
+   huit, .bid rend 403 (Cloudflare). Le blocage est donc propre au DOMAINE, pas au site —
+   et c'est sur lui qu'on avait conclu que « les pages de match Footybite ne répondent
+   jamais depuis un serveur », d'où leur mise à l'écart complète.
+
+   Conséquence de cette mise à l'écart : Footybite, source de 178 matchs du cache, ne
+   fournissait AUCUN lecteur. Or ses pages de match en portent 8 à 11 en MLB et jusqu'à 24
+   sur un match de La Liga en direct — chacun étant un serveur distinct avec son nom, sa
+   langue et sa qualité, que l'extracteur lit déjà correctement. */
+export var SITE = 'https://footybite.im/';
 export var MLBBITE_PLUS_URL = 'https://mlbbite.plus/';
 export var SPORTSURGE_URL = 'https://v2.sportsurge.net/'; // sportsurge.net redirige vers v2.sportsurge.net/welcome/
 export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
@@ -26,7 +38,7 @@ export var FLEXFITNESS_URL = 'https://flexfitness.fit/';
 /* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
    Surchargés par la clé MIRRORS de domains.json. */
 export var SOURCE_MIRRORS = {
-    footybite: ['https://footybite.bid/'],
+    footybite: ['https://footybite.im/', 'https://footybite.bid/'],
     mlbbite: ['https://mlbbite.plus/'],
     sportsurge: ['https://v2.sportsurge.net/', 'https://sportsurge.net/'],
     buffstreams: ['https://app.buffstreams.is/indexcracked29'],
@@ -213,7 +225,10 @@ export const SCRAPERS_CONFIG = [
    (403 Cloudflare sur /game/, alors que son accueil passe), les miroirs Streameast 14 fois
    sur 15 (429 « error code 1015 »). Leurs matchs restent découverts par l'accueil, et
    leurs flux récupérés via les pages du même match sur les autres sources (altUrls). */
-export var MATCH_PAGE_BLOCKED_HOSTS = /(^|\.)(footybite\.[a-z.]+|(the)?streameast\.[a-z.]+|gostreameast\.[a-z.]+)$/i;
+/* La liste vise des DOMAINES précis, pas des familles de sites. « footybite.[a-z.]+ »
+   écartait aussi footybite.im, qui sert pourtant ses pages de match sans broncher : on
+   jetait la source la mieux fournie à cause du seul .bid. Seul ce dernier reste écarté. */
+export var MATCH_PAGE_BLOCKED_HOSTS = /(^|\.)(footybite\.bid|(the)?streameast\.[a-z.]+|gostreameast\.[a-z.]+)$/i;
 export function isMatchPageBlocked(url) {
     try { return MATCH_PAGE_BLOCKED_HOSTS.test(new URL(url).hostname); } catch (e) { return false; }
 }
