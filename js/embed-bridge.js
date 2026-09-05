@@ -172,6 +172,33 @@ var SHIM = '<script>(function(){' +
      peut réécrire cet en-tête depuis un navigateur. */
   'var prof=(window.__mvProfondeur||0), faites=0;' +
   'function absolu(u){try{return new URL(u,document.baseURI).href;}catch(e){return null;}}' +
+
+  /* Repli sur le pont pour les appels réseau de la page — mais SEULEMENT après un échec
+     réel. On laisse d'abord partir la vraie requête : tout ce qui fonctionne aujourd'hui
+     continue de fonctionner à l'identique, et l'on ne rattrape que ce que le navigateur
+     vient de refuser (typiquement l'absence d'en-tête CORS sur l'API du site).
+
+     Les médias sont exclus : un segment vidéo repassé en texte serait corrompu, et les
+     CDN de streaming autorisent presque toujours l'origine croisée — ils sont faits pour
+     être intégrés partout. C'est le référent, pas CORS, qui les fait échouer, et aucun
+     script ne peut le réécrire depuis un navigateur. */
+  'var MEDIA=/\\.(m3u8|mpd|ts|m4s|mp4|webm|aac|key|jpg|png|css|woff2?)(\\?|#|$)/i;' +
+  'var vraiFetch=window.fetch;' +
+  'if(typeof vraiFetch==="function"&&P){window.fetch=function(entree,options){' +
+    'var self=this;var args=arguments;' +
+    'return vraiFetch.apply(self,args).catch(function(err){' +
+      'try{' +
+        'var u=(typeof entree==="string")?entree:(entree&&entree.url);' +
+        'var m=((options&&options.method)||(entree&&entree.method)||"GET").toUpperCase();' +
+        'if(m!=="GET")throw err;' +
+        'var a=absolu(u); if(!a||MEDIA.test(a))throw err;' +
+        'if(!P.__mvRecupererTexte)throw err;' +
+        'return P.__mvRecupererTexte(a).then(function(txt){' +
+          'if(txt==null)throw err;' +
+          'return new Response(txt,{status:200,headers:{"Content-Type":"text/plain"}});' +
+        '});' +
+      '}catch(e){throw err;}' +
+    '});};}' +
   'function reconstruire(f){' +
     'if(!P||faites>=' + MAX_IFRAMES_PAR_DOC + '||prof>=' + MAX_PROFONDEUR_RECONSTRUCTION + ')return;' +
     'if(f.__mvVue)return; var s=f.getAttribute("src"); if(!s)return;' +
@@ -291,6 +318,18 @@ export function iframeReconstructible(url) {
 export function installerReconstructionRecursive(proxyFetch) {
   if (typeof window === 'undefined') return;
   window.__mvIframeReconstructible = iframeReconstructible;
+
+  /* Même canal, pour les appels réseau que la page reconstruite passe ELLE-MÊME.
+     Vérifié le 5 septembre 2026 : une page recopiée à notre origine ne peut plus joindre
+     sa propre API — le navigateur y voit une requête d'origine croisée et la refuse
+     faute d'en-tête CORS. Or c'est précisément ainsi que ces lecteurs obtiennent le
+     jeton qui fabrique l'adresse du flux ; sans lui la page se reconstruit, s'affiche…
+     et reste noire. Le pont, lui, n'est pas soumis à cette politique. */
+  window.__mvRecupererTexte = function (url) {
+    return recupererPage(url, proxyFetch)
+      .then(function (res) { return res && typeof res.html === 'string' ? res.html : null; })
+      .catch(function () { return null; });
+  };
   window.__mvReconstruireIframe = function (url, profondeur) {
     var prof = parseInt(profondeur, 10) || 0;
     if (prof >= MAX_PROFONDEUR_RECONSTRUCTION) return Promise.resolve(null);
