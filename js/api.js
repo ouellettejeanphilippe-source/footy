@@ -148,11 +148,56 @@ export function setApiTargetDate(d) {
   window.TARGET_DATE = d;
 }
 
+/* Rafraîchissement des scores en direct.
+
+   Il était armé DANS la seule branche qui lit `data/schedule.json`, et cette branche
+   n'est prise qu'au tout premier chargement de la journée : ensuite, le calendrier du
+   jour est servi depuis le stockage local et la fonction rend son résultat avant même
+   d'y arriver. L'intervalle n'était donc jamais posé sur un rechargement, et le
+   `loadAll` périodique de main.js ne faisait que relire ce même cache — figé aux scores
+   du premier chargement. D'où des scores justes à l'ouverture, puis qui ne bougent plus.
+
+   On l'arme donc à part, une fois, quel que soit le chemin qui a fourni les matchs, et
+   seulement pour aujourd'hui : un jour passé n'a pas de score à suivre.
+
+   Le retour au premier plan compte autant que l'intervalle : sur téléphone, l'onglet est
+   gelé en arrière-plan et les minuteries ne s'exécutent pas. Sans cela, revenir sur
+   l'application après une heure affiche les scores d'il y a une heure jusqu'au prochain
+   tic. On rafraîchit donc aussi dès que la page redevient visible, en espaçant d'une
+   minute au minimum pour ne pas marteler l'API à chaque va-et-vient. */
+export var SCORE_REFRESH_MS = 5 * 60 * 1000;
+export var SCORE_REFRESH_MIN_GAP_MS = 60 * 1000;
+var dernierRafraichissement = 0;
+
+export function refreshLiveScores(raison) {
+    var maintenant = Date.now();
+    if (maintenant - dernierRafraichissement < SCORE_REFRESH_MIN_GAP_MS) return Promise.resolve(null);
+    dernierRafraichissement = maintenant;
+    lg('scores: rafraîchissement (' + (raison || 'intervalle') + ')');
+    return backgroundUpdateGuide(new Date());
+}
+
+export function startLiveScoreRefresh() {
+    if (typeof window === 'undefined' || window._backgroundRefreshStarted) return false;
+    window._backgroundRefreshStarted = true;
+    setInterval(function() { refreshLiveScores('intervalle'); }, SCORE_REFRESH_MS);
+    if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) refreshLiveScores('retour au premier plan');
+        });
+    }
+    return true;
+}
+
 export function getApiFirstMatches(targetDate, forceRefresh) {
   var targetDateObj = targetDate || new Date();
   var targetDateStr = getEstDateStrFromDate(targetDateObj);
   var todayStr = getEspnDateStr(targetDateObj);
   var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+
+  /* Avant tout retour anticipé : c'est justement le retour anticipé sur le cache local
+     qui empêchait l'armement. */
+  if (targetDateStr === getEstDateStrFromDate(new Date())) startLiveScoreRefresh();
 
   var needsFullFetch = !cache || cache.fetchDate !== todayStr || forceRefresh;
 
@@ -170,14 +215,6 @@ export function getApiFirstMatches(targetDate, forceRefresh) {
           .then(function(cacheData) {
               if (cacheData && cacheData.fetchDate === todayStr && cacheData.matches) {
                   safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, matches: cacheData.matches });
-
-                  // Setup periodic background refresh for live scores (every 5 mins)
-                  if (!window._backgroundRefreshStarted) {
-                      window._backgroundRefreshStarted = true;
-                      setInterval(function() {
-                          backgroundUpdateGuide(new Date());
-                      }, 5 * 60 * 1000); // 5 minutes
-                  }
 
                   return cacheData.matches;
               } else {
