@@ -4,7 +4,7 @@ import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
-import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, updateMatchUiAfterScrape, fetchSubPages, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
+import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, updateMatchUiAfterScrape, fetchSubPages, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
 import { isMatchPair } from './match.js';
@@ -410,7 +410,8 @@ async function loadAllRun(isBackground, forceScrape){
               'streameast': parseStreameast,
               'onhockey': parseOnHockey,
               'vipleague': parseVipleague,
-              'methstreams': parseMethstreams
+              'methstreams': parseMethstreams,
+              'flexfitness': parseFlexfitness
           };
           var tasks = SCRAPERS_CONFIG.map(function(sc) {
               return { fn: scraperFunctions[sc.id], url: sc.url, id: sc.id };
