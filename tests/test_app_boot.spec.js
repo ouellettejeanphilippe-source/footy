@@ -296,67 +296,20 @@ test('une carte sans lien porte le bouton de recherche, une carte pourvue son co
   expect(badges.duplicates, 'une seule pastille de flux par carte').toBeTruthy();
 });
 
-/* Le script Tampermonkey écrasait `window.open` À L'INTÉRIEUR de la page tierce pour
-   bloquer les popunders — ce que l'application, séparée par l'origine croisée, ne peut
-   pas faire en JavaScript. L'attribut `sandbox` obtient le même résultat de façon
-   déclarative, appliqué par le navigateur, donc pour tous les utilisateurs et sans
-   extension. Ce test compare les deux situations sur un lecteur réellement hostile.
+/* Le bac à sable des lecteurs (PLAYER_SANDBOX) a été retiré le 5 septembre 2026 : « quand
+   y'a le tag sandbox, ça chie » — beaucoup de sites détectent une iframe en bac à sable
+   et refusent de s'afficher, quels que soient les jetons accordés. Les deux tests qui
+   vérifiaient ce mécanisme sont retirés avec lui plutôt que laissés à vérifier du code
+   mort, ce qui donnerait l'impression trompeuse que la protection reste active.
 
-   Le clic est un vrai clic : Chrome bloque déjà la navigation du parent sans activation
-   utilisateur, si bien qu'un test sans clic passerait au vert même sans bac à sable et
-   ne prouverait rien. */
-test('le bac à sable des lecteurs bloque popunder et détournement d\'onglet', async ({ page, context }) => {
-  const { PLAYER_SANDBOX } = await import('../js/embed-bridge.js');
-  const faux = 'http://localhost:' + server.address().port + '/__faux-lecteur';
-
-  async function joue(avecSandbox) {
-    const p = await context.newPage();
-    const popups = [];
-    context.on('page', (q) => popups.push(q.url()));
-    await p.goto(origin + '/__faux-lecteur');   // page d'accueil quelconque, même origine
-    await p.evaluate(([src, sb]) => {
-      const f = document.createElement('iframe');
-      f.style.cssText = 'width:300px;height:200px';
-      if (sb) f.setAttribute('sandbox', sb);
-      f.src = src;
-      document.body.appendChild(f);
-    }, [faux, avecSandbox ? PLAYER_SANDBOX : null]);
-    await p.frameLocator('iframe').locator('#b').click();
-    await p.waitForTimeout(1200);
-    const detourne = !p.url().startsWith(origin);
-    await p.close();
-    return { detourne, popups: popups.length };
-  }
-
-  const sans = await joue(false);
-  expect(sans.detourne || sans.popups > 0,
-    'sans bac à sable, le lecteur hostile doit réussir son attaque — sinon le test ne prouve rien')
-    .toBe(true);
-
-  const avec = await joue(true);
-  expect(avec.detourne, 'avec bac à sable, l\'onglet ne doit pas être détourné').toBe(false);
-  expect(avec.popups, 'avec bac à sable, aucun popup ne doit s\'ouvrir').toBe(0);
-});
-
-/* Le bac à sable ne vaut que par ce qu'il n'accorde PAS. Un jeton ajouté par mégarde —
-   allow-popups en tête — rouvrirait exactement ce que le test précédent ferme. */
-test('le bac à sable des lecteurs accorde le nécessaire et rien de plus', async () => {
-  const { PLAYER_SANDBOX, EMBED_SANDBOX } = await import('../js/embed-bridge.js');
-  const jetons = PLAYER_SANDBOX.split(/\s+/);
-
-  // Sans same-origin, un lecteur perd cookies, stockage et requêtes vers son domaine.
-  // Sur une iframe d'origine croisée, l'accorder ne donne accès qu'à sa propre origine.
-  expect(jetons).toContain('allow-scripts');
-  expect(jetons).toContain('allow-same-origin');
-  expect(jetons).toContain('allow-presentation');
-
-  for (const interdit of ['allow-popups', 'allow-popups-to-escape-sandbox',
-    'allow-top-navigation', 'allow-top-navigation-by-user-activation', 'allow-modals']) {
-    expect(jetons, interdit + ' rouvrirait la porte aux popunders ou au détournement')
-      .not.toContain(interdit);
-  }
-
-  // Le document RECONSTRUIT, lui, vit à notre origine : same-origin y serait une faille.
+   Le document RECONSTRUIT en `srcdoc`, lui, garde son bac à sable (EMBED_SANDBOX) :
+   contrairement au lecteur ordinaire, ce document vit à l'origine même de l'application
+   — sans bac à sable il lirait son localStorage et son DOM. Rien, côté site distant, ne
+   peut détecter ni contourner ce bac à sable puisqu'il ne s'agit pas de SA page mais
+   d'une copie que l'application a elle-même écrite : la plainte de l'utilisateur ne le
+   concerne donc pas. */
+test('le document reconstruit garde son bac à sable, sans allow-same-origin', async () => {
+  const { EMBED_SANDBOX } = await import('../js/embed-bridge.js');
   expect(EMBED_SANDBOX.split(/\s+/),
     'un document reconstruit avec allow-same-origin lirait le localStorage de l\'application')
     .not.toContain('allow-same-origin');
