@@ -8,13 +8,20 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
-import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus } from './embed-bridge.js';
+import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, installerReconstructionRecursive } from './embed-bridge.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
 /* Le pont du script utilisateur s'annonce de lui-même : on ouvre l'écoute dès le
    chargement du module pour ne pas rater son bonjour. */
 initEmbedBridge();
+
+/* Passerelle des documents reconstruits : ils vivent à notre origine et viennent y
+   chercher de quoi reconstruire À LEUR TOUR leurs iframes imbriquées. Sans cela,
+   X-Frame-Options reprend la main un cran plus bas et l'écran « Firefox Can't Open This
+   Page » revient à l'intérieur de la tuile. Rien à installer côté utilisateur : le pont
+   rend le téléchargement plus fiable, les proxys CORS prennent le relais à défaut. */
+installerReconstructionRecursive(fetchPage);
 
 /* Bandeau discret quand le tour de passe-passe a réussi. L'utilisateur doit savoir ce
    qu'il regarde et par quel canal :
