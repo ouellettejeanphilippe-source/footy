@@ -1,5 +1,6 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './extractors.js';
+import { getBridgeStatus } from './embed-bridge.js';
 import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
@@ -1483,6 +1484,35 @@ export function parseMlbbite(html) {
     return matches;
 }
 
+/* Les deux équipes, lues dans l'ADRESSE de la page de match Footybite.
+
+   Footybite encode le match dans son propre lien : /game/<domicile>-vs-<visiteur>-<id>.
+   C'est la seule partie de la page qui ne bouge pas quand le site refait sa mise en
+   page — et c'est ce qui rend ce repli permanent plutôt que rapiécé.
+
+   Relevé le 5 septembre 2026 : sur les 180 matchs de l'accueil, 118 (66 %) ressortaient
+   du parseur SANS équipe visiteuse. La ligne du tableau livre ses libellés dans l'ordre
+   [domicile, état, visiteur] — « Nottingham Forest », « Match Started », « Tottenham
+   Hotspur » — alors que le parseur lisait tout ce qui précédait l'état comme le titre,
+   donc le domicile seul. Le JSON-LD qui rattrapait le nom complet ne couvre que 60 des
+   180 matchs. Résultat : des cartes « Nottingham Forest vs  » impossibles à apparier,
+   ni à la grille officielle ni aux autres sources.
+
+   Sur ces mêmes 180 adresses, le découpage ci-dessous rend les deux équipes pour 176 ;
+   les 4 restantes sont de vrais événements à un seul nom (UFC Fight Night, Grand Prix,
+   WWE), sans « -vs- », et gardent donc à juste titre une équipe visiteuse vide. */
+export function teamsFromFootybiteSlug(href) {
+  var slug = String(href || '').split('?')[0].split('#')[0].replace(/\/+$/, '');
+  var pos = slug.lastIndexOf('/game/');
+  slug = pos >= 0 ? slug.slice(pos + 6) : slug.replace(/^\//, '');
+  if (!slug) return { home: '', away: '' };
+  var base = slug.replace(/-\d{4,}$/, '');   // l'identifiant numérique final
+  var parts = base.split(/-vs-/i);
+  var propre = function(s) { return s.replace(/-/g, ' ').replace(/\s+/g, ' ').trim(); };
+  if (parts.length < 2) return { home: propre(base), away: '' };
+  return { home: propre(parts[0]), away: propre(parts.slice(1).join(' vs ')) };
+}
+
 export function parseFootybite(html){
   var matches = [];
   try {
@@ -1570,6 +1600,18 @@ export function parseFootybite(html){
               var vsSplit = title.split(/\s+vs?\.?\s+/i);
               if (vsSplit.length >= 2) { home = vsSplit[0].trim(); away = vsSplit.slice(1).join(' vs ').trim(); }
           }
+
+          /* L'équipe visiteuse vient APRÈS l'état dans la ligne ([domicile, état, visiteur]),
+             là où le découpage ci-dessus s'arrête à l'état. On la reprend ici, puis, en
+             dernier recours, dans l'adresse du match — voir teamsFromFootybiteSlug. */
+          if (!away && timeIdx >= 0 && strs.length > timeIdx + 1) {
+              var apres = (strs[timeIdx + 1] || '').trim();
+              // Le libellé du bouton (« Live Streams », « Watch »…) suit parfois l'état.
+              if (apres && !isTimeLike(apres) && !/^(live\s*streams?|watch|stream(s|ing)?|regarder)$/i.test(apres)) away = apres;
+          }
+          var duSlug = teamsFromFootybiteSlug(href);
+          if (!away && duSlug.away) away = duSlug.away;
+          if (!home && duSlug.home) home = duSlug.home;
           if (!home) continue;
 
           var sectionName = 'Football';
@@ -2687,19 +2729,40 @@ export function scrapeMatchFlux(m, forceRefresh, deep){
      systématiquement les serveurs et les proxys (Footybite /game/ en 403, miroirs
      Streameast en 429). On garde malgré tout le lien : dans le navigateur de
      l'utilisateur, ces pages s'ouvrent normalement (bouton ↗). Les flux intégrables du
-     match viennent, eux, des autres sources via altUrls. */
-  if (isMatchPageBlocked(m.matchUrl)) {
+     match viennent, eux, des autres sources via altUrls.
+
+     MAIS « bloqué » dépend du CHEMIN emprunté, pas du site. La liste a été mesurée
+     depuis un serveur (GitHub Actions) et depuis les proxys CORS publics — deux
+     adresses de centre de données, exactement ce que Cloudflare écarte. Le pont du
+     script utilisateur, lui, part de la machine de l'utilisateur : c'est la même
+     requête que celle du navigateur quand il ouvre la page à la main, celle dont ce
+     commentaire dit déjà qu'elle « s'ouvre normalement ». Vérifié le 5 septembre 2026 :
+     footybite.bid/game/… rend 403 depuis ici, alors que l'utilisateur y voit des
+     dizaines de liens. Refuser d'essayer par le pont, c'est jeter la source la mieux
+     fournie en football à cause d'une mesure faite ailleurs.
+
+     On n'essaie donc que si le pont est là, et l'échec retombe sur le repli habituel. */
+  var pontDispo = false;
+  try { var etatPont = getBridgeStatus(); pontDispo = !!(etatPont && etatPont.available); } catch (e) {}
+  var pageBloquee = isMatchPageBlocked(m.matchUrl);
+  function repliPageBloquee() {
       m.streamLinks = m.streamLinks || [];
       m.streamLinks = m.streamLinks.concat(matchPageFallbackLink(m.matchUrl, m.streamLinks));
       m.streamsLoaded = true;
-      return Promise.resolve(m.streamLinks);
+      return m.streamLinks;
   }
+  if (pageBloquee && !pontDispo) return Promise.resolve(repliPageBloquee());
 
   // Timeout for individual match scrape
   return Promise.race([
     fetchPage(m.matchUrl, { force: !!forceRefresh }),
     new Promise(function(_, reject) { setTimeout(function() { reject(new Error('Timeout match streams')); }, 30000); })
-  ]).then(function(html){
+  ]).catch(function(err){
+    // Le pont a échoué sur une page réputée bloquée : on revient au repli, sans casser la fiche.
+    if (pageBloquee) { repliPageBloquee(); return null; }
+    throw err;
+  }).then(function(html){
+    if (html === null) return m.streamLinks;
     return new Promise(function(resolve, reject) {
       setTimeout(function() {
         try {

@@ -342,16 +342,29 @@ for (const m of all) for (const l of (m.streamLinks || [])) { const h = hostOf(l
    ouvrir un onglet — c'est ce qui supprime l'écran « … ne peut pas ouvrir cette
    page » au lieu de le rattraper après coup. */
 function readFramePolicy(headers) {
-    const xfo = String(headers.get('x-frame-options') || '').toLowerCase().trim();
-    if (xfo.includes('deny') || xfo.includes('sameorigin')) return { embeddable: false, reason: 'X-Frame-Options: ' + xfo };
     const csp = String(headers.get('content-security-policy') || '');
     const fa = /frame-ancestors([^;]*)/i.exec(csp);
+    const xfo = String(headers.get('x-frame-options') || '').toLowerCase().trim();
+
+    /* `frame-ancestors` PASSE AVANT `X-Frame-Options`, et ce n'est pas un détail de style :
+       la spécification CSP demande aux navigateurs d'ignorer purement et simplement
+       X-Frame-Options quand frame-ancestors est présent, et c'est ce que font Chrome,
+       Firefox et Safari. L'ordre inverse — celui d'ici jusqu'au 5 septembre 2026 —
+       déclarait donc non intégrables des lecteurs que le navigateur aurait affichés
+       sans broncher, et leurs liens partaient en « ouvrir dans un onglet ».
+       Relevé ce jour-là sur embed.sportspatrika.com : « X-Frame-Options: SAMEORIGIN »
+       ET « Content-Security-Policy: frame-ancestors * ». C'est la destination de la
+       chaîne des lecteurs Flexfitness (clearstreamdv → sportspatrika) : tout ce que
+       cette source apporte se jouait donc dans un onglet, jamais dans le lecteur. */
     if (fa) {
         const value = fa[1].trim().toLowerCase();
         if (!value || value === "'none'") return { embeddable: false, reason: 'frame-ancestors: ' + (value || "'none'") };
         if (!value.includes('*') && !value.includes('https:')) return { embeddable: false, reason: 'frame-ancestors: ' + value.slice(0, 60) };
+        return { embeddable: true, reason: 'frame-ancestors permissif (X-Frame-Options ignoré : ' + (xfo || 'absent') + ')' };
     }
-    return { embeddable: true, reason: xfo || fa ? 'en-têtes permissifs' : 'aucun en-tête restrictif' };
+
+    if (xfo.includes('deny') || xfo.includes('sameorigin')) return { embeddable: false, reason: 'X-Frame-Options: ' + xfo };
+    return { embeddable: true, reason: xfo ? 'en-têtes permissifs' : 'aucun en-tête restrictif' };
 }
 
 const hostPolicy = {};
