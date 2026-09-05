@@ -1687,7 +1687,30 @@ export function updateMultivisionLayout() {
                    La mesure prime donc sur l'heuristique, et l'heuristique reste en renfort
                    pour les liens ajoutés à la main, que le serveur n'a jamais sondés. */
                 var bloqueParServeur = !!(s && s.topLevel);
-                var isTopLevel = !lecteurPret && (bloqueParServeur || isMatchOrLeaguePage(finalUrl));
+
+                /* La PAGE D'ORIGINE passe avant le lecteur extrait, quand elle s'encadre.
+
+                   « Charger la page et la nuke, ça semble plus stable que juste charger le
+                   lecteur » — et c'est vérifiable : une page de lecteur isolée
+                   (embed.php?ch=…) est servie avec NOTRE origine en référent, sans les
+                   cookies ni les jetons que la page parente lui aurait posés, alors que la
+                   même page chargée entière construit sa chaîne interne elle-même, chaque
+                   requête imbriquée portant le bon référent. On échangeait donc une page
+                   qui marche contre une adresse plus fragile, et on perdait le contexte qui
+                   la faisait marcher.
+
+                   Le désordre visuel n'est pas un argument contraire : c'est précisément ce
+                   que multiview-cleaner.user.js retire, dans la tuile, en ne gardant que la
+                   vidéo — la raison d'être de ce script.
+
+                   Relevé le 5 septembre 2026 sur le cache de production : sur 228 liens
+                   pourvus d'un playerUrl, 119 avaient une page d'origine DÉJÀ intégrable.
+                   Plus de la moitié des substitutions étaient donc gratuites, et coûtaient
+                   la stabilité. Le lecteur extrait garde tout son sens pour les 109 autres,
+                   dont la page, elle, refuse l'iframe. */
+                var lecteurUtile = !!lecteurPret && bloqueParServeur;
+                var isTopLevel = !lecteurUtile && (bloqueParServeur || isMatchOrLeaguePage(finalUrl));
+                if (!lecteurUtile) lecteurPret = '';
 
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
