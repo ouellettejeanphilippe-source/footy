@@ -8,7 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
-import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX, PLAYER_SANDBOX, playerSandboxFor, isSandboxExempt, toggleSandboxException, sandboxHost } from './embed-bridge.js';
+import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX } from './embed-bridge.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -121,44 +121,94 @@ function demanderNettoyage(iframe) {
     });
 }
 
-function buildSandboxToggle(finalUrl, recharger) {
-    var host = sandboxHost(finalUrl);
-    if (!host) return null;
-    var btn = document.createElement('button');
-    btn.className = 'mv-sandbox-btn';
-    var peindre = function() {
-        var leve = isSandboxExempt(finalUrl);
-        /* Le script utilisateur tourne DANS la page tierce : lui seul peut y reprendre ce
-           que le bac à sable imposait — écraser `window.open`, neutraliser la navigation
-           de plus haut niveau. Quand il est là, lever le bac à sable ne laisse pas la page
-           sans garde-fou, et l'infobulle doit le dire : c'est ce qui distingue une levée
-           raisonnable d'une capitulation. */
-        var pont = false;
-        try { pont = !!(getBridgeStatus() || {}).available; } catch (e) {}
-        btn.textContent = leve ? '🔓' : '🛡️';
-        btn.classList.toggle('leve', leve);
-        btn.classList.toggle('couvert', leve && pont);
-        btn.title = leve
-            ? 'Bac à sable LEVÉ pour ' + host + '. '
-              + (pont
-                 ? 'Le script utilisateur prend le relais dans la page : fenêtres surgissantes '
-                   + 'et détournement d\'onglet restent bloqués. Cliquez pour remettre le bac à sable.'
-                 : 'Sans le script utilisateur, plus rien ne bloque les fenêtres surgissantes ni '
-                   + 'le détournement d\'onglet. Cliquez pour remettre le bac à sable.')
-            : 'Ce lecteur reste noir ou affiche « sandbox iframe not allowed » ? '
-              + 'Cliquez pour lever le bac à sable sur ' + host + ' et recharger.'
-              + (pont ? ' Le script utilisateur reprendra les protections.' : '');
-        btn.setAttribute('aria-label', btn.title);
-    };
-    peindre();
-    btn.addEventListener('click', function(ev) {
-        ev.stopPropagation();
-        toggleSandboxException(finalUrl);
-        peindre();
-        if (typeof recharger === 'function') recharger();
-    });
-    return btn;
+/* Le bouton de levée du bac à sable par domaine (🛡️/🔓) a été retiré le 5 septembre
+   2026 à la demande de l'utilisateur : « sandbox chié toujours » — le geste ne réglait
+   rien, le refus venant d'un script de la page imbriquée qu'on ne peut pas plus
+   contourner en levant le bac à sable qu'en le gardant. Voir js/embed-bridge.js. */
+
+/* ─── Lecture directe des flux vidéo bruts ────────────────────────────────────
+   `js/extractors.js` reconnaît une adresse `.m3u8` (HLS) comme un candidat plus
+   fort qu'un simple lien d'iframe (60 points contre 45) — c'est le format que
+   beaucoup de ces sites servent en coulisse. Mais rien, ensuite, ne la traitait
+   différemment : le code posait cette adresse en `iframe.src`, et un navigateur
+   ne joue pas du HLS brut dans un cadre. La tuile restait noire, silencieusement
+   — pas d'erreur, pas de bandeau, juste rien. C'est un flux qui EXISTE et qui ne
+   s'affiche jamais, contribuant au sentiment qu'« il devrait y avoir plus de
+   streams » alors que l'extraction les avait bel et bien trouvés.
+
+   Un `<video>` natif n'encadre rien : il n'y a pas de X-Frame-Options à
+   respecter, pas de bac à sable à poser, aucun script tiers ne s'exécute. C'est
+   aussi, à cette occasion, une meilleure réponse à « sandbox toujours cassé » —
+   pour tout flux qui se résout en adresse directe, le problème du bac à sable ne
+   se pose simplement plus. */
+var CHARGEMENT_HLS = null;
+export function estMediaDirecte(url) {
+    return /\.(m3u8|mp4|webm|mov|m4v)(\?|#|$)/i.test(String(url || ''));
 }
+function chargerHlsJs() {
+    if (window.Hls) return Promise.resolve(window.Hls);
+    if (CHARGEMENT_HLS) return CHARGEMENT_HLS;
+    CHARGEMENT_HLS = new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js';
+        s.onload = function() { resolve(window.Hls); };
+        s.onerror = function() { reject(new Error('hls.js indisponible')); };
+        document.head.appendChild(s);
+    });
+    return CHARGEMENT_HLS;
+}
+/* Rend un `<video>` prêt à jouer `url`, avec les mêmes classe et style que
+   l'iframe qu'il remplace — la mise en page (taille, recadrage, glisser-déposer)
+   ne fait ainsi aucune différence entre les deux. */
+function creerLecteurVideo(url) {
+    var video = document.createElement('video');
+    video.className = 'mv-media mv-video';
+    video.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;object-fit:contain;background:#000;';
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    // La plupart des navigateurs refusent l'autoplay avec le son : coupé par défaut,
+    // les contrôles natifs (video.controls = true) laissent l'utilisateur réactiver.
+    video.muted = true;
+
+    var estM3u8 = /\.m3u8(\?|#|$)/i.test(url);
+    if (estM3u8 && !video.canPlayType('application/vnd.apple.mpegurl')) {
+        chargerHlsJs().then(function(Hls) {
+            if (Hls && Hls.isSupported()) {
+                var hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                video._hls = hls; // pour destruction propre (voir plus bas)
+            } else {
+                video.src = url; // dernier recours : certains navigateurs y arrivent quand même
+            }
+        }).catch(function() { video.src = url; });
+    } else {
+        video.src = url; // HLS nativement supporté (Safari/iOS), ou format progressif (mp4, webm…)
+    }
+    return video;
+}
+/* Remplace `elementActuel` (l'iframe déjà posée) par un lecteur vidéo si `url`
+   est une adresse média directe ; sinon ne fait rien. Rend l'élément à utiliser
+   pour la suite (le nouveau lecteur, ou `elementActuel` inchangé) — l'appelant
+   doit toujours réaffecter sa variable avec ce retour. */
+function versVideoSiDirect(elementActuel, url, container) {
+    if (!estMediaDirecte(url)) return elementActuel;
+    var video = creerLecteurVideo(url);
+    /* Le recadrage (`s.cropped`) est appliqué à l'iframe AVANT la résolution du
+       tour de passe-passe, quand le lecteur n'arrive qu'après coup — sans quoi le
+       remplacement tardif par une vidéo perdrait ce réglage. */
+    if (elementActuel && elementActuel.style && elementActuel.style.transform) {
+        video.style.transform = elementActuel.style.transform;
+    }
+    if (elementActuel && elementActuel.parentNode === container) {
+        container.replaceChild(video, elementActuel);
+    } else {
+        container.appendChild(video);
+    }
+    return video;
+}
+
 
 
 /* ══ MULTIVIEW GAME MODE ═══════════════ */
@@ -1648,14 +1698,13 @@ export function updateMultivisionLayout() {
                    chargement du document, le poser après ne changerait rien jusqu'au
                    rechargement suivant. La branche `srcdoc` le remplace ensuite par
                    EMBED_SANDBOX, plus strict, avant d'écrire son document. */
-                var bacASable = playerSandboxFor(finalUrl, userPrefs.playerSandbox);
-                if (bacASable) iframe.setAttribute('sandbox', bacASable);
+                // Aucun bac à sable posé sur les lecteurs : retiré le 5 septembre 2026 à la
+                // demande de l'utilisateur (« pas de sandbox du tout »). EMBED_SANDBOX reste
+                // posé plus bas sur les documents RECONSTRUITS en srcdoc : ce n'est pas la
+                // même chose, ce bac à sable protège l'origine de l'application elle-même
+                // (localStorage, DOM) contre un document qu'on y a copié — pas un garde-fou
+                // contre le site distant, qu'on peut retirer sans risque pour l'app.
                 container.appendChild(iframe);
-
-                var levee = buildSandboxToggle(finalUrl, function() {
-                    fallbackToIframe(url, container, cell, s);
-                });
-                if (levee) container.appendChild(levee);
 
                 demanderNettoyage(iframe);
 
@@ -1679,24 +1728,14 @@ export function updateMultivisionLayout() {
                     resolveBlockedEmbed(finalUrl, fetchPage, registry).then(function(res) {
                         if (s._currentUrl !== url) return;
                         if (loader.parentNode) loader.remove();
-                        if (res && res.playerUrl) {
+                        if (res && res.playerUrl && estMediaDirecte(res.playerUrl)) {
+                            // Adresse média directe (.m3u8, .mp4…) : aucune iframe, donc aucun bac à sable.
+                            iframe = versVideoSiDirect(iframe, res.playerUrl, container);
+                            container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
+                        } else if (res && res.playerUrl) {
                             /* Cas courant : la page contenait son lecteur. On charge le
                                lecteur lui-même, dans une iframe ORDINAIRE — vraie origine,
-                               cookies, référent. C'est une lecture normale, pas un
-                               document reconstruit : rien à mettre en bac à sable.
-
-                               Le bac à sable et sa levée se rapportent alors au domaine
-                               DU LECTEUR, pas à celui de la page : c'est le lecteur qui
-                               refuse d'être encadré, et c'est donc son domaine que
-                               l'utilisateur exempte. */
-                            var sbLecteur = playerSandboxFor(res.playerUrl, userPrefs.playerSandbox);
-                            if (sbLecteur) iframe.setAttribute('sandbox', sbLecteur);
-                            else iframe.removeAttribute('sandbox');
-                            if (levee && levee.parentNode) levee.remove();
-                            var leveeLecteur = buildSandboxToggle(res.playerUrl, function() {
-                                fallbackToIframe(url, container, cell, s);
-                            });
-                            if (leveeLecteur) container.appendChild(leveeLecteur);
+                               cookies, référent. */
                             iframe.src = res.playerUrl;
                             container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
                         } else if (res && res.srcdoc && rebuildEnabled) {
@@ -1704,29 +1743,23 @@ export function updateMultivisionLayout() {
                                document vit à l'origine de l'application. Sans bac à
                                sable il lirait son localStorage et son DOM. */
                             iframe.setAttribute('sandbox', EMBED_SANDBOX);
-                            /* Aucune levée offerte ici : ce document vit à l'origine de
-                               l'application, le bac à sable n'y est pas négociable. */
-                            if (levee && levee.parentNode) levee.remove();
                             iframe.srcdoc = res.srcdoc;
                             container.appendChild(buildTrickBadge(res.via, finalUrl, 'page'));
+                        } else if (estMediaDirecte(finalUrl)) {
+                            iframe = versVideoSiDirect(iframe, finalUrl, container);
                         } else {
                             iframe.src = finalUrl;
                             container.appendChild(buildTrickFailureBar(finalUrl));
                         }
                     });
+                } else if (lecteurPret && estMediaDirecte(lecteurPret)) {
+                    iframe = versVideoSiDirect(iframe, lecteurPret, container);
+                    container.appendChild(buildTrickBadge('serveur', finalUrl, 'lecteur', lecteurPret));
                 } else if (lecteurPret) {
-                    /* Le bac à sable et sa levée se rapportent au domaine DU LECTEUR :
-                       c'est lui qui joue, et lui qui refuserait d'être encadré. */
-                    var sbPret = playerSandboxFor(lecteurPret, userPrefs.playerSandbox);
-                    if (sbPret) iframe.setAttribute('sandbox', sbPret);
-                    else iframe.removeAttribute('sandbox');
-                    if (levee && levee.parentNode) levee.remove();
-                    var leveePret = buildSandboxToggle(lecteurPret, function() {
-                        fallbackToIframe(url, container, cell, s);
-                    });
-                    if (leveePret) container.appendChild(leveePret);
                     iframe.src = lecteurPret;
                     container.appendChild(buildTrickBadge('serveur', finalUrl, 'lecteur', lecteurPret));
+                } else if (estMediaDirecte(finalUrl)) {
+                    iframe = versVideoSiDirect(iframe, finalUrl, container);
                 } else {
                     iframe.src = finalUrl;
                 }
@@ -2718,8 +2751,6 @@ export function initPrefs() {
   if(selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
   var cbTrick = document.getElementById('pref-embed-trick');
   if(cbTrick) cbTrick.checked = userPrefs.embedTrick !== false;
-  var cbSandbox = document.getElementById('pref-player-sandbox');
-  if(cbSandbox) cbSandbox.checked = userPrefs.playerSandbox !== false;
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
       selAccentColor.value = userPrefs.accent || '#0a84ff';
@@ -2786,8 +2817,6 @@ export function applyUserPrefs() {
   if(cardShapeSel) userPrefs.cardShape = cardShapeSel.value;
   var trickCb = document.getElementById('pref-embed-trick');
   if(trickCb) userPrefs.embedTrick = trickCb.checked;
-  var sandboxCb = document.getElementById('pref-player-sandbox');
-  if(sandboxCb) userPrefs.playerSandbox = sandboxCb.checked;
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');

@@ -226,91 +226,30 @@ export function resolveBlockedEmbed(url, proxyFetch, registry) {
    document l'origine de l'application (donc l'accès à son stockage et à son DOM). */
 export var EMBED_SANDBOX = 'allow-scripts allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
 
-/* Bac à sable des lecteurs ORDINAIRES du Multivision (ceux chargés par `src`, pas les
-   documents reconstruits).
+/* Le bac à sable des lecteurs ORDINAIRES (ceux chargés par `src`, pas les documents
+   reconstruits) a été retiré le 5 septembre 2026, à la demande explicite de
+   l'utilisateur : « quand y'a le tag sandbox, ça chie ». Beaucoup de ces sites
+   détectent une iframe en bac à sable — quels que soient les jetons accordés — et
+   refusent purement et simplement de s'afficher, ou de jouer. Le bénéfice visé
+   (bloquer popups et détournement d'onglet sans extension) ne valait pas ce coût : une
+   bonne partie des lecteurs ne démarrait plus du tout.
 
-   Ce que le script utilisateur faisait à la main dans la page tierce — écraser
-   `window.open`, intercepter les clics vers `target="_blank"` — le navigateur le fait ici
-   de façon déclarative, pour TOUT LE MONDE : sans extension, sous Firefox comme sous
-   Chrome, et à travers l'origine croisée que du JavaScript de l'application ne peut de
-   toute façon pas franchir. Le refus vient du navigateur, donc un lecteur ne peut pas le
-   contourner en redéfinissant ce qu'on aurait écrasé.
+   La protection contre les popups et le détournement d'onglet reste assurée par
+   `multiview-cleaner.user.js` pour qui l'installe (il tourne DANS la page tierce, ce que
+   l'application ne peut pas faire depuis une origine croisée). Sans ce script, ces
+   lecteurs retrouvent le comportement d'avant : capables d'ouvrir une fenêtre ou de
+   détourner l'onglet, comme n'importe quel lien externe ouvert dans un onglet normal. */
 
-   Ce qui est ACCORDÉ, et pourquoi chaque jeton est nécessaire :
-   - `allow-scripts` : les lecteurs sont du JavaScript.
-   - `allow-same-origin` : sans lui le document tombe en origine opaque et perd ses
-     cookies, son stockage et ses requêtes vers son propre domaine — la plupart des
-     lecteurs cessent de fonctionner. Sur une iframe *d'origine croisée* c'est sans
-     danger : le couple `allow-scripts` + `allow-same-origin` ne redonne accès qu'à sa
-     propre origine, jamais à celle de l'application. (C'est justement pourquoi le
-     document RECONSTRUIT, lui, ne l'obtient pas : il vit à notre origine.)
-   - `allow-forms`, `allow-pointer-lock`, `allow-orientation-lock`, `allow-presentation` :
-     choix de qualité, plein écran et diffusion Chromecast.
-
-   Ce qui est REFUSÉ, et c'est tout l'intérêt :
-   - `allow-popups` et `allow-popups-to-escape-sandbox` : plus de popunder publicitaire.
-   - `allow-top-navigation*` : un lecteur ne peut plus détourner l'onglet entier vers une
-     page de pub — le travers le plus pénible de ces sites.
-   - `allow-modals` : plus d'`alert()` bloquante venue d'une régie. */
-export var PLAYER_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
-
-/* ─── Levée du bac à sable, par domaine ──────────────────────────────────────────────
-   Certains hôtes REFUSENT de jouer dans une iframe en bac à sable et affichent à la
-   place « SANDBOX IFRAME NOT ALLOWED » (relevé le 4 septembre 2026 sur la chaîne
-   tnt-sports.shop, sous Firefox). Le refus vient d'un script de la page imbriquée : rien
-   de lisible depuis l'application, qui n'a aucun accès au contenu d'une origine croisée.
-   La détection automatique est donc impossible — mais la levée, elle, est triviale.
-
-   D'où ce choix : le bac à sable reste posé par défaut, et l'utilisateur le lève d'un
-   geste sur la tuile concernée. Le domaine est retenu, la levée vaut donc une fois pour
-   toutes. C'est un compromis assumé : sur ce domaine, les fenêtres surgissantes et le
-   détournement d'onglet redeviennent possibles. */
-var SANDBOX_EXEMPT_KEY = 'playerSandboxExceptions';
-
-/* Adresse ABSOLUE exigée : sans base, une chaîne quelconque ne devient pas une adresse.
-   Résoudre contre `location` ferait porter la levée sur le domaine de l'application
-   elle-même, où elle n'a aucun sens — et une adresse relative désigne de toute façon la
-   même origine, donc une iframe que le bac à sable ne gêne pas. */
-export function sandboxHost(url) {
-    try { return new URL(String(url)).hostname.replace(/^www\./, '').toLowerCase(); }
-    catch (e) { return ''; }
-}
-
-function lireExceptions() {
-    try {
-        var brut = localStorage.getItem(SANDBOX_EXEMPT_KEY);
-        var lu = brut ? JSON.parse(brut) : null;
-        return (lu && typeof lu === 'object') ? lu : {};
-    } catch (e) { return {}; }
-}
-
-export function isSandboxExempt(url) {
-    var h = sandboxHost(url);
-    return !!(h && lireExceptions()[h]);
-}
-
-/* Bascule la levée pour le domaine de `url`. Rend le nouvel état (true = sans bac à
-   sable). Sans domaine lisible, rien à retenir : on ne fait rien. */
-export function toggleSandboxException(url) {
-    var h = sandboxHost(url);
-    if (!h) return false;
-    var ex = lireExceptions();
-    var neuf = !ex[h];
-    if (neuf) ex[h] = true; else delete ex[h];
-    try { localStorage.setItem(SANDBOX_EXEMPT_KEY, JSON.stringify(ex)); } catch (e) {}
-    return neuf;
-}
-
-/* Bac à sable à poser pour cette adresse, ou `null` s'il faut n'en poser aucun. */
-export function playerSandboxFor(url, prefActive) {
-    if (prefActive === false) return null;
-    return isSandboxExempt(url) ? null : PLAYER_SANDBOX;
-}
+/* La levée du bac à sable par domaine (bouton 🛡️/🔓 sur chaque tuile) a été retirée le
+   5 septembre 2026, à la demande de l'utilisateur : « sandbox chié toujours » — le geste
+   ne réglait rien, puisque le refus vient d'un script de la page imbriquée qu'on ne peut
+   pas lire depuis l'application, donc pas davantage contourner en levant le bac à sable
+   que sans. La vraie réponse aux pages qui refusent l'iframe est ailleurs : extraire
+   l'adresse du flux vidéo brut (.m3u8, .mp4…) et la jouer dans un `<video>` natif, qui
+   n'encadre rien et n'a donc aucun bac à sable à poser (voir js/multiview.js). */
 
 if (typeof window !== 'undefined') {
   window.getBridgeStatus = getBridgeStatus;
   window.resolveBlockedEmbed = resolveBlockedEmbed;
   window.pickEmbeddablePlayer = pickEmbeddablePlayer;
-  window.toggleSandboxException = toggleSandboxException;
-  window.isSandboxExempt = isSandboxExempt;
 }

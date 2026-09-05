@@ -940,22 +940,6 @@ body.cards-poster .prime-league-badge .plb-name { max-width: 74px; font-size: 10
 .mv-trick-badge.ok { border-color: rgba(52,199,89,0.55); }
 .mv-trick-badge.ok > span { color: #34c759; }
 
-/* Levée du bac à sable, par tuile. Volontairement discret mais toujours atteignable :
-   c'est le seul recours quand un hôte refuse d'être encadré, l'application n'ayant aucun
-   moyen de lire ce refus à travers une origine croisée. */
-.mv-sandbox-btn {
-  position: absolute; bottom: 8px; right: 8px; z-index: 21;
-  width: 26px; height: 26px; border-radius: 999px; cursor: pointer;
-  background: rgba(20,20,20,0.72); border: 1px solid rgba(255,255,255,0.18);
-  color: #fff; font-size: 12px; line-height: 1; padding: 0;
-  opacity: 0.55; transition: opacity 0.15s, border-color 0.15s;
-  backdrop-filter: blur(8px);
-}
-.mv-sandbox-btn:hover, .mv-sandbox-btn:focus-visible { opacity: 1; }
-.mv-sandbox-btn.leve { opacity: 1; border-color: rgba(255,159,10,0.7); }
-/* Levé, mais le script utilisateur reprend les protections dans la page : ce n'est plus
-   un renoncement, on le montre en vert plutôt qu'en orange. */
-.mv-sandbox-btn.leve.couvert { border-color: rgba(52,199,89,0.7); }
 
 .mv-embed-helper {
   position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 20;
