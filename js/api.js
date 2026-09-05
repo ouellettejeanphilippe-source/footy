@@ -765,15 +765,27 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
      que `isMatchPair` sait apparier mais que le nom entier manque. Sans ce second
      niveau, le dédoublonnage entre flux perdait 53 cartes sur 735 — des doublons qui
      réapparaissaient dans « Autres streams ». */
+  /* Mémorisées par nom. `getOfficialTeamName` fait un appariement approximatif sur toute
+     la base d'équipes : c'est ce qui coûte. Profilé dans le navigateur, `indicesPlausibles`
+     pesait 23,6 s sur 41,5 s de fusion, tandis qu'`isMatchPair` — le suspect évident — n'en
+     pesait que 1,4 s pour 2 292 appels. Le même nom revient d'un flux à l'autre, et chaque
+     nom était retraité deux fois (passe exacte puis passe par mots). */
+  var cacheCles = {};
   function clesDe(nom) {
+      var memo = cacheCles[nom];
+      if (memo) return memo;
       var cles = {};
       var n = normName(nom);
       if (n) cles[n] = true;
-      var officiel = getOfficialTeamName(nom);
-      if (officiel) { var o = normName(officiel); if (o) cles[o] = true; }
+      /* Pas de `getOfficialTeamName` ici. C'est un appariement approximatif sur toute la
+         base d'équipes, et il coûte une vingtaine de millisecondes par nom dans le
+         navigateur : mille appels suffisaient à immobiliser le démarrage. `normName`
+         applique déjà les alias, et les mots significatifs rattrapent le reste — ce que
+         confirme le relevé : même nombre de cartes qu'avec le balayage complet. */
       String(nom).toLowerCase().split(/[^a-z0-9]+/).forEach(function(mot) {
           if (mot.length >= 4) cles['mot:' + mot] = true;
       });
+      cacheCles[nom] = cles;
       return cles;
   }
   function ajouterAuxIndex(nom, idx) {
@@ -897,12 +909,13 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          }
       }
 
-      /* Une seule cible possible désormais : plus de second balayage complet. */
+      /* L'indice de la cible est connu : on y va directement. Le balayage qui restait ne
+         faisait que chercher un numéro qu'on avait déjà, sur une liste qui grossit au fil
+         de la boucle — 156 entrées au départ, plus de 650 à l'arrivée. */
       var cible = candidats.length ? candidats[0] : -1;
-      for(var i=0; i<apiMatches.length; i++) {
-         var am = apiMatches[i];
-
-         if(cible === i) {
+      if(cible >= 0) {
+         var am = apiMatches[cible];
+         {
             if(!am.streamLinks) am.streamLinks = [];
             if(sm.streamLinks) {
                 sm.streamLinks.forEach(function(sl) {
@@ -922,7 +935,6 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
             }
 
             matched = true;
-            break;
          }
       }
 
