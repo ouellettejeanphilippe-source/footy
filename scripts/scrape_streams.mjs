@@ -19,7 +19,12 @@ import { JSDOM } from 'jsdom';
 
 const args = process.argv.slice(2);
 const NO_SUBPAGES = args.includes('--no-subpages');
-const LIMIT = (() => { const i = args.indexOf('--limit'); return i >= 0 ? parseInt(args[i + 1], 10) : 400; })();
+/* Filet de sécurité, pas le mécanisme de priorité (voir plus bas, au tri de la file de
+   pages de match) : borne le nombre de pages qu'un run peut tenter, en cas d'explosion
+   du nombre de matchs scrapés. Porté de 400 à 900 le 5 septembre 2026 : ce jour-là,
+   636 matchs scrapés dont 621 en direct ou à venir dépassaient déjà 400, et une source
+   peut légitimement en livrer plusieurs centaines un jour chargé. */
+const LIMIT = (() => { const i = args.indexOf('--limit'); return i >= 0 ? parseInt(args[i + 1], 10) : 900; })();
 
 // ── DOM simulé pour pouvoir importer les modules du client ─────────────────
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://ouellettejeanphilippe-source.github.io/footy/' });
@@ -197,10 +202,38 @@ for (const sc of SCRAPERS_CONFIG) {
 // ── 2. Pages de match : extraction des flux (concurrence limitée) ──────────
 all = all.filter((m) => m && m.matchUrl && (m.homeTeam || m.awayTeam));
 if (!NO_SUBPAGES) {
-    // Priorité : matchs en direct, puis à venir ; les terminés en dernier
-    const rank = (m) => (m.status === 'live' ? 0 : m.status === 'finished' ? 2 : 1);
-    all.sort((a, b) => rank(a) - rank(b));
+    /* Priorité de traitement, et non plus seulement un plafond de COMPTE.
+
+       Signalé le 5 septembre 2026 : « les matchs live sont les seuls avec liens ». Vérifié
+       sur le cache du jour — 636 matchs scrapés, dont 621 en direct ou à venir, contre
+       LIMIT=400. Au-delà de la 400ᵉ page, un match ne reçoit plus que le lien minimal
+       capté sur la page d'accueil de la source, jamais les dizaines de liens qu'aurait
+       donnés sa page de match. Le tri « en direct, puis à venir, puis terminé » ne
+       distinguait pas, DANS le groupe « à venir » (593 matchs ce jour-là), le match qui
+       commence dans 10 minutes de celui qui commence demain — les deux avaient les mêmes
+       chances d'entrer dans les 400 premières places, au hasard de l'ordre des sources.
+
+       LIMIT reste un filet de sécurité (contre un nombre de matchs qui exploserait), mais
+       la priorité réelle est maintenant temporelle : en direct d'abord, puis à venir par
+       proximité de coup d'envoi (le plus proche en premier), les terminés en dernier —
+       eux seuls n'ont plus d'intérêt à streamer. Un match à venir sans heure exploitable
+       (rare) passe après ceux qui en ont une, mais avant les terminés : on ne le pénalise
+       pas pour une donnée manquante. */
+    const enMinutes = (m) => config.minutesUntilStart(m, new Date());
+    const rang = (m) => {
+        if (m.status === 'live') return 0;
+        if (m.status === 'finished') return 3;
+        const mn = enMinutes(m);
+        return mn === null ? 2 : 1;
+    };
+    all.sort((a, b) => {
+        const ra = rang(a), rb = rang(b);
+        if (ra !== rb) return ra - rb;
+        if (ra === 1) return enMinutes(a) - enMinutes(b);   // le plus proche du coup d'envoi d'abord
+        return 0;
+    });
     const queue = all.slice(0, LIMIT);
+
     const CONCURRENCY = 6;
     let idx = 0, done = 0;
 
