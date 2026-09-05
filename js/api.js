@@ -676,6 +676,18 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
   });
 }
 
+/* « HH:MM » en minutes depuis minuit, ou null si l'heure est absente ou factice.
+   « 00:00 » est la valeur que posent les parseurs quand ils n'ont RIEN trouvé : la
+   traiter comme minuit ferait croire à un écart énorme et fausserait le choix. */
+function minutesOfTime(t) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
+    if (!m) return null;
+    var h = parseInt(m[1], 10), mi = parseInt(m[2], 10);
+    if (h > 23 || mi > 59) return null;
+    if (h === 0 && mi === 0) return null;
+    return h * 60 + mi;
+}
+
 export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
   var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
 
@@ -706,10 +718,44 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
       sm.awayTeam = apparie.awayTeam;
 
       var matched = false;
+      /* Programme double : deux matchs entre les MÊMES équipes le même jour.
+
+         `isMatchPair` ne regarde que les noms — il ne connaît pas l'heure. Les deux
+         rencontres s'appariaient donc aussi bien l'une que l'autre, et la boucle
+         s'arrêtait à la PREMIÈRE : tous les flux atterrissaient sur le match du début
+         d'après-midi, déjà terminé, et celui du soir — celui qu'on regarde — restait sans
+         aucun lien. Relevé le 5 septembre 2026 sur les données réelles : « Guardians vs
+         Tigers » figure deux fois dans la grille ESPN (14 h 10 terminé, 19 h 45 en
+         direct) ; les 27 liens partaient sur le match terminé, et la carte en direct
+         affichait la loupe « aucun lien ».
+
+         On retient donc, parmi les candidats appariés, celui dont l'heure de début est la
+         plus proche. Sans heure exploitable des deux côtés, le premier l'emporte comme
+         avant : on ne dégrade jamais le cas simple, qui est aussi le cas courant. */
+      var candidats = [];
+      for(var ci=0; ci<apiMatches.length; ci++) {
+         if(isMatchPair(apiMatches[ci], sm)) candidats.push(ci);
+      }
+      if(candidats.length > 1) {
+         var mnFlux = minutesOfTime(sm.startTime);
+         if(mnFlux !== null) {
+            var meilleur = candidats[0], ecartMin = Infinity;
+            for(var cj=0; cj<candidats.length; cj++) {
+               var mnApi = minutesOfTime(apiMatches[candidats[cj]].startTime);
+               if(mnApi === null) continue;
+               var ecart = Math.abs(mnApi - mnFlux);
+               if(ecart < ecartMin) { ecartMin = ecart; meilleur = candidats[cj]; }
+            }
+            candidats = [meilleur];
+         } else {
+            candidats = [candidats[0]];
+         }
+      }
+
       for(var i=0; i<apiMatches.length; i++) {
          var am = apiMatches[i];
 
-         if(isMatchPair(am, sm)) {
+         if(candidats.length ? candidats[0] === i : isMatchPair(am, sm)) {
             if(!am.streamLinks) am.streamLinks = [];
             if(sm.streamLinks) {
                 sm.streamLinks.forEach(function(sl) {

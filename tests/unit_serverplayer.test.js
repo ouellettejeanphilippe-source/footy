@@ -88,6 +88,16 @@ async function main() {
      en service : 9 pages de volokit2.fun livraient toutes « www5.cbox.ws/box/?boxid=930269… »
      comme lecteur — la même boîte de dialogue pour neuf matchs différents. Ces widgets
      cochent toutes les cases d'un lecteur : iframe, domaine externe, vrai chemin. */
+  /* Même famille, hôte légitime : YouTube n'est un lecteur que sur /embed/. Relevé en
+     sondant les lecteurs préparés d'un match des Blue Jays — 1stream.ws livrait
+     « youtube.com/live_chat?v=… », le salon de discussion du direct, pas le direct. */
+  assert.strictEqual(ex.scoreCandidate(
+    { url: 'https://www.youtube.com/live_chat?v=Mm5HK_UgKmY&embed_domain=1stream.ws', via: 'iframe' },
+    { pageUrl: 'https://1stream.ws/mlb/x' }).kind, 'reject');
+  assert.strictEqual(ex.scoreCandidate(
+    { url: 'https://www.youtube.com/embed/Mm5HK_UgKmY', via: 'iframe' },
+    { pageUrl: 'https://1stream.ws/mlb/x' }).kind, 'embed', 'un vrai embed YouTube reste un lecteur');
+
   for (const box of ['https://www5.cbox.ws/box/?boxid=930269&boxtag=cEbHu0',
                      'https://minnit.chat/salon', 'https://tlk.io/canal',
                      'https://chatroll.com/embed/chat/x', 'https://rumbletalk.com/client/?abc']) {

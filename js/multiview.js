@@ -90,6 +90,37 @@ function buildTrickFailureBar(finalUrl) {
    origine croisée, ne peut ni le lire ni le deviner. Elle ne peut donc pas se rattraper
    toute seule — d'où ce bouton, qui rend la manœuvre immédiate et la retient pour le
    domaine. Il montre l'état courant : 🛡️ bac à sable posé, 🔓 levé. */
+/* Demande au script utilisateur de ne garder que le lecteur dans cette tuile.
+
+   Le script sait le faire depuis toujours, mais il cherchait le lecteur tout seul et
+   renonçait au bout de 15 secondes. Sur ces sites le lecteur arrive au bout d'une chaîne
+   d'iframes, parfois bien plus tard — certains annoncent « stream will go live 30 minutes
+   before the match starts ». La tuile gardait alors tout le décor du site autour de la
+   vidéo : bandeau, boutons, avis.
+
+   L'application, elle, SAIT quand la tuile vient de charger et quand l'utilisateur vient
+   de lever le bac à sable. Elle le dit, plutôt que de laisser le script deviner. On
+   redemande quelques fois après le chargement, parce que le lecteur apparaît souvent
+   après le `load` du document hôte ; au-delà, c'est l'observateur du script qui prend le
+   relais, sans coût tant que rien n'arrive.
+
+   `postMessage` traverse l'origine croisée, contrairement à tout accès au contenu : c'est
+   la seule chose que l'application puisse adresser à la page. Le script n'obéit qu'à la
+   fenêtre qui l'encadre, et « nettoyer » ne divulgue rien. */
+function demanderNettoyage(iframe) {
+    var envoyer = function() {
+        try { if (iframe.contentWindow) iframe.contentWindow.postMessage('mv_clean', '*'); } catch (e) {}
+    };
+    iframe.addEventListener('load', function() {
+        envoyer();
+        var n = 0;
+        var rappel = setInterval(function() {
+            if (++n > 6 || !iframe.isConnected) { clearInterval(rappel); return; }
+            envoyer();
+        }, 2000);
+    });
+}
+
 function buildSandboxToggle(finalUrl, recharger) {
     var host = sandboxHost(finalUrl);
     if (!host) return null;
@@ -1625,6 +1656,8 @@ export function updateMultivisionLayout() {
                     fallbackToIframe(url, container, cell, s);
                 });
                 if (levee) container.appendChild(levee);
+
+                demanderNettoyage(iframe);
 
                 /* Le réglage s'appelle « Reconstruire les pages non intégrables » : il
                    gouverne la RECONSTRUCTION en `srcdoc`, pas l'extraction du lecteur.
