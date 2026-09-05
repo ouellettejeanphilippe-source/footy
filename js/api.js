@@ -743,6 +743,103 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
       if (alKey) apiLeagues[alKey] = true;
   }
 
+  /* ── Index des matchs de la grille par nom d'équipe ────────────────────────
+     `isMatchPair` coûte 401 µs par appel (mesuré sur les données du 5 septembre 2026 :
+     6 240 appels en 2,5 s). La fusion le lançait pour CHAQUE couple flux × grille, soit
+     636 × 156 = 99 216 appels, c'est-à-dire 39,8 secondes de calcul synchrone — et le
+     double depuis que le choix du programme double ajoutait une seconde passe complète.
+
+     Pendant tout ce temps le fil principal est bloqué : rien ne s'affiche, `hasLoadedOnce`
+     n'est jamais posé, et l'application semble ne jamais finir de charger. Les dix tests
+     d'interface qui démarrent l'application échouaient tous là-dessus, sur cette branche
+     comme sur main, chez moi comme en intégration continue. C'est aussi ce que voit
+     l'utilisateur : un démarrage qui s'éternise, d'autant plus que la grille grossit.
+
+     On indexe donc les matchs de la grille par nom d'équipe normalisé, une seule fois, et
+     on ne compare qu'aux candidats plausibles. Le repli sur le balayage complet est
+     conservé quand aucun candidat ne ressort : `isMatchPair` sait apparier des épreuves
+     (F1, WWE, e-sport) sur le nom combiné, sans que les noms d'équipe correspondent. */
+  var indexEquipes = {};
+  /* Deux niveaux de clé. Le nom normalisé apparie « Detroit Tigers » à « Detroit
+     Tigers » ; les MOTS significatifs rattrapent « Marist » à « Marist Red Foxes »,
+     que `isMatchPair` sait apparier mais que le nom entier manque. Sans ce second
+     niveau, le dédoublonnage entre flux perdait 53 cartes sur 735 — des doublons qui
+     réapparaissaient dans « Autres streams ». */
+  function clesDe(nom) {
+      var cles = {};
+      var n = normName(nom);
+      if (n) cles[n] = true;
+      var officiel = getOfficialTeamName(nom);
+      if (officiel) { var o = normName(officiel); if (o) cles[o] = true; }
+      String(nom).toLowerCase().split(/[^a-z0-9]+/).forEach(function(mot) {
+          if (mot.length >= 4) cles['mot:' + mot] = true;
+      });
+      return cles;
+  }
+  function ajouterAuxIndex(nom, idx) {
+      if (!nom) return;
+      var cles = clesDe(nom);
+      for (var c in cles) (indexEquipes[c] = indexEquipes[c] || []).push(idx);
+  }
+  var tailleGrilleOrigine = apiMatches.length;
+  for (var ii = 0; ii < apiMatches.length; ii++) {
+      ajouterAuxIndex(apiMatches[ii].homeTeam, ii);
+      ajouterAuxIndex(apiMatches[ii].awayTeam, ii);
+  }
+  /* Une épreuve — Grand Prix, gala WWE, match d'e-sport — n'a pas de « domicile » ni
+     d'« extérieur » : `isMatchPair` l'apparie sur le nom COMBINÉ, sans que les noms
+     d'équipe se correspondent. C'est le seul cas où l'index ne peut rien, et le seul qui
+     justifie encore un balayage complet. Elles sont peu nombreuses ; les 86 % de flux
+     restants sans candidat n'ont simplement aucun match dans la grille, et les comparer
+     un à un ne faisait que confirmer une absence, très cher. */
+  function estEvenement(m) {
+      var l = String(m.league || '').toUpperCase();
+      if (l === 'F1' || l === 'INDYCAR' || l === 'WWE' || l === 'MOTOGP' || l === 'NASCAR') return true;
+      var t = (String(m.homeTeam || '') + ' ' + String(m.awayTeam || '')).toLowerCase();
+      return /grand prix|formula 1|\bf1\b|\bindy|\bwwe\b|esports|\braw\b|smackdown|\bnxt\b/.test(t);
+  }
+
+  /* Deux recours, dans cet ordre : le nom entier d'abord — précis et peu coûteux — puis
+     les mots seulement s'il n'a rien donné. Chercher d'emblée par mots élargit trop les
+     candidats (5,1 s contre 0,7 s mesurées sur les données du 5 septembre 2026) pour un
+     gain qui ne concerne que les noms partiels. */
+  function hits(nom, avecMots) {
+      var vus = {};
+      if (!nom) return vus;
+      var cles = clesDe(nom);
+      for (var cle in cles) {
+          var estMot = cle.indexOf('mot:') === 0;
+          if (avecMots !== estMot) continue;
+          var liste = indexEquipes[cle];
+          if (!liste) continue;
+          for (var k = 0; k < liste.length; k++) vus[liste[k]] = true;
+      }
+      return vus;
+  }
+
+  /* Un vrai match oppose DEUX équipes : un candidat n'est plausible que si les deux noms
+     le désignent. L'intersection, plutôt que la réunion, est ce qui rend l'index utile —
+     avec la réunion, un mot courant (« United », « State ») ramenait des dizaines de
+     candidats et l'on repayait `isMatchPair` sur chacun.
+
+     Deux recours, dans cet ordre : le nom entier d'abord, précis ; les mots ensuite,
+     seulement s'il n'a rien donné, pour rattraper « Marist » face à « Marist Red Foxes ».
+     Quand un seul des deux noms est connu, on se rabat sur ses candidats à lui : mieux
+     vaut quelques comparaisons de trop qu'un appariement manqué. */
+  function croiser(m, avecMots) {
+      var a = hits(m.homeTeam, avecMots), b = hits(m.awayTeam, avecMots);
+      var cleA = Object.keys(a), cleB = Object.keys(b);
+      if (!cleA.length && !cleB.length) return [];
+      if (!cleA.length) return cleB.map(Number);
+      if (!cleB.length) return cleA.map(Number);
+      var communs = cleA.filter(function(i) { return b[i]; }).map(Number);
+      return communs.length ? communs : cleA.map(Number).concat(cleB.map(Number));
+  }
+  function indicesPlausibles(m) {
+      var exact = croiser(m, false);
+      return exact.length ? exact : croiser(m, true);
+  }
+
   scrapedMatches.forEach(function(sm) {
 
       /* Appariement ligue / équipes / ville, AVANT la fusion avec la grille officielle :
@@ -769,9 +866,20 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          On retient donc, parmi les candidats appariés, celui dont l'heure de début est la
          plus proche. Sans heure exploitable des deux côtés, le premier l'emporte comme
          avant : on ne dégrade jamais le cas simple, qui est aussi le cas courant. */
+      var aExaminer = indicesPlausibles(sm);
+      if (aExaminer.length === 0 && estEvenement(sm)) {
+         /* Balayage complet réservé aux épreuves, et borné à la grille D'ORIGINE : les
+            flux non fusionnés sont ajoutés à `apiMatches` au fil de la boucle, si bien
+            qu'un balayage complet parcourait une liste qui grossit — 156 entrées au
+            départ, 682 à l'arrivée sur les données du 5 septembre 2026. C'est ce
+            balayage d'une liste croissante, et non le nombre de flux, qui faisait
+            exploser le coût. */
+         aExaminer = [];
+         for(var ai2=0; ai2<tailleGrilleOrigine; ai2++) aExaminer.push(ai2);
+      }
       var candidats = [];
-      for(var ci=0; ci<apiMatches.length; ci++) {
-         if(isMatchPair(apiMatches[ci], sm)) candidats.push(ci);
+      for(var ci=0; ci<aExaminer.length; ci++) {
+         if(isMatchPair(apiMatches[aExaminer[ci]], sm)) candidats.push(aExaminer[ci]);
       }
       if(candidats.length > 1) {
          var mnFlux = minutesOfTime(sm.startTime);
@@ -789,10 +897,12 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
          }
       }
 
+      /* Une seule cible possible désormais : plus de second balayage complet. */
+      var cible = candidats.length ? candidats[0] : -1;
       for(var i=0; i<apiMatches.length; i++) {
          var am = apiMatches[i];
 
-         if(candidats.length ? candidats[0] === i : isMatchPair(am, sm)) {
+         if(cible === i) {
             if(!am.streamLinks) am.streamLinks = [];
             if(sm.streamLinks) {
                 sm.streamLinks.forEach(function(sl) {
@@ -863,6 +973,11 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
              if (!sm.color) sm.color = lgColor(sm.league);
          }
 
+         /* Indexé en même temps qu'ajouté : c'est ce qui permet à un flux ultérieur de
+            retrouver celui-ci — le dédoublonnage entre flux — sans qu'aucun balayage
+            complet ne soit nécessaire. */
+         ajouterAuxIndex(sm.homeTeam, apiMatches.length);
+         ajouterAuxIndex(sm.awayTeam, apiMatches.length);
          apiMatches.push(sm);
 
          if (!skipScraping) {
