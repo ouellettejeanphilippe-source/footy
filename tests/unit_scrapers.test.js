@@ -261,6 +261,40 @@ async function main() {
     assert.strictEqual(flexLinks[1].url, 'https://r.clearstreamdv.com/live/player.php?ch=es213');
     ok('extractStreamLinks : page de match Flexfitness (.stream-link-card), noms lisibles');
 
+    // ── Pages légales : jamais des flux ─────────────────────────────────────
+    /* Signalé le 5 septembre 2026, capture à l'appui : « Privacy Policy », « DMCA » et
+       « Contact » listés comme SOURCES d'un match de MLS, badge de qualité compris, comme
+       si on pouvait les regarder. Réaction de l'utilisateur : « Dmca et contact hahaha » —
+       c'est exactement l'effet produit, l'application a l'air cassée.
+
+       Le filtre porte sur le libellé ET sur le chemin : un pied de page peut être nommé
+       n'importe comment (« Nous joindre »), mais son adresse le trahit presque toujours ;
+       et inversement un lien sans libellé exploitable garde son chemin. */
+    const avecPoubelle = scrapers.finalizeStreamLinks([
+        { name: 'Privacy Policy', url: 'https://flexfitness.fit/privacy' },
+        { name: 'DMCA', url: 'https://flexfitness.fit/dmca' },
+        { name: 'Contact', url: 'https://flexfitness.fit/contact' },
+        { name: 'Nous joindre', url: 'https://exemple.test/contact' },
+        { name: 'Un nom quelconque', url: 'https://exemple.test/terms-of-service' },
+        /* Libellé légal sur une adresse anodine : sans le filtre de LIBELLÉ, celui-ci
+           passait — le filtre de chemin ne le voit pas. Cas ajouté après un sabotage qui
+           n'avait rien fait échouer, faute d'un cas qui distingue les deux filtres. */
+        { name: 'DMCA', url: 'https://exemple.test/p/98765' },
+        { name: 'Link 1', url: 'https://a.clearstreamdv.com/live/player.php?ch=es143' },
+        { name: 'Link 2', url: 'https://r.clearstreamdv.com/live/player.php?ch=es143' }
+    ]);
+    assert.strictEqual(avecPoubelle.length, 2,
+        'seuls les deux vrais lecteurs doivent survivre (obtenu : '
+        + JSON.stringify(avecPoubelle.map((l) => l.name)) + ')');
+    assert.ok(avecPoubelle.every((l) => /clearstreamdv/.test(l.url)), 'les lecteurs sont conservés intacts');
+    assert.strictEqual(scrapers.isJunkStreamPath('https://x.test/dmca'), true);
+    assert.strictEqual(scrapers.isJunkStreamPath('https://x.test/privacy-policy'), true);
+    assert.strictEqual(scrapers.isJunkStreamPath('https://x.test/live/player.php?ch=1'), false,
+        'un vrai lecteur ne doit pas être pris pour une page légale');
+    assert.strictEqual(scrapers.isJunkStreamPath('https://x.test/contactenos-stream'), false,
+        'le filtre vise le SEGMENT de chemin, pas une sous-chaîne au hasard');
+    ok('pages légales (DMCA, contact, confidentialité) écartées des flux');
+
     // ── Hôtes dont les pages de match ne répondent jamais ──────────────────
     const cfg = await import('../js/config.js');
     assert.strictEqual(cfg.isMatchPageBlocked('https://footybite.bid/game/qatar-vs-oman-1'), true);

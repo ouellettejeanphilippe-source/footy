@@ -2023,10 +2023,32 @@ export function describeStreamLink(url, label) {
        écarterait à tort un flux légitime nommé « Home ice feed » par exemple. */
 var JUNK_LABEL_ANYWHERE = /(opens in a new tab|click if you want|watch a different game|regarder un autre match)/i;
 var JUNK_LABEL_PREFIX = /^(voir tous|see all|more games|autres matchs|home|accueil|menu)\b/i;
+
+/* Pages de pied de page : mentions légales, DMCA, contact, conditions… Aucune n'est un
+   flux, et rien ne les distinguait jusqu'ici d'un lecteur — elles s'affichaient donc
+   dans « Sources pour ce match », avec un badge de qualité, comme si on pouvait les
+   regarder. Signalé le 5 septembre 2026, capture à l'appui : « Privacy Policy », « DMCA »
+   et « Contact » listés comme sources d'un match de MLS. Réaction de l'utilisateur :
+   « Dmca et contact hahaha » — c'est exactement l'effet produit, l'application a l'air
+   cassée.
+
+   Le filtre porte sur le LIBELLÉ ET sur le CHEMIN : un pied de page peut être nommé
+   n'importe comment (« Politique », « Nous joindre »), mais son adresse le trahit presque
+   toujours ; et inversement un lien sans nom exploitable garde son chemin. */
+var JUNK_LABEL_LEGAL = /^(privacy( policy)?|politique de confidentialit|dmca|contact(ez[- ]nous| us)?|terms( of (use|service))?|conditions|mentions l|about( us)?|à propos|a propos|faq|aide|help|support|advertise|publicit)/i;
+var JUNK_PATH_LEGAL = /^\/(privacy|privacidad|confidentialite|dmca|copyright|contact|terms|tos|conditions|mentions|legal|about|apropos|faq|help|support|advertise)([.\-\/]|$)/i;
+
 function isJunkStreamLabel(name) {
     var t = String(name || '').trim();
     if (!t) return false;
-    return JUNK_LABEL_ANYWHERE.test(t) || JUNK_LABEL_PREFIX.test(t);
+    return JUNK_LABEL_ANYWHERE.test(t) || JUNK_LABEL_PREFIX.test(t) || JUNK_LABEL_LEGAL.test(t);
+}
+
+/* Une page légale ou institutionnelle, reconnue à son chemin. */
+export function isJunkStreamPath(url) {
+    var path = '';
+    try { path = new URL(url).pathname; } catch (e) { return false; }
+    return JUNK_PATH_LEGAL.test(path);
 }
 
 /* Adresses qui pointent vers l'accueil ou une page d'index d'un site de lecteurs plutôt
@@ -2079,6 +2101,7 @@ export function finalizeStreamLinks(links) {
         var u = l.url.trim();
         if (u.indexOf('http') !== 0) return;
         if (isJunkStreamLabel(l.name)) return;
+        if (isJunkStreamPath(u)) return;
         if (isIndexPageUrl(u)) return;
 
         var key = normalizeStreamUrl(u);
