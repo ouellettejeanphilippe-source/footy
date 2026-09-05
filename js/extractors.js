@@ -39,7 +39,16 @@ export var SEED_PLAYER_HOSTS = [
 export var AGGREGATOR_RE = /(^|\.)(footybite|nflbite|nbabite|mlbbite|totalsportek|sportsurge|isportsurge|buffstreams|mybuffstreams|buffstream|streameast|gostreameast|thestreameast|methstreams|crackstreams|vipleague|hesgoal|onhockey|1stream|thetvapp)\./i;
 
 /* Jamais un lecteur : réseaux sociaux, messageries, paris, ressources statiques. */
-export var JUNK_HOST_RE = /(^|\.)(x\.com|twitter\.com|facebook\.com|instagram\.com|tiktok\.com|t\.me|telegram\.(me|org)|discord\.(gg|com)|reddit\.com|chatango\.com|w3\.org|gstatic\.com|googletagmanager\.com|google-analytics\.com|doubleclick\.net|cloudflare\.com|cloudflareinsights\.com)$/i;
+/* Hôtes qui ne sont jamais un lecteur.
+
+   La famille des BOÎTES DE DIALOGUE mérite une mention : ces sites posent un « shoutbox »
+   dans une iframe, sur un domaine externe, avec un vrai chemin — c'est-à-dire tout ce
+   qu'il faut pour ressembler à un lecteur et passer le seuil d'intégration. Relevé le
+   5 septembre 2026 sur le cache de production : 9 pages de volokit2.fun livraient toutes
+   « www5.cbox.ws/box/?boxid=930269… », la MÊME boîte de dialogue, comme lecteur. Un vrai
+   lecteur ne se répète pas d'un match à l'autre. chatango.com était déjà écarté pour
+   cette raison ; cbox.ws est le cas mesuré, les autres relèvent de la même famille. */
+export var JUNK_HOST_RE = /(^|\.)(x\.com|twitter\.com|facebook\.com|instagram\.com|tiktok\.com|t\.me|telegram\.(me|org)|discord\.(gg|com)|reddit\.com|chatango\.com|cbox\.ws|minnit\.chat|tlk\.io|chatroll\.com|rumbletalk\.com|w3\.org|gstatic\.com|googletagmanager\.com|google-analytics\.com|doubleclick\.net|cloudflare\.com|cloudflareinsights\.com)$/i;
 export var BETTING_RE = /(1xbet|bet365|betway|melbet|parimatch|22bet|stake\.com|bc\.game|betano|bwin|unibet|casino)/i;
 export var ASSET_RE = /\.(png|jpe?g|gif|svg|webp|ico|css|js|mjs|json|xml|txt|woff2?|ttf|eot|mp3|pdf|zip)(\?|#|$)/i;
 

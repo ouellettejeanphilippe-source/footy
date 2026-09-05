@@ -407,7 +407,24 @@ let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0;
                    un autre hôte que la page — sinon on ne fait que réécrire l'adresse
                    qu'on avait déjà. */
                 const hote = hostOf(u);
-                const gagnant = cands.find((c) => c.kind === 'embed' && hostOf(c.url) !== hote);
+                /* Troisième exigence, propre au serveur : l'hôte du lecteur ne doit pas
+                   être un de ceux dont on vient de MESURER qu'ils refusent l'iframe. Sans
+                   elle on échangeait une page bloquée contre une autre page bloquée, et
+                   le client s'en apercevait trop tard — X-Frame-Options s'applique avant
+                   tout JavaScript. Relevé le 5 septembre 2026 sur le cache de production :
+                   34 liens promus vers un hôte mesuré non intégrable, dont 30 vers
+                   isportsurge.ws (« X-Frame-Options: sameorigin »).
+
+                   On essaie le candidat suivant ; si aucun ne convient, on n'écrit rien et
+                   le tour côté client reprend la main — ce qui est le bon repli, puisque
+                   lui sait reconstruire la page. */
+                const gagnant = cands.find((c) => {
+                    if (c.kind !== 'embed') return false;
+                    const h = hostOf(c.url);
+                    if (h === hote) return false;
+                    const pol = hostPolicy[h];
+                    return !(pol && pol.embeddable === false);
+                });
                 if (gagnant) { lecteurParLien[u] = gagnant.url; extraitsOk++; }
                 else extraitsVides++;
             } catch (e) { extraitsErr++; }

@@ -83,6 +83,74 @@ async function main() {
     assert.strictEqual(accepte(v), false, String(v) + ' ne doit pas être accepté comme playerUrl');
   ok('playerUrl n\'est honoré que s\'il est une adresse http(s)');
 
+  // ── 6. Une boîte de dialogue n'est pas un lecteur ─────────────────────────────
+  /* Relevé le 5 septembre 2026 sur le cache de PRODUCTION, une fois l'extraction serveur
+     en service : 9 pages de volokit2.fun livraient toutes « www5.cbox.ws/box/?boxid=930269… »
+     comme lecteur — la même boîte de dialogue pour neuf matchs différents. Ces widgets
+     cochent toutes les cases d'un lecteur : iframe, domaine externe, vrai chemin. */
+  for (const box of ['https://www5.cbox.ws/box/?boxid=930269&boxtag=cEbHu0',
+                     'https://minnit.chat/salon', 'https://tlk.io/canal',
+                     'https://chatroll.com/embed/chat/x', 'https://rumbletalk.com/client/?abc']) {
+    const r = ex.scoreCandidate({ url: box, via: 'iframe' }, { pageUrl: 'https://volokit2.fun/?game_id=63239' });
+    assert.strictEqual(r.kind, 'reject', box + ' devrait être rejeté, pas ' + r.kind);
+  }
+  /* Le garde-fou ne doit pas emporter un lecteur dont le nom contient les mêmes lettres. */
+  const voisin = ex.scoreCandidate({ url: 'https://embedhd.st/live/chatsworth-vs-x', via: 'iframe' },
+                                   { pageUrl: 'https://autre.test/p' });
+  assert.strictEqual(voisin.kind, 'embed', 'un vrai lecteur ne doit pas tomber avec les boîtes de dialogue');
+  ok('les boîtes de dialogue sont écartées, sans emporter les lecteurs voisins');
+
+  // ── 7. Ne pas troquer une page bloquée contre une autre ───────────────────────
+  /* Le scraper mesure X-Frame-Options hôte par hôte AVANT d'extraire. Un lecteur promu
+     vers un hôte mesuré non intégrable ne serait qu'un second mur : X-Frame-Options
+     s'applique avant tout JavaScript, le client s'en apercevrait trop tard. Relevé sur le
+     même cache : 34 liens dans ce cas, dont 30 vers isportsurge.ws. */
+  const politique = {
+    'isportsurge.ws': { embeddable: false, reason: 'X-Frame-Options: sameorigin' },
+    'bon-lecteur.test': { embeddable: true, reason: 'aucun en-tête restrictif' }
+  };
+  const hote = (u) => { try { return new URL(u).hostname.replace(/^(www|v2)\./, ''); } catch (e) { return ''; } };
+
+  /* La règle est d'abord VÉRIFIÉE DANS LA SOURCE. Le contrôle de comportement qui suit
+     s'exerce sur une copie ; à lui seul il ne prouverait rien sur le code livré, puisqu'un
+     test qui recopie la règle passe même si le scraper ne la porte plus. */
+  const scraper = require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'scripts', 'scrape_streams.mjs'), 'utf8');
+  assert.ok(/const pol = hostPolicy\[h\];/.test(scraper),
+    'scrape_streams.mjs doit consulter hostPolicy pour l\'hôte du lecteur');
+  assert.ok(/return !\(pol && pol\.embeddable === false\);/.test(scraper),
+    'scrape_streams.mjs doit écarter un lecteur dont l\'hôte est mesuré non intégrable');
+  /* Et l'ordre compte : hostPolicy doit être rempli AVANT l'étape d'extraction, sinon la
+     table est vide au moment où on l'interroge et le garde-fou ne filtre rien. */
+  assert.ok(scraper.indexOf('const hostPolicy = {}') < scraper.indexOf('const EXTRACT_CONCURRENCE'),
+    'hostPolicy doit être calculé avant l\'étape d\'extraction des lecteurs');
+
+  /* La règle telle qu'elle est écrite dans scripts/scrape_streams.mjs. */
+  const choisir = (cands, pageUrl) => cands.find((c) => {
+    if (c.kind !== 'embed') return false;
+    const h = hote(c.url);
+    if (h === hote(pageUrl)) return false;
+    const pol = politique[h];
+    return !(pol && pol.embeddable === false);
+  });
+
+  const page = 'https://source.test/match/1';
+  /* Le premier candidat est bloqué : on prend le suivant plutôt que de renoncer. */
+  assert.strictEqual(choisir([
+    { url: 'https://isportsurge.ws/e/1', kind: 'embed' },
+    { url: 'https://bon-lecteur.test/e/1', kind: 'embed' }
+  ], page).url, 'https://bon-lecteur.test/e/1');
+  /* Aucun candidat acceptable : on n'écrit rien, et le tour côté client reprend la main. */
+  assert.strictEqual(choisir([{ url: 'https://isportsurge.ws/e/1', kind: 'embed' }], page), undefined);
+  /* Un hôte jamais sondé n'est pas présumé coupable. */
+  assert.strictEqual(choisir([{ url: 'https://jamais-sonde.test/e/1', kind: 'embed' }], page).url,
+    'https://jamais-sonde.test/e/1');
+  ok('un lecteur sur un hôte mesuré non intégrable est écarté au profit du suivant');
+
+  /* Relevé de contrôle sur le cache de production du 5 septembre 2026, 389 lecteurs
+     préparés : 9 écartés comme boîte de dialogue, 34 comme hôte non intégrable,
+     346 conservés. */
+
   console.log('\n' + n + ' groupes OK — lecteur préparé côté serveur');
   process.exit(0);
 }
