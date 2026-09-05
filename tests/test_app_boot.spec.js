@@ -193,39 +193,79 @@ test('aucun débordement horizontal sur mobile', async ({ page }) => {
    c'est elle qu'il faut verrouiller, pas seulement l'absence de débordement. Le rail
    doit défiler DANS sa section — un rail qui déborde du corps de page rendrait
    l'application inutilisable au doigt, c'est le piège exact d'un `overflow-x` mal placé. */
-test('sur mobile, les sections deviennent des rails d\'affiches verticales', async ({ page }) => {
+/* UN SEUL AXE DE DÉFILEMENT.
+
+   Les affiches étaient d'abord posées en rails horizontaux. Ça réglait le problème
+   d'origine — la carte large prenait toute la largeur d'un téléphone pour un seul match —
+   mais en créait un autre, signalé à l'usage : deux axes de balayage sur le même écran,
+   le pouce ne sachant plus lequel il pilote. Les affiches restent, en grille.
+
+   Ce test remplace celui qui exigeait l'inverse : c'est un changement de comportement
+   voulu, pas une régression, et le test doit dire la règle actuelle. */
+test('sur mobile, les affiches tiennent en grille et un seul axe défile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const pageErrors = await bootOffline(page);
 
-  const state = await page.evaluate(() => {
+  const etat = await page.evaluate(() => {
     const grids = Array.from(document.querySelectorAll('.match-grid'));
     const card = document.querySelector('.match-card .prime-thumbnail');
     const rect = card ? card.getBoundingClientRect() : null;
     /* Quelle section porte assez de matchs pour déborder dépend de l'heure et des
        données du jour : on interroge donc toutes les sections plutôt que la première. */
-    const crowded = grids.filter((g) => g.querySelectorAll('.match-card').length >= 3);
+    const remplies = grids.filter((g) => g.querySelectorAll('.match-card').length >= 3);
     return {
       poster: document.body.classList.contains('cards-poster'),
       grids: grids.length,
-      crowded: crowded.length,
-      railScrolls: crowded.some((g) => g.scrollWidth > g.clientWidth),
-      allScrollable: grids.every((g) => getComputedStyle(g).overflowX === 'auto'),
-      hasToggle: !!document.querySelector('.rail-toggle'),
+      remplies: remplies.length,
+      /* Aucune section ne doit déborder de sa largeur : c'est ce débordement qui créait
+         le second axe. */
+      debordeALHorizontale: grids.some((g) => g.scrollWidth > g.clientWidth + 1),
+      toutesEnGrille: grids.every((g) => g.classList.contains('expanded')),
+      /* Trois affiches par ligne : le gain de densité qui justifiait le format doit
+         survivre au passage en grille. */
+      parLigne: rect ? Math.round(window.innerWidth / rect.width) : 0,
+      basculePresente: !!document.querySelector('.rail-toggle'),
+      libelleBascule: (document.querySelector('.rail-toggle') || {}).textContent || '',
       ratio: rect ? rect.width / rect.height : 0,
       bodyOverflow: document.body.scrollWidth - window.innerWidth
     };
   });
 
   expect(pageErrors).toEqual([]);
-  expect(state.poster, 'la classe cards-poster est posée sous 900 px').toBeTruthy();
-  expect(state.ratio, 'la vignette est en portrait (2:3), pas en bandeau').toBeLessThan(1);
-  expect(state.grids, 'des sections de cartes sont rendues').toBeGreaterThan(0);
-  expect(state.allScrollable, 'chaque section défile horizontalement en rail').toBeTruthy();
-  if (state.crowded > 0) {
-    expect(state.railScrolls, 'un rail bien rempli déborde de sa largeur visible').toBeTruthy();
-  }
-  expect(state.hasToggle, 'le bouton « Tout voir » déplie le rail en grille').toBeTruthy();
-  expect(state.bodyOverflow, 'le rail défile dans sa section, pas dans la page').toBeLessThanOrEqual(1);
+  expect(etat.poster, 'la classe cards-poster est posée sous 900 px').toBeTruthy();
+  expect(etat.ratio, 'la vignette est en portrait (2:3), pas en bandeau').toBeLessThan(1);
+  expect(etat.grids, 'des sections de cartes sont rendues').toBeGreaterThan(0);
+  expect(etat.toutesEnGrille, 'chaque section est en grille par défaut, pas en rail').toBeTruthy();
+  expect(etat.debordeALHorizontale, 'aucune section ne défile horizontalement : un seul axe').toBeFalsy();
+  expect(etat.parLigne, 'les affiches restent denses : au moins deux par ligne').toBeGreaterThanOrEqual(2);
+  expect(etat.bodyOverflow, 'la page elle-même ne défile pas horizontalement').toBeLessThanOrEqual(1);
+  expect(etat.basculePresente, 'le rail reste offert par section, il n\'est plus le défaut').toBeTruthy();
+  expect(etat.libelleBascule, 'le bouton propose le rail, puisqu\'on est en grille').toContain('Rail');
+});
+
+/* Repasser une section en rail reste possible : le choix est offert, il n'est plus imposé. */
+test('le bouton de section rebascule en rail, et revient', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pageErrors = await bootOffline(page);
+
+  const bouton = page.locator('.rail-toggle').first();
+  await expect(bouton).toHaveText(/Rail/);
+
+  await bouton.click();
+  const enRail = await page.evaluate(() => {
+    const g = document.querySelector('.match-grid');
+    return { expanded: g.classList.contains('expanded'), overflow: getComputedStyle(g).overflowX };
+  });
+  expect(enRail.expanded, 'après clic, la section quitte la grille').toBeFalsy();
+  expect(enRail.overflow, 'et redevient un rail qui défile').toBe('auto');
+  await expect(bouton).toHaveText(/Grille/);
+
+  await bouton.click();
+  await expect(bouton).toHaveText(/Rail/);
+  const revenu = await page.evaluate(() =>
+    document.querySelector('.match-grid').classList.contains('expanded'));
+  expect(revenu, 'un second clic ramène la grille').toBeTruthy();
+  expect(pageErrors).toEqual([]);
 });
 
 /* Le badge d'une carte sans lien est le raccourci de recherche : s'il disparaît, la

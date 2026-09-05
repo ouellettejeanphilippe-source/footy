@@ -340,14 +340,22 @@ function buildEPGInner(matches){
           var grid = document.createElement('div');
           grid.className = 'match-grid';
 
-          /* En affiche verticale (cartes « à la Netflix »), une section devient un rail
-             qui défile horizontalement : sur un téléphone, la grille d'origine n'affichait
-             que trois matchs par écran, tout le reste exigeant un long défilement vertical.
-             Le rail en montre une dizaine et garde les sections suivantes atteignables.
-             Le bouton « Tout voir » du titre déplie le rail en grille pour qui préfère. */
+          /* UN SEUL AXE DE DÉFILEMENT, le vertical.
+
+             Les affiches « à la Netflix » étaient d'abord posées en rails horizontaux, une
+             section par rail. Ça règle bien le problème d'origine — la carte large prenait
+             toute la largeur d'un téléphone pour un seul match — mais ça en crée un autre,
+             signalé à l'usage : deux axes de balayage sur le même écran. Le pouce ne sait
+             plus lequel il pilote, un geste un peu oblique fait défiler la mauvaise chose,
+             et la position horizontale de chaque rail devient un état à retenir.
+
+             Les affiches restent donc, en GRILLE : trois par ligne sur un téléphone, ce qui
+             garde le gain de densité, et un seul geste pour tout parcourir. Le bouton du
+             titre permet de repasser une section en rail pour qui préfère — le choix est
+             offert, il n'est simplement plus le défaut. */
           var railId = sectionId || ('sec_' + String(titleStr || '').replace(/[^a-zA-Z0-9]/g, ''));
           if (titleStr) grid.setAttribute('data-rail', railId);
-          if (titleStr && S.expandedSections[railId]) grid.classList.add('expanded');
+          if (titleStr && !S.railSections[railId]) grid.classList.add('expanded');
 
           if (titleStr) {
               var secTitle = document.createElement('div');
@@ -403,21 +411,22 @@ function buildEPGInner(matches){
               textSpan.textContent = prefix + titleStr;
               secTitle.appendChild(textSpan);
 
-              /* Bascule rail ↔ grille, visible seulement en affiche verticale (CSS). */
+              /* Bascule grille ↔ rail, visible seulement en affiche verticale (CSS).
+                 `aria-pressed` décrit l'état du RAIL, que le bouton propose d'activer. */
               var railBtn = document.createElement('button');
               railBtn.type = 'button';
               railBtn.className = 'rail-toggle';
               var syncRailBtn = function() {
-                  var open = !!S.expandedSections[railId];
-                  railBtn.textContent = open ? '⇥ Rail' : '⊞ Tout voir';
-                  railBtn.setAttribute('aria-pressed', open ? 'true' : 'false');
-                  grid.classList.toggle('expanded', open);
+                  var enRail = !!S.railSections[railId];
+                  railBtn.textContent = enRail ? '⊞ Grille' : '⇥ Rail';
+                  railBtn.setAttribute('aria-pressed', enRail ? 'true' : 'false');
+                  grid.classList.toggle('expanded', !enRail);
               };
               syncRailBtn();
               grid._railBtn = railBtn;
               railBtn.addEventListener('click', function(ev) {
                   ev.stopPropagation();
-                  S.expandedSections[railId] = !S.expandedSections[railId];
+                  S.railSections[railId] = !S.railSections[railId];
                   syncRailBtn();
               });
               secTitle.appendChild(railBtn);
