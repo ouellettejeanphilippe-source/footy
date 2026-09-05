@@ -65,6 +65,32 @@ async function main() {
     'sans drapeau serveur, l\'heuristique doit encore pouvoir déclencher le tour');
   ok('les liens jamais sondés par le serveur gardent l\'heuristique en renfort');
 
+  // ── 5. Tour échoué : on ne pointe PAS l'iframe vers la page bloquée ───────────
+  /* Capture d'écran du 5 septembre 2026 : « Firefox Can't Open This Page —
+     r.clearstreamdv.com will not allow Firefox to display the page if another site has
+     embedded it », en plein milieu de la tuile. C'est le repli du tour qui la produisait :
+     après un échec, il affectait quand même `iframe.src = finalUrl`.
+
+     Or `finalUrl` est ici une page dont on a MESURÉ qu'elle refuse l'iframe.
+     X-Frame-Options s'applique avant tout JavaScript : cette iframe ne peut donc rien
+     afficher d'autre que l'écran d'erreur du navigateur. La seule issue utile est le
+     bouton « ouvrir dans un onglet » de la barre d'échec. */
+  /* On compte les affectations plutôt que de chercher un motif « après » : insérer
+     `iframe.src = finalUrl` JUSTE AVANT la barre d'échec laissait passer une recherche
+     de motif suffixe (vérifié par sabotage). Il ne doit rester qu'une seule affectation
+     de `finalUrl` à une iframe dans tout le fichier — celle du chemin ORDINAIRE, où rien
+     n'indique que la page refuse l'affichage. Le chemin « page bloquée », lui, n'en a
+     plus aucune. */
+  const codeSansCommentaires = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const affectations = (codeSansCommentaires.match(/iframe\.src\s*=\s*finalUrl\s*;/g) || []).length;
+  assert.strictEqual(affectations, 1,
+    'une seule affectation de finalUrl à l\'iframe doit subsister (le chemin ordinaire) ; '
+    + 'le repli du tour doit poser la barre d\'échec SEULE, sans pointer vers une page mesurée non intégrable '
+    + '(obtenu : ' + affectations + ')');
+  assert.ok(/container\.appendChild\(buildTrickFailureBar\(finalUrl\)\);/.test(codeSansCommentaires),
+    'la barre d\'échec, qui porte le bouton « ouvrir dans un onglet », doit rester posée');
+  ok('tour échoué : barre d\'échec seule, pas d\'iframe vers une page qui refuse l\'affichage');
+
   console.log('\n' + n + ' groupes OK — déclenchement du tour sur page bloquée');
   process.exit(0);
 }

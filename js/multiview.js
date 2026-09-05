@@ -8,7 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
-import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, EMBED_SANDBOX } from './embed-bridge.js';
+import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus } from './embed-bridge.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -1694,16 +1694,11 @@ export function updateMultivisionLayout() {
                 iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;';
                 iframe.setAttribute('allowfullscreen', 'true');
                 iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
-                /* Posé AVANT toute affectation de `src` : `sandbox` n'est lu qu'au
-                   chargement du document, le poser après ne changerait rien jusqu'au
-                   rechargement suivant. La branche `srcdoc` le remplace ensuite par
-                   EMBED_SANDBOX, plus strict, avant d'écrire son document. */
-                // Aucun bac à sable posé sur les lecteurs : retiré le 5 septembre 2026 à la
-                // demande de l'utilisateur (« pas de sandbox du tout »). EMBED_SANDBOX reste
-                // posé plus bas sur les documents RECONSTRUITS en srcdoc : ce n'est pas la
-                // même chose, ce bac à sable protège l'origine de l'application elle-même
-                // (localStorage, DOM) contre un document qu'on y a copié — pas un garde-fou
-                // contre le site distant, qu'on peut retirer sans risque pour l'app.
+                /* Aucun attribut `sandbox`, ni ici ni sur la branche `srcdoc` plus bas :
+                   retiré le 5 septembre 2026 sur demande répétée de l'utilisateur, capture
+                   d'écran à l'appui (« Sandbox detected, please remove sandbox attributes »).
+                   Le raisonnement complet est dans js/embed-bridge.js ; le test
+                   « aucune iframe de lecteur ne porte d'attribut sandbox » le verrouille. */
                 container.appendChild(iframe);
 
                 demanderNettoyage(iframe);
@@ -1739,16 +1734,38 @@ export function updateMultivisionLayout() {
                             iframe.src = res.playerUrl;
                             container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
                         } else if (res && res.srcdoc && rebuildEnabled) {
-                            /* Non négociable, et indépendant de la préférence : ce
-                               document vit à l'origine de l'application. Sans bac à
-                               sable il lirait son localStorage et son DOM. */
-                            iframe.setAttribute('sandbox', EMBED_SANDBOX);
+                            /* Plus AUCUN bac à sable ici non plus, depuis le 5 septembre 2026.
+
+                               Le raisonnement précédent était faux, et une capture d'écran
+                               l'a démenti : « Sandbox detected, please remove sandbox
+                               attributes », en rouge, à la place du lecteur. On avait cru
+                               qu'un site distant ne pouvait pas repérer le bac à sable d'un
+                               document reconstruit, « puisqu'il ne s'agit pas de SA page
+                               mais d'une copie ». C'est justement l'inverse : la copie
+                               contient SON code, qui s'exécute ici et voit parfaitement
+                               l'origine opaque, le localStorage qui lève une exception et
+                               l'attribut lui-même sur `frameElement`. Aucun jeu de jetons
+                               n'y change rien — seule l'ABSENCE d'attribut passe.
+
+                               Le prix est réel et assumé : ce document vit à l'origine de
+                               l'application, il peut donc lire son localStorage (réglages
+                               et cache de matchs, aucun identifiant) et son DOM. Le
+                               détournement d'onglet et les popups restent bloqués par
+                               multiview-cleaner.user.js pour qui l'installe. */
                             iframe.srcdoc = res.srcdoc;
                             container.appendChild(buildTrickBadge(res.via, finalUrl, 'page'));
                         } else if (estMediaDirecte(finalUrl)) {
                             iframe = versVideoSiDirect(iframe, finalUrl, container);
                         } else {
-                            iframe.src = finalUrl;
+                            /* Le tour a échoué sur une page dont on a MESURÉ qu'elle refuse
+                               l'iframe : y pointer quand même garantit l'écran du navigateur
+                               (« Firefox Can't Open This Page — r.clearstreamdv.com will not
+                               allow Firefox to display the page if another site has embedded
+                               it »), signalé en capture le 5 septembre 2026. X-Frame-Options
+                               s'applique avant tout JavaScript : cette iframe ne peut donc
+                               RIEN afficher d'autre que cette erreur. On laisse la tuile
+                               noire et on ne montre que la barre d'échec, qui porte le
+                               bouton « ouvrir dans un onglet » — la seule voie qui marche. */
                             container.appendChild(buildTrickFailureBar(finalUrl));
                         }
                     });

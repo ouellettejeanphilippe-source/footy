@@ -222,17 +222,23 @@ export function resolveBlockedEmbed(url, proxyFetch, registry) {
   });
 }
 
-/* Bac à sable du document reconstruit : tout sauf `allow-same-origin`, qui rendrait au
-   document l'origine de l'application (donc l'accès à son stockage et à son DOM). */
-export var EMBED_SANDBOX = 'allow-scripts allow-forms allow-presentation allow-pointer-lock allow-orientation-lock';
+/* PLUS AUCUN attribut `sandbox` n'est posé sur une iframe de lecteur, nulle part.
 
-/* Le bac à sable des lecteurs ORDINAIRES (ceux chargés par `src`, pas les documents
-   reconstruits) a été retiré le 5 septembre 2026, à la demande explicite de
-   l'utilisateur : « quand y'a le tag sandbox, ça chie ». Beaucoup de ces sites
-   détectent une iframe en bac à sable — quels que soient les jetons accordés — et
-   refusent purement et simplement de s'afficher, ou de jouer. Le bénéfice visé
-   (bloquer popups et détournement d'onglet sans extension) ne valait pas ce coût : une
-   bonne partie des lecteurs ne démarrait plus du tout.
+   Retiré en deux temps le 5 septembre 2026, sur demande répétée de l'utilisateur
+   (« quand y'a le tag sandbox, ça chie »). D'abord sur les lecteurs ORDINAIRES (ceux
+   chargés par `src`) : beaucoup de ces sites détectent une iframe en bac à sable —
+   quels que soient les jetons accordés — et refusent de s'afficher ou de jouer.
+
+   Puis sur le document RECONSTRUIT en `srcdoc`, qu'on avait cru à l'abri : « rien, côté
+   site distant, ne peut détecter ce bac à sable puisqu'il ne s'agit pas de SA page mais
+   d'une copie ». C'était faux, et une capture d'écran l'a démenti — « Sandbox detected,
+   please remove sandbox attributes », en rouge, à la place du lecteur. La copie contient
+   SON code : il s'exécute ici et voit l'origine opaque, le localStorage qui lève, et
+   l'attribut lui-même sur `frameElement`. Seule son ABSENCE passe.
+
+   Le prix, assumé : un document reconstruit vit à l'origine de l'application et peut
+   donc lire son localStorage (réglages et cache de matchs — aucun identifiant, aucun
+   jeton) et son DOM.
 
    La protection contre les popups et le détournement d'onglet reste assurée par
    `multiview-cleaner.user.js` pour qui l'installe (il tourne DANS la page tierce, ce que
