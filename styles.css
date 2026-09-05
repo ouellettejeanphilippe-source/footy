@@ -953,6 +953,9 @@ body.cards-poster .prime-league-badge .plb-name { max-width: 74px; font-size: 10
 }
 .mv-sandbox-btn:hover, .mv-sandbox-btn:focus-visible { opacity: 1; }
 .mv-sandbox-btn.leve { opacity: 1; border-color: rgba(255,159,10,0.7); }
+/* Levé, mais le script utilisateur reprend les protections dans la page : ce n'est plus
+   un renoncement, on le montre en vert plutôt qu'en orange. */
+.mv-sandbox-btn.leve.couvert { border-color: rgba(52,199,89,0.7); }
 
 .mv-embed-helper {
   position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 20;
