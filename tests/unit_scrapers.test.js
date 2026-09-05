@@ -205,6 +205,62 @@ async function main() {
     assert.deepStrictEqual(scrapers.finalizeStreamLinks(null), [], 'entrée vide tolérée');
     ok('finalizeStreamLinks : entonnoir commun à toutes les sources');
 
+    // ── Flexfitness : toutes les ligues sur une seule page (dont CFB) ───────
+    // Ajouté le 5 septembre 2026 (« ajouter flexfitness.fit pour tout, dont college
+    // football »). Structure réelle du site (astro), simplifiée ici.
+    const flexHomeHtml = `<div class="sport-section" id="soccer"><h2>SOCCER</h2><div class="cards">
+      <a class="card" href="/watch-live/soccer/portuguese-primeira-liga/maritimo-vs-benfica/52800">
+        <div class="card-body"><div class="card-content"><h3>
+          <img class="team-logo" alt="home"> Marítimo vs Benfica <img class="team-logo" alt="away">
+        </h3><div class="meta"> PORTUGUESE PRIMEIRA LIGA •  September 05, 2026 • 01:00 PM
+          <span class="live-badge">Live</span> </div></div></div>
+      </a></div></div>
+      <div class="sport-section" id="motorsports"><h2>MOTORSPORTS</h2><div class="cards">
+      <a class="card" href="/watch-live/motorsports/formula-1/italian-grand-prix-qualifying/52984">
+        <div class="card-body"><div class="card-content"><h3>
+          <div class="placeholder-logo">?</div> Italian Grand Prix Qualifying <div class="placeholder-logo">?</div>
+        </h3><div class="meta"> FORMULA 1 •  September 05, 2026 • 10:00 AM </div></div></div>
+      </a></div></div>
+      <div class="sport-section" id="cfb"><h2>CFB</h2><div class="cards">
+      <a class="card" href="/watch-live/cfb/ncaa-division-1-football/alabama-vs-east-carolina/52992">
+        <div class="card-body"><div class="card-content"><h3>
+          <img class="team-logo" alt="home"> Alabama vs East Carolina <img class="team-logo" alt="away">
+        </h3><div class="meta"> NCAA DIVISION 1 FOOTBALL •  September 05, 2026 • 12:00 PM </div></div></div>
+      </a></div></div>`;
+    const flex = scrapers.parseFlexfitness(flexHomeHtml, 'https://flexfitness.fit/');
+    assert.strictEqual(flex.length, 3, 'trois cartes, trois matchs (foot, motorsport, CFB)');
+    const flexMarit = flex.find((m) => m.homeTeam === 'Marítimo');
+    assert.strictEqual(flexMarit.awayTeam, 'Benfica');
+    assert.strictEqual(flexMarit.status, 'live', 'badge "Live" détecté');
+    assert.strictEqual(flexMarit.matchDate, '2026-09-05');
+    assert.strictEqual(flexMarit.startTime, '13:00', '01:00 PM converti en 24h');
+    assert.strictEqual(flexMarit.source, 'flexfitness');
+    const flexGp = flex.find((m) => /Grand Prix/.test(m.homeTeam));
+    assert.strictEqual(flexGp.awayTeam, '', 'événement à un seul nom (pas de " vs ") : équipe visiteuse vide, pas TBD inventé');
+    assert.strictEqual(flexGp.status, 'upcoming', 'pas de badge "Live" : à venir');
+    const flexCfb = flex.find((m) => m.homeTeam === 'Alabama');
+    assert.strictEqual(flexCfb.awayTeam, 'East Carolina');
+    assert.ok(/ncaa-division-1-football\/alabama-vs-east-carolina\/52992$/.test(flexCfb.matchUrl));
+    ok('parseFlexfitness : foot, motorsport et CFB sur une même page');
+
+    // Page de match Flexfitness : les liens sont déjà en clair, avec un nom lisible
+    // (pas tout le texte de la carte, détails de qualité compris).
+    const flexMatchHtml = `<div class="stream-links-grid">
+      <a href="https://a.clearstreamdv.com/live/player.php?ch=es213" class="stream-link-card">
+        <span class="stream-link-name">Link 1</span><span class="stream-link-badge">1080p HD</span>
+        <div class="stream-link-details">3000 Kbps</div>
+      </a>
+      <a href="https://r.clearstreamdv.com/live/player.php?ch=es213" class="stream-link-card">
+        <span class="stream-link-name">Link 2</span><span class="stream-link-badge">720p HD</span>
+      </a>
+    </div>`;
+    const flexLinks = scrapers.extractStreamLinks(flexMatchHtml, { matchUrl: 'https://flexfitness.fit/watch-live/cfb/ncaa-division-1-football/alabama-vs-east-carolina/52992', homeTeam: 'Alabama', awayTeam: 'East Carolina', league: 'CFB', source: 'flexfitness' });
+    assert.strictEqual(flexLinks.length, 2);
+    assert.strictEqual(flexLinks[0].name, 'Link 1', 'nom lisible, pas tout le texte de la carte');
+    assert.strictEqual(flexLinks[0].quality, '1080p');
+    assert.strictEqual(flexLinks[1].url, 'https://r.clearstreamdv.com/live/player.php?ch=es213');
+    ok('extractStreamLinks : page de match Flexfitness (.stream-link-card), noms lisibles');
+
     // ── Hôtes dont les pages de match ne répondent jamais ──────────────────
     const cfg = await import('../js/config.js');
     assert.strictEqual(cfg.isMatchPageBlocked('https://footybite.bid/game/qatar-vs-oman-1'), true);

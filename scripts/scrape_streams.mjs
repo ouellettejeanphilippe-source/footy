@@ -85,7 +85,8 @@ const parsers = {
     onhockey: scrapers.parseOnHockey,
     vipleague: scrapers.parseVipleague,
     methstreams: scrapers.parseMethstreams,
-    streamed: scrapers.parseStreamed
+    streamed: scrapers.parseStreamed,
+    flexfitness: scrapers.parseFlexfitness
 };
 
 function hostOf(u) { try { return new URL(u).hostname.replace(/^(www|v2)\./, ''); } catch (e) { return String(u || ''); } }
