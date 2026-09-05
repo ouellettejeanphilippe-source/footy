@@ -1693,7 +1693,30 @@ export function updateMultivisionLayout() {
 
                    La mesure prime donc sur l'heuristique, et l'heuristique reste en renfort
                    pour les liens ajoutés à la main, que le serveur n'a jamais sondés. */
-                var bloqueParServeur = !!(s && s.topLevel);
+                /* Le drapeau du lien, ET la mesure de son HÔTE.
+
+                   Le drapeau `topLevel` n'existe que sur les liens passés par le scraper.
+                   Un lien fraîchement trouvé dans le navigateur — page de match rouverte
+                   au coup d'envoi, lien collé à la main — n'en a aucun, même quand le
+                   serveur a mesuré son hôte et sait qu'il refuse l'iframe. On le chargeait
+                   alors directement, et le navigateur affichait sa propre page d'erreur.
+
+                   Cas relevé le 5 septembre 2026, capture à l'appui : Philadelphia Union —
+                   CF Montréal, ouvert trois minutes avant le coup d'envoi. Le cache datait
+                   de 19 h 00, quand la page de la source ne listait encore AUCUN flux ; les
+                   liens clearstreamdv venaient d'apparaître et n'avaient donc jamais été
+                   vus par le serveur. Sans drapeau, et comme `player.php` ne ressemble pas
+                   à une page de match, le tour n'était pas tenté — alors que la politique
+                   de l'hôte, elle, était connue depuis le premier chargement
+                   (data/streams.json publie hostPolicy, que main.js verse dans ce registre).
+
+                   On consulte donc les deux : le drapeau du lien quand il existe, la mesure
+                   de l'hôte sinon. */
+                var hoteDuLien = '';
+                try { hoteDuLien = new URL(finalUrl).hostname.replace(/^(www|v2)\./, ''); } catch (e) {}
+                var registreConnu = (typeof getEmbedRegistry === 'function') ? getEmbedRegistry() : null;
+                var hoteMesureBloque = !!(hoteDuLien && registreConnu && registreConnu.blocked && registreConnu.blocked[hoteDuLien]);
+                var bloqueParServeur = !!(s && s.topLevel) || hoteMesureBloque;
 
                 /* La PAGE D'ORIGINE passe avant le lecteur extrait, quand elle s'encadre.
 

@@ -31,8 +31,8 @@ async function main() {
   const src = fs.readFileSync(require('path').join(__dirname, '..', 'js', 'multiview.js'), 'utf8');
 
   // ── 1. Le drapeau du serveur est bel et bien consulté ─────────────────────────
-  assert.ok(/var bloqueParServeur = !!\(s && s\.topLevel\);/.test(src),
-    'multiview.js doit lire le drapeau topLevel posé par le scraper');
+  assert.ok(/var bloqueParServeur = !!\(s && s\.topLevel\) \|\| hoteMesureBloque;/.test(src),
+    'multiview.js doit lire le drapeau topLevel posé par le scraper (et la mesure de l\'hôte, groupe 7)');
   assert.ok(/isTopLevel = !lecteurUtile && \(bloqueParServeur \|\| isMatchOrLeaguePage\(finalUrl\)\)/.test(src),
     'la décision doit combiner la mesure du serveur ET l\'heuristique');
   ok('la décision lit topLevel, et pas seulement la forme de l\'adresse');
@@ -133,6 +133,36 @@ async function main() {
   assert.strictEqual(choisirSource('https://l.test/e', false, true), 'tour',
     'une page de match intégrable n\'est pas un lecteur : le tour doit y chercher la vidéo');
   ok('la page d\'origine passe avant le lecteur extrait quand elle s\'encadre');
+
+  // ── 7. Un lien SANS drapeau, sur un hôte mesuré bloqué, déclenche le tour ─────
+  /* Le drapeau topLevel n'existe que sur les liens passés par le scraper. Un lien trouvé
+     dans le navigateur — page de match rouverte au coup d'envoi, lien collé — n'en a
+     aucun, même quand le serveur a mesuré son hôte.
+
+     Cas relevé le 5 septembre 2026, capture à l'appui : Philadelphia Union — CF Montréal,
+     ouvert trois minutes avant le coup d'envoi. Le cache datait de 19 h 00, quand la page
+     de la source ne listait encore AUCUN flux ; les liens clearstreamdv venaient
+     d'apparaître, jamais vus par le serveur. Sans drapeau, et comme « player.php » ne
+     ressemble pas à une page de match, le tour n'était pas tenté — et le navigateur
+     affichait sa page d'erreur, alors que la politique de l'hôte était connue depuis le
+     premier chargement (data/streams.json publie hostPolicy, versé dans ce registre). */
+  assert.ok(/var hoteMesureBloque = !!\(hoteDuLien && registreConnu && registreConnu\.blocked && registreConnu\.blocked\[hoteDuLien\]\);/.test(src),
+    'la décision doit consulter le registre des hôtes mesurés, pas seulement le drapeau du lien');
+  assert.ok(/var bloqueParServeur = !!\(s && s\.topLevel\) \|\| hoteMesureBloque;/.test(src),
+    'le drapeau du lien ET la mesure de l\'hôte doivent compter');
+
+  const decideAvecHote = (topLevel, hoteBloque, formeDePage, lecteurPret) => {
+    const bloque = !!topLevel || !!hoteBloque;
+    const utile = !!lecteurPret && bloque;
+    return !utile && (bloque || !!formeDePage);
+  };
+  assert.strictEqual(decideAvecHote(false, true, false, ''), true,
+    'lien sans drapeau sur hôte mesuré bloqué : le tour DOIT être tenté (le cas clearstreamdv)');
+  assert.strictEqual(decideAvecHote(false, false, false, ''), false,
+    'hôte sain et rien qui signale un blocage : chargement direct, comme avant');
+  assert.strictEqual(decideAvecHote(true, false, false, ''), true,
+    'le drapeau du serveur continue de suffire à lui seul');
+  ok('un lien sans drapeau, sur un hôte mesuré bloqué, déclenche quand même le tour');
 
   console.log('\n' + n + ' groupes OK — déclenchement du tour sur page bloquée');
   process.exit(0);
