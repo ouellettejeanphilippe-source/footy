@@ -6,7 +6,7 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
-import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry } from './scrapers.js';
+import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry, compterFluxUtiles } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, installerReconstructionRecursive } from './embed-bridge.js';
 
@@ -675,7 +675,7 @@ export function showFluxSelector(idx, mid, event) {
 
 
     var availableMatches = S.matches.filter(function(x) {
-        return x.streamsLoaded && x.streamLinks && x.streamLinks.length > 0 && String(x.id) !== String(mid);
+        return x.streamsLoaded && compterFluxUtiles(x) > 0 && String(x.id) !== String(mid);
     });
 
     availableMatches.sort(function(a, b) {
@@ -723,7 +723,7 @@ export function showFluxSelector(idx, mid, event) {
 
             btn.onclick = function(e) {
                 e.stopPropagation();
-                if(sm.streamsLoaded && sm.streamLinks && sm.streamLinks.length > 0) {
+                if(sm.streamsLoaded && compterFluxUtiles(sm) > 0) {
                     var sortedSmLinks = sortFluxLinks(sm.streamLinks);
                     mvFlux[idx].url = sortedSmLinks[0].url;
                     mvFlux[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;

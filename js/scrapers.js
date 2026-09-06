@@ -1820,6 +1820,34 @@ export function recordEmbedResult(host, embedded) {
     saveEmbedRegistry();
 }
 
+/* Combien de flux réellement exploitables ce match porte-t-il ?
+
+   La question n'est pas « combien de liens », mais « combien de liens qu'on peut jouer ».
+   Deux catégories ne comptent pas :
+
+   - le repli « Page du match sur … », qui n'est pas un flux mais l'aveu que la page
+     n'a jamais été lue (le serveur horaire en produit un chaque fois qu'il se fait
+     refuser la page depuis son adresse de centre de données) ;
+   - un lien de niveau supérieur sans lecteur résolu, qui ne peut que s'ouvrir dans un
+     onglet — soit l'échec que cette application existe pour supprimer.
+
+   Compter les liens bruts revenait à traiter ces deux cas comme des flux chargés, donc
+   à ne jamais réessayer. Relevé sur le cache du 5 septembre 2026 : 651 matchs, 389 sans
+   aucun flux exploitable, dont 294 portaient malgré tout au moins un lien — 294 matchs
+   que le client refusait de rescanner parce que le serveur avait « déjà répondu ». */
+export function compterFluxUtiles(m) {
+    var liens = (m && m.streamLinks) || [];
+    var n = 0;
+    for (var i = 0; i < liens.length; i++) {
+        var l = liens[i];
+        if (!l || !l.url) continue;
+        if (l.fallback || /^page du match/i.test(l.name || '')) continue;
+        if (l.topLevel && !l.playerUrl) continue;
+        n++;
+    }
+    return n;
+}
+
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 export function fetchSubPages(matches){
   var now = new Date();
@@ -1846,7 +1874,7 @@ export function fetchSubPages(matches){
       }
       // Si on a très peu/pas de flux, on ne considère pas les streams comme "définitivement" chargés
       // pour le background refresh. Cela permet de réessayer si on a ouvert le modal trop tôt.
-      var hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
+      var hasEnoughStreams = compterFluxUtiles(m) > 0;
       if (!m.matchUrl || (m.streamsLoaded && hasEnoughStreams)) return false;
 
       if (m.startTime && m.matchDate) {
@@ -2090,7 +2118,7 @@ export function matchPageFallbackLink(matchUrl, existing) {
     if ((existing || []).some(function(l) { return l && l.url === matchUrl; })) return [];
     var siteName = matchUrl;
     try { siteName = new URL(matchUrl).hostname.replace(/^(www|v2)\./, ''); } catch (e) {}
-    return [{ name: 'Page du match sur ' + siteName, quality: '', lang: '', url: matchUrl, icon: '🔗', topLevel: true }];
+    return [{ name: 'Page du match sur ' + siteName, quality: '', lang: '', url: matchUrl, icon: '🔗', topLevel: true, fallback: true }];
 }
 
 export function finalizeStreamLinks(links) {
@@ -2722,7 +2750,7 @@ export function extractStreamLinks(html, m) {
     if(links.length===0 && m.matchUrl && !isApiEndpoint(m.matchUrl)){
         var siteName = m.matchUrl;
         try { siteName = new URL(m.matchUrl).hostname.replace(/^(www|v2)\./, ''); } catch(e) {}
-        links.push({name:'Page du match sur ' + siteName, quality:'', lang:'', url:m.matchUrl, icon:'🔗', topLevel: true});
+        links.push({name:'Page du match sur ' + siteName, quality:'', lang:'', url:m.matchUrl, icon:'🔗', topLevel: true, fallback: true});
     }
 
     // Populate pageLinksContext for all contexts
