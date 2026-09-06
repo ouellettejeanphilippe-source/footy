@@ -455,92 +455,93 @@ test('la vue « À venir » est retirée sans laisser de cul-de-sac', async ({ p
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
-/* ═══ Refonte UI/UX (6 septembre 2026) ═══════════════════════════════════════════
+/* ═══ Haut de page nu et menus du lecteur (6 septembre 2026) ═══════════════════
 
-   La barre d'outils (date, rafraîchissement, liens manquants) était masquée par un
-   `display: none !important` resté dans la feuille de style : la navigation par date et
-   la recherche de liens manquants étaient inatteignables alors que le code et la
-   documentation les décrivaient. Ces tests verrouillent les éléments de la coquille
-   dont dépend l'usage quotidien, sur les deux largeurs. */
-test('la barre d\'outils est atteignable en Live et en Guide, pas ailleurs', async ({ page }) => {
+   « Enlever logo et favicon en haut à gauche… enlever tous les éléments dans le haut de
+   la page (recherche, toggles de ligue et cie), garder l'interface la plus claire
+   possible. » La coquille ne porte plus que les onglets ; ce test verrouille l'absence,
+   comme le précédent verrouillait la présence. Recherche, date et pastilles restent
+   dans l'interface classique (legacy.html), qui partage le même code. */
+test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni date, ni ligues', async ({ page }) => {
   const pageErrors = await bootOffline(page);
 
-  const visible = async (sel) => page.locator(sel).first().isVisible();
-  expect(await visible('#date-selector'), 'le sélecteur de date est visible dans Live').toBeTruthy();
-  expect(await visible('#search-input'), 'le champ de recherche est visible dans Live').toBeTruthy();
-  expect(await visible('#btn-find-missing'), 'le bouton « Liens manquants » est visible').toBeTruthy();
-  expect(await page.locator('#current-date-display').innerText()).toMatch(/Aujourd/);
+  for (const sel of ['.brand', '#sport-filters-container', '#search-input', '#date-selector', '#sport-filters', '#btn-find-missing']) {
+    await expect(page.locator(sel), sel + ' ne doit plus exister dans la coquille').toHaveCount(0);
+  }
+  const entete = await page.evaluate(() => {
+    const h = document.getElementById('app-header');
+    const r = h.getBoundingClientRect();
+    const epg = document.getElementById('epg').getBoundingClientRect();
+    return { enfants: Array.from(h.children).map((c) => c.id), hauteur: r.height, debutGrille: epg.top };
+  });
+  expect(entete.enfants, 'l\'en-tête ne contient que la navigation').toEqual(['nav-links']);
+  expect(entete.hauteur, 'un en-tête d\'une seule rangée').toBeLessThanOrEqual(64);
+  expect(entete.debutGrille, 'la grille commence juste sous les onglets').toBeLessThanOrEqual(entete.hauteur + 1);
 
   await page.evaluate(() => window.applyFilter('all'));
   await page.waitForTimeout(400);
-  expect(await visible('#date-selector'), 'le sélecteur de date reste visible dans le Guide').toBeTruthy();
-
-  await page.evaluate(() => window.applyFilter('options'));
-  await page.waitForTimeout(300);
-  expect(await visible('#date-selector'), 'la barre d\'outils disparaît sur la page Options').toBeFalsy();
-  expect(await visible('#options-page')).toBeTruthy();
-
-  await page.evaluate(() => window.applyFilter('live'));
-  await page.waitForTimeout(300);
-  expect(await visible('#date-selector')).toBeTruthy();
+  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length), 'le Guide reste peuplé').toBeGreaterThan(0);
   expect(pageErrors).toEqual([]);
 });
 
-/* Les pastilles de ligues n'étaient construites que dans la branche « scraping en
-   direct » : dès que le cache serveur suffisait (le cas normal), la rangée restait vide. */
-test('les pastilles de ligues sont rendues depuis le cache et filtrent la grille', async ({ page }) => {
-  const pageErrors = await bootOffline(page);
-
-  const chips = page.locator('#sport-filters .sport-btn');
-  expect(await chips.count(), 'au moins « Toutes » et deux ligues').toBeGreaterThanOrEqual(3);
-  await expect(chips.first()).toHaveText(/Toutes/);
-  await expect(chips.first()).toHaveClass(/active-toggle/);
-
-  const total = await page.evaluate(() => document.querySelectorAll('#marea .match-card').length);
-  const second = chips.nth(1);
-  const label = (await second.innerText()).trim();
-  await second.click();
-  await page.waitForTimeout(400);
-
-  const apres = await page.evaluate(() => ({
-    cartes: document.querySelectorAll('#marea .match-card').length,
-    ligues: [...new Set([...document.querySelectorAll('#marea .match-card')].map((c) => c.getAttribute('data-lg')))]
-  }));
-  expect(apres.cartes, 'le filtre réduit la grille').toBeLessThan(total);
-  expect(apres.cartes).toBeGreaterThan(0);
-  expect(apres.ligues.length, 'une seule ligue reste affichée : ' + label).toBe(1);
-  await expect(page.locator('#sport-filters .sport-btn').nth(1)).toHaveClass(/active-toggle/);
-
-  await page.locator('#sport-filters .sport-btn').first().click();
-  await page.waitForTimeout(400);
-  expect(await page.evaluate(() => document.querySelectorAll('#marea .match-card').length), '« Toutes » rétablit la grille').toBe(total);
-  expect(pageErrors).toEqual([]);
-});
-
-test('la recherche filtre les cartes et l\'état vide propose d\'effacer', async ({ page }) => {
+/* « Faire que le dropdown des options soit par-dessus le multiview. » Les menus posés
+   dans la tuile étaient rognés par son `overflow: hidden` et recouverts par la tuile
+   voisine (et son iframe). Ils vivent désormais au niveau du document, en position
+   fixe (js/mv-menu.js) : on vérifie que ce qui est PEINT au centre du menu est bien le
+   menu, et que chaque tuile porte le bouton « Site » — le repli vers la page originale. */
+test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferment ailleurs', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
-  const total = await page.evaluate(() => document.querySelectorAll('#marea .match-card').length);
-  const nom = await page.evaluate(() => document.querySelector('#marea .match-card .prime-team-name').getAttribute('title'));
 
-  await page.fill('#search-input', nom);
-  await page.waitForTimeout(500);
-  const filtre = await page.evaluate((n) => {
-    const cards = [...document.querySelectorAll('#marea .match-card')];
-    return { n: cards.length, tous: cards.every((c) => c.innerText.toLowerCase().includes(n.toLowerCase())) };
-  }, nom);
-  expect(filtre.n).toBeGreaterThan(0);
-  expect(filtre.n, 'la recherche réduit la grille').toBeLessThan(total);
-  expect(filtre.tous, 'toutes les cartes restantes contiennent « ' + nom + ' »').toBeTruthy();
+  await page.evaluate((o) => {
+    window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA');
+    window.addToMultivision(o + '/__faux-lecteur?b', 'Match B', 'mB');
+  }, origin);
+  await expect(page.locator('#mv-container')).toBeVisible();
+  await expect(page.locator('.mv-cell')).toHaveCount(2);
 
-  await page.fill('#search-input', 'zzzz-aucune-equipe-zzzz');
-  await page.waitForTimeout(500);
-  await expect(page.locator('#marea .empty-state')).toBeVisible();
-  await page.locator('#marea .empty-state button').click();
-  await page.waitForTimeout(500);
-  expect(await page.evaluate(() => document.querySelectorAll('#marea .match-card').length), 'effacer rétablit la grille').toBe(total);
-  expect(await page.inputValue('#search-input')).toBe('');
-  expect(pageErrors).toEqual([]);
+  // Menu de la première tuile : la plus à gauche, celle que sa voisine recouvrait.
+  await page.locator('.mv-cell[data-index="0"] .mv-tile-menu-btn').click();
+  const menu = page.locator('.mv-menu');
+  await expect(menu).toHaveCount(1);
+  const etat = await page.evaluate(() => {
+    const m = document.querySelector('.mv-menu');
+    const r = m.getBoundingClientRect();
+    const dessus = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return {
+      fixe: getComputedStyle(m).position,
+      horsTuile: !m.closest('.mv-cell'),
+      dansEcran: r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth && r.bottom <= window.innerHeight,
+      entier: r.height > 100 && r.width > 150,
+      auDessus: !!(dessus && m.contains(dessus)),
+      items: Array.from(m.querySelectorAll('.mv-menu-item')).map((b) => b.textContent.trim()).join(' | ')
+    };
+  });
+  expect(etat.fixe).toBe('fixed');
+  expect(etat.horsTuile, 'le menu n\'est pas dans la tuile').toBeTruthy();
+  expect(etat.dansEcran, 'le menu tient dans la fenêtre').toBeTruthy();
+  expect(etat.entier, 'le menu est entier, pas rogné').toBeTruthy();
+  expect(etat.auDessus, 'ce qui est peint au centre du menu est le menu, pas une tuile').toBeTruthy();
+  expect(etat.items).toContain('Ouvrir sur le site');
+  expect(etat.items).toContain('Fermer cette vidéo');
+
+  await expect(page.locator('.mv-cell[data-index="0"] .mv-site-btn'), 'le repli vers le site est un bouton visible de la tuile').toBeVisible();
+
+  await page.mouse.click(4, 4);
+  await expect(menu, 'un clic ailleurs ferme le menu').toHaveCount(0);
+
+  await page.locator('#mv-layout-toggle-btn').click();
+  await expect(page.locator('.mv-menu')).toHaveCount(1);
+  await page.locator('.mv-menu .mv-menu-item', { hasText: 'Côte à côte' }).click();
+  await expect(page.locator('.mv-menu')).toHaveCount(0);
+  expect(await page.evaluate(() => window.mvLayout), 'le choix de disposition est appliqué').toBe('horizontal');
+
+  await page.locator('#mv-more-btn').click();
+  await expect(page.locator('.mv-menu')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.mv-menu'), 'Échap ferme le menu').toHaveCount(0);
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
 /* Deux croix se superposaient dans la fiche : `document.querySelector('.mhd')` attrapait

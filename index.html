@@ -20,16 +20,12 @@
 <body data-view="live">
 
 <!-- ═══ EN-TÊTE ═══════════════════════════════════════════════════════════════
-     Bureau : marque à gauche, onglets au centre, menu à droite.
-     Mobile : les onglets (.nav-links) passent en barre fixe au bas de l'écran ;
-     la marque reste seule en haut. Les identifiants sont ceux qu'attendent
-     applyFilter (js/utils.js) et les tests de démarrage. -->
+     Haut de page nu (6 septembre 2026) : ni marque, ni recherche, ni date, ni
+     pastilles de ligues — seulement les onglets. Bureau : centrés en haut.
+     Mobile : les onglets (.nav-links) passent en barre fixe au bas de l'écran.
+     Les identifiants sont ceux qu'attendent applyFilter (js/utils.js) et les tests
+     de démarrage. -->
 <header class="app-header" id="app-header">
-  <a class="brand" href="#" onclick="applyFilter('live'); return false;" aria-label="Guide des Sports — accueil">
-    <span class="brand-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg></span>
-    <span class="brand-name">Guide des Sports</span>
-  </a>
-
   <nav class="nav-links" id="nav-links" aria-label="Navigation principale">
     <button class="nav-btn" id="filter-live" onclick="applyFilter('live')">
       <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7"/></svg></span>
@@ -58,33 +54,6 @@
     </div>
   </nav>
 </header>
-
-<!-- ═══ BARRE D'OUTILS (Live et Guide) ═══════════════════════════════════════
-     Recherche, rafraîchissement, liens manquants, date, puis les pastilles de
-     ligues. Visible seulement dans les vues Live et Guide (body[data-view]). -->
-<div id="sport-filters-container" class="toolbar">
-  <div class="toolbar-row">
-    <div class="search-box" role="search">
-      <svg class="search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input type="search" id="search-input" placeholder="Équipe, ligue…" aria-label="Rechercher un match" autocomplete="off" enterkeyhint="search" oninput="setSearchQuery(this.value)">
-      <button type="button" class="search-clear" aria-label="Effacer la recherche" onclick="setSearchQuery(''); document.getElementById('search-input').value=''; document.getElementById('search-input').focus();">✕</button>
-    </div>
-    <button class="btn sm icon" onclick="backgroundUpdateGuide()" title="Rafraîchir les scores en direct" aria-label="Rafraîchir les scores">↻</button>
-    <button class="btn sm" id="btn-find-missing" onclick="findMissingLinks()" title="Relance la recherche de liens pour les matchs qui n'en ont aucun">🔎 <span class="hide-mobile">Liens manquants</span></button>
-    <div id="date-selector" class="date-nav">
-      <button class="btn sm icon" aria-label="Jour précédent" onclick="changeTargetDate(-1)">❮</button>
-      <div class="date-pill-wrap">
-        <button type="button" id="current-date-display" class="date-pill" onclick="var i=document.getElementById('date-picker-input'); if(i.showPicker) i.showPicker(); else i.click();" title="Choisir une date">Aujourd'hui</button>
-        <input type="date" id="date-picker-input" class="date-input" aria-label="Choisir une date" onchange="setTargetDate(this.value)">
-      </div>
-      <button class="btn sm icon" aria-label="Jour suivant" onclick="changeTargetDate(1)">❯</button>
-    </div>
-  </div>
-  <div class="missing-scan" id="missing-scan-progress" style="display:none;"></div>
-  <div id="sport-filters" class="chips" aria-label="Filtrer par ligue">
-    <!-- Pastilles générées par renderSportChips (js/ui.js) -->
-  </div>
-</div>
 
 <!-- ═══ GUIDE ═════════════════════════════════════════════════════════════════ -->
 <main class="epg" id="epg">

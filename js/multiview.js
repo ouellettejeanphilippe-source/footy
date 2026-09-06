@@ -2,7 +2,7 @@ import { fetchPage } from './utils.js';
 import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, showPage } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, showPage, syncNavState } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger } from './config.js';
@@ -12,6 +12,7 @@ import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
+import { ouvrirMenu, fermerMenus } from './mv-menu.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -805,12 +806,11 @@ export function toggleMultiviewPip() {
 
     if(mvc.classList.contains('mv-pip')) {
         // Restore to full screen multiview
-        mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:#000;z-index:90;display:flex;flex-direction:column;';
+        poserPleinCadre(mvc);
+        mvc.style.display = 'flex';
         epg.style.display = 'none';
         epg.style.paddingRight = '0';
-        var sf = document.getElementById('sport-filters-container');
-        if(sf) sf.style.display = 'none';
+        syncNavState('player');
 
         var optionsPage = document.getElementById('options-page');
         if (optionsPage) optionsPage.style.display = 'none';
@@ -822,11 +822,10 @@ export function toggleMultiviewPip() {
         updateMultivisionLayout();
     } else {
         // Switch to PIP mode
+        fermerMenus();
         mvc.classList.add('mv-pip');
-
-        var sf = document.getElementById('sport-filters-container');
-        if(sf) sf.style.display = 'flex';
         epg.style.display = 'flex';
+        syncNavState(S.filter || 'live');
 
         var mode = localStorage.getItem('multiviewPipMode') || 'sidebar';
         applyPipModeStyles(mode);
@@ -836,10 +835,6 @@ export function toggleMultiviewPip() {
 // Ensure resize events also apply the correct PIP mode styling if resizing while in PIP
 window.addEventListener('resize', function() {
     var mvc = document.getElementById('mv-container');
-    if (mvc && !mvc.classList.contains('mv-pip') && mvc.style.display !== 'none') {
-        mvc.style.bottom = (window.innerWidth <= 768 ? '60px' : '0');
-    }
-
     var epg = document.getElementById('epg');
     if(mvc && mvc.classList.contains('mv-pip')) {
         if(window.innerWidth <= 768) {
@@ -851,16 +846,22 @@ window.addEventListener('resize', function() {
         }
     }
 
-    if (mvc && mvc.style.display !== 'none' && !mvc.classList.contains('mv-pip')) {
-        if (window.innerHeight > window.innerWidth && mvLayout !== 'vertical' && mvFlux.length > 0) {
-            mvLayout = 'vertical';
-            saveMultivisionState();
-            updateMultivisionLayout();
-        }
-    }
+    /* Un écran en portrait empile les tuiles (voir dispositionEffective) : le rendu suit
+       l'orientation, sans toucher au choix de l'utilisateur. */
+    if (mvc && mvc.style.display !== 'none' && mvFlux.length > 0) updateMultivisionLayout();
 });
 
 
+
+/* Géométrie du Multivision plein cadre : une classe, la feuille de style fait le reste
+   (sous l'en-tête sur bureau, au-dessus de la barre du bas sur mobile — voir
+   `#mv-container.mv-full`, styles.css). Les styles en ligne posés par les modes PiP
+   sont effacés au passage ; `display` reste piloté en ligne par les appelants. */
+function poserPleinCadre(mvc) {
+    mvc.style.cssText = '';
+    mvc.classList.remove('mv-pip');
+    mvc.classList.add('mv-full');
+}
 
 export function setupMultivisionUI() {
     if(document.getElementById('mv-container')) return;
@@ -879,11 +880,11 @@ export function setupMultivisionUI() {
     var mvContainer = document.createElement('div');
 
     mvContainer.id = 'mv-container';
-    mvContainer.style.cssText = 'position:fixed;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:#000;z-index:90;display:none;flex-direction:column;';
+    poserPleinCadre(mvContainer);
+    mvContainer.style.display = 'none';
 
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
-    mvToolbar.style.cssText = 'position:relative;min-height:40px;background:var(--bg2);display:flex;align-items:center;padding:8px 16px;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0; transition:all 0.15s; flex-wrap:wrap;direction:ltr;';
 
   window.applyPipModeStyles = function(mode) {
       var mvc = document.getElementById('mv-container');
@@ -892,6 +893,8 @@ export function setupMultivisionUI() {
       if(!mvc || !epg) return;
 
       var isMobile = window.innerWidth <= 768;
+      mvc.classList.remove('mv-full');
+      fermerMenus();
 
       // Reset common styles first
       mvc.style.resize = 'none';
@@ -983,33 +986,18 @@ export function setupMultivisionUI() {
       }
   };
 
-  var mvToolbarHtml = '<span style="font-weight:bold;color:var(--text);cursor:move;" id="mv-drag-handle"><span class="hide-pip hide-mobile">Mode </span>Multivision</span>'
-      + '<div class="sp" style="flex:1;"></div>'
-      + '<button class="nav-btn" onclick="document.getElementById(\'mv-actions-menu\').classList.toggle(\'open\'); event.stopPropagation();" style="padding: 8px; display:none; font-size: 18px; border-radius: 8px;" id="mv-menu-btn">☰</button>'
-      + '<div id="mv-actions-menu" class="mv-actions" style="display:flex; gap:8px; align-items:center;">'
-      + '<button class="nav-btn" onclick="showMatchSelector(event)" aria-label="Ajouter un match" title="Ajouter un match" style="padding: 8px; min-width: auto; font-size: 16px;">➕</button>'
-      + '<div style="position:relative; display:flex; align-items:center;" class="hide-pip">'
-      +   '<button id="mv-layout-toggle-btn" class="nav-btn" onclick="var d=document.getElementById(\'mv-layout-dropdown\'); d.style.display = d.style.display === \'flex\' ? \'none\' : \'flex\'; event.stopPropagation();" aria-label="Choisir la disposition" title="Layouts" style="padding: 8px; min-width: auto; font-size: 16px;">⊞</button>'
-      +   '<div id="mv-layout-dropdown" style="display:none; position:absolute; top:100%; right:0; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:4px; z-index:100; flex-direction:column; gap:4px; margin-top:4px; min-width:130px;">'
-      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'auto\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="auto" aria-label="Auto Layout" title="Auto Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⊞</span> Auto</button>'
-      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'focus\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="focus" aria-label="Focus Layout" title="Focus Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⭐</span> Focus</button>'
-      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'vertical\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="vertical" aria-label="Vertical Layout" title="Vertical Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⊟</span> Vertical</button>'
-      +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'horizontal\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="horizontal" aria-label="Horizontal Layout" title="Horizontal Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⊟</span> Horizontal</button>'
-      +   '</div>'
-      + '</div>'
-      + '<button class="nav-btn hide-pip" id="mv-fit-all-btn" onclick="cycleMvFitAll()" aria-label="Ajuster le contenu des tuiles" title="Ajuster le contenu des tuiles (étiré → ajusté → rempli)" style="padding: 8px; min-width: auto; font-size: 16px;">⤢</button>'
-      + '<button class="nav-btn hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 8px; min-width: auto; font-size: 16px;">🎬</button>'
-      + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
-      + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
-      + (('documentPictureInPicture' in window) ? '<button class="nav-btn hide-pip" id="mv-doc-pip-btn" onclick="toggleDocumentPiP()" aria-label="Fenêtre détachée" title="Fenêtre détachée (PiP)" style="padding: 8px; min-width: auto; font-size: 16px;">🖼️</button>' : '')
-      + '<div style="position:relative; display:flex; align-items:center;" class="only-pip">'
-      +   '<button class="nav-btn only-pip" onclick="var d=document.getElementById(\'mv-pip-dropdown\'); d.style.display = d.style.display === \'flex\' ? \'none\' : \'flex\'; event.stopPropagation();" aria-label="Mode PiP" title="Mode PiP" style="padding: 8px; min-width: auto; font-size: 16px;">⚙️</button>'
-      +   '<div id="mv-pip-dropdown" style="display:none; position:absolute; top:100%; right:0; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:4px; z-index:100; flex-direction:column; gap:4px; margin-top:4px; min-width:130px;">'
-      +     '<button class="nav-btn" onclick="setMvPipMode(\'sidebar\'); document.getElementById(\'mv-pip-dropdown\').style.display=\'none\';" aria-label="Sidebar" title="Sidebar" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>◫</span> Sidebar</button>'
-      +     '<button class="nav-btn" onclick="setMvPipMode(\'floating\'); document.getElementById(\'mv-pip-dropdown\').style.display=\'none\';" aria-label="Flottant" title="Flottant" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>🗗</span> Flottant</button>'
-      +   '</div>'
-      + '</div>'
-      + '<button class="nav-btn only-pip" id="mv-minimize-btn" onclick="toggleMinimizePip(event)" aria-label="Minimiser" title="Minimiser" style="padding: 8px; min-width: auto; font-size: 16px;">➖</button>'
+  /* Barre du lecteur : quatre gestes, nommés en clair, et tout le reste sous « Plus ».
+     Les anciens menus déroulants posés dans la barre (disposition, modes PiP) passaient
+     sous les tuiles ; ils s'ouvrent désormais par-dessus tout (js/mv-menu.js). */
+  var mvToolbarHtml = '<span class="mv-title" id="mv-drag-handle">Lecteur</span>'
+      + '<div class="sp"></div>'
+      + '<div id="mv-actions-menu" class="mv-actions">'
+      + '<button type="button" class="mv-tb-btn primary" onclick="showMatchSelector(event)" title="Choisir un match à ajouter"><span class="mv-tb-ic" aria-hidden="true">➕</span><span class="mv-tb-lb">Ajouter</span></button>'
+      + '<button type="button" class="mv-tb-btn hide-pip" id="mv-layout-toggle-btn" onclick="ouvrirMenuDisposition(this, event)" aria-haspopup="menu" aria-expanded="false" title="Disposition des vidéos"><span class="mv-tb-ic" aria-hidden="true">⊞</span><span class="mv-tb-lb">Disposition</span></button>'
+      + '<button type="button" class="mv-tb-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" title="Plein écran"><span class="mv-tb-ic" aria-hidden="true">⛶</span><span class="mv-tb-lb">Plein écran</span></button>'
+      + '<button type="button" class="mv-tb-btn only-pip" onclick="toggleMultiviewPip()" title="Agrandir le lecteur"><span class="mv-tb-ic" aria-hidden="true">⤢</span><span class="mv-tb-lb">Agrandir</span></button>'
+      + '<button type="button" class="mv-tb-btn" id="mv-more-btn" onclick="ouvrirMenuBarre(this, event)" aria-haspopup="menu" aria-expanded="false" title="Plus d\'options"><span class="mv-tb-ic" aria-hidden="true">⋯</span><span class="mv-tb-lb">Plus</span></button>'
+      + '<button type="button" class="mv-tb-btn only-pip" id="mv-minimize-btn" onclick="toggleMinimizePip(event)" aria-label="Réduire" title="Réduire">➖</button>'
       + '</div>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
@@ -1306,42 +1294,6 @@ export function setupMultivisionUI() {
     }
 
 
-
-    if (window.ResizeObserver) {
-        var ro = new ResizeObserver(function(entries) {
-            for (var entry of entries) {
-                var toolbar = entry.target;
-                var actionsMenu = document.getElementById('mv-actions-menu');
-                var menuBtn = document.getElementById('mv-menu-btn');
-                if (!actionsMenu || !menuBtn) continue;
-
-                // If it's wrapping, the height will typically jump above ~55-60px depending on padding.
-                if (toolbar.scrollHeight > 60 || toolbar.offsetHeight > 60) {
-                    if (!actionsMenu.classList.contains('collapsed-by-ro')) {
-                        actionsMenu.classList.add('collapsed-by-ro');
-                        actionsMenu.style.cssText = 'display:none;position:absolute;top:100%;right:16px;background:rgba(28,28,30,0.95);border:1px solid var(--border);border-radius:12px;padding:12px;flex-direction:column;align-items:stretch;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:1000;margin-top:8px;';
-                        menuBtn.style.display = 'inline-flex';
-                    }
-                } else if (window.innerWidth > 768) {
-                    // Try to restore original flex layout
-                    if (actionsMenu.classList.contains('collapsed-by-ro')) {
-                        actionsMenu.classList.remove('collapsed-by-ro');
-                        actionsMenu.style.cssText = 'display:flex;gap:8px;align-items:center;';
-                        menuBtn.style.display = 'none';
-
-                        // Check again if it immediately wrapped
-                        if (toolbar.scrollHeight > 60) {
-                            actionsMenu.classList.add('collapsed-by-ro');
-                            actionsMenu.style.cssText = 'display:none;position:absolute;top:100%;right:16px;background:rgba(28,28,30,0.95);border:1px solid var(--border);border-radius:12px;padding:12px;flex-direction:column;align-items:stretch;box-shadow:0 10px 25px rgba(0,0,0,0.8);z-index:1000;margin-top:8px;';
-                            menuBtn.style.display = 'inline-flex';
-                        }
-                    }
-                }
-            }
-        });
-        ro.observe(mvToolbar);
-    }
-
 window.mvIdleTimer = null;
 window.resetMvIdleTimer = function() {
         var tb = document.getElementById('mv-toolbar');
@@ -1543,26 +1495,20 @@ export function applyMvAudioState() {
 }
 
 
+/* Disposition réellement rendue. En portrait (téléphone, tablette debout), deux tuiles
+   côte à côte font deux bandes de la largeur d'un pouce : on les empile, quel que soit le
+   choix retenu — qui reste intact et reprend en paysage. */
+function dispositionEffective(count) {
+    if (count >= 2 && window.innerHeight > window.innerWidth) return 'vertical';
+    return mvLayout;
+}
+
 export function updateMultivisionLayout() {
-    document.querySelectorAll('.mv-layout-btn').forEach(function(btn) {
-        if(btn.getAttribute('data-layout') === mvLayout) {
-            btn.classList.add('active-toggle');
-        } else {
-            btn.classList.remove('active-toggle');
-        }
-    });
-
-    // Update toggle button icon to reflect active layout
-    var icons = { 'auto': '⊞', 'focus': '⭐', 'vertical': '⊟', 'horizontal': '⊟' };
-    var toggleBtn = document.getElementById('mv-layout-toggle-btn');
-    if (toggleBtn && icons[mvLayout]) {
-        toggleBtn.innerHTML = icons[mvLayout];
-    }
-
     var grid = document.getElementById('mv-grid');
     if(!grid) return;
 
     var count = mvFlux.length;
+    var layout = dispositionEffective(count);
 
     // Assign internal IDs to streams for tracking DOM elements
     mvFlux.forEach(function(s, idx) {
@@ -1575,8 +1521,8 @@ export function updateMultivisionLayout() {
         if (!emptyMsg) {
             grid.innerHTML = '<div id="mv-empty-msg" class="mv-empty">'
                 + '<div class="mv-empty-ic">📺</div>'
-                + '<p>Aucun flux pour l\'instant. Choisissez un match : chaque lien de sa fiche porte un bouton ⊞ qui l\'ajoute ici, jusqu\'à quatre lecteurs côte à côte.</p>'
-                + '<button class="btn primary" onclick="showMatchSelector(event)">➕ Ajouter un match</button>'
+                + '<p>Aucune vidéo pour l\'instant.<br>Choisissez un match, puis une source : elle s\'affiche ici. Jusqu\'à quatre vidéos en même temps.</p>'
+                + '<button class="btn primary lg" onclick="showMatchSelector(event)">➕ Choisir un match</button>'
                 + '</div>';
         } else {
             // keep it
@@ -1610,15 +1556,15 @@ export function updateMultivisionLayout() {
             grid.style.gridTemplateColumns = '1fr';
             grid.style.gridTemplateRows = 'repeat(' + Math.max(1, count) + ', 1fr)';
         } else {
-            if (mvLayout === 'focus' && count >= 2) {
+            if (layout === 'focus' && count >= 2) {
                 var col1 = grid._customCols[0] ? grid._customCols[0] + 'fr' : '3fr';
                 var col2 = grid._customCols[0] ? (1 - grid._customCols[0]).toFixed(3) + 'fr' : '1fr';
                 grid.style.gridTemplateColumns = col1 + ' ' + col2;
                 grid.style.gridTemplateRows = 'repeat(' + (count - 1) + ', 1fr)';
-            } else if (mvLayout === 'vertical') {
+            } else if (layout === 'vertical') {
                 grid.style.gridTemplateColumns = '1fr';
                 grid.style.gridTemplateRows = 'repeat(' + count + ', 1fr)';
-            } else if (mvLayout === 'horizontal') {
+            } else if (layout === 'horizontal') {
                 var template = '';
                 var usedFr = 0;
                 var remainingCols = count - Object.keys(grid._customCols).length;
@@ -1673,7 +1619,6 @@ export function updateMultivisionLayout() {
 
             var hdr = document.createElement('div');
             hdr.className = 'mv-hdr';
-            hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;background:linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);color:#fff;padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;';
 
             var videoContainer = document.createElement('div');
             videoContainer.className = 'mv-video-container';
@@ -1768,7 +1713,7 @@ export function updateMultivisionLayout() {
             var colIndex = 0;
 
 
-            if (mvLayout === 'focus' && count >= 2) {
+            if (layout === 'focus' && count >= 2) {
                 if (idx === 0) {
                     cell.style.gridRow = 'span ' + (count - 1);
                     cell.style.gridColumn = '1';
@@ -1779,18 +1724,18 @@ export function updateMultivisionLayout() {
                     colIndex = 1;
                     cell.style.resize = 'none'; cell.style.paddingRight = '0'; // Only resize main focus col
                 }
-            } else if (mvLayout === 'auto' && count === 3 && idx === 0) {
+            } else if (layout === 'auto' && count === 3 && idx === 0) {
                 cell.style.gridRow = 'span 2';
                 cell.style.gridColumn = '1'; // Force column 1
                 colIndex = 0;
             } else {
                 cell.style.gridRow = 'auto';
 
-                if (mvLayout === 'horizontal') {
+                if (layout === 'horizontal') {
                     cell.style.gridColumn = 'auto';
                     colIndex = idx;
                     if (idx === count - 1) { cell.style.resize = 'none'; cell.style.paddingRight = '0'; } // No need to resize last col
-                } else if (mvLayout === 'vertical') {
+                } else if (layout === 'vertical') {
                     cell.style.gridColumn = '1';
                     colIndex = 0;
                     cell.style.resize = 'none'; cell.style.paddingRight = '0'; // Only one column, no horizontal resizing
@@ -1844,9 +1789,9 @@ export function updateMultivisionLayout() {
 
 
                                 // Re-apply grid template proportionally
-                                if (mvLayout === 'focus' && count >= 2) {
+                                if (layout === 'focus' && count >= 2) {
                                     grid.style.gridTemplateColumns = grid._customCols[0] + 'fr ' + (1 - fraction).toFixed(3) + 'fr';
-                                } else if (mvLayout === 'horizontal') {
+                                } else if (layout === 'horizontal') {
                                     var template = '';
                                     var remainingFr = 1 - usedFr - fraction;
                                     if (remainingFr < 0.05 * count) remainingFr = 0.05 * count; // Clamp remaining to minimum
@@ -1943,12 +1888,6 @@ export function updateMultivisionLayout() {
 
         // Update header HTML
         var hdr = cell.querySelector('.mv-hdr');
-        // Make the header semi-transparent by default so it doesn't block the video too much
-        hdr.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)';
-        hdr.style.transition = 'background 0.2s';
-        hdr.onmouseenter = function() { this.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)'; };
-        hdr.onmouseleave = function() { this.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)'; };
-
         var domain = s.url ? getDomain(s.url) : 'Flux';
 
         /* « source k/n · ● » et ⏭ : la tuile dit quelle source elle essaie, si une vidéo
@@ -1956,84 +1895,33 @@ export function updateMultivisionLayout() {
            clic. C'est ce qui remplace la devinette d'avant : on essaie, on voit, on passe. */
         var pos = positionDuFlux(s);
         var libellePastille = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : domain);
-        var pastilleSource = '<div class="mv-source-pill" title="' + (s._playing ? 'Vidéo en lecture' : 'Aucune vidéo confirmée pour l\'instant') + '" style="height:24px;display:flex;align-items:center;padding:0 8px;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.15);border-radius:4px;font-size:11px;font-weight:bold;color:' + (s._playing ? '#7CFC9A' : '#fff') + ';white-space:nowrap;">' + esc(libellePastille) + '</div>'
-            + (pos ? '<button class="mv-next-source" title="Source suivante" aria-label="Source suivante" style="height:24px;min-width:28px;background:rgba(255,255,255,0.2);border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '')
+        var pastilleSource = '<div class="mv-source-pill' + (s._playing ? ' joue' : '') + '" title="' + (s._playing ? 'Vidéo en lecture' : 'Aucune vidéo confirmée pour l\'instant') + '">' + esc(libellePastille) + '</div>'
+            + (pos ? '<button type="button" class="mv-hdr-btn mv-next-source" title="Essayer la source suivante" aria-label="Source suivante" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '')
             /* « ▶ direct » / « 🖼 page » : la deuxième façon d'utiliser le lien, dès que le
                script a vu passer le manifeste vidéo de la page (rafraichirPastille l'affiche). */
-            + '<button class="mv-direct-btn" title="Basculer entre la page du site et le flux direct" aria-label="Mode direct" style="height:24px;padding:0 8px;background:' + (s.mode === 'direct' ? 'rgba(124,252,154,0.25)' : 'rgba(255,255,255,0.2)') + ';border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:' + ((s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none') + ';align-items:center;" onclick="toggleDirectMode(' + idx + '); event.stopPropagation();">' + (s.mode === 'direct' ? '🖼 page' : '▶ direct') + '</button>';
+            + '<button type="button" class="mv-hdr-btn mv-direct-btn' + (s.mode === 'direct' ? ' on' : '') + '" title="Basculer entre la page du site et le flux direct" aria-label="Mode direct" style="display:' + ((s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none') + ';" onclick="toggleDirectMode(' + idx + '); event.stopPropagation();">' + (s.mode === 'direct' ? '🖼 page' : '▶ direct') + '</button>';
         var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
+        var svgMenu = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>';
+        var svgClose = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
 
         var fitMode = s.fit || 'stretch';
         var fitInfo = MV_FIT_MODES[fitMode] || MV_FIT_MODES.stretch;
-        var boutonFit = '<button class="mv-fit-btn" title="Ajustement du contenu : ' + fitInfo.label + ' — cliquer pour changer" aria-label="Ajustement : ' + fitInfo.label + '" style="height:24px;padding:0 8px;background:' + (fitMode === 'stretch' ? 'rgba(255,255,255,0.2)' : 'rgba(56,189,248,0.3)') + ';border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;" onclick="cycleMvFit(' + idx + ');event.stopPropagation();">' + fitInfo.icon + ' ' + fitInfo.label + '</button>';
+        var boutonFit = '<button type="button" class="mv-hdr-btn mv-fit-btn' + (fitMode === 'stretch' ? '' : ' on') + '" title="Ajustement de l\'image : ' + fitInfo.label + ' — cliquer pour changer" aria-label="Ajustement : ' + fitInfo.label + '" onclick="cycleMvFit(' + idx + ');event.stopPropagation();">' + fitInfo.icon + ' <span class="mv-hdr-lb">' + fitInfo.label + '</span></button>';
 
-        var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
-            '<div class="mv-drag-handle" role="button" tabindex="0" aria-label="Déplacer" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" title="Déplacer">' + svgDrag + '</div>' +
-            '<div class="mv-stream-number" role="button" tabindex="0" aria-label="Touche ' + (idx + 1) + '" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: bold; font-size: 14px; color: #fff;" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' +
-            pastilleSource + boutonFit +
-            '</div>';
+        var hdrHtml = '<div class="mv-hdr-left">'
+            + '<div class="mv-drag-handle" role="button" tabindex="0" aria-label="Déplacer" title="Glisser pour déplacer" onmousedown="this.closest(\'.mv-cell\').draggable=true;">' + svgDrag + '</div>'
+            + '<div class="mv-stream-number" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>'
+            + pastilleSource + boutonFit
+            + '</div>';
 
-        var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);position:relative;">';
-
-        // SVG Constants
-        var svgMenu = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>';
-        var svgLeft = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
-        var svgRight = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
-        var svgFlux = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>';
-        var svgMatch = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg>';
-        var svgReload = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c0-5.52 4.48-10 10-10 2.21 0 4.25.71 5.91 1.91L21 6V2h-4"/><path d="M22 12c0 5.52-4.48 10-10 10-2.21 0-4.25-.71-5.91-1.91L3 18v4h4"/></svg>';
-        var svgClose = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
-        var svgStats = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>';
-
-        // Dropdown Toggle
-        var ddId = 'mv-dd-' + idx;
-        controlsHtml += '<div style="position:relative;">';
-        controlsHtml += '<button title="Menu" aria-label="Menu" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'" onclick="var d = document.getElementById(\'' + ddId + '\'); d.style.display = d.style.display === \'block\' ? \'none\' : \'block\'; event.stopPropagation();">' + svgMenu + '</button>';
-
-        // Dropdown Menu
-        controlsHtml += '<div id="' + ddId + '" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:rgba(20,20,20,0.95);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:4px;min-width:160px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.5);">';
-
-        var btnStyle = 'background:transparent;color:#fff;border:none;border-radius:4px;width:100%;text-align:left;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background 0.15s;';
-        var hoverAttr = ' onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'transparent\'" ';
-
-        if (idx > 0) {
-             controlsHtml += '<button title="Déplacer à gauche" aria-label="Déplacer à gauche" style="' + btnStyle + '" ' + hoverAttr + ' onclick="moveMultiviewStream(' + idx + ', \'left\');event.stopPropagation();">' + svgLeft + ' Déplacer à gauche</button>';
-        }
-        if (idx < mvFlux.length - 1) {
-             controlsHtml += '<button title="Déplacer à droite" aria-label="Déplacer à droite" style="' + btnStyle + '" ' + hoverAttr + ' onclick="moveMultiviewStream(' + idx + ', \'right\');event.stopPropagation();">' + svgRight + ' Déplacer à droite</button>';
-        }
-
-        var svgCast = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>';
-
-        if (s.mid) {
-             controlsHtml += '<button title="Infos & Stats" aria-label="Infos & Stats" style="' + btnStyle + '" ' + hoverAttr + ' onclick="document.getElementById(\'' + ddId + '\').style.display=\'none\'; openGlobalStatsFromMatch(\'' + escJs(s.mid) + '\');event.stopPropagation();">' + svgStats + ' Infos & Stats</button>';
-             controlsHtml += '<button title="Changer de flux" aria-label="Changer de flux" style="' + btnStyle + '" ' + hoverAttr + ' onclick="showFluxSelector(' + idx + ', \'' + escJs(s.mid) + '\', event);event.stopPropagation();">' + svgFlux + ' Changer de flux</button>';
-        }
-
-        controlsHtml += '<button title="Caster (Nouvelle fenêtre)" aria-label="Caster" style="' + btnStyle + '" ' + hoverAttr + ' onclick="window.open(\'' + escJs(s.url) + '\', \'_blank\', \'width=800,height=600\'); document.getElementById(\'' + ddId + '\').style.display=\'none\'; event.stopPropagation();">' + svgCast + ' Caster (Chromecast)</button>';
-        controlsHtml += '<button title="Changer de match" aria-label="Changer de match" style="' + btnStyle + '" ' + hoverAttr + ' onclick="showMatchSelector(event, ' + idx + ');event.stopPropagation();">' + svgMatch + ' Changer de match</button>';
-        controlsHtml += '<button title="Recharger" aria-label="Recharger" style="' + btnStyle + '" ' + hoverAttr + ' onclick="var fr = document.getElementById(\'mv-iframe-' + idx + '\'); if(fr) { var sr = fr.src; fr.src = \'\'; setTimeout(function(){fr.src=sr;}, 100); }; document.getElementById(\'' + ddId + '\').style.display=\'none\'; event.stopPropagation();">' + svgReload + ' Recharger</button>';
-
-        var currentDomain = getDomain(s.url);
-        var currentPref = domainPrefs[currentDomain] || 0;
-        var starColor = currentPref === 1 ? 'var(--accent)' : '#fff';
-        var starIcon = '⭐';
-        var downColor = currentPref === -1 ? 'var(--red)' : '#fff';
-        var downIcon = '👎';
-
-        var favEv = "toggleDomainPref('" + escJs(currentDomain) + "', 'fav', '" + (s.mid ? escJs(s.mid) : '') + "'); document.getElementById('" + ddId + "').style.display='none'; event.stopPropagation(); updateMultivisionLayout();";
-        var depEv = "toggleDomainPref('" + escJs(currentDomain) + "', 'dep', '" + (s.mid ? escJs(s.mid) : '') + "'); document.getElementById('" + ddId + "').style.display='none'; event.stopPropagation(); updateMultivisionLayout();";
-
-        controlsHtml += '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;">';
-        controlsHtml += '<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" style="' + btnStyle + ' color:' + starColor + ';" ' + hoverAttr + ' onclick="' + favEv + '">' + starIcon + ' Prioriser ce domaine</button>';
-        controlsHtml += '<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" style="' + btnStyle + ' color:' + downColor + ';" ' + hoverAttr + ' onclick="' + depEv + '">' + downIcon + ' Déprioriser ce domaine</button>';
-
-        controlsHtml += '</div></div>'; // Close dropdown container
-
-        // Close Button
-        controlsHtml += '<button title="Fermer" aria-label="Fermer" style="background:rgba(220,53,69,0.5);color:#fff;border:none;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(220,53,69,0.8)\'" onmouseout="this.style.background=\'rgba(220,53,69,0.5)\'" onclick="removeFromMultivision(' + idx + ')">' + svgClose + '</button>';
-
-        controlsHtml += '</div>';
+        /* Trois boutons toujours visibles, nommés : « Site » (la page originale dans un
+           nouvel onglet — le repli quand la vidéo ne joue pas ici), le menu, la croix.
+           Le reste des actions vit dans le menu flottant (ouvrirMenuTuile). */
+        var controlsHtml = '<div class="mv-hdr-right">'
+            + '<button type="button" class="mv-hdr-btn mv-site-btn" title="La vidéo ne joue pas ici ? Ouvrir la page du site dans un nouvel onglet" aria-label="Ouvrir sur le site" onclick="ouvrirPageOriginale(' + idx + '); event.stopPropagation();">↗ <span class="mv-hdr-lb">Site</span></button>'
+            + '<button type="button" class="mv-hdr-btn mv-tile-menu-btn" title="Options de cette vidéo" aria-label="Options de cette vidéo" aria-haspopup="menu" aria-expanded="false" onclick="ouvrirMenuTuile(' + idx + ', this, event);">' + svgMenu + '</button>'
+            + '<button type="button" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>'
+            + '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
         applyMvFit(cell, s);
@@ -2189,13 +2077,13 @@ function rafraichirPastille(idx) {
     var pos = positionDuFlux(s);
     var mesureTuile = formaterMesure(s._mesure || mesurePour(safeStorageGetJSON('debits', {}) || {}, s.url));
     pill.textContent = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : getDomain(tileTarget(lienDuMatchPourFlux(s, s.url) || { url: s.url }))) + (s.mode === 'direct' ? ' · direct' : '') + (mesureTuile ? ' · ' + mesureTuile : '');
-    pill.style.color = s._playing ? '#7CFC9A' : '#fff';
+    pill.classList.toggle('joue', !!s._playing);
     pill.title = s._playing ? 'Vidéo en lecture' + (s.mode === 'direct' ? ' (flux direct)' : ' (vu par le script utilisateur)') : 'Aucune vidéo confirmée pour l\'instant';
     var btnDirect = cell.querySelector('.mv-direct-btn');
     if (btnDirect) {
         btnDirect.style.display = (s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none';
         btnDirect.textContent = s.mode === 'direct' ? '🖼 page' : '▶ direct';
-        btnDirect.style.background = s.mode === 'direct' ? 'rgba(124,252,154,0.25)' : 'rgba(255,255,255,0.2)';
+        btnDirect.classList.toggle('on', s.mode === 'direct');
     }
 }
 
@@ -2285,7 +2173,102 @@ export function addToMultivision(url, name, mid) {
     showToast('Ajouté au Multivision: ' + name);
 }
 
+/* ══ MENUS DU LECTEUR ET REPLI VERS LE SITE ══════════════════════════════════════
+   Demande du 6 septembre 2026 : « le dropdown des options par-dessus le multiview »,
+   « un bouton pour revenir au lecteur de la page originale ». Les menus sont bâtis par
+   js/mv-menu.js et posés au niveau du document ; ici, seulement leur contenu. */
+
+/* Le repli : la page du site telle quelle, dans un nouvel onglet. Quand une vidéo ne
+   joue pas dans la tuile (cadre refusé, lecture automatique bloquée, lecteur qui exige
+   un cookie), le lecteur du site, lui, joue toujours. */
+export function ouvrirPageOriginale(idx) {
+    var s = mvFlux[idx];
+    if (!s || !s.url) return;
+    var w = null;
+    try { w = window.open(s.url, '_blank', 'noopener'); } catch (e) { w = null; }
+    showToast(w === null && !('ontouchstart' in window) ? 'Le navigateur a bloqué l\'ouverture : autorisez les fenêtres pour ce site.' : 'Page du site ouverte dans un nouvel onglet');
+}
+
+/* Recharge la tuile par le même chemin que sa pose initiale (fallbackToIframe via
+   updateMultivisionLayout), mode direct compris — plutôt que de vider et remettre `src`. */
+export function rechargerTuile(idx) {
+    var s = mvFlux[idx];
+    if (!s) return;
+    s._currentUrl = null;
+    s._playing = false;
+    updateMultivisionLayout();
+}
+
+export function fermerToutesLesVideos() {
+    while (mvFlux.length) removeFromMultivision(mvFlux.length - 1);
+}
+
+export function ouvrirMenuTuile(idx, bouton, event) {
+    if (event) { event.stopPropagation(); event.preventDefault(); }
+    var s = mvFlux[idx];
+    if (!s) return;
+    var pos = positionDuFlux(s);
+    var dom = getDomain(s.url);
+    var pref = domainPrefs[dom] || 0;
+    var fitInfo = MV_FIT_MODES[s.fit || 'stretch'] || MV_FIT_MODES.stretch;
+    var media = s._media || mediaDirectPour(registreDirect(), s.url);
+    var midTexte = (s.mid !== undefined && s.mid !== null) ? String(s.mid) : '';
+    ouvrirMenu(bouton, [
+        { titre: s.name || dom },
+        { icon: '↗', label: 'Ouvrir sur le site (nouvel onglet)', title: 'Si la vidéo ne joue pas ici, le lecteur du site, lui, joue', onSelect: function() { ouvrirPageOriginale(idx); } },
+        pos ? { icon: '⏭', label: 'Source suivante (' + pos.k + '/' + pos.n + ')', onSelect: function() { nextFluxForTile(idx); } } : null,
+        s.mid ? { icon: '🔁', label: 'Choisir une autre source', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
+        { icon: '🏟', label: 'Changer de match', onSelect: function() { showMatchSelector(null, idx); } },
+        { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
+        s.mid ? { icon: '📊', label: 'Infos et statistiques', onSelect: function() { openGlobalStatsFromMatch(s.mid); } } : null,
+        { sep: true },
+        { icon: fitInfo.icon, label: 'Image : ' + fitInfo.label + ' (changer)', onSelect: function() { cycleMvFit(idx); } },
+        media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', onSelect: function() { toggleDirectMode(idx); } } : null,
+        idx > 0 ? { icon: '◀', label: 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
+        idx < mvFlux.length - 1 ? { icon: '▶', label: 'Déplacer à droite', onSelect: function() { moveMultiviewStream(idx, 'right'); } } : null,
+        { sep: true },
+        { icon: '⭐', label: 'Préférer ce site (' + dom + ')', actif: pref === 1, onSelect: function() { toggleDomainPref(dom, 'fav', midTexte); updateMultivisionLayout(); } },
+        { icon: '👎', label: 'Éviter ce site', actif: pref === -1, onSelect: function() { toggleDomainPref(dom, 'dep', midTexte); updateMultivisionLayout(); } },
+        { sep: true },
+        { icon: '✕', label: 'Fermer cette vidéo', danger: true, onSelect: function() { removeFromMultivision(idx); } }
+    ], { label: 'Options de la vidéo ' + (idx + 1) });
+}
+
+export function ouvrirMenuDisposition(bouton, event) {
+    if (event) { event.stopPropagation(); event.preventDefault(); }
+    var choisir = function(l) { return function() { setMvLayout(l); saveMultivisionState(); updateMultivisionLayout(); }; };
+    ouvrirMenu(bouton, [
+        { titre: 'Disposition des vidéos' },
+        { icon: '⊞', label: 'Automatique', actif: mvLayout === 'auto', onSelect: choisir('auto') },
+        { icon: '⭐', label: 'Une grande, les autres à côté', actif: mvLayout === 'focus', onSelect: choisir('focus') },
+        { icon: '⊟', label: 'Les unes sous les autres', actif: mvLayout === 'vertical', onSelect: choisir('vertical') },
+        { icon: '⊟', label: 'Côte à côte', actif: mvLayout === 'horizontal', onSelect: choisir('horizontal') }
+    ], { label: 'Disposition' });
+}
+
+export function ouvrirMenuBarre(bouton, event) {
+    if (event) { event.stopPropagation(); event.preventDefault(); }
+    var mvc = document.getElementById('mv-container');
+    var enPip = !!(mvc && mvc.classList.contains('mv-pip'));
+    var modePip = localStorage.getItem('multiviewPipMode') || 'sidebar';
+    var mobile = window.innerWidth <= 768;
+    ouvrirMenu(bouton, [
+        { icon: '⤢', label: 'Ajuster toutes les images', title: 'étiré → ajusté → rempli', onSelect: function() { cycleMvFitAll(); } },
+        { icon: '🎬', label: 'Mode cinéma', onSelect: function() { toggleTheaterMode(document.getElementById('mv-grid-wrapper')); } },
+        { icon: '📊', label: 'Scores et statistiques', actif: mvGameModeActive, onSelect: function() { toggleMvGameMode(); } },
+        ('documentPictureInPicture' in window) ? { icon: '🖼', label: 'Fenêtre détachée', onSelect: function() { toggleDocumentPiP(); } } : null,
+        { sep: true },
+        (!enPip && !mobile) ? { icon: '◫', label: 'Réduire dans un coin', onSelect: function() { toggleMultiviewPip(); } } : null,
+        enPip ? { icon: '⤢', label: 'Agrandir', onSelect: function() { toggleMultiviewPip(); } } : null,
+        enPip ? { icon: '◫', label: 'Panneau latéral', actif: modePip === 'sidebar', onSelect: function() { window.setMvPipMode('sidebar'); } } : null,
+        enPip ? { icon: '🗗', label: 'Fenêtre flottante', actif: modePip === 'floating', onSelect: function() { window.setMvPipMode('floating'); } } : null,
+        mvFlux.length ? { sep: true } : null,
+        mvFlux.length ? { icon: '✕', label: 'Fermer toutes les vidéos', danger: true, onSelect: fermerToutesLesVideos } : null
+    ], { label: 'Plus d\'options' });
+}
+
 export function removeFromMultivision(idx) {
+    fermerMenus();
     mvFlux.splice(idx, 1);
     if (!mvFlux.length) arreterRafraichissementTuiles();
 
@@ -2312,13 +2295,11 @@ export function toggleMultiview() {
 
     if(mvc.style.display === 'none') {
         // Open Multivision full screen
-        mvc.classList.remove('mv-pip');
-        mvc.style.cssText = 'position:fixed;top:' + (window.innerWidth <= 768 ? '0' : 'var(--hdr-height, 70px)') + ';left:0;right:0;bottom:' + (window.innerWidth <= 768 ? '60px' : '0') + ';background:#000;z-index:90;display:flex;flex-direction:column;';
+        poserPleinCadre(mvc);
         epg.style.paddingRight = '0';
         mvc.style.display = 'flex';
         epg.style.display = 'none';
-        var sf = document.getElementById('sport-filters-container');
-        if(sf) sf.style.display = 'none';
+        syncNavState('player');
 
         var optionsPage = document.getElementById('options-page');
         if (optionsPage) optionsPage.style.display = 'none';
@@ -3716,6 +3697,12 @@ window.lienDuMatchPourFlux = lienDuMatchPourFlux;
 window.nextFluxForTile = nextFluxForTile;
 window.positionDuFlux = positionDuFlux;
 window.removeFromMultivision = removeFromMultivision;
+window.ouvrirMenuTuile = ouvrirMenuTuile;
+window.ouvrirMenuDisposition = ouvrirMenuDisposition;
+window.ouvrirMenuBarre = ouvrirMenuBarre;
+window.ouvrirPageOriginale = ouvrirPageOriginale;
+window.rechargerTuile = rechargerTuile;
+window.fermerToutesLesVideos = fermerToutesLesVideos;
 window.toggleMultiview = toggleMultiview;
 window.toggleDocumentPiP = toggleDocumentPiP;
 window.toggleTheaterMode = toggleTheaterMode;

@@ -18,7 +18,7 @@
       fichier par fichier pour qu'une seule ressource absente ne fasse pas échouer
       l'installation entière. */
 
-const CACHE_NAME = 'sports-guide-v6';
+const CACHE_NAME = 'sports-guide-v7';
 
 const APP_SHELL = [
   './index.html',
@@ -43,6 +43,15 @@ const APP_SHELL = [
   './js/embed-bridge.js',
   './js/ui.js',
   './js/multiview.js',
+  './js/mv-menu.js',
+  './js/debit.js',
+  './js/directmedia.js',
+  './js/esports.js',
+  './js/sources/index.js',
+  './js/sources/footybite.js',
+  './js/sources/onhockey.js',
+  './js/sources/streameast.js',
+  './js/sources/vipleague.js',
   './js/tv-navigation.js',
   './data/streams.json',
   './data/schedule.json'

@@ -408,7 +408,7 @@ export function showPage(id) {
 /* Onglet actif : une classe, pas des styles en ligne. L'ancienne version posait
    couleur, bordure, fond et ombre en `style` sur chaque bouton à chaque appel, ce que
    la feuille de style ne pouvait plus corriger. */
-function syncNavState(active) {
+export function syncNavState(active) {
   FILTERS.forEach(function(k) {
     var el = document.getElementById('filter-' + k);
     if (!el) return;

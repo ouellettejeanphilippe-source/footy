@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.7
-// @description  Nettoie les lecteurs encadres dans le Multiview, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
+// @version      1.8
+// @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
 // @allFrames    true
@@ -355,6 +355,7 @@
 
         cleaned = true;
         console.log('[Multiview Cleaner] Page nettoyée avec succès !');
+        lancerLectureImmediate(mainPlayerBase);
 
         // MutationObserver agressif pour supprimer les pubs
         const observer = new MutationObserver((mutations) => {
@@ -549,6 +550,9 @@
                 el.muted = couper;
                 el.volume = couper ? 0 : 1;
             });
+            /* La tuile qui prend le son est celle qu'on regarde : si sa vidéo attend
+               encore un clic, on le donne. */
+            if (!couper && cleaned) tenterLecture(mainPlayerBase);
         } else if (e.data === 'mv_clean') {
             /* Nettoyage à la demande. L'application l'envoie quand la tuile vient de se
                charger et quand l'utilisateur lève le bac à sable : à ce moment-là le
@@ -638,6 +642,72 @@
             const obs = new PerformanceObserver((liste) => { liste.getEntries().forEach((e) => signalerManifeste(e.name)); });
             obs.observe({ type: 'resource', buffered: true });
         } catch (e) {}
+    }
+
+    /* ═══ LECTURE IMMÉDIATE ═══════════════════════════════════════════════════════
+       Demande du 6 septembre 2026 : « faire que les vidéos dans le multiview se lancent
+       directement ». Une fois la page réduite à son lecteur, la vidéo attendait encore
+       un clic : un gros bouton de lecture au milieu, ou un lecteur créé en pause. Depuis
+       l'application, rien ne peut le donner — une iframe d'origine croisée n'obéit pas.
+       Ce script, lui, est dans le cadre.
+
+       Deux gestes, répétés une douzaine de fois à une seconde d'intervalle, puis à
+       chaque fois que l'application rend le son à la tuile :
+         - `play()` sur chaque <video>. Refusé avec le son (politique de lecture
+           automatique), on coupe le son et on réessaie : une vidéo muette qui joue vaut
+           mieux qu'une vidéo arrêtée, et l'application rend le son à la tuile active.
+         - un clic sur le gros bouton de lecture des lecteurs connus (JW Player,
+           Video.js, Plyr, DPlayer, Clappr, Fluid…), cherché dans le lecteur seulement —
+           jamais dans le décor, qui n'existe d'ailleurs plus. Chaque bouton n'est cliqué
+           qu'une fois : un second clic mettrait en pause.
+       On s'arrête dès qu'une vidéo joue. */
+    const BOUTONS_LECTURE = [
+        '.jw-display-icon-display', '.jw-icon-playback', '.vjs-big-play-button',
+        '.plyr__control--overlaid', '.dplayer-mask', '.dplayer-play-icon', '.clappr-poster',
+        '.fluid_initial_play', '.ytp-large-play-button', '.mejs__overlay-play',
+        '[class*="big-play"]', '[class*="bigplay"]', '[class*="play-button"]', '[class*="playbtn"]',
+        '[class*="play-btn"]', '[class*="btn-play"]', '[id*="play-button"]',
+        'button[aria-label="Play"]', 'button[aria-label="Lecture"]', 'button[title="Play"]'
+    ];
+    function videoJoue(v) { return !!v && !v.paused && !v.ended && v.readyState >= 2; }
+    function tenterLecture(base) {
+        try {
+            const videos = Array.from(document.querySelectorAll('video'));
+            if (videos.some(videoJoue)) return true;
+            videos.forEach((v) => {
+                try {
+                    v.setAttribute('playsinline', '');
+                    v.autoplay = true;
+                    const p = v.play();
+                    if (p && typeof p.catch === 'function') {
+                        p.catch(() => {
+                            if (v.muted || window.mvUnmutedState) return;
+                            v.muted = true;
+                            try { const q = v.play(); if (q && q.catch) q.catch(() => {}); } catch (e) {}
+                        });
+                    }
+                } catch (e) {}
+            });
+            const zone = (base && base.querySelector) ? base : document;
+            for (const sel of BOUTONS_LECTURE) {
+                let el = null;
+                try { el = zone.querySelector(sel); } catch (e) { el = null; }
+                if (!el || el.dataset.mvClique || !(el.offsetWidth > 0 || el.offsetHeight > 0)) continue;
+                el.dataset.mvClique = '1';
+                try { el.click(); } catch (e) {}
+                break;
+            }
+        } catch (e) {}
+        return false;
+    }
+    let boucleLecture = null;
+    function lancerLectureImmediate(base) {
+        if (boucleLecture) { clearInterval(boucleLecture); boucleLecture = null; }
+        if (tenterLecture(base)) return;
+        let n = 0;
+        boucleLecture = setInterval(() => {
+            if (++n > 12 || tenterLecture(base)) { clearInterval(boucleLecture); boucleLecture = null; }
+        }, 1000);
     }
 
     function findAndClean() {
@@ -777,7 +847,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.7';
+    var VERSION = '1.8';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {
