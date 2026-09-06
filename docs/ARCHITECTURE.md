@@ -255,6 +255,9 @@ donc plus l'application.
 - La validation croisée est **alignée** : chaque équipe du match court doit retrouver TOUS ses mots désignants (`GENERIC_TEAM_WORDS` exclus) dans l'équipe correspondante du match long, dans le même sens ou en sens inverse.
 - Les noms ESPN (`scripts/scrape_schedule.mjs`, `js/api.js`) viennent de `team.displayName` (« Texas Longhorns »), pas de `team.name` (« Longhorns »).
 
+### La tuile charge la page entière (`js/multiview.js`, 2026-09-06)
+`fallbackToIframe` pose une iframe sur l'adresse du lien telle quelle et demande le nettoyage au script utilisateur (`demanderNettoyage`). Plus de lecteur extrait (`playerUrl`), plus de page reconstruite (`srcdoc`), plus de réglage de reconstruction : ces voies ne jouaient pas ; la page entière nettoyée par le script joue sur Chromium. Firefox bloque à trois endroits (cadre refusé, lecture automatique, protection contre le pistage) ; la page d'installation dit comment les ouvrir. `compterFluxUtiles` compte tout lien avec une adresse, `tileTarget` rend la page. `scripts/scrape_streams.mjs` n'extrait plus de lecteurs.
+
 ### Le lien du match derrière une tuile du Multivision (`js/multiview.js`, 2026-09-06)
 - `lienDuMatchPourFlux(s, url)` : retrouve, dans `S.matches`, le lien (`playerUrl`, `topLevel`…) dont l'adresse est celle de la tuile — par `mid` d'abord, puis dans toute la grille. `fallbackToIframe` s'en sert pour lire le lecteur extrait par le serveur et la mesure « refuse l'iframe », qu'une entrée `{ url, name, mid }` ne porte pas.
 

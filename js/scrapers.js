@@ -1903,15 +1903,15 @@ export function recordEmbedResult(host, embedded) {
    à ne jamais réessayer. Relevé sur le cache du 5 septembre 2026 : 651 matchs, 389 sans
    aucun flux exploitable, dont 294 portaient malgré tout au moins un lien — 294 matchs
    que le client refusait de rescanner parce que le serveur avait « déjà répondu ». */
+/* Depuis le 6 septembre 2026, la tuile charge la PAGE telle que le site la sert et laisse
+   le script utilisateur ne garder que la vidéo : un lien « Page du match », ou marqué
+   `topLevel`, est donc une source à part entière — c'est même exactement ce qu'on charge.
+   Seul un lien sans adresse ne compte pas. */
 export function compterFluxUtiles(m) {
     var liens = (m && m.streamLinks) || [];
     var n = 0;
     for (var i = 0; i < liens.length; i++) {
-        var l = liens[i];
-        if (!l || !l.url) continue;
-        if (l.fallback || /^page du match/i.test(l.name || '')) continue;
-        if (l.topLevel && !l.playerUrl) continue;
-        n++;
+        if (liens[i] && liens[i].url) n++;
     }
     return n;
 }

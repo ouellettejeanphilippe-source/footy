@@ -41,12 +41,12 @@ export function hostOfUrl(u) {
     try { return new URL(String(u)).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
 }
 
-/* Ce que la tuile charge réellement pour un lien : le lecteur extrait par le serveur
-   quand la page refuse l'iframe, la page elle-même sinon (voir fallbackToIframe). */
+/* Ce que la tuile charge réellement pour un lien : la page, telle que le site la sert
+   (voir fallbackToIframe, js/multiview.js). Un `playerUrl` résiduel du cache n'est plus
+   chargé : les lecteurs extraits ne jouaient pas, la page entière nettoyée par le script
+   utilisateur, si. */
 export function tileTarget(link) {
-    if (!link) return '';
-    if (link.topLevel && link.playerUrl) return link.playerUrl;
-    return link.url || '';
+    return (link && link.url) || '';
 }
 
 /* Verdict d'une observation en navigateur.

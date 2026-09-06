@@ -7,9 +7,9 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget } from './playability.js';
-import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry, compterFluxUtiles } from './scrapers.js';
+import { scrapeMatchFlux, compterFluxUtiles } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
-import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, installerReconstructionRecursive } from './embed-bridge.js';
+import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -22,82 +22,7 @@ initEmbedBridge();
    X-Frame-Options reprend la main un cran plus bas et l'écran « Firefox Can't Open This
    Page » revient à l'intérieur de la tuile. Rien à installer côté utilisateur : le pont
    rend le téléchargement plus fiable, les proxys CORS prennent le relais à défaut. */
-installerReconstructionRecursive(fetchPage);
 
-/* Bandeau discret quand le tour de passe-passe a réussi. L'utilisateur doit savoir ce
-   qu'il regarde et par quel canal :
-   - « lecteur » : le lecteur a été extrait de la page et joue normalement — c'est le bon
-     cas, celui qu'on vise ;
-   - « page » : aucun lecteur n'en est ressorti, on affiche la page reconstruite, qui peut
-     être partielle. */
-function buildTrickBadge(via, finalUrl, mode, playerUrl) {
-    var canal = (via === 'script') ? 'le script utilisateur'
-              : (via === 'serveur') ? 'la préparation horaire côté serveur'
-              : 'un proxy CORS';
-    var badge = document.createElement('div');
-    badge.className = 'mv-trick-badge' + (mode === 'lecteur' ? ' ok' : '');
-    badge.title = mode === 'lecteur'
-        ? 'Lecteur extrait de la page (' + canal + ') et joué directement : ' + (playerUrl || '')
-        : 'Page reconstruite localement via ' + canal + ' — aucun lecteur n\'en est ressorti, '
-          + 'l\'affichage peut être partiel. Si elle reste vide, ouvrez le lien dans un onglet.';
-    badge.innerHTML = '<span>🎩 ' + esc(mode === 'lecteur' ? 'lecteur' : 'page') + '</span>'
-        + '<button aria-label="Ouvrir la page dans un onglet" title="Ouvrir la page dans un onglet">↗</button>';
-    badge.querySelector('button').addEventListener('click', function(ev) {
-        ev.stopPropagation();
-        window.open(finalUrl, '_blank', 'noopener');
-    });
-    return badge;
-}
-
-/* Le tour a échoué (aucun canal disponible, ou page vide) : l'iframe directe est tentée
-   quand même — certains hôtes classés « page » acceptent en réalité l'encadrement — et
-   ce bandeau donne la sortie explicite. Un clic sur « Ouvrir » vaut constat d'échec de
-   l'affichage intégré : on le note dans le registre d'intégrabilité (js/scrapers.js)
-   pour ne plus perdre de temps sur cet hôte. */
-/* Bandeau d'échec. Le message distingue les deux causes, parce qu'elles n'appellent pas
-   la même action : si le pont du script est absent ET que les proxys sont hors service,
-   ce n'est pas cette page qui résiste — c'est que l'application n'a plus AUCUN moyen de
-   télécharger quoi que ce soit, et rien d'autre ne marchera non plus. Le 4 septembre
-   2026, les quatre transports étaient morts en même temps (allorigins 500/522, codetabs
-   522, proxy.cors.sh derrière un challenge Cloudflare) et l'interface n'en disait rien. */
-function buildTrickFailureBar(finalUrl) {
-    var host = ''; try { host = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (e) {}
-    var pont = false;
-    try { pont = !!(getBridgeStatus() || {}).available; } catch (e) {}
-    var message = pont
-        ? '⚠️ Page non intégrable et tour de passe-passe indisponible.'
-        : '⚠️ Aucun moyen de télécharger la page : script utilisateur absent et proxys hors service.';
-    var bar = document.createElement('div');
-    bar.className = 'mv-embed-helper';
-    bar.innerHTML = '<span>' + esc(message) + '</span>'
-        + '<span class="mv-embed-helper-actions">'
-        + '<button data-act="open">🔗 Ouvrir</button>'
-        + '<button data-act="script">🧩 Script</button>'
-        + '<button data-act="close" aria-label="Fermer">✕</button>'
-        + '</span>';
-    bar.addEventListener('click', function(ev) {
-        var act = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act');
-        if (!act) return;
-        ev.stopPropagation();
-        if (act === 'open') {
-            if (host && window.recordEmbedResult) window.recordEmbedResult(host, false);
-            window.open(finalUrl, '_blank', 'noopener');
-        } else if (act === 'script') {
-            if (typeof window.installTampermonkey === 'function') window.installTampermonkey();
-        } else {
-            bar.remove();
-        }
-    });
-    return bar;
-}
-
-/* Bouton de levée du bac à sable, posé sur chaque tuile.
-
-   Un hôte qui refuse de jouer en bac à sable affiche son propre message dans l'iframe
-   (« SANDBOX IFRAME NOT ALLOWED ») : l'application, qui n'a aucun accès au contenu d'une
-   origine croisée, ne peut ni le lire ni le deviner. Elle ne peut donc pas se rattraper
-   toute seule — d'où ce bouton, qui rend la manœuvre immédiate et la retient pour le
-   domaine. Il montre l'état courant : 🛡️ bac à sable posé, 🔓 levé. */
 /* Demande au script utilisateur de ne garder que le lecteur dans cette tuile.
 
    Le script sait le faire depuis toujours, mais il cherchait le lecteur tout seul et
@@ -1665,191 +1590,35 @@ export function updateMultivisionLayout() {
             fallbackToIframe(s.url, videoContainer, cell, s);
         }
 
-        // Helper function for fallback
-        /* Pose un flux dans la cellule.
+        /* Pose un flux dans la cellule : la PAGE du match, telle que le site la sert.
 
-           Un lien classé « page » (isMatchOrLeaguePage, ou hôte connu du registre
-           d'intégrabilité) est refusé par le navigateur au moment même où l'iframe
-           charge son adresse : X-Frame-Options s'applique avant tout JavaScript, dans
-           Firefox comme ailleurs. L'ancienne interface se contentait donc d'un
-           avertissement « si l'embed est bloqué, ouvrez un onglet ». Le Multivision
-           tente désormais le seul contournement possible (js/embed-bridge.js) : on
-           télécharge la page par un canal que X-Frame-Options ne régit pas — le script
-           utilisateur, sinon les proxys CORS — et on la pose dans l'iframe via `srcdoc`,
-           où il n'y a plus d'adresse distante donc plus d'en-tête à faire respecter.
-           L'ouverture en onglet reste offerte quand le tour échoue. */
+           Décision du 6 septembre 2026, après des semaines sans vidéo : « remet les pages
+           complètes que le script nuke, plus de trucs direct vers vidéos, reconstruire
+           marche pas ». Le lecteur extrait par le serveur et la page reconstruite en
+           `srcdoc` sont retirés de la tuile ; il ne reste que ce qui a marché sur Chrome —
+           charger la page entière et laisser multiview-cleaner.user.js ne garder que la
+           vidéo. Une page qui refuse l'iframe affiche l'écran du navigateur : c'est alors
+           au navigateur qu'on s'adresse (extension qui ignore X-Frame-Options, voir la
+           page d'installation), pas à la tuile. */
         function fallbackToIframe(url, container, cell, s) {
-            container.innerHTML = '<div style="color:var(--muted); font-size:12px;">Extraction du lecteur...</div>';
+            container.innerHTML = '';
             s._currentUrl = url;
             resolveStreamUrl(url).then(function(finalUrl) {
                 if (s._currentUrl !== url) return;
                 container.innerHTML = '';
-
-                /* Lecteur déjà extrait par le scraper horaire (scripts/scrape_streams.mjs).
-                   C'est la voie normale depuis que l'extraction se fait côté serveur :
-                   Node ne connaît pas la politique d'origine croisée, il lit la page sans
-                   proxy ni script utilisateur, et écrit l'adresse du lecteur dans
-                   data/streams.json. Le navigateur n'a donc plus rien à télécharger — ce
-                   qui était le point de rupture : trois des quatre proxys CORS publics
-                   étaient morts, et sans le script installé il ne restait qu'un canal.
-                   Le tour côté client ne sert plus qu'aux liens ajoutés à la main et à
-                   ceux que la passe serveur n'a pas résolus. */
-                var lienConnu = lienDuMatchPourFlux(s, url);
-                var adresseHttp = function(v) { return (typeof v === 'string' && /^https?:/i.test(v)) ? v : ''; };
-                var lecteurPret = adresseHttp(s && s.playerUrl) || adresseHttp(lienConnu && lienConnu.playerUrl);
-
-                /* Le serveur SAIT lesquels refusent l'iframe : le scraper horaire interroge
-                   chaque hôte et lit ses en-têtes (X-Frame-Options, CSP frame-ancestors),
-                   puis marque `topLevel` sur le lien. Le Multivision ignorait ce drapeau et
-                   ne se fiait qu'à la forme de l'adresse (isMatchOrLeaguePage) — une
-                   heuristique qui manque tout ce qui ne ressemble pas à une page de match.
-
-                   Relevé sur le cache du 4 septembre 2026 : 402 liens sur 1131 portaient
-                   `topLevel`, et pour eux le tour n'était JAMAIS tenté. L'iframe chargeait
-                   l'adresse bloquée et Firefox affichait sa propre page d'erreur (« … will
-                   not allow Firefox to display the page if another site has embedded it »),
-                   sans lecteur, sans bandeau, sans issue. Le cas signalé — v2.streameast.ch
-                   — est exactement celui-là : mesuré `X-Frame-Options: sameorigin` côté
-                   serveur, et pourtant chargé directement.
-
-                   La mesure prime donc sur l'heuristique, et l'heuristique reste en renfort
-                   pour les liens ajoutés à la main, que le serveur n'a jamais sondés. */
-                /* Le drapeau du lien, ET la mesure de son HÔTE.
-
-                   Le drapeau `topLevel` n'existe que sur les liens passés par le scraper.
-                   Un lien fraîchement trouvé dans le navigateur — page de match rouverte
-                   au coup d'envoi, lien collé à la main — n'en a aucun, même quand le
-                   serveur a mesuré son hôte et sait qu'il refuse l'iframe. On le chargeait
-                   alors directement, et le navigateur affichait sa propre page d'erreur.
-
-                   Cas relevé le 5 septembre 2026, capture à l'appui : Philadelphia Union —
-                   CF Montréal, ouvert trois minutes avant le coup d'envoi. Le cache datait
-                   de 19 h 00, quand la page de la source ne listait encore AUCUN flux ; les
-                   liens clearstreamdv venaient d'apparaître et n'avaient donc jamais été
-                   vus par le serveur. Sans drapeau, et comme `player.php` ne ressemble pas
-                   à une page de match, le tour n'était pas tenté — alors que la politique
-                   de l'hôte, elle, était connue depuis le premier chargement
-                   (data/streams.json publie hostPolicy, que main.js verse dans ce registre).
-
-                   On consulte donc les deux : le drapeau du lien quand il existe, la mesure
-                   de l'hôte sinon. */
-                var hoteDuLien = '';
-                try { hoteDuLien = new URL(finalUrl).hostname.replace(/^(www|v2)\./, ''); } catch (e) {}
-                var registreConnu = (typeof getEmbedRegistry === 'function') ? getEmbedRegistry() : null;
-                var hoteMesureBloque = !!(hoteDuLien && registreConnu && registreConnu.blocked && registreConnu.blocked[hoteDuLien]);
-                var bloqueParServeur = !!(s && s.topLevel) || !!(lienConnu && lienConnu.topLevel) || hoteMesureBloque;
-
-                /* La PAGE D'ORIGINE passe avant le lecteur extrait, quand elle s'encadre.
-
-                   « Charger la page et la nuke, ça semble plus stable que juste charger le
-                   lecteur » — et c'est vérifiable : une page de lecteur isolée
-                   (embed.php?ch=…) est servie avec NOTRE origine en référent, sans les
-                   cookies ni les jetons que la page parente lui aurait posés, alors que la
-                   même page chargée entière construit sa chaîne interne elle-même, chaque
-                   requête imbriquée portant le bon référent. On échangeait donc une page
-                   qui marche contre une adresse plus fragile, et on perdait le contexte qui
-                   la faisait marcher.
-
-                   Le désordre visuel n'est pas un argument contraire : c'est précisément ce
-                   que multiview-cleaner.user.js retire, dans la tuile, en ne gardant que la
-                   vidéo — la raison d'être de ce script.
-
-                   Relevé le 5 septembre 2026 sur le cache de production : sur 228 liens
-                   pourvus d'un playerUrl, 119 avaient une page d'origine DÉJÀ intégrable.
-                   Plus de la moitié des substitutions étaient donc gratuites, et coûtaient
-                   la stabilité. Le lecteur extrait garde tout son sens pour les 109 autres,
-                   dont la page, elle, refuse l'iframe. */
-                var lecteurUtile = !!lecteurPret && bloqueParServeur;
-                var isTopLevel = !lecteurUtile && (bloqueParServeur || isMatchOrLeaguePage(finalUrl));
-                if (!lecteurUtile) lecteurPret = '';
 
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
                 iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;';
                 iframe.setAttribute('allowfullscreen', 'true');
                 iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
-                /* Aucun attribut `sandbox`, ni ici ni sur la branche `srcdoc` plus bas :
-                   retiré le 5 septembre 2026 sur demande répétée de l'utilisateur, capture
-                   d'écran à l'appui (« Sandbox detected, please remove sandbox attributes »).
-                   Le raisonnement complet est dans js/embed-bridge.js ; le test
+                /* Aucun attribut `sandbox` : retiré le 5 septembre 2026 sur demande répétée de
+                   l'utilisateur (« Sandbox detected, please remove sandbox attributes »). Le test
                    « aucune iframe de lecteur ne porte d'attribut sandbox » le verrouille. */
                 container.appendChild(iframe);
-
                 demanderNettoyage(iframe);
 
-                /* Le réglage s'appelle « Reconstruire les pages non intégrables » : il
-                   gouverne la RECONSTRUCTION en `srcdoc`, pas l'extraction du lecteur.
-                   Extraire l'adresse du lecteur d'une page et la charger normalement
-                   n'est pas une reconstruction — c'est même la voie ordinaire, et la
-                   seule depuis que `resolveStreamUrl` ne fait plus cette extraction à la
-                   main. La gouverner par ce réglage privait de tout lecteur ceux qui
-                   l'avaient décoché. */
-                var rebuildEnabled = userPrefs.embedTrick !== false;
-
-                if (isTopLevel) {
-                    var loader = document.createElement('div');
-                    loader.className = 'mv-trick-loader';
-                    loader.style.cssText = 'position:absolute;inset:0;z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#000;color:var(--muted);font-size:12px;text-align:center;padding:16px;';
-                    loader.innerHTML = '<div class="spinner"></div><div>🎩 Cette page refuse l\'affichage intégré : on y cherche le lecteur…</div>';
-                    container.appendChild(loader);
-
-                    var registry = (typeof getEmbedRegistry === 'function') ? getEmbedRegistry() : null;
-                    resolveBlockedEmbed(finalUrl, fetchPage, registry).then(function(res) {
-                        if (s._currentUrl !== url) return;
-                        if (loader.parentNode) loader.remove();
-                        if (res && res.playerUrl && estMediaDirecte(res.playerUrl)) {
-                            // Adresse média directe (.m3u8, .mp4…) : aucune iframe, donc aucun bac à sable.
-                            iframe = versVideoSiDirect(iframe, res.playerUrl, container);
-                            container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
-                        } else if (res && res.playerUrl) {
-                            /* Cas courant : la page contenait son lecteur. On charge le
-                               lecteur lui-même, dans une iframe ORDINAIRE — vraie origine,
-                               cookies, référent. */
-                            iframe.src = res.playerUrl;
-                            container.appendChild(buildTrickBadge(res.via, finalUrl, 'lecteur', res.playerUrl));
-                        } else if (res && res.srcdoc && rebuildEnabled) {
-                            /* Plus AUCUN bac à sable ici non plus, depuis le 5 septembre 2026.
-
-                               Le raisonnement précédent était faux, et une capture d'écran
-                               l'a démenti : « Sandbox detected, please remove sandbox
-                               attributes », en rouge, à la place du lecteur. On avait cru
-                               qu'un site distant ne pouvait pas repérer le bac à sable d'un
-                               document reconstruit, « puisqu'il ne s'agit pas de SA page
-                               mais d'une copie ». C'est justement l'inverse : la copie
-                               contient SON code, qui s'exécute ici et voit parfaitement
-                               l'origine opaque, le localStorage qui lève une exception et
-                               l'attribut lui-même sur `frameElement`. Aucun jeu de jetons
-                               n'y change rien — seule l'ABSENCE d'attribut passe.
-
-                               Le prix est réel et assumé : ce document vit à l'origine de
-                               l'application, il peut donc lire son localStorage (réglages
-                               et cache de matchs, aucun identifiant) et son DOM. Le
-                               détournement d'onglet et les popups restent bloqués par
-                               multiview-cleaner.user.js pour qui l'installe. */
-                            iframe.srcdoc = res.srcdoc;
-                            container.appendChild(buildTrickBadge(res.via, finalUrl, 'page'));
-                        } else if (estMediaDirecte(finalUrl)) {
-                            iframe = versVideoSiDirect(iframe, finalUrl, container);
-                        } else {
-                            /* Le tour a échoué sur une page dont on a MESURÉ qu'elle refuse
-                               l'iframe : y pointer quand même garantit l'écran du navigateur
-                               (« Firefox Can't Open This Page — r.clearstreamdv.com will not
-                               allow Firefox to display the page if another site has embedded
-                               it »), signalé en capture le 5 septembre 2026. X-Frame-Options
-                               s'applique avant tout JavaScript : cette iframe ne peut donc
-                               RIEN afficher d'autre que cette erreur. On laisse la tuile
-                               noire et on ne montre que la barre d'échec, qui porte le
-                               bouton « ouvrir dans un onglet » — la seule voie qui marche. */
-                            container.appendChild(buildTrickFailureBar(finalUrl));
-                        }
-                    });
-                } else if (lecteurPret && estMediaDirecte(lecteurPret)) {
-                    iframe = versVideoSiDirect(iframe, lecteurPret, container);
-                    container.appendChild(buildTrickBadge('serveur', finalUrl, 'lecteur', lecteurPret));
-                } else if (lecteurPret) {
-                    iframe.src = lecteurPret;
-                    container.appendChild(buildTrickBadge('serveur', finalUrl, 'lecteur', lecteurPret));
-                } else if (estMediaDirecte(finalUrl)) {
+                if (estMediaDirecte(finalUrl)) {
                     iframe = versVideoSiDirect(iframe, finalUrl, container);
                 } else {
                     iframe.src = finalUrl;
@@ -1862,11 +1631,7 @@ export function updateMultivisionLayout() {
                 cell.addEventListener('mouseup', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
                 cell.addEventListener('mouseleave', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
 
-                if (s.cropped) {
-                    iframe.style.transform = 'scale(1.15)';
-                } else {
-                    iframe.style.transform = 'scale(1)';
-                }
+                iframe.style.transform = s.cropped ? 'scale(1.15)' : 'scale(1)';
             });
         }
 
@@ -2226,11 +1991,7 @@ function liensDuMatch(mid) {
     var m = null;
     for (var k = 0; k < liste.length; k++) { if (String(liste[k].id) === String(mid)) { m = liste[k]; break; } }
     if (!m || !Array.isArray(m.streamLinks)) return [];
-    return sortFluxLinks(m.streamLinks.filter(function(l) {
-        if (!l || !l.url) return false;
-        if (l.topLevel && !l.playerUrl && /^page du match/i.test(l.name || '')) return false;
-        return true;
-    }));
+    return sortFluxLinks(m.streamLinks.filter(function(l) { return !!(l && l.url); }));
 }
 
 /* Position du flux d'une tuile parmi les liens de son match : { k, n } (1-based), ou null. */
@@ -2981,8 +2742,6 @@ export function initPrefs() {
   if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
   var selCardShape = document.getElementById('pref-card-shape');
   if(selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
-  var cbTrick = document.getElementById('pref-embed-trick');
-  if(cbTrick) cbTrick.checked = userPrefs.embedTrick !== false;
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
       selAccentColor.value = userPrefs.accent || '#0a84ff';
@@ -3047,8 +2806,6 @@ export function applyUserPrefs() {
   userPrefs.cardStyle = 'glass';
   var cardShapeSel = document.getElementById('pref-card-shape');
   if(cardShapeSel) userPrefs.cardShape = cardShapeSel.value;
-  var trickCb = document.getElementById('pref-embed-trick');
-  if(trickCb) userPrefs.embedTrick = trickCb.checked;
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');
@@ -3555,7 +3312,17 @@ export function installTampermonkey() {
     var contentDiv = document.createElement('div');
     contentDiv.style.cssText = 'font-size:14px;line-height:1.5;color:#ddd;display:flex;flex-direction:column;gap:12px;';
 
-    contentDiv.innerHTML = `
+    contentDiv.innerHTML = `        <div style="background:rgba(255,113,57,0.08);padding:12px;border-radius:8px;border:1px solid rgba(255,113,57,0.35);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">🦊 Firefox : ce qui bloque les tuiles, et comment l'ouvrir</div>
+            <p style="margin-bottom:8px;color:var(--muted);">La tuile charge la page du match telle quelle et le script ne garde que la vidéo. Sur Chrome ça joue ; Firefox, lui, bloque à trois endroits. Chacun se règle.</p>
+            <ol style="margin:0 0 8px 18px;padding:0;color:#ddd;font-size:13px;line-height:1.6;">
+                <li><strong>Pages qui refusent l'iframe</strong> (« Firefox ne peut pas ouvrir cette page… intégrée par un autre site ») : installer l'extension <a href="https://addons.mozilla.org/fr/firefox/addon/ignore-x-frame-options-header/" target="_blank" style="color:var(--accent);">Ignore X-Frame-Options Header</a>, qui retire l'en-tête qui l'interdit.</li>
+                <li><strong>Lecture automatique et en arrière-plan</strong> : dans <code>about:config</code>, mettre <code>media.autoplay.default</code> à <code>0</code>, <code>media.autoplay.blocking_policy</code> à <code>0</code>, et <code>media.block-autoplay-until-in-foreground</code> à <code>false</code> — sinon une tuile ne démarre qu'après un clic, et seulement dans l'onglet au premier plan.</li>
+                <li><strong>Protection contre le pistage</strong> : elle coupe les cookies et le stockage des lecteurs encadrés, que plusieurs exigent. Cliquer le bouclier à gauche de l'adresse et désactiver la protection <em>pour ce site</em> (l'application), qui contient toutes les tuiles.</li>
+            </ol>
+            <p style="margin:0;color:var(--muted);font-size:12px;">Après ces trois réglages, recharger l'application. Si une tuile reste vide, son bouton ⏭ passe à la source suivante.</p>
+        </div>
+
         <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
 
         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1); margin-bottom: 8px;">

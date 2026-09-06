@@ -59,16 +59,15 @@ async function main() {
   assert.strictEqual(mv.lienDuMatchPourFlux({ url: page.url }), null, 'grille vide');
   ok('absence de lien : null, sans exception');
 
-  // ── 5. La décision de chargement consomme bien ce lien ─────────────────────────
-  /* Relu dans la source, comme tests/unit_blocked.test.js : un test qui recopie la règle
-     ne prouve rien sur le code livré. */
+  // ── 5. Le lien du match sert au registre de jouabilité, plus au choix d'un lecteur ──
+  /* Depuis le 6 septembre 2026, la tuile charge la page du lien telle quelle. Le lien
+     retrouvé sert à noter, dans le registre local, l'hôte qui joue ou ne joue pas. */
   const fs = require('fs');
   const src = fs.readFileSync(require('path').join(__dirname, '..', 'js', 'multiview.js'), 'utf8');
-  assert.ok(/var lienConnu = lienDuMatchPourFlux\(s, url\);/.test(src), 'fallbackToIframe doit retrouver le lien du match');
-  assert.ok(/adresseHttp\(s && s\.playerUrl\) \|\| adresseHttp\(lienConnu && lienConnu\.playerUrl\)/.test(src),
-    'le lecteur préparé doit être lu sur le lien du match quand l\'entrée ne le porte pas');
-  assert.ok(/!!\(lienConnu && lienConnu\.topLevel\)/.test(src), 'le drapeau topLevel du lien du match doit compter');
-  ok('fallbackToIframe lit playerUrl et topLevel sur le lien retrouvé');
+  assert.ok(/notePlayability\(lienDuMatchPourFlux\(s, s\.url\) \|\| \{ url: s\.url \}, 'plays'\)/.test(src), 'la vidéo vue jouer est notée sur le lien du match');
+  assert.ok(/notePlayability\(lienDuMatchPourFlux\(s, s\.url\) \|\| \{ url: s\.url \}, 'none'\)/.test(src), 'la bascule automatique note l\'échec sur le lien du match');
+  assert.ok(!/lienConnu\.playerUrl/.test(src), 'plus de lecteur extrait lu sur le lien');
+  ok('le lien retrouvé alimente le registre de jouabilité');
 
   console.log(`unit_mvlien: ${n} groupes de tests OK`);
   process.exit(0);
