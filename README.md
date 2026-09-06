@@ -34,6 +34,10 @@ Ce document décrit l'architecture complète, la philosophie et les éléments c
 
 ## 🏗️ Fonctionnalités Principales (UI/UX)
 
+-   **Coquille refondue (septembre 2026)** : en-tête avec onglets Live / Guide / Lecteur et menu « Plus » ; sur téléphone, les onglets forment une barre au bas de l'écran. La barre d'outils du Live et du Guide porte la **recherche** (équipe, ligue), le rafraîchissement des scores, « 🔎 Liens manquants », la **navigation par date** et les **pastilles de ligues**. Échap ferme la fiche d'un match, qui n'a qu'une croix et devient une feuille pleine largeur sur mobile.
+-   **Interface classique** : l'ancienne présentation reste disponible (Options → « Interface classique », ou menu « Plus ») pour comparer ; le choix est retenu d'une ouverture à l'autre.
+-   **Multivision — ajustement du contenu** : chaque tuile porte un bouton ⤢ qui alterne entre *étiré* (le cadre prend toute la tuile), *ajusté* (16:9 entier, centré) et *rempli* (16:9 couvrant la tuile) ; le bouton ⤢ de la barre applique le même réglage à toutes les tuiles.
+
 -   **Cartes en affiche verticale (mobile)** : sous 900 px, chaque section devient un rail horizontal d'affiches 2 : 3 (à la Netflix) plutôt qu'une pile de bandeaux pleine largeur ; le bouton « Tout voir » d'un titre de section déplie son rail en grille. Réglable dans Options → Style des Cartes → Forme des cartes.
 -   **Liens manquants** : le badge d'une carte sans flux est le bouton 🔎 qui lance la recherche pour ce match ; « 🔎 Liens manquants » dans la barre d'outils balaie les matchs à venir qui n'en ont aucun.
 -   **Inventaire des liens par domaine primaire** (page Logs) : combien de liens, combien intégrables, combien de matchs couverts par fournisseur — les sous-domaines sont repliés sur le domaine enregistrable. La même répartition sert de filtre dans la fiche d'un match.

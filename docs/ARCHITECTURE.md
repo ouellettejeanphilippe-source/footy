@@ -434,3 +434,10 @@ c'est bien la limite du procédé.
 (VIPLeague) ou un appel authentifié à son propre domaine, ni l'extraction ni la
 reconstruction n'aboutissent. Le tour n'est pas un décodeur ; le repli reste l'ouverture
 en onglet.
+
+## Interface (refonte du 6 septembre 2026)
+- **`index.html`** : coquille de la nouvelle interface. En-tête (`.app-header` : marque, `.nav-links` avec `#filter-live`, `#filter-all`, `#mv-toggle-btn`, menu `#main-menu`), barre d'outils `#sport-filters-container` (recherche `#search-input`, ↻, `#btn-find-missing`, `#date-selector`, pastilles `#sport-filters`), grille `#epg > #marea`, fiche `#mbg`, pages `.page` (`#fav-page`, `#options-page`, `#logs-page`, `#script-page`), panneau `#global-stats-sidebar`. Un script en tête redirige vers `legacy.html` si `localStorage.ui_legacy === '1'`.
+- **`legacy.html` + `styles-legacy.css`** : l'ancienne coquille, conservée pour comparaison (Options → « Interface classique »). Même JavaScript ; l'appendice de la feuille classique couvre les classes posées par le code partagé (`.si-main`, `.si-btn`, `.flux-*`, `.mv-empty`, `.mv-video-container.fit-*`).
+- **`styles.css`** : organisée en douze sections numérotées (jetons → accessibilité). Règle : pas de `backdrop-filter` sur un élément répété. `body[data-view]` (posé par `applyFilter`) pilote la visibilité de la barre d'outils ; `body.view-timeline` celle des contrôles de zoom ; `body.cards-poster` l'affiche verticale.
+- **Fonctions d'interface ajoutées** : `showPage(id)` et `setSearchQuery(v)` (js/utils.js) ; `renderSportChips(matches)` (js/ui.js, appelée par `buildEPG`) ; `toggleLegacyUi(on)` (js/main.js) ; `applyMvFit`, `setMvFit`, `cycleMvFit`, `cycleMvFitAll`, `MV_FIT_MODES` (js/multiview.js).
+- **Fiche de match** : `openMod` n'injecte plus de croix et ne masque plus l'en-tête `.mhd` ; `renderFluxItem` produit des classes (`.si`, `.si-main`, `.si-actions`, `.si-btn`) ; Échap ferme (écouteur dans js/ui.js).

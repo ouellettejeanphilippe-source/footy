@@ -454,3 +454,169 @@ test('la vue « À venir » est retirée sans laisser de cul-de-sac', async ({ p
     'et la page reste peuplée plutôt que vide').toBeGreaterThan(0);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
+
+/* ═══ Refonte UI/UX (6 septembre 2026) ═══════════════════════════════════════════
+
+   La barre d'outils (date, rafraîchissement, liens manquants) était masquée par un
+   `display: none !important` resté dans la feuille de style : la navigation par date et
+   la recherche de liens manquants étaient inatteignables alors que le code et la
+   documentation les décrivaient. Ces tests verrouillent les éléments de la coquille
+   dont dépend l'usage quotidien, sur les deux largeurs. */
+test('la barre d\'outils est atteignable en Live et en Guide, pas ailleurs', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+
+  const visible = async (sel) => page.locator(sel).first().isVisible();
+  expect(await visible('#date-selector'), 'le sélecteur de date est visible dans Live').toBeTruthy();
+  expect(await visible('#search-input'), 'le champ de recherche est visible dans Live').toBeTruthy();
+  expect(await visible('#btn-find-missing'), 'le bouton « Liens manquants » est visible').toBeTruthy();
+  expect(await page.locator('#current-date-display').innerText()).toMatch(/Aujourd/);
+
+  await page.evaluate(() => window.applyFilter('all'));
+  await page.waitForTimeout(400);
+  expect(await visible('#date-selector'), 'le sélecteur de date reste visible dans le Guide').toBeTruthy();
+
+  await page.evaluate(() => window.applyFilter('options'));
+  await page.waitForTimeout(300);
+  expect(await visible('#date-selector'), 'la barre d\'outils disparaît sur la page Options').toBeFalsy();
+  expect(await visible('#options-page')).toBeTruthy();
+
+  await page.evaluate(() => window.applyFilter('live'));
+  await page.waitForTimeout(300);
+  expect(await visible('#date-selector')).toBeTruthy();
+  expect(pageErrors).toEqual([]);
+});
+
+/* Les pastilles de ligues n'étaient construites que dans la branche « scraping en
+   direct » : dès que le cache serveur suffisait (le cas normal), la rangée restait vide. */
+test('les pastilles de ligues sont rendues depuis le cache et filtrent la grille', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+
+  const chips = page.locator('#sport-filters .sport-btn');
+  expect(await chips.count(), 'au moins « Toutes » et deux ligues').toBeGreaterThanOrEqual(3);
+  await expect(chips.first()).toHaveText(/Toutes/);
+  await expect(chips.first()).toHaveClass(/active-toggle/);
+
+  const total = await page.evaluate(() => document.querySelectorAll('#marea .match-card').length);
+  const second = chips.nth(1);
+  const label = (await second.innerText()).trim();
+  await second.click();
+  await page.waitForTimeout(400);
+
+  const apres = await page.evaluate(() => ({
+    cartes: document.querySelectorAll('#marea .match-card').length,
+    ligues: [...new Set([...document.querySelectorAll('#marea .match-card')].map((c) => c.getAttribute('data-lg')))]
+  }));
+  expect(apres.cartes, 'le filtre réduit la grille').toBeLessThan(total);
+  expect(apres.cartes).toBeGreaterThan(0);
+  expect(apres.ligues.length, 'une seule ligue reste affichée : ' + label).toBe(1);
+  await expect(page.locator('#sport-filters .sport-btn').nth(1)).toHaveClass(/active-toggle/);
+
+  await page.locator('#sport-filters .sport-btn').first().click();
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => document.querySelectorAll('#marea .match-card').length), '« Toutes » rétablit la grille').toBe(total);
+  expect(pageErrors).toEqual([]);
+});
+
+test('la recherche filtre les cartes et l\'état vide propose d\'effacer', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const total = await page.evaluate(() => document.querySelectorAll('#marea .match-card').length);
+  const nom = await page.evaluate(() => document.querySelector('#marea .match-card .prime-team-name').getAttribute('title'));
+
+  await page.fill('#search-input', nom);
+  await page.waitForTimeout(500);
+  const filtre = await page.evaluate((n) => {
+    const cards = [...document.querySelectorAll('#marea .match-card')];
+    return { n: cards.length, tous: cards.every((c) => c.innerText.toLowerCase().includes(n.toLowerCase())) };
+  }, nom);
+  expect(filtre.n).toBeGreaterThan(0);
+  expect(filtre.n, 'la recherche réduit la grille').toBeLessThan(total);
+  expect(filtre.tous, 'toutes les cartes restantes contiennent « ' + nom + ' »').toBeTruthy();
+
+  await page.fill('#search-input', 'zzzz-aucune-equipe-zzzz');
+  await page.waitForTimeout(500);
+  await expect(page.locator('#marea .empty-state')).toBeVisible();
+  await page.locator('#marea .empty-state button').click();
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => document.querySelectorAll('#marea .match-card').length), 'effacer rétablit la grille').toBe(total);
+  expect(await page.inputValue('#search-input')).toBe('');
+  expect(pageErrors).toEqual([]);
+});
+
+/* Deux croix se superposaient dans la fiche : `document.querySelector('.mhd')` attrapait
+   l'en-tête de l'Investigator (première `.mhd` du document), jamais celui de la fiche, et
+   openMod injectait une seconde croix par-dessus la colonne des flux. */
+test('la fiche de match a une seule croix, se ferme par Échap, et ses flux portent leurs actions', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+
+  await page.locator('#marea .match-card').first().click();
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await page.waitForTimeout(500);
+
+  const fiche = await page.evaluate(() => ({
+    croix: [...document.querySelectorAll('#mbg .mx')].filter((b) => b.offsetParent !== null).length,
+    titre: document.getElementById('mname').innerText.trim(),
+    entete: getComputedStyle(document.querySelector('#mbg .mhd')).display,
+    flux: document.querySelectorAll('#modal-right-col .si').length,
+    actions: document.querySelectorAll('#modal-right-col .si .si-btn').length,
+    barre: !!document.querySelector('#modal-right-col .flux-head #mv-refresh-btn')
+  }));
+  expect(fiche.croix, 'exactement une croix de fermeture visible').toBe(1);
+  expect(fiche.entete, 'l\'en-tête de la fiche est visible').not.toBe('none');
+  expect(fiche.titre.length).toBeGreaterThan(3);
+  expect(fiche.barre, 'la barre d\'actions des flux est présente').toBeTruthy();
+  if (fiche.flux > 0) expect(fiche.actions, 'quatre actions par ligne de flux').toBe(fiche.flux * 4);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+  expect(pageErrors).toEqual([]);
+});
+
+test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche monte du bas', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+
+  const nav = await page.evaluate(() => {
+    const r = document.getElementById('nav-links').getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, width: r.width, h: window.innerHeight, w: window.innerWidth };
+  });
+  expect(nav.bottom, 'la barre touche le bas de l\'écran').toBeGreaterThanOrEqual(nav.h - 1);
+  expect(nav.top, 'la barre est en bas, pas en haut').toBeGreaterThan(nav.h / 2);
+  expect(nav.width, 'la barre occupe toute la largeur').toBeGreaterThanOrEqual(nav.w - 1);
+
+  for (const id of ['filter-live', 'filter-all', 'mv-toggle-btn', 'menu-btn']) {
+    const box = await page.locator('#' + id).boundingBox();
+    expect(box && box.height, id + ' est une cible tactile d\'au moins 40 px').toBeGreaterThanOrEqual(40);
+  }
+
+  await page.locator('#marea .match-card').first().click();
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  const sheet = await page.evaluate(() => {
+    const r = document.querySelector('#mbg .modal').getBoundingClientRect();
+    return { bottom: r.bottom, width: r.width, h: window.innerHeight, w: window.innerWidth };
+  });
+  expect(sheet.bottom, 'la fiche est ancrée au bas').toBeGreaterThanOrEqual(sheet.h - 1);
+  expect(sheet.width, 'la fiche occupe toute la largeur').toBeGreaterThanOrEqual(sheet.w - 1);
+  expect(pageErrors).toEqual([]);
+});
+
+/* L'interface classique reste livrée (legacy.html + styles-legacy.css) et partage tout le
+   code : elle doit démarrer aussi, et le choix doit tenir d'une ouverture à l'autre. */
+test('l\'interface classique démarre et la préférence redirige index.html', async ({ page }) => {
+  await page.clock.setFixedTime(instantDesDonnees());
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message));
+  await page.route('**/*', (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); localStorage.setItem('ui_legacy', '1'); } catch (e) {} });
+
+  await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(/legacy\.html/, { timeout: 10000 });
+  await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
+  await page.waitForFunction(() => document.querySelectorAll('.match-card, .mb').length > 0, null, { timeout: 30000 });
+
+  expect(await page.locator('link[rel="stylesheet"]').first().getAttribute('href')).toBe('styles-legacy.css');
+  await expect(page.locator('#btn-new-ui'), 'le retour vers la nouvelle interface est offert').toHaveCount(1);
+  expect(pageErrors, 'aucune exception dans l\'interface classique :\n' + pageErrors.join('\n')).toEqual([]);
+});

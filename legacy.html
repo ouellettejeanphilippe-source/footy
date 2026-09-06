@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1c1c1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sports Guide">
+<link rel="manifest" href="./manifest.json">
+<title>Sports Guide (interface classique)</title>
+
+
+
+<link rel="stylesheet" href="styles-legacy.css">
+<style id="custom-ui-effects">
+  .neon-glow-effect .btn {
+      box-shadow: 0 0 10px var(--accent), inset 0 0 10px var(--accent) !important;
+      border: 1px solid var(--accent) !important;
+      background: rgba(0,0,0,0.6) !important;
+  }
+  .neon-glow-effect .match-card {
+      box-shadow: 0 0 15px var(--mc, var(--accent)) !important;
+  }
+#mv-stats-carousel::-webkit-scrollbar {
+    display: none;
+}
+</style>
+
+
+
+
+</head>
+<body>
+
+
+<div class="nav-links" id="nav-links">
+      <button class="nav-btn" id="filter-live" onclick="applyFilter('live')">Live</button>
+      <button class="nav-btn" id="filter-all" onclick="applyFilter('all')">Guide</button>
+      <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">Lecteur</button>
+
+      <div style="position: relative; display: inline-block;">
+          <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)" aria-label="Menu principal" style="font-size: 20px; padding: 0 12px;">☰</button>
+          <div class="secondary-actions" id="main-menu">
+              <button class="nav-btn" id="filter-fav" onclick="applyFilter('fav'); toggleMenu(event);" style="padding: 10px 16px;">Favoris</button>
+              <button class="nav-btn" id="filter-options" onclick="applyFilter('options'); toggleMenu(event);" style="padding: 10px 16px;">Options</button>
+              <button class="nav-btn" id="filter-logs" onclick="applyFilter('logs'); toggleMenu(event);" style="padding: 10px 16px;">Logs</button>
+              <button class="nav-btn" id="filter-script" onclick="applyFilter('script'); toggleMenu(event);" style="padding: 10px 16px;">Script</button>
+              <button class="nav-btn" id="btn-new-ui" onclick="toggleLegacyUi(false)" style="padding: 10px 16px; color: var(--accent);">✨ Nouvelle interface</button>
+          </div>
+      </div>
+
+</div>
+
+
+<!-- Add toggle button for Onglet Theater mode to reappear -->
+
+<div id="sport-filters-container" style="display:flex; flex-direction:column; padding:8px 12px; gap:8px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+    <button class="btn" id="sport-menu-btn" onclick="toggleSportFilters(event)" style="display:none; align-self:flex-start; padding:8px 16px; font-size:16px; border-radius:8px;">☰ Ligues</button>
+    <button class="btn" style="padding: 4px 10px; font-size: 13px; height: 30px;" onclick="backgroundUpdateGuide()" title="Rafraîchir les scores en direct">↻</button>
+    <button class="btn" id="btn-find-missing" style="padding: 4px 10px; font-size: 13px; height: 30px; margin-left: 6px;" onclick="findMissingLinks()" title="Relance la recherche de liens pour les matchs qui n'en ont aucun">🔎 Liens manquants</button>
+      <div id="date-selector" style="display:flex; align-items:center; gap: 8px; margin-left: auto;">
+        <button class="btn" aria-label="Date précédente" style="padding: 4px 10px;" onclick="changeTargetDate(-1)">❮</button>
+        <div style="position: relative;">
+            <div id="current-date-display" style="font-weight: bold; cursor: pointer; background: var(--btn-bg); padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; text-align: center; min-width: 100px;" onclick="document.getElementById('date-picker-input').showPicker()">Aujourd'hui</div>
+            <input type="date" id="date-picker-input" style="width: 0; height: 0; border: none; padding: 0; opacity: 0; pointer-events: none; position: absolute; bottom: 0; left: 50%;" onchange="setTargetDate(this.value)">
+        </div>
+        <button class="btn" aria-label="Date suivante" style="padding: 4px 10px;" onclick="changeTargetDate(1)">❯</button>
+    </div>
+  </div>
+  <div class="missing-scan" id="missing-scan-progress" style="display:none;"></div>
+  <div id="sport-filters" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;scrollbar-width:none;flex-wrap:nowrap;">
+    <!-- Buttons generated dynamically -->
+  </div>
+</div>
+
+<div class="epg" id="epg">
+  <div class="zoom-controls">
+    <button class="zoom-btn" onclick="scrollToNow()" aria-label="Maintenant" title="Maintenant" style="font-size:12px; font-weight:bold; padding:0 8px;">Maintenant</button>
+    <button class="zoom-btn" onclick="zoomOut()" aria-label="Dézoomer" title="Dézoomer">-</button>
+    <span class="zoom-level" id="zoom-level-display">100%</span>
+    <button class="zoom-btn" onclick="zoomIn()" aria-label="Zoomer" title="Zoomer">+</button>
+  </div>
+  <div id="marea" style="display:flex; flex-direction:column; gap:24px; max-width:1200px; margin:0 auto; width:100%;">
+    <div class="ov" id="ov" style="display:none;">
+    <div class="ov-msg" id="ovmsg"><div class="spinner"></div> Connexion API...</div>
+    <div style="display:flex;flex-direction:column;gap:0;width:100%;">
+      <div class="step" id="s1"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Téléchargement Guide télé</span></div>
+      <div class="step" style="opacity:.4" id="s2"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Recherche de streams...</span></div>
+      <div class="step" style="opacity:.4" id="s3"><svg class="sic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Fusion et Affichage</span></div>
+    </div>
+  </div>
+
+    <div class="err" id="errbox">
+      <div style="font-size:36px">📡</div>
+      <div class="err-msg" id="errmsg"></div>
+      <div class="err-code" id="errcode" style="display:none"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px">
+        <button class="btn g" onclick="loadAll(false, true)">↺ Réessayer</button>
+        </div>
+    </div>
+    <!-- Les matchs seront insérés ici -->
+  </div>
+</div>
+
+<!-- DEBUG -->
+<div class="dbg" id="dbg">
+  <div class="dbg-hd">
+    <div class="dbg-title">🔬 Débogage — footybite.vc parser</div>
+    <button class="dbg-x" aria-label="Fermer le panneau de débogage" title="Fermer" onclick="closeDbg()"><span class="ic ic-close"></span></button>
+  </div>
+  <div class="dbg-body" id="dbgbody"><div style="color:var(--muted);font-size:13px">Lance un chargement d'abord.</div></div>
+</div>
+
+<!-- SCRAPER INVESTIGATOR MODAL -->
+<div class="mbg" id="investigator-modal" style="display:none;" onclick="if(event.target===this) { this.style.display='none'; document.getElementById('investigator-content').innerHTML=''; }">
+  <div class="modal" style="max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="mhd" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 15px 20px;">
+      <div class="mi"><div class="mn">🕵️ Scraper Investigator</div></div>
+      <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="document.getElementById('investigator-modal').style.display='none'; document.getElementById('investigator-content').innerHTML='';">✕ Fermer</button>
+    </div>
+    <div style="padding: 15px 20px; display: flex; gap: 10px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <input type="text" id="investigator-url" placeholder="URL de la page à analyser (ex: https://site.com/match)" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px;">
+        <button class="btn g" style="padding: 10px 20px;" onclick="window.investigateUrl(document.getElementById('investigator-url').value)">Analyser</button>
+    </div>
+
+    <div style="padding: 10px 20px; background: rgba(255,165,0,0.1); border-bottom: 1px solid rgba(255,165,0,0.3); font-size: 13px; color: #ffcc00;">
+        <strong>Séquence enregistrée :</strong>
+        <div id="investigator-sequence" style="margin-top: 5px; font-family: monospace; display: flex; flex-direction: column; gap: 4px;">
+            <div style="color: rgba(255,255,255,0.5);">Aucune action (Démarrez l'analyse)</div>
+        </div>
+    </div>
+
+    <div id="investigator-content" style="flex: 1; overflow-y: auto; padding: 20px; font-size: 13px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 40px;">Entrez une URL pour commencer l'investigation du DOM.</div>
+    </div>
+
+    <div style="padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn" style="padding: 8px 16px;" onclick="window.investigatorClearSequence()">Réinitialiser</button>
+        <button class="btn g" style="padding: 8px 16px; background: var(--accent); color: #fff;" onclick="window.investigatorSaveRules()">Sauvegarder les règles</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="mbg" id="mbg" onclick="if(event.target===this)closeMod()">
+  <div class="modal">
+    <div class="mhd">
+      <div class="mdot" id="mdot"></div>
+      <div class="mi"><div class="mn" id="mname"></div><div class="mm" id="mmeta"></div></div>
+      <div id="mscore"></div>
+      <button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()"><span class="ic ic-close"></span></button>
+    </div>
+    <div class="mbody" id="mbody"></div>
+    <div class="mft"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>Liens directs — pub désactivée</div>
+  </div>
+</div>
+
+
+
+<!-- FAV PAGE -->
+<div id="fav-page" style="display:none; flex-direction:column; gap:16px; max-width:1200px; margin:0 auto; padding:20px; width:100%; flex: 1; overflow-y: auto; padding-bottom: 100px; -webkit-overflow-scrolling: touch;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0;">⭐ Gestion des Favoris</h2>
+    </div>
+
+        <div class="fav-mobile-tabs" style="display: none; justify-content: center; gap: 8px; margin-bottom: 16px;">
+        <button class="btn active-toggle" id="fav-tab-teams" onclick="switchFavTab('teams')" style="flex: 1; padding: 10px;">Équipes</button>
+        <button class="btn" id="fav-tab-leagues" onclick="switchFavTab('leagues')" style="flex: 1; padding: 10px;">Ligues</button>
+    </div>
+
+    <div class="fav-container" id="fav-container" style="display: flex; gap: 24px; flex-wrap: wrap; flex-direction: row;">
+        <!-- Colonne de gauche: Équipes -->
+        <div class="fav-col-left" style="flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 16px;">
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
+                <h3 style="margin-top:0; margin-bottom:16px; font-size:16px; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <span>Équipes Favorites</span>
+                    <input type="text" id="fav-team-search" placeholder="Rechercher une équipe..." oninput="filterFavTeams(this.value)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px 10px; font-size:13px; max-width:250px; flex:1; min-width:150px;">
+                </h3>
+                <div id="fav-teams-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
+                    <!-- Rempli par app.js -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne de droite: Ordre des ligues -->
+        <div class="fav-col-right" style="flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 16px;">
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px;">
+                <h3 style="margin-top:0; margin-bottom:8px; font-size:16px; color:var(--text); display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                    Ligues
+                    <span style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="resetLgOrder()">Réinitialiser l'ordre</button>
+                        <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="resetLeagueTiersPref()">Réinitialiser le classement</button>
+                    </span>
+                </h3>
+                <p style="font-size:12px; color:var(--muted); margin-top:0; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:8px; line-height:1.5;">
+                    Glissez pour réordonner. Pour chaque ligue :
+                    <b>Principale</b> l'affiche en tête du Live et du Guide,
+                    <b>Secondaire</b> la regroupe dans la section « Ligues secondaires »,
+                    <b>Ignorée</b> la masque partout. ↺ revient au réglage par défaut.
+                </p>
+                <div id="fav-leagues-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Rempli par app.js -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- OPTIONS PAGE -->
+<div id="options-page" style="display:none; flex-direction:column; gap:24px; max-width:1200px; margin:0 auto; padding:20px; width:100%; flex: 1; overflow-y: auto; padding-bottom: 100px; -webkit-overflow-scrolling: touch;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0;">⚙️ Paramètres & Personnalisation</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+
+      <!-- Options Tab -->
+      <div id="stab-options" style="display:flex; flex-direction:column; gap:24px;">
+
+      <!-- Réseau & Proxys (recherche de streams) -->
+      <div>
+        <div style="font-weight:bold; font-size:18px; margin-bottom:16px; color:var(--text); display:flex; align-items:center; gap:8px;">
+          🌐
+          Réseau &amp; Proxys (recherche de streams)
+        </div>
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+          <div style="font-size:13px; color:var(--muted); line-height:1.5;">
+            Les liens des matchs sont d'abord lus depuis le cache calculé chaque heure sur GitHub (aucun proxy requis), puis rafraîchis en direct via des proxys CORS publics.
+            Ces proxys ferment ou deviennent payants régulièrement : vous pouvez indiquer ici votre propre proxy (ex. un Cloudflare Worker) ou des clés API, qui seront essayés en premier.
+          </div>
+          <div id="proxy-status" style="font-size:12px; color:var(--muted2);"></div>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--text);">
+            Proxy personnalisé (URL, <code>{url}</code> optionnel)
+            <input type="text" id="pref-custom-proxy" placeholder="https://mon-proxy.workers.dev/?url={url}" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border2); background:var(--btn-bg); color:var(--text); font-size:13px;">
+          </label>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--text);">
+              Clé API cors.sh (optionnel)
+              <input type="text" id="pref-cors-sh-key" placeholder="temp_xxxxxxxx" autocomplete="off" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border2); background:var(--btn-bg); color:var(--text); font-size:13px;">
+            </label>
+            <label style="flex:1; min-width:200px; display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--text);">
+              Clé API corsproxy.io (optionnel)
+              <input type="text" id="pref-corsproxy-io-key" placeholder="clé du tableau de bord corsproxy.io" autocomplete="off" style="padding:8px 10px; border-radius:8px; border:1px solid var(--border2); background:var(--btn-bg); color:var(--text); font-size:13px;">
+            </label>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn" onclick="saveProxySettings()">💾 Enregistrer et retester</button>
+            <button class="btn o" onclick="resetProxyHealth(); showToast('Historique des proxys réinitialisé'); renderProxyStatus();">♻️ Réinitialiser l'historique des proxys</button>
+          </div>
+          <div style="font-size:13px; color:var(--muted); line-height:1.5; margin-top:4px;">
+            Le cache serveur est recalculé chaque heure (à :17 UTC). Pour le relancer tout de suite : ouvrez le workflow sur GitHub, cliquez « Run workflow », puis rechargez les liens ici environ deux minutes plus tard.
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn o" onclick="openStreamsWorkflow()" title="Ouvre la page GitHub Actions du workflow (bouton « Run workflow »)">▶️ Lancer le calcul sur GitHub</button>
+            <button class="btn o" id="btn-reload-prefetched" onclick="reloadPrefetchedStreams()" title="Relit data/streams.json sans attendre">🔄 Recharger les liens serveur</button>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer;" title="Une page qui répond X-Frame-Options est refusée par le navigateur avant tout script, Firefox compris. Le tour consiste à télécharger son HTML par le script utilisateur (ou, à défaut, un proxy CORS) et à le poser dans le lecteur via srcdoc, où il n'y a plus d'en-tête à faire respecter.">
+              <input type="checkbox" id="pref-embed-trick" checked onchange="applyUserPrefs()">
+              🎩 Reconstruire les pages non intégrables dans le Multivision
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personalization Settings -->
+      <div>
+        <div style="font-weight:bold; font-size:18px; margin-bottom:16px; color:var(--text); display:flex; align-items:center; gap:8px;">
+          🎨
+          Personnalisation Visuelle
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:24px;">
+
+
+
+          <!-- Mode TV / Tablette -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">📺 Mode d'affichage</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Activer le mode TV/Tablette (Textes plus gros, navigation à la télécommande)</div>
+              <label class="switch" style="position:relative; display:inline-block; width:40px; height:22px;">
+                <input type="checkbox" id="pref-tv-mode" style="opacity:0; width:0; height:0;" onchange="toggleTvMode(this.checked)">
+                <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.15s; border-radius:34px;"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 1. Thème & Arrière-plan -->
+          <!-- 2. Style des Cartes -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">🃏 Style des Cartes</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Forme des cartes<br><span style="font-size:11px; opacity:.7;">L'affiche verticale range les sections en rails horizontaux, à la Netflix.</span></div>
+              <select id="pref-card-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="auto" selected>Automatique (affiche sur mobile)</option>
+                <option value="poster">Affiche verticale (2:3)</option>
+                <option value="wide">Carte large (2,4:1)</option>
+              </select>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Couleur des cartes de match</div>
+              <select id="pref-card-color" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="gradient">Dégradé Équipe Extérieure vs Domicile</option>
+                <option value="gradient-45" selected>Dégradé Diagonale (135°)</option>
+                <option value="split">Deux Couleurs Pleines (50/50)</option>
+                <option value="home">Couleur de l'équipe à Domicile</option>
+                <option value="league">Couleur de la Ligue</option>
+                <option value="dark">Foncé</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:12px; color:var(--text);">✨ Thème & Arrière-plan</div>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+              <div style="font-size:13px; color:var(--muted); margin-bottom:4px;">Palettes rapides (Swatches)</div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; max-height:120px; overflow-y:auto; padding-bottom:4px; padding-right:4px;" class="swatches-container">
+                <!-- Swatches generated in JS -->
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Style global</div>
+              <select id="pref-bg-style" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserBgStyleOnly()">
+                <option value="solid">Couleur Unie (Classique)</option>
+                <option value="gradient">Dégradé Doux</option>
+                <option disabled>--- Patterns & Grilles ---</option>
+                <option value="grid">Grille Subtile (Pro)</option>
+                <option value="mesh_random">Maillage Aléatoire</option>
+              </select>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Couleurs du fond</div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <div style="display:flex; align-items:center; gap:4px; flex-direction:column;">
+                  <input type="color" id="pref-c1" value="#000000" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-c1').textContent=this.value;" oninput="document.getElementById('hex-c1').textContent=this.value;" title="Couleur 1 (Base)">
+                  <span id="hex-c1" style="font-family:monospace; font-size:10px; color:var(--muted);">#000000</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:4px; flex-direction:column;">
+                  <input type="color" id="pref-c2" value="#111111" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-c2').textContent=this.value;" oninput="document.getElementById('hex-c2').textContent=this.value;" title="Couleur 2 (Intermédiaire)">
+                  <span id="hex-c2" style="font-family:monospace; font-size:10px; color:var(--muted);">#111111</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:4px; flex-direction:column;">
+                  <input type="color" id="pref-c3" value="#222222" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-c3').textContent=this.value;" oninput="document.getElementById('hex-c3').textContent=this.value;" title="Couleur 3 (Extrémité)">
+                  <span id="hex-c3" style="font-family:monospace; font-size:10px; color:var(--muted);">#222222</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); display:flex; flex-direction:column;">Assombrissement <span style="font-size:10px; opacity:0.6;">(Darkening)</span></div>
+              <input type="range" id="pref-bg-darken" min="0" max="100" value="0" onchange="applyUserPrefs()" style="width: 140px;">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); display:flex; flex-direction:column;">Retirer le noir <span style="font-size:10px; opacity:0.6;">(Maillages)</span></div>
+              <label class="switch">
+                  <input type="checkbox" id="pref-remove-black" onchange="applyUserPrefs()">
+                  <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 3. Interface & Boutons -->
+
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🎛️ Interface & Boutons</div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Couleur d'accentuation</div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                 <span id="hex-accent-color" style="font-family:monospace; font-size:12px; color:var(--muted); background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px;">#0a84ff</span>
+                 <input type="color" id="pref-accent-color" value="#0a84ff" style="width:30px; height:30px; padding:0; border:none; border-radius:4px; cursor:pointer;" onchange="markCustomTheme(); document.getElementById('hex-accent-color').textContent=this.value;" oninput="document.getElementById('hex-accent-color').textContent=this.value;" title="Couleur personnalisée">
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted);">Forme des boutons</div>
+              <select id="pref-btn-shape" class="btn" style="padding:6px 36px 6px 12px; font-size:13px; min-width:140px;" onchange="applyUserPrefs()">
+                <option value="rounded">Arrondis (Standard)</option>
+                <option value="soft">Doux (Mobile Moderne)</option>
+                <option value="square">Rectangulaires (Minimal)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 4. Scraper Investigator -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">🕵️ Scraper Investigator & Debug</div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); flex: 1; min-width: 200px;">
+                Outil interactif pour configurer manuellement l'extraction de vidéos et résoudre les erreurs de flux inaccessibles.
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn" style="padding:8px 16px; font-size:13px; background:rgba(255,165,0,0.2); color:orange; border-color:rgba(255,165,0,0.5);" onclick="window.openInvestigatorModal()">Lancer l'Investigator</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Sauvegarde & Importation -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); padding:16px; border-radius:12px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:600; font-size:14px; margin-bottom:4px; color:var(--text);">💾 Sauvegarde & Importation</div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:13px; color:var(--muted); flex: 1; min-width: 200px;">
+                Exportez vos préférences (thème, couleurs) et vos favoris pour les sauvegarder ou les transférer sur un autre appareil.
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn" style="padding:8px 16px; font-size:13px;" onclick="window.exportSettings()">Exporter (.json)</button>
+                <label class="btn" style="padding:8px 16px; font-size:13px; cursor:pointer; background:var(--accent); color:#fff;">
+                  Importer
+                  <input type="file" id="import-settings-file" accept=".json" style="display:none;" onchange="window.importSettings(event)">
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      </div> <!-- End of Options Tab -->
+    </div>
+</div>
+
+<!-- LOGS PAGE -->
+<div id="logs-page" style="display:none; flex-direction:column; gap:16px; max-width:1200px; margin:0 auto; padding:20px; width:100%; flex: 1; overflow-y: auto; padding-bottom: 100px; -webkit-overflow-scrolling: touch;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0;">📋 Logs de Scraping</h2>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+       <div style="display:flex; flex-direction:column; gap:8px;">
+          <span style="color:var(--muted); font-size: 14px; font-weight: bold;">État des Sources (Dernier Scraping)</span>
+          <div id="sources-status-container" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 13px; display: flex; flex-direction: column; gap: 6px;">
+             <div style="color: var(--muted2); text-align: center;">Aucune donnée (Scraping en attente...)</div>
+          </div>
+       </div>
+
+       <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+             <span style="color:var(--muted); font-size: 14px; font-weight: bold;">Liens par domaine primaire</span>
+             <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="renderDomainStats()">↻ Recalculer</button>
+          </div>
+          <div id="domain-stats-container" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 13px;">
+             <div style="color: var(--muted2); text-align: center;">Aucun lien chargé pour le moment.</div>
+          </div>
+       </div>
+
+       <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px;">
+          <span style="color:var(--muted); font-size: 14px; font-weight: bold;">Historique des requêtes</span>
+          <div style="display:flex; gap: 8px;">
+              <button class="btn o" style="padding: 6px 12px; font-size: 13px; border-color: var(--accent); color: var(--accent);" onclick="window.exportDebugLogs()">📥 Exporter les logs de debug</button>
+              <button class="btn" style="padding: 6px 12px; font-size: 13px;" onclick="renderScrapeLogs()">↻ Rafraîchir</button>
+          </div>
+       </div>
+       <div id="scrape-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; min-height: 300px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Logs will be populated here -->
+       </div>
+
+       <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px;">
+          <span style="color:var(--muted); font-size: 14px; font-weight: bold;">Diagnostics des Flux Manuels</span>
+       </div>
+       <div id="manual-logs-container" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; min-height: 150px; max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Manual stream logs will be populated here -->
+       </div>
+    </div>
+</div>
+
+<!-- SCRIPT PAGE -->
+<div id="script-page" style="display:none; flex-direction:column; gap:16px; max-width:1200px; margin:0 auto; padding:20px; width:100%; flex: 1; overflow-y: auto; padding-bottom: 100px; -webkit-overflow-scrolling: touch;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h2 style="margin:0; font-size: 18px;">🧩 Installation des Scripts</h2>
+    </div>
+    <div style="font-size:14px; line-height:1.5; color:#ddd; display:flex; flex-direction:column; gap:12px;">
+        <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez configurer votre navigateur correctement. Suivez ces étapes :</p>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1); margin-bottom: 8px;">
+            <strong style="color:var(--accent);">🦊 Recommandation : Firefox + uBlock Origin</strong>
+            <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser <strong>Firefox</strong>. Bien que l'application fonctionne sur Chrome ou Edge, le bloqueur de publicités (uBlock Origin) y est beaucoup moins efficace en raison des récentes restrictions de Google (Manifest V3).</p>
+        </div>
+
+        <div style="background:rgba(255,113,57,0.08);padding:12px;border-radius:8px;border:1px solid rgba(255,113,57,0.35);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">🦊 Firefox : ce qui bloque les tuiles, et comment l'ouvrir</div>
+            <p style="margin-bottom:8px;color:var(--muted);">La tuile charge la page du match telle quelle et le script ne garde que la vidéo. Sur Chrome ça joue ; Firefox, lui, bloque à trois endroits. Chacun se règle.</p>
+            <ol style="margin:0 0 8px 18px;padding:0;color:#ddd;font-size:13px;line-height:1.6;">
+                <li><strong>Pages qui refusent l'iframe</strong> (« Firefox ne peut pas ouvrir cette page… intégrée par un autre site ») : installer l'extension <a href="https://addons.mozilla.org/fr/firefox/addon/ignore-x-frame-options-header/" target="_blank" style="color:var(--accent);">Ignore X-Frame-Options Header</a>, qui retire l'en-tête qui l'interdit.</li>
+                <li><strong>Lecture automatique et en arrière-plan</strong> : dans <code>about:config</code>, mettre <code>media.autoplay.default</code> à <code>0</code>, <code>media.autoplay.blocking_policy</code> à <code>0</code>, et <code>media.block-autoplay-until-in-foreground</code> à <code>false</code> — sinon une tuile ne démarre qu'après un clic, et seulement dans l'onglet au premier plan.</li>
+                <li><strong>Protection contre le pistage</strong> : elle coupe les cookies et le stockage des lecteurs encadrés, que plusieurs exigent. Cliquer le bouclier à gauche de l'adresse et désactiver la protection <em>pour ce site</em> (l'application), qui contient toutes les tuiles.</li>
+            </ol>
+            <p style="margin:0;color:var(--muted);font-size:12px;">Après ces trois réglages, recharger l'application. Si une tuile reste vide, son bouton ⏭ passe à la source suivante.</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 1 : Installer le bloqueur de publicités (uBlock Origin)</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Ceci est essentiel pour bloquer les publicités intrusives des sites de streaming.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" style="background:#ff7139;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Firefox (uBlock)</a>
+                <a href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" style="background:#4285f4;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Chrome (uBlock)</a>
+                <a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin/odfafepnkmbhccpbejgmiehpchacaeak" target="_blank" style="background:#0078d7;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Edge (uBlock)</a>
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 2 : Installer le gestionnaire de scripts (Tampermonkey)</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Cette extension permet de faire fonctionner notre script de nettoyage vidéo.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="https://addons.mozilla.org/fr/firefox/addon/tampermonkey/" target="_blank" style="background:#ff7139;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Firefox (Tampermonkey)</a>
+                <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" style="background:#4285f4;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Chrome (Tampermonkey)</a>
+                <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" style="background:#0078d7;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;display:inline-block;">Edge (Tampermonkey)</a>
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 3 : Installer le Script de nettoyage</div>
+            <p style="margin-bottom:12px;color:var(--muted);">Une fois Tampermonkey installé, cliquez sur le bouton ci-dessous. Tampermonkey s'ouvrira, cliquez alors sur "Installer" ou "Mettre à jour".</p>
+            <a href="https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/multiview-cleaner.user.js" target="_blank" style="background:var(--accent);color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;display:inline-block;text-align:center;">Installer le script</a>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"><span id="toasttxt"></span></div>
+
+<!-- GLOBAL STATS SIDEBAR -->
+<div id="global-stats-sidebar" style="position:fixed; top:0; right:0; bottom:0; width:400px; max-width:100%; background:rgba(20, 20, 20, 0.95); backdrop-filter:blur(20px); border-left:1px solid rgba(255,255,255,0.1); transform:translateX(100%); transition:transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); z-index:999999; display:flex; flex-direction:column; box-shadow:-10px 0 30px rgba(0,0,0,0.8);">
+    <div style="padding:16px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="btn o" id="gstats-back-btn" style="display:none; padding:4px 8px;" onclick="gstatsGoBack()">← Retour</button>
+            <h3 id="gstats-title" style="margin:0; font-size:18px; color:#fff;">Scores & Stats</h3>
+        </div>
+        <button class="btn o" onclick="toggleGlobalStats()" style="padding:4px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;"><span class="ic ic-close"></span></button>
+    </div>
+    <div id="gstats-content" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px;">
+        <div style="text-align:center; color:var(--muted); margin-top:20px;">Chargement...</div>
+    </div>
+</div>
+<script type="module" src="js/main.js">window.applyFilter = applyFilter;</script>
+</body></html>

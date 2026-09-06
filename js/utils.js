@@ -389,55 +389,59 @@ export function showToast(msg){var t=document.getElementById('toast');document.g
    déjà le programme de la journée, dont elle n'était qu'une liste à plat. */
 export var FILTERS = ['all','live','fav','options','logs','script'];
 
+/* Pages hors grille : une seule fonction les montre/masque, plutôt que quatre copies
+   du même bloc (openFavPage, openOptionsPage, openLogsPage, openScriptPage). */
+export var PAGE_IDS = ['fav-page', 'options-page', 'logs-page', 'script-page'];
+export function showPage(id) {
+  PAGE_IDS.forEach(function(pid) {
+    var el = document.getElementById(pid);
+    if (el) el.style.display = (pid === id) ? 'flex' : 'none';
+  });
+  var epg = document.getElementById('epg');
+  if (epg) epg.style.display = id ? 'none' : 'flex';
+  var marea = document.getElementById('marea');
+  if (marea && !id) marea.style.display = 'flex';
+  var sf = document.getElementById('sport-filters-container');
+  if (sf) sf.style.display = id ? 'none' : 'flex';
+}
+
+/* Onglet actif : une classe, pas des styles en ligne. L'ancienne version posait
+   couleur, bordure, fond et ombre en `style` sur chaque bouton à chaque appel, ce que
+   la feuille de style ne pouvait plus corriger. */
+function syncNavState(active) {
+  FILTERS.forEach(function(k) {
+    var el = document.getElementById('filter-' + k);
+    if (!el) return;
+    var on = k === active;
+    el.classList.toggle('active-toggle', on);
+    if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  });
+  var mvBtn = document.getElementById('mv-toggle-btn');
+  if (mvBtn) {
+    mvBtn.classList.toggle('active-toggle', active === 'player');
+    mvBtn.classList.toggle('has-streams', active !== 'player' && mvFlux.length > 0);
+    if (active === 'player') mvBtn.setAttribute('aria-current', 'page'); else mvBtn.removeAttribute('aria-current');
+    mvBtn.style.cssText = '';
+  }
+  document.body.setAttribute('data-view', active);
+}
+
 export function applyFilter(f){
   /* Un appel à une vue disparue (raccourci mémorisé, ancien code) laisserait sinon
      `data-filter` sur une valeur que plus aucune branche de rendu ne traite, donc une
      page vide sans message. On retombe sur le direct. */
   if (FILTERS.indexOf(f) === -1) f = 'live';
   S.filter=f;
-  FILTERS.forEach(function(k){
-    var el=document.getElementById('filter-'+k);
-    if(el){
-        if (k===f) {
-            el.classList.add('active-toggle');
-            el.style.color = 'var(--text)';
-        } else {
-            el.classList.remove('active-toggle');
-            el.style.color = 'var(--muted2)';
-            el.style.borderColor = 'var(--border2)';
-            el.style.background = 'var(--btn-bg)';
-            el.style.boxShadow = 'var(--btn-shadow)';
-        }
-    }
-  });
-  var mvBtn = document.getElementById('mv-toggle-btn');
-  if(mvBtn) {
-      mvBtn.classList.remove('active-toggle');
-      mvBtn.classList.remove('has-streams');
-      mvBtn.style = '';
-      mvBtn.style.boxShadow = 'var(--btn-shadow)';
+  syncNavState(f);
 
-      // Keep it red if streams are active
-      if(mvFlux.length > 0) {
-          mvBtn.classList.add('has-streams');
-          if (userPrefs.toggleStyle === 'default' || !userPrefs.toggleStyle) {
-              mvBtn.style.background = 'rgba(255, 69, 58, 0.2)';
-              mvBtn.style.borderColor = 'var(--red)';
-          }
-          mvBtn.style.color = '#fff';
-      }
-  }
-
-  // Auto pip multiview if we click on Guide or Live
+  // Le Multivision plein écran passe en PiP dès qu'on revient au guide
   var mvc = document.getElementById('mv-container');
   if(mvc && mvc.style.display !== 'none' && !mvc.classList.contains('mv-pip')) {
       toggleMultiviewPip();
   }
 
-  /* Les contrôles « Maintenant » et ± pilotent uniquement la grille temporelle du Guide.
-     Dans En direct et À venir ils flottaient au-dessus des cartes sans aucun effet (et
-     masquaient l'heure des matchs sur mobile). La visibilité est désormais portée par
-     body.view-timeline (styles.css) ; on retire le style en ligne qui l'écrasait. */
+  /* Les contrôles « Maintenant » et ± pilotent uniquement la grille temporelle du Guide
+     (visibilité portée par body.view-timeline, styles.css). */
   var zoomEpg = document.querySelector('.zoom-controls');
   if (zoomEpg) zoomEpg.style.removeProperty('display');
   document.body.classList.toggle('view-timeline', f === 'all');
@@ -451,61 +455,27 @@ export function applyFilter(f){
   } else if (f === 'fav') {
       openFavPage();
   } else {
-      var favPage = document.getElementById('fav-page');
-      if (favPage) favPage.style.display = 'none';
-      var optionsPage = document.getElementById('options-page');
-      if (optionsPage) optionsPage.style.display = 'none';
-      var logsPage = document.getElementById('logs-page');
-      if (logsPage) logsPage.style.display = 'none';
-      var scriptPage = document.getElementById('script-page');
-      if (scriptPage) scriptPage.style.display = 'none';
       var errbox = document.getElementById('errbox');
       if (errbox && errbox.classList.contains('show')) {
-          // Do not overwrite errbox if it has a real error
+          // Une vraie erreur reste affichée ; on ne masque que les pages annexes
+          PAGE_IDS.forEach(function(pid) { var el = document.getElementById(pid); if (el) el.style.display = 'none'; });
       } else {
-          var epgContainer = document.getElementById('epg');
-          if (epgContainer) epgContainer.style.display = 'flex';
-          var mareaContainer = document.getElementById('marea');
-          if (mareaContainer) mareaContainer.style.display = 'flex';
-          var sportFiltersContainer = document.getElementById('sport-filters-container');
-          if (sportFiltersContainer) sportFiltersContainer.style.display = 'flex';
+          showPage(null);
       }
 
       document.body.setAttribute('data-filter', f);
 
-      // Rebuild the UI to only contain the elements for the active filter
       if (typeof S !== 'undefined' && S.matches && S.matches.length > 0) {
-          if (f === 'all' || f === 'live') {
-              buildEPG(S.matches);
-          }
+          buildEPG(S.matches);
       }
-
-      if(f === 'all' || f === 'live') {
-          window.dispatchEvent(new Event('filterChanged'));
-      }
+      window.dispatchEvent(new Event('filterChanged'));
   }
 }
 
 export function openMultiviewTab() {
-    var favPage = document.getElementById('fav-page');
-    if (favPage) favPage.style.display = 'none';
-    FILTERS.forEach(function(k){
-      var el=document.getElementById('filter-'+k);
-      if(el){
-          el.classList.remove('active-toggle');
-          el.style.color = 'var(--muted2)';
-          el.style.borderColor = 'var(--border2)';
-          el.style.background = 'var(--btn-bg)';
-          el.style.boxShadow = 'var(--btn-shadow)';
-      }
-    });
-
-    var mvBtn = document.getElementById('mv-toggle-btn');
-    if(mvBtn) {
-        mvBtn.classList.add('active-toggle');
-        mvBtn.classList.remove('has-streams');
-        mvBtn.style = '';
-    }
+    showPage(null);
+    PAGE_IDS.forEach(function(pid) { var el = document.getElementById(pid); if (el) el.style.display = 'none'; });
+    syncNavState('player');
 
     var mvc = document.getElementById('mv-container');
     if(mvc) {
@@ -515,6 +485,23 @@ export function openMultiviewTab() {
             toggleMultiviewPip(); // Restore from PIP to full
         }
     }
+}
+
+/* ══ RECHERCHE ══════════════════════════ */
+/* Recherche globale (équipe, ligue), branchée sur S.searchQuery que buildEPG applique
+   déjà au Live comme au Guide. Débounce court : reconstruire la grille à chaque frappe
+   sur trois cents matchs se sentirait au clavier. */
+var searchTimer = null;
+export function setSearchQuery(value) {
+  var q = String(value || '').trim().toLowerCase();
+  var box = document.querySelector('.search-box');
+  if (box) box.classList.toggle('has-value', q.length > 0);
+  if (q === S.searchQuery) return;
+  S.searchQuery = q;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(function() {
+    if (S.filter === 'live' || S.filter === 'all') buildEPG(S.matches || []);
+  }, 160);
 }
 
 export function applySportFilter(sport){
@@ -668,6 +655,8 @@ window.getProxyHealth = getProxyHealth;
 window.resetProxyHealth = resetProxyHealth;
 window.showToast = showToast;
 window.applyFilter = applyFilter;
+window.showPage = showPage;
+window.setSearchQuery = setSearchQuery;
 window.openMultiviewTab = openMultiviewTab;
 window.applySportFilter = applySportFilter;
 window.toggleLeague = toggleLeague;

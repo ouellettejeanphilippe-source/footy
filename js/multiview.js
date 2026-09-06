@@ -2,7 +2,7 @@ import { fetchPage } from './utils.js';
 import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, showPage } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger } from './config.js';
@@ -996,6 +996,7 @@ export function setupMultivisionUI() {
       +     '<button class="nav-btn mv-layout-btn" onclick="setMvLayout(\'horizontal\'); saveMultivisionState(); updateMultivisionLayout(); document.getElementById(\'mv-layout-dropdown\').style.display=\'none\';" data-layout="horizontal" aria-label="Horizontal Layout" title="Horizontal Layout" style="padding: 8px; font-size: 14px; text-align:left; display:flex; gap:8px;"><span>⊟</span> Horizontal</button>'
       +   '</div>'
       + '</div>'
+      + '<button class="nav-btn hide-pip" id="mv-fit-all-btn" onclick="cycleMvFitAll()" aria-label="Ajuster le contenu des tuiles" title="Ajuster le contenu des tuiles (étiré → ajusté → rempli)" style="padding: 8px; min-width: auto; font-size: 16px;">⤢</button>'
       + '<button class="nav-btn hide-pip" onclick="toggleTheaterMode(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Mode Cinéma" title="Mode Cinéma" style="padding: 8px; min-width: auto; font-size: 16px;">🎬</button>'
       + '<button class="nav-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" aria-label="Plein écran" title="Plein écran" style="padding: 8px; min-width: auto; font-size: 16px;">⛶</button>'
       + '<button class="nav-btn hide-pip" id="mv-gm-btn" onclick="toggleMvGameMode()" aria-label="Game Mode" title="Game Mode" style="padding: 8px; min-width: auto; font-size: 16px;">📊</button>'
@@ -1291,52 +1292,6 @@ export function setupMultivisionUI() {
     }
 
 
-    if (!window._mvKeydownAttached) {
-        window.addEventListener('keydown', function(e) {
-            var mvc = document.getElementById('mv-container');
-            if (!mvc || mvc.style.display === 'none') return;
-
-            var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-            if (activeTag === 'input' || activeTag === 'textarea') return;
-
-            var key = e.key;
-            if (['1', '2', '3', '4'].includes(key)) {
-                var targetIdx = parseInt(key) - 1;
-                if (targetIdx >= 0 && targetIdx < mvFlux.length) {
-                    if (targetIdx === 0) {
-                        focusStream(0);
-                    } else {
-                        var item = mvFlux.splice(targetIdx, 1)[0];
-                        mvFlux.unshift(item);
-
-                        saveMultivisionState();
-                        updateMultivisionLayout();
-                        focusStream(0);
-                    }
-                }
-            } else if (['5', '6', '7', '8'].includes(key)) {
-                var targetIdx = parseInt(key) - 5;
-                if (targetIdx > 0 && targetIdx < mvFlux.length) {
-                    // Moving item to front without changing active stream focus
-                    var item = mvFlux.splice(targetIdx, 1)[0];
-                    mvFlux.unshift(item);
-
-                    // Adjust activeMvIdx to keep focus on the same stream
-                    if (activeMvIdx === targetIdx) {
-                        activeMvIdx = 0; // The active stream was moved to front
-                    } else if (activeMvIdx !== null && activeMvIdx < targetIdx) {
-                        activeMvIdx++; // The active stream was shifted right
-                    }
-
-                    saveMultivisionState();
-                    updateMultivisionLayout();
-                    applyMvFocusStyling();
-                    applyMvAudioState();
-                }
-            }
-        });
-        window._mvKeydownAttached = true;
-    }
 
     if (window.ResizeObserver) {
         var ro = new ResizeObserver(function(entries) {
@@ -1409,6 +1364,59 @@ window.resetMvIdleTimer = function() {
 }
 
 
+
+/* ══ AJUSTEMENT DU CONTENU D'UNE TUILE ═══════════════════════════════════════════
+   Demande du 6 septembre 2026 : « fit content dans multiview ». Une tuile a rarement
+   les proportions d'une vidéo : en grille 2×2 sur un écran large, elle est plus large
+   que 16:9 ; en colonne, plus haute. Trois façons de poser le lecteur dedans :
+     - stretch : le cadre prend toute la tuile (comportement d'origine, la page du site
+       se réorganise elle-même) ;
+     - contain : le plus grand 16:9 qui tient dans la tuile, centré — toute la vidéo
+       visible, bandes noires possibles ;
+     - cover   : le plus petit 16:9 qui couvre la tuile — plus de bandes, bords rognés.
+   Le calcul est fait par la feuille de style (unités de conteneur cqw/cqh) : aucun
+   observateur de redimensionnement, la tuile suit la grille toute seule. Le choix est
+   retenu par tuile (s.fit, sauvegardé avec mv_state). */
+export var MV_FIT_MODES = {
+    stretch: { icon: '⤢', label: 'étiré',  next: 'contain' },
+    contain: { icon: '▭', label: 'ajusté', next: 'cover' },
+    cover:   { icon: '⛶', label: 'rempli', next: 'stretch' }
+};
+export function applyMvFit(cell, s) {
+    var vc = cell && cell.querySelector('.mv-video-container');
+    if (!vc) return;
+    var mode = (s && MV_FIT_MODES[s.fit]) ? s.fit : 'stretch';
+    vc.classList.remove('fit-stretch', 'fit-contain', 'fit-cover');
+    vc.classList.add('fit-' + mode);
+}
+export function setMvFit(idx, mode) {
+    var s = mvFlux[idx];
+    if (!s || !MV_FIT_MODES[mode]) return;
+    s.fit = mode;
+    saveMultivisionState();
+    updateMultivisionLayout();
+}
+export function cycleMvFit(idx) {
+    var s = mvFlux[idx];
+    if (!s) return;
+    var next = (MV_FIT_MODES[s.fit] || MV_FIT_MODES.stretch).next;
+    setMvFit(idx, next);
+    showToast('Tuile ' + (idx + 1) + ' : contenu ' + MV_FIT_MODES[next].label);
+}
+/* Même ajustement pour toutes les tuiles d'un coup (bouton de la barre du Multivision). */
+export function cycleMvFitAll() {
+    if (!mvFlux.length) return;
+    var current = mvFlux[0].fit || 'stretch';
+    var next = (MV_FIT_MODES[current] || MV_FIT_MODES.stretch).next;
+    mvFlux.forEach(function(s) { s.fit = next; });
+    saveMultivisionState();
+    updateMultivisionLayout();
+    showToast('Toutes les tuiles : contenu ' + MV_FIT_MODES[next].label);
+}
+window.applyMvFit = applyMvFit;
+window.setMvFit = setMvFit;
+window.cycleMvFit = cycleMvFit;
+window.cycleMvFitAll = cycleMvFitAll;
 
 export function moveMultiviewStream(idx, direction) {
     if (idx < 0 || idx >= mvFlux.length) return;
@@ -1551,7 +1559,11 @@ export function updateMultivisionLayout() {
     var emptyMsg = document.getElementById('mv-empty-msg');
     if(count === 0) {
         if (!emptyMsg) {
-            grid.innerHTML = '<div id="mv-empty-msg" style="display:flex;align-items:center;justify-content:center;color:var(--muted);height:100%;">Ajoutez des matchs depuis la modale pour utiliser le Multivision.</div>';
+            grid.innerHTML = '<div id="mv-empty-msg" class="mv-empty">'
+                + '<div class="mv-empty-ic">📺</div>'
+                + '<p>Aucun flux pour l\'instant. Choisissez un match : chaque lien de sa fiche porte un bouton ⊞ qui l\'ajoute ici, jusqu\'à quatre lecteurs côte à côte.</p>'
+                + '<button class="btn primary" onclick="showMatchSelector(event)">➕ Ajouter un match</button>'
+                + '</div>';
         } else {
             // keep it
             var children = Array.from(grid.children);
@@ -1937,10 +1949,14 @@ export function updateMultivisionLayout() {
             + '<button class="mv-direct-btn" title="Basculer entre la page du site et le flux direct" aria-label="Mode direct" style="height:24px;padding:0 8px;background:' + (s.mode === 'direct' ? 'rgba(124,252,154,0.25)' : 'rgba(255,255,255,0.2)') + ';border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:' + ((s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none') + ';align-items:center;" onclick="toggleDirectMode(' + idx + '); event.stopPropagation();">' + (s.mode === 'direct' ? '🖼 page' : '▶ direct') + '</button>';
         var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
 
+        var fitMode = s.fit || 'stretch';
+        var fitInfo = MV_FIT_MODES[fitMode] || MV_FIT_MODES.stretch;
+        var boutonFit = '<button class="mv-fit-btn" title="Ajustement du contenu : ' + fitInfo.label + ' — cliquer pour changer" aria-label="Ajustement : ' + fitInfo.label + '" style="height:24px;padding:0 8px;background:' + (fitMode === 'stretch' ? 'rgba(255,255,255,0.2)' : 'rgba(56,189,248,0.3)') + ';border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;" onclick="cycleMvFit(' + idx + ');event.stopPropagation();">' + fitInfo.icon + ' ' + fitInfo.label + '</button>';
+
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
             '<div class="mv-drag-handle" role="button" tabindex="0" aria-label="Déplacer" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" title="Déplacer">' + svgDrag + '</div>' +
             '<div class="mv-stream-number" role="button" tabindex="0" aria-label="Touche ' + (idx + 1) + '" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: bold; font-size: 14px; color: #fff;" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' +
-            pastilleSource +
+            pastilleSource + boutonFit +
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);position:relative;">';
@@ -2006,6 +2022,7 @@ export function updateMultivisionLayout() {
         controlsHtml += '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
+        applyMvFit(cell, s);
 
         // Update URL/Src if changed (for existing cells)
         if (s._currentUrl !== s.url) {
@@ -3287,23 +3304,8 @@ export function renderScrapeLogs() {
 }
 
 export function openOptionsPage() {
-    var favPage = document.getElementById('fav-page');
-    if (favPage) favPage.style.display = 'none';
-    var epgContainer = document.getElementById('epg');
-    if (epgContainer) epgContainer.style.display = 'none';
-    var mareaContainer = document.getElementById('marea');
-    if (mareaContainer) mareaContainer.style.display = 'none';
-    var sportFiltersContainer = document.getElementById('sport-filters-container');
-    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
-
-    var logsPage = document.getElementById('logs-page');
-    if (logsPage) logsPage.style.display = 'none';
-    var scriptPage = document.getElementById('script-page');
-    if (scriptPage) scriptPage.style.display = 'none';
-
-    var optionsPage = document.getElementById('options-page');
-    if (optionsPage) {
-        optionsPage.style.display = 'flex';
+    showPage('options-page');
+    if (document.getElementById('options-page')) {
         buildSwatches();
 
         initPrefs();
@@ -3395,46 +3397,14 @@ export function saveProxySettings() {
 }
 
 export function openLogsPage() {
-    var favPage = document.getElementById('fav-page');
-    if (favPage) favPage.style.display = 'none';
-    var epgContainer = document.getElementById('epg');
-    if (epgContainer) epgContainer.style.display = 'none';
-    var mareaContainer = document.getElementById('marea');
-    if (mareaContainer) mareaContainer.style.display = 'none';
-    var sportFiltersContainer = document.getElementById('sport-filters-container');
-    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
-
-    var optionsPage = document.getElementById('options-page');
-    if (optionsPage) optionsPage.style.display = 'none';
-    var scriptPage = document.getElementById('script-page');
-    if (scriptPage) scriptPage.style.display = 'none';
-
-    var logsPage = document.getElementById('logs-page');
-    if (logsPage) {
-        logsPage.style.display = 'flex';
+    showPage('logs-page');
+    if (document.getElementById('logs-page')) {
         renderScrapeLogs();
     }
 }
 
 export function openScriptPage() {
-    var favPage = document.getElementById('fav-page');
-    if (favPage) favPage.style.display = 'none';
-    var epgContainer = document.getElementById('epg');
-    if (epgContainer) epgContainer.style.display = 'none';
-    var mareaContainer = document.getElementById('marea');
-    if (mareaContainer) mareaContainer.style.display = 'none';
-    var sportFiltersContainer = document.getElementById('sport-filters-container');
-    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
-
-    var optionsPage = document.getElementById('options-page');
-    if (optionsPage) optionsPage.style.display = 'none';
-    var logsPage = document.getElementById('logs-page');
-    if (logsPage) logsPage.style.display = 'none';
-
-    var scriptPage = document.getElementById('script-page');
-    if (scriptPage) {
-        scriptPage.style.display = 'flex';
-    }
+    showPage('script-page');
 }
 
 // Kept for backward compatibility if called elsewhere, though shouldn't be needed
