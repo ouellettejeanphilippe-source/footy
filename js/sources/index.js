@@ -14,15 +14,26 @@
      ctx.match     le match auquel la page se rattache
      ctx.pageText  texte visible de la page (pour le contexte de diagnostic)
      ctx.pageLiens ancres de la page (idem)
-     ctx.aides     { estPageDeMatchOuLigue, qualite }
+     ctx.aides     { estPageDeMatchOuLigue, qualite, memeMatch, parseListe }
+                   `parseListe` est le parseur de liste DU domaine, `memeMatch`
+                   l'appariement : OnHockey en a besoin, ses matchs pointant tous vers sa
+                   grille unique plutôt que vers une page par match.
 
    Un domaine sans adaptateur n'est pas un problème : le moteur générique
    (js/extractors.js) reste le chemin par défaut, et la plupart des sources s'en
-   contentent. On n'écrit un adaptateur que là où le site a vraiment sa propre forme. */
+   contentent. On n'écrit un adaptateur que là où le site a vraiment sa propre forme.
+
+   Un adaptateur n'importe jamais le module central (js/scrapers.js) ni ce qui y remonte
+   (js/utils.js, js/config.js) : le cycle ferait retirer tout le graphe des modules
+   derrière chaque adaptateur. Les modules feuilles (db, match, extractors) sont sûrs.
+   `unit_adaptateurs` vérifie la règle en lisant les imports de chaque fichier. */
 
 import * as footybite from './footybite.js';
+import * as onhockey from './onhockey.js';
+import * as streameast from './streameast.js';
+import * as vipleague from './vipleague.js';
 
-export var ADAPTATEURS = [footybite];
+export var ADAPTATEURS = [footybite, onhockey, streameast, vipleague];
 
 /* L'adaptateur qui reconnaît cet hôte, ou null. */
 export function adaptateurPour(hote) {
