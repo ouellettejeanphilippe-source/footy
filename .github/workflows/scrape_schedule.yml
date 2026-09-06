@@ -36,6 +36,18 @@ jobs:
       - name: Run Scraper
         run: node scripts/scrape_schedule.mjs
 
+      # Le passage de 14 h 10 (6 septembre 2026) a produit un cache frais et n'a pas pu le
+      # pousser : main avait bougé pendant les huit minutes du scrape (fusions de PR,
+      # commit de la grille), et l'action de commit ne rebase pas -> « non-fast-forward »,
+      # cache perdu, et l'application est restée deux heures sur des liens périmés. On
+      # met de côté le fichier produit, on se replace sur main, on le remet : en cas de
+      # conflit sur le fichier lui-même, la version produite à l'instant l'emporte.
+      - name: Rebase on latest main before committing
+        run: |
+          git stash push --include-untracked -- data/schedule.json || true
+          git pull --rebase origin main
+          git stash pop || { git checkout --theirs -- data/schedule.json; git add data/schedule.json; git stash drop; }
+
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
