@@ -174,7 +174,9 @@ export function loadPrefetchedStreams(force) {
                 m.streamsLoaded = compterFluxUtiles(m) > 0;
             });
             window.prefetchedStreamMatches = list;
-            window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {} };
+            window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {}, verifiedAt: data.verifiedAt || null };
+            // Jouabilité observée par le serveur (scripts/verify_players.mjs) : lue par sortFluxLinks.
+            window.hostPlayLedger = (data.hostPlay && typeof data.hostPlay === 'object') ? data.hostPlay : {};
             window.prefetchedStreamsLoadedAt = Date.now();
 
             /* Politique d'intégration relevée côté serveur (en-têtes X-Frame-Options /

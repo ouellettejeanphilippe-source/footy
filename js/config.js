@@ -6,6 +6,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStanding
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS, sportOfLeague } from './db.js';
 import { buildProxyList } from './fetcher.js';
+import { playabilityScore, hostOfUrl, tileTarget } from './playability.js';
 
 /* ══ CONFIG ═════════════════════════════ */
 /* footybite.im plutôt que .bid, et ce n'est pas un détail de miroir.
@@ -293,6 +294,8 @@ export function rebuildProxies() {
    Conséquences : enregistrer un proxy ou une clé d'API n'avait aucun effet avant un
    rechargement complet, et l'écran Options n'affichait jamais les valeurs déjà saisies. */
 window.applySourceUrl = applySourceUrl;
+window.playLedger = playLedger;
+window.notePlayability = notePlayability;
 window.sportOfLeague = sportOfLeague;
 window.getSourcePages = getSourcePages;
 window.getSourceCandidates = getSourceCandidates;
@@ -1117,8 +1120,49 @@ export function toggleDomainPref(domain, type, mid) {
   }
 }
 
+/* Registre de jouabilité : les observations du serveur (data/streams.json, `hostPlay`)
+   additionnées à celles du navigateur de l'utilisateur (`play_ledger`, alimenté par le
+   script utilisateur quand il voit la vidéo jouer, et par la tuile quand rien ne joue). */
+export function playLedger() {
+  var serveur = (window.hostPlayLedger && typeof window.hostPlayLedger === 'object') ? window.hostPlayLedger : {};
+  var local = safeStorageGetJSON('play_ledger', {}) || {};
+  var out = {};
+  [serveur, local].forEach(function(l) {
+    Object.keys(l).forEach(function(h) {
+      var e = l[h] || {}; var t = out[h] || { tested: 0, plays: 0 };
+      t.tested += e.tested | 0; t.plays += e.plays | 0; out[h] = t;
+    });
+  });
+  return out;
+}
+
+/* Note, dans le registre local, ce que le navigateur de l'utilisateur a vu pour l'hôte
+   d'un lien : `plays` quand la vidéo joue, `none` quand rien n'est venu. */
+export function notePlayability(link, verdict) {
+  var host = hostOfUrl(tileTarget(link));
+  if (!host) return;
+  var l = safeStorageGetJSON('play_ledger', {}) || {};
+  var e = l[host] || { tested: 0, plays: 0 };
+  e.tested += 1;
+  if (verdict === 'plays') e.plays += 1;
+  if (e.tested > 40) { e.tested = Math.round(e.tested / 2); e.plays = Math.round(e.plays / 2); }
+  l[host] = e;
+  safeStorageSetJSON('play_ledger', l);
+}
+
 export function sortFluxLinks(links) {
+  /* Ordre : le choix explicite de l'utilisateur (⭐ / 👎 sur un domaine), puis ce qui a
+     été OBSERVÉ en train de jouer (js/playability.js), puis seulement la forme du lien
+     (qualité annoncée, site). Pendant des semaines l'ordre était l'inverse, et la tuile
+     ouvrait d'abord des pages intermédiaires ou mortes dont l'adresse « faisait bien ». */
+  var ledger = playLedger();
   return links.slice().sort(function(a, b) {
+    var prefA0 = domainPrefs[getDomain(a.url)] || 0;
+    var prefB0 = domainPrefs[getDomain(b.url)] || 0;
+    if (prefA0 !== prefB0) return prefB0 - prefA0;
+    var jouA = playabilityScore(a, ledger), jouB = playabilityScore(b, ledger);
+    if (jouA !== jouB) return jouB - jouA;
+
     var nameA = (a.name || '').toLowerCase();
     var nameB = (b.name || '').toLowerCase();
     var qualA = (a.quality || '').toLowerCase();

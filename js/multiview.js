@@ -5,7 +5,8 @@ import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
-import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref } from './config.js';
+import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability } from './config.js';
+import { nextLinkAfter, hostOfUrl, tileTarget } from './playability.js';
 import { scrapeMatchFlux, isMatchOrLeaguePage, getEmbedRegistry, compterFluxUtiles } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, resolveBlockedEmbed, getBridgeStatus, installerReconstructionRecursive } from './embed-bridge.js';
@@ -637,6 +638,7 @@ export function showFluxSelector(idx, mid, event) {
                 e.stopPropagation();
                 if(!isActive) {
                     mvFlux[idx].url = s.url;
+                    mvFlux[idx]._autoTried = 0; mvFlux[idx]._playing = false; mvFlux[idx]._playNoted = false;
                     // name and mid stays the same
                     saveMultivisionState(); updateMultivisionLayout();
                 }
@@ -1160,6 +1162,24 @@ export function setupMultivisionUI() {
                     }
                 }
             });
+        }
+        /* « Vidéo en lecture » (ou plus), envoyé par multiview-cleaner.user.js depuis le
+           cadre où joue le lecteur — souvent un cadre imbriqué, d'où la remontée des
+           parents. C'est le seul signal fiable que quelque chose joue : depuis
+           l'application, une iframe d'origine croisée est opaque. */
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'video_state') {
+            var idx = indexDeTuilePour(e.source);
+            if (idx < 0) return;
+            var s = mvFlux[idx];
+            var joue = !!e.data.playing;
+            if (joue && !s._playing) {
+                s._playing = true;
+                if (s._autoTimer) { clearTimeout(s._autoTimer); s._autoTimer = null; }
+                if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
+            } else if (!joue && s._playing) {
+                s._playing = false;
+            }
+            rafraichirPastille(idx);
         }
     });
 
@@ -1835,6 +1855,9 @@ export function updateMultivisionLayout() {
                     iframe.src = finalUrl;
                 }
 
+                s._playing = false;
+                armerBasculeAuto(s, parseInt(cell.dataset.index, 10), url);
+
                 cell.addEventListener('mousedown', function() { iframe.style.pointerEvents = 'none'; });
                 cell.addEventListener('mouseup', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
                 cell.addEventListener('mouseleave', function() { if (window.draggedMvIdx == null) iframe.style.pointerEvents = 'auto'; });
@@ -2046,11 +2069,20 @@ export function updateMultivisionLayout() {
         hdr.onmouseleave = function() { this.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)'; };
 
         var domain = s.url ? getDomain(s.url) : 'Flux';
+
+        /* « source k/n · ● » et ⏭ : la tuile dit quelle source elle essaie, si une vidéo
+           joue (● vert, signalé par le script utilisateur), et passe à la suivante d'un
+           clic. C'est ce qui remplace la devinette d'avant : on essaie, on voit, on passe. */
+        var pos = positionDuFlux(s);
+        var libellePastille = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : domain);
+        var pastilleSource = '<div class="mv-source-pill" title="' + (s._playing ? 'Vidéo en lecture' : 'Aucune vidéo confirmée pour l\'instant') + '" style="height:24px;display:flex;align-items:center;padding:0 8px;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.15);border-radius:4px;font-size:11px;font-weight:bold;color:' + (s._playing ? '#7CFC9A' : '#fff') + ';white-space:nowrap;">' + esc(libellePastille) + '</div>'
+            + (pos ? '<button class="mv-next-source" title="Source suivante" aria-label="Source suivante" style="height:24px;min-width:28px;background:rgba(255,255,255,0.2);border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '');
         var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
 
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
             '<div class="mv-drag-handle" role="button" tabindex="0" aria-label="Déplacer" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);" onmousedown="this.closest(\'.mv-cell\').draggable=true;" title="Déplacer">' + svgDrag + '</div>' +
             '<div class="mv-stream-number" role="button" tabindex="0" aria-label="Touche ' + (idx + 1) + '" style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: bold; font-size: 14px; color: #fff;" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' +
+            pastilleSource +
             '</div>';
 
         var controlsHtml = '<div style="display:flex;gap:6px;pointer-events:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;backdrop-filter:blur(5px);position:relative;">';
@@ -2188,13 +2220,108 @@ export function lienDuMatchPourFlux(s, url) {
     return lien;
 }
 
+/* Liens jouables d'un match, dans l'ordre où la tuile les essaie. */
+function liensDuMatch(mid) {
+    var liste = (S && Array.isArray(S.matches)) ? S.matches : [];
+    var m = null;
+    for (var k = 0; k < liste.length; k++) { if (String(liste[k].id) === String(mid)) { m = liste[k]; break; } }
+    if (!m || !Array.isArray(m.streamLinks)) return [];
+    return sortFluxLinks(m.streamLinks.filter(function(l) {
+        if (!l || !l.url) return false;
+        if (l.topLevel && !l.playerUrl && /^page du match/i.test(l.name || '')) return false;
+        return true;
+    }));
+}
+
+/* Position du flux d'une tuile parmi les liens de son match : { k, n } (1-based), ou null. */
+export function positionDuFlux(s) {
+    if (!s || s.mid === undefined || s.mid === null) return null;
+    var L = liensDuMatch(s.mid);
+    if (L.length < 2) return null;
+    var k = -1;
+    for (var i = 0; i < L.length; i++) { if (L[i].url === s.url) { k = i; break; } }
+    return { k: k + 1, n: L.length };
+}
+
+/* Passe la tuile `idx` à la source suivante de son match.
+
+   C'est le cœur du nouveau mécanisme : on ne prétend plus deviner d'avance quel lien
+   jouera. La tuile essaie le mieux classé, et si rien ne vient — le script utilisateur
+   le voit, ou l'utilisateur le voit — elle passe au suivant. `raison` = 'auto' quand
+   c'est la tuile qui décide, après 30 s sans vidéo. */
+export function nextFluxForTile(idx, raison) {
+    var s = mvFlux[idx];
+    if (!s) return false;
+    var L = liensDuMatch(s.mid);
+    var suivant = nextLinkAfter(L, s.url);
+    if (!suivant) { if (raison !== 'auto') showToast('Aucune autre source pour ce match.'); return false; }
+    if (raison === 'auto') notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'none');
+    s._autoTried = (s._autoTried | 0) + (raison === 'auto' ? 1 : 0);
+    s._playing = false;
+    s._playNoted = false;
+    s.url = suivant.url;
+    saveMultivisionState();
+    updateMultivisionLayout();
+    var pos = positionDuFlux(s);
+    showToast((raison === 'auto' ? 'Aucune vidéo : source suivante' : 'Source suivante') + (pos ? ' (' + pos.k + '/' + pos.n + ')' : '') + ' — ' + getDomain(tileTarget(suivant)));
+    return true;
+}
+
+/* Le script utilisateur, quand il est installé, dit à la tuile si une vidéo joue. Sans
+   nouvelle dans les 30 s, et s'il reste des sources, la tuile passe à la suivante —
+   au plus une fois par lien, pour ne pas tourner en rond. Sans le script, aucun signal
+   ne peut venir : on ne bascule pas seul, le bouton ⏭ reste à portée. */
+var DELAI_SANS_VIDEO_MS = 30000;
+function armerBasculeAuto(s, idx, url) {
+    if (s._autoTimer) { clearTimeout(s._autoTimer); s._autoTimer = null; }
+    var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
+    if (!pont || !pont.available) return;
+    var L = liensDuMatch(s.mid);
+    if (L.length < 2) return;
+    s._autoTimer = setTimeout(function() {
+        s._autoTimer = null;
+        if (s._playing || s._currentUrl !== url) return;
+        if ((s._autoTried | 0) >= L.length - 1) return;
+        nextFluxForTile(idx, 'auto');
+    }, DELAI_SANS_VIDEO_MS);
+}
+
+/* Met à jour la pastille « source k/n · ● » d'une tuile sans re-rendre la cellule. */
+function rafraichirPastille(idx) {
+    var s = mvFlux[idx];
+    var cell = document.querySelector('.mv-cell[data-index="' + idx + '"]');
+    var pill = cell && cell.querySelector('.mv-source-pill');
+    if (!s || !pill) return;
+    var pos = positionDuFlux(s);
+    pill.textContent = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : getDomain(tileTarget(lienDuMatchPourFlux(s, s.url) || { url: s.url })));
+    pill.style.color = s._playing ? '#7CFC9A' : '#fff';
+    pill.title = s._playing ? 'Vidéo en lecture (vu par le script utilisateur)' : 'Aucune vidéo confirmée pour l\'instant';
+}
+
+/* Quel index de tuile a envoyé ce message ? Le script tourne aussi dans les cadres
+   imbriqués du lecteur : on remonte les parents jusqu'à l'iframe de la tuile. */
+function indexDeTuilePour(source) {
+    var w = source;
+    for (var k = 0; k < 8 && w; k++) {
+        for (var i = 0; i < mvFlux.length; i++) {
+            var fr = document.getElementById('mv-iframe-' + i);
+            if (fr && fr.contentWindow === w) return i;
+        }
+        var parent = null;
+        try { parent = w.parent; } catch (e) { parent = null; }
+        if (!parent || parent === w) break;
+        w = parent;
+    }
+    return -1;
+}
+
 export function addToMultivision(url, name, mid) {
     mid = getOriginalMatchId(mid);
     if(mvFlux.length >= 4) {
         showToast('Maximum 4 streams en Multivision.');
         return;
     }
-    mvFlux.push({url: url, name: name, mid: mid, cropped: false});
+    mvFlux.push({url: url, name: name, mid: mid, cropped: false, _autoTried: 0});
 
     // Make the newly added stream the active one (unmuted and focused)
     activeMvIdx = mvFlux.length - 1;
@@ -3680,6 +3807,8 @@ window.applyMvAudioState = applyMvAudioState;
 window.updateMultivisionLayout = updateMultivisionLayout;
 window.addToMultivision = addToMultivision;
 window.lienDuMatchPourFlux = lienDuMatchPourFlux;
+window.nextFluxForTile = nextFluxForTile;
+window.positionDuFlux = positionDuFlux;
 window.removeFromMultivision = removeFromMultivision;
 window.toggleMultiview = toggleMultiview;
 window.toggleDocumentPiP = toggleDocumentPiP;
