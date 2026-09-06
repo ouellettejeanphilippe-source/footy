@@ -569,6 +569,12 @@ async function resoudreLecteurEnChaine(depart) {
             const h = hostOf(c.url);
             if (!h || h === hote) continue;
             const pol = await politiqueDeCadre(h, c.url);
+            /* Un hôte qui répond 403, 404 ou 5xx n'est pas un lecteur, quels que soient ses
+               en-têtes de cadre. Relevé le 6 septembre 2026 : chatgpt.hereisman.net répondait
+               403 à tout le monde — avec ou sans référent — et restait pourtant le lecteur
+               retenu pour 54 liens de MLBite, parce que seule l'intégrabilité était lue.
+               La tuile du Multivision affichait alors la page d'erreur du navigateur. */
+            if (pol && pol.status >= 400) { lecteursMorts[h] = (lecteursMorts[h] || 0) + 1; continue; }
             if (!(pol && pol.embeddable === false)) return { url: c.url, sauts: saut + 1, media: false };
         }
 
@@ -582,6 +588,7 @@ async function resoudreLecteurEnChaine(depart) {
 }
 
 const lecteurParLien = {};
+const lecteursMorts = {};   // hôte → nombre de fois écarté parce qu'il répond 4xx/5xx
 let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0, extraitsMedia = 0, extraitsProfonds = 0;
 {
     const cible = liensAResoudre.slice(0, EXTRACT_MAX_LIENS);
@@ -609,6 +616,8 @@ let extraitsOk = 0, extraitsVides = 0, extraitsErr = 0, extraitsMedia = 0, extra
         + `${extraitsVides} sans lecteur, ${extraitsErr} injoignables) en ${((Date.now() - t0) / 1000).toFixed(1)} s`
         + (abandonnesFauteDeTemps ? ` — ${abandonnesFauteDeTemps} laisses de cote, budget de ${EXTRACT_BUDGET_MS / 60000} min epuise` : '')
         + ` [${liensAResoudre.length} adresses distinctes au total]`);
+    const morts = Object.entries(lecteursMorts).sort((a, b) => b[1] - a[1]);
+    if (morts.length) console.log('Lecteurs ecartes (reponse 4xx/5xx) : ' + morts.map(([h, n]) => `${h} x${n}`).join(', '));
 }
 
 // ── 3. Écriture ───────────────────────────────────────────────────────────

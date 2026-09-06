@@ -47,39 +47,35 @@ async function main() {
     assert.strictEqual(grid[0].streamLinks.length, 1, 'le lien est rattaché au match officiel');
     ok('flux apparié : liens fusionnés, pas de doublon');
 
-    // ── 2. Ligue déjà couverte par l'API : « Autres Flux » (doublon possible) ──
+    // ── 2. Flux sans match dans la grille : aucune carte, quelle que soit la ligue ──
+    /* La grille, c'est ESPN et les sources de calendrier acceptées ; un scraper n'y
+       attache que des liens. Relevé le 6 septembre 2026 : « Money In The Bank » en
+       DIRECT, « NFL Schedule Release 2021 », « Toronto Raptors vs Denver Nuggets » un
+       samedi de septembre — tous des flux sans calendrier derrière eux. */
+    const { S } = await import('../js/state.js');
     grid = [apiMatch()];
     api.mergeFluxToApi(grid, [scraped({ homeTeam: 'Equipe Inconnue A', awayTeam: 'Equipe Inconnue B' })], true);
-    assert.strictEqual(grid.length, 2, 'le flux non apparié est ajouté');
-    assert.strictEqual(grid[1].league, 'Autres Flux',
-        'MLB est déjà dans la grille : un flux MLB non apparié reste isolé');
-    assert.strictEqual(grid[1].scrapedLeagueName, 'MLB', 'le nom d\'origine reste consultable');
-    ok('ligue couverte par l\'API : le flux non apparié reste dans « Autres Flux »');
-
-    // ── 3. Ligue absente de l'API : le vrai nom de ligue est conservé ───────
+    assert.strictEqual(grid.length, 1, 'ligue présente dans la grille : le flux non apparié ne crée pas de carte');
     grid = [apiMatch({ league: 'NHL', homeTeam: 'Montreal Canadiens', awayTeam: 'Toronto Maple Leafs' })];
     api.mergeFluxToApi(grid, [scraped({ homeTeam: 'Equipe Inconnue A', awayTeam: 'Equipe Inconnue B' })], true);
-    assert.strictEqual(grid.length, 2);
-    assert.strictEqual(grid[1].league, 'MLB', 'aucun match MLB dans la grille : pas de doublon possible');
-    assert.strictEqual(db.leagueTier(grid[1].league), 'main', 'la ligue retrouve son niveau, donc sa place dans le Guide');
-    ok('ligue absente de l\'API : le vrai nom de ligue est conservé');
-
-    // ── 4. Grille vide (ESPN injoignable) : rien ne tombe dans « Autres Flux » ──
+    assert.strictEqual(grid.length, 1, 'ligue absente de la grille : pas de carte non plus');
     grid = [];
     api.mergeFluxToApi(grid, [
-        scraped({ league: 'NFL', homeTeam: 'Dallas Cowboys', awayTeam: 'New York Giants' }),
-        scraped({ league: 'NBA', homeTeam: 'Boston Celtics', awayTeam: 'Miami Heat' })
+        scraped({ league: 'NFL', homeTeam: 'NFL Schedule Release 2021', awayTeam: 'NFL Total Access' }),
+        scraped({ league: 'NBA', homeTeam: 'Toronto Raptors', awayTeam: 'Denver Nuggets', startTime: '18:30' }),
+        scraped({ league: 'WWE', homeTeam: 'Money In The Bank', awayTeam: '', status: 'live' }),
+        scraped({ league: 'Coupe Machin Inconnue', homeTeam: 'A', awayTeam: 'B' })
     ], true);
-    assert.deepStrictEqual(grid.map((m) => m.league), ['NFL', 'NBA'],
-        'ESPN muet : la grille garde les ligues réelles au lieu de tout replier dans « Autres Flux »');
-    ok('API muette : les ligues réelles sont préservées');
+    assert.strictEqual(grid.length, 0, 'grille vide (ESPN muet) : les scrapers ne la remplissent pas à sa place');
+    ok('un flux sans match dans la grille ne crée jamais de carte');
 
-    // ── 5. Ligue inconnue : toujours « Autres Flux » ────────────────────────
-    grid = [];
-    api.mergeFluxToApi(grid, [scraped({ league: 'Coupe Machin Inconnue', homeTeam: 'A', awayTeam: 'B' })], true);
-    assert.strictEqual(grid.length, 1);
-    assert.strictEqual(grid[0].league, 'Autres Flux', 'une ligue non reconnue reste non reconnue');
-    ok('ligue inconnue : « Autres Flux » comme avant');
+    // ── 3. Ces flux restent consultables pour le diagnostic ─────────────────
+    assert.strictEqual(S.unmatchedStreams.length, 4, 'les quatre flux écartés sont gardés de côté');
+    assert.ok(S.unmatchedStreams.some((m) => m.homeTeam === 'Money In The Bank'));
+    grid = [apiMatch()];
+    api.mergeFluxToApi(grid, [scraped()], true);
+    assert.strictEqual(S.unmatchedStreams.length, 0, 'la liste repart de zéro à chaque fusion');
+    ok('les flux écartés sont exposés dans S.unmatchedStreams, remis à zéro à chaque passe');
 
     // ── 6. Matchs sans équipe exploitable : toujours écartés ────────────────
     grid = [];

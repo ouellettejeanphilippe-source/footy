@@ -259,12 +259,14 @@ donc plus l'application.
 - `lienDuMatchPourFlux(s, url)` : retrouve, dans `S.matches`, le lien (`playerUrl`, `topLevel`…) dont l'adresse est celle de la tuile — par `mid` d'abord, puis dans toute la grille. `fallbackToIframe` s'en sert pour lire le lecteur extrait par le serveur et la mesure « refuse l'iframe », qu'une entrée `{ url, name, mid }` ne porte pas.
 
 ### Flux non appariés : `mergeFluxToApi` (`js/api.js`)
-Un flux qui ne correspond à aucun match de la grille officielle reste rangé dans
-« Autres Flux » — c'est le principe API-First (un échec de fusion ne doit pas produire de
-doublon visible). **Exception** : si l'API ne renvoie aucun match pour cette ligue (ESPN
-injoignable, ou ligue absente d'`ESPN_LEAGUES`), aucun doublon n'est possible et le match
-garde le nom de ligue lu dans `data/streams.json`, donc sa place dans le Guide. Couvert
-par `tests/unit_merge.test.js`.
+La grille, c'est ESPN et les sources de calendrier acceptées (`scripts/scrape_schedule.mjs`,
+`js/api.js`) ; les scrapers de flux ne font qu'y **attacher des liens**. Depuis le
+6 septembre 2026, un flux qui ne correspond à aucun match de la grille **ne crée aucune
+carte** — ni dans Live, ni dans le Guide, ni dans « Autres streams ». Il est gardé dans
+`S.unmatchedStreams` (remis à zéro à chaque fusion) et consigné dans le journal des sources,
+pour le diagnostic. Les sections « Ligues secondaires » et « Autres streams » ne contiennent
+donc plus que des matchs de la grille dont la ligue est de niveau `secondary` ou `other`.
+Couvert par `tests/unit_merge.test.js`.
 
 ### Service worker (`sw.js`, `sports-guide-v4`)
 Réseau d'abord, cache en repli. La clé de cache d'une requête de même origine ignore sa
