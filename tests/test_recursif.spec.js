@@ -23,6 +23,26 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 
+/* Attendre une CONDITION, jamais une durée.
+
+   Le premier jet de ces tests dormait 2 à 2,5 secondes puis lisait le résultat. Vert
+   sur ma machine, ROUGE en intégration continue (« Received: "initial" » — la page
+   n'avait ni réussi ni échoué dans le délai) : le runner est plus lent, et la chaîne
+   testée fait un aller-retour réseau complet avant de rendre son verdict.
+
+   Une attente fixe transforme une différence de vitesse en échec ; elle aurait aussi
+   pu faire passer un test pour la mauvaise raison, si le délai avait été plus long que
+   nécessaire. On scrute donc l'état jusqu'à ce qu'il bouge, avec un plafond large. */
+async function attendre(page, sonde, arg, plafondMs) {
+  const fin = Date.now() + (plafondMs || 15000);
+  for (;;) {
+    const v = await page.evaluate(sonde, arg);
+    if (v && v.pret) return v;
+    if (Date.now() > fin) return v;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
 let appSrv, blkSrv, appOrigin, blkOrigin;
 
 test.beforeAll(async () => {
@@ -109,7 +129,7 @@ test('une iframe imbriquée est reconstruite plutôt que bloquée', async ({ pag
   await page.goto(appOrigin + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.__mvReconstruireIframe === 'function', null, { timeout: 30000 });
 
-  const resultat = await page.evaluate(async ({ blk }) => {
+  await page.evaluate(async ({ blk }) => {
     const mod = await import('./js/embed-bridge.js');
     /* En service, le transport est le pont du script utilisateur, sinon les proxys CORS.
        Ici un fetch direct : ce qu'on teste est la cale et la passerelle, pas le choix du
@@ -118,21 +138,26 @@ test('une iframe imbriquée est reconstruite plutôt que bloquée', async ({ pag
 
     const doc = await window.__mvReconstruireIframe(blk + '/page', 0);
     const hote = document.createElement('iframe');
+    hote.id = 'hote-test';
     hote.style.cssText = 'width:400px;height:300px';
     document.body.appendChild(hote);
     hote.srcdoc = doc;
-    await new Promise((r) => setTimeout(r, 2500));
+  }, { blk: blkOrigin });
 
-    const d = hote.contentDocument;
+  const resultat = await attendre(page, () => {
+    const hote = document.getElementById('hote-test');
+    const d = hote && hote.contentDocument;
     const interne = d && d.getElementById('interne');
+    const videoAtteinte = !!(interne && interne.contentDocument && interne.contentDocument.getElementById('la-video'));
     return {
-      niveau1Reconstruit: !!d && /page bloquee/.test(d.body.textContent || ''),
+      pret: videoAtteinte,   // le dernier maillon : tout le reste est acquis avant lui
+      niveau1Reconstruit: !!d && /page bloquee/.test((d.body && d.body.textContent) || ''),
       interneExiste: !!interne,
       interneAsrcdoc: !!(interne && interne.getAttribute('srcdoc')),
       interneAEncoreSrc: !!(interne && interne.getAttribute('src')),
-      videoAtteinte: !!(interne && interne.contentDocument && interne.contentDocument.getElementById('la-video'))
+      videoAtteinte: videoAtteinte
     };
-  }, { blk: blkOrigin });
+  }, null);
 
   expect(resultat.niveau1Reconstruit, 'la page bloquée doit être reconstruite à notre origine').toBeTruthy();
   expect(resultat.interneExiste, 'l\'iframe imbriquée doit exister dans le document reconstruit').toBeTruthy();
@@ -179,18 +204,24 @@ test('une page reconstruite peut encore appeler sa propre API', async ({ page })
   await page.goto(appOrigin + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.__mvReconstruireIframe === 'function', null, { timeout: 30000 });
 
-  const etat = await page.evaluate(async ({ site }) => {
+  await page.evaluate(async ({ site }) => {
     const mod = await import('./js/embed-bridge.js');
     mod.installerReconstructionRecursive((u) => fetch('/__relais?u=' + encodeURIComponent(u)).then((r) => r.text()));
     const doc = await window.__mvReconstruireIframe(site + '/avec-api', 0);
     const f = document.createElement('iframe');
+    f.id = 'cadre-api';
     document.body.appendChild(f);
     f.srcdoc = doc;
-    await new Promise((r) => setTimeout(r, 2000));
-    return f.contentDocument.getElementById('etat').textContent;
   }, { site: blkOrigin });
 
-  expect(etat, 'la page reconstruite doit obtenir son jeton via le pont malgré l\'absence de CORS').toBe('OK:SECRET123');
+  const vu = await attendre(page, () => {
+    const f = document.getElementById('cadre-api');
+    const e = f && f.contentDocument && f.contentDocument.getElementById('etat');
+    const t = e ? e.textContent : 'initial';
+    return { pret: t !== 'initial', etat: t };   // « initial » = la page n'a pas encore tranché
+  }, null);
+
+  expect(vu.etat, 'la page reconstruite doit obtenir son jeton via le pont malgré l\'absence de CORS').toBe('OK:SECRET123');
 });
 
 test('un segment vidéo n\'est jamais relayé en texte', async ({ page }) => {
@@ -204,16 +235,22 @@ test('un segment vidéo n\'est jamais relayé en texte', async ({ page }) => {
   await page.goto(appOrigin + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.__mvReconstruireIframe === 'function', null, { timeout: 30000 });
 
-  const etat = await page.evaluate(async ({ site }) => {
+  await page.evaluate(async ({ site }) => {
     const mod = await import('./js/embed-bridge.js');
     mod.installerReconstructionRecursive((u) => fetch('/__relais?u=' + encodeURIComponent(u)).then((r) => r.text()));
     const doc = await window.__mvReconstruireIframe(site + '/avec-media', 0);
     const f = document.createElement('iframe');
+    f.id = 'cadre-media';
     document.body.appendChild(f);
     f.srcdoc = doc;
-    await new Promise((r) => setTimeout(r, 2000));
-    return f.contentDocument.getElementById('etat').textContent;
   }, { site: blkOrigin });
 
-  expect(etat, 'un .ts ne doit pas être ramené par le canal texte : il en sortirait corrompu').toBe('DIRECT-ECHEC');
+  const vuMedia = await attendre(page, () => {
+    const f = document.getElementById('cadre-media');
+    const e = f && f.contentDocument && f.contentDocument.getElementById('etat');
+    const t = e ? e.textContent : 'initial';
+    return { pret: t !== 'initial', etat: t };
+  }, null);
+
+  expect(vuMedia.etat, 'un .ts ne doit pas être ramené par le canal texte : il en sortirait corrompu').toBe('DIRECT-ECHEC');
 });

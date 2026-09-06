@@ -2104,6 +2104,26 @@ export function finalizeStreamLinks(links) {
         if (isJunkStreamPath(u)) return;
         if (isIndexPageUrl(u)) return;
 
+        /* Enveloppes OnHockey : `np_stream400.php?channel=//vrai-lecteur/…` n'est pas un
+           lecteur, c'est un emballage qui en désigne un. parseOnHockey le déballe déjà,
+           mais les passes GÉNÉRIQUES d'extraction balaient le même tableau et y ramassent
+           l'ancre brute — qui atterrit alors dans le cache telle quelle, sur un hôte
+           (onhockey.tv) qui refuse l'iframe. Résultat mesuré le 5 septembre 2026 : sur
+           396 liens onhockey du cache, 132 étaient des enveloppes non déballées et le
+           hockey n'affichait un lecteur que pour 3 matchs sur 33 — le pire score de tous
+           les sports, contre 98 % en MLB.
+
+           Le déballage est donc fait ICI, à l'entonnoir par lequel tout passe, quelle que
+           soit la passe qui a trouvé le lien. */
+        if (/onhockey\.tv\/np_[a-z0-9_]+\.php/i.test(u)) {
+            var deballe = unwrapOnHockeyPlayer(u);
+            if (deballe && deballe !== u) u = deballe;
+        }
+
+        /* `standings_lr.php` est la page de CLASSEMENT d'OnHockey : jamais un flux. Elle
+           représentait à elle seule 231 des 396 liens onhockey du cache. */
+        if (/onhockey\.tv\/standings_lr\.php/i.test(u)) return;
+
         var key = normalizeStreamUrl(u);
         if (seen[key]) return;
         seen[key] = true;

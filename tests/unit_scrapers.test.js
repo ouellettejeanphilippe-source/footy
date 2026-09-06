@@ -295,6 +295,38 @@ async function main() {
         'le filtre vise le SEGMENT de chemin, pas une sous-chaîne au hasard');
     ok('pages légales (DMCA, contact, confidentialité) écartées des flux');
 
+    // ── OnHockey : enveloppes déballées, classement écarté ──────────────────
+    /* « Je comprends pas pourquoi la MLB, le travail se fait bien, mais pas tant le
+       reste ? » Mesuré le 5 septembre 2026, par sport, matchs ayant au moins un lecteur
+       jouable : MLB 98 % (6,4 lecteurs par match), foot 43 %, football US 29 %, et
+       hockey 9 % — 3 matchs sur 33.
+
+       Cause du hockey, dans le cache : 396 liens onhockey, dont 231 vers
+       `standings_lr.php` (la page de CLASSEMENT, jamais un flux) et 132 enveloppes
+       `np_stream400.php?channel=//vrai-lecteur/…` non déballées, donc posées sur
+       onhockey.tv — un hôte qui refuse l'iframe.
+
+       parseOnHockey déballe pourtant déjà ces enveloppes. Mais les passes GÉNÉRIQUES
+       d'extraction balaient le même tableau et y ramassent l'ancre brute. D'où le
+       traitement à l'entonnoir, par lequel tout passe quelle que soit la passe qui a
+       trouvé le lien. */
+    const onhockey = scrapers.finalizeStreamLinks([
+        { name: 'timstrm', url: 'https://onhockey.tv/np_stream400.php?channel=//epiembeds.online/embed/nhlnetwork-usa' },
+        { name: 'livetv', url: 'https://onhockey.tv/np_stream400.php?channel=//cdnlivetv.is/api/v1/channels/player/?name=nhl' },
+        { name: 'NHL', url: 'https://onhockey.tv/standings_lr.php?channel=USA/NHL' },
+        { name: 'yt', url: 'https://onhockey.tv/np_youtube.php?channel=SfoxJmONsPQ' },
+        { name: 'direct', url: 'https://embedsports.me/nhl/nhl-network-stream-1' }
+    ]);
+    const adresses = onhockey.map((l) => l.url);
+    assert.ok(!adresses.some((u) => /standings_lr/.test(u)), 'la page de classement n\'est pas un flux');
+    assert.ok(!adresses.some((u) => /onhockey\.tv/.test(u)),
+        'plus aucune enveloppe onhockey.tv ne doit subsister : cet hôte refuse l\'iframe (obtenu : '
+        + JSON.stringify(adresses) + ')');
+    assert.ok(adresses.includes('https://epiembeds.online/embed/nhlnetwork-usa'), 'l\'enveloppe rend son vrai lecteur');
+    assert.ok(adresses.includes('https://www.youtube.com/embed/SfoxJmONsPQ'), 'np_youtube rend une adresse YouTube intégrable');
+    assert.strictEqual(adresses.length, 4, 'les quatre vrais lecteurs survivent, le classement seul est écarté');
+    ok('OnHockey : enveloppes déballées à l\'entonnoir, page de classement écartée');
+
     // ── Hôtes dont les pages de match ne répondent jamais ──────────────────
     const cfg = await import('../js/config.js');
     assert.strictEqual(cfg.isMatchPageBlocked('https://footybite.bid/game/qatar-vs-oman-1'), true);
