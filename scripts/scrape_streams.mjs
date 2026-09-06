@@ -168,7 +168,7 @@ function adopterOrigineCanonique(sc, home) {
 
 async function readSourceAt(sc, home) {
     home = adopterOrigineCanonique(sc, home);
-    const pages = getSourcePages(sc, null).filter((pg) => pg.url !== home.url);
+    const pages = getSourcePages(sc, null, home.html).filter((pg) => pg.url !== home.url);
     const htmls = sc.homepageHasMatches === false ? [] : [home];
     for (const pg of pages) {
         try { htmls.push({ url: pg.url, html: await fetchPage(pg.url, { force: true }) }); }

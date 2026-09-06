@@ -1658,6 +1658,7 @@ export function openMod(m,col){
          pas rescanner dix fois. */
       if (doitRelireLaPage(m)) {
           m.relueLocalement = true;
+          m.pageLueA = Date.now();
           var avant = compterFluxUtiles(m);
           /* Relecture FORCÉE : sans cela, le cache local du navigateur renverrait aussitôt
              ce que le serveur avait déjà déposé, et la relecture ne relirait rien. Le

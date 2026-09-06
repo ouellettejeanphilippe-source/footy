@@ -113,6 +113,19 @@ export function playabilityScore(link, ledger) {
     return 1;
 }
 
+/* Combien de temps la tuile attend une vidéo avant de passer à la source suivante.
+
+   « embed.st, soit ça marche pas, soit c'est hyper long… finalement ça marche après x
+   temps » (6 septembre 2026, Firefox). Sa page pèse 640 Ko de script obfusqué, décodé au
+   chargement, plus un moteur pair-à-pair qui cherche des pairs avant de se rabattre sur le
+   CDN : la vidéo vient, mais tard. Avec une patience fixe de 30 s, la tuile quittait la
+   source AVANT qu'elle ne joue, puis la suivante repartait de zéro — d'où « ça marche pas
+   du tout ». Un lien observé en train de jouer, ou dont l'hôte joue le plus souvent
+   (score ≥ 2), mérite la patience longue ; un inconnu ou un douteux garde la courte. */
+export function patienceMs(link, ledger, courte, longue) {
+    return playabilityScore(link, ledger) >= 2 ? longue : courte;
+}
+
 /* Cibles à éprouver pendant un passage : les matchs par ordre de `rank` (0 = en direct,
    1 = imminent, 2 = le reste), au plus `perMatch` liens par match sur des hôtes
    distincts, au plus `perHost` liens par hôte sur tout le passage (un hôte qui sert cent

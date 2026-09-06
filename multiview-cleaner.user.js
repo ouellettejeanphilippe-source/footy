@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.5
-// @description  Nettoie les lecteurs encadres dans le Multiview, remplace le bac a sable quand il est leve, et sert de pont pour afficher les pages qui refusent l'iframe (X-Frame-Options), Firefox inclus.
+// @version      1.6
+// @description  Nettoie les lecteurs encadres dans le Multiview, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
 // @allFrames    true
 // @grant        GM_xmlhttpRequest
 // @grant        GM.xmlHttpRequest
 // @connect      *
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
 (function() {
@@ -20,9 +20,17 @@
         return;
     }
 
-    // Ne pas s'exécuter si on est sur notre propre application (Guide TV) par sécurité
-    if (document.title.includes('Guide TV') || document.querySelector('#marea') || document.querySelector('.epg')) {
-        return;
+    /* Le blocage des popups se pose ICI, avant le premier script de la page
+       (@run-at document-start). Posé à document-idle comme avant, il arrivait après que la
+       régie (Adcash `aclib.runPop` sur embed.st, par exemple) eut gardé sa propre référence
+       à window.open et posé ses écouteurs de clic : « ya moyen de bloquer les popups à même
+       le multiview ? » — depuis l'application, non (une iframe d'origine croisée sans
+       bac à sable n'obéit à rien), mais d'ici, oui, à condition d'arriver le premier. */
+    try { injectPopupBlocker(); } catch (e) {}
+
+    // Ne pas nettoyer notre propre application (Guide TV), par sécurité
+    function estLApplication() {
+        return document.title.includes('Guide TV') || !!document.querySelector('#marea') || !!document.querySelector('.epg');
     }
 
     let cleaned = false;
@@ -44,14 +52,31 @@
        écrase, et une CSP stricte peut refuser le script injecté. C'est un filet, pas un
        mur. Mais entre lever le bac à sable avec ce script et le lever sans, la différence
        est réelle. */
+    var popupsBloques = false; // `var` : appelé avant cette ligne (levage), un `let` serait encore inaccessible
     function injectPopupBlocker() {
+        /* Une seule fois : cette fonction était rappelée à chaque passe de nettoyage (toutes
+           les 500 ms pendant 15 s), et chaque passe ajoutait ses écouteurs de clic. */
+        if (popupsBloques) return;
+        popupsBloques = true;
         // Injecter un script pour bloquer window.open dans le contexte de la page principale (hors bac à sable Tampermonkey)
         const script = document.createElement('script');
         script.textContent = `
-            window.open = function() {
-                console.log('[Multiview Cleaner] Popup bloqué (window.open)');
-                return null;
-            };
+            /* Non réassignable : une régie qui fait « window.open = original » après nous
+               ne récupère rien. */
+            try {
+                Object.defineProperty(window, 'open', {
+                    configurable: false, writable: false, enumerable: true,
+                    value: function() {
+                        console.log('[Multiview Cleaner] Popup bloqué (window.open)');
+                        return null;
+                    }
+                });
+            } catch (e) {
+                window.open = function() {
+                    console.log('[Multiview Cleaner] Popup bloqué (window.open)');
+                    return null;
+                };
+            }
 
             /* Détournement de l'onglet entier : le travers le plus pénible de ces sites, et
                ce que 'allow-top-navigation' refusait quand le bac à sable était posé. On
@@ -88,17 +113,23 @@
                 }
             } catch (e) {}
         `;
-        var racine = document.head || document.documentElement;
-        if (racine) {
+        /* À document-start, <head> n'existe pas encore ; <html> presque toujours. Sinon, on
+           réessaie au prochain tour, avant que le premier script de la page ne s'exécute. */
+        var poser = function() {
+            var racine = document.head || document.documentElement;
+            if (!racine) { setTimeout(poser, 0); return; }
             racine.appendChild(script);
             // Clean up the script tag to keep DOM tidy
             script.remove();
-        }
+        };
+        poser();
 
         /* Un lien 'target="_top"' ou '_parent' détourne l'onglet sans passer par
            window.open : on le ramène au cadre courant. Le gestionnaire de clic ci-dessous
            couvrait déjà '_blank', pas ceux-là. */
-        document.addEventListener('click', function(e) {
+        /* Sur `window`, en phase de capture : c'est le tout premier gestionnaire appelé,
+           avant ceux que la page pose sur document ou body. */
+        window.addEventListener('click', function(e) {
             let t = e.target;
             while (t && t.tagName !== 'A') t = t.parentElement;
             if (t && (t.target === '_top' || t.target === '_parent')) {
@@ -108,7 +139,7 @@
         }, true);
 
         // Intercepter et bloquer les clics sur les liens ouvrant de nouveaux onglets
-        document.addEventListener('click', function(e) {
+        window.addEventListener('click', function(e) {
             let target = e.target;
             while (target && target.tagName !== 'A') {
                 target = target.parentElement;
@@ -545,15 +576,8 @@
         derniereLecture = joue;
         try { window.top.postMessage({ __mv: 'video_state', playing: joue, host: location.hostname }, '*'); } catch (e) {}
     }
-    setInterval(signalerLecture, 2000);
-
     function findAndClean() {
         if (cleaned) return;
-
-
-        injectPopupBlocker();
-
-
 
         // Chercher une vidéo
         const videos = Array.from(document.querySelectorAll('video')).filter(v => v.offsetWidth > 50 || v.offsetHeight > 50);
@@ -644,7 +668,15 @@
         }
     }
 
-    relancerRecherche();
+    /* Le nettoyage et le signal de lecture attendent le DOM ; le blocage des popups, lui,
+       est déjà posé (voir plus haut). */
+    function demarrer() {
+        if (estLApplication()) return;
+        setInterval(signalerLecture, 2000);
+        relancerRecherche();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', demarrer, { once: true });
+    else demarrer();
 
 })();
 
@@ -675,7 +707,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.5';
+    var VERSION = '1.6';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {
@@ -734,8 +766,11 @@
         }
     });
 
-    // L'application peut avoir fini de se charger avant ce script (@run-at document-idle) :
-    // on s'annonce aussi spontanement, sans attendre son bonjour.
-    if (isGuideApp()) announce();
-    else setTimeout(function () { if (isGuideApp()) announce(); }, 1500);
+    // Le script tourne a document-start, avant le DOM de l'application : on s'annonce
+    // spontanement une fois le document lu, puis une seconde fois par prudence, sans
+    // attendre son bonjour (auquel on repond aussi, ci-dessus).
+    function annoncerSiApplication() { if (isGuideApp()) announce(); }
+    function annoncer() { annoncerSiApplication(); setTimeout(annoncerSiApplication, 1500); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', annoncer, { once: true });
+    else annoncer();
 })();

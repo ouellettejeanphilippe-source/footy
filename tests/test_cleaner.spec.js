@@ -34,7 +34,13 @@ const SITE = `<html><body style="margin:0">
   <header id="decor" style="height:80px;background:#900">BANDEAU DU SITE</header>
   <div id="avis" style="height:40px">Stream will go live 30 minutes before the match starts.</div>
   <div id="zone"></div>
+  <a id="lien-blank" href="/pub" target="_blank" style="display:block;height:30px">Ouvrir la pub</a>
+  <button id="bouton-pop" style="display:block;height:30px" onclick="window.__resultatOpen = (window.open('/pub', '_blank') !== null)">Popunder</button>
   <script>
+    /* Ce que fait une régie : garder SA référence à window.open dès le premier script,
+       pour l'appeler plus tard au clic. Si le script arrive après, cette référence est
+       la vraie fonction. */
+    window.__openDuSite = window.open;
     window.addEventListener('message', function (e) {
       if (e.data === 'poser_lecteur') {
         var v = document.createElement('video');
@@ -50,8 +56,14 @@ test.beforeAll(async () => {
   server = http.createServer((req, res) => {
     const rel = decodeURIComponent(req.url.split('?')[0]);
     if (rel === '/__site-stream') {
+      /* Le script est servi comme PREMIER script du document, avant tout script du site :
+         c'est ce que fait Tampermonkey à @run-at document-start (<html> existe, <head>
+         pas encore). Un script d'initialisation Playwright tournerait avant même <html>,
+         ce qu'aucun gestionnaire d'extensions ne fait, et le blocage des popups n'aurait
+         nulle part où se poser à temps. */
+      const avecScript = !/(^|[?&])sans=1/.test(req.url);
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      return res.end(SITE);
+      return res.end(avecScript ? SITE.replace('<html>', '<html><script>' + SCRIPT + '</script>') : SITE);
     }
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end('<html><body style="margin:0"></body></html>');
@@ -66,23 +78,54 @@ test.afterAll(async () => { await new Promise((r) => server.close(r)); });
 
 /* Monte une tuile : page hôte sur une origine, cadre sur l'autre, script injecté dans
    tous les cadres comme le ferait Tampermonkey. */
-async function monterTuile(page, avecHorloge) {
+async function monterTuile(page, avecHorloge, sansScript) {
   /* L'horloge doit être installée AVANT toute navigation, sinon elle ne gouverne pas les
      minuteries que le script pose à son démarrage — et un test qui avance une horloge
      qu'il ne contrôle pas ne prouve rien. */
   if (avecHorloge) await page.clock.install();
-  await page.addInitScript(SCRIPT);
   await page.goto(origin + '/hote');
   await page.evaluate((src) => {
     const f = document.createElement('iframe');
     f.id = 'tuile'; f.src = src;
     f.setAttribute('style', 'width:800px;height:600px;border:0');
     document.body.appendChild(f);
-  }, autreOrigine + '/__site-stream');
+  }, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : ''));
   const cadre = await (await page.locator('#tuile').elementHandle()).contentFrame();
   await cadre.waitForSelector('#decor');
   return cadre;
 }
+
+/* Fenêtres surgissantes. L'application ne peut rien contre elles (iframe d'origine
+   croisée, sans bac à sable) ; le script, lui, est dans la page — à condition d'arriver
+   AVANT son premier script, qui garde sa référence à window.open. Différentiel : sans le
+   script, un vrai clic ouvre la fenêtre (sinon le test ne prouverait rien). */
+async function tenterPopups(page, cadre) {
+  let popups = 0;
+  page.on('popup', () => { popups++; });
+  await cadre.click('#bouton-pop');
+  await cadre.click('#lien-blank');
+  await page.waitForTimeout(600);
+  const parReference = await cadre.evaluate(() => {
+    try { return window.__openDuSite.call(window, '/pub', '_blank') !== null; } catch (e) { return false; }
+  });
+  await page.waitForTimeout(300);
+  return { popups, ouverte: await cadre.evaluate(() => window.__resultatOpen), parReference };
+}
+
+test('sans le script, un vrai clic ouvre bien une fenêtre (le différentiel a un sens)', async ({ page }) => {
+  const cadre = await monterTuile(page, false, true);
+  const r = await tenterPopups(page, cadre);
+  expect(r.ouverte).toBe(true);
+  expect(r.popups).toBeGreaterThan(0);
+});
+
+test('avec le script, ni window.open, ni le lien _blank, ni la référence gardée n\'ouvrent quoi que ce soit', async ({ page }) => {
+  const cadre = await monterTuile(page, false, false);
+  const r = await tenterPopups(page, cadre);
+  expect(r.ouverte).toBe(false);
+  expect(r.parReference).toBe(false);
+  expect(r.popups).toBe(0);
+});
 
 /* « Vidéo en lecture » : le seul signal que la tuile puisse recevoir sur ce qui joue.
    Depuis l'application, le cadre est opaque ; le script, lui, y est. Il doit dire à la
