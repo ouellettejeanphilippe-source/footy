@@ -56,9 +56,13 @@ async function main() {
     const miroirs = cfg.SOURCE_MIRRORS.footybite || [];
     assert.ok(/footybite\.im/.test(miroirs[0]),
         'le .im doit être le premier miroir essayé');
-    assert.ok(miroirs.some((u) => /footybite\.bid/.test(u)),
-        'le .bid reste en secours : il sert l\'accueil, et un domaine peut retomber en marche');
-    ok('la source vise le .im, avec le .bid en secours');
+    /* Le .bid est retiré de partout le 6 septembre 2026, à la demande de l'utilisateur : il ne
+       fait plus que rediriger, ses pages de match répondent 403, et le garder en secours
+       masquait le déménagement (l'accueil « livrait » ses matchs par redirection, aucun
+       miroir n'était promu, aucune page de match n'était lue). */
+    assert.ok(!miroirs.some((u) => /footybite\.bid/.test(u)),
+        'le .bid ne doit plus figurer parmi les miroirs');
+    ok('la source vise le .im, sans le .bid');
 
     console.log(`unit_footybitedomaine: ${n} groupes de tests OK`);
     process.exit(0);

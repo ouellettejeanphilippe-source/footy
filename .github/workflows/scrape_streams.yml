@@ -2,7 +2,10 @@ name: Hourly stream links prefetch
 
 on:
   schedule:
-    - cron: '17 * * * *' # toutes les heures (décalé de :00 pour éviter la congestion des runners)
+    # Deux fois par heure (6 septembre 2026) : les sites publient leurs liens dans l'heure
+    # qui précède le coup d'envoi, et un cache horaire les manquait pour la moitié des
+    # matchs. Un passage dure ~13 min ; décalé de :00 pour éviter la congestion des runners.
+    - cron: '17,47 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -51,6 +54,18 @@ jobs:
       - name: Verify which players actually play
         run: node scripts/verify_players.mjs
         continue-on-error: true
+
+      # Le passage de 14 h 10 (6 septembre 2026) a produit un cache frais et n'a pas pu le
+      # pousser : main avait bougé pendant les huit minutes du scrape (fusions de PR,
+      # commit de la grille), et l'action de commit ne rebase pas -> « non-fast-forward »,
+      # cache perdu, et l'application est restée deux heures sur des liens périmés. On
+      # met de côté le fichier produit, on se replace sur main, on le remet : en cas de
+      # conflit sur le fichier lui-même, la version produite à l'instant l'emporte.
+      - name: Rebase on latest main before committing
+        run: |
+          git stash push --include-untracked -- data/streams.json domains.json || true
+          git pull --rebase origin main
+          git stash pop || { git checkout --theirs -- data/streams.json domains.json; git add data/streams.json domains.json; git stash drop; }
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5

@@ -86,6 +86,18 @@ async function main() {
     ok('shouldPromoteSource exige des matchs livrés, pas seulement un code 200');
   }
 
+  // ── Origine canonique : un site qui a déménagé le dit lui-même ──────────
+  /* Relevé le 6 septembre 2026 : footybite.bid redirige vers footybite.im et ses pages de
+     match répondent 403 ; la page d'accueil, elle, livre ses matchs, donc aucun miroir
+     n'était promu et aucune page de match n'était lue. */
+  assert.strictEqual(C.canonicalOrigin('<html><head><link rel="canonical" href="https://footybite.im"></head></html>'), 'https://footybite.im');
+  assert.strictEqual(C.canonicalOrigin('<html><head><link href="https://footybite.im/x" rel="canonical"></head></html>'), 'https://footybite.im', 'attributs dans l\'autre ordre');
+  assert.strictEqual(C.canonicalOrigin('<meta property="og:url" content="https://footybite.im/game/a">'), 'https://footybite.im', 'og:url en repli');
+  assert.strictEqual(C.canonicalOrigin('<html><body>rien</body></html>'), '', 'sans déclaration : rien');
+  assert.strictEqual(C.canonicalOrigin('<link rel="canonical" href="javascript:alert(1)">'), '', 'seul http(s) compte');
+  assert.strictEqual(C.canonicalOrigin(null), '');
+  ok('canonicalOrigin : lit canonical puis og:url, ne rend qu\'une origine http(s)');
+
   console.log('unit_mirrors: ' + n + ' groupes de tests OK');
   process.exit(0);
 }
