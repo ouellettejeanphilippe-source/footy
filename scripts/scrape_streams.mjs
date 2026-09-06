@@ -73,7 +73,7 @@ const config = await import('../js/config.js');
 const utils = await import('../js/utils.js');
 const match = await import('../js/match.js');
 
-const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, canonicalOrigin } = config;
+const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, canonicalOrigin, sourceIdPourHote } = config;
 const { fetchPage } = utils;
 
 const parsers = {
@@ -130,7 +130,7 @@ async function fetchWithMirrors(id, skip) {
         // Adresses déjà éprouvées et stériles lors de cette exécution : inutile d'y revenir.
         if (skip && skip.includes(url)) { dead.push(url); continue; }
         try {
-            const html = await fetchPage(url, { force: true });
+            const html = await fetchPage(url, { force: true, soft404: true });
             applySourceUrl(id, url);
             mirrorFindings[id] = { winner: url, dead: dead.slice(), candidates: candidates.slice() };
             return { html, url };
@@ -171,7 +171,7 @@ async function readSourceAt(sc, home) {
     const pages = getSourcePages(sc, null, home.html).filter((pg) => pg.url !== home.url);
     const htmls = sc.homepageHasMatches === false ? [] : [home];
     for (const pg of pages) {
-        try { htmls.push({ url: pg.url, html: await fetchPage(pg.url, { force: true }) }); }
+        try { htmls.push({ url: pg.url, html: await fetchPage(pg.url, { force: true, soft404: true }) }); }
         catch (e) { console.log(`  [${sc.id}] sous-page KO ${pg.url}: ${String(e && e.message ? e.message : e).split('\n')[0]}`); }
     }
     let list = [];
@@ -293,7 +293,11 @@ if (!NO_SUBPAGES) {
                     const html = await fetchPageOnce(u);
                     m.pagesOk++;
                     let srcId = m.source;
-                    try { const host = new URL(u).hostname; const sc = SCRAPERS_CONFIG.find((c) => host.indexOf(new URL(c.url).hostname.replace(/^(www|v2|app)\./, '')) >= 0); if (sc) srcId = sc.id; } catch (e) {}
+                    /* L'identité d'une source englobe ses miroirs : sans cela, un domaine
+                       frère (soccersurge.io pour sportsurge) n'était rattaché à personne et
+                       ses liens étaient comptés sous la source qui avait DÉCOUVERT le match.
+                       Voir sourceIdPourHote (js/config.js). */
+                    try { const trouve = sourceIdPourHote(new URL(u).hostname); if (trouve) srcId = trouve; } catch (e) {}
                     const ctx = Object.assign({}, m, { matchUrl: u, source: srcId, streamLinks: [] });
                     const links = scrapers.extractStreamLinks(html, ctx) || [];
                     /* `srcId` (calculé juste au-dessus) est le domaine réellement visité pour

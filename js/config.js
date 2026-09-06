@@ -41,7 +41,14 @@ export var FLEXFITNESS_URL = 'https://flexfitness.fit/';
 export var SOURCE_MIRRORS = {
     footybite: ['https://footybite.im/'],   // .bid retiré le 6 septembre 2026 : il ne fait plus que rediriger, et ses pages de match répondent 403
     mlbbite: ['https://mlbbite.plus/'],
-    sportsurge: ['https://v2.sportsurge.net/', 'https://sportsurge.net/'],
+    sportsurge: ['https://v2.sportsurge.net/', 'https://sportsurge.net/',
+        /* Bras soccer de Sportsurge, retenu en dernier recours le 6 septembre 2026 : c'est le
+           seul de ses domaines joignable depuis un centre de données (v2.sportsurge.net y
+           rend 403), et il sert sa grille — 53 liens de match — sous un statut 404, d'où
+           `soft404` (voir statutAcceptable, js/fetcher.js). Placé après les autres : sa
+           grille est surtout du football, là où sportsurge.net couvre tous les sports. */
+        'https://soccersurge.io/'
+    ],
     buffstreams: ['https://app.buffstreams.is/indexcracked29'],
     streameast: ['https://v2.gostreameast.is/', 'https://v2.streameast.ga/'],
     onhockey: ['https://onhockey.tv/'],
@@ -297,6 +304,32 @@ export function isApiEndpoint(url) {
    js/match.js puisse s'en servir sans tirer tout le graphe des modules ; ré-exporté ici
    pour ses appelants historiques. */
 export { sportOfLeague };
+
+/* Quelle source sert cet hôte ? Son adresse courante, mais AUSSI ses miroirs.
+
+   Sans les miroirs, un domaine frère n'était rattaché à personne. Mesuré le 6 septembre
+   2026 : les liens trouvés sur `soccersurge.io` — page atteinte comme adresse alternative
+   d'un match — étaient comptés sous « footybite », la source qui avait DÉCOUVERT le match,
+   faute de reconnaître le domaine. Aucun lien n'était perdu, mais le relevé par source
+   était faux, et c'est sur ce relevé qu'on décide quelle source est en panne. */
+export function sourceIdPourHote(hote) {
+    var h = String(hote || '').toLowerCase().replace(/^(www|v2|app)\./, '');
+    if (!h) return '';
+    var candidats = [];
+    SCRAPERS_CONFIG.forEach(function(sc) {
+        var adresses = [sc.url].concat(SOURCE_MIRRORS[sc.id] || []);
+        adresses.forEach(function(u) {
+            var hu = '';
+            try { hu = new URL(u).hostname.toLowerCase().replace(/^(www|v2|app)\./, ''); } catch (e) { return; }
+            if (hu && (h === hu || h.indexOf(hu) >= 0 || hu.indexOf(h) >= 0)) candidats.push({ id: sc.id, n: hu.length });
+        });
+    });
+    if (!candidats.length) return '';
+    /* Le plus long hôte reconnu gagne : « sportsurge.net » l'emporte sur un fragment plus
+       court qui matcherait par hasard. */
+    candidats.sort(function(a, b) { return b.n - a.n; });
+    return candidats[0].id;
+}
 
 /* Pages à télécharger pour une source. `sports` = liste des sports à couvrir (null = tous) ;
    une page sans sport connu, ou marquée 'other', se lit toujours. `homeHtml` = l'accueil

@@ -128,7 +128,7 @@ export function fetchSourcePages(scraper, sports) {
     function tryBase() {
         if (i >= candidates.length) return Promise.reject(new Error(errs.join(' | ') || 'Aucune URL'));
         var url = candidates[i++];
-        return fetchPage(url).then(function(html) {
+        return fetchPage(url, { soft404: true }).then(function(html) {
             if (url !== scraper.url) {
                 lg('Miroir actif ' + scraper.id, url);
                 applySourceUrl(scraper.id, url);
@@ -144,7 +144,7 @@ export function fetchSourcePages(scraper, sports) {
         var out = scraper.homepageHasMatches === false ? [] : [home];
         // Sous-pages en parallèle (petit nombre : seulement les sports du jour)
         return Promise.allSettled(pages.map(function(pg) {
-            return fetchPage(pg.url).then(function(html) { return { url: pg.url, html: html }; });
+            return fetchPage(pg.url, { soft404: true }).then(function(html) { return { url: pg.url, html: html }; });
         })).then(function(res) {
             res.forEach(function(r, k) {
                 if (r.status === 'fulfilled') out.push(r.value);
