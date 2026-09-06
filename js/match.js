@@ -408,6 +408,61 @@ export function debugMatchPair(m1, m2) {
 /* Mots trop répandus pour identifier une équipe à eux seuls (validation croisée). */
 var GENERIC_TEAM_WORDS = ['state', 'north', 'south', 'east', 'west', 'central', 'northern', 'southern', 'eastern', 'western', 'university', 'college', 'saint', 'the', 'and'];
 
+/* Décor et publicité déguisés en lecteurs : une adresse qui sert à plusieurs SPORTS.
+
+   « Fais une règle qui les pogne tous sans pogner de faux streams » (6 septembre 2026).
+   Mesuré sur le cache de 17 h 44 (410 matchs, 1 876 liens) : la médiane des matchs pourvus
+   était de UN seul lien, et pour 50 d'entre eux ce lien unique était le même pour tout le
+   monde. Quatre adresses à elles seules portaient 132 liens :
+
+       74 matchs  dcbbwymp1bhlf.cloudfront.net/?wbbcd=1244494   (bandeau de footybite)
+       35 matchs  hai8g.com/4/8553101                           (régie, format /4/NNNN)
+       16 matchs  omg10.com/4/9020608//
+        7 matchs  hai8g.com/4/11695852
+
+   Ouvrir une de ces fiches montrait « 1 flux » et menait à une page de publicité.
+
+   Le discriminant n'est pas le partage lui-même : de vraies chaînes sont légitimement
+   partagées entre matchs — « NHL Network » sert cinq rencontres de hockey, le flux Sky
+   Sports F1 sert les séances d'un même week-end. Ce qui trahit le décor, c'est de traverser
+   les SPORTS : le bandeau de footybite apparaît en soccer, en cricket, en tennis, en MLB et
+   au catch, tandis qu'une vraie chaîne reste dans sa famille. Vérifié sur ces données : la
+   règle écarte les quatre adresses et garde les neuf chaînes légitimes, sans exception.
+
+   Fonction pure, sans état : la liste des matchs suffit à la décider. */
+export function adressesNonSpecifiques(matches) {
+  var familles = {};
+  (matches || []).forEach(function(m) {
+    if (!m) return;
+    var fam = sportFamily(sportOfLeague(m.league || ''));
+    (m.streamLinks || []).forEach(function(l) {
+      if (!l || !l.url || l.topLevel) return; // un lien « Page du match » est déjà marqué comme tel
+      if (!familles[l.url]) familles[l.url] = {};
+      familles[l.url][fam] = true;
+    });
+  });
+  var out = {};
+  Object.keys(familles).forEach(function(u) {
+    /* « other » ne prouve rien : c'est le fourre-tout des ligues qu'on ne reconnaît pas.
+       Une adresse ne doit pas être écartée sur ce seul indice. */
+    var fams = Object.keys(familles[u]).filter(function(f) { return f !== 'other'; });
+    if (fams.length >= 2) out[u] = true;
+  });
+  return out;
+}
+
+/* Retire ces adresses de tous les matchs. Rend le nombre de liens écartés. */
+export function retirerLiensDeDecor(matches, ecartees) {
+  var n = 0;
+  (matches || []).forEach(function(m) {
+    if (!m || !Array.isArray(m.streamLinks)) return;
+    var avant = m.streamLinks.length;
+    m.streamLinks = m.streamLinks.filter(function(l) { return !(l && l.url && ecartees[l.url]); });
+    n += avant - m.streamLinks.length;
+  });
+  return n;
+}
+
 /* Famille de sport pour l'appariement : deux étiquettes de sources différentes pour une
    même compétition ne doivent pas se repousser. */
 export function sportFamily(sport) {

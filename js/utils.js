@@ -1,7 +1,7 @@
 import { fetchSubPages } from './scrapers.js';
 import { S } from './state.js';
 import { PROXIES, resolveUrl } from './config.js';
-import { inspectPageContent, orderProxies, recordProxyResult, DEFAULT_PROXY_TIMEOUT } from './fetcher.js';
+import { inspectPageContent, orderProxies, recordProxyResult, DEFAULT_PROXY_TIMEOUT, statutAcceptable } from './fetcher.js';
 import { getBridgeStatus, fetchViaBridge } from './embed-bridge.js';
 import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
 import { userPrefs, buildEPG } from './ui.js';
@@ -340,7 +340,10 @@ export function fetchPage(url, opts){
         fetch(pu, { signal: ctrl.signal, headers: headers, credentials: 'omit' })
           .then(function(r) {
               status = r.status;
-              if (!r.ok) throw new Error('HTTP ' + r.status);
+              /* Un « introuvable » qui sert quand même la grille du site n'est pas un
+                 échec : voir statutAcceptable (js/fetcher.js). Réservé à la découverte
+                 des listes, jamais aux pages de match. */
+              if (!statutAcceptable(r.status, opts)) throw new Error('HTTP ' + r.status);
               return r.text();
           })
           .then(function(t) {

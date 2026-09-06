@@ -73,6 +73,32 @@ export function buildProxyList(opts) {
 /* Renvoie null si le contenu semble être la vraie page, sinon un objet
    { reason, proxyFault } : proxyFault=true quand la faute est clairement celle
    du transport (page pub, clé manquante, stub 301…) plutôt que du site cible. */
+/* Une réponse « introuvable » qui sert quand même la grille du site.
+
+   Mesuré le 6 septembre 2026 : `soccersurge.io` — le bras soccer de Sportsurge, et le seul
+   de ses domaines joignable depuis un centre de données, là où `v2.sportsurge.net` rend
+   403 — répond **404 sur toutes ses adresses**, page d'accueil comprise, tout en servant
+   181 Ko contenant 53 liens de match. `fetchPage` jetait cette réponse sur son seul code
+   HTTP, avant même de regarder le corps : la grille était perdue.
+
+   Mais accepter un 404 partout serait pire que le mal. Ce site sert la MÊME grille sur
+   n'importe quel chemin, y compris inventé (`/nexiste-pas-0000` rend les mêmes 53 liens) :
+   accepter ce corps pour une PAGE DE MATCH y injecterait 53 liens étrangers, attribués au
+   mauvais match. C'est exactement le défaut qu'on a passé la semaine à démêler.
+
+   D'où la frontière : `soft404` n'est demandé QUE par la phase de découverte des listes,
+   où un corps sans match ne coûte rien — la source est jugée sur les matchs qu'elle livre,
+   pas sur son code HTTP, et un miroir stérile est déjà écarté par ce chemin-là. Les pages
+   de match, elles, gardent la règle stricte.
+
+   Refusé aussi pour 403 et 429 : ce sont des refus, ils ne portent pas de contenu (relevé
+   le même jour : le 403 de sportsurge fait 5 Ko de page d'erreur). */
+export function statutAcceptable(status, opts) {
+    if (status >= 200 && status < 300) return true;
+    if (!opts || !opts.soft404) return false;
+    return status === 404 || status === 410;
+}
+
 export function inspectPageContent(text) {
     if (text === null || text === undefined) return { reason: 'vide', proxyFault: true };
     var t = String(text);
