@@ -5,8 +5,8 @@
      1. Jetons (couleurs, rayons, dimensions) — surchargés par initPrefs (js/multiview.js)
      2. Base, typographie, utilitaires
      3. Boutons, champs, pastilles
-     4. En-tête et navigation (bureau : haut ; mobile : barre du bas)
-     5. Barre d'outils (recherche, date, ligues)
+     4. En-tête et navigation (bureau : onglets en haut ; mobile : barre du bas)
+     5. (retirée le 6 septembre 2026 : plus de barre d'outils en haut de page)
      6. Vue Live : sections et cartes (« Prime Video »), puis affiche verticale
      7. Vue Guide : grille temporelle
      8. Fiche de match (modale / feuille mobile) et liste des flux
@@ -55,7 +55,6 @@
 
   /* Dimensions de la coquille */
   --hdr-height: 56px;
-  --toolbar-height: 48px;
   --bottom-nav: 60px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -173,29 +172,29 @@ select.btn, .select {
 .lchip, .vsep, .tl, .chan-col, .chan-list { display: none; }
 
 /* ── 4. En-tête et navigation ─────────────────────────────────────────────── */
+/* Haut de page nu (6 septembre 2026) : ni marque, ni recherche, ni pastilles de ligues,
+   ni date. L'en-tête ne porte que les onglets — Live, Guide, Lecteur, Plus — centrés,
+   gros, et nommés en clair. */
 .app-header {
   height: var(--hdr-height); flex-shrink: 0;
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-  padding: 0 16px; gap: 12px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 16px;
   background: var(--hdr-bg); backdrop-filter: var(--hdr-blur); -webkit-backdrop-filter: var(--hdr-blur);
   border-bottom: var(--hdr-border); box-shadow: var(--hdr-shadow);
   position: relative; z-index: 60;
 }
-.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 800; font-size: 16px; letter-spacing: -0.3px; justify-self: start; }
-.brand-ic { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), #5e5ce6); color: #fff; box-shadow: 0 4px 12px var(--accent-glow); flex-shrink: 0; }
-.brand-ic svg { width: 16px; height: 16px; }
 
-.nav-links { display: flex; align-items: center; gap: 4px; justify-self: center; }
+.nav-links { display: flex; align-items: center; gap: 6px; }
 .nav-btn {
   background: transparent; border: none; box-shadow: none;
-  padding: 8px 14px; min-height: 36px; border-radius: 9px;
-  font-weight: 600; font-size: 14px; color: var(--muted2);
+  padding: 10px 18px; min-height: 42px; border-radius: 10px;
+  font-weight: 600; font-size: 15px; color: var(--muted2);
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; position: relative;
   transition: color var(--t-fast), background var(--t-fast);
 }
 .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-.nav-btn .nav-ic { display: inline-flex; width: 18px; height: 18px; flex-shrink: 0; }
-.nav-btn .nav-ic svg { width: 18px; height: 18px; }
+.nav-btn .nav-ic { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; }
+.nav-btn .nav-ic svg { width: 20px; height: 20px; }
 .nav-btn.active-toggle { color: var(--text) !important; background: rgba(255,255,255,0.1) !important; border: none !important; box-shadow: none !important; }
 .nav-btn.active-toggle::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -10px; height: 2px; border-radius: 2px; background: var(--accent); }
 /* Lecteur : rouge tant que des flux jouent, pour retrouver la Multivision d'un coup d'œil */
@@ -220,51 +219,10 @@ select.btn, .select {
 .secondary-actions .nav-btn { width: 100%; justify-content: flex-start; padding: 10px 12px; font-weight: 500; }
 .secondary-actions .nav-btn.active-toggle::after { display: none; }
 
-/* ── 5. Barre d'outils ────────────────────────────────────────────────────── */
-.toolbar { display: none; flex-direction: column; gap: 6px; padding: 8px 16px 6px; flex-shrink: 0; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.15); }
-body[data-view="live"] .toolbar, body[data-view="all"] .toolbar { display: flex; }
-.toolbar-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; }
-
-.search-box { position: relative; display: flex; align-items: center; flex: 1 1 220px; min-width: 120px; max-width: 420px; }
-.search-box .search-ic { position: absolute; left: 10px; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
-.search-box input {
-  width: 100%; min-height: 34px; padding: 6px 30px 6px 32px; font-size: 13px;
-  border-radius: 9px; border: 1px solid var(--border2); background: rgba(255,255,255,0.05); color: var(--text);
-  transition: border-color var(--t-fast), background var(--t-fast);
-  -webkit-appearance: none; appearance: none;
-}
-.search-box input::-webkit-search-cancel-button { display: none; }
-.search-box input:focus { outline: none; border-color: var(--accent); background: rgba(255,255,255,0.08); }
-.search-box input::placeholder { color: rgba(148, 163, 184, 0.75); }
-.search-clear { position: absolute; right: 4px; width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent; color: var(--muted); font-size: 12px; display: none; align-items: center; justify-content: center; }
-.search-clear:hover { background: rgba(255,255,255,0.1); color: var(--text); }
-.search-box.has-value .search-clear { display: inline-flex; }
-
-.date-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; }
-.date-pill-wrap { position: relative; }
-.date-pill { font-weight: 700; font-size: 13px; min-width: 112px; min-height: 34px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--border2); background: var(--btn-bg); color: var(--text); text-align: center; }
-.date-pill:hover { background: rgba(255,255,255,0.1); }
-body:not([data-today="false"]) .date-pill { border-color: rgba(56,189,248,0.35); }
-.date-input { position: absolute; left: 50%; bottom: 0; width: 0; height: 0; border: none; padding: 0; opacity: 0; pointer-events: none; }
-
-.chips { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; flex-shrink: 0; scrollbar-width: none; flex-wrap: nowrap; padding: 2px 0 4px; }
-.chips::-webkit-scrollbar { display: none; }
-.chips:empty { display: none; }
-.sport-btn {
-  flex: 0 0 auto;
-  border-radius: 999px !important; padding: 6px 12px !important; min-height: 30px !important; font-size: 12.5px !important; font-weight: 600 !important;
-  background: rgba(255,255,255,0.05) !important; border: 1px solid transparent !important; box-shadow: none !important; color: var(--muted2) !important;
-  gap: 6px !important;
-}
-.sport-btn:hover { background: rgba(255,255,255,0.1) !important; color: var(--text) !important; transform: none !important; filter: none !important; }
-.sport-btn.active-toggle { background: rgba(255,255,255,0.14) !important; color: var(--text) !important; border-color: rgba(255,255,255,0.18) !important; }
-.sport-btn.active-toggle.sport-all { background: var(--accent) !important; color: #fff !important; border-color: transparent !important; }
-.sport-btn .sb-n { opacity: 0.7; font-weight: 500; font-size: 11px; }
-
-.missing-scan { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); padding: 2px 0; }
-.missing-scan .ms-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; min-width: 60px; }
-.missing-scan .ms-bar > i { display: block; height: 100%; background: var(--accent); transition: width var(--t-med); }
-#btn-find-missing[disabled] { opacity: 0.6; cursor: progress; }
+/* ── 5. (Barre d'outils retirée) ──────────────────────────────────────────
+   Recherche, rafraîchissement, liens manquants, date et pastilles de ligues ne sont
+   plus dans la coquille (index.html). Le code qui les servait (setSearchQuery,
+   renderSportChips, changeTargetDate…) reste, pour l'interface classique. */
 
 /* ── 6. Vue Live : sections et cartes ─────────────────────────────────────── */
 .epg { flex: 1; display: flex; overflow: hidden; position: relative; min-height: 0; }
@@ -575,12 +533,64 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .domain-row .dr-bar > i { display: block; height: 100%; background: var(--accent); }
 
 /* ── 10. Multivision, panneau latéral, Investigator, débogage ─────────────── */
-#mv-toolbar .nav-btn { min-height: 34px; padding: 6px 9px; border-radius: 8px; }
-#mv-toolbar .nav-btn.active-toggle::after { display: none; }
+/* Coquille du lecteur : plein cadre sous l'en-tête (bureau) ou au-dessus de la barre du
+   bas (mobile, plus bas). `display` reste piloté en ligne par toggleMultiview. */
+#mv-container.mv-full { position: fixed; top: var(--hdr-height); left: 0; right: 0; bottom: 0; background: #000; z-index: 90; display: flex; flex-direction: column; }
+#mv-toolbar { position: relative; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; direction: ltr; transition: opacity var(--t-fast); }
+.mv-title { font-weight: 800; font-size: 15px; color: var(--text); cursor: move; padding: 0 4px; white-space: nowrap; }
+.mv-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.mv-tb-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border2); background: rgba(255,255,255,0.06); color: var(--text); font-weight: 600; font-size: 14px; white-space: nowrap; transition: background var(--t-fast), filter var(--t-fast); }
+.mv-tb-btn:hover { background: rgba(255,255,255,0.12); }
+.mv-tb-btn.primary { background: var(--accent); border-color: transparent; color: #06131c; }
+.mv-tb-btn.primary:hover { filter: brightness(1.1); }
+.mv-tb-btn .mv-tb-ic { font-size: 16px; line-height: 1; }
 .mv-pip .hide-pip { display: none !important; }
-.mv-pip #mv-toolbar { padding: 0 8px !important; gap: 4px !important; }
-.mv-pip #mv-toolbar .btn { padding: 8px 12px !important; font-size: 12px !important; }
-.mv-cell { border-bottom-right-radius: 8px; }
+.mv-pip #mv-toolbar { min-height: 44px; padding: 4px 8px; gap: 4px; }
+.mv-pip .mv-tb-btn { min-height: 34px; padding: 6px 9px; font-size: 13px; }
+.mv-pip .mv-tb-btn .mv-tb-lb { display: none; }
+.mv-cell { border-bottom-right-radius: 8px; container-type: inline-size; }
+
+/* En-tête d'une tuile, en surimpression. À gauche : numéro, source, ajustement ;
+   à droite, trois gestes toujours visibles et nommés — « Site » (la page originale dans
+   un nouvel onglet, le repli quand la vidéo ne joue pas ici), le menu, la croix. */
+.mv-hdr { position: absolute; top: 0; left: 0; right: 0; z-index: 10; pointer-events: none; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 6px 8px; padding: 8px 10px; color: #fff; font-size: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%); transition: background var(--t-med), opacity var(--t-med); }
+.mv-hdr:hover { background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%); }
+.mv-hdr-left, .mv-hdr-right { display: flex; align-items: center; gap: 6px; pointer-events: auto; min-width: 0; }
+.mv-hdr-left { flex-wrap: wrap; }
+.mv-hdr-right { flex-shrink: 0; background: rgba(0,0,0,0.35); padding: 3px; border-radius: 10px; }
+.mv-drag-handle { cursor: grab; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); }
+.mv-stream-number { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.2); font-weight: 800; font-size: 14px; }
+.mv-source-pill { height: 28px; display: inline-flex; align-items: center; padding: 0 9px; max-width: 46cqw; overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.mv-source-pill.joue { color: #7CFC9A; border-color: rgba(124,252,154,0.45); }
+.mv-hdr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 36px; height: 36px; padding: 0 10px; border: none; border-radius: 8px; background: rgba(255,255,255,0.16); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background var(--t-fast); }
+.mv-hdr-btn:hover { background: rgba(255,255,255,0.28); }
+.mv-hdr-btn.on { background: rgba(56,189,248,0.35); }
+.mv-direct-btn.on { background: rgba(124,252,154,0.25); }
+.mv-site-btn { background: rgba(56,189,248,0.3); }
+.mv-site-btn:hover { background: rgba(56,189,248,0.5); }
+.mv-close-btn { background: rgba(220,53,69,0.55); }
+.mv-close-btn:hover { background: rgba(220,53,69,0.85); }
+/* Tuile étroite (grille 2×2 sur portable, panneau latéral) : l'essentiel reste —
+   numéro, source, Site, menu, croix. */
+@container (max-width: 520px) { .mv-hdr-lb, .mv-drag-handle { display: none; } .mv-hdr-btn { padding: 0 8px; } }
+@container (max-width: 360px) { .mv-fit-btn, .mv-stream-number { display: none; } }
+/* Tactile : ni poignée de redimensionnement (elle gênait le pouce), ni poignée de glisser. */
+@media (hover: none) and (pointer: coarse) { .mv-cell { resize: none !important; padding-right: 0 !important; } .mv-drag-handle { display: none; } }
+
+/* Menu flottant (js/mv-menu.js) : posé sur <body> — ou sur l'élément en plein écran —
+   en position fixe, à l'index maximal : toujours par-dessus les tuiles et leurs iframes,
+   là où les anciens menus, posés dans la tuile, étaient rognés et recouverts. */
+.mv-menu { position: fixed; z-index: 2147483000; min-width: 240px; max-width: min(340px, calc(100vw - 16px)); padding: 6px; background: var(--bg-elev); border: 1px solid var(--border2); border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,0.75); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; color: var(--text); font-size: 15px; }
+.mv-menu-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-menu-sep { height: 1px; background: var(--border2); margin: 4px; flex-shrink: 0; }
+.mv-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: none; border-radius: 9px; background: transparent; color: var(--text); font-size: 15px; font-weight: 500; text-align: left; cursor: pointer; flex-shrink: 0; }
+.mv-menu-item:hover, .mv-menu-item:focus-visible { background: rgba(255,255,255,0.1); outline: none; }
+.mv-menu-item .mv-menu-ic { width: 22px; text-align: center; flex-shrink: 0; font-size: 16px; }
+.mv-menu-item .mv-menu-lb { flex: 1; min-width: 0; }
+.mv-menu-item .mv-menu-check { color: var(--accent); font-weight: 800; }
+.mv-menu-item.actif { background: rgba(56,189,248,0.12); }
+.mv-menu-item.danger { color: #ff8a8a; }
+.mv-menu-item[disabled] { opacity: 0.45; cursor: default; }
 .mv-cell::-webkit-resizer { background: rgba(255,255,255,0.2); border-left: 10px solid transparent; border-top: 10px solid transparent; box-shadow: inset -4px -4px 0 rgba(255,255,255,0.8); }
 .mv-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; height: 100%; color: var(--muted); text-align: center; padding: 24px; }
 .mv-empty .mv-empty-ic { font-size: 40px; opacity: 0.7; }
@@ -683,14 +693,14 @@ body[data-icon-pack="rounded"] .ic-close {
 
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  :root { --hdr-height: 46px; --base-hour-px: 140px; --chan-w: 104px; --row-h: 78px; }
+  :root { --hdr-height: 0px; --base-hour-px: 140px; --chan-w: 104px; --row-h: 78px; }
   .hide-mobile { display: none !important; }
   body { padding-bottom: calc(var(--bottom-nav) + var(--safe-bottom)); }
 
-  .app-header { grid-template-columns: 1fr; padding: 0 14px; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-  .brand { font-size: 15px; }
-  .brand-ic { width: 24px; height: 24px; border-radius: 7px; }
-  .brand-ic svg { width: 14px; height: 14px; }
+  /* Plus rien en haut : l'en-tête ne sert que de parent à la barre du bas (fixée).
+     `position: static` : sinon son contexte d'empilement (z 60) enfermait la barre et le
+     menu « Plus », qui passaient sous le lecteur (z 90). */
+  .app-header { height: 0; padding: 0; border: none; box-shadow: none; overflow: visible; position: static; z-index: auto; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
   /* Onglets en barre du bas */
   /* justify-self: auto — centré, un élément fixé à insets auto se réduirait à son contenu */
@@ -705,10 +715,6 @@ body[data-icon-pack="rounded"] .ic-close {
   .secondary-actions .nav-btn { flex-direction: row; font-size: 14px; padding: 12px 14px; }
   .secondary-actions .nav-btn.active-toggle::after { display: none; }
 
-  .toolbar { padding: 6px 10px 4px; gap: 4px; }
-  .toolbar-row { gap: 6px; }
-  .search-box { flex: 1 1 100px; min-width: 90px; }
-  .date-pill { min-width: 90px; padding: 6px 8px; font-size: 12px; }
   .btn.sm { min-height: 34px; }
 
   .section-title { padding: 14px 16px 6px; font-size: 15px; }
@@ -761,19 +767,17 @@ body[data-icon-pack="rounded"] .ic-close {
 
   .side-panel { width: 100%; border-radius: 0; }
 
-  .mv-hdr { padding: 12px 16px; }
-  #mv-menu-btn { display: inline-flex !important; }
-  .mv-actions { display: none !important; position: absolute; top: 100%; right: 16px; background: var(--bg-elev); border: 1px solid var(--border2); border-radius: 12px; padding: 8px; flex-direction: column !important; align-items: stretch !important; box-shadow: 0 10px 25px rgba(0,0,0,0.8); z-index: 1000; margin-top: 8px; }
-  .mv-actions.open { display: flex !important; }
+  /* Lecteur : tout l'écran, au-dessus de la barre du bas ; icônes seules, sauf
+     « Ajouter », le geste principal */
+  #mv-container.mv-full { top: 0; bottom: calc(var(--bottom-nav) + var(--safe-bottom)); }
+  #mv-toolbar { padding: 6px 8px; gap: 6px; }
+  .mv-tb-btn { padding: 8px 11px; }
+  .mv-tb-btn .mv-tb-lb { display: none; }
+  .mv-tb-btn.primary .mv-tb-lb { display: inline; }
+  .mv-hdr { padding: 6px 8px; }
 }
+@media (max-width: 480px) { .mv-title { display: none; } }
 @keyframes sheetup { from { opacity: 0; transform: translateY(40px) } to { opacity: 1; transform: none } }
-
-/* Écrans très étroits : la barre d'outils passe sur deux rangées */
-@media (max-width: 420px) {
-  .toolbar-row { flex-wrap: wrap; }
-  .search-box { flex-basis: 100%; max-width: none; order: 2; }
-  .date-nav { margin-left: auto; }
-}
 
 /* ── 12. Accessibilité, mouvement réduit ──────────────────────────────────── */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

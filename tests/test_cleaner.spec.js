@@ -45,12 +45,33 @@ const SITE = `<html><body style="margin:0">
        pour l'appeler plus tard au clic. Si le script arrive après, cette référence est
        la vraie fonction. */
     window.__openDuSite = window.open;
+    /* Ce que fait un navigateur qui refuse la lecture automatique avec le son : play()
+       rejette. On compte les appels et on note si le dernier était muet. */
+    window.__appelsPlay = 0;
+    HTMLMediaElement.prototype.play = function () {
+      window.__appelsPlay++; window.__dernierMuet = this.muted;
+      return Promise.reject(new DOMException('play() refusé sans geste', 'NotAllowedError'));
+    };
     window.addEventListener('message', function (e) {
       if (e.data === 'poser_lecteur') {
         var v = document.createElement('video');
         v.id = 'lecteur'; v.width = 640; v.height = 360;
         v.setAttribute('style', 'width:640px;height:360px');
         document.getElementById('zone').appendChild(v);
+      }
+      /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
+         bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
+      if (e.data === 'poser_lecteur_bouton') {
+        var w = document.createElement('div');
+        w.className = 'video-js player'; w.setAttribute('style', 'width:640px;height:360px;position:relative');
+        var v2 = document.createElement('video');
+        v2.id = 'lecteur'; v2.width = 640; v2.height = 360; v2.setAttribute('style', 'width:640px;height:360px');
+        var b = document.createElement('button');
+        b.className = 'vjs-big-play-button'; b.id = 'gros-play';
+        b.setAttribute('style', 'position:absolute;left:280px;top:150px;width:80px;height:60px');
+        b.addEventListener('click', function () { window.__clicsPlay = (window.__clicsPlay || 0) + 1; });
+        w.appendChild(v2); w.appendChild(b);
+        document.getElementById('zone').appendChild(w);
       }
     });
   </script>
@@ -225,6 +246,26 @@ test('le décor du site disparaît quand le lecteur arrive tardivement', async (
   await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
   await expect(cadre.locator('#avis')).toHaveCount(0);
   await expect(cadre.locator('#lecteur')).toBeAttached();
+});
+
+/* « Faire que les vidéos dans le multiview se lancent directement. » Une fois la page
+   réduite au lecteur, la vidéo attendait encore un clic. Le script appelle play() —
+   refusé avec le son, il coupe le son et réessaie — et clique une fois, pas deux, le
+   gros bouton de lecture du lecteur. */
+test('la vidéo est lancée sans clic : play() appelé, relancé muet si refusé, gros bouton cliqué une fois', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_bouton', '*'); });
+  await expect(cadre.locator('#lecteur')).toBeAttached();
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+
+  await expect.poll(() => cadre.evaluate(() => window.__appelsPlay), { timeout: 8000 }).toBeGreaterThanOrEqual(2);
+  const etat = await cadre.evaluate(() => ({ muet: window.__dernierMuet, clics: window.__clicsPlay || 0, bouton: !!document.getElementById('gros-play') }));
+  expect(etat.muet, 'refusé avec le son, relancé muet').toBe(true);
+  expect(etat.bouton, 'le bouton de lecture a survécu au nettoyage (c\'est un contrôle)').toBe(true);
+  expect(etat.clics, 'le gros bouton de lecture a été cliqué').toBe(1);
+
+  await page.waitForTimeout(2500);
+  expect(await cadre.evaluate(() => window.__clicsPlay), 'et une seule fois : un second clic mettrait en pause').toBe(1);
 });
 
 test('la tuile obéit aux ordres même sans nettoyage préalable', async ({ page }) => {
