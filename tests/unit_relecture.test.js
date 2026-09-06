@@ -52,6 +52,19 @@ async function main() {
         'rouvrir dix fois la même fiche ne doit pas rescanner dix fois');
     ok('la relecture n\'a lieu qu\'une fois par match et par session');
 
+    // ── 2 bis. Avec le script utilisateur : toute fiche relit sa page, toutes les dix minutes ──
+    /* Décision du 6 septembre 2026 : « l'application devrait aller fetch les liens quand on
+       ouvre une carte ». Le navigateur lit depuis SON adresse, à l'instant. */
+    const T = 1800000000000;
+    assert.strictEqual(doit(Object.assign({}, venuDuCache, { prefetched: false }), T, true), true,
+        'avec le pont, un match trouvé ici même est relu aussi');
+    assert.strictEqual(doit(Object.assign({}, venuDuCache, { relueLocalement: true, pageLueA: T - 2 * 60000 }), T, true), false,
+        'relue il y a deux minutes : pas de relecture');
+    assert.strictEqual(doit(Object.assign({}, venuDuCache, { relueLocalement: true, pageLueA: T - 11 * 60000 }), T, true), true,
+        'relue il y a onze minutes : on relit, les liens changent au fil du match');
+    assert.strictEqual(doit(Object.assign({}, venuDuCache, { matchUrl: '' }), T, true), false, 'sans adresse, rien à relire');
+    ok('avec le script utilisateur, chaque ouverture relit la page passé dix minutes');
+
     // ── 3. Ce qui n'est pas venu du cache n'a rien à relire ─────────────────
     const trouveIci = Object.assign({}, venuDuCache, { prefetched: false });
     assert.strictEqual(doit(trouveIci), false,

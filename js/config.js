@@ -27,7 +27,7 @@ export var SPORTSURGE_URL = 'https://v2.sportsurge.net/'; // sportsurge.net redi
 export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
 export var STREAMEAST_URL = 'https://v2.gostreameast.is/'; // v2.streameast.ga renvoie 429 depuis sept. 2026
 export var ONHOCKEY_URL = 'https://onhockey.tv/';
-export var VIPLEAGUE_URL = 'https://vipleague.vg/live-now-streaming'; // vipleague.im/.io/.cc redirigent vers vipleague.vg ; la grille est sur /live-now-streaming
+export var VIPLEAGUE_URL = 'https://vipleague.me/watch-now'; // .vg/.io/.cc redirigent vers vipleague.me (6 septembre 2026) ; la grille est sur /watch-now, /live-now-streaming répond 404
 export var METHSTREAMS_URL = 'https://methstreams.gs/';
 /* Seule source à exposer une API JSON plutôt que des pages HTML à deviner. */
 export var STREAMED_URL = 'https://streamed.pk/';
@@ -45,7 +45,7 @@ export var SOURCE_MIRRORS = {
     buffstreams: ['https://app.buffstreams.is/indexcracked29'],
     streameast: ['https://v2.gostreameast.is/', 'https://v2.streameast.ga/'],
     onhockey: ['https://onhockey.tv/'],
-    vipleague: ['https://vipleague.vg/live-now-streaming', 'https://vipleague.io/live-now-streaming', 'https://vipleague.cc/live-now-streaming'],
+    vipleague: ['https://vipleague.me/watch-now', 'https://vipleague.vg/watch-now', 'https://vipleague.io/watch-now', 'https://vipleague.cc/watch-now'],
     methstreams: ['https://methstreams.gs/'],
     streamed: ['https://streamed.pk/', 'https://streamed.su/'],
     flexfitness: ['https://flexfitness.fit/']
@@ -192,7 +192,13 @@ export async function fetchRemoteConfig() {
 export const SCRAPERS_CONFIG = [
     { name: 'Footybite', url: SITE, id: 'footybite' },
     { name: 'MLBite+', url: MLBBITE_PLUS_URL, id: 'mlbbite' },
-    { name: 'Sportsurge', url: SPORTSURGE_URL, id: 'sportsurge', homepageHasMatches: false, pages: [
+    /* « Sportsurge trouve plein de liens pour la MLB, ça devrait pour les autres sports
+       aussi, genre tous » (6 septembre 2026). La liste ci-dessous est celle qu'on
+       connaissait ; `discoverPages` y ajoute TOUTES les pages « watch-<sport>-streams/ »
+       que l'accueil du site annonce dans son menu — soccer, F1, tennis, golf, cricket… —
+       sans qu'on ait à deviner leurs adresses (le site refuse les centres de données,
+       on ne peut pas les relever d'ici ; le navigateur de l'utilisateur, lui, les lit). */
+    { name: 'Sportsurge', url: SPORTSURGE_URL, id: 'sportsurge', homepageHasMatches: false, discoverPages: /href=["']([^"']*?watch-[a-z0-9-]+-streams\/?)["']/i, pages: [
         { path: 'watch-nfl-streams/', sports: ['nfl'] }, { path: 'watch-cfb-streams/', sports: ['cfb'] }, { path: 'watch-cfl-streams/', sports: ['cfl'] },
         { path: 'watch-basketball-streams/', sports: ['nba'] }, { path: 'watch-wnba-streams/', sports: ['wnba'] }, { path: 'watch-ncaab-streams/', sports: ['ncaab'] },
         { path: 'watch-baseball-streams/', sports: ['mlb'] }, { path: 'watch-hockey-streams/', sports: ['nhl'] },
@@ -222,7 +228,19 @@ export const SCRAPERS_CONFIG = [
         { path: 'api/matches/basketball', sports: ['nba', 'ncaab', 'wnba'] },
         { path: 'api/matches/hockey', sports: ['nhl'] },
         { path: 'api/matches/baseball', sports: ['mlb'] },
-        { path: 'api/matches/football', sports: ['soccer'] }
+        { path: 'api/matches/football', sports: ['soccer'] },
+        /* Le reste du catalogue (`api/sports`, relevé le 6 septembre 2026) : « tous les
+           domaines couvrent tous les sports, tu les checks tous ». Les pages marquées
+           'other' se lisent quel que soit le programme du jour. */
+        { path: 'api/matches/motor-sports', sports: ['f1', 'motor'] },
+        { path: 'api/matches/tennis', sports: ['tennis'] },
+        { path: 'api/matches/rugby', sports: ['rugby'] },
+        { path: 'api/matches/golf', sports: ['golf'] },
+        { path: 'api/matches/cricket', sports: ['cricket'] },
+        { path: 'api/matches/afl', sports: ['other'] },
+        { path: 'api/matches/darts', sports: ['other'] },
+        { path: 'api/matches/billiards', sports: ['other'] },
+        { path: 'api/matches/other', sports: ['other'] }
     ] },
     { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams', homepageHasMatches: false, pages: [
         { path: 'league/soccerstreams', sports: ['soccer'] }, { path: 'league/nflstreams', sports: ['nfl'] }, { path: 'league/nbastreams', sports: ['nba'] },
@@ -280,15 +298,31 @@ export function isApiEndpoint(url) {
    pour ses appelants historiques. */
 export { sportOfLeague };
 
-/* Pages à télécharger pour une source. `sports` = liste des sports à couvrir (null = tous). */
-export function getSourcePages(scraper, sports) {
+/* Pages à télécharger pour une source. `sports` = liste des sports à couvrir (null = tous) ;
+   une page sans sport connu, ou marquée 'other', se lit toujours. `homeHtml` = l'accueil
+   déjà téléchargé : si la source déclare `discoverPages` (expression dont le premier groupe
+   capture une adresse de page par sport), toutes les pages annoncées dans son menu
+   s'ajoutent à la liste, avec pour sport ce que leur nom dit (`sportOfLeague`). */
+export function getSourcePages(scraper, sports, homeHtml) {
     var out = [];
     if (scraper.homepageHasMatches !== false) out.push({ url: scraper.url, sport: null });
-    (scraper.pages || []).forEach(function(pg) {
-        if (sports && !pg.sports.some(function(sp) { return sports.indexOf(sp) >= 0; })) return;
-        var url = resolveUrl(pg.path, scraper.url);
-        if (!out.some(function(o) { return o.url === url; })) out.push({ url: url, sport: pg.sports[0] });
-    });
+    function ajouter(url, sportsDeLaPage) {
+        var connus = (sportsDeLaPage || []).filter(function(sp) { return sp && sp !== 'other'; });
+        if (sports && connus.length && !connus.some(function(sp) { return sports.indexOf(sp) >= 0; })) return;
+        if (!out.some(function(o) { return o.url === url; })) out.push({ url: url, sport: connus[0] || null });
+    }
+    (scraper.pages || []).forEach(function(pg) { ajouter(resolveUrl(pg.path, scraper.url), pg.sports); });
+    if (scraper.discoverPages && typeof homeHtml === 'string') {
+        var re = new RegExp(scraper.discoverPages.source, 'gi');
+        var m;
+        while ((m = re.exec(homeHtml)) !== null) {
+            var url = resolveUrl(m[1], scraper.url);
+            if (!/^https?:\/\//i.test(url)) continue;
+            var slug = /watch-([a-z0-9-]+)-streams/i.exec(url);
+            var sport = slug ? sportOfLeague(slug[1].replace(/-/g, ' ')) : '';
+            ajouter(url, sport ? [sport] : []);
+        }
+    }
     return out;
 }
 

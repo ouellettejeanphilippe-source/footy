@@ -10,6 +10,7 @@ import { mergeMatches } from './match.js';
 import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow } from './ui.js';
 import { setMatches } from './state.js';
+import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
 
 /* ══ MAIN ═══════════════════════════════ */
 
@@ -139,7 +140,7 @@ export function fetchSourcePages(scraper, sports) {
         });
     }
     return tryBase().then(function(home) {
-        var pages = getSourcePages(scraper, sports).filter(function(pg) { return pg.url !== home.url; });
+        var pages = getSourcePages(scraper, sports, home.html).filter(function(pg) { return pg.url !== home.url; });
         var out = scraper.homepageHasMatches === false ? [] : [home];
         // Sous-pages en parallèle (petit nombre : seulement les sports du jour)
         return Promise.allSettled(pages.map(function(pg) {
@@ -322,9 +323,19 @@ async function loadAllRun(isBackground, forceScrape){
          principale cause de lenteur et de variation du nombre de liens. */
       var prefetchInfo = window.prefetchedStreamsInfo;
       var prefetchUsable = !!(prefetchInfo && prefetchInfo.count > 0 && prefetchInfo.ageMin !== null && prefetchInfo.ageMin < 180);
+      /* Avec le script utilisateur, le navigateur lit les sources depuis SON adresse — celle
+         qui passe là où le centre de données de GitHub Actions est refusé (sportsurge,
+         vipleague…) — et à l'instant, pas à l'heure ronde. Décision du 6 septembre 2026 :
+         « l'application devrait aller fetch les liens à l'ouverture, puis quand on ouvre une
+         carte ». Le cache serveur reste le point de départ (affiché tout de suite) et le
+         seul chemin sans script, où aucun transport public ne tient plus. Cinq minutes entre
+         deux passes au moins : chaque passe lit une dizaine de pages de liste. */
+      var pontPresent = !!(getBridgeStatus() || {}).available;
       var skipScraping = !isToday
-          || (!forceScrape && (prefetchUsable || nowTime - window.lastScrapeTime < 15 * 60 * 1000));
-      if (prefetchUsable && !forceScrape) lg('Cache serveur utilisé', prefetchInfo.count + ' matchs, ' + prefetchInfo.ageMin + ' min — scraping en direct inutile');
+          || (!forceScrape && pontPresent && nowTime - window.lastScrapeTime < 5 * 60 * 1000)
+          || (!forceScrape && !pontPresent && (prefetchUsable || nowTime - window.lastScrapeTime < 15 * 60 * 1000));
+      if (skipScraping && prefetchUsable && !forceScrape) lg('Cache serveur utilisé', prefetchInfo.count + ' matchs, ' + prefetchInfo.ageMin + ' min — scraping en direct sauté' + (pontPresent ? ' (passe récente)' : ' (pas de script utilisateur)'));
+      if (!skipScraping && pontPresent) lg('Lecture des sources par le navigateur', 'script utilisateur présent');
 
       if (skipScraping) {
                     // Just merge with existing scrapedMatches and update API
@@ -617,10 +628,11 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
           safeStorageSet('hasSeenScriptModal', 'true');
           setTimeout(function() { installTampermonkey(); }, 500);
       }
-      // Delay to ensure the initial cache render doesn't block the dynamic domain fetch
-      setTimeout(() => loadAll(true, false), 10);
+      // On laisse au script utilisateur le temps de s'annoncer : c'est lui qui décide si le
+      // navigateur lit les sources lui-même (voir loadAllRun). Au plus 1,5 s.
+      waitForBridge(1500).then(function() { loadAll(true, false); });
   } else {
-      loadAll(false, false); // premier chargement sans cache : passe visible, avec l'écran d'attente
+      waitForBridge(1500).then(function() { loadAll(false, false); }); // premier chargement sans cache : passe visible, avec l'écran d'attente
   }
 
   // Background auto-update every 60 seconds

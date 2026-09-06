@@ -107,6 +107,22 @@ export function initEmbedBridge() {
   ping();
 }
 
+/* Attend que le script utilisateur se soit annoncé, au plus `maxMs` millisecondes.
+   Rend true si le pont est là. Au démarrage, la décision « le navigateur va-t-il chercher
+   les liens lui-même ? » se prend avant que le script (exécuté à document-idle) ait pu
+   répondre : sans cette attente, le premier chargement se croyait toujours sans pont. */
+export function waitForBridge(maxMs) {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  if (bridge.available) return Promise.resolve(true);
+  return new Promise(function (resolve) {
+    var fini = false;
+    var finir = function (ok) { if (fini) return; fini = true; window.removeEventListener('mvBridgeReady', surPret); resolve(ok); };
+    var surPret = function () { finir(true); };
+    window.addEventListener('mvBridgeReady', surPret);
+    setTimeout(function () { finir(bridge.available); }, maxMs || 1500);
+  });
+}
+
 /* Demande une page au script utilisateur. Rejette si le pont est absent ou muet. */
 export function fetchViaBridge(url, timeoutMs) {
   return new Promise(function (resolve, reject) {

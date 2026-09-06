@@ -1010,17 +1010,20 @@ export function extractFootybiteLogos(doc) {
 
 /* ══ PARSE VIPLEAGUE ════════════════ */
 export function parseVipleague(html) {
-    // vipleague.vg (2026) : page /live-now-streaming, une ligne par événement :
-    //   <a href="/watch/<sport>/<home>-vs-<away>" title="Home - Away">
+    // vipleague.me (septembre 2026) : page /watch-now, une ligne par événement :
+    //   <a href="/now-playing/<sport>/<home>-vs-<away>" title="Home - Away">
     //       <span content="2026-09-02T10:30" ...>10:30</span> Home - Away</a>
-    // L'heure est en heure de Londres (fuseau du serveur), convertie ici en heure de l'Est.
+    // (vipleague.vg servait la même chose sous /live-now-streaming et /watch/<sport>/… ;
+    // les deux formes sont lues.) L'heure est en heure de Londres (fuseau du serveur),
+    // convertie ici en heure de l'Est.
     var matches = [];
     var doc = new DOMParser().parseFromString(html, 'text/html');
-    var links = doc.querySelectorAll('a[href*="/watch/"]');
+    var links = doc.querySelectorAll('a[href*="/watch/"], a[href*="/now-playing/"]');
     [].forEach.call(links, function(a) {
         var href = a.getAttribute('href') || '';
-        var parts = href.split('/').filter(Boolean); // ['watch', sport, slug]
+        var parts = href.split('/').filter(Boolean); // ['watch' | 'now-playing', sport, slug]
         var wi = parts.indexOf('watch');
+        if (wi < 0) wi = parts.indexOf('now-playing');
         if (wi < 0 || parts.length < wi + 3) return;
         var sport = parts[wi + 1];
         var slug = parts[wi + 2];
@@ -1927,8 +1930,21 @@ export function compterFluxUtiles(m) {
    Trois conditions, et une seule relecture par match et par session : rouvrir dix fois la
    même fiche ne doit pas rescanner dix fois. Un match dont les flux ont déjà été trouvés
    ici même (donc non `prefetched`) n'a rien à relire. */
-export function doitRelireLaPage(m) {
+/* Avec le script utilisateur (`pont`), la règle change : TOUTE fiche ouverte relit sa page
+   si elle ne l'a pas été depuis dix minutes — c'est le « fetch quand on ouvre une carte »
+   demandé le 6 septembre 2026, et c'est le seul moment où l'utilisateur regarde vraiment.
+   Sans le script, aucun transport ne passe : on garde l'ancienne règle, une relecture par
+   match et par session, pour les matchs venus du cache. `now` et `pont` ne servent qu'aux
+   tests ; en production ils viennent de l'horloge et du pont. */
+export var RELECTURE_MIN = 10;
+export function doitRelireLaPage(m, now, pont) {
     if (!m || !m.matchUrl) return false;
+    var pontLa = (pont === undefined) ? !!(getBridgeStatus() || {}).available : !!pont;
+    if (pontLa) {
+        var t = (now === undefined) ? Date.now() : now;
+        if (!m.pageLueA) return true;
+        return t - m.pageLueA > RELECTURE_MIN * 60000;
+    }
     if (!m.prefetched) return false;
     if (m.relueLocalement) return false;
     return true;
