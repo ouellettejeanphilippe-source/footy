@@ -1848,6 +1848,24 @@ export function compterFluxUtiles(m) {
     return n;
 }
 
+/* Faut-il relire la page de ce match dans le navigateur, à son ouverture ?
+
+   Le cache horaire est un point de départ, jamais le dernier mot. Il est produit par
+   GitHub Actions, depuis une adresse de centre de données que plusieurs sources refusent,
+   et il a jusqu'à une heure de retard. Le navigateur de l'utilisateur lit la même page
+   depuis SON adresse — celle qui passe. Vérifié le 5 septembre 2026 : footybite.bid rend
+   403 depuis un serveur alors que l'utilisateur y voit des dizaines de liens.
+
+   Trois conditions, et une seule relecture par match et par session : rouvrir dix fois la
+   même fiche ne doit pas rescanner dix fois. Un match dont les flux ont déjà été trouvés
+   ici même (donc non `prefetched`) n'a rien à relire. */
+export function doitRelireLaPage(m) {
+    if (!m || !m.matchUrl) return false;
+    if (!m.prefetched) return false;
+    if (m.relueLocalement) return false;
+    return true;
+}
+
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 export function fetchSubPages(matches){
   var now = new Date();
