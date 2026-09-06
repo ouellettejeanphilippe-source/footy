@@ -37,6 +37,10 @@ const SITE = `<html><body style="margin:0">
   <a id="lien-blank" href="/pub" target="_blank" style="display:block;height:30px">Ouvrir la pub</a>
   <button id="bouton-pop" style="display:block;height:30px" onclick="window.__resultatOpen = (window.open('/pub', '_blank') !== null)">Popunder</button>
   <script>
+    /* Ce que fait un lecteur HLS : demander son manifeste. La ressource entre dans la
+       chronologie du cadre, que le script surveille. */
+    fetch('/live/stream.m3u8?token=abc').catch(function () {});
+    fetch('/ads/preroll.m3u8').catch(function () {});
     /* Ce que fait une régie : garder SA référence à window.open dès le premier script,
        pour l'appeler plus tard au clic. Si le script arrive après, cette référence est
        la vraie fonction. */
@@ -125,6 +129,25 @@ test('avec le script, ni window.open, ni le lien _blank, ni la référence gard�
   expect(r.ouverte).toBe(false);
   expect(r.parReference).toBe(false);
   expect(r.popups).toBe(0);
+});
+
+/* Mode direct : le manifeste que la page demande remonte à la fenêtre principale, une
+   fois, sans les manifestes publicitaires. */
+test('le script remonte le manifeste vidéo que la page demande', async ({ page }) => {
+  await page.goto(origin + '/hote');
+  await page.evaluate(() => {
+    window.__manifestes = [];
+    window.addEventListener('message', (e) => { if (e.data && e.data.__mv === 'media_url') window.__manifestes.push(e.data); });
+  });
+  await page.evaluate((src) => {
+    const f = document.createElement('iframe');
+    f.id = 'tuile'; f.src = src;
+    document.body.appendChild(f);
+  }, autreOrigine + '/__site-stream');
+  await expect.poll(async () => (await page.evaluate(() => window.__manifestes)).length, { timeout: 8000 }).toBeGreaterThan(0);
+  const vus = await page.evaluate(() => window.__manifestes);
+  expect(vus.map((v) => v.url)).toEqual([autreOrigine + '/live/stream.m3u8?token=abc']);
+  expect(vus[0].pageUrl).toBe(autreOrigine + '/__site-stream');
 });
 
 /* « Vidéo en lecture » : le seul signal que la tuile puisse recevoir sur ce qui joue.

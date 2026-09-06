@@ -576,8 +576,36 @@
         derniereLecture = joue;
         try { window.top.postMessage({ __mv: 'video_state', playing: joue, host: location.hostname }, '*'); } catch (e) {}
     }
+    /* Mode direct (voir js/directmedia.js) : pendant que la page joue, on voit passer le
+       MANIFESTE vidéo que son lecteur demande (.m3u8 / .mpd, dans la chronologie des
+       ressources du cadre) et on le remonte à l'application, qui peut alors le jouer
+       dans son propre lecteur, sans la page. Chaque manifeste n'est signalé qu'une fois ;
+       le premier vu est le maître. */
+    const manifestesSignales = new Set();
+    function estManifeste(u) {
+        u = String(u || '');
+        if (!/^https?:\/\//i.test(u)) return false;
+        const chemin = u.split('#')[0].split('?')[0];
+        if (/(^|\/)(ads?|preroll|vast|vmap)(\/|\.|$)/i.test(chemin)) return false;
+        return /\.(m3u8|mpd)$/i.test(chemin);
+    }
+    function signalerManifeste(u) {
+        if (!estManifeste(u) || manifestesSignales.has(u)) return;
+        manifestesSignales.add(u);
+        try { window.top.postMessage({ __mv: 'media_url', url: u, pageUrl: location.href, host: location.hostname }, '*'); } catch (e) {}
+    }
+    function surveillerManifestes() {
+        try { performance.getEntriesByType('resource').forEach((e) => signalerManifeste(e.name)); } catch (e) {}
+        try {
+            const obs = new PerformanceObserver((liste) => { liste.getEntries().forEach((e) => signalerManifeste(e.name)); });
+            obs.observe({ type: 'resource', buffered: true });
+        } catch (e) {}
+    }
+
     function findAndClean() {
         if (cleaned) return;
+
+        try { const m = extractM3u8Url(); if (m) signalerManifeste(m); } catch (e) {}
 
         // Chercher une vidéo
         const videos = Array.from(document.querySelectorAll('video')).filter(v => v.offsetWidth > 50 || v.offsetHeight > 50);
@@ -673,6 +701,7 @@
     function demarrer() {
         if (estLApplication()) return;
         setInterval(signalerLecture, 2000);
+        surveillerManifestes();
         relancerRecherche();
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', demarrer, { once: true });

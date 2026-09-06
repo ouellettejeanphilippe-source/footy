@@ -7,6 +7,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs } from './playability.js';
+import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
 import { scrapeMatchFlux, compterFluxUtiles } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
@@ -93,8 +94,13 @@ function chargerHlsJs() {
 /* Rend un `<video>` prêt à jouer `url`, avec les mêmes classe et style que
    l'iframe qu'il remplace — la mise en page (taille, recadrage, glisser-déposer)
    ne fait ainsi aucune différence entre les deux. */
-function creerLecteurVideo(url) {
+function creerLecteurVideo(url, surEchec) {
     var video = document.createElement('video');
+    var echec = function(raison) { if (typeof surEchec === 'function') surEchec(raison); };
+    video.addEventListener('error', function() {
+        var code = video.error && video.error.code;
+        echec('erreur vidéo' + (code ? ' ' + code : ''));
+    });
     video.className = 'mv-media mv-video';
     video.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;object-fit:contain;background:#000;';
     video.controls = true;
@@ -109,6 +115,14 @@ function creerLecteurVideo(url) {
         chargerHlsJs().then(function(Hls) {
             if (Hls && Hls.isSupported()) {
                 var hls = new Hls();
+                /* Une erreur FATALE (manifeste refusé : CORS, 403, adresse expirée ; ou
+                   média illisible) est remontée à l'appelant, qui décide (le mode direct
+                   revient à la page). Les erreurs non fatales, hls.js les rattrape seul. */
+                hls.on(Hls.Events.ERROR, function(ev, d) {
+                    if (!d || !d.fatal) return;
+                    var code = d.response && d.response.code;
+                    echec(String(d.details || d.type || 'hls') + (code ? ' HTTP ' + code : ''));
+                });
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 video._hls = hls; // pour destruction propre (voir plus bas)
@@ -121,6 +135,59 @@ function creerLecteurVideo(url) {
     }
     return video;
 }
+/* ─── Mode direct : la deuxième façon d'utiliser un lien (voir js/directmedia.js) ───
+   La tuile joue dans son propre <video> le manifeste que le script utilisateur a vu
+   passer pendant que la page jouait, sans la page. Si rien ne joue dans les 25 s, ou si
+   hls.js rapporte une erreur fatale (CORS, 403, adresse expirée), la tuile revient
+   d'elle-même au mode page, retient l'échec, et le dit. */
+var DELAI_DIRECT_MS = 25000;
+function registreDirect() { return safeStorageGetJSON('direct_media', {}) || {}; }
+function poserDirect(media, url, container, cell, s) {
+    container.innerHTML = '';
+    s._currentUrl = url;
+    s._playing = false;
+    var idx = parseInt(cell.dataset.index, 10);
+    var fini = false;
+    var revenir = function(raison) {
+        if (fini) return;
+        fini = true;
+        if (s._currentUrl !== url || s.mode !== 'direct') return;
+        safeStorageSetJSON('direct_media', noterEchecDirect(registreDirect(), url));
+        s.mode = 'page';
+        s._currentUrl = null;
+        s._playing = false;
+        showToast('Direct refusé (' + raison + ') : retour à la page');
+        saveMultivisionState();
+        updateMultivisionLayout();
+    };
+    var video = creerLecteurVideo(media.url, revenir);
+    video.id = 'mv-iframe-' + idx;
+    video.style.transform = s.cropped ? 'scale(1.15)' : 'scale(1)';
+    video.addEventListener('playing', function() {
+        if (s._currentUrl !== url) return;
+        fini = true;
+        s._playing = true;
+        rafraichirPastille(idx);
+    });
+    container.appendChild(video);
+    setTimeout(function() { if (!s._playing) revenir('rien en ' + Math.round(DELAI_DIRECT_MS / 1000) + ' s'); }, DELAI_DIRECT_MS);
+}
+
+/* Bascule une tuile entre « page » (la page du site, nettoyée par le script) et
+   « direct » (le manifeste vidéo dans notre lecteur). Les deux restent à un clic. */
+export function toggleDirectMode(idx) {
+    var s = mvFlux[idx];
+    if (!s) return;
+    var media = s._media || mediaDirectPour(registreDirect(), s.url);
+    if (s.mode !== 'direct' && !media) { showToast('Aucun flux direct connu pour cette source : laisse la page jouer une fois.'); return; }
+    s.mode = (s.mode === 'direct') ? 'page' : 'direct';
+    s._currentUrl = null;
+    s._playing = false;
+    saveMultivisionState();
+    updateMultivisionLayout();
+    showToast(s.mode === 'direct' ? 'Mode direct : ' + getDomain(media.url) : 'Mode page');
+}
+
 /* Remplace `elementActuel` (l'iframe déjà posée) par un lecteur vidéo si `url`
    est une adresse média directe ; sinon ne fait rien. Rend l'élément à utiliser
    pour la suite (le nouveau lecteur, ou `elementActuel` inchangé) — l'appelant
@@ -1092,6 +1159,20 @@ export function setupMultivisionUI() {
            cadre où joue le lecteur — souvent un cadre imbriqué, d'où la remontée des
            parents. C'est le seul signal fiable que quelque chose joue : depuis
            l'application, une iframe d'origine croisée est opaque. */
+        /* Le script a vu passer le manifeste vidéo (.m3u8/.mpd) que le lecteur de la page
+           demande : on le retient pour ce lien (registre local, 3 h) et le bouton
+           « ▶ direct » apparaît sur la tuile. Le premier vu est le manifeste maître. */
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'media_url' && typeof e.data.url === 'string') {
+            var idxM = indexDeTuilePour(e.source);
+            if (idxM < 0 || !estManifeste(e.data.url)) return;
+            var sm = mvFlux[idxM];
+            if (sm._media) return;
+            sm._media = { url: e.data.url, pageUrl: String(e.data.pageUrl || ''), at: Date.now() };
+            safeStorageSetJSON('direct_media', retenirMediaDirect(registreDirect(), sm.url, sm._media));
+            saveMultivisionState();
+            rafraichirPastille(idxM);
+            return;
+        }
         if (e.data && typeof e.data === 'object' && e.data.__mv === 'video_state') {
             var idx = indexDeTuilePour(e.source);
             if (idx < 0) return;
@@ -1425,6 +1506,7 @@ export function applyMvAudioState() {
 
     mvFlux.forEach(function(s, idx) {
         var iframe = document.getElementById('mv-iframe-' + idx);
+        if (iframe && iframe.tagName === 'VIDEO') { iframe.muted = (idx !== targetIdx); return; }
         if (iframe && iframe.contentWindow) {
             if (idx === targetIdx) {
                 iframe.contentWindow.postMessage('mv_unmute', '*');
@@ -1601,6 +1683,11 @@ export function updateMultivisionLayout() {
            au navigateur qu'on s'adresse (extension qui ignore X-Frame-Options, voir la
            page d'installation), pas à la tuile. */
         function fallbackToIframe(url, container, cell, s) {
+            if (s.mode === 'direct') {
+                var mediaDirect = s._media || mediaDirectPour(registreDirect(), url);
+                if (mediaDirect) { poserDirect(mediaDirect, url, container, cell, s); return; }
+                s.mode = 'page';
+            }
             container.innerHTML = '';
             s._currentUrl = url;
             resolveStreamUrl(url).then(function(finalUrl) {
@@ -1841,7 +1928,10 @@ export function updateMultivisionLayout() {
         var pos = positionDuFlux(s);
         var libellePastille = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : domain);
         var pastilleSource = '<div class="mv-source-pill" title="' + (s._playing ? 'Vidéo en lecture' : 'Aucune vidéo confirmée pour l\'instant') + '" style="height:24px;display:flex;align-items:center;padding:0 8px;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.15);border-radius:4px;font-size:11px;font-weight:bold;color:' + (s._playing ? '#7CFC9A' : '#fff') + ';white-space:nowrap;">' + esc(libellePastille) + '</div>'
-            + (pos ? '<button class="mv-next-source" title="Source suivante" aria-label="Source suivante" style="height:24px;min-width:28px;background:rgba(255,255,255,0.2);border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '');
+            + (pos ? '<button class="mv-next-source" title="Source suivante" aria-label="Source suivante" style="height:24px;min-width:28px;background:rgba(255,255,255,0.2);border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '')
+            /* « ▶ direct » / « 🖼 page » : la deuxième façon d'utiliser le lien, dès que le
+               script a vu passer le manifeste vidéo de la page (rafraichirPastille l'affiche). */
+            + '<button class="mv-direct-btn" title="Basculer entre la page du site et le flux direct" aria-label="Mode direct" style="height:24px;padding:0 8px;background:' + (s.mode === 'direct' ? 'rgba(124,252,154,0.25)' : 'rgba(255,255,255,0.2)') + ';border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:bold;cursor:pointer;display:' + ((s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none') + ';align-items:center;" onclick="toggleDirectMode(' + idx + '); event.stopPropagation();">' + (s.mode === 'direct' ? '🖼 page' : '▶ direct') + '</button>';
         var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
 
         var hdrHtml = '<div style="display:flex;align-items:center;gap:8px;pointer-events:auto;">' +
@@ -2020,6 +2110,8 @@ export function nextFluxForTile(idx, raison) {
     s._autoTried = (s._autoTried | 0) + (raison === 'auto' ? 1 : 0);
     s._playing = false;
     s._playNoted = false;
+    s._media = null;
+    s.mode = 'page';
     s.url = suivant.url;
     saveMultivisionState();
     updateMultivisionLayout();
@@ -2061,9 +2153,15 @@ function rafraichirPastille(idx) {
     var pill = cell && cell.querySelector('.mv-source-pill');
     if (!s || !pill) return;
     var pos = positionDuFlux(s);
-    pill.textContent = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : getDomain(tileTarget(lienDuMatchPourFlux(s, s.url) || { url: s.url })));
+    pill.textContent = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : getDomain(tileTarget(lienDuMatchPourFlux(s, s.url) || { url: s.url }))) + (s.mode === 'direct' ? ' · direct' : '');
     pill.style.color = s._playing ? '#7CFC9A' : '#fff';
-    pill.title = s._playing ? 'Vidéo en lecture (vu par le script utilisateur)' : 'Aucune vidéo confirmée pour l\'instant';
+    pill.title = s._playing ? 'Vidéo en lecture' + (s.mode === 'direct' ? ' (flux direct)' : ' (vu par le script utilisateur)') : 'Aucune vidéo confirmée pour l\'instant';
+    var btnDirect = cell.querySelector('.mv-direct-btn');
+    if (btnDirect) {
+        btnDirect.style.display = (s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none';
+        btnDirect.textContent = s.mode === 'direct' ? '🖼 page' : '▶ direct';
+        btnDirect.style.background = s.mode === 'direct' ? 'rgba(124,252,154,0.25)' : 'rgba(255,255,255,0.2)';
+    }
 }
 
 /* Quel index de tuile a envoyé ce message ? Le script tourne aussi dans les cadres
@@ -3589,6 +3687,7 @@ window.toggleDocumentPiP = toggleDocumentPiP;
 window.toggleTheaterMode = toggleTheaterMode;
 window.toggleFullscreen = toggleFullscreen;
 window.openFlux = openFlux;
+window.toggleDirectMode = toggleDirectMode;
 window.applyBgStyle = applyBgStyle;
 window.initPrefs = initPrefs;
 window.applyUserPrefs = applyUserPrefs;
