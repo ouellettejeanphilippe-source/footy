@@ -7,6 +7,7 @@ import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
+import { mesurePour, formaterMesure } from './debit.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 
@@ -1126,13 +1127,19 @@ export function renderFluxItem(s, i, m) {
         +'<div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+(s.topLevel?' <span title="Cette page refuse l\'affichage intégré : le clic l\'ouvre dans un onglet" style="font-size:10px; letter-spacing:.04em; text-transform:uppercase; border:1px solid var(--border2); border-radius:4px; padding:1px 5px; margin-left:6px; color:var(--muted); white-space:nowrap;">onglet</span>':'')+'</div>'
         /* Provenance du flux : chaîne diffusée, site hébergeur et langue. Sans cela, deux
            lignes nommées « Lecteur direct » étaient indistinguables. */
-        +((s.channel || s.site || (s.lang && !/^multi$/i.test(s.lang)))
-            ? '<div class="si-meta" style="font-size:11px; color:var(--muted); margin-top:2px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">'
-              + (s.channel ? '<span style="font-weight:700; color:var(--text);">📡 '+esc(s.channel)+'</span>' : '')
+        /* Débit et définition RÉELLEMENT mesurés la dernière fois que ce flux a joué chez
+           l'utilisateur (js/debit.js). La qualité annoncée par la source, elle, est du
+           déclaratif souvent faux ; celle-ci est constatée. Rien n'est affiché tant que
+           rien n'a été mesuré — un CDN sans `Timing-Allow-Origin` ne laisse pas compter
+           ses octets, et on préfère le silence à un chiffre inventé. */
+        +(function() {
+            var mesure = formaterMesure(mesurePour(safeStorageGetJSON('debits', {}) || {}, s.url));
+            var meta = (s.channel ? '<span style="font-weight:700; color:var(--text);">📡 '+esc(s.channel)+'</span>' : '')
               + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
               + (s.lang && !/^multi$/i.test(s.lang) ? '<span style="border:1px solid var(--border2); border-radius:4px; padding:0 4px;">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
-              + '</div>'
-            : '')
+              + (mesure ? '<span title="Mesuré chez vous la dernière fois que ce flux a joué" style="border:1px solid rgba(124,252,154,0.35); color:#7CFC9A; border-radius:4px; padding:0 4px; white-space:nowrap;">' + esc(mesure) + '</span>' : '');
+            return meta ? '<div class="si-meta" style="font-size:11px; color:var(--muted); margin-top:2px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' + meta + '</div>' : '';
+        })()
       +'</div>'
       /* Badge de qualité seulement quand elle est réellement connue : afficher « SD »
          ou « HD » par défaut sur chaque ligne ne distinguait rien. */

@@ -131,6 +131,30 @@ test('avec le script, ni window.open, ni le lien _blank, ni la référence gard�
   expect(r.popups).toBe(0);
 });
 
+/* Débit et définition : le script rapporte ce qu'il MESURE, jamais une estimation.
+   La définition vient de l'élément <video> ; le débit des octets réellement transférés. */
+test('le script rapporte la définition réelle du lecteur', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => {
+    window.__mesures = [];
+    window.addEventListener('message', (e) => { if (e.data && e.data.__mv === 'video_stats') window.__mesures.push(e.data); });
+  });
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*'); });
+  await expect(cadre.locator('#lecteur')).toBeAttached();
+  await cadre.evaluate(() => {
+    const v = document.getElementById('lecteur');
+    Object.defineProperty(v, 'videoWidth', { value: 1920 });
+    Object.defineProperty(v, 'videoHeight', { value: 1080 });
+  });
+  await expect.poll(async () => (await page.evaluate(() => window.__mesures)).length, { timeout: 12000 }).toBeGreaterThan(0);
+  const m = (await page.evaluate(() => window.__mesures))[0];
+  expect(m.h).toBe(1080);
+  expect(m.w).toBe(1920);
+  /* Le banc ne sert aucun segment vidéo : le débit n'est pas mesurable, et doit valoir 0
+     plutôt qu'un chiffre inventé. */
+  expect(m.kbps).toBe(0);
+});
+
 /* Mode direct : le manifeste que la page demande remonte à la fenêtre principale, une
    fois, sans les manifestes publicitaires. */
 test('le script remonte le manifeste vidéo que la page demande', async ({ page }) => {
