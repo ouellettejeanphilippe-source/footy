@@ -546,8 +546,8 @@ function buildEPGInner(matches){
                   var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
                   var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
 
-                  var homeLogoHtmlPrime = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
-                  var awayLogoHtmlPrime = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+                  var homeLogoHtmlPrime = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+                  var awayLogoHtmlPrime = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
 
                   // Le nom de la ligue manquait : une icône seule ne dit pas de quelle compétition il s'agit.
                   var lgBadge = '<div class="prime-league-badge"><span class="plb-ic">' + (lg.flag || lgFlag(lg.league) || '') + '</span>'
@@ -706,7 +706,15 @@ function buildEPGInner(matches){
       if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live", true, 'liveNow');
       if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure", true, 'liveUpNext');
       if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
-          epgContainer.innerHTML = '<div style="color:var(--muted); padding:20px; text-align:center;">Aucun match en direct pour le moment.</div>';
+          var vide = document.createElement('div');
+          vide.className = 'empty-state';
+          vide.innerHTML = '<div style="font-size:34px;">' + (S.searchQuery ? '🔍' : '📺') + '</div>'
+            + '<div style="font-weight:700; font-size:16px; color:var(--text);">' + (S.searchQuery ? 'Aucun match ne correspond à « ' + esc(S.searchQuery) + ' »' : 'Aucun match en direct pour le moment') + '</div>'
+            + '<div>' + (S.searchQuery ? 'Essayez un autre nom d\'équipe ou de ligue.' : 'Le Guide montre tout le programme du jour, et les flèches de date les autres jours.') + '</div>'
+            + (S.searchQuery
+                ? '<button class="btn sm" onclick="setSearchQuery(\'\'); var i=document.getElementById(\'search-input\'); if(i) i.value=\'\';">Effacer la recherche</button>'
+                : '<button class="btn sm" onclick="applyFilter(\'all\')">Ouvrir le Guide</button>');
+          fragment.appendChild(vide);
       }
       // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
       renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesLive', false, function(m) { return m.league; });
@@ -792,8 +800,8 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               // Channel cell
               var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
               var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
-              var homeLogoHtml = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">') : (m.flag === '🎮' ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🎮</div>' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>');
-              var awayLogoHtml = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" onerror="this.style.display=\'none\'">') : (m.flag === '🎮' ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🎮</div>' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>');
+              var homeLogoHtml = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="chan-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">') : (m.flag === '🎮' ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🎮</div>' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>');
+              var awayLogoHtml = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="chan-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">') : (m.flag === '🎮' ? '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🎮</div>' : '<div class="chan-logo" style="display:flex;align-items:center;justify-content:center;font-size:12px;">🛡️</div>');
 
               var cCell = document.createElement('div');
               cCell.className = 'chan-cell';
@@ -961,10 +969,12 @@ if (secondaryLeaguesEpg.length > 0) {
     var secCount = secondaryLeaguesEpg.reduce(function(n, lg) { return n + (lg.matches ? lg.matches.length : 0); }, 0);
 
     var secTitle = document.createElement('div');
-    secTitle.style.cssText = 'padding:16px 24px 8px; font-weight:bold; font-size:18px; color:var(--text); border-bottom:1px solid var(--border); margin:16px 0; display:flex; align-items:center; gap:8px; cursor:pointer;';
+    secTitle.className = 'section-title';
+    secTitle.setAttribute('role', 'button');
+    secTitle.setAttribute('tabindex', '0');
     var secChev = document.createElement('span');
+    secChev.className = 'section-chevron';
     secChev.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
-    secChev.style.transition = 'transform 0.2s';
     secTitle.appendChild(secChev);
     var secLabel = document.createElement('span');
     secLabel.textContent = 'Ligues secondaires (' + secCount + ')';
@@ -972,15 +982,20 @@ if (secondaryLeaguesEpg.length > 0) {
     fragment.appendChild(secTitle);
 
     var secWrap = renderTimelineGuide(secondaryLeaguesEpg, fragment);
-    if (S.collapsedSections[secId]) {
-        secChev.style.transform = 'rotate(-90deg)';
-        if (secWrap) secWrap.style.display = 'none';
-    }
-    secTitle.addEventListener('click', function() {
+    var syncSec = function() {
+        var closed = !!S.collapsedSections[secId];
+        secTitle.classList.toggle('collapsed', closed);
+        secTitle.setAttribute('aria-expanded', closed ? 'false' : 'true');
+        if (secWrap) secWrap.style.display = closed ? 'none' : '';
+    };
+    syncSec();
+    var toggleSec = function(ev) {
+        if (ev) ev.preventDefault();
         S.collapsedSections[secId] = !S.collapsedSections[secId];
-        secChev.style.transform = S.collapsedSections[secId] ? 'rotate(-90deg)' : '';
-        if (secWrap) secWrap.style.display = S.collapsedSections[secId] ? 'none' : '';
-    });
+        syncSec();
+    };
+    secTitle.addEventListener('click', toggleSec);
+    secTitle.addEventListener('keydown', function(ev) { if (ev.key === 'Enter' || ev.key === ' ') toggleSec(ev); });
 }
 
 renderGroupedSection(autresFluxMatchesEpg, fragment, "Autres streams", 'autresStreamsEpg', true,
@@ -1013,8 +1028,42 @@ renderGroupedSection(autresFluxMatchesEpg, fragment, "Autres streams", 'autresSt
 
 
   epgContainer.appendChild(fragment);
+  renderSportChips(matches);
 
   updateNowLine();
+}
+
+/* Pastilles de filtre par ligue, dans la barre d'outils.
+
+   Elles n'étaient construites que dans la branche « scraping en direct » de loadAllRun :
+   dès que le cache serveur suffisait (le cas normal), la rangée restait vide. Rendues ici,
+   à chaque construction de la grille, elles suivent la journée affichée et l'état des
+   filtres. Une seule pastille active suffit à cliquer ; « Toutes » rétablit tout. */
+export function renderSportChips(matches) {
+  var sf = document.getElementById('sport-filters');
+  if (!sf) return;
+  var counts = {};
+  (matches || []).forEach(function(m) {
+      if (!m.league || m.league === 'EN DIRECT' || leagueTier(m.league) === 'ignored') return;
+      counts[m.league] = (counts[m.league] || 0) + 1;
+  });
+  var names = Object.keys(counts);
+  if (names.length < 2) { sf.innerHTML = ''; return; }
+  names.sort(function(a, b) {
+      var ra = { main: 0, secondary: 1 }[leagueTier(a)]; if (ra === undefined) ra = 2;
+      var rb = { main: 0, secondary: 1 }[leagueTier(b)]; if (rb === undefined) rb = 2;
+      if (ra !== rb) return ra - rb;
+      if (counts[b] !== counts[a]) return counts[b] - counts[a];
+      return a.localeCompare(b);
+  });
+  var anyHidden = names.some(function(n) { return S.hiddenLg[n]; });
+  var html = '<button type="button" class="btn sport-btn sport-all' + (anyHidden ? '' : ' active-toggle') + '" aria-pressed="' + !anyHidden + '" onclick="applySportFilter(\'all\')">Toutes</button>';
+  names.forEach(function(n) {
+      var on = !S.hiddenLg[n];
+      html += '<button type="button" class="btn sport-btn' + (on && anyHidden ? ' active-toggle' : '') + '" aria-pressed="' + (on && anyHidden) + '" onclick="applySportFilter(\'' + escJs(n) + '\')">'
+            + '<span>' + (lgFlag(n) || '') + '</span> ' + esc(n) + ' <span class="sb-n">' + counts[n] + '</span></button>';
+  });
+  sf.innerHTML = html;
 }
 
 // Event listeners for automatic scrolling based on the load sequence and filter changes
@@ -1120,36 +1169,32 @@ export function renderFluxItem(s, i, m) {
 
     /* Domaine primaire porté par la ligne : c'est ce qui permet aux pastilles de filtre
        (renderDomainChips) de masquer les autres sans re-générer la liste. */
-    return '<div class="si" data-dom="'+esc(primaryDomain(s.url))+'" style="display:flex; flex-direction:row; align-items:center; flex-wrap:wrap; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden; transition:all 0.15s; margin-bottom: 12px; padding-right:8px;">'
-      +'<a href="#" onclick="'+ev+'" style="flex:1; display:flex; align-items:center; gap:16px; padding:16px; color:var(--text); text-decoration:none; min-width:200px;">'
-      +'<div class="si-ic" style="font-size:24px;">'+(s.icon||QI[s.quality]||'📺')+'</div>'
-      +'<div class="si-inf" style="flex:1; overflow:hidden;">'
-        +'<div class="si-n" style="font-weight:600; font-size:13px; word-break:break-all;">'+esc(s.name||'Flux '+(i+1))+(s.topLevel?' <span title="Cette page refuse l\'affichage intégré : le clic l\'ouvre dans un onglet" style="font-size:10px; letter-spacing:.04em; text-transform:uppercase; border:1px solid var(--border2); border-radius:4px; padding:1px 5px; margin-left:6px; color:var(--muted); white-space:nowrap;">onglet</span>':'')+'</div>'
-        /* Provenance du flux : chaîne diffusée, site hébergeur et langue. Sans cela, deux
-           lignes nommées « Lecteur direct » étaient indistinguables. */
-        /* Débit et définition RÉELLEMENT mesurés la dernière fois que ce flux a joué chez
-           l'utilisateur (js/debit.js). La qualité annoncée par la source, elle, est du
-           déclaratif souvent faux ; celle-ci est constatée. Rien n'est affiché tant que
-           rien n'a été mesuré — un CDN sans `Timing-Allow-Origin` ne laisse pas compter
-           ses octets, et on préfère le silence à un chiffre inventé. */
-        +(function() {
-            var mesure = formaterMesure(mesurePour(safeStorageGetJSON('debits', {}) || {}, s.url));
-            var meta = (s.channel ? '<span style="font-weight:700; color:var(--text);">📡 '+esc(s.channel)+'</span>' : '')
-              + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
-              + (s.lang && !/^multi$/i.test(s.lang) ? '<span style="border:1px solid var(--border2); border-radius:4px; padding:0 4px;">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
-              + (mesure ? '<span title="Mesuré chez vous la dernière fois que ce flux a joué" style="border:1px solid rgba(124,252,154,0.35); color:#7CFC9A; border-radius:4px; padding:0 4px; white-space:nowrap;">' + esc(mesure) + '</span>' : '');
-            return meta ? '<div class="si-meta" style="font-size:11px; color:var(--muted); margin-top:2px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' + meta + '</div>' : '';
-        })()
+    /* Provenance du flux (chaîne, site, langue) et débit/définition RÉELLEMENT mesurés la
+       dernière fois que ce flux a joué chez l'utilisateur (js/debit.js). La qualité annoncée
+       par la source est du déclaratif souvent faux ; la mesure, elle, est constatée — et rien
+       n'est affiché tant que rien n'a été mesuré. */
+    var mesure = formaterMesure(mesurePour(safeStorageGetJSON('debits', {}) || {}, s.url));
+    var metaInner = (s.channel ? '<span class="si-chan">📡 '+esc(s.channel)+'</span>' : '')
+        + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
+        + (s.lang && !/^multi$/i.test(s.lang) ? '<span class="si-lang">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
+        + (mesure ? '<span class="si-mesure" title="Mesuré chez vous la dernière fois que ce flux a joué">' + esc(mesure) + '</span>' : '');
+    var meta = metaInner ? '<div class="si-meta">' + metaInner + '</div>' : '';
+    return '<div class="si" data-dom="'+esc(primaryDomain(s.url))+'">'
+      +'<a href="#" class="si-main" onclick="'+ev+'">'
+      +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
+      +'<div class="si-inf">'
+        +'<div class="si-n"><span>'+esc(s.name||'Flux '+(i+1))+'</span>'
+        +(s.topLevel?'<span class="si-tab" title="Cette page refuse l\'affichage intégré : le clic l\'ouvre dans un onglet">onglet</span>':'')+'</div>'
+        + meta
       +'</div>'
-      /* Badge de qualité seulement quand elle est réellement connue : afficher « SD »
-         ou « HD » par défaut sur chaque ligne ne distinguait rien. */
+      /* Badge de qualité seulement quand elle est réellement connue. */
       +(s.quality ? '<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+esc(s.quality)+'</span>' : '')
       +'</a>'
-      +'<div style="display:flex; align-items:center; padding:8px; gap:2px; margin-left:auto;">'
-        +'<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="'+favEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===1?'var(--accent)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>'
-        +'<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="'+depEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(pref===-1?'var(--red)':'rgba(255,255,255,0.05)')+'; border:none; color:'+(pref===-1?'#fff':'var(--muted)')+'; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>'
-        +'<button title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'" style="width:28px; height:28px; border-radius:8px; background:rgba(255,255,255,0.05); border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center; margin-left:4px;">⊞</button>'
-        +'<button title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet" onclick="'+openExtEv+'" style="width:28px; height:28px; border-radius:8px; background:'+(s.topLevel?'rgba(255,255,255,0.14)':'rgba(255,255,255,0.05)')+'; border:none; color:var(--text); cursor:pointer; font-weight:600; font-size:13px; display:flex; align-items:center; justify-content:center;">↗</button>'
+      +'<div class="si-actions">'
+        +'<button type="button" class="si-btn'+(pref===1?' on-fav':'')+'" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" aria-pressed="'+(pref===1)+'" onclick="'+favEv+'">⭐</button>'
+        +'<button type="button" class="si-btn'+(pref===-1?' on-dep':'')+'" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" aria-pressed="'+(pref===-1)+'" onclick="'+depEv+'">👎</button>'
+        +'<button type="button" class="si-btn si-add" title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'">⊞</button>'
+        +'<button type="button" class="si-btn si-ext'+(s.topLevel?' hint':'')+'" title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet" onclick="'+openExtEv+'">↗</button>'
       +'</div>'
       +'</div>';
 }
@@ -1470,8 +1515,8 @@ export function openMod(m,col){
   var streamsBadgePrime = "";
   var lgBadge = '<div class="prime-league-badge">'+m.flag+'</div>';
 
-  var homeLogoHtmlPrime = hLogo ? (hLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(hLogo.split(':')[1]) + '</div>' : '<img src="'+esc(hLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
-  var awayLogoHtmlPrime = aLogo ? (aLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(aLogo.split(':')[1]) + '</div>' : '<img src="'+esc(aLogo)+'" class="prime-logo" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+  var homeLogoHtmlPrime = hLogo ? (hLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(hLogo.split(':')[1]) + '</div>' : '<img src="'+esc(hLogo)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+  var awayLogoHtmlPrime = aLogo ? (aLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(aLogo.split(':')[1]) + '</div>' : '<img src="'+esc(aLogo)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
 
   var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
 
@@ -1512,13 +1557,7 @@ export function openMod(m,col){
                   '</div>';
 
 
-  var mhd = document.querySelector('.mhd');
-  if (mhd) mhd.style.display = 'none';
-  var mft = document.querySelector('.mft');
-  if (mft) mft.style.display = 'none';
-
-  var wrapperHtml = '<div style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
-      '<button class="mx" aria-label="Fermer la modale" title="Fermer" onclick="closeMod()" style="position: absolute; top: -10px; right: -10px; z-index: 100; pointer-events: auto;"><span class="ic ic-close"></span></button>' +
+  var wrapperHtml = '<div class="fiche-cols" style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
       '<div id="modal-left-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
           '<div class="match-card scoreboard" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
               '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:21/9; border-radius:var(--radius-card,12px); overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.3); display:flex; background-color:var(--bg2); z-index: 1;">' +
@@ -1559,16 +1598,11 @@ export function openMod(m,col){
   var hasEnoughStreams = compterFluxUtiles(m) > 0;
   var needsScraping = !hasEnoughStreams && m.matchUrl;
 
-  // Header section for right column (Refresh + Random Multiview)
-  var rightHeaderHtml = '<div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;">';
-
-  // Refresh button
-  rightHeaderHtml += '<button id="mv-refresh-btn" aria-label="Mettre à jour les streams" title="Mettre à jour les streams" style="background:transparent; border:none; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'" ' + (!m.matchUrl ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : '') + '>🔄</button>';
-
-  // Random Multiview button
-  rightHeaderHtml += '<button id="mv-random-btn" aria-label="Ajouter un stream aléatoire à la Multivision" title="Ajouter un stream aléatoire à la Multivision" style="background:transparent; border:none; color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0.8; transition:all 0.15s; padding:4px;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'">⊞</button>';
-
-  rightHeaderHtml += '</div>';
+  // Barre d'actions de la colonne des flux : rafraîchir, et « meilleur flux au Multivision »
+  var rightHeaderHtml = '<div class="flux-head"><span class="flux-title">Flux</span><div class="flux-actions">'
+      + '<button id="mv-refresh-btn" class="icon-btn" aria-label="Mettre à jour les flux" title="Mettre à jour les flux"' + (!m.matchUrl ? ' disabled' : '') + '>🔄</button>'
+      + '<button id="mv-random-btn" class="icon-btn" aria-label="Ajouter le meilleur flux au Multivision" title="Ajouter le meilleur flux au Multivision">⊞</button>'
+      + '</div></div>';
 
   // This will attach events to the header buttons once rightCol.innerHTML is set
   function attachHeaderEvents() {
@@ -1580,7 +1614,7 @@ export function openMod(m,col){
 
               var rightCol = document.getElementById('modal-right-col');
               if(rightCol) {
-                  rightCol.innerHTML = rightHeaderHtml + '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted2); gap: 16px;"><div class="spinner"></div><div style="font-weight: 600;">Recherche de streams...</div><div style="font-size: 12px; opacity: 0.6;">(Actualisation en cours)</div></div>';
+                  rightCol.innerHTML = rightHeaderHtml + '<div class="flux-loading"><div class="spinner"></div><div>Recherche de flux…</div><small>Actualisation en cours</small></div>';
                   attachHeaderEvents();
               }
 
@@ -1662,7 +1696,7 @@ export function openMod(m,col){
 
 
   if(needsScraping) {
-      rightCol.innerHTML= rightHeaderHtml + '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted2); gap: 16px;"><div class="spinner"></div><div style="font-weight: 600;">Recherche de streams...</div><div style="font-size: 12px; opacity: 0.6;">(Chargement en arrière-plan)</div></div>';
+      rightCol.innerHTML= rightHeaderHtml + '<div class="flux-loading"><div class="spinner"></div><div>Recherche de flux…</div><small>Les liens déjà connus s\'affichent dès qu\'ils arrivent</small></div>';
       attachHeaderEvents();
       document.getElementById('mbg').classList.add('open');
 
@@ -1721,9 +1755,9 @@ export function openMod(m,col){
 
       var contentHtml = rightHeaderHtml;
       if (sortedLinks.length === 0) {
-          contentHtml += '<div style="text-align:center;padding:20px;color:var(--muted2);">Aucun flux trouvé.<br>';
+          contentHtml += '<div class="flux-empty"><div>Aucun flux trouvé pour l\'instant.</div>';
           if (m.matchUrl) {
-              contentHtml += '<a href="'+esc(m.matchUrl)+'" target="_blank" style="color:var(--accent);margin-top:10px;display:inline-block;">Ouvrir la page du match</a>';
+              contentHtml += '<a href="'+esc(m.matchUrl)+'" target="_blank" rel="noopener" class="btn sm o">Ouvrir la page du match ↗</a>';
           }
           contentHtml += '</div>';
       } else {
@@ -1783,9 +1817,8 @@ export function openMod(m,col){
       }
 
       // Fallback manual links search
-      contentHtml += '<div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">';
-      contentHtml += '<details style="color: var(--muted); cursor: pointer;"><summary style="outline:none; font-weight: 500;">Recherche manuelle & Sites de base (Fallback)</summary>';
-      contentHtml += '<div style="padding: 10px 0; display: flex; flex-wrap: wrap; gap: 8px;">';
+      contentHtml += '<details class="flux-more"><summary>Recherche manuelle et sites sources</summary>';
+      contentHtml += '<div class="flux-sites">';
 
       var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
       var singleTeam = encodeURIComponent(m.homeTeam);
@@ -1813,22 +1846,22 @@ export function openMod(m,col){
               statHtml = ' <span style="font-size: 10px; margin-left: 4px; color: '+statColor+';" title="Flux extraits pour ce match">('+feedCount+' flux)</span>';
           }
 
-          contentHtml += '<a href="'+site.url+'" target="_blank" class="mtag" style="background: rgba(255,255,255,0.05); color: #fff; text-decoration: none; display: inline-flex; align-items: center;">'+site.name+' 🔗' + statHtml + '</a>';
+          contentHtml += '<a href="'+site.url+'" target="_blank" rel="noopener" class="mtag">'+site.name+' 🔗' + statHtml + '</a>';
       });
       contentHtml += '</div>';
 
-      contentHtml += '<div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
-      contentHtml += '<div style="font-size: 12px; margin-bottom: 8px;">Ajouter un flux manuellement au Multiview (m3u8, iframe, url):</div>';
-      contentHtml += '<div style="display:flex; gap: 8px;">';
-      contentHtml += '<input type="text" id="manual-flux-input" placeholder="https://..." style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px;">';
+      contentHtml += '<div class="sub">';
+      contentHtml += '<div class="sub-title">Ajouter un flux manuellement au Multivision (m3u8, iframe, URL) :</div>';
+      contentHtml += '<div class="sub-row">';
+      contentHtml += '<input type="text" id="manual-flux-input" class="input" placeholder="https://...">';
       contentHtml += '<button class="btn o" onclick="var v=document.getElementById(\'manual-flux-input\').value; if(v){ window.addManualStream(\''+escJs(m.id)+'\', v); }">Ajouter ⊞</button>';
       contentHtml += '</div></div>';
 
-      contentHtml += '<div style="margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">';
-      contentHtml += '<div style="font-size: 12px; margin-bottom: 8px;">Corriger et extraire via URL source (Diagnostic) :</div>';
-      contentHtml += '<div style="display:flex; gap: 8px;">';
-      contentHtml += '<input type="text" id="diagnostic-url-input" placeholder="https://site-de-streaming.com/match-xyz" value="'+(m.matchUrl ? esc(m.matchUrl) : '')+'" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:6px;">';
-      contentHtml += '<button class="btn" style="background:var(--accent); color:#fff;" onclick="var u=document.getElementById(\'diagnostic-url-input\').value; if(u){ window.diagnosticScrape(\''+escJs(m.id)+'\', u); }">Scraper</button>';
+      contentHtml += '<div class="sub">';
+      contentHtml += '<div class="sub-title">Corriger et extraire via une URL source (diagnostic) :</div>';
+      contentHtml += '<div class="sub-row">';
+      contentHtml += '<input type="text" id="diagnostic-url-input" class="input" placeholder="https://site-de-streaming.com/match-xyz" value="'+(m.matchUrl ? esc(m.matchUrl) : '')+'">';
+      contentHtml += '<button class="btn primary" onclick="var u=document.getElementById(\'diagnostic-url-input\').value; if(u){ window.diagnosticScrape(\''+escJs(m.id)+'\', u); }">Scraper</button>';
       contentHtml += '</div>';
       contentHtml += '<div id="diagnostic-report-container" style="margin-top: 10px; font-size: 12px; color: var(--muted2);">';
       if (m._diagnosticReportHtml) {
@@ -1839,12 +1872,12 @@ export function openMod(m,col){
       contentHtml += '</div>';
 
       if (possibleMatches.length > 0) {
-          contentHtml += '<div style="margin-top: 15px;">';
-          contentHtml += '<div style="font-size: 12px; margin-bottom: 8px; color: var(--accent);">Flux isolés trouvés :</div>';
-          contentHtml += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+          contentHtml += '<div class="flux-isolated">';
+          contentHtml += '<div class="sub-title" style="color:var(--accent);">Flux isolés trouvés :</div>';
+          contentHtml += '<div>';
           possibleMatches.forEach(function(pm) {
-              contentHtml += '<div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">';
-              contentHtml += '<div style="font-size: 12px;">' + esc(pm.homeTeam) + ' vs ' + esc(pm.awayTeam) + ' <span style="opacity:0.5;">('+esc(pm.source)+')</span></div>';
+              contentHtml += '<div class="row-i">';
+              contentHtml += '<div>' + esc(pm.homeTeam) + ' vs ' + esc(pm.awayTeam) + ' <span style="opacity:0.5;">('+esc(pm.source)+')</span></div>';
               if (pm.matchUrl) {
                   contentHtml += '<button class="btn o" style="padding: 4px 8px; font-size: 11px;" onclick="addToMultivision(\''+escJs(pm.matchUrl)+'\', \''+escJs(pm.homeTeam)+' vs '+escJs(pm.awayTeam)+'\', \''+escJs(pm.id)+'\'); closeMod();">Lancer ⊞</button>';
               }
@@ -1853,7 +1886,7 @@ export function openMod(m,col){
           contentHtml += '</div></div>';
       }
 
-      contentHtml += '</details></div>';
+      contentHtml += '</details>';
 
       rightCol.innerHTML = contentHtml;
       attachHeaderEvents();
@@ -1863,12 +1896,20 @@ export function openMod(m,col){
 export function closeMod(){
   document.getElementById('mbg').classList.remove('open');
   arreterRafraichissementFiche();
-    if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
+  if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
+}
 
-  var mhd = document.querySelector('.mhd');
-  if (mhd) mhd.style.display = '';
-  var mft = document.querySelector('.mft');
-  if (mft) mft.style.display = '';
+/* Échap ferme la fiche, ou le menu « Plus » s'il est ouvert. */
+if (typeof document !== 'undefined') {
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    var mbg = document.getElementById('mbg');
+    if (mbg && mbg.classList.contains('open')) { closeMod(); return; }
+    var inv = document.getElementById('investigator-modal');
+    if (inv && inv.style.display === 'flex') { inv.style.display = 'none'; return; }
+    var menu = document.getElementById('main-menu');
+    if (menu && menu.classList.contains('open') && typeof window.toggleMenu === 'function') window.toggleMenu();
+  });
 }
 
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
@@ -1895,6 +1936,7 @@ if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
 window.diagnosticScrape = diagnosticScrape;
 window.getOriginalMatchId = getOriginalMatchId;
 window.buildEPG = buildEPG;
+window.renderSportChips = renderSportChips;
 window.applyCardShape = applyCardShape;
 window.cardShapePref = cardShapePref;
 window.updateNowLine = updateNowLine;

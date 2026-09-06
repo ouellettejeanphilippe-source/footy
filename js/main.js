@@ -1,5 +1,5 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache } from './utils.js';
+import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague } from './config.js';
@@ -497,25 +497,7 @@ async function loadAllRun(isBackground, forceScrape){
           }));
           if (!isBackground) { hideLoadingOverlay(); }
 
-          // Populate sports filter
-          var sports = {};
-          for(var i=0; i<S.matches.length; i++) { sports[S.matches[i].league]=true; }
-          var sportNames = Object.keys(sports).sort();
-          var sf = document.getElementById('sport-filters');
-          if(sf){
-              var anyHidden = false;
-              var keys = Object.keys(S.hiddenLg); for(var i=0; i<keys.length; i++) { if(S.hiddenLg[keys[i]]) { anyHidden = true; break; } }
-              var isAllSel = !anyHidden;
-
-              var optionsHtml = '<button class="btn sport-btn '+(isAllSel?'active-toggle':'')+'" onclick="applySportFilter(\'all\');">Tous les sports</button>';
-              sportNames.forEach(function(sp){
-                  if (sp !== 'EN DIRECT') {
-                      var isSel = !S.hiddenLg[sp];
-                      optionsHtml += '<button class="btn sport-btn '+(isSel?'active-toggle':'')+'" onclick="applySportFilter(\''+escJs(sp)+'\');"><span style="margin-right:4px;">'+lgFlag(sp)+'</span> '+esc(sp)+'</button>';
-                  }
-              });
-              sf.innerHTML = optionsHtml;
-          }
+          // Les pastilles de ligues sont rendues par buildEPG → renderSportChips (js/ui.js).
 
           setTimeout(function() {
               if (isBackground && window.hasLoadedOnce) {
@@ -684,12 +666,11 @@ export function toggleMenu(e) {
   var btn = document.getElementById('menu-btn');
   if (menu) {
       menu.classList.toggle('open');
-      // Remove inline display style to let CSS handle it via !important
       menu.style.display = '';
-      if (menu.classList.contains('open')) {
-          if (btn) btn.innerHTML = '✕';
-      } else {
-          if (btn) btn.innerHTML = '☰';
+      var open = menu.classList.contains('open');
+      if (btn) {
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (!btn.querySelector('.nav-ic')) btn.innerHTML = open ? '✕' : '☰';
       }
   }
 }
@@ -701,7 +682,10 @@ document.addEventListener('click', function(e) {
   if (menu && menu.classList.contains('open') && e.target !== btn && !btn.contains(e.target) && !menu.contains(e.target)) {
       menu.style.display = '';
       menu.classList.remove('open');
-      if (btn) btn.innerHTML = '☰';
+      if (btn) {
+          btn.setAttribute('aria-expanded', 'false');
+          if (!btn.querySelector('.nav-ic')) btn.innerHTML = '☰';
+      }
   }
 });
 
@@ -740,25 +724,8 @@ document.addEventListener('DOMContentLoaded', updateZoomDisplay);
 
 
 export function openFavPage() {
-    var epgContainer = document.getElementById('epg');
-    if (epgContainer) epgContainer.style.display = 'none';
-    var mareaContainer = document.getElementById('marea');
-    if (mareaContainer) mareaContainer.style.display = 'none';
-    var sportFiltersContainer = document.getElementById('sport-filters-container');
-    if (sportFiltersContainer) sportFiltersContainer.style.display = 'none';
-
-    var optionsPage = document.getElementById('options-page');
-    if (optionsPage) optionsPage.style.display = 'none';
-    var logsPage = document.getElementById('logs-page');
-    if (logsPage) logsPage.style.display = 'none';
-    var scriptPage = document.getElementById('script-page');
-    if (scriptPage) scriptPage.style.display = 'none';
-
-    var favPage = document.getElementById('fav-page');
-    if (favPage) {
-        favPage.style.display = 'flex';
-        renderFavPage();
-    }
+    showPage('fav-page');
+    if (document.getElementById('fav-page')) renderFavPage();
 }
 
 
@@ -1239,6 +1206,7 @@ export function applyTargetDate(d) {
     if (displayEl) {
         displayEl.textContent = text;
     }
+    document.body.setAttribute('data-today', isToday ? 'true' : 'false');
 
     window.hasLoadedOnce = false; // Force a full reload sequence with UI
     loadAll(false, false);
@@ -1258,6 +1226,17 @@ export function setTargetDate(dateStr) {
     var newDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
     applyTargetDate(newDate);
 }
+
+/* Interface classique : l'ancienne coquille (legacy.html + styles-legacy.css) reste
+   livrée à côté de la nouvelle, le temps de la comparer à l'usage. Le choix est retenu
+   dans le stockage local ; index.html redirige au démarrage (script en tête de page)
+   pour que la préférence tienne d'une session à l'autre et depuis l'écran d'accueil. */
+export function toggleLegacyUi(enabled) {
+    safeStorageSet('ui_legacy', enabled ? '1' : '0');
+    var page = enabled ? 'legacy.html' : 'index.html';
+    window.location.href = page + window.location.search + window.location.hash;
+}
+window.toggleLegacyUi = toggleLegacyUi;
 
 window.applyTargetDate = applyTargetDate;
 window.changeTargetDate = changeTargetDate;
@@ -1307,6 +1286,8 @@ window.toggleTvMode = function(enabled) {
 
 // Auto-init at boot
 document.addEventListener('DOMContentLoaded', () => {
+    const legacyCb = document.getElementById('pref-legacy-ui');
+    if (legacyCb) legacyCb.checked = /legacy\.html$/i.test(window.location.pathname);
     const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
     const tvCheckbox = document.getElementById('pref-tv-mode');
     if (tvCheckbox) tvCheckbox.checked = isTvMode;

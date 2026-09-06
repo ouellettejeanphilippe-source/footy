@@ -35,7 +35,7 @@ jobs:
     - name: Prepare web assets
       run: |
         mkdir -p www
-        cp index.html styles.css tv.css sw.js manifest.json www/ 2>/dev/null || true
+        cp index.html legacy.html styles.css styles-legacy.css tv.css sw.js manifest.json www/ 2>/dev/null || true
         cp -r js www/ 2>/dev/null || true
         cp -r css www/ 2>/dev/null || true
         cp -r videos www/ 2>/dev/null || true
