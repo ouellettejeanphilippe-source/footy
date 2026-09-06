@@ -1674,8 +1674,9 @@ export function updateMultivisionLayout() {
                    étaient morts, et sans le script installé il ne restait qu'un canal.
                    Le tour côté client ne sert plus qu'aux liens ajoutés à la main et à
                    ceux que la passe serveur n'a pas résolus. */
-                var lecteurPret = (s && typeof s.playerUrl === 'string' && /^https?:/i.test(s.playerUrl))
-                    ? s.playerUrl : '';
+                var lienConnu = lienDuMatchPourFlux(s, url);
+                var adresseHttp = function(v) { return (typeof v === 'string' && /^https?:/i.test(v)) ? v : ''; };
+                var lecteurPret = adresseHttp(s && s.playerUrl) || adresseHttp(lienConnu && lienConnu.playerUrl);
 
                 /* Le serveur SAIT lesquels refusent l'iframe : le scraper horaire interroge
                    chaque hôte et lit ses en-têtes (X-Frame-Options, CSP frame-ancestors),
@@ -1716,7 +1717,7 @@ export function updateMultivisionLayout() {
                 try { hoteDuLien = new URL(finalUrl).hostname.replace(/^(www|v2)\./, ''); } catch (e) {}
                 var registreConnu = (typeof getEmbedRegistry === 'function') ? getEmbedRegistry() : null;
                 var hoteMesureBloque = !!(hoteDuLien && registreConnu && registreConnu.blocked && registreConnu.blocked[hoteDuLien]);
-                var bloqueParServeur = !!(s && s.topLevel) || hoteMesureBloque;
+                var bloqueParServeur = !!(s && s.topLevel) || !!(lienConnu && lienConnu.topLevel) || hoteMesureBloque;
 
                 /* La PAGE D'ORIGINE passe avant le lecteur extrait, quand elle s'encadre.
 
@@ -2151,6 +2152,40 @@ export function updateMultivisionLayout() {
 
     applyMvFocusStyling();
     applyMvAudioState();
+}
+
+/* Le lien tel que le match le connaît, retrouvé par son adresse.
+
+   Une entrée du Multivision ne porte que { url, name, mid } : c'est tout ce que
+   `addToMultivision` reçoit, depuis la fiche comme depuis le sélecteur de flux. Or la
+   décision de chargement (fallbackToIframe) lit `s.playerUrl` et `s.topLevel` sur cette
+   entrée — des champs qui n'y ont jamais été copiés. Le lecteur extrait par le scraper
+   horaire (data/streams.json, champ `playerUrl`) et la mesure « refuse l'iframe »
+   (`topLevel`) n'atteignaient donc jamais la tuile : la page de match était chargée
+   telle quelle, et le navigateur affichait son refus. Relevé sur le cache du
+   6 septembre 2026 : 511 liens portaient les deux champs, 100 matchs n'avaient QUE ce
+   type de lien — pour eux le Multivision ne montrait rien.
+
+   On retrouve donc le lien dans le match (par `mid`, sinon dans toute la grille) au
+   moment de charger la tuile, plutôt que de recopier les champs à l'ajout : une entrée
+   restaurée du stockage local, ou dont l'adresse a changé par le sélecteur, reste juste. */
+export function lienDuMatchPourFlux(s, url) {
+    var cible = url || (s && s.url);
+    if (!cible) return null;
+    var liste = (S && Array.isArray(S.matches)) ? S.matches : [];
+    function chercher(m) {
+        var L = (m && m.streamLinks) || [];
+        for (var i = 0; i < L.length; i++) { if (L[i] && L[i].url === cible) return L[i]; }
+        return null;
+    }
+    var lien = null;
+    if (s && s.mid !== undefined && s.mid !== null) {
+        for (var k = 0; k < liste.length && !lien; k++) {
+            if (String(liste[k].id) === String(s.mid)) lien = chercher(liste[k]);
+        }
+    }
+    for (var j = 0; j < liste.length && !lien; j++) lien = chercher(liste[j]);
+    return lien;
 }
 
 export function addToMultivision(url, name, mid) {
@@ -3644,6 +3679,7 @@ window.applyMvFocusStyling = applyMvFocusStyling;
 window.applyMvAudioState = applyMvAudioState;
 window.updateMultivisionLayout = updateMultivisionLayout;
 window.addToMultivision = addToMultivision;
+window.lienDuMatchPourFlux = lienDuMatchPourFlux;
 window.removeFromMultivision = removeFromMultivision;
 window.toggleMultiview = toggleMultiview;
 window.toggleDocumentPiP = toggleDocumentPiP;

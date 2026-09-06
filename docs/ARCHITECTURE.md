@@ -246,6 +246,18 @@ et chaque entrée du `Promise.all` du calendrier (`js/api.js`, `AbortSignal.time
 TheSportsDB incluse). Un réseau qui avale les requêtes au lieu de les refuser ne bloque
 donc plus l'application.
 
+### Sections Footybite et noms d'équipes selon la compétition (`js/scrapers.js`, 2026-09-06)
+- `parseFootybite` lit la ligue d'une ligne par sa **parenté** dans le payload Next.js (`sectionDe`) : la ligne qui la référence par `"$L<id>"`, puis la sienne, jusqu'à une section. Une ligne différée n'hérite plus de la dernière section du fichier.
+- `officialTeamNameForLeague(name, league)` : résolution du nom d'équipe dans le sport de la compétition. Universitaire → aucune résolution ; sport connu → refus d'une résolution qui change de sport ; sinon `getOfficialTeamName` inchangé.
+
+### Appariement : sport, puis alignement des équipes (`js/match.js`, 2026-09-06)
+- `sportOfLeague` vit désormais dans **`js/db.js`** (ré-exporté par `js/config.js`) : `js/match.js` l'importe sans cycle. `sportFamily(sport)` regroupe les étiquettes d'une même compétition (nfl/cfb/cfl, nba/wnba/ncaab, f1/motor, mma/boxing). Deux ligues de familles différentes ne s'apparient jamais ; « other » n'exclut rien.
+- La validation croisée est **alignée** : chaque équipe du match court doit retrouver TOUS ses mots désignants (`GENERIC_TEAM_WORDS` exclus) dans l'équipe correspondante du match long, dans le même sens ou en sens inverse.
+- Les noms ESPN (`scripts/scrape_schedule.mjs`, `js/api.js`) viennent de `team.displayName` (« Texas Longhorns »), pas de `team.name` (« Longhorns »).
+
+### Le lien du match derrière une tuile du Multivision (`js/multiview.js`, 2026-09-06)
+- `lienDuMatchPourFlux(s, url)` : retrouve, dans `S.matches`, le lien (`playerUrl`, `topLevel`…) dont l'adresse est celle de la tuile — par `mid` d'abord, puis dans toute la grille. `fallbackToIframe` s'en sert pour lire le lecteur extrait par le serveur et la mesure « refuse l'iframe », qu'une entrée `{ url, name, mid }` ne porte pas.
+
 ### Flux non appariés : `mergeFluxToApi` (`js/api.js`)
 Un flux qui ne correspond à aucun match de la grille officielle reste rangé dans
 « Autres Flux » — c'est le principe API-First (un échec de fusion ne doit pas produire de

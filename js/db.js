@@ -570,6 +570,34 @@ if (typeof STATIC_TEAMS !== 'undefined') {
         }
     });
 }
+/* Sport d'une ligue, d'après son nom. Venu de js/config.js le 6 septembre 2026 : ce
+   module n'importe que teams.js, si bien que js/match.js peut s'en servir pour refuser
+   l'appariement de deux matchs de sports différents sans créer de cycle. */
+export function sportOfLeague(league) {
+    var l = String(league || '').toLowerCase();
+    if (!l) return 'other';
+    if (/\b(nhl|pwhl|khl|ahl|shl|liiga)\b|hockey|lhjmq|qmjhl/.test(l)) return 'nhl';
+    if (/\bmlb\b|baseball/.test(l)) return 'mlb';
+    if (/\bwnba\b/.test(l)) return 'wnba';
+    if (/ncaa.*basket|college basket|\bncaab\b/.test(l)) return 'ncaab';
+    if (/\bnba\b|basket/.test(l)) return 'nba';
+    if (/\bcfl\b/.test(l)) return 'cfl';
+    if (/ncaa.*foot|college foot|\bcfb\b|\bncaaf\b/.test(l)) return 'cfb';
+    if (/\bnfl\b|\bufl\b|american football/.test(l)) return 'nfl';
+    if (/\bufc\b|\bmma\b|bellator|\bpfl\b/.test(l)) return 'mma';
+    if (/box/.test(l)) return 'boxing';
+    if (/\bwwe\b|\baew\b|\btna\b|wrestl/.test(l)) return 'wwe';
+    if (/\bf1\b|formula/.test(l)) return 'f1';
+    if (/motogp|indycar|nascar|motor/.test(l)) return 'motor';
+    if (/rugby/.test(l)) return 'rugby';
+    if (/cricket/.test(l)) return 'cricket';
+    if (/tennis|atp|wta/.test(l)) return 'tennis';
+    if (/golf|pga/.test(l)) return 'golf';
+    if (/\b(lcs|lec|lpl|lck|msi|worlds|cblol|ljl|pcs|vcs|lla|tcl|lcp|nlc)\b|league of legends|esport/.test(l)) return 'esports';
+    if (/league|liga|serie|cup|coupe|\bmls\b|bundesliga|ligue|champions|europa|copa|premier|eredivisie|primeira|uefa|fifa|conmebol|concacaf|saudi|soccer|football|super lig|pokal|nations|friendly|primera|eliteserien|allsvenskan/.test(l)) return 'soccer';
+    return 'other';
+}
+
 /* Sport d'un nom d'équipe d'après la base, ou '' si inconnu. Sert à refuser une
    résolution qui changerait de sport (voir getOfficialTeamName). */
 export function sportOfTeamName(name) {

@@ -31,7 +31,7 @@ async function main() {
   const src = fs.readFileSync(require('path').join(__dirname, '..', 'js', 'multiview.js'), 'utf8');
 
   // ── 1. Le drapeau du serveur est bel et bien consulté ─────────────────────────
-  assert.ok(/var bloqueParServeur = !!\(s && s\.topLevel\) \|\| hoteMesureBloque;/.test(src),
+  assert.ok(/var bloqueParServeur = !!\(s && s\.topLevel\) \|\| !!\(lienConnu && lienConnu\.topLevel\) \|\| hoteMesureBloque;/.test(src),
     'multiview.js doit lire le drapeau topLevel posé par le scraper (et la mesure de l\'hôte, groupe 7)');
   assert.ok(/isTopLevel = !lecteurUtile && \(bloqueParServeur \|\| isMatchOrLeaguePage\(finalUrl\)\)/.test(src),
     'la décision doit combiner la mesure du serveur ET l\'heuristique');
@@ -148,7 +148,7 @@ async function main() {
      premier chargement (data/streams.json publie hostPolicy, versé dans ce registre). */
   assert.ok(/var hoteMesureBloque = !!\(hoteDuLien && registreConnu && registreConnu\.blocked && registreConnu\.blocked\[hoteDuLien\]\);/.test(src),
     'la décision doit consulter le registre des hôtes mesurés, pas seulement le drapeau du lien');
-  assert.ok(/var bloqueParServeur = !!\(s && s\.topLevel\) \|\| hoteMesureBloque;/.test(src),
+  assert.ok(/var bloqueParServeur = !!\(s && s\.topLevel\) \|\| !!\(lienConnu && lienConnu\.topLevel\) \|\| hoteMesureBloque;/.test(src),
     'le drapeau du lien ET la mesure de l\'hôte doivent compter');
 
   const decideAvecHote = (topLevel, hoteBloque, formeDePage, lecteurPret) => {

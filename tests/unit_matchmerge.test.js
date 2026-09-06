@@ -86,6 +86,81 @@ async function main() {
         'la fenêtre glissante doit toujours rattraper une coquille du MÊME nom quand les deux équipes sont connues');
     ok('non-régression : coquille du même nom (Tanpa/Tampa) toujours fusionnée quand les deux équipes sont connues');
 
+    // ── 6. Racing/Event : un résidu trop court n'apparie rien ──────────────
+    /* Relevé sur le cache du 6 septembre 2026 : « F1 Main Race », une fois les termes
+       génériques retirés, ne laisse que « main » — que « Sunday Nights Main Event »
+       contient. Le gala de la WWE portait donc les liens de la F1, et par ricochet ceux
+       du MotoGP fusionnés dans la même entrée. */
+    all = [];
+    all = match.mergeMatches(all, [m({ league: 'WWE', homeTeam: 'Sunday Nights Main Event', awayTeam: '' })]);
+    all = match.mergeMatches(all, [m({ league: 'F1', homeTeam: 'F1 Main Race', awayTeam: '' })]);
+    all = match.mergeMatches(all, [m({ league: 'Motorsport', homeTeam: 'MotoGP Main Race', awayTeam: '' })]);
+    assert.strictEqual(all.length, 3, '« main » ne suffit pas à apparier un gala WWE et une course de F1');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'F1', homeTeam: 'Italian Grand Prix', awayTeam: '' }),
+        m({ league: 'F1', homeTeam: 'F1 Italian Grand Prix Race', awayTeam: '' })), true,
+        'un vrai nom d\'épreuve (« italian ») continue d\'apparier ses séances');
+    ok('Racing/Event : Sunday Nights Main Event ne reçoit plus les liens de la F1');
+
+    // ── 7. Deux sports différents ne s'apparient jamais ─────────────────────
+    /* Relevé sur les pages réelles du 6 septembre 2026 : « Miami FC vs Pittsburgh
+       Riverhounds » (USL) recevait les liens de « Miami vs Pitt » (football
+       universitaire) — « pitt » est contenu dans « pittsburghriverhounds ». */
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'American Usl Championship', homeTeam: 'Miami FC', awayTeam: 'Pittsburgh Riverhounds' }),
+        m({ league: 'NCAA Football', homeTeam: 'Miami', awayTeam: 'Pitt' })), false,
+        'football (soccer) et football universitaire ne se mélangent pas');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'F1', homeTeam: 'Italian Grand Prix', awayTeam: '' }),
+        m({ league: 'Motorsport', homeTeam: 'Italian Grand Prix Race', awayTeam: '' })), true,
+        '« F1 » et « Motorsport » sont deux étiquettes d\'une même famille');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'NCAAF', homeTeam: 'Texas Longhorns', awayTeam: 'Texas State Bobcats' }),
+        m({ league: 'American Football', homeTeam: 'Texas', awayTeam: 'Texas State' })), true,
+        '« American Football » (source) et NCAAF (API) restent compatibles');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'Top 14', homeTeam: 'Toulouse', awayTeam: 'La Rochelle' }),
+        m({ league: 'Sports', homeTeam: 'Toulouse', awayTeam: 'La Rochelle' })), true,
+        'une ligue inconnue (« other ») n\'exclut rien');
+    assert.strictEqual(match.sportFamily('cfb'), match.sportFamily('nfl'));
+    assert.strictEqual(match.sportFamily('ncaab'), match.sportFamily('nba'));
+    assert.notStrictEqual(match.sportFamily('soccer'), match.sportFamily('cfb'));
+    ok('sports différents : refus ; étiquettes d\'une même famille : compatibles');
+
+    // ── 8. Les mots génériques ne valident rien ────────────────────────────
+    /* « Kent State vs South Carolina » obtenait 3 mots sur 4 (south, carolina, state)
+       face à « Florida A&M vs South Carolina State » ; « Fordham vs North Dakota State »
+       3 sur 4 face à « Northwestern vs South Dakota State ». */
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'NCAA Football', homeTeam: 'Florida A and M', awayTeam: 'South Carolina State' }),
+        m({ league: 'NCAA Football', homeTeam: 'Kent State', awayTeam: 'South Carolina' })), false,
+        '« south », « state » ne prouvent pas que Kent State joue contre Florida A&M');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'NCAA Football', homeTeam: 'Northwestern', awayTeam: 'South Dakota State' }),
+        m({ league: 'NCAA Football', homeTeam: 'Fordham', awayTeam: 'North Dakota State' })), false,
+        '« north » (dans Northwestern), « dakota », « state » ne font pas un match');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'NCAA Football', homeTeam: 'North Dakota State', awayTeam: 'Fordham' }),
+        m({ league: 'NCAA Football', homeTeam: 'Fordham Rams', awayTeam: 'North Dakota State Bison' })), true,
+        'le vrai match, avec surnoms d\'un côté, s\'apparie toujours');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'MLB', homeTeam: 'Detroit Tigers', awayTeam: 'Cleveland Guardians' }),
+        m({ league: 'MLB', homeTeam: 'Detroit', awayTeam: 'Cleveland' })), true,
+        'deux villes significatives suffisent encore');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'MLB', homeTeam: 'New York Mets', awayTeam: 'San Francisco Giants' }),
+        m({ league: 'MLB', homeTeam: 'San Diego Padres', awayTeam: 'New York Yankees' })), false,
+        '« york » et « san » ne font pas un match : tous les mots désignants doivent s\'aligner');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'NCAA Football', homeTeam: 'Florida', awayTeam: 'Florida Atlantic' }),
+        m({ league: 'NCAA Football', homeTeam: 'South Florida Bulls', awayTeam: 'Florida International Panthers' })), false,
+        '« Florida Atlantic » n\'est pas « Florida International »');
+    assert.strictEqual(match.isMatchPair(
+        m({ league: 'NCAA Football', homeTeam: 'Texas', awayTeam: 'Texas State' }),
+        m({ league: 'NCAA Football', homeTeam: 'Texas Longhorns', awayTeam: 'Texas State Bobcats' })), true,
+        'le nom complet ESPN (surnom compris) s\'apparie au nom court de la source');
+    ok('validation croisée : seuls les mots qui désignent une équipe comptent');
+
     console.log(`unit_matchmerge: ${n} groupes de tests OK`);
     process.exit(0);
 }

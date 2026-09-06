@@ -271,8 +271,8 @@ export function parseSportsDbEvents(json, targetDateStr) {
             league: formatLeagueName(league),
             flag: lgFlag(league),
             color: lgColor(league),
-            homeTeam: getOfficialTeamName(home),
-            awayTeam: away ? getOfficialTeamName(away) : '',
+            homeTeam: officialTeamNameForLeague(home, league),
+            awayTeam: away ? officialTeamNameForLeague(away, league) : '',
             startTime: startTime,
             matchDate: matchDate,
             durationMinutes: getLeagueDuration(league),
@@ -652,8 +652,8 @@ export function parseSportsurge(html, pageUrl) {
 
       matches.push({
           id: 'ss_' + Math.random().toString(36).substr(2, 9),
-          homeTeam: getOfficialTeamName(home),
-          awayTeam: away ? getOfficialTeamName(away) : '',
+          homeTeam: officialTeamNameForLeague(home, league),
+          awayTeam: away ? officialTeamNameForLeague(away, league) : '',
           league: formatLeagueName(league),
           flag: lgFlag(league),
           color: lgColor(league),
@@ -971,8 +971,8 @@ export function parseBuffstreams(html, pageUrl){
           league: formatLeagueName(league),
           flag: lgFlag(league),
           color: lgColor(league),
-          homeTeam: getOfficialTeamName(home),
-          awayTeam: getOfficialTeamName(away),
+          homeTeam: officialTeamNameForLeague(home, league),
+          awayTeam: officialTeamNameForLeague(away, league),
           startTime: startTime,
           matchDate: matchDate,
           durationMinutes: getLeagueDuration(league),
@@ -1062,8 +1062,8 @@ export function parseVipleague(html) {
             league: formatLeagueName(league),
             flag: lgFlag(league),
             color: lgColor(league),
-            homeTeam: getOfficialTeamName(home),
-            awayTeam: away ? getOfficialTeamName(away) : '',
+            homeTeam: officialTeamNameForLeague(home, league),
+            awayTeam: away ? officialTeamNameForLeague(away, league) : '',
             matchUrl: matchUrl,
             startTime: startTime,
             matchDate: matchDate,
@@ -1132,8 +1132,8 @@ export function parseMethstreams(html, pageUrl) {
             league: formatLeagueName(league),
             flag: lgFlag(league),
             color: lgColor(league),
-            homeTeam: getOfficialTeamName(home),
-            awayTeam: away ? getOfficialTeamName(away) : '',
+            homeTeam: officialTeamNameForLeague(home, league),
+            awayTeam: away ? officialTeamNameForLeague(away, league) : '',
             matchUrl: matchUrl,
             startTime: startTime,
             durationMinutes: getLeagueDuration(league),
@@ -1202,8 +1202,8 @@ export function parseFlexfitness(html, pageUrl) {
             league: formatLeagueName(league),
             flag: lgFlag(league),
             color: lgColor(league),
-            homeTeam: getOfficialTeamName(home),
-            awayTeam: away ? getOfficialTeamName(away) : '',
+            homeTeam: officialTeamNameForLeague(home, league),
+            awayTeam: away ? officialTeamNameForLeague(away, league) : '',
             matchUrl: matchUrl,
             startTime: startTime,
             matchDate: matchDate,
@@ -1279,8 +1279,8 @@ export function parseStreamed(json, pageUrl) {
 
       matches.push({
           id: 'std_' + String(ev.id || Math.random().toString(36).substr(2, 9)),
-          homeTeam: getOfficialTeamName(home),
-          awayTeam: away ? getOfficialTeamName(away) : '',
+          homeTeam: officialTeamNameForLeague(home, league),
+          awayTeam: away ? officialTeamNameForLeague(away, league) : '',
           league: formatLeagueName(league),
           flag: lgFlag(league),
           color: lgColor(league),
@@ -1513,6 +1513,30 @@ export function teamsFromFootybiteSlug(href) {
   return { home: propre(parts[0]), away: propre(parts.slice(1).join(' vs ')) };
 }
 
+/* Nom officiel d'une équipe, dans le contexte de la compétition annoncée par la source.
+
+   `getOfficialTeamName` résout une ville seule en club professionnel : « Texas » devient
+   « Texas Rangers », « Memphis » « Memphis Grizzlies », « San Antonio » « San Antonio
+   Spurs ». La base ne connaît que les clubs professionnels, et une ville y trouve toujours
+   preneur. Relevé sur le cache du 6 septembre 2026 : « Texas Rangers vs Texas State »,
+   « Florida Panthers vs Florida Atlantic », « Memphis Grizzlies vs Arkansas State » — des
+   matchs de football universitaire rebaptisés avec des équipes de MLB, NHL et NBA, donc
+   impossibles à apparier avec la grille ESPN, et faux à l'affichage.
+
+   - Compétition universitaire : aucune résolution. La base ne recense pas les universités ;
+     tout ce qu'elle proposerait serait un club professionnel.
+   - Sport connu : la résolution est refusée si elle change de sport (3ᵉ argument de
+     `getOfficialTeamName`, déjà utilisé par OnHockey).
+   - Sinon : comportement inchangé. */
+var TEAM_SPORT_OF_LEAGUE_SPORT = { nhl: 'hockey', mlb: 'baseball', nba: 'basket', wnba: 'basket', nfl: 'football-us', cfl: 'football-us', soccer: 'autre' };
+export function officialTeamNameForLeague(name, league) {
+  if (!name) return name;
+  var sport = sportOfLeague(league);
+  if (sport === 'cfb' || sport === 'ncaab') return getOfficialTeamName(name, true);
+  var attendu = TEAM_SPORT_OF_LEAGUE_SPORT[sport] || '';
+  return attendu ? getOfficialTeamName(name, false, attendu) : getOfficialTeamName(name);
+}
+
 export function parseFootybite(html){
   var matches = [];
   try {
@@ -1537,6 +1561,51 @@ export function parseFootybite(html){
       var sections = [];
       var sm;
       while ((sm = sectionRe.exec(concatenatedData)) !== null) sections.push({ idx: sm.index, name: sm[1] });
+
+      /* La section d'une ligne ne se lit PAS à sa position dans le payload.
+
+         Le payload « flight » est une suite de lignes « <id>:<contenu> », qui se
+         référencent par "$L<id>". Une section ne contient en clair que ses premières
+         lignes ; les autres sont des références résolues plus loin — sur des lignes qui
+         viennent APRÈS toutes les sections. Prendre « la dernière section rencontrée
+         avant la ligne » leur attribuait donc toutes la dernière section du fichier.
+         Relevé sur la page réelle du 6 septembre 2026 : 120 matchs sur 178 classés
+         « MLB » — la MLS, La Liga, l'USL et tout le football universitaire compris —
+         parce que « mlb » était la dernière section. Un match ainsi étiqueté hérite d'un
+         sport faux, donc d'un nom d'équipe faux (voir officialTeamNameForLeague) et ne
+         retrouve jamais son match dans la grille.
+
+         On remonte donc la parenté : la ligne qui porte la référence "$L<id>" de cette
+         ligne, puis la sienne, jusqu'à une section. Une ligne écrite en clair dans sa
+         section est résolue sur place, comme avant. */
+      var lignes = [];
+      var ligneRe = /(?:^|\n)([0-9a-f]+):/g;
+      var lm2;
+      while ((lm2 = ligneRe.exec(concatenatedData)) !== null) {
+          lignes.push({ id: lm2[1], start: lm2.index });
+      }
+      function ligneContenant(idx) {
+          var trouvee = null;
+          for (var li = 0; li < lignes.length; li++) { if (lignes[li].start <= idx) trouvee = lignes[li]; else break; }
+          return trouvee;
+      }
+      function sectionAvant(idx, borne) {
+          var nom = null;
+          for (var si = 0; si < sections.length; si++) {
+              if (sections[si].idx >= idx) break;
+              if (sections[si].idx >= borne) nom = sections[si].name;
+          }
+          return nom;
+      }
+      function sectionDe(idx, profondeur) {
+          var ligne = ligneContenant(idx);
+          var nom = sectionAvant(idx, ligne ? ligne.start : 0);
+          if (nom) return nom;
+          if (!ligne || profondeur > 8) return null;
+          var ref = concatenatedData.indexOf('"$L' + ligne.id + '"');
+          if (ref < 0 || ref === idx) return null;
+          return sectionDe(ref, (profondeur || 0) + 1);
+      }
 
       function childrenStrings(segment) {
           var out = [], re = /"children":"([^"]*)"/g, cm;
@@ -1614,8 +1683,7 @@ export function parseFootybite(html){
           if (!home && duSlug.home) home = duSlug.home;
           if (!home) continue;
 
-          var sectionName = 'Football';
-          for (var si = 0; si < sections.length; si++) { if (sections[si].idx < rowStart) sectionName = sections[si].name; else break; }
+          var sectionName = sectionDe(rowStart, 0) || 'Football';
 
           var startTime = '00:00';
           var status = 'upcoming';
@@ -1656,8 +1724,8 @@ export function parseFootybite(html){
               league: formatLeagueName(league),
               flag: lgFlag(league),
               color: lgColor(league),
-              homeTeam: getOfficialTeamName(home),
-              awayTeam: away ? getOfficialTeamName(away) : '',
+              homeTeam: officialTeamNameForLeague(home, league),
+              awayTeam: away ? officialTeamNameForLeague(away, league) : '',
               startTime: startTime,
               durationMinutes: getLeagueDuration(league),
               status: status,

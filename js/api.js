@@ -276,8 +276,9 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
               var homeC = comp.competitors.find(function(c){return c.homeAway==='home';});
               var awayC = comp.competitors.find(function(c){return c.homeAway==='away';});
               if(!homeC || !awayC) return;
-              homeName = homeC.team.name;
-              awayName = awayC.team.name;
+              // Nom complet (« Texas Longhorns ») : voir scripts/scrape_schedule.mjs, même règle.
+              homeName = homeC.team.displayName || homeC.team.name;
+              awayName = awayC.team.displayName || awayC.team.name;
           }
 
         var status = 'upcoming';
