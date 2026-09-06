@@ -420,9 +420,16 @@ async function run() {
                     awayName = awayC.team.displayName || awayC.team.name;
                 }
 
+                /* Pour une épreuve (F1, IndyCar), chaque séance est une compétition avec SON
+                   propre état. Celui de l'événement vaut pour le week-end entier : le
+                   6 septembre 2026, ESPN disait « post / Final » pour le Grand Prix d'Italie
+                   alors que la course était « in / In Progress » — toutes les séances, course
+                   comprise, sortaient donc « terminées », et la course disparaissait de Live
+                   à mi-parcours. */
+                const etat = (isRacing && comp.status && comp.status.type && comp.status.type.state) || ev.status.type.state;
                 let status = 'upcoming';
-                if(ev.status.type.state === 'in') status = 'live';
-                if(ev.status.type.state === 'post') status = 'finished';
+                if(etat === 'in') status = 'live';
+                if(etat === 'post') status = 'finished';
 
                 let score = null;
                 if(status !== 'upcoming' && !isRacing) {
@@ -439,7 +446,8 @@ async function run() {
 
                 const dateObj = new Date(comp.date || ev.date);
                 const startTime = getEstTimeStrFromDate(dateObj);
-                const matchDate = isRacing ? targetDateStr : getEstDateStrFromDate(dateObj);
+                // La date de la séance, pas celle du jour demandé : les essais du vendredi ne sont pas « aujourd'hui ».
+                const matchDate = getEstDateStrFromDate(dateObj);
                 const isPlayoff = ev.season && ev.season.type === 3;
 
                 const matchObj = {
