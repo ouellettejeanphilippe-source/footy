@@ -500,6 +500,52 @@ async function politiqueDeCadre(host, url) {
    Le point 3 est le changement de fond : les candidats classés « page » (score entre le
    seuil de conservation et celui d'intégration) étaient jetés, alors que ce sont
    précisément les maillons intermédiaires de ces chaînes. */
+/* Lecture bornée du corps d'une réponse.
+
+   Le passage du 5 septembre 2026 est mort sur « FATAL ERROR: Ineffective mark-compacts
+   near heap limit — JavaScript heap out of memory », 4 Go épuisés, après avoir relevé
+   ses 633 pages de match sans peine : c'est la phase d'extraction qui a fait sauter le
+   tas. Trois passages manuels de suite ont échoué de la même façon, et le cache servi
+   aux utilisateurs est resté figé sur la version de 23 h.
+
+   La cause est structurelle : `r.text()` avale ce qu'on lui donne. Or on suit ici des
+   chaînes de lecteurs, jusqu'à trois sauts, douze en parallèle, vers des adresses dont
+   on ne sait rien à l'avance — un lien de flux peut très bien pointer sur un segment
+   vidéo servi en flux continu, sans longueur annoncée. Le nombre de liens sondés étant
+   passé de 700 à 3000, ce qui ne coûtait qu'un pic est devenu fatal.
+
+   Deux bornes : on refuse tout ce qui n'est pas du texte à la lecture de l'en-tête, et
+   on arrête la lecture passé le plafond. Une page HTML dépassant 1,5 Mo n'a de toute
+   façon plus rien à apprendre à l'extracteur — ce qui l'intéresse tient dans les
+   premiers kilo-octets. */
+const EXTRACT_MAX_OCTETS = 1_500_000;
+
+async function texteBorne(reponse) {
+    const type = String(reponse.headers.get('content-type') || '').toLowerCase();
+    if (type && !/text\/|html|json|javascript|xml|urlencoded/.test(type)) {
+        try { if (reponse.body && reponse.body.cancel) await reponse.body.cancel(); } catch (e) {}
+        return '';
+    }
+    if (!reponse.body || typeof reponse.body.getReader !== 'function') {
+        const t = await reponse.text();
+        return t.length > EXTRACT_MAX_OCTETS ? t.slice(0, EXTRACT_MAX_OCTETS) : t;
+    }
+    const lecteur = reponse.body.getReader();
+    const morceaux = [];
+    let recu = 0;
+    try {
+        while (recu < EXTRACT_MAX_OCTETS) {
+            const { done, value } = await lecteur.read();
+            if (done) break;
+            recu += value.length;
+            morceaux.push(value);
+        }
+    } finally {
+        try { await lecteur.cancel(); } catch (e) {}
+    }
+    return Buffer.concat(morceaux).toString('utf8').slice(0, EXTRACT_MAX_OCTETS);
+}
+
 async function resoudreLecteurEnChaine(depart) {
     let url = depart;
     let referer = refererFor(depart);
@@ -510,7 +556,8 @@ async function resoudreLecteurEnChaine(depart) {
             redirect: 'follow',
             signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS)
         });
-        const html = await r.text();
+        const html = await texteBorne(r);
+        if (!html) return null;
         const cands = extractors.extractPlayers(html, url, { limit: 8 }) || [];
         const hote = hostOf(url);
 

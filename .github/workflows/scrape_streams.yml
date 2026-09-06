@@ -36,7 +36,9 @@ jobs:
         run: npm ci
 
       - name: Prefetch stream links from all sources
-        run: node scripts/scrape_streams.mjs
+        # Marge de securite au-dela des bornes posees dans le script lui-meme :
+        # le passage du 5 septembre est mort a 4 Go, le defaut de Node sur ce runner.
+        run: node --max-old-space-size=8192 scripts/scrape_streams.mjs
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5

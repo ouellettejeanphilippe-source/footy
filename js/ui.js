@@ -6,7 +6,7 @@ import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON,
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
-import { scrapeMatchFlux } from './scrapers.js';
+import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage } from './scrapers.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 
@@ -1517,7 +1517,9 @@ export function openMod(m,col){
 
   // When a user clicks a match, we ALWAYS fetch streams if there are none available yet,
   // bypassing background state checks that might erroneously be true.
-  var hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
+  /* « Assez de flux » se compte en liens JOUABLES : un repli « Page du match » n'en est
+     pas un, et c'est lui qui faisait passer un match démuni pour un match servi. */
+  var hasEnoughStreams = compterFluxUtiles(m) > 0;
   var needsScraping = !hasEnoughStreams && m.matchUrl;
 
   // Header section for right column (Refresh + Random Multiview)
@@ -1617,7 +1619,7 @@ export function openMod(m,col){
       window.saveStreamCache(m.id, m.streamLinks);
 
       // Since we mutated m, recalculate the scraping needs flag so the UI generates correctly
-      hasEnoughStreams = m.streamLinks && m.streamLinks.length > 0;
+      hasEnoughStreams = compterFluxUtiles(m) > 0;
       needsScraping = !hasEnoughStreams && m.matchUrl;
   }
 
@@ -1643,6 +1645,31 @@ export function openMod(m,col){
           }
       });
   } else {
+      /* Le cache horaire est un point de départ, jamais le dernier mot.
+
+         Il est produit par GitHub Actions, depuis une adresse de centre de données que
+         plusieurs sources refusent, et il a jusqu'à une heure de retard. Le navigateur de
+         l'utilisateur, lui, lit la même page depuis SON adresse — celle qui passe. Alors
+         dès qu'on ouvre un match venu du cache, on relit sa page en fond, sans rien
+         bloquer : les liens déjà connus s'affichent tout de suite, et la fenêtre se
+         redessine seulement si la relecture apporte vraiment quelque chose de plus.
+
+         Une seule fois par match et par session : rouvrir la même fiche dix fois ne doit
+         pas rescanner dix fois. */
+      if (doitRelireLaPage(m)) {
+          m.relueLocalement = true;
+          var avant = compterFluxUtiles(m);
+          /* Relecture FORCÉE : sans cela, le cache local du navigateur renverrait aussitôt
+             ce que le serveur avait déjà déposé, et la relecture ne relirait rien. Le
+             scrape fusionne, il n'écrase pas — les liens déjà connus survivent à un échec. */
+          scrapeMatchFlux(m, true, true).then(function() {
+              if (compterFluxUtiles(m) <= avant) return;
+              var fen = document.getElementById('mbg');
+              var titre = document.getElementById('mname');
+              if (fen && fen.classList.contains('open') && titre && titre.dataset.matchName.indexOf(m.homeTeam) >= 0) openMod(m, col);
+          }).catch(function() { /* la relecture est un bonus : son échec ne doit rien casser */ });
+      }
+
       var sortedLinks = [];
       if (m.streamLinks && m.streamLinks.length > 0) {
           sortedLinks = sortFluxLinks(m.streamLinks);
