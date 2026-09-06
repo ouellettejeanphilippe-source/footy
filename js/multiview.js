@@ -8,6 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
+import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
@@ -1173,6 +1174,19 @@ export function setupMultivisionUI() {
             rafraichirPastille(idxM);
             return;
         }
+        /* Débit et définition réels, mesurés par le script pendant que le flux joue.
+           Retenus par adresse de flux pour que la LISTE des sources puisse les montrer,
+           bien après que la tuile ait été fermée (voir js/debit.js). */
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'video_stats') {
+            var idxS = indexDeTuilePour(e.source);
+            if (idxS < 0) return;
+            var sS = mvFlux[idxS];
+            var mesure = { kbps: e.data.kbps, w: e.data.w, h: e.data.h };
+            safeStorageSetJSON('debits', noterMesure(safeStorageGetJSON('debits', {}) || {}, sS.url, mesure));
+            sS._mesure = mesure;
+            rafraichirPastille(idxS);
+            return;
+        }
         if (e.data && typeof e.data === 'object' && e.data.__mv === 'video_state') {
             var idx = indexDeTuilePour(e.source);
             if (idx < 0) return;
@@ -2156,7 +2170,8 @@ function rafraichirPastille(idx) {
     var pill = cell && cell.querySelector('.mv-source-pill');
     if (!s || !pill) return;
     var pos = positionDuFlux(s);
-    pill.textContent = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : getDomain(tileTarget(lienDuMatchPourFlux(s, s.url) || { url: s.url }))) + (s.mode === 'direct' ? ' · direct' : '');
+    var mesureTuile = formaterMesure(s._mesure || mesurePour(safeStorageGetJSON('debits', {}) || {}, s.url));
+    pill.textContent = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : getDomain(tileTarget(lienDuMatchPourFlux(s, s.url) || { url: s.url }))) + (s.mode === 'direct' ? ' · direct' : '') + (mesureTuile ? ' · ' + mesureTuile : '');
     pill.style.color = s._playing ? '#7CFC9A' : '#fff';
     pill.title = s._playing ? 'Vidéo en lecture' + (s.mode === 'direct' ? ' (flux direct)' : ' (vu par le script utilisateur)') : 'Aucune vidéo confirmée pour l\'instant';
     var btnDirect = cell.querySelector('.mv-direct-btn');
