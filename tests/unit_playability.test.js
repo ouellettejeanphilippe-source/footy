@@ -26,13 +26,33 @@ async function main() {
     assert.strictEqual(P.verdictFromObservation({ mediaRequests: 1, frameError: true }), 'plays', 'la vidéo vue prime sur un cadre secondaire en erreur');
     ok('verdict : plays / blocked / none');
 
+    // ── 1 bis. Ce qui compte comme du trafic vidéo ──────────────────────────
+    /* Relevé au premier passage réel : des bibliothèques JS dans un dossier « hls », et la
+       page de sonde dont l'adresse encodée finissait en « .m3u8 », étaient comptées. */
+    for (const u of [
+        'https://lb2.strmd.st/secure/abc/rtmp/stream/x.m3u8',
+        'https://a117.azplay47.me/hls/streama266057/index.m3u8?cst=090125',
+        'https://hls.hockey.do/hls-segments/f958/1756.ts',
+        'https://vkvsd287.okcdn.ru/dash/stream_1997/stream.manifest/sig/k/expires/1788',
+        'https://cdn1.obstreamx.click/live/igm5bzjd4y.m3u8'
+    ]) assert.strictEqual(P.isMediaRequest(u), true, u + ' est de la vidéo');
+    for (const u of [
+        'https://cdn.jsdelivr.net/npm/@swarmcloud/hls/p2p-engine.min.js',
+        'https://static.rutube.ru/static/player_sdk/hls/1.6.15/hls.min.js',
+        'https://guide-des-sports.local/probe.html?u=https%3A%2F%2Fedge.test%2Fngtrk%2Flive.m3u8',
+        'https://site.test/hls/poster.png',
+        'https://site.test/player.html?src=video.m3u8',
+        'pas une adresse', '', null
+    ]) assert.strictEqual(P.isMediaRequest(u), false, String(u) + ' n\'est pas de la vidéo');
+    ok('isMediaRequest : jugé sur le chemin, jamais un script ni la page de sonde');
+
     // ── 2. Ce que la tuile charge vraiment ──────────────────────────────────
-    assert.strictEqual(P.tileTarget({ url: 'https://a.test/page', topLevel: true, playerUrl: 'https://p.test/embed' }), 'https://p.test/embed', 'page refusée : le lecteur extrait');
-    assert.strictEqual(P.tileTarget({ url: 'https://a.test/page', playerUrl: 'https://p.test/embed' }), 'https://a.test/page', 'page qui s\'encadre : la page');
+    assert.strictEqual(P.tileTarget({ url: 'https://a.test/page', topLevel: true, playerUrl: 'https://p.test/embed' }), 'https://a.test/page', 'toujours la page, même avec un playerUrl résiduel dans le cache');
+    assert.strictEqual(P.tileTarget({ url: 'https://a.test/page' }), 'https://a.test/page');
     assert.strictEqual(P.tileTarget(null), '');
     assert.strictEqual(P.hostOfUrl('https://www.p.test/x'), 'p.test');
     assert.strictEqual(P.hostOfUrl('pas une adresse'), '');
-    ok('tileTarget suit la décision de fallbackToIframe');
+    ok('tileTarget : la page, comme la tuile');
 
     // ── 3. Registre par hôte ────────────────────────────────────────────────
     let ledger = {};
@@ -80,7 +100,7 @@ async function main() {
     const duLive = cibles.filter((c) => c.matchIndex === 1);
     assert.strictEqual(duLive.length, 3, 'au plus trois liens par match');
     assert.deepStrictEqual(duLive.map((c) => c.host), ['a.test', 'b.test', 'c.test'], 'des hôtes distincts par match');
-    assert.ok(cibles.some((c) => c.target === 'https://lecteur.test/e'), 'la cible est ce que la tuile charge (le lecteur extrait)');
+    assert.ok(cibles.some((c) => c.target === 'https://p.test/page'), 'la cible est ce que la tuile charge : la page, jamais le playerUrl');
     assert.strictEqual(cibles.filter((c) => c.host === 'a.test').length, 2, 'au plus deux essais par hôte sur le passage');
     assert.strictEqual(cibles[cibles.length - 1].matchIndex, 0, 'le reste en dernier');
     assert.deepStrictEqual(P.pickTargets([], {}), []);

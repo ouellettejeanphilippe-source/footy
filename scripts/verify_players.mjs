@@ -93,7 +93,11 @@ await context.route(PROBE_ORIGIN + '/**', (route) => {
 async function observe(target) {
     const page = await context.newPage();
     const obs = { mediaRequests: 0, videoReady: false, frameError: false, status: 0, sample: '' };
-    page.on('request', (r) => { if (play.MEDIA_REQUEST_RE.test(r.url())) { obs.mediaRequests++; if (!obs.sample) obs.sample = r.url().slice(0, 100); } });
+    page.on('request', (r) => {
+        const u = r.url();
+        if (u.startsWith(PROBE_ORIGIN)) return;   // la page de sonde elle-même n'est pas de la vidéo
+        if (play.isMediaRequest(u)) { obs.mediaRequests++; if (!obs.sample) obs.sample = u.slice(0, 100); }
+    });
     page.on('response', (r) => { if (r.url() === target || r.url().replace(/\/$/, '') === target.replace(/\/$/, '')) obs.status = r.status(); });
     try {
         await page.goto(PROBE_ORIGIN + '/probe.html?u=' + encodeURIComponent(target), { waitUntil: 'load', timeout: NAV_TIMEOUT_MS });

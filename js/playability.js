@@ -19,19 +19,34 @@
    tests, sans tirer le graphe des modules. */
 
 /* Adresses de segments ou de manifestes vidéo : en voir une partir d'un cadre, c'est voir
-   la vidéo jouer, quel que soit le lecteur. */
-export var MEDIA_REQUEST_RE = /\.(m3u8|mpd|ts|m4s|mp4|webm)(\?|#|$)|\/hls\/|\/dash\/|videoplayback/i;
+   la vidéo jouer, quel que soit le lecteur.
+
+   Jugée sur le CHEMIN de l'adresse, pas sur l'adresse entière. Au premier passage réel
+   (6 septembre 2026), une expression appliquée à l'adresse entière comptait comme vidéo
+   `cdn.jsdelivr.net/npm/@swarmcloud/hls/p2p-engine.min.js` (« /hls/ » dans le chemin
+   d'une bibliothèque), `static.rutube.ru/…/hls/1.6.15/hls.min.js`, et la page de sonde
+   elle-même quand l'adresse encodée de la cible finissait en « .m3u8 ». Un fichier de
+   script, de style ou d'image n'est jamais de la vidéo, quel que soit son dossier. */
+var MEDIA_EXT_RE = /\.(m3u8|mpd|ts|m4s|mp4|webm|aac|mp3|flv)$/i;
+var NOT_MEDIA_EXT_RE = /\.(js|mjs|css|html?|json|xml|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|txt|map)$/i;
+export function isMediaRequest(url) {
+    var path;
+    try { path = new URL(String(url)).pathname; } catch (e) { return false; }
+    if (NOT_MEDIA_EXT_RE.test(path)) return false;
+    if (MEDIA_EXT_RE.test(path)) return true;
+    return /\/(hls|dash)\//i.test(path) || /videoplayback/i.test(path);
+}
 
 export function hostOfUrl(u) {
     try { return new URL(String(u)).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
 }
 
-/* Ce que la tuile charge réellement pour un lien : le lecteur extrait par le serveur
-   quand la page refuse l'iframe, la page elle-même sinon (voir fallbackToIframe). */
+/* Ce que la tuile charge réellement pour un lien : la page, telle que le site la sert
+   (voir fallbackToIframe, js/multiview.js). Un `playerUrl` résiduel du cache n'est plus
+   chargé : les lecteurs extraits ne jouaient pas, la page entière nettoyée par le script
+   utilisateur, si. */
 export function tileTarget(link) {
-    if (!link) return '';
-    if (link.topLevel && link.playerUrl) return link.playerUrl;
-    return link.url || '';
+    return (link && link.url) || '';
 }
 
 /* Verdict d'une observation en navigateur.

@@ -480,6 +480,16 @@
             <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser <strong>Firefox</strong>. Bien que l'application fonctionne sur Chrome ou Edge, le bloqueur de publicités (uBlock Origin) y est beaucoup moins efficace en raison des récentes restrictions de Google (Manifest V3).</p>
         </div>
 
+        <div style="background:rgba(255,113,57,0.08);padding:12px;border-radius:8px;border:1px solid rgba(255,113,57,0.35);">
+            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">🦊 Firefox : ce qui bloque les tuiles, et comment l'ouvrir</div>
+            <p style="margin-bottom:8px;color:var(--muted);">La tuile charge la page du match telle quelle et le script ne garde que la vidéo. Sur Chrome ça joue ; Firefox, lui, bloque à trois endroits. Chacun se règle.</p>
+            <ol style="margin:0 0 8px 18px;padding:0;color:#ddd;font-size:13px;line-height:1.6;">
+                <li><strong>Pages qui refusent l'iframe</strong> (« Firefox ne peut pas ouvrir cette page… intégrée par un autre site ») : installer l'extension <a href="https://addons.mozilla.org/fr/firefox/addon/ignore-x-frame-options-header/" target="_blank" style="color:var(--accent);">Ignore X-Frame-Options Header</a>, qui retire l'en-tête qui l'interdit.</li>
+                <li><strong>Lecture automatique et en arrière-plan</strong> : dans <code>about:config</code>, mettre <code>media.autoplay.default</code> à <code>0</code>, <code>media.autoplay.blocking_policy</code> à <code>0</code>, et <code>media.block-autoplay-until-in-foreground</code> à <code>false</code> — sinon une tuile ne démarre qu'après un clic, et seulement dans l'onglet au premier plan.</li>
+                <li><strong>Protection contre le pistage</strong> : elle coupe les cookies et le stockage des lecteurs encadrés, que plusieurs exigent. Cliquer le bouclier à gauche de l'adresse et désactiver la protection <em>pour ce site</em> (l'application), qui contient toutes les tuiles.</li>
+            </ol>
+            <p style="margin:0;color:var(--muted);font-size:12px;">Après ces trois réglages, recharger l'application. Si une tuile reste vide, son bouton ⏭ passe à la source suivante.</p>
+        </div>
         <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
             <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">Étape 1 : Installer le bloqueur de publicités (uBlock Origin)</div>
             <p style="margin-bottom:12px;color:var(--muted);">Ceci est essentiel pour bloquer les publicités intrusives des sites de streaming.</p>
