@@ -86,6 +86,16 @@ async function main() {
     assert.strictEqual(P.playabilityScore({ url: 'https://e.test/2' }, { 'e.test': { tested: 2, plays: 2 } }), 1, 'moins de trois essais : on ne conclut pas');
     ok('score : observé > hôte fiable > inconnu > rien > bloqué');
 
+    /* Patience de la tuile : un lien qui joue d'ordinaire (embed.st, 4/4 au vérificateur,
+       mais 30 s et plus à démarrer sur Firefox) reçoit la patience longue ; l'inconnu et le
+       douteux gardent la courte, pour ne pas bloquer 90 s sur une page morte. */
+    assert.strictEqual(P.patienceMs(L.joue, reg, 30000, 90000), 90000, 'lien observé en lecture : patience longue');
+    assert.strictEqual(P.patienceMs(L.hoteBon, reg, 30000, 90000), 90000, 'hôte qui joue le plus souvent : patience longue');
+    assert.strictEqual(P.patienceMs(L.inconnu, reg, 30000, 90000), 30000, 'inconnu : patience courte');
+    assert.strictEqual(P.patienceMs(L.rien, reg, 30000, 90000), 30000);
+    assert.strictEqual(P.patienceMs(L.bloque, reg, 30000, 90000), 30000);
+    ok('patience de la tuile : longue pour ce qui joue d\'ordinaire, courte sinon');
+
     // ── 5. Choix des cibles d'un passage ────────────────────────────────────
     const lk = (h, i) => ({ url: 'https://' + h + '/' + i });
     const matches = [

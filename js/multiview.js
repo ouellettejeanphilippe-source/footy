@@ -5,8 +5,8 @@ import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
-import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability } from './config.js';
-import { nextLinkAfter, hostOfUrl, tileTarget } from './playability.js';
+import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger } from './config.js';
+import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs } from './playability.js';
 import { scrapeMatchFlux, compterFluxUtiles } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
@@ -2031,20 +2031,27 @@ export function nextFluxForTile(idx, raison) {
 /* Le script utilisateur, quand il est installé, dit à la tuile si une vidéo joue. Sans
    nouvelle dans les 30 s, et s'il reste des sources, la tuile passe à la suivante —
    au plus une fois par lien, pour ne pas tourner en rond. Sans le script, aucun signal
-   ne peut venir : on ne bascule pas seul, le bouton ⏭ reste à portée. */
+   ne peut venir : on ne bascule pas seul, le bouton ⏭ reste à portée.
+
+   30 s pour un lien inconnu ; 90 s pour un lien qui joue d'ordinaire (voir `patienceMs`,
+   js/playability.js) : embed.st met souvent plus de 30 s à démarrer, et la tuile le
+   quittait juste avant. */
 var DELAI_SANS_VIDEO_MS = 30000;
+var DELAI_HOTE_LENT_MS = 90000;
 function armerBasculeAuto(s, idx, url) {
     if (s._autoTimer) { clearTimeout(s._autoTimer); s._autoTimer = null; }
     var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
     if (!pont || !pont.available) return;
     var L = liensDuMatch(s.mid);
     if (L.length < 2) return;
+    var lien = lienDuMatchPourFlux(s, url) || { url: url };
+    var delai = patienceMs(lien, playLedger(), DELAI_SANS_VIDEO_MS, DELAI_HOTE_LENT_MS);
     s._autoTimer = setTimeout(function() {
         s._autoTimer = null;
         if (s._playing || s._currentUrl !== url) return;
         if ((s._autoTried | 0) >= L.length - 1) return;
         nextFluxForTile(idx, 'auto');
-    }, DELAI_SANS_VIDEO_MS);
+    }, delai);
 }
 
 /* Met à jour la pastille « source k/n · ● » d'une tuile sans re-rendre la cellule. */
