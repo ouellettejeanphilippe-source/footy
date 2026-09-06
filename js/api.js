@@ -282,8 +282,10 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           }
 
         var status = 'upcoming';
-        if(ev.status.type.state === 'in') status = 'live';
-        if(ev.status.type.state === 'post') status = 'finished';
+        // Épreuve : l'état de LA séance, pas celui du week-end (voir scripts/scrape_schedule.mjs).
+        var etat = (isRacing && comp.status && comp.status.type && comp.status.type.state) || ev.status.type.state;
+        if(etat === 'in') status = 'live';
+        if(etat === 'post') status = 'finished';
 
         var score = null;
         if(status !== 'upcoming' && !isRacing) {
@@ -303,7 +305,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
 
         var dateObj = new Date(comp.date || ev.date);
         var startTime = getEstTimeStrFromDate(dateObj);
-        var matchDate = isRacing ? targetDateStr : getEstDateStrFromDate(dateObj);
+        var matchDate = getEstDateStrFromDate(dateObj);
         var isPlayoff = ev.season && ev.season.type === 3;
 
         var matchObj = {
