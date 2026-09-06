@@ -7,6 +7,7 @@ import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
+import { mesurePour, formaterMesure } from './debit.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 
@@ -1168,16 +1169,16 @@ export function renderFluxItem(s, i, m) {
 
     /* Domaine primaire porté par la ligne : c'est ce qui permet aux pastilles de filtre
        (renderDomainChips) de masquer les autres sans re-générer la liste. */
-    var meta = '';
-    if (s.channel || s.site || (s.lang && !/^multi$/i.test(s.lang))) {
-        /* Provenance du flux : chaîne diffusée, site hébergeur et langue. Sans cela, deux
-           lignes nommées « Lecteur direct » étaient indistinguables. */
-        meta = '<div class="si-meta">'
-             + (s.channel ? '<span class="si-chan">📡 '+esc(s.channel)+'</span>' : '')
-             + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
-             + (s.lang && !/^multi$/i.test(s.lang) ? '<span class="si-lang">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
-             + '</div>';
-    }
+    /* Provenance du flux (chaîne, site, langue) et débit/définition RÉELLEMENT mesurés la
+       dernière fois que ce flux a joué chez l'utilisateur (js/debit.js). La qualité annoncée
+       par la source est du déclaratif souvent faux ; la mesure, elle, est constatée — et rien
+       n'est affiché tant que rien n'a été mesuré. */
+    var mesure = formaterMesure(mesurePour(safeStorageGetJSON('debits', {}) || {}, s.url));
+    var metaInner = (s.channel ? '<span class="si-chan">📡 '+esc(s.channel)+'</span>' : '')
+        + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
+        + (s.lang && !/^multi$/i.test(s.lang) ? '<span class="si-lang">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
+        + (mesure ? '<span class="si-mesure" title="Mesuré chez vous la dernière fois que ce flux a joué">' + esc(mesure) + '</span>' : '');
+    var meta = metaInner ? '<div class="si-meta">' + metaInner + '</div>' : '';
     return '<div class="si" data-dom="'+esc(primaryDomain(s.url))+'">'
       +'<a href="#" class="si-main" onclick="'+ev+'">'
       +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'

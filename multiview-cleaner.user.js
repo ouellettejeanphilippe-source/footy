@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  Nettoie les lecteurs encadres dans le Multiview, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -566,6 +566,44 @@
        à la fenêtre principale quand l'une joue vraiment (données prêtes, non en pause,
        temps qui avance) ; la tuile s'en sert pour marquer la source, pour apprendre quels
        hôtes jouent, et pour passer à la source suivante quand rien ne vient en 30 s. */
+    /* Débit et définition réels, pour la liste des sources (voir js/debit.js).
+
+       « Moyen d'avoir le débit dans la liste des feeds ? » La liste n'affichait que la
+       qualité ANNONCÉE par la source, du déclaratif souvent faux. Ici on mesure :
+         - la définition vient de l'élément <video> lui-même, toujours exacte ;
+         - le débit vient des octets réellement transférés (chronologie des ressources).
+           Il n'est PAS toujours mesurable : `transferSize` d'une ressource d'origine
+           croisée vaut 0 tant que le serveur n'envoie pas `Timing-Allow-Origin`, ce que
+           beaucoup de CDN omettent. Dans ce cas on rapporte 0, et l'application n'affiche
+           rien plutôt qu'un chiffre inventé. */
+    const SEGMENT_MEDIA = /\.(ts|m4s|mp4|m4v|aac|mp3|cmfv|cmfa)(\?|$)/i;
+    const FENETRE_DEBIT_MS = 10000;
+    function mesurerDebit() {
+        let octets = 0;
+        try {
+            const maintenant = performance.now();
+            performance.getEntriesByType('resource').forEach((e) => {
+                if (!e || !SEGMENT_MEDIA.test(e.name || '')) return;
+                if (maintenant - e.startTime > FENETRE_DEBIT_MS) return;
+                const n = (e.transferSize | 0) || (e.encodedBodySize | 0);
+                if (n > 0) octets += n;
+            });
+        } catch (e) { return 0; }
+        if (!octets) return 0;
+        return Math.round((octets * 8) / (FENETRE_DEBIT_MS / 1000) / 1000);
+    }
+    function signalerMesure() {
+        let v = null;
+        document.querySelectorAll('video').forEach((el) => {
+            if (!v && el.videoHeight > 0) v = el;
+        });
+        const kbps = mesurerDebit();
+        const w = v ? (v.videoWidth | 0) : 0;
+        const h = v ? (v.videoHeight | 0) : 0;
+        if (!kbps && !h) return; // rien de mesurable : on se tait
+        try { window.top.postMessage({ __mv: 'video_stats', kbps: kbps, w: w, h: h, host: location.hostname }, '*'); } catch (e) {}
+    }
+
     let derniereLecture = null;
     function signalerLecture() {
         let joue = false;
@@ -701,6 +739,9 @@
     function demarrer() {
         if (estLApplication()) return;
         setInterval(signalerLecture, 2000);
+        /* Plus lent que le signal de lecture : une mesure de débit a besoin d'une fenêtre
+           de dix secondes pour valoir quelque chose. */
+        setInterval(signalerMesure, 5000);
         surveillerManifestes();
         relancerRecherche();
     }
@@ -736,7 +777,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.6';
+    var VERSION = '1.7';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

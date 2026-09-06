@@ -5,6 +5,7 @@ import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
 import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { liensDunEvenementEsports } from './esports.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 /* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
@@ -639,20 +640,16 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
 
                   if (existingIdx >= 0) {
                       baseMatches[existingIdx].status = 'live';
-                      if (liveEv.streams && liveEv.streams.length > 0) {
+                      /* Adresses ENCADRABLES : `twitch.tv/<chaîne>` répond
+                         « X-Frame-Options: SAMEORIGIN » et `youtube.com/watch` n'est pas un
+                         lecteur — les deux formes construites ici jusqu'au 6 septembre 2026
+                         ne pouvaient donc pas jouer dans une tuile. Voir js/esports.js. */
+                      var liensLive = liensDunEvenementEsports(liveEv.streams);
+                      if (liensLive.length) {
                           if (!baseMatches[existingIdx].streamLinks) baseMatches[existingIdx].streamLinks = [];
-                          liveEv.streams.forEach(function(s) {
-                              var sUrl = null;
-                              if (s.provider === 'youtube') sUrl = 'https://youtube.com/watch?v=' + s.parameter;
-                              if (s.provider === 'twitch') sUrl = 'https://twitch.tv/' + s.parameter;
-
-                              if (sUrl && !baseMatches[existingIdx].streamLinks.some(function(sl){ return sl.url === sUrl; })) {
-                                  baseMatches[existingIdx].streamLinks.push({
-                                      name: s.locale ? ('(' + s.locale + ') ' + s.provider) : s.provider,
-                                      url: sUrl,
-                                      quality: '1080p',
-                                      source: 'lol_esports'
-                                  });
+                          liensLive.forEach(function(l) {
+                              if (!baseMatches[existingIdx].streamLinks.some(function(sl){ return sl.url === l.url; })) {
+                                  baseMatches[existingIdx].streamLinks.push(l);
                               }
                           });
                       }
@@ -683,21 +680,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
                               streamLinks: []
                           };
 
-                          if (liveEv.streams && liveEv.streams.length > 0) {
-                              liveEv.streams.forEach(function(s) {
-                                  var sUrl = null;
-                                  if (s.provider === 'youtube') sUrl = 'https://youtube.com/watch?v=' + s.parameter;
-                                  if (s.provider === 'twitch') sUrl = 'https://twitch.tv/' + s.parameter;
-                                  if (sUrl) {
-                                      lm.streamLinks.push({
-                                          name: s.locale ? ('(' + s.locale + ') ' + s.provider) : s.provider,
-                                          url: sUrl,
-                                          quality: '1080p',
-                                          source: 'lol_esports'
-                                      });
-                                  }
-                              });
-                          }
+                          lm.streamLinks = liensDunEvenementEsports(liveEv.streams);
                           baseMatches.push(lm);
                        }
                   }
