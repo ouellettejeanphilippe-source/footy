@@ -620,3 +620,59 @@ test('l\'interface classique démarre et la préférence redirige index.html', a
   await expect(page.locator('#btn-new-ui'), 'le retour vers la nouvelle interface est offert').toHaveCount(1);
   expect(pageErrors, 'aucune exception dans l\'interface classique :\n' + pageErrors.join('\n')).toEqual([]);
 });
+
+/* Scores en direct : le rafraîchissement ESPN doit se voir PARTOUT — dans S.matches (fiche,
+   filtres), sur les cartes du Live, sur les blocs du Guide — et un match terminé selon ESPN
+   doit quitter l'onglet Live sans attendre un changement d'onglet. Jusqu'ici seul le texte
+   des cartes bougeait ; les objets restaient ceux d'il y a cinq minutes et les blocs du
+   Guide gardaient leur texte de construction. */
+test('un match terminé selon ESPN quitte le Live, et le Guide suit le score', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+
+  const cible = await page.evaluate(() => {
+    const card = document.querySelector('#marea .match-card.live[id^="mb-"]') || document.querySelector('#marea .match-card[id^="mb-"]');
+    const id = card.id.slice(3);
+    const m = window.S.matchMap.get(id);
+    return { id, status: m.status, cartes: document.querySelectorAll('#marea .match-card').length };
+  });
+
+  // Rafraîchissement ESPN simulé : ce match est terminé, 4-2.
+  const apres = await page.evaluate((c) => {
+    const n = window.applyScoreUpdates([{ id: c.id, status: 'finished', score: [4, 2], minute: null }]);
+    return new Promise((r) => setTimeout(() => r({
+      changes: n,
+      statut: window.S.matchMap.get(c.id).status,
+      score: window.S.matchMap.get(c.id).score,
+      encoreRendu: !!document.getElementById('mb-' + c.id),
+      cartes: document.querySelectorAll('#marea .match-card').length
+    }), 400));
+  }, cible);
+  expect(apres.changes, 'un match a changé').toBe(1);
+  expect(apres.statut, 'S.matches porte le nouveau statut').toBe('finished');
+  expect(apres.score).toEqual([4, 2]);
+  expect(apres.encoreRendu, 'le match terminé a quitté l\'onglet Live').toBeFalsy();
+  expect(apres.cartes).toBe(cible.cartes - 1);
+
+  // Dans le Guide, le bloc de ce match affiche le score final ; un score qui bouge se voit.
+  await page.evaluate(() => window.applyFilter('all'));
+  await page.waitForTimeout(500);
+  const bloc = await page.evaluate((c) => {
+    const b = document.getElementById('mb-' + c.id);
+    return { texte: b && b.querySelector('.mb-time').textContent, fini: b && b.classList.contains('finished') };
+  }, cible);
+  expect(bloc.texte).toContain('4 - 2');
+  expect(bloc.fini).toBeTruthy();
+
+  const enDirect = await page.evaluate((c) => {
+    window.applyScoreUpdates([{ id: c.id, status: 'live', score: [5, 2], minute: "78'" }]);
+    return new Promise((r) => setTimeout(() => {
+      const b = document.getElementById('mb-' + c.id);
+      r({ texte: b.querySelector('.mb-time').textContent, live: b.classList.contains('live') });
+    }, 300));
+  }, cible);
+  expect(enDirect.texte, 'le bloc du Guide suit minute et score').toContain("78'");
+  expect(enDirect.texte).toContain('5 - 2');
+  expect(enDirect.live).toBeTruthy();
+  expect(pageErrors).toEqual([]);
+});

@@ -8,7 +8,7 @@ import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, par
 import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
 import { isMatchPair } from './match.js';
-import { buildEPG, scrollToNow } from './ui.js';
+import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute } from './ui.js';
 import { setMatches } from './state.js';
 import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
 
@@ -30,89 +30,161 @@ export function stepOk(n) {
   }
 }
 
+/* ══ SCORES EN DIRECT ═══════════════════════════════════════════════════════════
+
+   Deux défauts corrigés le 6 septembre 2026 (« scores en direct brisés ? », « live doit
+   disparaître si match fini selon ESPN ») :
+
+   1. Le rafraîchissement ESPN (backgroundUpdateGuide, js/api.js) rendait des objets
+      NEUFS et ne mettait à jour que le DOM : les objets de S.matches — ceux que la fiche,
+      le filtre du Live et toute reconstruction de la grille utilisent — gardaient le
+      statut et le score d'il y a jusqu'à cinq minutes. `applyScoreUpdates` reporte
+      d'abord statut, score et minute dans S.matches, par identifiant.
+
+   2. Le DOM n'était patché que sur les cartes du Live (`.status-minute`, `.prime-score`) :
+      les blocs du Guide (`.mb-time`) ne bougeaient jamais, et un match terminé restait
+      dans la section « Live » avec la mention « Fin » jusqu'au prochain changement
+      d'onglet. On patche aussi les blocs, et si l'ensemble des matchs qui ont leur place
+      dans le Live a changé (un terminé à retirer, un nouveau à montrer), la vue est
+      reconstruite en conservant la position de défilement. */
+
+function scoreKey(m) {
+    return String(m.status || '') + '|' + (m.score ? m.score.join('-') : '') + '|' + String(m.minute || '');
+}
+
+/* Reporte les données fraîches d'ESPN dans S.matches (par identifiant), puis met à jour
+   l'affichage. Retourne le nombre de matchs dont statut, score ou minute a changé. */
+export function applyScoreUpdates(fresh) {
+    if (!Array.isArray(fresh) || !fresh.length) return 0;
+    var changed = 0;
+    for (var i = 0; i < fresh.length; i++) {
+        var f = fresh[i];
+        var m = S.matchMap.get(String(f.id));
+        if (!m) continue;
+        if (scoreKey(m) !== scoreKey(f)) changed++;
+        m.status = f.status;
+        m.score = f.score;
+        m.minute = f.minute;
+        if (f.startTime) m.startTime = f.startTime;
+    }
+    updateLiveScores(S.matches);
+    return changed;
+}
+
+/* Les identifiants des cartes rendues dans le Live, et ceux qui devraient l'être. */
+function liveViewIsStale(matches) {
+    if (S.filter !== 'live') return false;
+    var container = document.getElementById('marea');
+    if (!container) return false;
+    var now = new Date();
+    var rendered = {};
+    var cards = container.querySelectorAll('.match-card[id^="mb-"]');
+    for (var i = 0; i < cards.length; i++) rendered[cards[i].id.slice(3)] = true;
+    var expected = {};
+    for (var j = 0; j < matches.length; j++) {
+        var m = matches[j];
+        if (leagueTier(m.league) === 'ignored') continue;
+        if (belongsToLive(m, now)) expected[String(m.id)] = true;
+    }
+    var ids = Object.keys(expected);
+    if (ids.length !== Object.keys(rendered).length) return true;
+    for (var k = 0; k < ids.length; k++) if (!rendered[ids[k]]) return true;
+    return false;
+}
+
+/* Reconstruit la grille sans perdre l'endroit où l'utilisateur en était. */
+export function rebuildPreservingScroll() {
+    var container = document.getElementById('marea');
+    var top = container ? container.scrollTop : 0;
+    var left = container ? container.scrollLeft : 0;
+    buildEPG(S.matches);
+    container = document.getElementById('marea');
+    if (container) { container.scrollTop = top; container.scrollLeft = left; }
+}
+
 export function updateLiveScores(matches) {
     var i = 0;
+    function patchCard(m, cached) {
+        var card = cached.el;
+        var minEl = cached.minEl;
+        if (minEl) {
+            if (m.status === 'live') {
+                minEl.textContent = formatLiveMinute(m);
+                if (!cached.ind) {
+                    minEl.parentElement.className = 'live-indicator status-text';
+                    minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">' + esc(formatLiveMinute(m)) + '</span>';
+                    cached.minEl = card.querySelector('.status-minute');
+                    cached.ind = card.querySelector('.live-indicator');
+                    cached.ld = card.querySelector('.mb-ld');
+                } else if (cached.ld) {
+                    cached.ld.classList.add('refreshing');
+                    var ldRef = cached.ld;
+                    setTimeout(function() { if (ldRef) ldRef.classList.remove('refreshing'); }, 2000);
+                }
+                card.classList.add('live');
+                card.classList.remove('finished');
+            } else if (m.status === 'finished') {
+                minEl.textContent = m.score ? 'Fin' : m.startTime;
+                minEl.parentElement.className = 'status-text';
+                if (cached.ld) { cached.ld.remove(); cached.ld = null; }
+                cached.ind = null;
+                card.classList.remove('live');
+                card.classList.add('finished');
+            } else {
+                minEl.textContent = m.startTime || '';
+            }
+        }
+        var scoreEls = cached.scoreEls;
+        if (scoreEls && scoreEls.length === 2) {
+            if (m.score && m.score.length === 2) {
+                scoreEls[0].textContent = m.score[0];
+                scoreEls[1].textContent = m.score[1];
+            } else {
+                scoreEls[0].textContent = '';
+                scoreEls[1].textContent = '';
+            }
+        }
+        /* Bloc de la grille temporelle : pastille heure / minute / score, et classes. */
+        if (cached.mbTime) {
+            var wrap = document.createElement('div');
+            wrap.innerHTML = timelineBadgeHtml(m);
+            var fresh = wrap.firstChild;
+            if (fresh) { cached.mbTime.replaceWith(fresh); cached.mbTime = fresh; }
+            card.classList.toggle('live', m.status === 'live');
+            card.classList.toggle('finished', m.status === 'finished');
+        }
+    }
     function processChunk() {
         var start = performance.now();
         for (; i < matches.length && performance.now() - start < 15; i++) {
             var m = matches[i];
-            // Update main card, live copy, and fav copy
             var cardIds = ['mb-' + m.id, 'mb-' + m.id + '_live_copy', 'mb-' + m.id + '_fav_copy'];
-
-            for(var j=0; j<cardIds.length; j++) {
+            for (var j = 0; j < cardIds.length; j++) {
                 var cid = cardIds[j];
                 var cached = matchCardCache.get(cid);
                 if (!cached) {
                     var card = document.getElementById(cid);
-                    if (card) {
-                        cached = {
-                            el: card
-                        };
-                        matchCardCache.set(cid, cached);
-                    }
+                    if (card) { cached = { el: card }; matchCardCache.set(cid, cached); }
                 }
-
-                if (cached && cached.el && !cached.hasMainQueries) {
+                if (!cached || !cached.el) continue;
+                if (!cached.el.isConnected) { matchCardCache.delete(cid); continue; }
+                if (!cached.hasMainQueries) {
                     cached.minEl = cached.el.querySelector('.status-minute');
                     cached.scoreEls = cached.el.querySelectorAll('.prime-score');
                     cached.ind = cached.el.querySelector('.live-indicator');
                     cached.ld = cached.el.querySelector('.mb-ld');
+                    cached.mbTime = cached.el.classList.contains('mb') ? cached.el.querySelector('.mb-time') : null;
                     cached.hasMainQueries = true;
                 }
-
-                if (cached) {
-                    var card = cached.el;
-                    var minEl = cached.minEl;
-                    // Update time/status
-                    if (minEl) {
-                        if (m.status === 'live') {
-                            minEl.textContent = m.minute || 'LIVE';
-                            if (!cached.ind) {
-                                minEl.parentElement.className = 'live-indicator status-text';
-                                minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">'+esc(m.minute||'LIVE')+'</span>';
-                                // Re-cache minEl because innerHTML replacement
-                                cached.minEl = card.querySelector('.status-minute');
-                                cached.ind = card.querySelector('.live-indicator');
-                                cached.ld = card.querySelector('.mb-ld');
-                            } else {
-                                if (cached.ld) {
-                                    cached.ld.classList.add('refreshing');
-                                    var ldRef = cached.ld;
-                                    setTimeout(function() {
-                                        if(ldRef) ldRef.classList.remove('refreshing');
-                                    }, 2000);
-                                }
-                            }
-                            card.classList.add('live');
-                            card.classList.remove('finished');
-                        } else if (m.status === 'finished') {
-                            minEl.textContent = m.score ? 'Fin' : m.startTime;
-                            minEl.parentElement.className = 'status-text';
-                            if (cached.ld) { cached.ld.remove(); cached.ld = null; }
-                            if (cached.ind) { cached.ind = null; }
-                            card.classList.remove('live');
-                            card.classList.add('finished');
-                        } else {
-                            minEl.textContent = m.startTime || '';
-                        }
-                    }
-
-                    // Update scores
-                    var scoreEls = cached.scoreEls;
-                    if (scoreEls && scoreEls.length === 2) {
-                        if (m.score && m.score.length === 2) {
-                            scoreEls[0].textContent = m.score[0];
-                            scoreEls[1].textContent = m.score[1];
-                        } else {
-                            scoreEls[0].textContent = '';
-                            scoreEls[1].textContent = '';
-                        }
-                    }
-                }
+                patchCard(m, cached);
             }
         }
         if (i < matches.length) {
             requestAnimationFrame(processChunk);
+        } else if (liveViewIsStale(matches)) {
+            /* Un match terminé selon ESPN quitte le Live ; un match qui vient de commencer
+               y entre. La fiche ouverte, elle, vit hors de #marea et garde son objet. */
+            rebuildPreservingScroll();
         }
     }
     processChunk();
@@ -1155,6 +1227,8 @@ export function filterFavTeams(query) {
 // Global bindings for HTML compatibility
 window.stepOk = stepOk;
 window.updateLiveScores = updateLiveScores;
+window.applyScoreUpdates = applyScoreUpdates;
+window.rebuildPreservingScroll = rebuildPreservingScroll;
 window.loadAll = loadAll;
 window.toggleSportFilters = toggleSportFilters;
 window.appTheaterTimer = appTheaterTimer;

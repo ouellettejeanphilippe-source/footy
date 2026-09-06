@@ -864,22 +864,7 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
                   b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
               }
 
-              var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
-              var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
-
-              var matchScoreText = (homeScore !== '' && awayScore !== '') ? homeScore + ' - ' + awayScore : '';
-              var timeBadge = '';
-
-              if (m.status === 'live') {
-                  timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (m.minute ? esc(m.minute) : 'LIVE') + (matchScoreText ? ' | ' + matchScoreText : '') + '</div>';
-              } else if (m.status === 'finished') {
-                  timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + (matchScoreText ? 'Terminé | ' + matchScoreText : 'Terminé') + '</div>';
-                  if (!matchScoreText) {
-                      timeBadge = '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:var(--muted);padding:2px 8px;border-radius:6px;font-weight:bold;">' + m.startTime + '</div>';
-                  }
-              } else {
-                  timeBadge = '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + m.startTime + '</div>';
-              }
+              var timeBadge = timelineBadgeHtml(m);
 
               var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
@@ -1078,6 +1063,34 @@ window.addEventListener('filterChanged', function() {
         scrollToNow();
     });
 });
+
+/* Pastille « heure / minute / score » d'un bloc de la grille temporelle. Partagée avec la
+   mise à jour des scores en direct (js/main.js) : jusqu'ici celle-ci ne touchait que les
+   cartes du Live (`.status-minute`, `.prime-score`) et laissait les blocs du Guide figés
+   sur leur texte de construction — un match pouvait y afficher « 19:05 » une heure après
+   le coup d'envoi, et le score n'y bougeait jamais. */
+export function timelineBadgeHtml(m) {
+    var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
+    var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
+    var scoreTxt = (homeScore !== '' && awayScore !== '') ? esc(String(homeScore)) + ' - ' + esc(String(awayScore)) : '';
+    if (m.status === 'live') {
+        return '<div class="mb-time mb-time-live" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + esc(formatLiveMinute(m) === 'DIRECT' ? 'LIVE' : formatLiveMinute(m)) + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
+    }
+    if (m.status === 'finished') {
+        if (scoreTxt) return '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">Terminé | ' + scoreTxt + '</div>';
+        return '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:var(--muted);padding:2px 8px;border-radius:6px;font-weight:bold;">' + esc(m.startTime || '') + '</div>';
+    }
+    return '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + esc(m.startTime || '') + '</div>';
+}
+
+/* Un match a-t-il sa place dans l'onglet Live ? Même règle que le filtre de buildEPG :
+   en cours, ou coup d'envoi dans l'heure — et jamais terminé, quoi qu'ait dit la source
+   il y a cinq minutes. Exposée pour que la mise à jour des scores puisse décider si la
+   vue doit être reconstruite (un match terminé selon ESPN doit disparaître du Live). */
+export function belongsToLive(m, now) {
+    now = now || new Date();
+    return isLiveNow(m, now) || startsWithin(m, LIVE_WINDOW_MIN, now);
+}
 
 export function updateNowLine() {
     var lines = document.querySelectorAll('.now-line');
@@ -1936,6 +1949,8 @@ if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
 window.diagnosticScrape = diagnosticScrape;
 window.getOriginalMatchId = getOriginalMatchId;
 window.buildEPG = buildEPG;
+window.timelineBadgeHtml = timelineBadgeHtml;
+window.belongsToLive = belongsToLive;
 window.renderSportChips = renderSportChips;
 window.applyCardShape = applyCardShape;
 window.cardShapePref = cardShapePref;
