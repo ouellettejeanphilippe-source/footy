@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Nettoie les lecteurs encadres dans le Multiview, remplace le bac a sable quand il est leve, et sert de pont pour afficher les pages qui refusent l'iframe (X-Frame-Options), Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -527,6 +527,26 @@
         }
     });
 
+    /* « Vidéo en lecture » : le seul signal fiable que la tuile puisse recevoir.
+
+       Depuis l'application, une iframe d'origine croisée est opaque : elle ne peut pas
+       savoir si un lecteur joue, si une page anti-adblock a pris sa place, ou si rien
+       n'est jamais venu. Ce script, lui, est DANS le cadre. Il regarde les <video> et dit
+       à la fenêtre principale quand l'une joue vraiment (données prêtes, non en pause,
+       temps qui avance) ; la tuile s'en sert pour marquer la source, pour apprendre quels
+       hôtes jouent, et pour passer à la source suivante quand rien ne vient en 30 s. */
+    let derniereLecture = null;
+    function signalerLecture() {
+        let joue = false;
+        document.querySelectorAll('video').forEach((v) => {
+            if (v.readyState >= 3 && !v.paused && (v.currentTime > 0 || !v.ended)) joue = true;
+        });
+        if (joue === derniereLecture) return;
+        derniereLecture = joue;
+        try { window.top.postMessage({ __mv: 'video_state', playing: joue, host: location.hostname }, '*'); } catch (e) {}
+    }
+    setInterval(signalerLecture, 2000);
+
     function findAndClean() {
         if (cleaned) return;
 
@@ -655,7 +675,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.4';
+    var VERSION = '1.5';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

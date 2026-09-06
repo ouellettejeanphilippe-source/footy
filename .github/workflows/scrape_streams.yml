@@ -18,7 +18,7 @@ env:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -39,6 +39,18 @@ jobs:
         # Marge de securite au-dela des bornes posees dans le script lui-meme :
         # le passage du 5 septembre est mort a 4 Go, le defaut de Node sur ce runner.
         run: node --max-old-space-size=8192 scripts/scrape_streams.mjs
+
+      # Verification observee des lecteurs (scripts/verify_players.mjs) : un vrai
+      # Chromium charge les lecteurs des matchs en direct et note ce qui joue. Le
+      # navigateur est installe ici, pas dans le script : un echec ici ne bloque pas
+      # le commit du cache deja produit par l'etape precedente.
+      - name: Install Chromium for player verification
+        run: npx playwright install --with-deps chromium
+        continue-on-error: true
+
+      - name: Verify which players actually play
+        run: node scripts/verify_players.mjs
+        continue-on-error: true
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5

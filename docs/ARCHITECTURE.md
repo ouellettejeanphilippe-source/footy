@@ -268,7 +268,14 @@ pour le diagnostic. Les sections « Ligues secondaires » et « Autres streams �
 donc plus que des matchs de la grille dont la ligue est de niveau `secondary` ou `other`.
 Couvert par `tests/unit_merge.test.js`.
 
-### Service worker (`sw.js`, `sports-guide-v4`)
+### Jouabilité observée : `js/playability.js`, `scripts/verify_players.mjs` (2026-09-06)
+Le Multivision ne choisit plus ses flux d'après la forme des liens mais d'après ce qui a été **vu jouer**.
+- **Serveur** : après `scrape_streams.mjs`, `verify_players.mjs` lance un Chromium sans tête (Playwright, installé dans le workflow) et charge, encadrés comme dans une tuile, jusqu'à trois liens par match en direct ou imminent (hôtes distincts, au plus quatre essais par hôte, 150 cibles, 5 min). Verdict par lien (`verified` : `plays` / `none` / `blocked`, `verifiedAt`) et registre par hôte (`hostPlay` : `{ tested, plays }`) écrits dans `data/streams.json`. Ne fait jamais échouer le passage.
+- **Client** : `sortFluxLinks` (js/config.js) classe par choix de l'utilisateur (⭐/👎), puis `playabilityScore` (observé > hôte fiable > inconnu > rien > bloqué), puis la forme. `playLedger` additionne le registre du serveur (`window.hostPlayLedger`, posé par `loadPrefetchedStreams`) et le registre local `play_ledger` (`notePlayability`).
+- **Tuile** (js/multiview.js) : pastille « source k/n » et bouton ⏭ (`nextFluxForTile`) ; le script utilisateur (v1.5) envoie `{ __mv: 'video_state', playing, host }` à la fenêtre principale toutes les 2 s en cas de changement ; la tuile marque ● vert, note l'hôte dans le registre local, et, script présent, passe seule à la source suivante après 30 s sans vidéo (au plus une fois par lien).
+- Module `js/playability.js` sans aucun import (script serveur, navigateur, tests). Couvert par `tests/unit_playability.test.js` et un test de `tests/test_cleaner.spec.js`.
+
+### Service worker (`sw.js`, `sports-guide-v5`)
 Réseau d'abord, cache en repli. La clé de cache d'une requête de même origine ignore sa
 chaîne de requête : `data/streams.json?t=…` et `data/schedule.json?t=…` changent d'adresse
 à chaque chargement et créaient sinon une entrée de plus par passage, sans jamais servir

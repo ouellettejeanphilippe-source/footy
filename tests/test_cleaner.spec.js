@@ -84,6 +84,35 @@ async function monterTuile(page, avecHorloge) {
   return cadre;
 }
 
+/* « Vidéo en lecture » : le seul signal que la tuile puisse recevoir sur ce qui joue.
+   Depuis l'application, le cadre est opaque ; le script, lui, y est. Il doit dire à la
+   fenêtre principale quand un <video> joue vraiment — données prêtes, non en pause — et
+   se taire tant que rien ne joue. */
+test('le script signale à la fenêtre principale quand une vidéo joue', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => {
+    window.__signaux = [];
+    window.addEventListener('message', (e) => { if (e.data && e.data.__mv === 'video_state') window.__signaux.push(e.data); });
+  });
+
+  // Un lecteur posé mais qui ne joue pas : aucun signal « joue ».
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*'); });
+  await expect(cadre.locator('#lecteur')).toBeAttached();
+  await page.waitForTimeout(3000);
+  expect((await page.evaluate(() => window.__signaux)).filter((s) => s.playing)).toEqual([]);
+
+  // Le lecteur se met à jouer (données prêtes, non en pause, temps qui avance).
+  await cadre.evaluate(() => {
+    const v = document.getElementById('lecteur');
+    Object.defineProperty(v, 'readyState', { value: 4 });
+    Object.defineProperty(v, 'paused', { value: false });
+    Object.defineProperty(v, 'currentTime', { value: 12 });
+  });
+  await expect.poll(async () => (await page.evaluate(() => window.__signaux)).filter((s) => s.playing).length, { timeout: 8000 }).toBeGreaterThan(0);
+  const signal = (await page.evaluate(() => window.__signaux)).find((s) => s.playing);
+  expect(signal.host).toBe('localhost');
+});
+
 test('le décor du site disparaît quand le lecteur arrive tardivement', async ({ page }) => {
   const cadre = await monterTuile(page, true);
 
