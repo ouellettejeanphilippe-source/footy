@@ -19,6 +19,7 @@ async function main() {
   for (const k of ['window', 'document', 'DOMParser', 'navigator', 'localStorage', 'HTMLElement'])
     Object.defineProperty(globalThis, k, { value: dom.window[k], configurable: true, writable: true });
   const mv = await import('../js/multiview.js');
+  const dm = await import('../js/directmedia.js');
   let n = 0;
   const ok = (name) => { n++; console.log('  ✓ ' + name); };
 
@@ -49,6 +50,39 @@ async function main() {
   // ── 3. La détection est insensible à la casse ─────────────────────────────────
   assert.strictEqual(mv.estMediaDirecte('https://cdn.exemple.test/live/CHUNK.M3U8'), true);
   ok('la détection ignore la casse de l\'extension');
+
+  // ── Mode direct : le manifeste vu par le script, retenu par lien ─────────────
+  /* « Une deuxième façon d'utiliser un lien, qu'on pourrait aussi avoir en mode normal,
+     pour avoir les deux options » (6 septembre 2026). */
+  assert.strictEqual(dm.estManifeste('https://cdn.exemple.test/live/master.m3u8?token=x'), true);
+  assert.strictEqual(dm.estManifeste('https://cdn.exemple.test/live/index.mpd'), true);
+  assert.strictEqual(dm.estManifeste('https://cdn.exemple.test/live/seg-12.ts'), false, 'un segment n\'est pas un manifeste');
+  assert.strictEqual(dm.estManifeste('https://cdn.jsdelivr.net/npm/@swarmcloud/hls@latest/p2p-engine.min.js'), false);
+  assert.strictEqual(dm.estManifeste('https://pub.exemple.test/ads/preroll.m3u8'), false, 'un manifeste publicitaire n\'est pas le flux');
+  assert.strictEqual(dm.estManifeste('blob:https://x.test/abc'), false);
+  ok('estManifeste : .m3u8/.mpd sur le chemin, ni segment, ni script, ni publicité');
+
+  const T = 1800000000000;
+  let reg = dm.retenirMediaDirect({}, 'https://site.test/game/a', { url: 'https://cdn.test/a/master.m3u8', pageUrl: 'https://site.test/game/a' }, T);
+  assert.deepStrictEqual(Object.keys(reg), ['https://site.test/game/a']);
+  assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/a', T + 60000).url, 'https://cdn.test/a/master.m3u8');
+  assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/b', T), null, 'lien inconnu : rien');
+  assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/a', T + dm.MEDIA_DIRECT_TTL_MS + 1), null, 'périmé après le TTL');
+  reg = dm.retenirMediaDirect(reg, 'https://site.test/game/b', { url: 'https://cdn.test/b.m3u8' }, T + dm.MEDIA_DIRECT_TTL_MS + 1);
+  assert.deepStrictEqual(Object.keys(reg), ['https://site.test/game/b'], 'retenir un nouveau lien purge les périmés');
+  reg = dm.retenirMediaDirect(reg, 'https://site.test/game/c', { url: 'https://cdn.test/c/seg.ts' }, T);
+  assert.strictEqual(reg['https://site.test/game/c'], undefined, 'un non-manifeste n\'est pas retenu');
+  ok('registre par lien : retenu, retrouvé, périmé après 3 h');
+
+  const T2 = T + dm.MEDIA_DIRECT_TTL_MS + 2;
+  assert.strictEqual(dm.aProposer(dm.mediaDirectPour(reg, 'https://site.test/game/b', T2)), true);
+  dm.noterEchecDirect(reg, 'https://site.test/game/b');
+  assert.strictEqual(dm.aProposer(dm.mediaDirectPour(reg, 'https://site.test/game/b', T2)), true, 'un échec : on propose encore');
+  dm.noterEchecDirect(reg, 'https://site.test/game/b');
+  assert.strictEqual(dm.aProposer(dm.mediaDirectPour(reg, 'https://site.test/game/b', T2)), false, 'deux échecs : plus proposé d\'office');
+  reg = dm.retenirMediaDirect(reg, 'https://site.test/game/b', { url: 'https://cdn.test/b2.m3u8' }, T2);
+  assert.strictEqual(reg['https://site.test/game/b'].echecs, 0, 'un nouveau manifeste repart à zéro');
+  ok('échecs comptés par lien ; un nouveau manifeste remet le compteur à zéro');
 
   console.log('\n' + n + ' groupes OK — détection des flux vidéo directs');
   process.exit(0);

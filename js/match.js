@@ -132,6 +132,53 @@ export function getTeamInfo(name) {
     return { city: name, teamName: name };
 }
 
+/* Marqueur de catégorie d'une équipe : féminin, âge, réserve.
+
+   Mesuré le 6 septembre 2026 sur le cache réel (748 noms d'équipes distincts) : la
+   comparaison par similarité ne PEUT pas séparer une coquille d'une équipe distincte,
+   parce que les deux vivent dans les mêmes chiffres. « arsenal » contre « arsenl » est
+   une vraie coquille à 0,857 de similarité ; « newyorkjets » contre « newyorkmets » sont
+   deux équipes différentes à 0,909, et « nflnetwork » contre « nhlnetwork » à 0,900. Tout
+   seuil qui accepte la première accepte les secondes.
+
+   Ce qui les sépare est le CONTEXTE, pas les lettres : l'adversaire, la ligue et l'heure.
+   Vérifié : « Arkansas State vs Iowa State » et « Kansas State vs Army » ne s'apparient
+   pas, l'adversaire tranche ; idem pour l'Internacional brésilien et l'Inter de Milan.
+   Les coquilles, elles, passent déjà, d'un côté comme des deux (« Tanpa Bay Lightning vs
+   Florida Panthrs »).
+
+   Restait un cas que le contexte ne tranche PAS, parce que tout y concorde sauf une
+   lettre : l'équipe féminine et l'équipe masculine du même club, au même moment. Sur le
+   cache du jour : Atlanta Dream W / Atlanta Dream, Bayern Munich W / Bayern Munich,
+   Connecticut Sun W, Dallas Wings W, Los Angeles Sparks W, Portland Fire W, Seattle
+   Storm W. Une seule lettre d'écart, donc 0,923 de similarité, donc appariement — et
+   `mergeMatches` ne garde qu'une entrée : l'un des deux matchs DISPARAÎT de la grille
+   avec ses liens.
+
+   Un marqueur n'est pas une coquille : c'est une catégorie. On la lit, et deux catégories
+   différentes ne s'apparient jamais, quels que soient les noms. Les libellés d'une même
+   catégorie se rejoignent (« Arsenal W » et « Arsenal Women » sont le même club). */
+var MARQUEURS_FEMININ = ['w', 'women', 'womens', 'ladies', 'fem', 'femenino', 'feminino', 'feminine', 'feminin', 'femminile', 'frauen', 'dames'];
+var MARQUEURS_RESERVE = ['ii', 'b', 'reserve', 'reserves', 'academy'];
+export function marqueurCategorie(nom) {
+  if (!nom || typeof nom !== 'string') return '';
+  var mots = nom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().split(' ');
+  if (mots.length < 2) return ''; // un nom d'un seul mot n'est pas « <club> <marqueur> »
+  var dernier = mots[mots.length - 1];
+  if (MARQUEURS_FEMININ.indexOf(dernier) >= 0) return 'F';
+  var age = /^u(1[5-9]|2[0-3])$/.exec(dernier);
+  if (age) return 'U' + age[1];
+  if (MARQUEURS_RESERVE.indexOf(dernier) >= 0) return 'R';
+  return '';
+}
+
+/* Catégorie d'un match : celle qu'annonce l'une ou l'autre équipe. Les sources ne
+   marquent pas toujours les deux (« Bayern Munich W vs Wolfsburg »). */
+export function categorieDuMatch(m) {
+  if (!m) return '';
+  return marqueurCategorie(m.homeTeam) || marqueurCategorie(m.awayTeam) || '';
+}
+
 export function isMatchPair(m1, m2) {
   return debugMatchPair(m1, m2).isMatch;
 }
@@ -147,6 +194,13 @@ export function debugMatchPair(m1, m2) {
      « pittsburghriverhounds ». Des familles plutôt que des sports exacts : une source
      étiquette « Motorsport » ce qu'une autre appelle « F1 », « American Football » ce que
      l'API range en NCAAF. « other » (Top 14, « Sports », libellés inconnus) n'exclut rien. */
+  /* Catégories différentes (féminin / masculin / âge / réserve) : jamais le même match,
+     même si les noms ne diffèrent que d'une lettre. Voir marqueurCategorie. */
+  var cat1 = categorieDuMatch(m1), cat2 = categorieDuMatch(m2);
+  if (cat1 !== cat2) {
+      return { isMatch: false, reason: "Catégories différentes (" + (cat1 || 'senior') + " vs " + (cat2 || 'senior') + ")" };
+  }
+
   var famille1 = sportFamily(sportOfLeague(m1.league));
   var famille2 = sportFamily(sportOfLeague(m2.league));
   if (famille1 !== 'other' && famille2 !== 'other' && famille1 !== famille2) {
