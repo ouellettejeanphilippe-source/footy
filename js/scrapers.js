@@ -1973,15 +1973,24 @@ export function doitRelireLaPage(m, now, pont) {
    `now` et `pont` ne servent qu'aux tests ; en production ils viennent de l'horloge et
    du pont. */
 export var INTERVALLE_FICHE_MS = 60000;
-export function doitRafraichirFiche(m, now, pont) {
+
+/* Les tuiles du Multivision suivent la même règle, à une cadence plus lente : on y regarde
+   plusieurs matchs à la fois, et une tuile qui joue n'a pas besoin d'une liste fraîche à la
+   minute — elle a besoin d'avoir OÙ ALLER quand son flux lâche. Trois minutes suffisent,
+   pour quatre matchs relus au lieu d'un. */
+export var INTERVALLE_TUILE_MS = 180000;
+
+export function doitRafraichir(m, intervalleMs, now, pont) {
     if (!m || !m.matchUrl) return false;
     if (m.status === 'finished') return false;
     var pontLa = (pont === undefined) ? !!(getBridgeStatus() || {}).available : !!pont;
     if (!pontLa) return false;
     var t = (now === undefined) ? Date.now() : now;
     if (!m.pageLueA) return true;
-    return t - m.pageLueA >= INTERVALLE_FICHE_MS;
+    return t - m.pageLueA >= intervalleMs;
 }
+export function doitRafraichirFiche(m, now, pont) { return doitRafraichir(m, INTERVALLE_FICHE_MS, now, pont); }
+export function doitRafraichirTuile(m, now, pont) { return doitRafraichir(m, INTERVALLE_TUILE_MS, now, pont); }
 
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 export function fetchSubPages(matches){
