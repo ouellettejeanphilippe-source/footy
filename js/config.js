@@ -39,7 +39,7 @@ export var FLEXFITNESS_URL = 'https://flexfitness.fit/';
 /* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
    Surchargés par la clé MIRRORS de domains.json. */
 export var SOURCE_MIRRORS = {
-    footybite: ['https://footybite.im/', 'https://footybite.bid/'],
+    footybite: ['https://footybite.im/'],   // .bid retiré le 6 septembre 2026 : il ne fait plus que rediriger, et ses pages de match répondent 403
     mlbbite: ['https://mlbbite.plus/'],
     sportsurge: ['https://v2.sportsurge.net/', 'https://sportsurge.net/'],
     buffstreams: ['https://app.buffstreams.is/indexcracked29'],
