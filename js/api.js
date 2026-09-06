@@ -236,8 +236,13 @@ export function backgroundUpdateGuide(targetDateObj) {
     var targetDateStr = getEstDateStrFromDate(targetDateObj || new Date());
 
     return fetchAndProcessApiMatches(targetDateObj || new Date(), todayStr, targetDateStr).then(function(matches) {
-        if (typeof window.updateLiveScores === 'function') {
-            window.updateLiveScores(matches); // Pass the updated matches array
+        /* D'abord dans S.matches (statut, score, minute, par identifiant), puis le DOM :
+           sans le premier pas, la fiche et le filtre du Live raisonnaient sur des objets
+           d'il y a cinq minutes (voir applyScoreUpdates, js/main.js). */
+        if (typeof window.applyScoreUpdates === 'function') {
+            window.applyScoreUpdates(matches);
+        } else if (typeof window.updateLiveScores === 'function') {
+            window.updateLiveScores(matches);
         }
         return matches;
     }).catch(function(err) {
