@@ -411,8 +411,13 @@ async function run() {
                     const homeC = comp.competitors.find(c => c.homeAway === 'home');
                     const awayC = comp.competitors.find(c => c.homeAway === 'away');
                     if(!homeC || !awayC) return;
-                    homeName = homeC.team.name;
-                    awayName = awayC.team.name;
+                    /* `displayName` (« Texas Longhorns »), pas `name` (« Longhorns ») : pour les
+                       universités, absentes de la base d'équipes, le surnom seul ne se résout en
+                       rien et n'apparie aucun flux — le cache du 5 septembre 2026 portait « Dukes vs
+                       Flames », et aucun des 68 matchs de football universitaire ne recevait de
+                       lien. Les clubs professionnels se résolvent aussi bien par leur nom complet. */
+                    homeName = homeC.team.displayName || homeC.team.name;
+                    awayName = awayC.team.displayName || awayC.team.name;
                 }
 
                 let status = 'upcoming';

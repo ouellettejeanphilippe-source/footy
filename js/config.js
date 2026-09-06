@@ -4,7 +4,7 @@ import { isMatch } from './match.js';
 import { globalStatsInterval, setGlobalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';
-import { getLogo, normName, STATIC_TEAMS } from './db.js';
+import { getLogo, normName, STATIC_TEAMS, sportOfLeague } from './db.js';
 import { buildProxyList } from './fetcher.js';
 
 /* ══ CONFIG ═════════════════════════════ */
@@ -256,30 +256,10 @@ export function isApiEndpoint(url) {
    donc dans « Autres streams » au lieu de leur sport. Le défaut était invisible à la
    relecture : `console.log` de la source affiche le retour arrière comme un effacement,
    et le code semblait donc correct. `tests/unit_sports.test.js` le détecterait. */
-export function sportOfLeague(league) {
-    var l = String(league || '').toLowerCase();
-    if (!l) return 'other';
-    if (/\b(nhl|pwhl|khl|ahl|shl|liiga)\b|hockey|lhjmq|qmjhl/.test(l)) return 'nhl';
-    if (/\bmlb\b|baseball/.test(l)) return 'mlb';
-    if (/\bwnba\b/.test(l)) return 'wnba';
-    if (/ncaa.*basket|college basket|\bncaab\b/.test(l)) return 'ncaab';
-    if (/\bnba\b|basket/.test(l)) return 'nba';
-    if (/\bcfl\b/.test(l)) return 'cfl';
-    if (/ncaa.*foot|college foot|\bcfb\b|\bncaaf\b/.test(l)) return 'cfb';
-    if (/\bnfl\b|\bufl\b|american football/.test(l)) return 'nfl';
-    if (/\bufc\b|\bmma\b|bellator|\bpfl\b/.test(l)) return 'mma';
-    if (/box/.test(l)) return 'boxing';
-    if (/\bwwe\b|\baew\b|\btna\b|wrestl/.test(l)) return 'wwe';
-    if (/\bf1\b|formula/.test(l)) return 'f1';
-    if (/motogp|indycar|nascar|motor/.test(l)) return 'motor';
-    if (/rugby/.test(l)) return 'rugby';
-    if (/cricket/.test(l)) return 'cricket';
-    if (/tennis|atp|wta/.test(l)) return 'tennis';
-    if (/golf|pga/.test(l)) return 'golf';
-    if (/\b(lcs|lec|lpl|lck|msi|worlds|cblol|ljl|pcs|vcs|lla|tcl|lcp|nlc)\b|league of legends|esport/.test(l)) return 'esports';
-    if (/league|liga|serie|cup|coupe|\bmls\b|bundesliga|ligue|champions|europa|copa|premier|eredivisie|primeira|uefa|fifa|conmebol|concacaf|saudi|soccer|football|super lig|pokal|nations|friendly|primera|eliteserien|allsvenskan/.test(l)) return 'soccer';
-    return 'other';
-}
+/* `sportOfLeague` vit dans js/db.js (module sans dépendance d'interface) pour que
+   js/match.js puisse s'en servir sans tirer tout le graphe des modules ; ré-exporté ici
+   pour ses appelants historiques. */
+export { sportOfLeague };
 
 /* Pages à télécharger pour une source. `sports` = liste des sports à couvrir (null = tous). */
 export function getSourcePages(scraper, sports) {

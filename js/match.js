@@ -1,4 +1,4 @@
-import { normName, NORM_TEAM_KEYS } from './db.js';
+import { normName, NORM_TEAM_KEYS, sportOfLeague } from './db.js';
 import { TEAM_DATA } from './teams.js';
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
@@ -139,6 +139,20 @@ export function isMatchPair(m1, m2) {
 export function debugMatchPair(m1, m2) {
   if (!m1 || !m2 || typeof m1.homeTeam !== 'string' || typeof m1.awayTeam !== 'string' || typeof m2.homeTeam !== 'string' || typeof m2.awayTeam !== 'string') return { isMatch: false, reason: "m1 ou m2 ou données d'équipes manquantes" };
 
+  /* Deux ligues connues de sports différents ne s'apparient jamais, quels que soient les
+     noms. L'exclusion historique, plus bas, ne connaît que hockey, basket, baseball et
+     football américain ; tout le reste passait. Relevé sur les pages réelles du
+     6 septembre 2026 : « Miami FC vs Pittsburgh Riverhounds » (USL) recevait les liens de
+     « Miami vs Pitt » (football universitaire) — « pitt » est contenu dans
+     « pittsburghriverhounds ». Des familles plutôt que des sports exacts : une source
+     étiquette « Motorsport » ce qu'une autre appelle « F1 », « American Football » ce que
+     l'API range en NCAAF. « other » (Top 14, « Sports », libellés inconnus) n'exclut rien. */
+  var famille1 = sportFamily(sportOfLeague(m1.league));
+  var famille2 = sportFamily(sportOfLeague(m2.league));
+  if (famille1 !== 'other' && famille2 !== 'other' && famille1 !== famille2) {
+      return { isMatch: false, reason: "Sports différents (" + famille1 + " vs " + famille2 + ")" };
+  }
+
   // Special Racing/Event bypass (F1, IndyCar, WWE)
   // These are handled like events where the "homeTeam" is usually the event name or League, and "awayTeam" is the session
   var esportsLeagues = ['LCS', 'LEC', 'LPL', 'LCK', 'MSI', 'WORLDS', 'CBLOL', 'LJL', 'PCS', 'VCS', 'LLA', 'TCL', 'LCP', 'NLC', 'PRIME LEAGUE', 'LVP SUPERLIGA', 'LIT', 'ESPORTS BALKAN LEAGUE', 'GREEK LEGENDS LEAGUE', 'ARABIAN LEAGUE', 'NACL', 'CBLOL ACADEMY', 'LCK CHALLENGERS', 'LPL ACADEMY'];
@@ -159,7 +173,14 @@ export function debugMatchPair(m1, m2) {
       var clean1 = combo1.replace(/(f1|formula1|grandprix|race|qualifying|practice|sprint|indycar|indy|wwe|mondaynightraw|smackdown|nxt)/g, '').trim();
       var clean2 = combo2.replace(/(f1|formula1|grandprix|race|qualifying|practice|sprint|indycar|indy|wwe|mondaynightraw|smackdown|nxt)/g, '').trim();
 
-      if (clean1 && clean2 && (clean1.includes(clean2) || clean2.includes(clean1) || isMatch(clean1, clean2, true))) {
+      /* Un résidu trop court n'identifie rien. « F1 Main Race » ne laisse que « main »,
+         que « Sunday Nights Main Event » contient : relevé sur le cache du 6 septembre
+         2026, ce gala de la WWE portait les liens de la F1 et, par ricochet, ceux du
+         MotoGP. Cinq caractères est la plus courte forme d'un vrai nom d'épreuve
+         (« monza », « miami », « texas ») ; en dessous, on exige une vraie similarité. */
+      var residuSignificatif = function(r) { return r.length >= 5; };
+      var inclusionPermise = residuSignificatif(clean1) && residuSignificatif(clean2);
+      if (clean1 && clean2 && ((inclusionPermise && (clean1.includes(clean2) || clean2.includes(clean1))) || isMatch(clean1, clean2, true))) {
           return { isMatch: true, reason: "Racing/Event base name match (" + clean1 + " vs " + clean2 + ")" };
       }
   }
@@ -232,86 +253,77 @@ export function debugMatchPair(m1, m2) {
       return { isMatch: true, reason: "Correspondance inversée" };
   }
 
-  // Advanced Cross-Validation Match
-  // Create combined strings for both matches
+  /* ── Validation croisée, équipe par équipe ─────────────────────────────────────
+     L'ancienne version comptait les mots du match le plus court retrouvés N'IMPORTE OÙ
+     dans l'autre (« 3 mots sur 4 »), sans savoir quel mot venait de quelle équipe. Deux
+     matchs qui partagent un sac de mots passaient donc : « Kent State vs South Carolina »
+     face à « Florida A&M vs South Carolina State » (south, carolina, state), « McNeese
+     State vs Texas Wesleyan » face à « Texas State vs Texas » (texas, state). Relevé sur
+     les pages réelles du 6 septembre 2026, chaque cas attachait les liens d'un match à un
+     autre.
+
+     On aligne désormais : chaque équipe du match court doit avoir au moins un mot qui
+     DÉSIGNE (ni générique, ni trop court) dans l'équipe correspondante du match long —
+     dans le même sens, ou en sens inverse. « Texas vs Texas State » s'apparie ainsi à
+     « Texas Longhorns vs Texas State Bobcats » (texas → longhorns, texas → bobcats), là
+     où « Texas State vs Texas » ne s'apparie plus à « McNeese State vs Texas Wesleyan »
+     (« state » seul ne désigne pas McNeese), ni « New York Mets vs San Francisco Giants »
+     à « San Diego Padres vs New York Yankees » (« york » et « san » ne suffisent pas :
+     tous les mots désignants d'une équipe doivent s'y retrouver). */
   var combined1 = m1H + " " + m1A;
   var combined2 = m2H + " " + m2A;
+  var courtEstM1 = combined1.length < combined2.length;
+  var rawShortH = courtEstM1 ? m1.homeTeam : m2.homeTeam;
+  var rawShortA = courtEstM1 ? m1.awayTeam : m2.awayTeam;
+  var longH = courtEstM1 ? m2H : m1H;
+  var longA = courtEstM1 ? m2A : m1A;
 
-  // We check if the smaller combo is essentially contained in the larger combo
-  // by comparing words or high substring overlap.
-  var shorterCombo = combined1.length < combined2.length ? combined1 : combined2;
-  var longerCombo = combined1.length < combined2.length ? combined2 : combined1;
-
-  // Let's break the original shorter names (from the object, not normalized) into words
-  var rawShortH = combined1.length < combined2.length ? m1.homeTeam : m2.homeTeam;
-  var rawShortA = combined1.length < combined2.length ? m1.awayTeam : m2.awayTeam;
-
-  // Use normName on parts to match how the longer string is built
-  var shortWordsRaw = (rawShortH + " " + rawShortA).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/);
-  var uniqueRawWords = Array.from(new Set(shortWordsRaw.filter(w => w.length >= 3)));
-
-  if (uniqueRawWords.length === 0) return { isMatch: false, reason: "Aucun mot clé significatif pour la validation croisée" };
-
-  var matchedWords = 0;
-  for (var i = 0; i < uniqueRawWords.length; i++) {
-      var rawWord = uniqueRawWords[i];
-      var normWord = normName(rawWord);
-
-      var wordsToTest = [rawWord];
-      if (normWord.length >= 3 && normWord !== rawWord) {
-          wordsToTest.push(normWord);
-      }
-
-      var wordMatched = false;
-
-      for (var t = 0; t < wordsToTest.length; t++) {
-          var word = wordsToTest[t];
-          if (longerCombo.includes(word)) {
-              wordMatched = true;
-              break;
-          } else {
-              // Last resort sliding window for this word on the entire longer combo
-              var maxW = Math.min(longerCombo.length, word.length + 2);
-              var minW = Math.max(1, word.length - 2);
-              var bestSubSim = 0;
-              for (var w = minW; w <= maxW; w++) {
-                  for (var k = 0; k <= longerCombo.length - w; k++) {
-                      var sub = longerCombo.substring(k, k + w);
-                      var subSim = stringSimilarity(sub, word);
-                      if (subSim > bestSubSim) bestSubSim = subSim;
-                  }
-              }
-              if (bestSubSim > 0.80) {
-                  wordMatched = true;
-                  break;
+  function motsDesignants(nom) {
+      var mots = String(nom || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/);
+      return Array.from(new Set(mots.filter(function(w) { return w.length >= 3 && GENERIC_TEAM_WORDS.indexOf(w) < 0; })));
+  }
+  function motDansEquipe(mot, equipe) {
+      var formes = [mot];
+      var nm = normName(mot);
+      if (nm.length >= 3 && nm !== mot) formes.push(nm);
+      for (var t = 0; t < formes.length; t++) {
+          var word = formes[t];
+          if (equipe.includes(word)) return true;
+          // Coquille ou troncature : fenêtre glissante sur l'équipe alignée seulement.
+          var maxW = Math.min(equipe.length, word.length + 2);
+          var minW = Math.max(1, word.length - 2);
+          for (var w = minW; w <= maxW; w++) {
+              for (var k = 0; k <= equipe.length - w; k++) {
+                  if (stringSimilarity(equipe.substring(k, k + w), word) > 0.80) return true;
               }
           }
       }
-
-      if (wordMatched) {
-          matchedWords++;
-      }
+      return false;
+  }
+  /* TOUS les mots désignants du nom court doivent se retrouver dans l'équipe alignée :
+     un seul suffirait à « New York Mets » pour s'aligner sur « New York Yankees »
+     (« york »), ou à « San Francisco Giants » sur « San Diego Padres » (« san »). */
+  function equipeAlignee(nomCourt, equipeLongue) {
+      var mots = motsDesignants(nomCourt);
+      if (!mots.length) return false;
+      for (var i = 0; i < mots.length; i++) { if (!motDansEquipe(mots[i], equipeLongue)) return false; }
+      return true;
   }
 
-  // If a significant portion of words match, consider it the same matchup
-  // (e.g. if we have "tigers" and "rangers", that's 2 words. If both match, it's 100%)
-  if (matchedWords >= uniqueRawWords.length * 0.75 && matchedWords >= 2) {
-      // Prevent cross-validation from grouping known distinct pairs
-      // We block the direct match interpretation if any of its aligned pairs are explicitly distinct.
+  var motsH = motsDesignants(rawShortH), motsA = motsDesignants(rawShortA);
+  if (motsH.length === 0 || motsA.length === 0) return { isMatch: false, reason: "Aucun mot clé significatif pour la validation croisée" };
+
+  var alignementDirect = equipeAlignee(rawShortH, longH) && equipeAlignee(rawShortA, longA);
+  var alignementInverse = equipeAlignee(rawShortH, longA) && equipeAlignee(rawShortA, longH);
+  if (alignementDirect || alignementInverse) {
+      // Une distinction explicite (Manchester City / United…) bloque l'interprétation concernée.
       var blockedDirect = isKnownDistinct(m1H, m2H) || isKnownDistinct(m1A, m2A);
-      // We block the reversed match interpretation if any of its aligned pairs are explicitly distinct.
       var blockedReversed = isKnownDistinct(m1H, m2A) || isKnownDistinct(m1A, m2H);
-
-      // If the direct interpretation is blocked, and it doesn't match reversed, reject.
-      if (blockedDirect && !isMatch(m1H, m2A) && !isMatch(m1A, m2H)) {
-          return { isMatch: false, reason: "Bloqué par distinction explicite (Direct)" };
-      }
-      // If the reversed interpretation is blocked, and it doesn't match direct, reject.
-      if (blockedReversed && !isMatch(m1H, m2H) && !isMatch(m1A, m2A)) {
-          return { isMatch: false, reason: "Bloqué par distinction explicite (Inversé)" };
-      }
-      return { isMatch: true, reason: "Validation croisée (" + matchedWords + "/" + uniqueRawWords.length + " mots)" };
+      if (alignementDirect && !blockedDirect) return { isMatch: true, reason: "Validation croisée (alignement direct)" };
+      if (alignementInverse && !blockedReversed) return { isMatch: true, reason: "Validation croisée (alignement inversé)" };
+      return { isMatch: false, reason: "Bloqué par distinction explicite" };
   }
+  var matchedWords = 0, uniqueRawWords = motsH.concat(motsA);
 
   // Final permissive fallback: pure substring overlap for extreme abbreviations (e.g. 'Rangers' vs 'Texas Rangers')
   if (m1H && m1A && m2H && m2A) {
@@ -337,6 +349,21 @@ export function debugMatchPair(m1, m2) {
   if (m1H === m2H && m1A === m2A) return { isMatch: true, reason: "Match exact (fallback final)" };
 
   return { isMatch: false, reason: "Score de similarité insuffisant (Mots trouvés: " + matchedWords + "/" + uniqueRawWords.length + ")" };
+}
+
+/* Mots trop répandus pour identifier une équipe à eux seuls (validation croisée). */
+var GENERIC_TEAM_WORDS = ['state', 'north', 'south', 'east', 'west', 'central', 'northern', 'southern', 'eastern', 'western', 'university', 'college', 'saint', 'the', 'and'];
+
+/* Famille de sport pour l'appariement : deux étiquettes de sources différentes pour une
+   même compétition ne doivent pas se repousser. */
+export function sportFamily(sport) {
+    switch (sport) {
+        case 'nfl': case 'cfb': case 'cfl': return 'football-us';
+        case 'nba': case 'wnba': case 'ncaab': return 'basket';
+        case 'f1': case 'motor': return 'motor';
+        case 'mma': case 'boxing': return 'fight';
+        default: return sport || 'other';
+    }
 }
 
 export function isKnownDistinct(name1, name2) {
