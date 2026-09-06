@@ -2281,6 +2281,11 @@ export function finalizeStreamLinks(links) {
     return out;
 }
 
+/* Parseur de liste par domaine, passé aux adaptateurs qui en ont besoin : OnHockey lit
+   « la page du match » en relisant sa grille unique. Table plutôt qu'import direct, pour
+   que js/sources/ n'ait pas à remonter vers ce module. */
+var PARSEURS_DE_LISTE = { onhockey: parseOnHockey };
+
 export function extractStreamLinks(html, m) {
     var doc=new DOMParser().parseFromString(html,'text/html');
     var links=[];
@@ -2292,26 +2297,6 @@ export function extractStreamLinks(html, m) {
     // OnHockey specific logic for stream extraction from aggregate page
     var pageHost = ''; try { pageHost = new URL(m.matchUrl).hostname.toLowerCase(); } catch(e) { pageHost = String(m.matchUrl || '').toLowerCase(); }
     // Les branches spécifiques dépendent du site de la PAGE lue (pas de m.source, qui peut venir d'une autre source après fusion)
-    if (m.matchUrl === ONHOCKEY_URL || pageHost.indexOf('onhockey') >= 0) {
-        // Enforce that OnHockey only bleeds into actual Hockey matches to avoid generic match collision with other sports
-        var mLeague = (m.league || '').toLowerCase();
-        var isBball = mLeague.indexOf('nba') >= 0 || mLeague.indexOf('basketball') >= 0;
-        var isBase = mLeague.indexOf('mlb') >= 0 || mLeague.indexOf('baseball') >= 0;
-        var isFootball = mLeague.indexOf('nfl') >= 0 || mLeague.indexOf('american') >= 0;
-
-        // If the match is explicitly confirmed as a non-hockey major sport, do not attempt OnHockey merge
-        if (!isBball && !isBase && !isFootball) {
-            var ohMatches = parseOnHockey(html);
-            var matchingOh = ohMatches.find(function(oh) { return isMatchPair(m, oh); });
-            if (matchingOh && matchingOh.streamLinks) {
-                matchingOh.streamLinks.forEach(function(sl) {
-                    if (!links.find(function(l) { return l.url === sl.url; })) {
-                        links.push(sl);
-                    }
-                });
-            }
-        }
-    }
 
         // StreamEast specific logic (Next.js data extraction)
 
@@ -2326,72 +2311,15 @@ export function extractStreamLinks(html, m) {
             var trouves = adaptateur.extraireLiens({
                 html: html, doc: doc, match: m,
                 pageText: pageTextContext, pageLiens: pageLinksContext,
-                aides: { estPageDeMatchOuLigue: isMatchOrLeaguePage, qualite: extractQuality }
+                aides: {
+                    estPageDeMatchOuLigue: isMatchOrLeaguePage, qualite: extractQuality,
+                    memeMatch: isMatchPair, parseListe: PARSEURS_DE_LISTE[adaptateur.hotes[0]]
+                }
             }) || [];
             for (var iA = 0; iA < trouves.length; iA++) links.push(trouves[iA]);
         } catch (e) { lg('Adaptateur en échec ' + pageHost, e && e.message); }
     }
 
-    if (pageHost.indexOf('streameast') >= 0) {
-        var scriptRegex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
-        var match;
-        var concatenatedData = "";
-
-        while ((match = scriptRegex.exec(html)) !== null) {
-            var chunk = match[1];
-            chunk = chunk.replace(/\\"/g, '"')
-                         .replace(/\\\\/g, '\\')
-                         .replace(/\\n/g, '\n');
-            concatenatedData += chunk;
-        }
-
-        try {
-            var directMatch = /"directStreams":(\[.*?\])/.exec(concatenatedData);
-            var iframeMatch = /"iframeStreams":(\[.*?\])/.exec(concatenatedData);
-
-            var directStreams = directMatch ? JSON.parse(directMatch[1]) : [];
-            var iframeStreams = iframeMatch ? JSON.parse(iframeMatch[1]) : [];
-
-            var serverIndex = 1;
-
-                if (Array.isArray(directStreams)) {
-                    directStreams.forEach(function(s) {
-                        if (s.link) {
-                            if (isMatchOrLeaguePage(s.link, m)) return;
-                            var langStr = (s.language || '').toLowerCase();
-                            links.push({
-                                name: 'Server ' + serverIndex + ' - ' + (s.name || 'Flux'),
-                                quality: extractQuality((s.name || '') + ' ' + (s.quality || '')),
-                                lang: langStr.includes('english') ? 'EN' : (langStr || 'MULTI').toUpperCase(),
-                                url: s.link,
-                                icon: '📺',
-                                scrapeContext: { blockText: JSON.stringify(s), pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
-                            });
-                            serverIndex++;
-                        }
-                    });
-                }
-
-                if (Array.isArray(iframeStreams)) {
-                    iframeStreams.forEach(function(s) {
-                        if (s.src) {
-                            if (isMatchOrLeaguePage(s.src, m)) return;
-                            links.push({
-                                name: 'Server ' + serverIndex + ' - ' + (s.name || 'Flux'),
-                                quality: 'HD',
-                                lang: 'MULTI',
-                                url: s.src,
-                                icon: '📺',
-                                scrapeContext: { blockText: JSON.stringify(s), pageText: pageTextContext, pageLink: m.matchUrl, allLinks: pageLinksContext }
-                            });
-                            serverIndex++;
-                        }
-                    });
-                }
-        } catch(e) {
-            console.error("Error parsing Streameast streams:", e);
-        }
-    }
 
     // Sportsurge v2 (2026) : <div class="stream-item" data-href="https://..."> avec .stream-row-site-name et .stream-row-spec (1080p, fps, bitrate, langue...)
     var ssItems = doc.querySelectorAll('.stream-item[data-href]');
@@ -2655,9 +2583,11 @@ export function extractStreamLinks(html, m) {
         }
     });
 
-    // VIPLeague charge ses lecteurs en JS (jeton CSRF) : le HTML ne contient que des pubs et des liens partenaires.
-    if (pageHost.indexOf('vipleague') >= 0) {
-        links = links.filter(function(l) { return l && l.url && /vipleague/i.test(l.url) && !/\/vl$/.test(l.url); });
+    /* Second point d'entrée du contrat : ce que le domaine garde de la récolte générique
+       (VIPLeague ne sert aucun lecteur dans son HTML). Voir js/sources/. */
+    if (adaptateur && adaptateur.filtrerLiens) {
+        try { links = adaptateur.filtrerLiens(links, { match: m }) || []; }
+        catch (e) { lg('Filtre en échec ' + pageHost, e && e.message); }
     }
 
     // 5. Nettoyage générique : on écarte ce qui n'est manifestement pas un lecteur

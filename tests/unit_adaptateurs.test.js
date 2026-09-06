@@ -39,6 +39,9 @@ async function main() {
     assert.ok(registre.adaptateurPour('footybite.im'), 'footybite.im doit avoir un adaptateur');
     assert.ok(registre.adaptateurPour('www.footybite.bid'), 'un autre suffixe du même site aussi');
     assert.strictEqual(registre.adaptateurPour('embed.st'), null, 'un hôte de lecteur n\'est pas une source');
+    assert.ok(registre.adaptateurPour('onhockey.tv'), 'onhockey a son fichier');
+    assert.ok(registre.adaptateurPour('v2.gostreameast.is') || registre.adaptateurPour('streameast.ps'), 'streameast aussi');
+    assert.ok(registre.adaptateurPour('vipleague.me'), 'vipleague aussi');
     assert.strictEqual(registre.adaptateurPour(''), null);
     assert.strictEqual(registre.adaptateurPour(null), null);
     ok('le registre trouve le bon adaptateur, et rend null pour le reste');
@@ -59,22 +62,46 @@ async function main() {
     assert.ok(urls.includes('https://goomdstea.click/stream.php?ch=12'), 'iframeStreams lu : ' + urls.join(' '));
     ok('l\'adaptateur footybite lit les deux formes de sa charge Next.js');
 
-    // ── 3. Aucun adaptateur n'importe le module central ──────────────────────
+    // ── 3. Le second point d'entrée : filtrer plutôt qu'extraire ─────────────
+    /* VIPLeague ne sert AUCUN lecteur dans son HTML : il charge tout en JavaScript
+       derrière un jeton CSRF. Ce domaine n'apporte donc pas un extracteur mais un filtre
+       sur la récolte du moteur générique — d'où deux points d'entrée au contrat. */
+    const vip = registre.adaptateurPour('vipleague.me');
+    assert.ok(vip && typeof vip.filtrerLiens === 'function', 'vipleague fournit un filtre');
+    assert.strictEqual(typeof vip.extraireLiens, 'undefined', 'et pas d\'extracteur');
+    const garde = vip.filtrerLiens([
+        { url: 'https://vipleague.me/now-playing/football/a-vs-b' },
+        { url: 'https://vipleague.me/vl' },
+        { url: 'https://pub.exemple.test/banniere' },
+        null
+    ]).map((l) => l.url);
+    assert.deepStrictEqual(garde, ['https://vipleague.me/now-playing/football/a-vs-b'],
+        'seuls les liens du domaine restent, sa page d\'index exclue');
+    ok('un domaine peut n\'apporter qu\'un filtre (VIPLeague)');
+
+    // ── 4. Aucun adaptateur ne remonte vers le module central ────────────────
     /* Un adaptateur qui importerait js/scrapers.js créerait un cycle : le module central
-       importe le registre, qui importe l'adaptateur. Tout le contexte dont un adaptateur
-       a besoin lui est PASSÉ (ctx), précisément pour que cette règle tienne. */
+       importe le registre, qui importe l'adaptateur. Même chose en passant par js/utils.js
+       ou js/config.js, qui remontent tous deux vers le module central (vérifié le
+       6 septembre 2026 : utils importe scrapers, config importe utils). Les modules
+       feuilles — db, match, teams, extractors — sont sûrs.
+
+       Tout le contexte dont un adaptateur a besoin lui est PASSÉ (ctx) pour que cette
+       règle tienne : OnHockey reçoit ainsi le parseur de liste de son domaine et
+       l'appariement, au lieu de les importer. */
+    const REMONTENT = ['scrapers.js', 'utils.js', 'config.js'];
     const dossier = path.join(RACINE, 'js', 'sources');
     const fichiers = fs.readdirSync(dossier).filter((f) => f.endsWith('.js') && f !== 'index.js');
-    assert.ok(fichiers.length > 0, 'au moins un adaptateur');
+    assert.ok(fichiers.length >= 4, 'les quatre domaines à forme propre ont leur fichier');
     for (const f of fichiers) {
         const src = fs.readFileSync(path.join(dossier, f), 'utf8');
         const imports = [...src.matchAll(/^\s*import\s.*?from\s+['"]([^'"]+)['"]/gm)].map((x) => x[1]);
         for (const cible of imports) {
-            assert.ok(!/scrapers\.js$/.test(cible), f + ' importe le module central (' + cible + ') : import circulaire');
-            assert.ok(!/\.\.\//.test(cible), f + ' remonte hors de js/sources/ (' + cible + ') : un adaptateur ne connaît que son domaine');
+            const base = cible.split('/').pop();
+            assert.ok(!REMONTENT.includes(base), f + ' importe ' + cible + ' : ce module remonte vers js/scrapers.js, donc cycle');
         }
     }
-    ok('aucun adaptateur ne remonte vers le module central (' + fichiers.length + ' fichier(s) vérifié(s))');
+    ok('aucun adaptateur ne remonte vers le module central (' + fichiers.length + ' fichiers vérifiés)');
 
     console.log(`unit_adaptateurs: ${n} groupes de tests OK`);
     process.exit(0);
