@@ -342,6 +342,17 @@ if (!NO_SUBPAGES) {
    liens étaient bien là, simplement comptés sous le nom d'une autre. Chaque
    lien porte son propre `source` (site qui l'a réellement fourni) : c'est sur
    ce champ qu'il faut compter, pas sur le match qui l'héberge. */
+/* Décor et publicité déguisés en lecteurs : une adresse qui sert à plusieurs SPORTS n'est
+   pas le flux d'un match (voir adressesNonSpecifiques, js/match.js). Retiré ICI, une fois
+   toutes les sources fusionnées : la règle a besoin de voir l'ensemble des matchs pour
+   décider, ce qu'aucune page ne permet seule. */
+const decor = match.adressesNonSpecifiques(all);
+const nDecor = match.retirerLiensDeDecor(all, decor);
+if (nDecor) {
+    console.log(`Décor écarté : ${nDecor} liens sur ${Object.keys(decor).length} adresses vues dans plusieurs sports`);
+    Object.keys(decor).slice(0, 8).forEach((u) => console.log(`   ${u.slice(0, 90)}`));
+}
+
 const linksBySource = {};
 for (const m of all) for (const l of (m.streamLinks || [])) {
     if (l.topLevel) continue;
