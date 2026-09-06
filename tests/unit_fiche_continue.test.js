@@ -53,7 +53,19 @@ async function main() {
     assert.strictEqual(doit(null, T, true), false);
     ok('pas d\'adresse de match, pas de relecture');
 
-    console.log(`unit_fiche_continue: ${n} groupes de tests OK`);
+    // ── 5. Les tuiles suivent la même règle, plus lentement ─────────────────
+    /* Quand on ferme la fiche et qu'on ne garde que le Multivision — le cas normal quand
+       on regarde vraiment — plus rien ne relisait, et la tuile restait avec la liste
+       qu'elle avait au moment où on l'a posée. Or c'est quand un flux lâche qu'il faut
+       avoir où aller. Cadence plus lente : jusqu'à quatre matchs suivis à la fois. */
+    assert.ok(S.INTERVALLE_TUILE_MS > S.INTERVALLE_FICHE_MS, 'une tuile se relit moins souvent qu\'une fiche ouverte');
+    assert.strictEqual(S.doitRafraichirTuile(enDirect({ pageLueA: T - 90000 }), T, true), false, '90 s : trop tôt pour une tuile');
+    assert.strictEqual(S.doitRafraichirTuile(enDirect({ pageLueA: T - S.INTERVALLE_TUILE_MS }), T, true), true);
+    assert.strictEqual(S.doitRafraichirTuile(enDirect({ status: 'finished', pageLueA: T - 60 * 60000 }), T, true), false);
+    assert.strictEqual(S.doitRafraichirTuile(enDirect(), T, false), false, 'sans le script, pas de relecture non plus');
+    ok('les tuiles se relisent aussi, à cadence plus lente');
+
+        console.log(`unit_fiche_continue: ${n} groupes de tests OK`);
     process.exit(0);
 }
 main().catch((e) => { console.error(e); process.exit(1); });

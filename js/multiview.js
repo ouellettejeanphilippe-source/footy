@@ -8,7 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
-import { scrapeMatchFlux, compterFluxUtiles } from './scrapers.js';
+import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
 
@@ -1462,6 +1462,9 @@ export function restoreMultivisionState() {
                     updateMultivisionLayout();
                 }, 500);
             }
+            /* Des tuiles restaurées au démarrage ne passent pas par addToMultivision :
+               sans cela, une session reprise ne relisait plus jamais ses sources. */
+            if (mvFlux.length) armerRafraichissementTuiles();
         }
     } catch(e) {}
 }
@@ -2181,6 +2184,50 @@ function indexDeTuilePour(source) {
     return -1;
 }
 
+/* Les matchs affichés dans les tuiles continuent d'être relus tant qu'on regarde.
+
+   Suite de « meilleure mise à jour des streams à même la page » (6 septembre 2026) : la
+   fiche ouverte se relit déjà chaque minute. Mais quand on ferme la fiche et qu'on ne
+   garde que le Multivision — le cas normal quand on regarde vraiment — plus rien ne
+   relisait, et la tuile restait avec la liste de sources qu'elle avait au moment où on l'a
+   posée. Or c'est précisément quand un flux lâche qu'il faut avoir OÙ ALLER : le bouton
+   « source suivante » ne vaut que par la longueur de sa liste.
+
+   Cadence plus lente que la fiche (trois minutes) : on suit jusqu'à quatre matchs à la
+   fois, et une tuile qui joue n'a pas besoin d'une liste fraîche à la minute. Un seul
+   minuteur, armé quand une tuile existe et coupé quand il n'en reste plus. Rien n'est
+   redessiné : seule la pastille « source k/n » est mise à jour, pour ne pas interrompre
+   une vidéo en cours de lecture. */
+var rafraichissementTuiles = null;
+function matchDeLaTuile(mid) {
+    var liste = (S && Array.isArray(S.matches)) ? S.matches : [];
+    for (var i = 0; i < liste.length; i++) { if (String(liste[i].id) === String(mid)) return liste[i]; }
+    return null;
+}
+export function arreterRafraichissementTuiles() {
+    if (rafraichissementTuiles) { clearInterval(rafraichissementTuiles); rafraichissementTuiles = null; }
+}
+export function armerRafraichissementTuiles() {
+    if (rafraichissementTuiles) return; // déjà armé : une tuile de plus ne relance rien
+    rafraichissementTuiles = setInterval(function() {
+        if (!mvFlux.length) { arreterRafraichissementTuiles(); return; }
+        var vus = {};
+        mvFlux.forEach(function(s, idx) {
+            if (s.mid === undefined || s.mid === null || vus[s.mid]) return;
+            vus[s.mid] = true;
+            var m = matchDeLaTuile(s.mid);
+            if (!m || m._relectureEnCours || !doitRafraichirTuile(m)) return;
+            m._relectureEnCours = true;
+            var avant = compterFluxUtiles(m);
+            m.pageLueA = Date.now();
+            scrapeMatchFlux(m, true, true).then(function() {
+                m._relectureEnCours = false;
+                if (compterFluxUtiles(m) > avant) rafraichirPastille(idx);
+            }).catch(function() { m._relectureEnCours = false; });
+        });
+    }, INTERVALLE_TUILE_MS);
+}
+
 export function addToMultivision(url, name, mid) {
     mid = getOriginalMatchId(mid);
     if(mvFlux.length >= 4) {
@@ -2196,6 +2243,7 @@ export function addToMultivision(url, name, mid) {
     updateMultivisionLayout();
     applyMvFocusStyling();
     applyMvAudioState();
+    armerRafraichissementTuiles();
 
     // Auto-open multiview if it's the first flux added
     var mvc = document.getElementById('mv-container');
@@ -2207,6 +2255,7 @@ export function addToMultivision(url, name, mid) {
 
 export function removeFromMultivision(idx) {
     mvFlux.splice(idx, 1);
+    if (!mvFlux.length) arreterRafraichissementTuiles();
 
     if (activeMvIdx === idx) {
         activeMvIdx = mvFlux.length > 0 ? 0 : null;
