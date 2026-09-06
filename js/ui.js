@@ -6,7 +6,7 @@ import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON,
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
-import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage } from './scrapers.js';
+import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 
@@ -1191,6 +1191,36 @@ export function renderDomainChips(m) {
   return '<div class="dom-chips">' + html + '</div>';
 }
 
+/* Relit la page du match tant que sa fiche est ouverte, et complète la liste des flux
+   sans la faire clignoter : le scrape fusionne, et on ne redessine que si le nombre de
+   flux a réellement augmenté. Un seul minuteur pour toute l'application. */
+export var rafraichissementFiche = null;
+export function arreterRafraichissementFiche() {
+    if (rafraichissementFiche) { clearInterval(rafraichissementFiche); rafraichissementFiche = null; }
+}
+function ficheOuvertePour(m) {
+    var fen = document.getElementById('mbg');
+    var titre = document.getElementById('mname');
+    return !!(fen && fen.classList.contains('open') && titre && titre.dataset.matchName
+        && titre.dataset.matchName.indexOf(m.homeTeam) >= 0);
+}
+function armerRafraichissementFiche(m, col) {
+    arreterRafraichissementFiche();
+    if (!m || !m.matchUrl) return;
+    rafraichissementFiche = setInterval(function() {
+        if (!ficheOuvertePour(m)) { arreterRafraichissementFiche(); return; }
+        if (m._relectureEnCours || !doitRafraichirFiche(m)) return;
+        m._relectureEnCours = true;
+        var avant = compterFluxUtiles(m);
+        m.pageLueA = Date.now();
+        scrapeMatchFlux(m, true, true).then(function() {
+            m._relectureEnCours = false;
+            if (compterFluxUtiles(m) <= avant) return;
+            if (ficheOuvertePour(m)) openMod(m, col);
+        }).catch(function() { m._relectureEnCours = false; });
+    }, INTERVALLE_FICHE_MS);
+}
+
 export function openMod(m,col){
   document.getElementById('mdot').style.background=col||'#888';
 
@@ -1671,6 +1701,12 @@ export function openMod(m,col){
           }).catch(function() { /* la relecture est un bonus : son échec ne doit rien casser */ });
       }
 
+      /* Puis on continue de relire tant que la fiche reste ouverte : ces sites publient
+         leurs liens au fil du match (voir doitRafraichirFiche, js/scrapers.js). Un seul
+         minuteur à la fois — il est coupé ici même avant d'être réarmé, et à la
+         fermeture de la fiche. */
+      armerRafraichissementFiche(m, col);
+
       var sortedLinks = [];
       if (m.streamLinks && m.streamLinks.length > 0) {
           sortedLinks = sortFluxLinks(m.streamLinks);
@@ -1819,6 +1855,7 @@ export function openMod(m,col){
 }
 export function closeMod(){
   document.getElementById('mbg').classList.remove('open');
+  arreterRafraichissementFiche();
     if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
 
   var mhd = document.querySelector('.mhd');

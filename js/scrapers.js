@@ -1951,6 +1951,38 @@ export function doitRelireLaPage(m, now, pont) {
     return true;
 }
 
+/* Rafraîchissement CONTINU d'une fiche ouverte.
+
+   « Ok pour le cache de liens et de matchs, mais meilleure mise à jour des streams à même
+   la page » (6 septembre 2026). Jusqu'ici, ouvrir une fiche déclenchait UNE relecture,
+   puis plus rien : la fenêtre restait figée sur ce qu'elle avait trouvé à la seconde où on
+   l'a ouverte. Or ces sites publient leurs liens au fil du match — mesuré le jour même sur
+   Footybite, Everton–Manchester United annonçait 55 flux en cours de match contre 5 pour
+   une rencontre qui venait de commencer. Un match qu'on regarde est justement celui dont
+   les liens bougent le plus.
+
+   Tant que la fiche reste ouverte, on relit donc sa page toutes les minutes, et la liste
+   se complète sans que rien ne clignote : le scrape FUSIONNE, il n'écrase pas, et la
+   fenêtre n'est redessinée que si le nombre de flux a réellement augmenté.
+
+   Trois conditions, pour ne pas marteler pour rien :
+     - le pont du script utilisateur est là (sans lui, aucun transport ne passe) ;
+     - le match n'est pas terminé (ses liens ne bougeront plus) ;
+     - la dernière lecture date de plus d'une minute.
+
+   `now` et `pont` ne servent qu'aux tests ; en production ils viennent de l'horloge et
+   du pont. */
+export var INTERVALLE_FICHE_MS = 60000;
+export function doitRafraichirFiche(m, now, pont) {
+    if (!m || !m.matchUrl) return false;
+    if (m.status === 'finished') return false;
+    var pontLa = (pont === undefined) ? !!(getBridgeStatus() || {}).available : !!pont;
+    if (!pontLa) return false;
+    var t = (now === undefined) ? Date.now() : now;
+    if (!m.pageLueA) return true;
+    return t - m.pageLueA >= INTERVALLE_FICHE_MS;
+}
+
 /* ══ FETCH SUB-PAGES (STREAMS) ════════════ */
 export function fetchSubPages(matches){
   var now = new Date();
