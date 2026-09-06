@@ -95,6 +95,32 @@ async function main() {
     assert.strictEqual(M.retirerLiensDeDecor([{ league: 'MLB' }], {}), 0, 'un match sans liens ne casse rien');
     ok('aucune donnée, aucun effet');
 
+    // ── 6. Les zones de régie, reconnues à leur forme ───────────────────────
+    /* Le retrait du décor juge sur les données : il faut voir l'adresse se répandre. Après
+       sa mise en service, douze liens de régie restaient — vus une ou deux fois seulement
+       dans l'heure, donc sans preuve. Ceux-là se reconnaissent sans données : répertoire
+       numérique court, identifiant numérique long, pas un seul mot dans le chemin. C'est le
+       format de zone des régies ; aucun lecteur ne s'adresse ainsi.
+
+       Vérifié sur les 2 479 adresses distinctes de trois relevés du cache : la forme
+       reconnaît exactement les cinq zones observées, et aucun vrai lecteur. */
+    const S = await import('../js/scrapers.js');
+    assert.strictEqual(S.isJunkStreamPath('https://hai8g.com/4/8553101'), true);
+    assert.strictEqual(S.isJunkStreamPath('https://hai8g.com/4/11690714'), true);
+    assert.strictEqual(S.isJunkStreamPath('https://omg10.com/4/9020608/'), true);
+    assert.strictEqual(S.isJunkStreamPath('https://omg10.com/4/9020608//'), true, 'barres finales en trop');
+
+    /* Un vrai lecteur porte toujours un mot dans son chemin. */
+    assert.strictEqual(S.isJunkStreamPath('https://embed.st/embed/admin/ppv-arsenal-vs-chelsea/1'), false);
+    assert.strictEqual(S.isJunkStreamPath('https://embedsports.me/nfl/nfl-network-stream-1'), false);
+    assert.strictEqual(S.isJunkStreamPath('https://ytstreams.club/YT155/embed/10.html'), false);
+    assert.strictEqual(S.isJunkStreamPath('https://emb.apl503.me/player/live.php?id=266037'), false);
+    assert.strictEqual(S.isJunkStreamPath('https://live.totalsporteki.st/Everton-vs-Manchester-United/72601'), false,
+        'un identifiant numérique précédé du nom du match reste un lecteur');
+    assert.strictEqual(S.isJunkStreamPath('https://cdn.test/live/12345'), false, 'un mot suffit à disculper');
+    assert.strictEqual(S.isJunkStreamPath('pas-une-url'), false);
+    ok('les zones de régie sont reconnues à leur forme, sans toucher aux vrais lecteurs');
+
     console.log(`unit_decor: ${n} groupes de tests OK`);
     process.exit(0);
 }

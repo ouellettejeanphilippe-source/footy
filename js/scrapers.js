@@ -2216,11 +2216,29 @@ function isJunkStreamLabel(name) {
     return JUNK_LABEL_ANYWHERE.test(t) || JUNK_LABEL_PREFIX.test(t) || JUNK_LABEL_LEGAL.test(t);
 }
 
-/* Une page légale ou institutionnelle, reconnue à son chemin. */
+/* Zone de régie publicitaire, reconnue à la FORME de son adresse.
+
+   Le retrait du décor (js/match.js) juge sur les données : une adresse qui sert à
+   plusieurs SPORTS n'est pas le flux d'un match. Cette règle-là a besoin de voir
+   l'adresse se répandre, et laisse donc passer celles qui n'apparaissent qu'une ou deux
+   fois dans l'heure. Relevé après sa mise en service : douze liens de ce genre restaient,
+   dont `hai8g.com/4/11690714` et `omg10.com/4/9020608/`, vus une seule fois chacun.
+
+   Ces adresses-là se reconnaissent sans données : un répertoire numérique court suivi
+   d'un identifiant numérique long, et pas un seul mot dans le chemin. C'est le format de
+   zone des régies (Adcash, PropellerAds). Aucun lecteur ne s'adresse ainsi — il porte
+   toujours un mot : embed, stream, live, player, channel, watch, ou le nom du match.
+
+   Vérifié avant d'écrire la règle, sur les 2 479 adresses distinctes de trois relevés du
+   cache : elle reconnaît exactement les cinq zones de régie observées, et AUCUN vrai
+   lecteur — il n'existe dans ces données aucun lecteur à chemin purement numérique. */
+var ZONE_DE_REGIE = /^\/\d{1,2}\/\d{5,}\/*$/;
+
+/* Une page légale ou institutionnelle, ou une zone de régie, reconnue à son chemin. */
 export function isJunkStreamPath(url) {
     var path = '';
     try { path = new URL(url).pathname; } catch (e) { return false; }
-    return JUNK_PATH_LEGAL.test(path);
+    return JUNK_PATH_LEGAL.test(path) || ZONE_DE_REGIE.test(path);
 }
 
 /* Adresses qui pointent vers l'accueil ou une page d'index d'un site de lecteurs plutôt
