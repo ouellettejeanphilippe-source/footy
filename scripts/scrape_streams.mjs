@@ -73,7 +73,7 @@ const config = await import('../js/config.js');
 const utils = await import('../js/utils.js');
 const match = await import('../js/match.js');
 
-const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource } = config;
+const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, canonicalOrigin } = config;
 const { fetchPage } = utils;
 
 const parsers = {
@@ -144,7 +144,30 @@ async function fetchWithMirrors(id, skip) {
 }
 
 /* Lit une source à une adresse donnée : accueil, sous-pages, puis analyse. */
+/* Un site qui a déménagé répond encore à son ancienne adresse — par redirection — mais se
+   déclare à la nouvelle (« canonical »). On adopte la nouvelle AVANT d'analyser la page,
+   pour que les adresses de match soient construites sur le domaine qui les sert, et on
+   la retient comme gagnante pour domains.json. C'est la seule adresse que le script
+   accepte sans qu'elle soit déjà déclarée : elle vient du site lui-même, pas d'une
+   découverte. Voir canonicalOrigin (js/config.js). */
+function adopterOrigineCanonique(sc, home) {
+    const canon = canonicalOrigin(home.html);
+    if (!canon) return home;
+    let actuelle;
+    try { actuelle = new URL(home.url); } catch (e) { return home; }
+    if (canon === actuelle.origin) return home;
+    const nouvelle = canon + actuelle.pathname + actuelle.search;
+    console.log(`  [${sc.id}] ${actuelle.origin} se declare sur ${canon} : adresse adoptee`);
+    applySourceUrl(sc.id, nouvelle);
+    if (mirrorFindings[sc.id]) {
+        mirrorFindings[sc.id].winner = nouvelle;
+        if (!mirrorFindings[sc.id].candidates.includes(nouvelle)) mirrorFindings[sc.id].candidates.unshift(nouvelle);
+    }
+    return { url: nouvelle, html: home.html };
+}
+
 async function readSourceAt(sc, home) {
+    home = adopterOrigineCanonique(sc, home);
     const pages = getSourcePages(sc, null).filter((pg) => pg.url !== home.url);
     const htmls = sc.homepageHasMatches === false ? [] : [home];
     for (const pg of pages) {
@@ -182,8 +205,8 @@ for (const sc of SCRAPERS_CONFIG) {
             if (!reste.length) break;
             console.log(`  [${sc.id}] ${home.url} repond mais ne livre aucun match : on essaie un miroir`);
         }
-        rep.url = home.url;
-        if (read.list.length) mirrorFindings[sc.id].winner = home.url;
+        rep.url = (mirrorFindings[sc.id] && mirrorFindings[sc.id].winner) || home.url;
+        if (read.list.length && mirrorFindings[sc.id] && !mirrorFindings[sc.id].winner) mirrorFindings[sc.id].winner = home.url;
         else if (mirrorFindings[sc.id]) mirrorFindings[sc.id].winner = null;
         const list = read.list;
         list.forEach((m) => { m.source = m.source || sc.id; if (!m.matchDate) m.matchDate = today; });

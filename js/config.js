@@ -63,6 +63,24 @@ export var SOURCE_VAR_NAMES = {
 
 /* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
    pour que les parseurs résolvent les liens relatifs contre le bon domaine. */
+/* Origine canonique annoncée par une page (« <link rel="canonical"> », sinon « og:url »),
+   ou '' si elle n'en annonce pas ou si elle est illisible.
+
+   Relevé le 6 septembre 2026 : footybite.bid répond encore, mais ne fait que rediriger
+   vers footybite.im, et ses pages de match, elles, répondent 403 — d'ailleurs la liste
+   des pages bloquées écarte .bid. Tant que l'adresse retenue restait .bid, la page
+   d'accueil livrait ses matchs (par redirection) et aucun miroir n'était promu, mais
+   AUCUNE page de match n'était lue : footybite ne fournissait que le lien de repli.
+   Une page qui se déclare ailleurs dit où le site vit vraiment. */
+export function canonicalOrigin(html) {
+    var h = String(html || '').slice(0, 200000);
+    var m = /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i.exec(h)
+        || /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i.exec(h)
+        || /<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i.exec(h);
+    if (!m) return '';
+    try { var u = new URL(m[1]); return /^https?:$/.test(u.protocol) ? u.origin : ''; } catch (e) { return ''; }
+}
+
 export function applySourceUrl(id, url) {
     if (!id || !url) return;
     switch (id) {
@@ -294,6 +312,7 @@ export function rebuildProxies() {
    Conséquences : enregistrer un proxy ou une clé d'API n'avait aucun effet avant un
    rechargement complet, et l'écran Options n'affichait jamais les valeurs déjà saisies. */
 window.applySourceUrl = applySourceUrl;
+window.canonicalOrigin = canonicalOrigin;
 window.playLedger = playLedger;
 window.notePlayability = notePlayability;
 window.sportOfLeague = sportOfLeague;
