@@ -727,22 +727,8 @@ function minutesOfTime(t) {
 }
 
 export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
-  var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
-
   if (typeof window.streamMissingCounts === 'undefined') window.streamMissingCounts = {};
-
-  /* Ligues déjà couvertes par la grille officielle. Un flux non fusionné dont la ligue
-     figure ici est un doublon potentiel (la fusion a échoué sur les noms d'équipes) :
-     il reste dans « Autres streams », conformément au principe API-First. Mais quand
-     l'API ne renvoie rien du tout pour cette ligue — ESPN injoignable, ou ligue absente
-     d'ESPN_LEAGUES — aucun doublon n'est possible et le match garde son vrai nom de
-     ligue, donc sa place dans le Guide. Sans cela, une panne d'ESPN faisait basculer
-     toute la grille (NFL, MLB, NBA…) dans une section repliée « Autres streams ». */
-  var apiLeagues = {};
-  for (var ai = 0; ai < apiMatches.length; ai++) {
-      var alKey = String(apiMatches[ai].league || '').toUpperCase().trim();
-      if (alKey) apiLeagues[alKey] = true;
-  }
+  S.unmatchedStreams = [];   // flux sans match dans la grille, pour le diagnostic (voir plus bas)
 
   /* ── Index des matchs de la grille par nom d'équipe ────────────────────────
      `isMatchPair` coûte 401 µs par appel (mesuré sur les données du 5 septembre 2026 :
@@ -940,59 +926,18 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
       }
 
       if(!matched) {
-         if (sm.status === 'finished') return; // Skip finished matches that have no API counterpart
+         /* La grille, c'est ESPN et les sources de calendrier acceptées ; les scrapers ne
+            font qu'y attacher des liens. Un flux sans match dans la grille ne crée donc
+            PAS de carte — ni dans Live, ni dans le Guide, ni dans « Autres streams ».
 
-         // Filter out nonsense matches (TBD, TBA, Winner, missing teams)
-         var htLower = (sm.homeTeam || '').toLowerCase().trim();
-         var atLower = (sm.awayTeam || '').toLowerCase().trim();
-         var isInvalidTeam = function(t) {
-             return t === 'tbd' || t === 'tba' || t === 'tbc' || t === 'winner' || t.indexOf('vainqueur') !== -1;
-         };
-         // Drop if BOTH teams are empty, or if any team is explicitly invalid
-         if ((!htLower && !atLower) || isInvalidTeam(htLower) || isInvalidTeam(atLower)) {
-             return;
-         }
-
-         // Flux that do not match an API match are kept but categorized distinctly
-         // so they appear separated from the official API timeline, usually at the bottom.
-         var safeH = sm.homeTeam ? normName(sm.homeTeam) : 'unk';
-         var safeA = sm.awayTeam ? normName(sm.awayTeam) : 'unk';
-
-         // Use a deterministic ID based on teams if available. If both are unknown, fallback to a unique identifier
-         // incorporating the URL or name to prevent colliding all unknown streams into a single "undefined" card.
-         var determStr = safeH + '_' + safeA;
-         if (safeH === 'unk' && safeA === 'unk') {
-             var hashStr = (sm.matchUrl || '') + '_' + (sm.name || '') + '_' + (sm.source || '');
-             var hash = 0;
-             for (var j = 0; j < hashStr.length; j++) {
-                 hash = ((hash << 5) - hash) + hashStr.charCodeAt(j);
-                 hash |= 0;
-             }
-             determStr = 'unk_' + Math.abs(hash);
-         }
-         sm.id = 'scraped_' + encodeURIComponent(determStr);
-         if (!sm.matchDate) sm.matchDate = targetDateStr;
-         sm.scrapedLeagueName = sm.league ? formatLeagueName(sm.league) : 'Autres Flux';
-         var keepLeague = sm.scrapedLeagueName !== 'Autres Flux'
-             && leagueTier(sm.scrapedLeagueName) !== 'other'
-             && !apiLeagues[sm.scrapedLeagueName.toUpperCase()];
-         sm.league = keepLeague ? sm.scrapedLeagueName : 'Autres Flux';
-         sm.streamsLoaded = true;
-         if (!keepLeague) {
-             sm.flag = '📡';
-             sm.color = '#555555';
-         } else {
-             if (!sm.flag) sm.flag = lgFlag(sm.league);
-             if (!sm.color) sm.color = lgColor(sm.league);
-         }
-
-         /* Indexé en même temps qu'ajouté : c'est ce qui permet à un flux ultérieur de
-            retrouver celui-ci — le dédoublonnage entre flux — sans qu'aucun balayage
-            complet ne soit nécessaire. */
-         ajouterAuxIndex(sm.homeTeam, apiMatches.length);
-         ajouterAuxIndex(sm.awayTeam, apiMatches.length);
-         apiMatches.push(sm);
-
+            Décision du 6 septembre 2026, devant un onglet Live qui affichait à 22 h 15
+            « Money In The Bank » en DIRECT (footybite marque « Match Started » des galas
+            vieux de plusieurs mois), « NFL Schedule Release 2021 » et « Toronto Raptors vs
+            Denver Nuggets 18:30 » (pages hors saison de Buffstreams, sans date) : tout ce
+            qui n'a pas de source de calendrier derrière lui est invérifiable, et c'est
+            précisément ce qui rendait la page illisible. Ces flux restent consultables
+            dans le journal des sources et dans `S.unmatchedStreams`, pour le diagnostic. */
+         S.unmatchedStreams.push(sm);
          if (!skipScraping) {
              addScrapeLog(sm.matchUrl || 'Merge Failure', 'error', 'Unmerged: ' + sm.homeTeam + ' vs ' + sm.awayTeam + ' (' + (sm.source || 'unknown') + ')');
          }
