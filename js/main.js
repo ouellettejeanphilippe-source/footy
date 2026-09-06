@@ -4,7 +4,7 @@ import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
 import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
-import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, updateMatchUiAfterScrape, fetchSubPages, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
+import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
 import { isMatchPair } from './match.js';
@@ -166,7 +166,13 @@ export function loadPrefetchedStreams(force) {
             var ageMin = data.generatedAt ? Math.round((Date.now() - new Date(data.generatedAt).getTime()) / 60000) : null;
             var todayStr = getEstDateStrFromDate(new Date());
             var list = data.matches.filter(function(m) { return !m.matchDate || m.matchDate === todayStr; });
-            list.forEach(function(m) { m.prefetched = true; m.streamsLoaded = !!(m.streamLinks && m.streamLinks.length); });
+            list.forEach(function(m) {
+                m.prefetched = true;
+                /* « Chargé » veut dire « porte un flux jouable », pas « porte un lien ».
+                   Un cache qui ne contient que le repli « Page du match » doit laisser le
+                   client relire la page lui-même, depuis l'adresse de l'utilisateur. */
+                m.streamsLoaded = compterFluxUtiles(m) > 0;
+            });
             window.prefetchedStreamMatches = list;
             window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {} };
             window.prefetchedStreamsLoadedAt = Date.now();
