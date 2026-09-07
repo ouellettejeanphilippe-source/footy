@@ -513,7 +513,7 @@ async function loadAllRun(isBackground, forceScrape){
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, matches: finalMatches });
+              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
 
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
@@ -674,7 +674,7 @@ async function loadAllRun(isBackground, forceScrape){
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, matches: finalMatches });
+              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
 
                     var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {

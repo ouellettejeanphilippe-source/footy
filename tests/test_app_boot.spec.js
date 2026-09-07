@@ -554,7 +554,18 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
-  await page.locator('#marea .match-card').first().click();
+  /* Une carte à DEUX équipes : la bannière testée plus bas porte deux blasons, ce qu'un
+     événement à un seul nom (course, gala de catch, épreuve) n'a pas. La première carte
+     de la grille en est un certain jour et pas un autre, selon le programme — le test
+     tombait alors sur une règle qui ne le concerne pas. */
+  const cible = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#marea .match-card[id^="mb-"]')];
+    const deuxBlasons = cards.find((c) => c.querySelectorAll('.prime-logo').length === 2);
+    return deuxBlasons ? deuxBlasons.id : null;
+  });
+  test.skip(!cible, 'aucun match à deux équipes rendu avec les données du jour');
+
+  await page.locator('[id="' + cible + '"]').first().click();
   await expect(page.locator('#mbg')).toHaveClass(/open/);
   await page.waitForTimeout(500);
 
