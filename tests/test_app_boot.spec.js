@@ -852,3 +852,76 @@ test('cache serveur injoignable et proxys muets : la grille s\'affiche sans atte
   for (const r of enAttente) { try { await r.abort(); } catch (e) {} }
   await ctx.close();
 });
+
+/* « Des matchs qui n'arrêtent pas même si finaux sur ESPN, c'est normal ? » Sans
+   nouvelle d'ESPN (réseau, onglet gelé), un match « live » restait DIRECT des heures. La
+   fin présumée (js/finpresumee.js) : passé la durée du sport plus 45 min sans nouvelle,
+   « Fin ? » et sortie du Live ; jamais tant qu'ESPN parle, et marge élargie si la
+   dernière nouvelle disait « manches supplémentaires » ou « prolongation ». */
+test('sans nouvelle d\'ESPN, un match trop long passe à « Fin ? » et quitte le Live, sauf prolongation connue', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+
+  const cible = await page.evaluate(() => {
+    const m = window.S.matches.find((x) => x.status === 'live' && /^\d{1,2}:\d{2}$/.test(x.startTime || '') && x.awayTeam && document.getElementById('mb-' + x.id));
+    return m ? { id: m.id, duree: m.durationMinutes || 180, league: m.league, jour: m.matchDate, heure: m.startTime } : null;
+  });
+  test.skip(!cible, 'aucun match en direct rendu dans le Live avec ces données');
+
+  /* Coup d'envoi en instant UTC : `startTime` est une heure de New York. On essaie les
+     deux décalages possibles et on garde celui qui redonne la même heure locale. */
+  const coupDEnvoi = [4, 5].map((h) => Date.parse(cible.jour + 'T' + cible.heure + ':00Z') + h * 3600000)
+    .find((t) => { const p = estParts(new Date(t)); const [hh, mm] = cible.heure.split(':').map(Number); return p.jour === cible.jour && p.minutes === hh * 60 + mm; });
+  expect(coupDEnvoi, 'coup d\'envoi retrouvé').toBeTruthy();
+
+  // Durée normale + 50 min après le coup d'envoi (sous les 240 min où le Live coupe de lui-même).
+  const plusTard = new Date(coupDEnvoi + (cible.duree + 50) * 60000);
+  await page.clock.setFixedTime(plusTard);
+  const apres = await page.evaluate((id) => {
+    const change = window.reevaluerFinsPresumees();
+    return { change, dansLive: !!document.getElementById('mb-' + id), filtre: window.S.filter };
+  }, cible.id);
+  expect(apres.filtre).toBe('live');
+  expect(apres.change, 'la réévaluation a changé quelque chose').toBeTruthy();
+  expect(apres.dansLive, 'le match présumé fini a quitté le Live').toBeFalsy();
+
+  await page.evaluate(() => window.applyFilter('all'));
+  await page.waitForTimeout(400);
+  const guide = await page.evaluate((id) => {
+    const b = document.getElementById('mb-' + id);
+    const t = b && b.querySelector('.mb-time');
+    return { present: !!b, badge: t ? t.textContent : '', titre: t ? t.getAttribute('title') || '' : '' };
+  }, cible.id);
+  expect(guide.present, 'le match reste dans le Guide').toBeTruthy();
+  expect(guide.badge, 'le Guide dit « Fin ? »').toContain('Fin ?');
+  expect(guide.titre, 'l\'infobulle explique la présomption').toContain('aucune nouvelle');
+
+  // ESPN parle : une mise à jour récente désarme la présomption, quelle que soit la durée.
+  const espnParle = await page.evaluate((id) => {
+    const m = window.S.matchMap.get(String(id));
+    m._scoreAt = Date.now();
+    window.reevaluerFinsPresumees();
+    window.applyFilter('all');
+    return new Promise((r) => setTimeout(() => {
+      const t = document.querySelector('#mb-' + id + ' .mb-time');
+      r({ badge: t ? t.textContent : '' });
+    }, 300));
+  }, cible.id);
+  expect(espnParle.badge, 'avec une nouvelle récente, le match reste en direct').not.toContain('Fin ?');
+
+  // La dernière nouvelle, vieille, disait « prolongation » : la marge passe à 120 min.
+  const prolongation = await page.evaluate((id) => {
+    const m = window.S.matchMap.get(String(id));
+    m._scoreAt = Date.now() - 30 * 60000;
+    m.detail = 'OT';
+    window.reevaluerFinsPresumees();
+    window.applyFilter('all');
+    return new Promise((r) => setTimeout(() => {
+      const t = document.querySelector('#mb-' + id + ' .mb-time');
+      r({ badge: t ? t.textContent : '' });
+    }, 300));
+  }, cible.id);
+  expect(prolongation.badge, 'en prolongation connue, on attend encore').not.toContain('Fin ?');
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});

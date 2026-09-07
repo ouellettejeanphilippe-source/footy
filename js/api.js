@@ -326,8 +326,13 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
         var matchDate = getEstDateStrFromDate(dateObj);
         var isPlayoff = ev.season && ev.season.type === 3;
 
+        var stObj = (isRacing && comp.status && comp.status.type) ? comp.status : ev.status;
         var matchObj = {
           id: isRacing ? 'espn_' + ev.id + '_' + comp.id : 'espn_' + ev.id,
+          /* Période et libellé (« Top 10th », « OT », « End of 3rd ») : la fin présumée
+             (js/finpresumee.js) y lit une prolongation connue. */
+          period: (stObj && stObj.period) || null,
+          detail: (stObj && stObj.type && (stObj.type.shortDetail || stObj.type.detail)) || null,
           league: formatLeagueName(leagueName),
           flag: lgFlag(leagueName),
           color: lgColor(leagueName),

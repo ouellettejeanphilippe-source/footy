@@ -2,7 +2,7 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
-import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague } from './config.js';
+import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
 import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
@@ -65,10 +65,31 @@ export function applyScoreUpdates(fresh) {
         m.status = f.status;
         m.score = f.score;
         m.minute = f.minute;
+        m.period = f.period || null;
+        m.detail = f.detail || null;
+        m._scoreAt = Date.now(); // ESPN a parlé de CE match : la fin présumée s'efface
         if (f.startTime) m.startTime = f.startTime;
     }
     updateLiveScores(S.matches);
     return changed;
+}
+
+/* Fin présumée (js/finpresumee.js) : sans nouvelle d'ESPN, un match « live » qui a
+   dépassé la durée de son sport passe à « Fin ? » et quitte le Live. Réévalué chaque
+   minute, parce que c'est précisément quand ESPN ne répond plus que rien d'autre ne
+   redessine. Exposée pour les tests. */
+export function reevaluerFinsPresumees(now) {
+    now = now || new Date();
+    var change = false;
+    for (var i = 0; i < S.matches.length; i++) {
+        var m = S.matches[i];
+        var f = m.status === 'live' && finPresumee(m, now);
+        if (!!m._finPresumee !== !!f) { m._finPresumee = !!f; change = true; }
+    }
+    if (!change) return false;
+    updateLiveScores(S.matches);
+    if (liveViewIsStale(S.matches)) rebuildPreservingScroll();
+    return true;
 }
 
 /* Les identifiants des cartes rendues dans le Live, et ceux qui devraient l'être. */
@@ -107,8 +128,9 @@ export function updateLiveScores(matches) {
     function patchCard(m, cached) {
         var card = cached.el;
         var minEl = cached.minEl;
+        var etat = (m.status === 'live' && finPresumee(m)) ? 'presume' : m.status;
         if (minEl) {
-            if (m.status === 'live') {
+            if (etat === 'live') {
                 minEl.textContent = formatLiveMinute(m);
                 if (!cached.ind) {
                     minEl.parentElement.className = 'live-indicator status-text';
@@ -123,9 +145,10 @@ export function updateLiveScores(matches) {
                 }
                 card.classList.add('live');
                 card.classList.remove('finished');
-            } else if (m.status === 'finished') {
-                minEl.textContent = m.score ? 'Fin' : m.startTime;
-                minEl.parentElement.className = 'status-text';
+            } else if (m.status === 'finished' || etat === 'presume') {
+                minEl.textContent = etat === 'presume' ? 'Fin ?' : (m.score ? 'Fin' : m.startTime);
+                minEl.parentElement.className = 'status-text' + (etat === 'presume' ? ' presume' : '');
+                minEl.parentElement.title = etat === 'presume' ? raisonFinPresumee(m) : '';
                 if (cached.ld) { cached.ld.remove(); cached.ld = null; }
                 cached.ind = null;
                 card.classList.remove('live');
@@ -150,8 +173,8 @@ export function updateLiveScores(matches) {
             wrap.innerHTML = timelineBadgeHtml(m);
             var fresh = wrap.firstChild;
             if (fresh) { cached.mbTime.replaceWith(fresh); cached.mbTime = fresh; }
-            card.classList.toggle('live', m.status === 'live');
-            card.classList.toggle('finished', m.status === 'finished');
+            card.classList.toggle('live', etat === 'live');
+            card.classList.toggle('finished', m.status === 'finished' || etat === 'presume');
         }
     }
     function processChunk() {
@@ -768,6 +791,7 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
           loadAll(true, false);
       }
   }, 300000);
+  setInterval(function() { if (window.hasLoadedOnce) reevaluerFinsPresumees(); }, 60000);
 
   /* Retour au premier plan : sur téléphone, l'onglet est gelé en arrière-plan et la
      minuterie ci-dessus ne tourne pas. Les scores, eux, sont déjà relus à ce moment
@@ -1319,6 +1343,7 @@ window.stepOk = stepOk;
 window.updateLiveScores = updateLiveScores;
 window.applyScoreUpdates = applyScoreUpdates;
 window.rebuildPreservingScroll = rebuildPreservingScroll;
+window.reevaluerFinsPresumees = reevaluerFinsPresumees;
 window.loadAll = loadAll;
 window.toggleSportFilters = toggleSportFilters;
 window.appTheaterTimer = appTheaterTimer;
