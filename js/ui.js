@@ -528,6 +528,11 @@ function buildEPGInner(matches){
                      équipe/score et sport en pied). Le bandeau dit l'essentiel — DIRECT,
                      heure, Fin — ; la minute ou la période du direct va au pied, à côté du
                      sport, pour ne pas charger le bandeau. */
+                  /* « Où t'as le bleu dans les cartes, mettre les couleurs des équipes en
+                     dégradés quand même » (7 septembre 2026) : le panneau entier porte le
+                     dégradé, assombri par la feuille de style pour que le texte reste lisible. */
+                  b.style.setProperty('--card-grad', cardBg);
+
                   var statusHtml = '', minuteHtml = '';
                   if (presume) {
                       statusHtml = '<div class="status-text presume" title="' + esc(raisonFinPresumee(m)) + '"><span class="status-minute">Fin ?</span></div>';

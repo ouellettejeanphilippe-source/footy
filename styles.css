@@ -259,10 +259,12 @@ select.btn, .select {
    « J'aime ce look, qui ressemble à celui qu'on a déjà, mais plus clair. Possible de
    l'adapter en gardant un gradient ? » — capture d'une carte bleu nuit à bandeau LIVE
    rose, blasons ronds, titre de compétition, lignes équipe/score, sport en pied.
-   Le gradient reste à deux endroits : la vignette garde le dégradé des couleurs
-   d'équipes (Options → Style des Cartes), et le bandeau du direct est lui-même un
-   dégradé rouge → rose. */
-.match-card { display: flex; flex-direction: column; gap: 0; cursor: pointer; position: relative; border-radius: var(--radius-card); overflow: hidden; background: var(--card-panel, #151a2e); border: 1px solid var(--card-panel-border, rgba(129, 140, 248, 0.28)); box-shadow: var(--card-shadow); transition: transform var(--t-fast) ease, border-color var(--t-fast), box-shadow var(--t-fast); content-visibility: auto; contain-intrinsic-size: auto 250px; }
+   Le gradient reste à trois endroits : la vignette garde le dégradé des couleurs
+   d'équipes (Options → Style des Cartes), le panneau entier le reprend voilé de bleu
+   nuit (« où t'as le bleu dans les cartes, mettre les couleurs des équipes en dégradés
+   quand même », `--card-grad` posé par js/ui.js), et le bandeau du direct est
+   lui-même un dégradé rouge → rose. */
+.match-card { display: flex; flex-direction: column; gap: 0; cursor: pointer; position: relative; border-radius: var(--radius-card); overflow: hidden; background: linear-gradient(180deg, rgba(13, 17, 32, 0.72) 0%, rgba(13, 17, 32, 0.9) 100%), var(--card-grad, var(--card-panel, #151a2e)); border: 1px solid var(--card-panel-border, rgba(129, 140, 248, 0.28)); box-shadow: var(--card-shadow); transition: transform var(--t-fast) ease, border-color var(--t-fast), box-shadow var(--t-fast); content-visibility: auto; contain-intrinsic-size: auto 250px; }
 .match-card:hover { transform: translateY(-2px); border-color: var(--card-panel-border-hover, rgba(165, 180, 252, 0.55)); box-shadow: 0 10px 22px rgba(0,0,0,0.45); }
 .match-card:hover .prime-thumbnail { filter: brightness(1.08); }
 .match-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

@@ -123,18 +123,33 @@ export function rebuildPreservingScroll() {
     if (container) { container.scrollTop = top; container.scrollLeft = left; }
 }
 
+/* Carte en panneau (7 septembre 2026) : le bandeau dit « Direct », la minute ou la
+   période va au pied, à côté du sport (`.prime-minute`, créé au besoin, retiré quand
+   ESPN ne donne rien de plus que « en direct »). */
+function poserMinuteAuPied(card, texte) {
+    var foot = card.querySelector('.prime-foot');
+    if (!foot) return;
+    var el = foot.querySelector('.prime-minute');
+    if (!texte || texte === 'DIRECT') { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('span'); el.className = 'prime-minute'; foot.appendChild(el); }
+    el.textContent = texte;
+}
+
 export function updateLiveScores(matches) {
     var i = 0;
     function patchCard(m, cached) {
         var card = cached.el;
         var minEl = cached.minEl;
         var etat = (m.status === 'live' && finPresumee(m)) ? 'presume' : m.status;
+        var panneau = !!card.querySelector('.prime-head');
         if (minEl) {
             if (etat === 'live') {
-                minEl.textContent = formatLiveMinute(m);
+                var minute = formatLiveMinute(m);
+                minEl.textContent = panneau ? 'Direct' : minute;
+                if (panneau) poserMinuteAuPied(card, minute);
                 if (!cached.ind) {
                     minEl.parentElement.className = 'live-indicator status-text';
-                    minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">' + esc(formatLiveMinute(m)) + '</span>';
+                    minEl.parentElement.innerHTML = '<span class="mb-ld"></span><span class="status-minute">' + esc(panneau ? 'Direct' : minute) + '</span>';
                     cached.minEl = card.querySelector('.status-minute');
                     cached.ind = card.querySelector('.live-indicator');
                     cached.ld = card.querySelector('.mb-ld');
@@ -149,6 +164,7 @@ export function updateLiveScores(matches) {
                 minEl.textContent = etat === 'presume' ? 'Fin ?' : (m.score ? 'Fin' : m.startTime);
                 minEl.parentElement.className = 'status-text' + (etat === 'presume' ? ' presume' : '');
                 minEl.parentElement.title = etat === 'presume' ? raisonFinPresumee(m) : '';
+                if (panneau) poserMinuteAuPied(card, '');
                 if (cached.ld) { cached.ld.remove(); cached.ld = null; }
                 cached.ind = null;
                 card.classList.remove('live');

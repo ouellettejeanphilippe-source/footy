@@ -73,10 +73,14 @@ async function main() {
     ok('marqueurs lus : féminin, âge, réserve — et rien d\'autre');
 
     // ── 4. Le match féminin n'absorbe plus le match masculin ─────────────────
+    /* Révisé le 7 septembre 2026 : sous une ligue féminine connue (WNBA), l'entrée
+       sans marqueur EST l'équipe féminine — il n'existe pas d'Atlanta Dream masculin —
+       et c'est le match ESPN que les entrées « W » des sources doivent rejoindre. La
+       séparation vaut quand la ligue ne dit rien (groupe 6) ou dit le contraire. */
     assert.strictEqual(paire(
         { league: 'WNBA', homeTeam: 'Atlanta Dream W', awayTeam: 'Minnesota Lynx W' },
-        { league: 'WNBA', homeTeam: 'Atlanta Dream', awayTeam: 'Minnesota Lynx' }).isMatch, false,
-        'une seule lettre d\'écart, mais deux matchs différents');
+        { league: 'WNBA', homeTeam: 'Atlanta Dream', awayTeam: 'Minnesota Lynx' }).isMatch, true,
+        'sous la WNBA, « Atlanta Dream » est déjà l\'équipe féminine');
     assert.strictEqual(paire(
         { league: 'Frauen-Bundesliga', homeTeam: 'Bayern Munich W', awayTeam: 'Wolfsburg W' },
         { league: 'Bundesliga', homeTeam: 'Bayern Munich', awayTeam: 'Wolfsburg' }).isMatch, false);
@@ -96,6 +100,34 @@ async function main() {
         { league: 'WNBA', homeTeam: 'Atlanta Dream W', awayTeam: 'Minnesota Lynx' }).isMatch, true,
         'une source ne marque parfois qu\'une des deux équipes');
     ok('deux façons d\'écrire la même catégorie s\'apparient');
+
+    // ── 6. ESPN n'écrit jamais le marqueur : la ligue le porte ────────────────
+    /* Relevé le 7 septembre 2026 sur le cache publié : « Atlanta Dream W vs Minnesota
+       Lynx W » (Buffstreams, étiquette « NCAA Men's Basketball » fausse) et « Italy W vs
+       China W » (VIPLeague, « Basketball ») ne rejoignaient plus jamais le match ESPN —
+       « senior vs F » — et les cartes WNBA et FIBA féminine restaient sans lien. */
+    assert.strictEqual(paire(
+        { league: 'WNBA', homeTeam: 'Atlanta Dream', awayTeam: 'Minnesota Lynx' },
+        { league: "NCAA Men's Basketball", homeTeam: 'Atlanta Dream W', awayTeam: 'Minnesota Lynx W' }).isMatch, true,
+        'la WNBA d\'ESPN rejoint les entrées « W » des sources');
+    assert.strictEqual(paire(
+        { league: 'FIBA WORLD CUP', homeTeam: 'China', awayTeam: 'Italy' },
+        { league: 'Basketball', homeTeam: 'Italy W', awayTeam: 'China W' }).isMatch, true,
+        'la Coupe du monde FIBA (édition féminine en 2026) aussi, même inversée');
+    assert.strictEqual(paire(
+        { league: 'Basketball', homeTeam: 'Atlanta Dream', awayTeam: 'Minnesota Lynx' },
+        { league: 'Basketball', homeTeam: 'Atlanta Dream W', awayTeam: 'Minnesota Lynx W' }).isMatch, false,
+        'sans ligue féminine connue, un côté sans marqueur reste ambigu : pas d\'appariement (doublons d\'une même grille)');
+    assert.strictEqual(paire(
+        { league: 'NCAA Women\'s Basketball', homeTeam: 'Iowa Hawkeyes', awayTeam: 'LSU Tigers' },
+        { league: 'Basketball', homeTeam: 'Iowa Hawkeyes', awayTeam: 'LSU Tigers' }).isMatch, true,
+        'deux côtés sans marqueur s\'apparient comme avant, ligue féminine ou non');
+    assert.strictEqual(M.ligueFeminine('WNBA'), true);
+    assert.strictEqual(M.ligueFeminine('FIFA Women\'s World Cup'), true);
+    assert.strictEqual(M.ligueFeminine('PWHL'), true);
+    assert.strictEqual(M.ligueFeminine('NBA'), false);
+    assert.strictEqual(M.ligueFeminine(''), false);
+    ok('une ligue féminine connue vaut marqueur pour le côté qui n\'en écrit pas');
 
     console.log(`unit_categorie: ${n} groupes de tests OK`);
     process.exit(0);
