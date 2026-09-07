@@ -179,6 +179,35 @@ export function categorieDuMatch(m) {
   return marqueurCategorie(m.homeTeam) || marqueurCategorie(m.awayTeam) || '';
 }
 
+/* Ligue dont TOUTES les équipes sont féminines. ESPN n'écrit jamais le marqueur
+   (« Atlanta Dream », « France ») : c'est la ligue qui le porte. Relevé le 7 septembre
+   2026 sur le cache publié : les sources écrivent « Atlanta Dream W vs Minnesota Lynx W »
+   (Buffstreams, sous une étiquette « NCAA Men's Basketball » fausse) et « Italy W vs
+   China W » (VIPLeague, « Basketball ») — et depuis la règle des catégories, aucune de
+   ces entrées n'atteignait plus le match ESPN correspondant (WNBA, FIBA World Cup) :
+   « senior vs F », jamais le même match. Les cartes de ces ligues restaient sans lien.
+
+   « FIBA World Cup » est daté : l'étiquette ESPN (`basketball/fiba`) sert aux deux
+   tournois, et l'édition de 2026 est la féminine (Berlin, 4-13 septembre). */
+var LIGUES_FEMININES_RE = /\b(wnba|pwhl|nwsl)\b|women|womens|f[ée]minin|frauen|ladies/;
+export function ligueFeminine(league) {
+  var l = String(league || '').toLowerCase();
+  if (!l) return false;
+  if (LIGUES_FEMININES_RE.test(l)) return true;
+  return /\bfiba\b.*world cup|fiba world cup/.test(l);
+}
+
+/* Deux catégories lues différemment peuvent être la même : un côté marqué « F » par ses
+   noms, l'autre sans marqueur mais dans une ligue féminine. Un côté sans marqueur dans
+   une ligue générique (« Basketball », « Soccer ») reste ambigu : on ne l'apparie pas à
+   un côté marqué — c'est le cas des doublons masculin/féminin d'une même grille. */
+export function categoriesCompatibles(cat1, m1, cat2, m2) {
+  if (cat1 === cat2) return true;
+  if (cat1 === 'F' && cat2 === '') return ligueFeminine(m2 && m2.league);
+  if (cat2 === 'F' && cat1 === '') return ligueFeminine(m1 && m1.league);
+  return false;
+}
+
 export function isMatchPair(m1, m2) {
   return debugMatchPair(m1, m2).isMatch;
 }
@@ -197,7 +226,7 @@ export function debugMatchPair(m1, m2) {
   /* Catégories différentes (féminin / masculin / âge / réserve) : jamais le même match,
      même si les noms ne diffèrent que d'une lettre. Voir marqueurCategorie. */
   var cat1 = categorieDuMatch(m1), cat2 = categorieDuMatch(m2);
-  if (cat1 !== cat2) {
+  if (!categoriesCompatibles(cat1, m1, cat2, m2)) {
       return { isMatch: false, reason: "Catégories différentes (" + (cat1 || 'senior') + " vs " + (cat2 || 'senior') + ")" };
   }
 
