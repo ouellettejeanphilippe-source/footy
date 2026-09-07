@@ -288,9 +288,12 @@ function apiOuCacheLocal(targetDateObj, todayStr, targetDateStr, cache) {
              rien ne l'indiquait. */
           if (typeof window !== 'undefined') {
               window.calendrierInfo = { source: 'local (périmé)', ageMin: cache.savedAt ? Math.round((Date.now() - cache.savedAt) / 60000) : null, count: cache.matches.length };
+              /* Sous try : `showToast` écrit dans un élément de la page, qui peut ne pas
+                 exister encore (démarrage) — un message de diagnostic ne doit jamais faire
+                 échouer le chargement du calendrier qu'il décrit. */
               if (typeof window.showToast === 'function' && !window._calendrierAvertissement) {
                   window._calendrierAvertissement = true;
-                  window.showToast('Scores indisponibles sur cet appareil : ni le cache du serveur ni ESPN ne répondent.');
+                  try { window.showToast('Scores indisponibles sur cet appareil : ni le cache du serveur ni ESPN ne répondent.'); } catch (e) {}
               }
           }
           lg('Calendrier', 'API injoignable : ' + cache.matches.length + ' matchs du cache local (ESPN ' + espnInfo.echecs + '/' + espnInfo.tentatives + ' en échec)');
@@ -324,6 +327,10 @@ window.backgroundUpdateGuide = backgroundUpdateGuide;
 function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
   var promises = [];
   var baseMatches = [];
+  /* Combien d'appels à ESPN ont RÉPONDU pendant cette passe. Voir le garde-fou en fin
+     de fonction : c'est ESPN qui porte le calendrier, les autres sources n'en fournissent
+     que des miettes. */
+  var espnAvant = { tentatives: espnInfo.tentatives, echecs: espnInfo.echecs };
 
   var baseMatchesById = {};
   for (var i = 0; i < baseMatches.length; i++) {
@@ -780,6 +787,25 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
          La passe suivante lisait ce vide et la grille disparaissait, jusqu'à un
          « Réessayer » ou au lendemain. Un jour sans aucun match n'existe pas dans les
          ligues suivies : un résultat vide est un échec, pas une donnée. */
+      /* Le garde-fou ci-dessus ne voyait que le cas VIDE. Relevé le 7 septembre 2026 en
+         instrumentant le test « un cache serveur momentanément injoignable… » : quand
+         ESPN est injoignable mais qu'une source annexe répond quand même — le calendrier
+         des galas de catch, lu ailleurs qu'à l'API —, `baseMatches` vaut 1. Ce n'est pas
+         vide, donc c'était écrit comme LE calendrier du jour : la grille tombait de
+         plusieurs dizaines de matchs à un seul, ses liens avec, et le cache local était
+         écrasé par ce fragment, qui survivait aux passes suivantes.
+
+         C'est l'autre moitié de « selon le device, ça voit ou non les scores et les
+         streams » : sur l'appareil où ESPN ne passe pas, la grille ne se figeait pas
+         seulement, elle pouvait s'effondrer. ESPN porte le calendrier ; si AUCUNE de ses
+         requêtes n'a répondu, ce qu'on tient n'est pas un calendrier, c'est une miette —
+         un échec, comme la liste vide. */
+      var tentatives = espnInfo.tentatives - espnAvant.tentatives;
+      var reponses = tentatives - (espnInfo.echecs - espnAvant.echecs);
+      if (tentatives > 0 && reponses === 0) {
+          lg('Calendrier', 'ESPN injoignable (' + tentatives + ' requêtes sans réponse) : ' + baseMatches.length + ' match(s) d\'autres sources écartés, le calendrier local est conservé');
+          return [];
+      }
       if (!baseMatches.length) {
           lg('Calendrier', 'aucune réponse de l\'API : le calendrier local est conservé');
           return baseMatches;

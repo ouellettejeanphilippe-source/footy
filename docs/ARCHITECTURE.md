@@ -455,6 +455,7 @@ Demande : « Enlever logo et favicon en haut à gauche, faire que le dropdown de
 
 ## Calendrier du jour : périmé au bout de dix minutes (7 septembre 2026)
 - `calendrierPerime(cache, todayStr, now)` et `CALENDAR_STALE_MS` (js/api.js). Le calendrier local (`api_calendar_cache_YYYYMMDD`) n'était jugé que sur sa date : un instantané du matin était resservi jusqu'à minuit, et seuls les appels ESPN **directs** (sans proxy) pouvaient encore le corriger — d'où des scores et des flux qui dépendaient de l'appareil. Chaque écriture porte désormais `savedAt` ; un cache sans `savedAt` est périmé.
+- **Une passe où aucune requête ESPN n'a répondu est un échec, même si elle rend des matchs** (`fetchAndProcessApiMatches`, js/api.js). Une source annexe (galas de catch) pouvait fournir 1 match alors qu'ESPN était injoignable : ce fragment devenait le calendrier du jour, la grille s'effondrait et le cache local était écrasé. Le compte de réponses ESPN de la passe décide ; le nombre de matchs, non.
 - `espnInfo` (js/api.js) compte tentatives et échecs des appels à `site.api.espn.com` ; `window.calendrierInfo` dit d'où vient la grille. La page Logs les affiche sous « Cet appareil » (`diagnosticAppareilHtml`, js/multiview.js), avec l'état de `data/streams.json`.
 
 ## Cache serveur injoignable (7 septembre 2026)
