@@ -426,6 +426,12 @@ async function loadAllRun(isBackground, forceScrape){
       // Ensure it is definitely hidden if we've already loaded once
       hideLoadingOverlay();
   }
+  /* L'écran d'attente dit POURQUOI on cherche les liens soi-même : sans cela, « Recherche
+     de streams… » qui dure est muet sur sa cause (capture du 7 septembre 2026). */
+  if (!isBackground && window.prefetchedStreamsError) {
+      var s2span = document.querySelector('#s2 span');
+      if (s2span) s2span.textContent = 'Recherche de streams… (cache serveur injoignable : ' + window.prefetchedStreamsError + ')';
+  }
 
   getApiFirstMatches(TARGET_DATE).then(function(apiMatches) {
       if (!isBackground) { stepOk(1);  }
@@ -508,6 +514,26 @@ async function loadAllRun(isBackground, forceScrape){
             // Sports présents dans la grille du jour : limite les sous-pages à télécharger
             var todaySports = [];
             apiMatches.forEach(function(am) { var sp = sportOfLeague(am.league); if (todaySports.indexOf(sp) < 0) todaySports.push(sp); });
+
+            /* Affichage immédiat (7 septembre 2026, « ça reste stuck là »). Sans cache
+               serveur utilisable, le premier chargement restait sur « Recherche de
+               streams… » le temps que chaque source soit lue par chaque proxy — jusqu'à
+               une minute et plus sur téléphone, écran vide. Le calendrier est déjà là :
+               on l'affiche tout de suite, avec ce qu'on a de liens (⚠ ou 🔎 sur les
+               cartes), et la lecture des sources continue derrière ; la fin de la passe
+               redessine la grille avec les liens trouvés. */
+            if (!isBackground && !window.hasLoadedOnce && apiMatches.length) {
+                var prevImmediat = (isToday && window.prefetchedStreamMatches && window.prefetchedStreamMatches.length) ? window.prefetchedStreamMatches.slice() : [];
+                var targetImmediat = getEstDateStrFromDate(TARGET_DATE);
+                setMatches(mergeFluxToApi(apiMatches, prevImmediat, true).filter(function(m) { return m.matchDate === targetImmediat; }));
+                buildEPG(S.matches);
+                hideLoadingOverlay();
+                window.hasLoadedOnce = true;
+                window.dispatchEvent(new Event('loadSequenceComplete'));
+                showToast(window.prefetchedStreamsError
+                    ? 'Liens serveur injoignables (' + window.prefetchedStreamsError + ') : recherche directe en cours…'
+                    : 'Recherche des liens en cours…');
+            }
 
             return Promise.allSettled(
           SCRAPERS_CONFIG.map(function(scraper) { return fetchSourcePages(scraper, todaySports); })

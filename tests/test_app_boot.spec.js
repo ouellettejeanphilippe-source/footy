@@ -778,3 +778,49 @@ test('un cache serveur momentanément injoignable ne vide pas la liste, et le re
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
   await ctx.close();
 });
+
+/* « Ça reste stuck là » (7 septembre 2026, écran d'attente sur « Recherche de streams… »).
+   Sans cache serveur utilisable, le premier chargement lisait chaque source par chaque
+   proxy AVANT d'afficher quoi que ce soit — une minute et plus sur téléphone. Ici les
+   proxys ne répondent jamais (on les laisse expirer) : la grille doit apparaître quand
+   même, en quelques secondes, avec la raison affichée. */
+test('cache serveur injoignable et proxys muets : la grille s\'affiche sans attendre la recherche', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.clock.setFixedTime(instantDesDonnees());
+  const enAttente = [];
+  await page.route('**/*', (route) => {
+    const u = route.request().url();
+    if (u.startsWith(origin)) {
+      if (/data\/streams\.json/.test(u)) return route.fulfill({ status: 503, body: 'publication en cours' });
+      return route.continue();
+    }
+    // Les proxys CORS « répondent » en ne répondant jamais : c'est l'application qui expire.
+    if (/cors\.sh|allorigins|codetabs|corsproxy/.test(u)) { enAttente.push(route); return; }
+    return route.abort();
+  });
+  const debut = Date.now();
+  await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
+  await page.waitForFunction(() => document.querySelectorAll('.match-card, .mb').length > 0, null, { timeout: 30000 });
+  const duree = Date.now() - debut;
+  const etat = await page.evaluate(() => ({
+    overlay: getComputedStyle(document.getElementById('ov')).display,
+    cartes: document.querySelectorAll('.match-card').length,
+    retry: document.querySelectorAll('button.card-streams-retry').length,
+    libelle: (document.querySelector('#s2 span') || {}).textContent || '',
+    toast: (document.getElementById('toasttxt') || {}).textContent || ''
+  }));
+  expect(duree, 'la grille apparaît sans attendre l\'expiration des proxys').toBeLessThan(15000);
+  expect(etat.overlay, 'l\'écran d\'attente est retiré').toBe('none');
+  expect(etat.cartes).toBeGreaterThan(0);
+  expect(etat.retry, 'les cartes disent que les liens n\'ont pas été chargés').toBeGreaterThan(0);
+  expect(etat.libelle, 'l\'écran d\'attente disait pourquoi').toContain('injoignable');
+  expect(etat.toast).toContain('injoignables');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  for (const r of enAttente) { try { await r.abort(); } catch (e) {} }
+  await ctx.close();
+});
