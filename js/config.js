@@ -7,6 +7,8 @@ import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS, sportOfLeague } from './db.js';
 import { buildProxyList } from './fetcher.js';
 import { playabilityScore, hostOfUrl, tileTarget } from './playability.js';
+import { finPresumee as finPresumeeBrute, raisonFinPresumee as raisonFinPresumeeBrute } from './finpresumee.js';
+import { getLeagueDuration } from './utils.js';
 
 /* ══ CONFIG ═════════════════════════════ */
 /* footybite.im plutôt que .bid, et ce n'est pas un détail de miroir.
@@ -1121,7 +1123,21 @@ export function isLiveNow(m, now) {
     var diff = minutesUntilStart(m, now);
     if (diff === null) return m.status === 'live';
     if (diff <= -LIVE_MAX_DURATION_MIN) return false;
+    if (finPresumee(m, now)) return false;
     return m.status === 'live' || diff <= LIVE_GRACE_BEFORE_MIN;
+}
+
+/* Fin présumée (js/finpresumee.js) : « live » sans nouvelle d'ESPN, passé la durée
+   normale du sport plus une marge — sauf prolongation connue. Voir ce module. */
+export function finPresumee(m, now) {
+    if (!m || m.status !== 'live') return false;
+    var diff = minutesUntilStart(m, now);
+    if (diff === null) return false;
+    return finPresumeeBrute(m, -diff, m.durationMinutes || getLeagueDuration(m.league), now || new Date());
+}
+export function raisonFinPresumee(m, now) {
+    var diff = minutesUntilStart(m, now);
+    return raisonFinPresumeeBrute(m, diff === null ? 0 : -diff, m.durationMinutes || getLeagueDuration(m.league), now || new Date());
 }
 
 /* À venir dans les `withinMin` minutes, et pas encore considéré comme en cours. */

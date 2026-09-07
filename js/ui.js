@@ -1,5 +1,5 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
-         minutesUntilStart, isLiveNow, startsWithin, LIVE_WINDOW_MIN } from './config.js';
+         minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN } from './config.js';
 import { normName, lgColor, getTeamColors, getLogo } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
@@ -490,7 +490,8 @@ function buildEPGInner(matches){
               lg.matches.forEach(function(m) {
                 try {
                   var b = document.createElement('div');
-                  b.className = 'match-card' + (m.status==='live' ? ' live' : '') + (m.status==='finished' ? ' finished' : '');
+                  var presume = m.status === 'live' && finPresumee(m);
+                  b.className = 'match-card' + (m.status==='live' && !presume ? ' live' : '') + (m.status==='finished' || presume ? ' finished' : '');
                   b.id = 'mb-'+m.id;
                   b.setAttribute('data-lg', lg.league);
                   b.style.display = isCollapsed ? 'none' : 'flex';
@@ -523,7 +524,9 @@ function buildEPGInner(matches){
                   }
 
                   var statusHtml = '';
-                  if(m.status === 'live') {
+                  if (presume) {
+                      statusHtml = '<div class="status-text presume" title="' + esc(raisonFinPresumee(m)) + '"><span class="status-minute">Fin ?</span></div>';
+                  } else if(m.status === 'live') {
                       statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+esc(formatLiveMinute(m))+'</span></div>';
                   } else if(m.status === 'finished') {
                       statusHtml = '<div class="status-text"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
@@ -1081,6 +1084,9 @@ export function timelineBadgeHtml(m) {
     var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
     var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
     var scoreTxt = (homeScore !== '' && awayScore !== '') ? esc(String(homeScore)) + ' - ' + esc(String(awayScore)) : '';
+    if (m.status === 'live' && finPresumee(m)) {
+        return '<div class="mb-time" title="' + esc(raisonFinPresumee(m)) + '" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">Fin ?' + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
+    }
     if (m.status === 'live') {
         return '<div class="mb-time mb-time-live" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + esc(formatLiveMinute(m) === 'DIRECT' ? 'LIVE' : formatLiveMinute(m)) + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
     }
@@ -1532,7 +1538,9 @@ export function openMod(m,col){
   var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
 
   var statusHtml = '';
-  if(m.status === 'live') {
+  if (m.status === 'live' && finPresumee(m)) {
+      statusHtml = '<div class="status-text presume" title="' + esc(raisonFinPresumee(m)) + '" style="color:var(--muted); font-size:14px; font-weight:600; text-align:center; margin-top:8px;"><span class="status-minute">Fin ?</span></div>';
+  } else if(m.status === 'live') {
       statusHtml = '<div class="live-indicator status-text" style="color:var(--red); font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; margin-top:8px;"><span class="mb-ld" style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span><span class="status-minute">'+esc(formatLiveMinute(m))+'</span></div>';
   } else if(m.status === 'finished') {
       statusHtml = '<div class="status-text" style="color:var(--muted); font-size:14px; font-weight:600; text-align:center; margin-top:8px;"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
