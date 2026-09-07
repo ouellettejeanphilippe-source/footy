@@ -559,6 +559,12 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
     croix: [...document.querySelectorAll('#mbg .mx')].filter((b) => b.offsetParent !== null).length,
     titre: document.getElementById('mname').innerText.trim(),
     entete: getComputedStyle(document.querySelector('#mbg .mhd')).display,
+    /* « Intégrer les logos et couleurs des équipes dans le haut » : l'en-tête porte le
+       dégradé des équipes, les deux blasons et le score. */
+    banniere: !!document.querySelector('#mbg .mhd .fiche-banner'),
+    blasons: document.querySelectorAll('#mbg .mhd .fiche-banner .prime-logo').length,
+    fondEquipes: /gradient|rgb/.test(document.querySelector('#mbg .mhd').style.background),
+    corpsSansDoublon: document.querySelectorAll('#mbg .mbody .prime-thumbnail').length,
     flux: document.querySelectorAll('#modal-right-col .si').length,
     actions: document.querySelectorAll('#modal-right-col .si .si-btn').length,
     barre: !!document.querySelector('#modal-right-col .flux-head #mv-refresh-btn')
@@ -566,6 +572,10 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(fiche.croix, 'exactement une croix de fermeture visible').toBe(1);
   expect(fiche.entete, 'l\'en-tête de la fiche est visible').not.toBe('none');
   expect(fiche.titre.length).toBeGreaterThan(3);
+  expect(fiche.banniere, 'l\'en-tête est la bannière du match').toBeTruthy();
+  expect(fiche.blasons, 'deux blasons dans l\'en-tête').toBe(2);
+  expect(fiche.fondEquipes, 'le fond de l\'en-tête est aux couleurs des équipes').toBeTruthy();
+  expect(fiche.corpsSansDoublon, 'le corps ne répète plus la vignette').toBe(0);
   expect(fiche.barre, 'la barre d\'actions des flux est présente').toBeTruthy();
   if (fiche.flux > 0) expect(fiche.actions, 'quatre actions par ligne de flux').toBe(fiche.flux * 4);
 

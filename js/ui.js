@@ -1301,15 +1301,8 @@ export function openMod(m,col){
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
 
 
-  /* L'en-tête était vide : rien n'indiquait la rencontre ni la compétition ouverte,
-     alors que la fenêtre est l'écran de choix d'un flux. */
-  var titleTxt = m.awayTeam ? (m.homeTeam + ' — ' + m.awayTeam) : m.homeTeam;
-  document.getElementById('mname').innerHTML =
-      '<span style="display:inline-flex; align-items:center; gap:8px; min-width:0;">'
-    + '<span style="font-size:14px; flex-shrink:0;">' + (m.flag || lgFlag(m.league) || '') + '</span>'
-    + '<span style="font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--muted); flex-shrink:0;">' + esc(m.league || '') + '</span>'
-    + '<span style="font-size:15px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(titleTxt) + '</span>'
-    + '</span>';
+  /* L'en-tête est la bannière du match (logos, couleurs, score) : posée plus bas, une
+     fois logos, couleurs, score et statut calculés (voir « Bannière »). */
   document.getElementById('mname').dataset.matchName = m.homeTeam+' — '+m.awayTeam;
 
 
@@ -1533,17 +1526,10 @@ export function openMod(m,col){
       cardBg = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
   }
 
-  var streamsBadgePrime = "";
-  var lgBadge = '<div class="prime-league-badge">'+m.flag+'</div>';
-
   var homeLogoHtmlPrime = hLogo ? (hLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(hLogo.split(':')[1]) + '</div>' : '<img src="'+esc(hLogo)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
   var awayLogoHtmlPrime = aLogo ? (aLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(aLogo.split(':')[1]) + '</div>' : '<img src="'+esc(aLogo)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
 
   var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
-
-  var logosHtml = !isRacing ?
-                  '<div class="prime-logo-wrapper home" style="flex:1; display:flex; justify-content:center;">' + homeLogoHtmlPrime + '</div><div style="flex:0.2;"></div><div class="prime-logo-wrapper away" style="flex:1; display:flex; justify-content:center;">' + awayLogoHtmlPrime + '</div>' :
-                  '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
 
   var statusHtml = '';
   if(m.status === 'live') {
@@ -1563,35 +1549,31 @@ export function openMod(m,col){
       }
   }
 
-  var teamsHtml = !isRacing ?
-                  '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-top:12px; font-size:13px; font-weight:700; color:#fff; text-align:center; line-height:1.2; padding:0 8px;">' +
-                      '<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">' +
-                          '<div title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+' <button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button></div>' +
-                      '</div>' +
-                      '<div style="flex:0.2;"></div>' +
-                      '<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">' +
-                          '<div title="'+esc(m.awayTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button> '+esc(m.awayTeam)+'</div>' +
-                      '</div>' +
-                  '</div>' :
-                  '<div style="display:flex; justify-content:center; align-items:center; margin-top:12px; font-size:16px; font-weight:700; color:#fff; text-align:center; flex-direction:column;">' +
-                      '<div title="'+esc(m.homeTeam)+'"><button style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>'+esc(m.homeTeam) + (m.awayTeam ? ' - ' + esc(m.awayTeam) : '') + '</div>' +
-                  '</div>';
-
+  /* ── Bannière (7 septembre 2026, « intégrer les logos et couleurs des équipes dans le
+     haut ») ─────────────────────────────────────────────────────────────────────────
+     L'en-tête de la fiche portait une ligne de texte tronquée (« MLB Chicago White Sox —
+     Min… ») et le tableau d'affichage vivait plus bas, dans le corps. Le haut devient la
+     bannière : le dégradé aux couleurs des équipes (le même que la carte), les deux
+     blasons, les noms avec l'étoile de favori, le score et l'état, la ligue en petit.
+     Le corps ne garde que les compléments (buteurs, classement, statistiques). */
+  var etoile = function(nom) { return '<button type="button" class="fb-fav" title="Équipe favorite" aria-label="Équipe favorite" style="color:' + (favTeams[nom] ? 'var(--accent)' : 'rgba(255,255,255,0.55)') + ';" onclick="toggleFavTeam(\'' + escJs(nom) + '\'); event.stopPropagation();">★</button>'; };
+  var banniereHtml = '<div class="fiche-banner' + (isRacing ? ' racing' : '') + '">'
+      + '<div class="fb-team home">' + homeLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.homeTeam) + '">' + esc(m.homeTeam) + ' ' + etoile(m.homeTeam) + '</div></div>'
+      + '<div class="fb-center">'
+      +   '<div class="fb-league">' + (m.flag || lgFlag(m.league) || '') + ' ' + esc(m.league || '') + '</div>'
+      +   (isRacing ? '' : centerScoreHtml)
+      +   statusHtml
+      + '</div>'
+      + (isRacing ? '' : '<div class="fb-team away">' + awayLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.awayTeam) + '">' + etoile(m.awayTeam) + ' ' + esc(m.awayTeam) + '</div></div>')
+      + '</div>';
+  var mhd = document.querySelector('#mbg .mhd');
+  if (mhd) { mhd.classList.add('has-banner'); mhd.style.background = cardBg; }
+  document.getElementById('mname').innerHTML = banniereHtml;
 
   var wrapperHtml = '<div class="fiche-cols" style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
       '<div id="modal-left-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
-          '<div class="match-card scoreboard" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
-              '<div class="prime-thumbnail" style="background:'+cardBg+'; position:relative; width:100%; aspect-ratio:21/9; border-radius:var(--radius-card,12px); overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.3); display:flex; background-color:var(--bg2); z-index: 1;">' +
-                  lgBadge +
-
-                  '<div class="prime-logos" style="position:absolute; inset:0; display:flex; z-index:2;">' +
-                      logosHtml +
-                  '</div>' +
-              '</div>' +
-              '<div class="prime-info" style="display:flex; flex-direction:column; padding: 16px; pointer-events:auto; z-index: 2;">' +
-                  teamsHtml +
-                  '<div style="margin-top:16px;">' + centerScoreHtml + '</div>' +
-                  statusHtml +
+          '<div class="match-card scoreboard fiche-complements" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
+              '<div class="prime-info" style="display:flex; flex-direction:column; padding: 4px 16px; pointer-events:auto; z-index: 2;">' +
                   '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-top:12px; font-size:13px; color:#fff; text-align:center; padding:0 8px;">' +
                       '<div id="home-scorers-modal" style="flex:1; font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
                       '<div style="flex:0.2;"></div>' +
@@ -1609,6 +1591,22 @@ export function openMod(m,col){
   '</div>';
 
   body.innerHTML = wrapperHtml;
+
+  /* Les compléments (buteurs, classement, statistiques) n'arrivent qu'après coup, pour
+     les matchs ESPN seulement : la colonne qui les porte ne s'affiche que quand l'un
+     d'eux a quelque chose à montrer (classe has-content, lue par la feuille de style),
+     sinon la liste des flux prend toute la largeur. */
+  var complements = body.querySelector('.fiche-complements');
+  if (complements && window.MutationObserver) {
+      var majComplements = function() {
+          var visibles = Array.prototype.some.call(complements.querySelectorAll('[id$="-container"], #home-scorers-modal, #away-scorers-modal'), function(el) {
+              return el.style.display !== 'none' && el.innerHTML.trim() !== '';
+          });
+          complements.classList.toggle('has-content', visibles);
+      };
+      new MutationObserver(majComplements).observe(complements, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+      majComplements();
+  }
 
   var rightCol = document.getElementById('modal-right-col');
 

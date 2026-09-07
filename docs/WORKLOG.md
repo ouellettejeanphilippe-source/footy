@@ -2,6 +2,11 @@
 ## En cours
 
 ## Fait
+- 2026-09-07 - **Fiche de match : logos et couleurs des équipes dans le haut.** Demande : « Intégrer les logos et couleurs des équipes dans le haut. » L'en-tête portait une ligne de texte tronquée (« MLB Chicago White Sox — Min… ») et le tableau d'affichage vivait plus bas, dans le corps.
+  - `openMod` (js/ui.js) : l'en-tête `.mhd` devient la **bannière** — fond au dégradé des couleurs des équipes (le même calcul que la carte, `cardBg`), les deux blasons, les noms avec l'étoile de favori, le score et l'état, la ligue en pastille. Classe `has-banner` sur `.mhd`, bannière `.fiche-banner` dans `#mname`.
+  - Le corps ne répète plus vignette, noms et score : le panneau `.fiche-complements` ne garde que buteurs, classement, statistiques et bouton ESPN, et n'apparaît (classe `has-content`, observateur de mutations) que quand l'un d'eux a quelque chose — sinon la liste des flux prend toute la largeur (`#modal-left-col:has(...)`, styles.css).
+  - Variables devenues inutiles retirées de `openMod` (`lgBadge`, `logosHtml`, `teamsHtml`, `streamsBadgePrime`). Feuille classique : mêmes règles ajoutées à `styles-legacy.css`.
+  - Test « la fiche de match a une seule croix… » étendu : bannière présente, deux blasons, fond aux couleurs des équipes, plus de vignette dans le corps.
 - 2026-09-07 - **Feuille de match sur téléphone : « mal placé en haut et difficile de sortir de la carte ».** Sa hauteur maximale était en `100vh` — sur téléphone, la plus grande hauteur d'écran (barre d'adresse repliée), plus haute que la zone visible : la feuille débordait par le haut en emportant sa croix, et la barre du bas (z 1000, sortie du contexte de l'en-tête le 6 septembre) recouvrait ses derniers flux.
   - `styles.css` (bloc mobile) : hauteur en pourcentage du fond fixé (`calc(100% - 44px)` de `.mbg`, qui suit la zone visible), `.mbg` au-dessus de la barre du bas (z 1100), bande de fond conservée en haut (toucher = fermer).
   - `index.html` : gros bouton « ✕ Fermer » au bas de la feuille (`.sheet-close`, mobile seulement), toujours visible, hors défilement.
