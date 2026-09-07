@@ -228,63 +228,110 @@ export function fetchSourcePages(scraper, sports) {
     });
 }
 
+/* Âge au-delà duquel le cache serveur est relu (passe d'arrière-plan, retour au premier plan). */
+export var PREFETCH_STALE_MS = 10 * 60 * 1000;
+
+/* Une lecture de data/streams.json, avec UN second essai après 1,5 s.
+
+   Relevé du 6 septembre 2026 (« Pas de liens pour ce match ? », capture sur téléphone,
+   réseau cellulaire) : le cache publié portait 44 liens pour ce match, mais toutes les
+   cartes du téléphone affichaient 🔎 — le fichier (750 Ko) n'était pas arrivé. Un
+   téléchargement coupé ou une réponse d'erreur pendant une publication GitHub Pages
+   suffisait, et rien ne réessayait avant la passe suivante. */
+function lireCacheServeur(force, secondEssai) {
+    return fetch('data/streams.json?t=' + ((force || secondEssai) ? Date.now() : Math.floor(Date.now() / 300000)), (force || secondEssai) ? { cache: 'no-cache' } : undefined)
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(data) {
+            if (!data || !Array.isArray(data.matches)) throw new Error('format');
+            return data;
+        })
+        .catch(function(e) {
+            if (secondEssai) throw e;
+            lg('Flux pré-calculés', 'premier essai en échec (' + e.message + '), nouvel essai');
+            return new Promise(function(r) { setTimeout(r, 1500); }).then(function() { return lireCacheServeur(force, true); });
+        });
+}
+
+/* Applique un cache serveur (lu à l'instant, ou conservé d'une lecture précédente) :
+   filtre du jour, marquage, politique d'intégration, registre de jouabilité. Rend la
+   liste du jour et la pose dans window.prefetchedStreamMatches. */
+function appliquerCacheServeur(data) {
+    var ageMin = data.generatedAt ? Math.round((Date.now() - new Date(data.generatedAt).getTime()) / 60000) : null;
+    var todayStr = getEstDateStrFromDate(new Date());
+    var list = data.matches.filter(function(m) { return !m.matchDate || m.matchDate === todayStr; });
+    list.forEach(function(m) {
+        m.prefetched = true;
+        /* « Chargé » veut dire « porte un flux jouable », pas « porte un lien ».
+           Un cache qui ne contient que le repli « Page du match » doit laisser le
+           client relire la page lui-même, depuis l'adresse de l'utilisateur. */
+        m.streamsLoaded = compterFluxUtiles(m) > 0;
+    });
+    window.prefetchedStreamMatches = list;
+    window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {}, verifiedAt: data.verifiedAt || null };
+    // Jouabilité observée par le serveur (scripts/verify_players.mjs) : lue par sortFluxLinks.
+    window.hostPlayLedger = (data.hostPlay && typeof data.hostPlay === 'object') ? data.hostPlay : {};
+    window.prefetchedStreamsLoadedAt = Date.now();
+
+    /* Politique d'intégration relevée côté serveur (en-têtes X-Frame-Options /
+       CSP frame-ancestors, illisibles depuis le navigateur). On l'injecte dans
+       le registre appris : le classement « iframe ou onglet » repose ainsi sur
+       une mesure réelle dès le premier chargement, sans attendre qu'un échec
+       visible l'apprenne à l'utilisateur. */
+    var policy = data.hostPolicy || {};
+    var reg = getEmbedRegistry();
+    var known = 0;
+    Object.keys(policy).forEach(function(host) {
+        var p = policy[host];
+        if (!p || p.embeddable === null || p.embeddable === undefined) return;
+        if (p.embeddable) {
+            noteEmbedResult(reg, host, true);
+        } else {
+            // Deux refus sans succès font basculer l'hôte (voir noteEmbedResult) ;
+            // une seule mesure serveur suffit à faire foi, donc on la compte double.
+            noteEmbedResult(reg, host, false);
+            noteEmbedResult(reg, host, false);
+        }
+        known++;
+    });
+    if (known) { saveEmbedRegistry(); lg('Politique d\'intégration', known + ' hôtes connus du serveur'); }
+    (data.sources || []).forEach(function(src) {
+        if (src && src.url) updateSourceStatus(getDomain(src.url), src.ok ? 'success' : 'warning', src.matches || 0, (src.ok ? 'serveur OK' : 'serveur: ' + (src.error || 'échec')) + (ageMin !== null ? ' (' + ageMin + ' min)' : ''));
+    });
+    lg('Flux pré-calculés', list.length + ' matchs, généré il y a ' + ageMin + ' min');
+    return list;
+}
+
+/* Dernier cache lu avec succès, tel quel (texte) : re-parsé si une lecture échoue, pour
+   repartir d'objets neufs — réutiliser ceux déjà fusionnés dans la grille la vidait. */
+var dernierCacheServeur = null;
+
 /* Charge data/streams.json (généré toutes les heures par GitHub Actions) : liste de matchs
    déjà associés à leur page et à leurs flux. Servi depuis la même origine, donc sans proxy. */
 export function loadPrefetchedStreams(force) {
     // Clé de cache par tranche de 5 min ; `force` (bouton des Options) lit la version fraîche.
-    return fetch('data/streams.json?t=' + (force ? Date.now() : Math.floor(Date.now() / 300000)), force ? { cache: 'no-cache' } : undefined)
-        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    return lireCacheServeur(force, false)
         .then(function(data) {
-            if (!data || !Array.isArray(data.matches)) throw new Error('format');
-            var ageMin = data.generatedAt ? Math.round((Date.now() - new Date(data.generatedAt).getTime()) / 60000) : null;
-            var todayStr = getEstDateStrFromDate(new Date());
-            var list = data.matches.filter(function(m) { return !m.matchDate || m.matchDate === todayStr; });
-            list.forEach(function(m) {
-                m.prefetched = true;
-                /* « Chargé » veut dire « porte un flux jouable », pas « porte un lien ».
-                   Un cache qui ne contient que le repli « Page du match » doit laisser le
-                   client relire la page lui-même, depuis l'adresse de l'utilisateur. */
-                m.streamsLoaded = compterFluxUtiles(m) > 0;
-            });
-            window.prefetchedStreamMatches = list;
-            window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {}, verifiedAt: data.verifiedAt || null };
-            // Jouabilité observée par le serveur (scripts/verify_players.mjs) : lue par sortFluxLinks.
-            window.hostPlayLedger = (data.hostPlay && typeof data.hostPlay === 'object') ? data.hostPlay : {};
-            window.prefetchedStreamsLoadedAt = Date.now();
-
-            /* Politique d'intégration relevée côté serveur (en-têtes X-Frame-Options /
-               CSP frame-ancestors, illisibles depuis le navigateur). On l'injecte dans
-               le registre appris : le classement « iframe ou onglet » repose ainsi sur
-               une mesure réelle dès le premier chargement, sans attendre qu'un échec
-               visible l'apprenne à l'utilisateur. */
-            var policy = data.hostPolicy || {};
-            var reg = getEmbedRegistry();
-            var known = 0;
-            Object.keys(policy).forEach(function(host) {
-                var p = policy[host];
-                if (!p || p.embeddable === null || p.embeddable === undefined) return;
-                if (p.embeddable) {
-                    noteEmbedResult(reg, host, true);
-                } else {
-                    // Deux refus sans succès font basculer l'hôte (voir noteEmbedResult) ;
-                    // une seule mesure serveur suffit à faire foi, donc on la compte double.
-                    noteEmbedResult(reg, host, false);
-                    noteEmbedResult(reg, host, false);
-                }
-                known++;
-            });
-            if (known) { saveEmbedRegistry(); lg('Politique d\'intégration', known + ' hôtes connus du serveur'); }
-            (data.sources || []).forEach(function(src) {
-                if (src && src.url) updateSourceStatus(getDomain(src.url), src.ok ? 'success' : 'warning', src.matches || 0, (src.ok ? 'serveur OK' : 'serveur: ' + (src.error || 'échec')) + (ageMin !== null ? ' (' + ageMin + ' min)' : ''));
-            });
-            lg('Flux pré-calculés', list.length + ' matchs, généré il y a ' + ageMin + ' min');
-            return list;
+            dernierCacheServeur = JSON.stringify(data);
+            window.prefetchedStreamsError = null;
+            return appliquerCacheServeur(data);
         })
         .catch(function(e) {
-            lg('Flux pré-calculés indisponibles', e.message);
-            window.prefetchedStreamMatches = [];
-            window.prefetchedStreamsLoadedAt = Date.now(); // sinon on réessaierait à chaque passe
-            return [];
+            /* Deux essais en échec. La liste précédente, si on en a une, vaut mieux que
+               rien : on la garde, et on marque le cache « à relire » pour que la prochaine
+               passe (cinq minutes, ou le retour au premier plan) réessaie sans attendre
+               le délai de dix minutes. Les cartes lisent `prefetchedStreamsError` pour
+               proposer de réessayer plutôt qu'une recherche par proxys. */
+            window.prefetchedStreamsError = e && e.message ? e.message : String(e);
+            var list = [];
+            if (dernierCacheServeur) {
+                list = appliquerCacheServeur(JSON.parse(dernierCacheServeur));
+                lg('Flux pré-calculés indisponibles', window.prefetchedStreamsError + ' — dernier cache lu conservé (' + list.length + ' matchs)');
+            } else {
+                lg('Flux pré-calculés indisponibles', window.prefetchedStreamsError);
+                window.prefetchedStreamMatches = [];
+            }
+            window.prefetchedStreamsLoadedAt = 0;
+            return list;
         });
 }
 
@@ -349,7 +396,7 @@ async function loadAllRun(isBackground, forceScrape){
      heures restait donc sur les liens du démarrage. On le relit quand il a plus de
      10 minutes, en forçant pour contourner la clé de cache de 5 minutes. */
   var prefetchAge = window.prefetchedStreamsLoadedAt ? Date.now() - window.prefetchedStreamsLoadedAt : Infinity;
-  var prefetchStale = prefetchAge > 10 * 60 * 1000;
+  var prefetchStale = prefetchAge > PREFETCH_STALE_MS;
   if (!window.prefetchedStreamMatches || !isBackground || prefetchStale) {
       await loadPrefetchedStreams(prefetchStale);
   }
@@ -695,6 +742,23 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
           loadAll(true, false);
       }
   }, 300000);
+
+  /* Retour au premier plan : sur téléphone, l'onglet est gelé en arrière-plan et la
+     minuterie ci-dessus ne tourne pas. Les scores, eux, sont déjà relus à ce moment
+     (js/api.js) ; les LIENS attendaient le prochain tic — jusqu'à cinq minutes avec une
+     liste vieille d'une heure, ou vide si le chargement avait échoué. On relance donc une
+     passe d'arrière-plan dès que la page redevient visible, si le cache serveur a plus de
+     dix minutes ou n'a pas pu être lu, au plus une fois par minute. */
+  var dernierRetourPremierPlan = 0;
+  document.addEventListener('visibilitychange', function() {
+      if (document.hidden || !window.hasLoadedOnce) return;
+      var age = window.prefetchedStreamsLoadedAt ? Date.now() - window.prefetchedStreamsLoadedAt : Infinity;
+      if (age <= PREFETCH_STALE_MS && !window.prefetchedStreamsError) return;
+      if (Date.now() - dernierRetourPremierPlan < 60 * 1000) return;
+      dernierRetourPremierPlan = Date.now();
+      lg('Retour au premier plan', 'cache serveur ' + (window.prefetchedStreamsError ? 'en échec' : 'vieux de ' + Math.round(age / 60000) + ' min') + ' : relecture');
+      loadAll(true, false);
+  });
 })();
 
 

@@ -536,9 +536,17 @@ function buildEPGInner(matches){
                      bouton qui lance la recherche — auparavant il fallait ouvrir la fiche
                      du match et attendre, sans savoir que c'était là que ça se passait. */
                   var streamCount = (m.streamLinks || []).length;
+                  /* Deux « zéro lien » différents : le cache serveur a été lu et ne connaît
+                     rien pour ce match (🔎 lance une recherche par proxys, lente) ; ou le
+                     cache serveur n'a PAS pu être lu (⚠ le relit — c'est la vraie cause,
+                     bien plus fréquente sur téléphone, et la recherche par proxys n'y
+                     changerait rien). */
+                  var cacheEnEchec = !!(typeof window !== 'undefined' && window.prefetchedStreamsError);
                   var streamsHtml = streamCount > 0
                       ? '<div class="card-streams" data-mid="' + esc(String(m.id)) + '" title="' + streamCount + ' flux disponibles">▶ ' + streamCount + '</div>'
-                      : '<button type="button" class="card-streams card-streams-search" data-mid="' + esc(String(m.id)) + '" title="Aucun lien : chercher maintenant" aria-label="Chercher des liens pour ce match" onclick="cardSearchLinks(event, \'' + escJs(m.id) + '\')">🔎</button>';
+                      : (cacheEnEchec
+                          ? '<button type="button" class="card-streams card-streams-retry" data-mid="' + esc(String(m.id)) + '" title="Les liens n\'ont pas pu être chargés : toucher pour réessayer" aria-label="Liens non chargés, réessayer" onclick="cardRetryLinks(event)">⚠</button>'
+                          : '<button type="button" class="card-streams card-streams-search" data-mid="' + esc(String(m.id)) + '" title="Aucun lien : chercher maintenant" aria-label="Chercher des liens pour ce match" onclick="cardSearchLinks(event, \'' + escJs(m.id) + '\')">🔎</button>');
 
                   var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
                   var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';

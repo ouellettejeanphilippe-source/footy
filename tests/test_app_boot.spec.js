@@ -677,3 +677,104 @@ test('un match terminé selon ESPN quitte le Live, et le Guide suit le score', a
   expect(enDirect.live).toBeTruthy();
   expect(pageErrors).toEqual([]);
 });
+
+/* ═══ Cache serveur injoignable (6 septembre 2026) ═════════════════════════════════
+
+   « Pas de liens pour ce match ? » — capture sur téléphone, réseau cellulaire : toutes les
+   cartes portaient 🔎 alors que le cache publié avait 44 liens pour le match montré. Le
+   fichier des liens (750 Ko) n'était simplement pas arrivé, et l'application traitait cet
+   échec comme « aucun lien nulle part » : liste vidée, loupe sur chaque carte (qui lance
+   une recherche par proxys, sans rapport avec la cause), et pas de nouvel essai avant la
+   prochaine passe — que le téléphone gèle en arrière-plan.
+
+   Le service worker est bloqué dans ces contextes : il servirait sinon sa copie du
+   fichier et l'interception d'une réponse d'erreur ne prouverait rien. */
+async function bootAvecCacheCassable(browser, mobile) {
+  const ctx = await browser.newContext(Object.assign({ serviceWorkers: 'block' },
+    mobile ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } : {}));
+  const page = await ctx.newPage();
+  const etat = { casser: false, requetes: 0 };
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.clock.install({ time: instantDesDonnees() });
+  await page.route('**/*', (route) => {
+    const u = route.request().url();
+    if (!u.startsWith(origin)) return route.abort();
+    if (/data\/streams\.json/.test(u)) {
+      etat.requetes++;
+      if (etat.casser) return route.fulfill({ status: 503, body: 'publication en cours' });
+    }
+    return route.continue();
+  });
+  return { ctx, page, etat, pageErrors };
+}
+async function attendreGrille(page) {
+  await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
+  await page.waitForFunction(() => document.querySelectorAll('.match-card, .mb').length > 0, null, { timeout: 30000 });
+  await page.waitForTimeout(500);
+}
+
+test('cache serveur injoignable au démarrage : deux essais, badge ⚠ plutôt que 🔎, et un toucher rétablit les liens', async ({ browser }) => {
+  const { ctx, page, etat, pageErrors } = await bootAvecCacheCassable(browser, true);
+  etat.casser = true;
+  await attendreGrille(page);
+
+  const avant = await page.evaluate(() => ({
+    erreur: window.prefetchedStreamsError,
+    retry: document.querySelectorAll('button.card-streams-retry').length,
+    loupes: document.querySelectorAll('button.card-streams-search').length
+  }));
+  expect(etat.requetes, 'le fichier est demandé deux fois avant d\'abandonner').toBeGreaterThanOrEqual(2);
+  expect(avant.erreur, 'l\'échec est retenu').toBeTruthy();
+  expect(avant.retry, 'les cartes proposent de réessayer').toBeGreaterThan(0);
+  expect(avant.loupes, 'aucune loupe : la cause n\'est pas l\'absence de lien').toBe(0);
+
+  etat.casser = false;
+  await page.locator('button.card-streams-retry').first().click();
+  await expect.poll(() => page.evaluate(() => document.querySelectorAll('div.card-streams').length), { timeout: 30000 })
+    .toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.prefetchedStreamsError), 'l\'échec est effacé').toBeNull();
+  expect(await page.evaluate(() => document.querySelectorAll('button.card-streams-retry').length), 'plus aucun ⚠').toBe(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  await ctx.close();
+});
+
+test('un cache serveur momentanément injoignable ne vide pas la liste, et le retour au premier plan la relit', async ({ browser }) => {
+  const { ctx, page, etat, pageErrors } = await bootAvecCacheCassable(browser, false);
+  await attendreGrille(page);
+  const avant = await page.evaluate(() => ({ n: window.prefetchedStreamMatches.length, compteurs: document.querySelectorAll('div.card-streams').length }));
+  expect(avant.n).toBeGreaterThan(0);
+  expect(avant.compteurs).toBeGreaterThan(0);
+
+  // Le serveur tombe ; le cache a plus de dix minutes ; une passe d'arrière-plan le relit.
+  etat.casser = true;
+  await page.clock.fastForward('11:00');
+  await page.evaluate(() => window.loadAll(true, false));
+  await expect.poll(() => page.evaluate(() => window.prefetchedStreamsError), { timeout: 15000 }).toBeTruthy();
+  const pendant = await page.evaluate(() => ({
+    n: window.prefetchedStreamMatches.length,
+    compteurs: document.querySelectorAll('div.card-streams').length,
+    grille: window.S.matches.length,
+    /* Le rafraîchissement des scores, dont toutes les requêtes ESPN sont refusées ici,
+       écrivait un calendrier VIDE : la passe suivante effaçait la grille. */
+    calendrier: (() => { try { return JSON.parse(localStorage.getItem('api_calendar_cache_' + Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_'))[0].slice(19))).matches.length; } catch (e) { return -1; } })()
+  }));
+  expect(pendant.n, 'la liste précédente est conservée').toBe(avant.n);
+  expect(pendant.grille, 'la grille n\'est pas vidée').toBeGreaterThan(0);
+  expect(pendant.calendrier, 'le calendrier local du jour n\'est pas écrasé par une liste vide').toBeGreaterThan(0);
+  expect(pendant.compteurs, 'les compteurs des cartes restent').toBe(avant.compteurs);
+
+  // Le serveur revient ; la page redevient visible : relecture sans attendre la minuterie.
+  etat.casser = false;
+  const requetesAvant = etat.requetes;
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect.poll(() => etat.requetes, { timeout: 15000 }).toBeGreaterThan(requetesAvant);
+  await expect.poll(() => page.evaluate(() => window.prefetchedStreamsError), { timeout: 30000 }).toBeNull();
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  await ctx.close();
+});

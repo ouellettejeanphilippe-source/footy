@@ -236,6 +236,30 @@ export function cardSearchLinks(ev, matchId) {
   });
 }
 
+/* Poignée du badge ⚠ des cartes : le cache serveur n'a pas pu être lu. On le relit
+   (reloadPrefetchedStreams, js/multiview.js : lecture forcée puis passe d'arrière-plan
+   qui redessine les cartes), au lieu de lancer une recherche par proxys qui ne
+   répondrait pas à la cause. Tous les badges ⚠ passent en attente le temps de la
+   relecture. */
+export function cardRetryLinks(ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  var boutons = Array.prototype.slice.call(document.querySelectorAll('.card-streams-retry'));
+  if (boutons.some(function (b) { return b.disabled; })) return Promise.resolve();
+  boutons.forEach(function (b) { b.disabled = true; b.textContent = '⏳'; });
+  var relire = (typeof window !== 'undefined' && typeof window.reloadPrefetchedStreams === 'function')
+    ? window.reloadPrefetchedStreams()
+    : Promise.resolve();
+  return Promise.resolve(relire).catch(function () {}).then(function () {
+    /* Lecture réussie : la grille est redessinée d'un bloc (la passe d'arrière-plan ne
+       met à jour que les scores, pas les badges). Sinon, les ⚠ redeviennent cliquables. */
+    if (!window.prefetchedStreamsError && typeof window.buildEPG === 'function' && window.S && window.S.matches) {
+      window.buildEPG(window.S.matches);
+      return;
+    }
+    document.querySelectorAll('.card-streams-retry').forEach(function (b) { b.disabled = false; b.textContent = '⚠'; });
+  });
+}
+
 /* Rendu de l'inventaire par domaine primaire (page Logs). */
 export function renderDomainStats() {
   var el = document.getElementById('domain-stats-container');
@@ -350,6 +374,7 @@ if (typeof window !== 'undefined') {
   window.searchLinksForMatch = searchLinksForMatch;
   window.searchMissingLinks = searchMissingLinks;
   window.cardSearchLinks = cardSearchLinks;
+  window.cardRetryLinks = cardRetryLinks;
   window.renderDomainStats = renderDomainStats;
   window.findMissingLinks = findMissingLinks;
   window.filterFluxByDomain = filterFluxByDomain;

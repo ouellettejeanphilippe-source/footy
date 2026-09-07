@@ -272,6 +272,10 @@ button.card-streams { cursor: pointer; }
 .card-streams-search { background: rgba(0,0,0,0.66); border-color: rgba(255,255,255,0.25); min-width: 30px; min-height: 26px; justify-content: center; font-size: 13px; transition: background var(--t-fast); }
 .card-streams-search:hover, .card-streams-search:focus-visible { background: var(--accent); border-color: var(--accent); }
 .card-streams-search[disabled] { opacity: 0.7; cursor: progress; }
+/* ⚠ : le cache serveur n'a pas été lu — toucher relit (js/links.js cardRetryLinks) */
+.card-streams-retry { background: rgba(245,158,11,0.28); border-color: rgba(245,158,11,0.6); color: #fde68a; min-width: 30px; min-height: 26px; justify-content: center; font-size: 13px; transition: background var(--t-fast); }
+.card-streams-retry:hover, .card-streams-retry:focus-visible { background: rgba(245,158,11,0.55); color: #fff; }
+.card-streams-retry[disabled] { opacity: 0.7; cursor: progress; }
 
 .prime-logos { position: absolute; inset: 0; display: flex; z-index: 2; pointer-events: none; }
 .prime-logo-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; }
@@ -323,7 +327,7 @@ body.cards-poster .prime-team-name button { pointer-events: auto; font-size: 11p
 body.cards-poster .prime-team-name { font-size: 11.5px; letter-spacing: -0.01em; }
 body.cards-poster .prime-score { font-size: 12px; }
 body.cards-poster .card-streams { top: 8px; right: 8px; padding: 4px 8px; }
-body.cards-poster .card-streams-search { min-width: 34px; min-height: 30px; }
+body.cards-poster .card-streams-search, body.cards-poster .card-streams-retry { min-width: 34px; min-height: 30px; }
 body.cards-poster .prime-league-badge { top: 8px; left: 8px; max-width: calc(100% - 56px); padding: 3px 6px; }
 body.cards-poster .prime-league-badge .plb-name { max-width: 74px; font-size: 10px; }
 @media (min-width: 620px) {

@@ -224,11 +224,23 @@ export function getApiFirstMatches(targetDate, forceRefresh) {
           })
           .catch(function(err) {
               // Fallback if schedule.json is missing or invalid: do it the old way.
-              return fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr);
+              return apiOuCacheLocal(targetDateObj, todayStr, targetDateStr, cache);
           });
   }
 
-  return fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr);
+  return apiOuCacheLocal(targetDateObj, todayStr, targetDateStr, cache);
+}
+
+/* L'API, et à défaut le calendrier local du jour (forceRefresh sur un réseau absent,
+   par exemple) : mieux vaut la grille d'il y a une heure qu'une page vide. */
+function apiOuCacheLocal(targetDateObj, todayStr, targetDateStr, cache) {
+  return fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr).then(function(matches) {
+      if ((!matches || !matches.length) && cache && cache.fetchDate === todayStr && Array.isArray(cache.matches) && cache.matches.length) {
+          lg('Calendrier', 'API injoignable : ' + cache.matches.length + ' matchs du cache local');
+          return cache.matches;
+      }
+      return matches;
+  });
 }
 
 export function backgroundUpdateGuide(targetDateObj) {
@@ -699,6 +711,17 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
       baseMatches.sort(function(a, b) {
           return (a.startTime > b.startTime) ? 1 : ((a.startTime < b.startTime) ? -1 : 0);
       });
+      /* Relevé du 6 septembre 2026 : ce résultat est écrit tel quel, même VIDE. Le
+         rafraîchissement des scores (toutes les cinq minutes, retour au premier plan)
+         passe par ici ; un réseau qui lâche — cellulaire, tunnel — fait échouer toutes
+         les requêtes ESPN, et le calendrier du jour était remplacé par une liste vide.
+         La passe suivante lisait ce vide et la grille disparaissait, jusqu'à un
+         « Réessayer » ou au lendemain. Un jour sans aucun match n'existe pas dans les
+         ligues suivies : un résultat vide est un échec, pas une donnée. */
+      if (!baseMatches.length) {
+          lg('Calendrier', 'aucune réponse de l\'API : le calendrier local est conservé');
+          return baseMatches;
+      }
       safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, matches: baseMatches });
       return baseMatches;
   });
