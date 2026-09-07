@@ -270,24 +270,45 @@ export function fetchSourcePages(scraper, sports) {
 /* Âge au-delà duquel le cache serveur est relu (passe d'arrière-plan, retour au premier plan). */
 export var PREFETCH_STALE_MS = 10 * 60 * 1000;
 
-/* Une lecture de data/streams.json, avec UN second essai après 1,5 s.
+/* Une lecture de data/streams.json : deux essais frais, puis le cache du navigateur.
 
    Relevé du 6 septembre 2026 (« Pas de liens pour ce match ? », capture sur téléphone,
    réseau cellulaire) : le cache publié portait 44 liens pour ce match, mais toutes les
-   cartes du téléphone affichaient 🔎 — le fichier (750 Ko) n'était pas arrivé. Un
-   téléchargement coupé ou une réponse d'erreur pendant une publication GitHub Pages
-   suffisait, et rien ne réessayait avant la passe suivante. */
-function lireCacheServeur(force, secondEssai) {
-    return fetch('data/streams.json?t=' + ((force || secondEssai) ? Date.now() : Math.floor(Date.now() / 300000)), (force || secondEssai) ? { cache: 'no-cache' } : undefined)
+   cartes du téléphone affichaient 🔎 — le fichier n'était pas arrivé. Un téléchargement
+   coupé ou une réponse d'erreur pendant une publication GitHub Pages suffisait.
+
+   Troisième essai ajouté le 7 septembre 2026 (« je reload les streams sont là, je reload
+   c'est vide »). Le symptôme change d'un rechargement à l'autre SUR LE MÊME APPAREIL :
+   ce n'est donc pas le réseau de l'appareil, c'est qu'un démarrage à froid n'avait AUCUN
+   repli. Les deux premiers essais demandent exprès une copie fraîche (`?t=` unique et
+   `cache: 'no-cache'`), ce qui interdit au cache HTTP comme au service worker de
+   répondre ; et `dernierCacheServeur`, la copie gardée en mémoire, est vide au démarrage
+   puisque c'est une variable de module. Deux téléchargements ratés d'affilée donnaient
+   donc zéro lien, là où le navigateur avait la copie de la veille sous la main.
+
+   Le troisième essai demande la MÊME adresse sans rien interdire : le service worker
+   (réseau d'abord, cache en repli) ou le cache HTTP répond, et l'utilisateur voit des
+   liens un peu plus vieux plutôt que des cartes vides. */
+function lireCacheServeur(force, essai) {
+    essai = essai || 1;
+    var frais = essai <= 2;
+    var url = frais
+        ? 'data/streams.json?t=' + ((force || essai === 2) ? Date.now() : Math.floor(Date.now() / 300000))
+        : 'data/streams.json'; // sans paramètre : le service worker et le cache HTTP peuvent répondre
+    var options = (frais && (force || essai === 2)) ? { cache: 'no-cache' } : undefined;
+
+    return fetch(url, options)
         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function(data) {
             if (!data || !Array.isArray(data.matches)) throw new Error('format');
+            if (essai === 3) lg('Flux pré-calculés', 'réseau muet : copie du cache du navigateur (' + data.matches.length + ' matchs)');
             return data;
         })
         .catch(function(e) {
-            if (secondEssai) throw e;
-            lg('Flux pré-calculés', 'premier essai en échec (' + e.message + '), nouvel essai');
-            return new Promise(function(r) { setTimeout(r, 1500); }).then(function() { return lireCacheServeur(force, true); });
+            if (essai >= 3) throw e;
+            lg('Flux pré-calculés', 'essai ' + essai + ' en échec (' + e.message + '), nouvel essai');
+            var attente = essai === 1 ? 1500 : 0; // le dernier essai lit le cache : rien à attendre
+            return new Promise(function(r) { setTimeout(r, attente); }).then(function() { return lireCacheServeur(force, essai + 1); });
         });
 }
 
