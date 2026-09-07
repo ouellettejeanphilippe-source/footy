@@ -580,7 +580,10 @@ export function sportOfLeague(league) {
     if (/\bmlb\b|baseball/.test(l)) return 'mlb';
     if (/\bwnba\b/.test(l)) return 'wnba';
     if (/ncaa.*basket|college basket|\bncaab\b/.test(l)) return 'ncaab';
-    if (/\bnba\b|basket/.test(l)) return 'nba';
+    /* « FIBA World Cup » (l'étiquette ESPN de la Coupe du monde, féminine en 2026) tombait
+       plus bas dans « cup » → soccer : ses matchs cherchaient des liens sur les pages de
+       football des sources, jamais sur celles de basket (relevé le 7 septembre 2026). */
+    if (/\bnba\b|basket|\bfiba\b/.test(l)) return 'nba';
     if (/\bcfl\b/.test(l)) return 'cfl';
     if (/ncaa.*foot|college foot|\bcfb\b|\bncaaf\b/.test(l)) return 'cfb';
     if (/\bnfl\b|\bufl\b|american football/.test(l)) return 'nfl';
@@ -596,6 +599,18 @@ export function sportOfLeague(league) {
     if (/\b(lcs|lec|lpl|lck|msi|worlds|cblol|ljl|pcs|vcs|lla|tcl|lcp|nlc)\b|league of legends|esport/.test(l)) return 'esports';
     if (/league|liga|serie|cup|coupe|\bmls\b|bundesliga|ligue|champions|europa|copa|premier|eredivisie|primeira|uefa|fifa|conmebol|concacaf|saudi|soccer|football|super lig|pokal|nations|friendly|primera|eliteserien|allsvenskan/.test(l)) return 'soccer';
     return 'other';
+}
+
+/* Libellé du sport pour l'affichage (pied de carte, 7 septembre 2026), à partir de la
+   clé rendue par sportOfLeague. */
+var SPORT_LABELS = {
+    nhl: 'Hockey', mlb: 'Baseball', wnba: 'Basketball', ncaab: 'Basketball', nba: 'Basketball',
+    cfl: 'Football', cfb: 'Football', nfl: 'Football', mma: 'MMA', boxing: 'Boxe', wwe: 'Lutte',
+    f1: 'Formule 1', motor: 'Sports motorisés', rugby: 'Rugby', cricket: 'Cricket', tennis: 'Tennis',
+    golf: 'Golf', esports: 'Esports', soccer: 'Soccer', other: 'Sport'
+};
+export function libelleSport(league) {
+    return SPORT_LABELS[sportOfLeague(league)] || SPORT_LABELS.other;
 }
 
 /* Sport d'un nom d'équipe d'après la base, ou '' si inconnu. Sert à refuser une

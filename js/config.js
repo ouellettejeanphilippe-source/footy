@@ -36,6 +36,11 @@ export var STREAMED_URL = 'https://streamed.pk/';
 /* Toutes les ligues sur une seule page (dont le football universitaire, absent ou
    incomplet chez les autres sources) ; chaque page de match liste déjà ses flux en clair. */
 export var FLEXFITNESS_URL = 'https://flexfitness.fit/';
+/* Même moteur que VIPLeague (mêmes identifiants de lignes, même gabarit), mais des pages
+   PAR SPORT (/basketball-sports-stream…) bien plus fournies que la grille /watch-now de
+   vipleague.me : demandé le 7 septembre 2026 pour la Coupe du monde féminine FIBA, que
+   ce site liste en entier (« qui a les matchs de la FIBA Women actuellement en cours »). */
+export var LIVELEAGUES_URL = 'https://www.liveleagues.me/';
 
 
 /* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
@@ -57,7 +62,8 @@ export var SOURCE_MIRRORS = {
     vipleague: ['https://vipleague.me/watch-now', 'https://vipleague.vg/watch-now', 'https://vipleague.io/watch-now', 'https://vipleague.cc/watch-now'],
     methstreams: ['https://methstreams.gs/'],
     streamed: ['https://streamed.pk/', 'https://streamed.su/'],
-    flexfitness: ['https://flexfitness.fit/']
+    flexfitness: ['https://flexfitness.fit/'],
+    liveleagues: ['https://www.liveleagues.me/']
 };
 
 /* Clé de domains.json portant l'URL de chaque source. Exportée pour que le script
@@ -67,7 +73,8 @@ export var SOURCE_MIRRORS = {
 export var SOURCE_VAR_NAMES = {
     footybite: 'SITE', mlbbite: 'MLBBITE_PLUS_URL', sportsurge: 'SPORTSURGE_URL',
     buffstreams: 'BUFFSTREAMS_URL', streameast: 'STREAMEAST_URL', onhockey: 'ONHOCKEY_URL', vipleague: 'VIPLEAGUE_URL',
-    methstreams: 'METHSTREAMS_URL', streamed: 'STREAMED_URL', flexfitness: 'FLEXFITNESS_URL'
+    methstreams: 'METHSTREAMS_URL', streamed: 'STREAMED_URL', flexfitness: 'FLEXFITNESS_URL',
+    liveleagues: 'LIVELEAGUES_URL'
 };
 
 /* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
@@ -103,6 +110,7 @@ export function applySourceUrl(id, url) {
         case 'methstreams': METHSTREAMS_URL = url; break;
         case 'streamed': STREAMED_URL = url; break;
         case 'flexfitness': FLEXFITNESS_URL = url; break;
+        case 'liveleagues': LIVELEAGUES_URL = url; break;
         default: return;
     }
     if (typeof window !== 'undefined') window[SOURCE_VAR_NAMES[id]] = url;
@@ -174,7 +182,8 @@ export async function fetchRemoteConfig() {
             var data = await res.json();
             var keyToId = { SITE: 'footybite', MLBBITE_PLUS_URL: 'mlbbite', SPORTSURGE_URL: 'sportsurge',
                 BUFFSTREAMS_URL: 'buffstreams', STREAMEAST_URL: 'streameast', ONHOCKEY_URL: 'onhockey', VIPLEAGUE_URL: 'vipleague',
-                METHSTREAMS_URL: 'methstreams', STREAMED_URL: 'streamed', FLEXFITNESS_URL: 'flexfitness' };
+                METHSTREAMS_URL: 'methstreams', STREAMED_URL: 'streamed', FLEXFITNESS_URL: 'flexfitness',
+                LIVELEAGUES_URL: 'liveleagues' };
             Object.keys(keyToId).forEach(function(k) { if (data[k]) applySourceUrl(keyToId[k], data[k]); });
             if (data.MIRRORS && typeof data.MIRRORS === 'object') {
                 Object.keys(data.MIRRORS).forEach(function(id) {
@@ -262,7 +271,26 @@ export const SCRAPERS_CONFIG = [
        motorsport, combat) : demandé le 5 septembre 2026 pour combler le football
        universitaire, faible chez les autres sources. Chaque page de match liste déjà
        ses flux en clair (extractStreamLinks les récupère sans traitement spécifique). */
-    { name: 'Flexfitness', url: FLEXFITNESS_URL, id: 'flexfitness' }
+    { name: 'Flexfitness', url: FLEXFITNESS_URL, id: 'flexfitness' },
+    /* Liveleagues : l'accueil (/sportshub) n'est qu'un menu de sports ; chaque sport a sa
+       page. Relevé le 7 septembre 2026 sur ce menu — le baseball y renvoie vers un autre
+       site (mlbbox.me) et n'est pas listé. Les pages « autres sports » (fléchettes,
+       snooker…) se lisent quel que soit le programme du jour, comme chez Streamed. */
+    { name: 'Liveleagues', url: LIVELEAGUES_URL, id: 'liveleagues', homepageHasMatches: false, pages: [
+        { path: 'basketball-sports-stream', sports: ['nba', 'wnba', 'ncaab'] }, { path: 'nba-sports-stream', sports: ['nba'] },
+        { path: 'american-football-sports-stream', sports: ['nfl', 'cfb', 'cfl'] }, { path: 'nfl-sports-stream', sports: ['nfl'] },
+        { path: 'hockey-sports-stream', sports: ['nhl'] }, { path: 'football-sports-stream', sports: ['soccer'] },
+        { path: 'boxing-sports-stream', sports: ['boxing'] }, { path: 'mma-sports-stream', sports: ['mma'] },
+        { path: 'fighting-sports-stream', sports: ['mma', 'boxing'] }, { path: 'wwe-sports-stream', sports: ['wwe'] },
+        { path: 'formula-1-sports-stream', sports: ['f1'] }, { path: 'motogp-sports-stream', sports: ['motor'] },
+        { path: 'motorsports-sports-stream', sports: ['motor', 'f1'] }, { path: 'nascar-sports-stream', sports: ['motor'] },
+        { path: 'rugby-sports-stream', sports: ['rugby'] }, { path: 'tennis-sports-stream', sports: ['tennis'] },
+        { path: 'golf-sports-stream', sports: ['golf'] }, { path: 'aussie-rules-sports-stream', sports: ['other'] },
+        { path: 'cycling-sports-stream', sports: ['other'] }, { path: 'darts-sports-stream', sports: ['other'] },
+        { path: 'handball-sports-stream', sports: ['other'] }, { path: 'horse-racing-sports-stream', sports: ['other'] },
+        { path: 'snooker-sports-stream', sports: ['other'] }, { path: 'volleyball-sports-stream', sports: ['other'] },
+        { path: 'others-sports-stream', sports: ['other'] }
+    ] }
 ];
 
 /* Hôtes dont les pages de match ne répondent jamais depuis un serveur ou un proxy CORS :
@@ -1325,6 +1353,7 @@ window.STREAMEAST_URL = STREAMEAST_URL;
 window.ONHOCKEY_URL = ONHOCKEY_URL;
 window.VIPLEAGUE_URL = VIPLEAGUE_URL;
 window.METHSTREAMS_URL = METHSTREAMS_URL;
+window.LIVELEAGUES_URL = LIVELEAGUES_URL;
 window.PROXIES = PROXIES;
 window.toggleGlobalStats = toggleGlobalStats;
 window.openGlobalStatsFromMatch = openGlobalStatsFromMatch;

@@ -261,6 +261,53 @@ async function main() {
     assert.strictEqual(flexLinks[1].url, 'https://r.clearstreamdv.com/live/player.php?ch=es213');
     ok('extractStreamLinks : page de match Flexfitness (.stream-link-card), noms lisibles');
 
+    // ── Liveleagues : pages par sport, même moteur que VIPLeague ────────────
+    // Ajouté le 7 septembre 2026 (« qui a les matchs de la FIBA Women actuellement en
+    // cours »). Structure réelle de /basketball-sports-stream, réduite : une chaîne
+    // permanente sans heure, des sélections féminines suffixées « W » sous /fiba/, un
+    // match de club sous /fiba-international/, et l'entrée générique du tournoi répétée.
+    const llHtml = `<div id="h7s8b6n7n2" class="invisible">
+      <a class="mb-1 btn btn-secondary col-12 text-start text-yellow" href="/nba/tag-nba-tv-live" role="button" title="NBA TV"><span class="align-bottom me-2 vip-league nba "></span>  NBA TV</a>
+      <div class="col-12 btn btn-primary text-center mb-1 t3g8k0j9s1">2026-09-07</div>
+      <a class="mb-1 btn btn-secondary col-12 text-start text-light" href="/fiba/tag-2026-fiba-women-s-basketball-world-cup-live" role="button" title="2026 FIBA Women’s Basketball World Cup"><span class="align-bottom me-2 vip-league basketball "></span> <span content="2026-09-07T13:15" data-b9z2w7t1l6="2026-09-07" class="u2a5l6z9e4 me-2">13:15</span> 2026 FIBA Women’s Basketball World Cup</a>
+      <a class="mb-1 btn btn-secondary col-12 text-start text-yellow" href="/fiba/tag-hungary-w-vs-south-korea-w-live" role="button" title="Hungary W vs South Korea W"><span class="align-bottom me-2 vip-league basketball "></span> <span content="2026-09-07T13:30" data-b9z2w7t1l6="2026-09-07" class="u2a5l6z9e4 me-2">13:30</span> Hungary W vs South Korea W</a>
+      <a class="mb-1 btn btn-secondary col-12 text-start text-light" href="/fiba-international/tag-basket-zaragoza-vs-valencia-live" role="button" title="Basket Zaragoza vs Valencia"><span class="align-bottom me-2 vip-league basketball "></span> <span content="2026-09-07T19:00" data-b9z2w7t1l6="2026-09-07" class="u2a5l6z9e4 me-2">19:00</span> Basket Zaragoza vs Valencia</a>
+      <a class="mb-1 btn btn-secondary col-12 text-start text-yellow" href="/fiba/tag-2026-fiba-women-s-basketball-world-cup-live" role="button" title="2026 FIBA Women’s Basketball World Cup"><span class="align-bottom me-2 vip-league basketball "></span> <span content="2026-09-07T19:30" data-b9z2w7t1l6="2026-09-07" class="u2a5l6z9e4 me-2">19:30</span> 2026 FIBA Women’s Basketball World Cup</a>
+    </div>`;
+    const ll = scrapers.parseLiveleagues(llHtml, 'https://www.liveleagues.me/basketball-sports-stream');
+    assert.strictEqual(ll.length, 3, 'chaîne permanente (sans heure) ignorée, entrée générique dédoublonnée : ' + ll.map((m) => m.homeTeam).join(' | '));
+    const llHun = ll.find((m) => /Hungary/.test(m.homeTeam));
+    assert.ok(llHun, 'le match FIBA est lu');
+    assert.strictEqual(llHun.homeTeam, 'Hungary', 'suffixe « W » retiré sous /fiba/ : ESPN écrit « Hungary »');
+    assert.strictEqual(llHun.awayTeam, 'South Korea');
+    assert.strictEqual(llHun.league, 'FIBA World Cup', 'la compétition vient du chemin');
+    assert.strictEqual(llHun.matchDate, '2026-09-07');
+    assert.strictEqual(llHun.startTime, '08:30', '13:30 à Londres (été, +01:00) = 08:30 dans l\'Est');
+    assert.strictEqual(llHun.matchUrl, 'https://www.liveleagues.me/fiba/tag-hungary-w-vs-south-korea-w-live');
+    assert.strictEqual(llHun.source, 'liveleagues');
+    const llClub = ll.find((m) => /Zaragoza/.test(m.homeTeam));
+    assert.ok(llClub && llClub.league !== 'FIBA World Cup', 'un club sous /fiba-international/ n\'est pas mis dans la Coupe du monde');
+    const llGen = ll.find((m) => /World Cup/.test(m.homeTeam));
+    assert.strictEqual(llGen.awayTeam, '', 'entrée à un seul nom : pas d\'adversaire inventé');
+    ok('parseLiveleagues : pages par sport, sélections FIBA normalisées, heure de Londres convertie');
+
+    // Page de match Liveleagues : les diffusions sont annoncées en `data-uri`, pas en
+    // `href`, et le même bloc est répété (version large + menu mobile).
+    const llMatchHtml = `<div class="container-fluid"><h1 class="text-light">Nigeria W vs France W Live</h1>
+      <div class="d-none d-lg-block">Additional links & Stream for this Game
+        <a class="btn btn-link me-2" data-uri="/fiba/nigeria-w-vs-france-w-1-live-streaming" data-open="_self">Broadcast 1  <span class="badge rounded-pill bg-danger ms-1">HD</span></a>
+        <a class="btn btn-link me-2" data-uri="/fiba/nigeria-w-vs-france-w-2-live-streaming" data-open="_self">Broadcast 2  </a></div>
+      <ul class="dropdown-menu"><li><a class="dropdown-item" data-uri="/fiba/nigeria-w-vs-france-w-1-live-streaming" data-open="_self">Broadcast 1 <span class="badge">HD</span></a></li></ul>
+      <a href="https://mlbbox.me" target="_blank">Baseball</a>
+      <div class="text-center mt-1">match tags: <a class="m-1 btn btn-link" href="/fiba/tag-nigeria-w-live">Nigeria W Online</a></div></div>`;
+    const llLinks = scrapers.extractStreamLinks(llMatchHtml, { matchUrl: 'https://www.liveleagues.me/fiba/tag-nigeria-w-vs-france-w-live', homeTeam: 'Nigeria', awayTeam: 'France', league: 'FIBA World Cup', source: 'liveleagues' });
+    assert.deepStrictEqual(llLinks.map((l) => l.url), [
+        'https://www.liveleagues.me/fiba/nigeria-w-vs-france-w-1-live-streaming',
+        'https://www.liveleagues.me/fiba/nigeria-w-vs-france-w-2-live-streaming'
+    ], 'deux diffusions, dédoublonnées, sans le site frère ni les étiquettes : ' + llLinks.map((l) => l.url).join(' '));
+    assert.strictEqual(llLinks[0].name, 'Broadcast 1', 'nom sans le texte du badge');
+    ok('extractStreamLinks : page de match Liveleagues (data-uri), diffusions seules');
+
     // ── Pages légales : jamais des flux ─────────────────────────────────────
     /* Signalé le 5 septembre 2026, capture à l'appui : « Privacy Policy », « DMCA » et
        « Contact » listés comme SOURCES d'un match de MLS, badge de qualité compris, comme

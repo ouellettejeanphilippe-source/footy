@@ -145,7 +145,7 @@ Pipeline en quatre étapes, avec une base « hors proxy » :
 Cache mémoire 45 s, dédoublonnage des requêtes en cours, essai direct puis proxys en « hedging » (nouveau transport lancé après 3 s sans réponse), validation du contenu, santé persistée dans `localStorage.proxy_health`. Réglages utilisateur : `custom_proxy_url`, `cors_sh_api_key`, `corsproxy_io_api_key` (Options → Réseau & Proxys).
 
 ### Sources (`SCRAPERS_CONFIG`, `js/config.js`)
-Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (pages par ligue), Streameast (liste de miroirs), OnHockey, VIPLeague (`/live-now-streaming`), Methstreams (`/league/<x>streams`). `domains.json` (branche main) surcharge les URLs et les miroirs (`MIRRORS`) sans redéploiement.
+Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (pages par ligue), Streameast (liste de miroirs), OnHockey, VIPLeague (`/watch-now`), Methstreams (`/league/<x>streams`), Streamed (API JSON), Flexfitness (une page pour tout), Liveleagues (`/<sport>-sports-stream`, même moteur que VIPLeague ; ajouté le 7 septembre 2026 pour la Coupe du monde féminine FIBA). `domains.json` (branche main) surcharge les URLs et les miroirs (`MIRRORS`) sans redéploiement.
 
 ## Extraction des lecteurs (exploration du 2026-09-02)
 
@@ -159,6 +159,7 @@ Footybite, MLBBite, Sportsurge (pages `/watch-<sport>-streams/`), Buffstreams (p
 | OnHockey | `schedule_table.php` (Referer obligatoire) | — (liens dans la grille) | `np_stream400.php?channel=…` déballé en lecteur direct, `np_youtube.php` → `youtube.com/embed/` |
 | VIPLeague | `/live-now-streaming` | lecteur chargé par `stream.bun.min.js` (obfusqué, blob chiffré) | repli `Page du match` (`topLevel`) |
 | Methstreams | `/league/<x>streams` | `const allStreams = [...]` | embedindia.st, streame.center |
+| Liveleagues | `/<sport>-sports-stream` (`a[href*="/tag-"]` + `span[content]`, heure de Londres) | `a[data-uri$="-live-streaming"]` « Broadcast n » (`js/sources/liveleagues.js`) | pages de diffusion du site, sans X-Frame-Options |
 
 - `unwrapOnHockeyPlayer(href)`, `isJunkStreamHost(host, path)` (`js/scrapers.js`) : exportés, testés dans `tests/unit_scrapers.test.js`.
 - Un lien `topLevel: true` (pages de miroirs, repli « Page du match », hôte connu pour refuser l'affichage intégré) est ouvert par `openFlux` (`js/multiview.js`) dans un nouvel onglet au lieu du lecteur — jamais dans l'iframe, quel que soit le chemin par lequel l'utilisateur clique dessus (`renderFluxItem`, `js/ui.js`).
