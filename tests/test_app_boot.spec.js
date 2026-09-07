@@ -559,6 +559,12 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
     croix: [...document.querySelectorAll('#mbg .mx')].filter((b) => b.offsetParent !== null).length,
     titre: document.getElementById('mname').innerText.trim(),
     entete: getComputedStyle(document.querySelector('#mbg .mhd')).display,
+    /* « Intégrer les logos et couleurs des équipes dans le haut » : l'en-tête porte le
+       dégradé des équipes, les deux blasons et le score. */
+    banniere: !!document.querySelector('#mbg .mhd .fiche-banner'),
+    blasons: document.querySelectorAll('#mbg .mhd .fiche-banner .prime-logo').length,
+    fondEquipes: /gradient|rgb/.test(document.querySelector('#mbg .mhd').style.background),
+    corpsSansDoublon: document.querySelectorAll('#mbg .mbody .prime-thumbnail').length,
     flux: document.querySelectorAll('#modal-right-col .si').length,
     actions: document.querySelectorAll('#modal-right-col .si .si-btn').length,
     barre: !!document.querySelector('#modal-right-col .flux-head #mv-refresh-btn')
@@ -566,6 +572,10 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(fiche.croix, 'exactement une croix de fermeture visible').toBe(1);
   expect(fiche.entete, 'l\'en-tête de la fiche est visible').not.toBe('none');
   expect(fiche.titre.length).toBeGreaterThan(3);
+  expect(fiche.banniere, 'l\'en-tête est la bannière du match').toBeTruthy();
+  expect(fiche.blasons, 'deux blasons dans l\'en-tête').toBe(2);
+  expect(fiche.fondEquipes, 'le fond de l\'en-tête est aux couleurs des équipes').toBeTruthy();
+  expect(fiche.corpsSansDoublon, 'le corps ne répète plus la vignette').toBe(0);
   expect(fiche.barre, 'la barre d\'actions des flux est présente').toBeTruthy();
   if (fiche.flux > 0) expect(fiche.actions, 'quatre actions par ligne de flux').toBe(fiche.flux * 4);
 
@@ -594,12 +604,30 @@ test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche 
 
   await page.locator('#marea .match-card').first().click();
   await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await page.waitForTimeout(400); // fin de l'animation d'entrée (sheetup, 200 ms)
   const sheet = await page.evaluate(() => {
     const r = document.querySelector('#mbg .modal').getBoundingClientRect();
-    return { bottom: r.bottom, width: r.width, h: window.innerHeight, w: window.innerWidth };
+    const mx = document.querySelector('#mbg .mx').getBoundingClientRect();
+    const fermer = document.querySelector('#mbg .sheet-close').getBoundingClientRect();
+    const sousFermer = document.elementFromPoint(fermer.left + fermer.width / 2, fermer.top + fermer.height / 2);
+    return {
+      top: r.top, bottom: r.bottom, width: r.width, h: window.innerHeight, w: window.innerWidth,
+      croixVisible: mx.top >= 0 && mx.bottom <= window.innerHeight,
+      fermerVisible: fermer.height >= 44 && fermer.bottom <= window.innerHeight + 1,
+      fermerAuDessus: !!(sousFermer && sousFermer.closest('.sheet-close'))
+    };
   });
   expect(sheet.bottom, 'la fiche est ancrée au bas').toBeGreaterThanOrEqual(sheet.h - 1);
   expect(sheet.width, 'la fiche occupe toute la largeur').toBeGreaterThanOrEqual(sheet.w - 1);
+  /* « Mal placé en haut et difficile de sortir de la carte » : la feuille tient dans
+     l'écran, sa croix est visible, et le bouton « Fermer » n'est pas recouvert par la
+     barre du bas. */
+  expect(sheet.top, 'la feuille ne déborde pas par le haut').toBeGreaterThanOrEqual(0);
+  expect(sheet.croixVisible, 'la croix est dans l\'écran').toBeTruthy();
+  expect(sheet.fermerVisible, 'un gros bouton Fermer est visible').toBeTruthy();
+  expect(sheet.fermerAuDessus, 'le bouton Fermer n\'est pas sous la barre du bas').toBeTruthy();
+  await page.locator('#mbg .sheet-close').click();
+  await expect(page.locator('#mbg'), 'Fermer ferme la feuille').not.toHaveClass(/open/);
   expect(pageErrors).toEqual([]);
 });
 

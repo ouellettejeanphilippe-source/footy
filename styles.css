@@ -410,9 +410,30 @@ body.view-timeline .zoom-controls { display: flex; }
 .mtag { font-size: 12px; font-weight: 600; color: var(--muted2); background: rgba(255,255,255,0.08); padding: 3px 10px; border-radius: 7px; border: 1px solid var(--border); }
 .msc { font-weight: 800; font-size: 24px; color: var(--text); font-variant-numeric: tabular-nums; }
 #mscore:empty { display: none; }
+
+/* Bannière de la fiche (openMod, js/ui.js) : l'en-tête porte le dégradé aux couleurs des
+   équipes (le même que la carte), les blasons, les noms et le score. */
+.mhd.has-banner { padding: 0; align-items: stretch; background-color: var(--bg2); }
+.mhd.has-banner .mdot { display: none; }
+.mhd.has-banner .mi { flex: 1; min-width: 0; }
+.mhd.has-banner .mn { overflow: visible; }
+.mhd.has-banner::before { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.45) 100%); pointer-events: none; }
+.mhd.has-banner .mx { background: rgba(0,0,0,0.5); color: #fff; z-index: 2; }
+.fiche-banner { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 16px 52px 14px 16px; color: #fff; min-height: 116px; }
+.fiche-banner.racing { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+.fb-team { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; text-align: center; }
+.fb-team .prime-logo { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55)); font-size: 40px !important; }
+.fb-name { font-size: 14px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.7); display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+.fb-fav { background: transparent; border: none; font-size: 16px; line-height: 1; cursor: pointer; padding: 2px; }
+.fb-center { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 88px; }
+.fb-league { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.35); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.fb-center .status-text { margin-top: 2px !important; }
+.fiche-complements:not(.has-content) { display: none !important; }
+#modal-left-col:has(.fiche-complements:not(.has-content)) { display: none !important; }
 .mx { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.08); color: var(--muted2); cursor: pointer; display: grid; place-items: center; font-size: 15px; border: none; transition: background var(--t-fast), color var(--t-fast); }
 .mx:hover { background: rgba(255,255,255,0.16); color: var(--text); }
 .mbody { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; -webkit-overflow-scrolling: touch; }
+.sheet-close { display: none; }
 .mft { display: none; }
 
 /* Deux colonnes : tableau d'affichage à gauche (collant), flux à droite */
@@ -739,9 +760,22 @@ body[data-icon-pack="rounded"] .ic-close {
   .btn, .sport-btn, .mv-btn { min-height: 34px; }
 
   /* Fiche en feuille : monte du bas, occupe la hauteur utile, une seule croix */
-  .mbg { padding: 0; align-items: flex-end; }
-  .modal { width: 100%; max-width: none; max-height: calc(100vh - 24px); border-radius: 18px 18px 0 0; animation: sheetup var(--t-med) var(--ease); }
+  /* Feuille de match (7 septembre 2026, « mal placé en haut et difficile de sortir de la
+     carte ») : sa hauteur était en `100vh`, la plus grande hauteur d'écran sur téléphone
+     (barre d'adresse repliée) — plus haute que la zone visible, elle débordait par le
+     haut avec sa croix, et la barre du bas (z 1000) recouvrait ses derniers flux. Elle
+     tient maintenant dans le fond fixé (`100 %` de `.mbg`, qui suit la zone visible),
+     passe AU-DESSUS de la barre du bas, garde une bande de fond en haut (toucher =
+     fermer) et porte un gros bouton « Fermer » toujours visible. */
+  .mbg { padding: 0; align-items: flex-end; z-index: 1100; }
+  .modal { width: 100%; max-width: none; max-height: calc(100% - 44px); border-radius: 18px 18px 0 0; animation: sheetup var(--t-med) var(--ease); }
+  .btn.sheet-close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin: 0; min-height: 52px; border-radius: 0; border: none; border-top: 1px solid var(--border2); background: rgba(255,255,255,0.08); color: var(--text); font-size: 16px; font-weight: 700; padding-bottom: var(--safe-bottom); }
+  .btn.sheet-close:active { background: rgba(255,255,255,0.16); }
   .mhd { padding: 12px 52px 12px 16px; min-height: 52px; }
+  .mhd.has-banner { padding: 0; }
+  .fiche-banner { padding: 14px 48px 12px 12px; gap: 6px; min-height: 100px; }
+  .fb-team .prime-logo { width: 52px; height: 52px; font-size: 32px !important; }
+  .fb-name { font-size: 13px; }
   .mn { font-size: 15px; }
   .mbody { padding: 14px 14px calc(18px + var(--safe-bottom)); }
   #modal-left-col { position: relative !important; }
