@@ -3243,15 +3243,52 @@ export function buildSwatches() {
 }
 
 
+/* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
+
+   « Selon le device, ça voit ou non les scores et les streams. » Les trois sources ne
+   viennent pas du même endroit et n'échouent pas ensemble : le calendrier (scores, états)
+   vient de data/schedule.json ou d'un appel DIRECT à ESPN ; les liens viennent de
+   data/streams.json. Un appareil peut avoir l'un sans l'autre — un bloqueur qui filtre
+   site.api.espn.com, un réseau qui coupe un téléchargement — et rien ne le disait. Ces
+   trois lignes se comparent d'un appareil à l'autre sans rien deviner. */
+export function diagnosticAppareilHtml() {
+    var ligne = function(nom, etat, detail) {
+        var couleur = etat === 'ok' ? '#34c759' : (etat === 'warn' ? '#ffcc00' : 'var(--red)');
+        var icone = etat === 'ok' ? '✅' : (etat === 'warn' ? '⚠️' : '❌');
+        return '<div style="display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">' +
+               '<span style="display:flex; align-items:center; gap:8px;"><span>' + icone + '</span><b>' + esc(nom) + '</b></span>' +
+               '<span style="color:' + couleur + '; font-size:12px; text-align:right;">' + esc(detail) + '</span></div>';
+    };
+
+    var cal = (typeof window !== 'undefined' && window.calendrierInfo) || null;
+    var html = '<div style="margin-bottom:10px;"><div style="font-weight:700; margin-bottom:4px;">Cet appareil</div>';
+    if (!cal) html += ligne('Calendrier (scores, états)', 'warn', 'pas encore chargé');
+    else html += ligne('Calendrier (scores, états)', /périmé/.test(cal.source) ? 'ko' : 'ok',
+                       cal.count + ' matchs · ' + cal.source + (cal.ageMin ? ' · ' + cal.ageMin + ' min' : ''));
+
+    var espn = (typeof window !== 'undefined' && window.espnInfo) || null;
+    if (!espn || !espn.tentatives) html += ligne('ESPN (appel direct)', 'warn', 'aucun appel encore');
+    else if (espn.echecs >= espn.tentatives) html += ligne('ESPN (appel direct)', 'ko', 'injoignable · ' + espn.echecs + '/' + espn.tentatives + ' en échec' + (espn.derniereErreur ? ' · ' + espn.derniereErreur : ''));
+    else html += ligne('ESPN (appel direct)', espn.echecs ? 'warn' : 'ok', (espn.tentatives - espn.echecs) + '/' + espn.tentatives + ' réponses');
+
+    var err = (typeof window !== 'undefined' && window.prefetchedStreamsError) || null;
+    var info = (typeof window !== 'undefined' && window.prefetchedStreamsInfo) || null;
+    if (err) html += ligne('Liens (data/streams.json)', 'ko', 'illisible · ' + err);
+    else if (info) html += ligne('Liens (data/streams.json)', 'ok', info.count + ' matchs · généré il y a ' + info.ageMin + ' min');
+    else html += ligne('Liens (data/streams.json)', 'warn', 'pas encore chargé');
+
+    return html + '</div>';
+}
+
 export function renderSourcesStatus() {
     var container = document.getElementById('sources-status-container');
     if (!container) return;
     if (sourcesStatus.length === 0) {
-        container.innerHTML = '<div style="color: var(--muted2); text-align: center;">Aucune donnée (Scraping en attente...)</div>';
+        container.innerHTML = diagnosticAppareilHtml() + '<div style="color: var(--muted2); text-align: center;">Aucune donnée (Scraping en attente...)</div>';
         return;
     }
 
-    var html = '';
+    var html = diagnosticAppareilHtml();
     sourcesStatus.forEach(function(s) {
         var icon = s.status === 'success' ? '✅' : (s.status === 'warning' ? '⚠️' : '❌');
         var color = s.status === 'success' ? '#34c759' : (s.status === 'warning' ? '#ffcc00' : 'var(--red)');
@@ -3782,6 +3819,7 @@ window.ouvrirMenuDisposition = ouvrirMenuDisposition;
 window.ouvrirMenuBarre = ouvrirMenuBarre;
 window.ouvrirPageOriginale = ouvrirPageOriginale;
 window.chargerQuandMeme = chargerQuandMeme;
+window.diagnosticAppareilHtml = diagnosticAppareilHtml;
 window.rechargerTuile = rechargerTuile;
 window.fermerToutesLesVideos = fermerToutesLesVideos;
 window.toggleMultiview = toggleMultiview;

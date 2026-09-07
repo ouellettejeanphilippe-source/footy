@@ -111,9 +111,28 @@ export function getEspnDateStr(d) {
   return formatter.format(d).replace(/-/g, '');
 }
 
+/* Santé des appels à ESPN, par appareil.
+
+   Ces appels partent EN DIRECT du navigateur vers site.api.espn.com, sans proxy : un
+   appareil qui n'y arrive pas (bloqueur de publicités qui filtre le domaine, résolveur
+   d'entreprise, VPN, portail captif, réseau lent au-delà des 8 s) n'obtient AUCUN score,
+   et l'échec était avalé en silence (`catch → null`). D'où « selon l'appareil, ça voit ou
+   non les scores » sans que rien ne le dise. On compte, et la page Logs peut le montrer. */
+export var espnInfo = { tentatives: 0, echecs: 0, dernierSucces: null, derniereErreur: null };
+function noterEspn(ok, err) {
+  espnInfo.tentatives++;
+  if (ok) { espnInfo.dernierSucces = Date.now(); espnInfo.derniereErreur = null; }
+  else { espnInfo.echecs++; espnInfo.derniereErreur = String((err && err.message) || err || 'échec'); }
+  if (typeof window !== 'undefined') window.espnInfo = espnInfo;
+  return ok;
+}
+
 export function fetchEspnSchedule(leaguePath, dateStr) {
   var url = 'https://site.api.espn.com/apis/site/v2/sports/' + leaguePath + '/scoreboard?dates=' + dateStr;
-  return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(res) { return res.json(); }).catch(function(){ return null; });
+  return fetch(url, { signal: AbortSignal.timeout(8000) })
+    .then(function(res) { return res.json(); })
+    .then(function(data) { noterEspn(true); return data; })
+    .catch(function(e) { noterEspn(false, e); return null; });
 }
 
 export function fetchLolEsportsSchedule(targetDate) {
@@ -190,6 +209,31 @@ export function startLiveScoreRefresh() {
     return true;
 }
 
+/* Âge au-delà duquel le calendrier du jour rangé en local est relu. Même seuil que le
+   cache des liens (`PREFETCH_STALE_MS`, js/main.js) : dix minutes. */
+export var CALENDAR_STALE_MS = 10 * 60 * 1000;
+
+/* Le calendrier local du jour est-il encore bon ?
+
+   Il ne l'était QUE par sa date : `cache.fetchDate === todayStr`. Le premier chargement
+   de la journée écrivait donc un instantané — la plupart des matchs « à venir », sans
+   score — et tous les chargements suivants le resservaient tel quel jusqu'à minuit, sans
+   jamais relire `data/schedule.json` (régénéré par le serveur toutes les demi-heures avec
+   les scores et les états réels). Restait le rafraîchissement des scores, qui appelle
+   ESPN EN DIRECT : sur un appareil où cet appel échoue, plus rien ne bougeait de la
+   journée — grille figée, aucun score, et l'onglet Live montrant les états du matin. Sur
+   un autre appareil, ouvert plus tard ou avec un réseau qui laisse passer ESPN, tout
+   s'affichait. C'est ce qui rendait scores ET flux dépendants de l'appareil.
+
+   Un cache sans `savedAt` (écrit par une version antérieure) est tenu pour périmé : les
+   appareils déjà figés se remettent à jour au prochain chargement, ce qui est le but. */
+export function calendrierPerime(cache, todayStr, now) {
+  if (!cache || cache.fetchDate !== todayStr || !cache.matches || !cache.matches.length) return true;
+  if (!cache.savedAt) return true;
+  var age = (now || Date.now()) - cache.savedAt;
+  return age < 0 || age > CALENDAR_STALE_MS;
+}
+
 export function getApiFirstMatches(targetDate, forceRefresh) {
   var targetDateObj = targetDate || new Date();
   var targetDateStr = getEstDateStrFromDate(targetDateObj);
@@ -200,9 +244,11 @@ export function getApiFirstMatches(targetDate, forceRefresh) {
      qui empêchait l'armement. */
   if (targetDateStr === getEstDateStrFromDate(new Date())) startLiveScoreRefresh();
 
-  var needsFullFetch = !cache || cache.fetchDate !== todayStr || forceRefresh;
+  var perime = calendrierPerime(cache, todayStr, Date.now());
+  var needsFullFetch = perime || forceRefresh;
 
   if (!needsFullFetch && cache && cache.matches) {
+      if (typeof window !== 'undefined') window.calendrierInfo = { source: 'local', ageMin: Math.round((Date.now() - cache.savedAt) / 60000), count: cache.matches.length };
       return Promise.resolve(cache.matches);
   }
 
@@ -215,8 +261,9 @@ export function getApiFirstMatches(targetDate, forceRefresh) {
           })
           .then(function(cacheData) {
               if (cacheData && cacheData.fetchDate === todayStr && cacheData.matches) {
-                  safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, matches: cacheData.matches });
-
+                  safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: cacheData.matches });
+                  if (typeof window !== 'undefined') window.calendrierInfo = { source: 'schedule.json', ageMin: 0, count: cacheData.matches.length };
+                  lg('Calendrier', cacheData.matches.length + ' matchs relus depuis data/schedule.json');
                   return cacheData.matches;
               } else {
                   throw new Error("Cache outdated");
@@ -236,7 +283,17 @@ export function getApiFirstMatches(targetDate, forceRefresh) {
 function apiOuCacheLocal(targetDateObj, todayStr, targetDateStr, cache) {
   return fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr).then(function(matches) {
       if ((!matches || !matches.length) && cache && cache.fetchDate === todayStr && Array.isArray(cache.matches) && cache.matches.length) {
-          lg('Calendrier', 'API injoignable : ' + cache.matches.length + ' matchs du cache local');
+          /* Ni data/schedule.json ni ESPN : on garde la grille précédente plutôt qu'une page
+             vide, mais on le DIT — c'est cet appareil-là qui n'a pas de scores, et jusqu'ici
+             rien ne l'indiquait. */
+          if (typeof window !== 'undefined') {
+              window.calendrierInfo = { source: 'local (périmé)', ageMin: cache.savedAt ? Math.round((Date.now() - cache.savedAt) / 60000) : null, count: cache.matches.length };
+              if (typeof window.showToast === 'function' && !window._calendrierAvertissement) {
+                  window._calendrierAvertissement = true;
+                  window.showToast('Scores indisponibles sur cet appareil : ni le cache du serveur ni ESPN ne répondent.');
+              }
+          }
+          lg('Calendrier', 'API injoignable : ' + cache.matches.length + ' matchs du cache local (ESPN ' + espnInfo.echecs + '/' + espnInfo.tentatives + ' en échec)');
           return cache.matches;
       }
       return matches;
@@ -727,7 +784,8 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           lg('Calendrier', 'aucune réponse de l\'API : le calendrier local est conservé');
           return baseMatches;
       }
-      safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, matches: baseMatches });
+      safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: baseMatches });
+      if (typeof window !== 'undefined') window.calendrierInfo = { source: 'espn', ageMin: 0, count: baseMatches.length };
       return baseMatches;
   });
 }
