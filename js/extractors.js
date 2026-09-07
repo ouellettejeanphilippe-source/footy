@@ -36,7 +36,7 @@ export var SEED_PLAYER_HOSTS = [
 
 /* Agrégateurs : leurs pages sont des pages de match, pas des lecteurs — sauf
    quand le chemin annonce explicitement un lecteur (/embed, /player…). */
-export var AGGREGATOR_RE = /(^|\.)(footybite|nflbite|nbabite|mlbbite|totalsportek|sportsurge|isportsurge|buffstreams|mybuffstreams|buffstream|streameast|gostreameast|thestreameast|methstreams|crackstreams|vipleague|hesgoal|onhockey|1stream|thetvapp)\./i;
+export var AGGREGATOR_RE = /(^|\.)(footybite|nflbite|nbabite|mlbbite|totalsportek|sportsurge|isportsurge|buffstreams|mybuffstreams|buffstream|streameast|gostreameast|thestreameast|methstreams|crackstreams|vipleague|liveleagues|hesgoal|onhockey|1stream|thetvapp)\./i;
 
 /* Jamais un lecteur : réseaux sociaux, messageries, paris, ressources statiques. */
 /* Hôtes qui ne sont jamais un lecteur.

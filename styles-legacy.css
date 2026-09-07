@@ -1095,3 +1095,15 @@ body.cards-poster .prime-league-badge .plb-name { max-width: 74px; font-size: 10
 .mv-menu-item .mv-menu-check { color: var(--accent); font-weight: 800; }
 .mv-menu-item.actif { background: rgba(56,189,248,0.12); }
 .mv-menu-item.danger { color: #ff8a8a; }
+
+/* Balisage de carte du 7 septembre 2026 (bandeau d'état, ligue en titre, sport en pied) :
+   l'interface classique garde sa vignette et ses couleurs, les nouveaux blocs y sont posés sobrement. */
+.prime-head { position: relative; display: flex; align-items: center; justify-content: center; min-height: 28px; padding: 0 44px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.prime-head .status-text { display: flex; align-items: center; gap: 6px; }
+.match-card.live .prime-head { color: var(--red); }
+.prime-head .card-streams { top: 50%; right: 4px; transform: translateY(-50%); }
+.prime-title { padding: 0 4px; }
+.prime-title .prime-league-badge { position: static; background: none; border: none; box-shadow: none; padding: 0; backdrop-filter: none; }
+.prime-title .plb-name { text-transform: none; color: var(--muted2); font-size: 12px; }
+.prime-foot { display: flex; justify-content: space-between; gap: 8px; padding: 0 4px 4px; font-size: 11px; color: var(--muted); }
+.prime-col-status { display: none; }

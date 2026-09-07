@@ -32,8 +32,9 @@ import * as footybite from './footybite.js';
 import * as onhockey from './onhockey.js';
 import * as streameast from './streameast.js';
 import * as vipleague from './vipleague.js';
+import * as liveleagues from './liveleagues.js';
 
-export var ADAPTATEURS = [footybite, onhockey, streameast, vipleague];
+export var ADAPTATEURS = [footybite, onhockey, streameast, vipleague, liveleagues];
 
 /* L'adaptateur qui reconnaît cet hôte, ou null. */
 export function adaptateurPour(hote) {

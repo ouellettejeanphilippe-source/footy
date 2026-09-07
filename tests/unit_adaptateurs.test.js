@@ -42,6 +42,7 @@ async function main() {
     assert.ok(registre.adaptateurPour('onhockey.tv'), 'onhockey a son fichier');
     assert.ok(registre.adaptateurPour('v2.gostreameast.is') || registre.adaptateurPour('streameast.ps'), 'streameast aussi');
     assert.ok(registre.adaptateurPour('vipleague.me'), 'vipleague aussi');
+    assert.ok(registre.adaptateurPour('www.liveleagues.me'), 'liveleagues (7 septembre 2026) aussi');
     assert.strictEqual(registre.adaptateurPour(''), null);
     assert.strictEqual(registre.adaptateurPour(null), null);
     ok('le registre trouve le bon adaptateur, et rend null pour le reste');
@@ -79,6 +80,41 @@ async function main() {
         'seuls les liens du domaine restent, sa page d\'index exclue');
     ok('un domaine peut n\'apporter qu\'un filtre (VIPLeague)');
 
+    // ── 3 bis. Liveleagues : extraire ET filtrer ──────────────────────────────
+    /* Même moteur que VIPLeague, mais ce domaine annonce ses diffusions en `data-uri`
+       (invisible au moteur générique, qui lit les `href`). Le filtre écarte ensuite ce
+       que le moteur aurait ramassé d'autre sur la page (publicités, site frère). */
+    const ll = registre.adaptateurPour('www.liveleagues.me');
+    assert.strictEqual(typeof ll.extraireLiens, 'function');
+    assert.strictEqual(typeof ll.filtrerLiens, 'function');
+    const pageLl = `<div>
+      <a class="btn btn-link" data-uri="/fiba/nigeria-w-vs-france-w-1-live-streaming" data-open="_self">Broadcast 1  <span class="badge rounded-pill bg-danger ms-1">HD</span></a>
+      <a class="btn btn-link" data-uri="/fiba/nigeria-w-vs-france-w-2-live-streaming" data-open="_self">Broadcast 2  </a>
+      <a class="dropdown-item" data-uri="/fiba/nigeria-w-vs-france-w-1-live-streaming">Broadcast 1 <span class="badge">HD</span></a>
+      <a data-uri="/chats-list">Chat</a>
+    </div>`;
+    const docLl = new DOMParser().parseFromString(pageLl, 'text/html');
+    const liensLl = ll.extraireLiens({
+        html: pageLl, doc: docLl,
+        match: { matchUrl: 'https://www.liveleagues.me/fiba/tag-nigeria-w-vs-france-w-live', homeTeam: 'Nigeria', awayTeam: 'France', league: 'FIBA World Cup' },
+        pageText: '', pageLiens: [],
+        aides: { estPageDeMatchOuLigue: () => false, qualite: (t) => (/hd/i.test(t) ? 'HD' : 'SD') }
+    });
+    assert.deepStrictEqual(liensLl.map((l) => l.name + ' ' + l.quality + ' ' + l.url), [
+        'Broadcast 1 HD https://www.liveleagues.me/fiba/nigeria-w-vs-france-w-1-live-streaming',
+        'Broadcast 2 SD https://www.liveleagues.me/fiba/nigeria-w-vs-france-w-2-live-streaming'
+    ], 'deux diffusions, la répétition du menu mobile et la page de chat écartées');
+    const gardeLl = ll.filtrerLiens([
+        { url: 'https://www.liveleagues.me/fiba/nigeria-w-vs-france-w-1-live-streaming' },
+        { url: 'https://www.liveleagues.me/fiba/tag-nigeria-w-live' },
+        { url: 'https://mlbbox.me' },
+        { url: 'https://hai8g.com/4/8553101' },
+        null
+    ]).map((l) => l.url);
+    assert.deepStrictEqual(gardeLl, ['https://www.liveleagues.me/fiba/nigeria-w-vs-france-w-1-live-streaming'],
+        'seules les diffusions du domaine restent');
+    ok('Liveleagues extrait ses diffusions (data-uri) et filtre le reste');
+
     // ── 4. Aucun adaptateur ne remonte vers le module central ────────────────
     /* Un adaptateur qui importerait js/scrapers.js créerait un cycle : le module central
        importe le registre, qui importe l'adaptateur. Même chose en passant par js/utils.js
@@ -92,7 +128,7 @@ async function main() {
     const REMONTENT = ['scrapers.js', 'utils.js', 'config.js'];
     const dossier = path.join(RACINE, 'js', 'sources');
     const fichiers = fs.readdirSync(dossier).filter((f) => f.endsWith('.js') && f !== 'index.js');
-    assert.ok(fichiers.length >= 4, 'les quatre domaines à forme propre ont leur fichier');
+    assert.ok(fichiers.length >= 5, 'les cinq domaines à forme propre ont leur fichier');
     for (const f of fichiers) {
         const src = fs.readFileSync(path.join(dossier, f), 'utf8');
         const imports = [...src.matchAll(/^\s*import\s.*?from\s+['"]([^'"]+)['"]/gm)].map((x) => x[1]);

@@ -208,7 +208,10 @@ test('sur mobile, les affiches tiennent en grille et un seul axe défile', async
 
   const etat = await page.evaluate(() => {
     const grids = Array.from(document.querySelectorAll('.match-grid'));
-    const card = document.querySelector('.match-card .prime-thumbnail');
+    /* Carte en panneau (7 septembre 2026) : la vignette n'est plus l'affiche entière
+       mais un bandeau au-dessus du titre, des lignes équipe/score et du pied ; c'est la
+       CARTE qui est en portrait. */
+    const card = document.querySelector('.match-card');
     const rect = card ? card.getBoundingClientRect() : null;
     /* Quelle section porte assez de matchs pour déborder dépend de l'heure et des
        données du jour : on interroge donc toutes les sections plutôt que la première. */
@@ -233,7 +236,7 @@ test('sur mobile, les affiches tiennent en grille et un seul axe défile', async
 
   expect(pageErrors).toEqual([]);
   expect(etat.poster, 'la classe cards-poster est posée sous 900 px').toBeTruthy();
-  expect(etat.ratio, 'la vignette est en portrait (2:3), pas en bandeau').toBeLessThan(1);
+  expect(etat.ratio, 'la carte est en portrait (plus haute que large), pas en bandeau').toBeLessThan(1);
   expect(etat.grids, 'des sections de cartes sont rendues').toBeGreaterThan(0);
   expect(etat.toutesEnGrille, 'chaque section est en grille par défaut, pas en rail').toBeTruthy();
   expect(etat.debordeALHorizontale, 'aucune section ne défile horizontalement : un seul axe').toBeFalsy();

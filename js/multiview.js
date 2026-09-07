@@ -582,6 +582,73 @@ export function updateMvGameModeStats() {
 
 export var mvFlux = [];
 
+/* ══ SORTIE FORCÉE : une page qui fait sauter le cadre ═══════════════════════════════
+   « J'ai voulu ajouter un stream dans un match et là, la page me redirect non stop vers
+   le stream sur le site externe » (7 septembre 2026). Les iframes de lecteur n'ont plus
+   d'attribut `sandbox` (retiré le 5 septembre à la demande de l'utilisateur) : une page
+   encadrée peut donc naviguer la fenêtre entière (`top.location = …`, le classique
+   « frame busting »). Le Multivision est restauré au chargement (mv_state), la tuile est
+   reposée, la page ressort du cadre : boucle sans fin.
+
+   On ne peut pas empêcher cette navigation sans `sandbox`. On peut la RECONNAÎTRE : la
+   fenêtre est quittée (`pagehide`) quelques secondes après la pose d'une tuile. On note
+   alors les adresses suspectes ; au retour, ces tuiles ne sont pas rechargées mais
+   affichent un avertissement avec deux issues — charger quand même, ou ouvrir le site
+   dans un onglet. Une fermeture ou un rechargement volontaire dans les 15 s qui suivent
+   la pose d'une tuile coûte un clic (« Charger quand même ») : bien moins qu'une boucle. */
+var FENETRE_SORTIE_MS = 15000;
+var VALIDITE_SORTIE_MS = 10 * 60 * 1000;
+var CLE_SORTIE = 'mv_sortie_forcee';
+
+/* Adresses des tuiles posées il y a moins de FENETRE_SORTIE_MS. */
+export function suspectsDeSortie(flux, now) {
+    return (flux || []).filter(function(s) {
+        return s && s.url && s._posedAt && (now - s._posedAt) >= 0 && (now - s._posedAt) < FENETRE_SORTIE_MS;
+    }).map(function(s) { return s.url; });
+}
+
+/* Marque `_sortieForcee` sur les tuiles dont l'adresse figure dans l'enregistrement,
+   s'il est encore valable. Rend le nombre de tuiles marquées. */
+export function marquerSortiesForcees(flux, record, now) {
+    if (!record || !Array.isArray(record.urls) || !record.at) return 0;
+    if (now - record.at < 0 || now - record.at > VALIDITE_SORTIE_MS) return 0;
+    var n = 0;
+    (flux || []).forEach(function(s) {
+        if (s && s.url && record.urls.indexOf(s.url) >= 0) { s._sortieForcee = true; n++; }
+    });
+    return n;
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', function() {
+        var urls = suspectsDeSortie(mvFlux, Date.now());
+        if (urls.length) safeStorageSetJSON(CLE_SORTIE, { urls: urls, at: Date.now() });
+    });
+}
+
+/* « Charger quand même » : la tuile est reposée par le chemin normal. */
+export function chargerQuandMeme(idx) {
+    var s = mvFlux[idx];
+    if (!s) return;
+    s._sortieForcee = false;
+    saveMultivisionState();
+    rechargerTuile(idx);
+}
+
+function poserAvertissementSortie(container, cell, s) {
+    var idx = parseInt(cell.dataset.index, 10);
+    container.innerHTML = '';
+    var box = document.createElement('div');
+    box.className = 'mv-sortie-forcee';
+    box.innerHTML = '<div class="mv-sortie-titre">Ce site a fait sortir la page du lecteur</div>'
+        + '<div class="mv-sortie-texte">' + esc(getDomain(s.url)) + ' a redirigé toute la fenêtre vers lui la dernière fois. La tuile n\'a pas été rechargée pour éviter la boucle.</div>'
+        + '<div class="mv-sortie-actions">'
+        + '<button type="button" class="btn o" onclick="ouvrirPageOriginale(' + idx + '); event.stopPropagation();">↗ Ouvrir sur le site</button>'
+        + '<button type="button" class="btn" onclick="chargerQuandMeme(' + idx + '); event.stopPropagation();">Charger quand même</button>'
+        + '</div>';
+    container.appendChild(box);
+}
+
 
 /* ══ MULTIVISION STREAM SELECTOR ════════ */
 export function showFluxSelector(idx, mid, event) {
@@ -1439,6 +1506,17 @@ export function restoreMultivisionState() {
             /* Des tuiles restaurées au démarrage ne passent pas par addToMultivision :
                sans cela, une session reprise ne relisait plus jamais ses sources. */
             if (mvFlux.length) armerRafraichissementTuiles();
+
+            var sortie = safeStorageGetJSON(CLE_SORTIE);
+            if (sortie) {
+                try { localStorage.removeItem(CLE_SORTIE); } catch (e) {}
+                var marquees = marquerSortiesForcees(mvFlux, sortie, Date.now());
+                if (marquees) {
+                    setTimeout(function() {
+                        showToast('Un flux a fait sortir la page du lecteur : il n\'a pas été rechargé (voir la tuile).');
+                    }, 800);
+                }
+            }
         }
     } catch(e) {}
 }
@@ -1664,6 +1742,7 @@ export function updateMultivisionLayout() {
             }
             container.innerHTML = '';
             s._currentUrl = url;
+            if (s._sortieForcee) { poserAvertissementSortie(container, cell, s); return; }
             resolveStreamUrl(url).then(function(finalUrl) {
                 if (s._currentUrl !== url) return;
                 container.innerHTML = '';
@@ -1679,6 +1758,7 @@ export function updateMultivisionLayout() {
                 container.appendChild(iframe);
                 demanderNettoyage(iframe);
 
+                s._posedAt = Date.now(); // pour reconnaître une sortie forcée (pagehide juste après)
                 if (estMediaDirecte(finalUrl)) {
                     iframe = versVideoSiDirect(iframe, finalUrl, container);
                 } else {
@@ -3701,6 +3781,7 @@ window.ouvrirMenuTuile = ouvrirMenuTuile;
 window.ouvrirMenuDisposition = ouvrirMenuDisposition;
 window.ouvrirMenuBarre = ouvrirMenuBarre;
 window.ouvrirPageOriginale = ouvrirPageOriginale;
+window.chargerQuandMeme = chargerQuandMeme;
 window.rechargerTuile = rechargerTuile;
 window.fermerToutesLesVideos = fermerToutesLesVideos;
 window.toggleMultiview = toggleMultiview;

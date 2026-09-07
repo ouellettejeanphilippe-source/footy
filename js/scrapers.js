@@ -1,7 +1,7 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './extractors.js';
 import { getBridgeStatus } from './embed-bridge.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
@@ -1090,6 +1090,89 @@ export function zoneOffsetMinutes(date, tz) {
         var asUTC = Date.UTC(parseInt(p.year, 10), parseInt(p.month, 10) - 1, parseInt(p.day, 10), parseInt(p.hour, 10) % 24, parseInt(p.minute, 10));
         return Math.round((asUTC - date.getTime()) / 60000);
     } catch (e) { return 0; }
+}
+
+/* ══ PARSE LIVELEAGUES ════════════════
+   liveleagues.me (ajouté le 7 septembre 2026 : « qui a les matchs de la FIBA Women
+   actuellement en cours ») : même moteur que VIPLeague — mêmes identifiants de lignes,
+   même gabarit — mais des pages PAR SPORT (/basketball-sports-stream, …), une ligne par
+   événement :
+     <a href="/fiba/tag-hungary-w-vs-south-korea-w-live" title="Hungary W vs South Korea W">
+        <span content="2026-09-07T13:30" ...>13:30</span> Hungary W vs South Korea W</a>
+   Le premier segment du chemin est la compétition (fiba, fiba-international, nba…) ;
+   l'heure est celle de Londres (l'horloge de la page dit +01:00), convertie en heure de
+   l'Est comme pour VIPLeague. Les chaînes permanentes (NBA TV, ESPN First Take) n'ont pas
+   d'heure et sont ignorées : ce ne sont pas des matchs.
+
+   Équipes nationales : la page /fiba/ suffixe les sélections féminines d'un « W »
+   (« Nigeria W vs France W ») là où ESPN, sous « FIBA World Cup », écrit « France vs
+   Nigeria » — la Coupe du monde de 2026 EST la féminine. Le suffixe marque une catégorie
+   (marqueurCategorie, js/match.js) et deux catégories ne s'apparient jamais : sans cette
+   normalisation, aucun lien de cette source n'atteignait la grille. Le nom officiel de
+   l'application pour ces sélections est donc le nom nu, et seulement sous /fiba/ — les
+   clubs de /fiba-international/ gardent leur libellé. */
+export function parseLiveleagues(html, pageUrl) {
+    var matches = [];
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || LIVELEAGUES_URL;
+    var links = doc.querySelectorAll('a[href*="/tag-"]');
+    [].forEach.call(links, function(a) {
+        var href = a.getAttribute('href') || '';
+        var span = a.querySelector('span[content]');
+        var iso = span ? span.getAttribute('content') : null;
+        if (!iso || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)) return; // chaîne permanente, pas un match
+
+        var parts = href.replace(/^https?:\/\/[^/]+/, '').split('/').filter(Boolean); // [competition, 'tag-…-live']
+        if (parts.length < 2 || parts[1].indexOf('tag-') !== 0) return;
+        var competition = parts[0].replace(/-/g, ' ');
+        var slug = parts[1].replace(/^tag-/, '').replace(/-live$/, '');
+
+        var title = (a.getAttribute('title') || a.textContent || '').replace(/\s+/g, ' ').replace(/^\d{1,2}:\d{2}\s*/, '').trim();
+        var home = '', away = '';
+        var tSplit = title.split(/\s+(?:vs?\.?|-)\s+/i);
+        if (tSplit.length >= 2) { home = tSplit[0].trim(); away = tSplit.slice(1).join(' ').trim(); }
+        else if (slug.indexOf('-vs-') > 0) {
+            var sp = slug.split('-vs-');
+            home = sp[0].replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+            away = sp.slice(1).join(' ').replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+        } else {
+            home = title || slug.replace(/-/g, ' ');
+        }
+        if (!home) return;
+
+        var league = competition;
+        if (parts[0] === 'fiba') {
+            league = 'FIBA World Cup';
+            home = home.replace(/\s+W$/i, '');
+            away = away.replace(/\s+W$/i, '');
+        }
+
+        var naive = new Date(iso.slice(0, 16) + ':00Z');
+        var d = new Date(naive.getTime() - zoneOffsetMinutes(naive, 'Europe/London') * 60000);
+        var startTime = getEstTimeStrFromDate(d);
+        var matchDate = getEstDateStrFromDate(d);
+
+        var matchUrl = href.indexOf('http') === 0 ? href : resolveUrl(href, base);
+        if (!matchUrl.startsWith('http') || matches.find(function(m) { return m.matchUrl === matchUrl; })) return;
+
+        matches.push({
+            id: 'll_' + matches.length,
+            league: formatLeagueName(league),
+            flag: lgFlag(league),
+            color: lgColor(league),
+            homeTeam: officialTeamNameForLeague(home, league),
+            awayTeam: away ? officialTeamNameForLeague(away, league) : '',
+            matchUrl: matchUrl,
+            startTime: startTime,
+            matchDate: matchDate,
+            durationMinutes: getLeagueDuration(league),
+            status: 'upcoming', // la liste ne marque pas le direct : ESPN tranche, comme pour les autres sources
+            streamLinks: [],
+            streamsLoaded: false,
+            source: 'liveleagues'
+        });
+    });
+    return matches;
 }
 
 /* ══ PARSE METHSTREAMS ════════════════ */
@@ -2844,6 +2927,7 @@ export function scrapeMatchFlux(m, forceRefresh, deep){
         else if (m.matchUrl.indexOf('vipleague') > -1) targetSource = 'vipleague';
         else if (m.matchUrl.indexOf('methstreams') > -1) targetSource = 'methstreams';
         else if (m.matchUrl.indexOf('flexfitness') > -1) targetSource = 'flexfitness';
+        else if (m.matchUrl.indexOf('liveleagues') > -1) targetSource = 'liveleagues';
     }
 
     links.forEach(function(newLink) {
@@ -3083,6 +3167,7 @@ window.parseOnHockey = parseOnHockey;
 window.parseBuffstreams = parseBuffstreams;
 window.extractFootybiteLogos = extractFootybiteLogos;
 window.parseVipleague = parseVipleague;
+window.parseLiveleagues = parseLiveleagues;
 window.parseMethstreams = parseMethstreams;
 window.parseMlbbite = parseMlbbite;
 window.parseFootybite = parseFootybite;

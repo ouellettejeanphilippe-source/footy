@@ -1,6 +1,6 @@
 import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
          minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN } from './config.js';
-import { normName, lgColor, getTeamColors, getLogo } from './db.js';
+import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
 import { primaryDomain, matchDomainStats } from './links.js';
@@ -523,11 +523,18 @@ function buildEPGInner(matches){
                       cardBg = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
                   }
 
-                  var statusHtml = '';
+                  /* Bandeau d'état en tête de carte (look du 7 septembre 2026 : « j'aime ce look…
+                     plus clair », capture d'une carte à bandeau LIVE, blasons ronds, lignes
+                     équipe/score et sport en pied). Le bandeau dit l'essentiel — DIRECT,
+                     heure, Fin — ; la minute ou la période du direct va au pied, à côté du
+                     sport, pour ne pas charger le bandeau. */
+                  var statusHtml = '', minuteHtml = '';
                   if (presume) {
                       statusHtml = '<div class="status-text presume" title="' + esc(raisonFinPresumee(m)) + '"><span class="status-minute">Fin ?</span></div>';
                   } else if(m.status === 'live') {
-                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">'+esc(formatLiveMinute(m))+'</span></div>';
+                      statusHtml = '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">Direct</span></div>';
+                      var minuteLive = formatLiveMinute(m);
+                      if (minuteLive && minuteLive !== 'DIRECT') minuteHtml = '<span class="prime-minute">' + esc(minuteLive) + '</span>';
                   } else if(m.status === 'finished') {
                       statusHtml = '<div class="status-text"><span class="status-minute">' + (m.score ? 'Fin' : m.startTime) + '</span></div>';
                   } else {
@@ -581,14 +588,20 @@ function buildEPGInner(matches){
                                   '<div class="prime-score">'+homeScore+'</div><div class="prime-score">'+awayScore+'</div>' :
                                   '<div class="prime-score"></div>';
 
-                  b.innerHTML = '<div class="prime-thumbnail" style="background:'+cardBg+';">'
-                              +   lgBadge
+                  /* Carte en panneau : bandeau d'état, vignette au dégradé des couleurs
+                     d'équipes (le gradient reste), ligue en titre, lignes équipe/score,
+                     sport et minute en pied. Les classes .prime-* sont conservées : les
+                     tests et la feuille classique les connaissent. */
+                  b.innerHTML = '<div class="prime-head">'
+                              +   statusHtml
                               +   streamsHtml
-
+                              + '</div>'
+                              + '<div class="prime-thumbnail" style="background:'+cardBg+';">'
                               +   '<div class="prime-logos">'
                               +     logosHtml
                               +   '</div>'
                               + '</div>'
+                              + '<div class="prime-title">' + lgBadge + '</div>'
                               + '<div class="prime-info">'
                               +   '<div class="prime-col-teams">'
                               +     teamsHtml
@@ -596,9 +609,10 @@ function buildEPGInner(matches){
                               +   '<div class="prime-col-scores">'
                               +     scoresHtml
                               +   '</div>'
-                              +   '<div class="prime-col-status">'
-                              +     statusHtml
-                              +   '</div>'
+                              + '</div>'
+                              + '<div class="prime-foot">'
+                              +   '<span class="prime-sport">' + esc(libelleSport(m.league || lg.league)) + '</span>'
+                              +   minuteHtml
                               + '</div>';
 
                   b.addEventListener('click', function(){ openMod(m, lgCol); });
