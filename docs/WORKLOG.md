@@ -2,6 +2,10 @@
 ## En cours
 
 ## Fait
+- 2026-09-07 - **Feuille de match sur téléphone : « mal placé en haut et difficile de sortir de la carte ».** Sa hauteur maximale était en `100vh` — sur téléphone, la plus grande hauteur d'écran (barre d'adresse repliée), plus haute que la zone visible : la feuille débordait par le haut en emportant sa croix, et la barre du bas (z 1000, sortie du contexte de l'en-tête le 6 septembre) recouvrait ses derniers flux.
+  - `styles.css` (bloc mobile) : hauteur en pourcentage du fond fixé (`calc(100% - 44px)` de `.mbg`, qui suit la zone visible), `.mbg` au-dessus de la barre du bas (z 1100), bande de fond conservée en haut (toucher = fermer).
+  - `index.html` : gros bouton « ✕ Fermer » au bas de la feuille (`.sheet-close`, mobile seulement), toujours visible, hors défilement.
+  - Test « sur mobile, les onglets forment une barre au bas de l'écran et la fiche monte du bas » étendu : la feuille ne déborde pas par le haut, la croix est dans l'écran, le bouton Fermer est visible, n'est pas sous la barre du bas, et ferme.
 - 2026-09-07 - **« Ça reste stuck là » : l'écran d'attente sur « Recherche de streams… ».** Capture sur téléphone à 20 h 19, juste après la publication. Sans cache serveur utilisable, le premier chargement lisait chaque source par chaque proxy CORS (direct 5 s, puis trois proxys à 8 s chacun, par page) AVANT d'afficher quoi que ce soit : une minute et plus, écran vide, sans dire pourquoi.
   - **Affichage immédiat** (js/main.js, chemin sans cache) : le calendrier est déjà là, on l'affiche tout de suite avec ce qu'on a de liens (⚠ ou 🔎 sur les cartes) ; la lecture des sources continue derrière et la fin de la passe redessine la grille.
   - **La cause est dite** : l'écran d'attente affiche « cache serveur injoignable : <raison> », et un toast le répète au moment de l'affichage. La prochaine capture dira ce que le téléphone n'arrive pas à lire.

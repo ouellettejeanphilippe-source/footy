@@ -594,12 +594,30 @@ test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche 
 
   await page.locator('#marea .match-card').first().click();
   await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await page.waitForTimeout(400); // fin de l'animation d'entrée (sheetup, 200 ms)
   const sheet = await page.evaluate(() => {
     const r = document.querySelector('#mbg .modal').getBoundingClientRect();
-    return { bottom: r.bottom, width: r.width, h: window.innerHeight, w: window.innerWidth };
+    const mx = document.querySelector('#mbg .mx').getBoundingClientRect();
+    const fermer = document.querySelector('#mbg .sheet-close').getBoundingClientRect();
+    const sousFermer = document.elementFromPoint(fermer.left + fermer.width / 2, fermer.top + fermer.height / 2);
+    return {
+      top: r.top, bottom: r.bottom, width: r.width, h: window.innerHeight, w: window.innerWidth,
+      croixVisible: mx.top >= 0 && mx.bottom <= window.innerHeight,
+      fermerVisible: fermer.height >= 44 && fermer.bottom <= window.innerHeight + 1,
+      fermerAuDessus: !!(sousFermer && sousFermer.closest('.sheet-close'))
+    };
   });
   expect(sheet.bottom, 'la fiche est ancrée au bas').toBeGreaterThanOrEqual(sheet.h - 1);
   expect(sheet.width, 'la fiche occupe toute la largeur').toBeGreaterThanOrEqual(sheet.w - 1);
+  /* « Mal placé en haut et difficile de sortir de la carte » : la feuille tient dans
+     l'écran, sa croix est visible, et le bouton « Fermer » n'est pas recouvert par la
+     barre du bas. */
+  expect(sheet.top, 'la feuille ne déborde pas par le haut').toBeGreaterThanOrEqual(0);
+  expect(sheet.croixVisible, 'la croix est dans l\'écran').toBeTruthy();
+  expect(sheet.fermerVisible, 'un gros bouton Fermer est visible').toBeTruthy();
+  expect(sheet.fermerAuDessus, 'le bouton Fermer n\'est pas sous la barre du bas').toBeTruthy();
+  await page.locator('#mbg .sheet-close').click();
+  await expect(page.locator('#mbg'), 'Fermer ferme la feuille').not.toHaveClass(/open/);
   expect(pageErrors).toEqual([]);
 });
 

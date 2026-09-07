@@ -413,6 +413,7 @@ body.view-timeline .zoom-controls { display: flex; }
 .mx { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.08); color: var(--muted2); cursor: pointer; display: grid; place-items: center; font-size: 15px; border: none; transition: background var(--t-fast), color var(--t-fast); }
 .mx:hover { background: rgba(255,255,255,0.16); color: var(--text); }
 .mbody { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; -webkit-overflow-scrolling: touch; }
+.sheet-close { display: none; }
 .mft { display: none; }
 
 /* Deux colonnes : tableau d'affichage à gauche (collant), flux à droite */
@@ -739,8 +740,17 @@ body[data-icon-pack="rounded"] .ic-close {
   .btn, .sport-btn, .mv-btn { min-height: 34px; }
 
   /* Fiche en feuille : monte du bas, occupe la hauteur utile, une seule croix */
-  .mbg { padding: 0; align-items: flex-end; }
-  .modal { width: 100%; max-width: none; max-height: calc(100vh - 24px); border-radius: 18px 18px 0 0; animation: sheetup var(--t-med) var(--ease); }
+  /* Feuille de match (7 septembre 2026, « mal placé en haut et difficile de sortir de la
+     carte ») : sa hauteur était en `100vh`, la plus grande hauteur d'écran sur téléphone
+     (barre d'adresse repliée) — plus haute que la zone visible, elle débordait par le
+     haut avec sa croix, et la barre du bas (z 1000) recouvrait ses derniers flux. Elle
+     tient maintenant dans le fond fixé (`100 %` de `.mbg`, qui suit la zone visible),
+     passe AU-DESSUS de la barre du bas, garde une bande de fond en haut (toucher =
+     fermer) et porte un gros bouton « Fermer » toujours visible. */
+  .mbg { padding: 0; align-items: flex-end; z-index: 1100; }
+  .modal { width: 100%; max-width: none; max-height: calc(100% - 44px); border-radius: 18px 18px 0 0; animation: sheetup var(--t-med) var(--ease); }
+  .btn.sheet-close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin: 0; min-height: 52px; border-radius: 0; border: none; border-top: 1px solid var(--border2); background: rgba(255,255,255,0.08); color: var(--text); font-size: 16px; font-weight: 700; padding-bottom: var(--safe-bottom); }
+  .btn.sheet-close:active { background: rgba(255,255,255,0.16); }
   .mhd { padding: 12px 52px 12px 16px; min-height: 52px; }
   .mn { font-size: 15px; }
   .mbody { padding: 14px 14px calc(18px + var(--safe-bottom)); }
