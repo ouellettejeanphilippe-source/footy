@@ -19,10 +19,37 @@ export function safeStorageGet(key, fallback = null) {
     }
 }
 
+/* Écritures refusées par le stockage local, par appareil.
+
+   `safeStorageSet` avalait TOUTE erreur, y compris `QuotaExceededError` — le cas le plus
+   probable sur un téléphone, où la limite est de quelques mégaoctets et où le calendrier
+   du jour, les liens et les caches par date s'accumulent. Un stockage plein est alors
+   invisible : les écritures ne prennent pas, les lectures rendent une version ancienne,
+   et rien ne le dit. On retient donc la dernière erreur et leur nombre ; la page Logs
+   les montre sous « Cet appareil ». */
+export var stockageInfo = { echecs: 0, derniereCle: null, derniereErreur: null };
+
 export function safeStorageSet(key, value) {
     try {
         localStorage.setItem(key, value);
-    } catch(e) {}
+    } catch(e) {
+        stockageInfo.echecs++;
+        stockageInfo.derniereCle = key;
+        stockageInfo.derniereErreur = (e && (e.name || e.message)) ? String(e.name || e.message) : 'refus';
+        if (typeof window !== 'undefined') window.stockageInfo = stockageInfo;
+    }
+}
+
+/* Taille approximative de ce que l'application garde en local, en kilo-octets. */
+export function tailleStockageKo() {
+    try {
+        var total = 0;
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            total += (k || '').length + (localStorage.getItem(k) || '').length;
+        }
+        return Math.round(total / 1024);
+    } catch (e) { return null; }
 }
 
 export function safeStorageGetJSON(key, fallback = null) {
