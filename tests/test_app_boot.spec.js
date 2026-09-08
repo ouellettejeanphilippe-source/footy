@@ -1327,3 +1327,97 @@ test('une passe ESPN partielle ne fait pas disparaître les ligues muettes ni le
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
   await ctx.close();
 });
+
+/* ═══ Scores en direct (8 septembre 2026) ═══════════════════════════════════════════
+
+   « Est-ce que les scores peuvent se rafraîchir au rafraîchissement ? Ça devrait être
+   pas mal en direct, les scores. »
+
+   La passe complète reconstruit toute la journée — 47 chemins ESPN plus les calendriers
+   annexes — d'où sa cadence de cinq minutes ; et à l'ouverture, la grille vient souvent
+   du calendrier rangé en local, qui peut avoir dix minutes. Un score pouvait donc traîner
+   un quart d'heure. La passe rapide ne demande QUE les ligues qui ont un match en cours,
+   chaque minute et dès l'ouverture. Ce test vérifie les trois choses qui comptent : le
+   score bouge, on n'a pas redemandé toute la journée pour cela, et le calendrier rangé
+   en local suit — sans quoi la passe complète suivante ramènerait le score d'avant. */
+test('les scores des matchs en cours se rafraîchissent chaque minute, sans redemander toute la journée', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+
+  // 20:00 à New York le 8 septembre 2026 ; le match de base-ball a commencé à 19:00.
+  const SOIR = new Date(Date.UTC(2026, 8, 9, 0, 0));
+  expect(estParts(SOIR)).toEqual({ jour: '2026-09-08', minutes: 20 * 60 });
+  await page.clock.install({ time: SOIR });
+
+  const etat = { score: [3, 1], demandes: {} };
+  await page.route('**/*', (route) => {
+    const u = route.request().url();
+    if (u.startsWith(origin) && /data\/schedule\.json/.test(u)) return route.fulfill({ status: 404, body: 'absent' });
+    if (u.startsWith(origin)) return route.continue();
+    const espn = /site\.api\.espn\.com\/apis\/site\/v2\/sports\/([^?]+)\/scoreboard\?dates=(\d{8})/.exec(u);
+    if (!espn) return route.abort();
+    const chemin = espn[1];
+    etat.demandes[chemin] = (etat.demandes[chemin] || 0) + 1;
+    const json = (corps) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corps) });
+    if (espn[2] !== '20260908') return json({ leagues: [], events: [] });
+    if (chemin === 'baseball/mlb') return json({ leagues: [{ name: 'MLB' }], events: [{
+      id: 'live1', date: '2026-09-08T23:00Z', season: { type: 2 },
+      status: { type: { state: 'in', shortDetail: 'Top 7th' }, displayClock: '0:00', period: 7 },
+      competitions: [{ id: 'c', date: '2026-09-08T23:00Z', competitors: [
+        { homeAway: 'home', team: { displayName: 'Los Angeles Dodgers', name: 'Dodgers', logo: '' }, score: String(etat.score[0]) },
+        { homeAway: 'away', team: { displayName: 'San Francisco Giants', name: 'Giants', logo: '' }, score: String(etat.score[1]) }] }]
+    }] });
+    // Une ligue sans match en cours : elle ne doit PAS être redemandée par la passe rapide.
+    if (chemin === 'basketball/nba') return json({ leagues: [{ name: 'NBA' }], events: [{
+      id: 'plustard', date: '2026-09-09T02:00Z', season: { type: 2 },
+      status: { type: { state: 'pre' } },
+      competitions: [{ id: 'c', date: '2026-09-09T02:00Z', competitors: [
+        { homeAway: 'home', team: { displayName: 'Boston Celtics', name: 'Celtics', logo: '' }, score: '0' },
+        { homeAway: 'away', team: { displayName: 'Miami Heat', name: 'Heat', logo: '' }, score: '0' }] }]
+    }] });
+    return json({ leagues: [], events: [] });
+  });
+  await attendreGrille(page);
+
+  const lire = () => page.evaluate(() => {
+    const cle = Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_'))[0];
+    let cache = null;
+    try { cache = (JSON.parse(localStorage.getItem(cle)).matches || []).find((m) => m.id === 'espn_live1'); } catch (e) {}
+    const m = window.S.matchMap.get('espn_live1');
+    const bloc = document.getElementById('mb-espn_live1');
+    return {
+      score: m ? m.score : null,
+      chemin: m ? m.espnPath : null,
+      cache: cache ? cache.score : null,
+      affiche: bloc ? [...bloc.querySelectorAll('.prime-score')].map((e) => e.textContent.trim()) : null
+    };
+  });
+
+  const avant = await lire();
+  expect(avant.score, 'le match en cours porte son score').toEqual([3, 1]);
+  expect(avant.chemin, 'et le chemin ESPN d\'où il vient').toBe('baseball/mlb');
+  expect(avant.affiche, 'la carte le montre').toEqual(['3', '1']);
+
+  // ── Le score change chez ESPN ; une minute passe ──────────────────────────
+  etat.score = [4, 1];
+  const nbaAvant = etat.demandes['basketball/nba'];
+  const mlbAvant = etat.demandes['baseball/mlb'];
+  await page.clock.fastForward('01:00');
+  await expect.poll(() => page.evaluate(() => {
+    const m = window.S.matchMap.get('espn_live1');
+    return m && m.score ? m.score.join('-') : '';
+  }), { timeout: 15000 }).toBe('4-1');
+
+  const apres = await lire();
+  expect(apres.affiche, 'la carte suit sans rechargement').toEqual(['4', '1']);
+  expect(apres.cache, 'et le calendrier rangé en local aussi, sinon la passe complète ramènerait l\'ancien score').toEqual([4, 1]);
+  expect(etat.demandes['baseball/mlb'], 'la ligue en cours a été redemandée').toBeGreaterThan(mlbAvant);
+  expect(etat.demandes['basketball/nba'], 'mais pas celle sans match en cours : c\'est une passe ciblée, pas toute la journée')
+    .toBe(nbaAvant);
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  await ctx.close();
+});
