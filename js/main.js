@@ -267,6 +267,21 @@ export function fetchSourcePages(scraper, sports) {
     });
 }
 
+/* Ce que la fusion a réellement produit, pour la page Logs.
+
+   Relevé le 8 septembre 2026 : sur un téléphone, la ligne « Liens » disait 241 matchs
+   chargés et le calendrier 30 matchs, mais TOUTES les cartes portaient la loupe « aucun
+   lien ». Les mêmes données rejouées ici — même fichier, même heure, contexte téléphone
+   compris — attachaient bien 19 grilles sur 30, dont les 46 liens du match en direct.
+   Impossible de trancher sans savoir ce que la fusion a donné SUR L'APPAREIL : cette
+   ligne le dit, au lieu de le déduire. */
+function noterFusion(liste) {
+    if (typeof window === 'undefined') return;
+    var avecLiens = 0;
+    for (var i = 0; i < liste.length; i++) if ((liste[i].streamLinks || []).length) avecLiens++;
+    window.fusionInfo = { grille: liste.length, avecLiens: avecLiens, at: Date.now() };
+}
+
 /* Âge au-delà duquel le cache serveur est relu (passe d'arrière-plan, retour au premier plan). */
 export var PREFETCH_STALE_MS = 10 * 60 * 1000;
 
@@ -540,6 +555,7 @@ async function loadAllRun(isBackground, forceScrape){
           setMatches(finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
           }));
+          noterFusion(S.matches);
 
           if (!window.hasLoadedOnce) {
               buildEPG(S.matches);
@@ -701,6 +717,7 @@ async function loadAllRun(isBackground, forceScrape){
           setMatches(finalMatches.filter(function(m) {
               return m.matchDate === targetDateStr;
           }));
+          noterFusion(S.matches);
           if (!isBackground) { hideLoadingOverlay(); }
 
           // Les pastilles de ligues sont rendues par buildEPG → renderSportChips (js/ui.js).

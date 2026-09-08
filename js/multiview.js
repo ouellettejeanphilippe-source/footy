@@ -2,7 +2,7 @@ import { fetchPage } from './utils.js';
 import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, showPage, syncNavState } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, showPage, syncNavState, tailleStockageKo } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger } from './config.js';
@@ -3243,6 +3243,11 @@ export function buildSwatches() {
 }
 
 
+/* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
+   (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
+   une copie plus ancienne servie par son service worker. */
+export var VERSION_APP = 'sports-guide-v11';
+
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
    « Selon le device, ça voit ou non les scores et les streams. » Les trois sources ne
@@ -3276,6 +3281,29 @@ export function diagnosticAppareilHtml() {
     if (err) html += ligne('Liens (data/streams.json)', 'ko', 'illisible · ' + err);
     else if (info) html += ligne('Liens (data/streams.json)', 'ok', info.count + ' matchs · généré il y a ' + info.ageMin + ' min');
     else html += ligne('Liens (data/streams.json)', 'warn', 'pas encore chargé');
+
+    /* Les trois sources peuvent être vertes et les cartes rester vides : ce qui manque
+       alors est la FUSION, l'étape qui rattache les liens aux matchs de la grille. Sans
+       cette ligne, on ne pouvait pas distinguer « les liens ne sont pas arrivés » de
+       « ils sont là mais ne se rattachent pas ». */
+    var fus = (typeof window !== 'undefined' && window.fusionInfo) || null;
+    if (!fus) html += ligne('Fusion (liens ↔ matchs)', 'warn', 'pas encore faite');
+    else if (!fus.avecLiens) html += ligne('Fusion (liens ↔ matchs)', 'ko', 'aucun des ' + fus.grille + ' matchs n\'a reçu de lien');
+    else html += ligne('Fusion (liens ↔ matchs)', 'ok', fus.avecLiens + ' matchs sur ' + fus.grille + ' ont des liens');
+
+    /* Un stockage local plein est invisible : les écritures ne prennent pas, les lectures
+       rendent une version ancienne. Sur téléphone la limite est de quelques mégaoctets. */
+    var st = (typeof window !== 'undefined' && window.stockageInfo) || null;
+    var ko = tailleStockageKo();
+    if (st && st.echecs) html += ligne('Stockage local', 'ko', st.echecs + ' écriture(s) refusée(s) · ' + st.derniereErreur + ' · ' + (ko === null ? '?' : ko) + ' Ko');
+    else html += ligne('Stockage local', 'ok', (ko === null ? 'illisible' : ko + ' Ko utilisés'));
+
+    /* Quelle version du code tourne ICI : un service worker peut servir une copie plus
+       ancienne que celle qui est publiée, et deux appareils ne montrent alors pas la
+       même application. */
+    var sw = 'sans service worker';
+    try { if (navigator.serviceWorker && navigator.serviceWorker.controller) sw = 'service worker actif'; } catch (e) {}
+    html += ligne('Version', 'ok', VERSION_APP + ' · ' + sw);
 
     return html + '</div>';
 }
