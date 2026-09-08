@@ -58,15 +58,22 @@ test.afterAll(async () => { if (server) await new Promise((r) => server.close(r)
    tourne : depuis qu'il se limite au direct et à l'heure qui vient, une exécution à 4 h
    du matin trouverait une grille vide et ferait échouer des tests qui n'ont rien à voir.
 
-   Une première version se calait sur le `generatedAt` du cache. Ce n'était pas assez :
-   le cache est régénéré chaque heure, et rien ne garantit qu'il y ait des matchs en
-   direct au moment précis où il a été produit — un cache de 5 h du matin donne une
-   grille vide, et le test des rails d'affiches tombe (constaté sur un cache généré à
-   23 h EST, où tout le programme était encore à venir).
+   Une première version se calait sur le `generatedAt` du cache des liens. Ce n'était pas
+   assez : le cache est régénéré chaque heure, et rien ne garantit qu'il y ait des matchs
+   en direct au moment précis où il a été produit. Une deuxième balayait ±24 h autour de
+   ce `generatedAt` et retenait l'instant le plus peuplé D'APRÈS LES LIENS. Ce n'était
+   toujours pas assez : les liens (data/streams.json, toutes les heures) et le calendrier
+   (data/schedule.json, une fois par jour à 05:00 heure de New York) ne sont pas datés du
+   même jour entre minuit et cinq heures — ni quand la passe quotidienne a manqué. Le
+   8 septembre 2026, les liens étaient du 8 et le calendrier du 7 : l'instant retenu
+   tombait le 8, le calendrier du 7 était « périmé », ESPN refusé, et les 23 tests de
+   démarrage tombaient sur une grille vide.
 
-   On choisit donc l'instant D'APRÈS LES DONNÉES : celui où le plus de matchs sont en
-   cours ou imminents. Le calcul de l'heure locale passe par le même fuseau que
-   l'application (America/New_York), donc sans arithmétique d'heure d'été à la main. */
+   On part donc DU CALENDRIER, puisque c'est lui qui fait les cartes : son `fetchDate`
+   fixe le jour, et l'on balaie ce jour par pas de 15 minutes pour retenir l'instant où
+   le plus de ses matchs sont en cours ou imminents. Le calcul de l'heure locale passe
+   par le même fuseau que l'application (America/New_York), donc sans arithmétique
+   d'heure d'été à la main. */
 const EST = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/New_York', hourCycle: 'h23',
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
@@ -78,17 +85,19 @@ function estParts(date) {
 }
 
 function instantDesDonnees() {
-  const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'streams.json'), 'utf8'));
-  const matchs = (data.matches || []).filter((m) => /^\d{1,2}:\d{2}$/.test(m.startTime || ''));
-  const base = Date.parse(data.generatedAt || '');
-  if (!Number.isFinite(base)) throw new Error('data/streams.json sans generatedAt exploitable');
-  if (!matchs.length) return new Date(base);
+  const cal = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'schedule.json'), 'utf8'));
+  const jour = String(cal.fetchDate || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(jour)) throw new Error('data/schedule.json sans fetchDate exploitable');
+  const matchs = (cal.matches || []).filter((m) => /^\d{1,2}:\d{2}$/.test(m.startTime || ''));
 
-  // On balaie la journée par pas de 15 minutes et on retient l'instant le plus peuplé.
-  let meilleur = base, score = -1;
-  for (let pas = -24 * 4; pas <= 24 * 4; pas++) {
+  // Minuit UTC de ce jour précède toujours son minuit à New York : on balaie 30 h de là
+  // par pas de 15 minutes, en ne retenant que les instants qui tombent CE jour-là.
+  const base = Date.parse(jour + 'T00:00:00Z');
+  let meilleur = null, score = -1;
+  for (let pas = 0; pas <= 30 * 4; pas++) {
     const t = base + pas * 15 * 60 * 1000;
-    const { jour, minutes } = estParts(new Date(t));
+    const { jour: j, minutes } = estParts(new Date(t));
+    if (j !== jour) continue;
     let n = 0;
     for (const m of matchs) {
       const [h, mn] = m.startTime.split(':').map(Number);
@@ -100,6 +109,7 @@ function instantDesDonnees() {
     }
     if (n > score) { score = n; meilleur = t; }
   }
+  if (meilleur === null) throw new Error('aucun instant du ' + jour + ' trouvé');
   return new Date(meilleur);
 }
 
@@ -1119,6 +1129,8 @@ test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:3
   });
   await page.route('**/*', (route) => {
     const u = route.request().url();
+    // Pas de calendrier publié cette nuit-là : c'est ESPN, simulé ci-dessous, qui le fournit.
+    if (u.startsWith(origin) && /data\/schedule\.json/.test(u)) return route.fulfill({ status: 404, body: 'pas encore publié' });
     if (u.startsWith(origin)) return route.continue();
     const espn = /site\.api\.espn\.com\/apis\/site\/v2\/sports\/([^?]+)\/scoreboard\?dates=(\d{8})/.exec(u);
     if (!espn) return route.abort();

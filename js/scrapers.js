@@ -3075,8 +3075,12 @@ export function updateMatchUiAfterScrape(m) {
                 var targetContainer = document.getElementById('modal-right-col') || document.getElementById('mbody');
                 if(targetContainer) {
                     // Check if we already have the rightHeaderHtml structure from openMod to preserve it
+                    /* La barre d'actions est `.flux-head` (rightHeaderHtml, js/ui.js) depuis la
+                       refonte ; le sélecteur sur l'ancien style en ligne ne trouvait plus rien,
+                       et la barre disparaissait de la fiche à la première relecture des flux. */
                     var headerHtml = '';
-                    var existingHeader = targetContainer.querySelector('div[style*="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;"]');
+                    var existingHeader = targetContainer.querySelector('.flux-head')
+                        || targetContainer.querySelector('div[style*="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom:8px;"]');
                     if (existingHeader) {
                         headerHtml = existingHeader.outerHTML;
                     }
@@ -3109,6 +3113,9 @@ export function updateMatchUiAfterScrape(m) {
                     // Re-attach events for the header buttons if they exist
                     var refreshBtn = document.getElementById('mv-refresh-btn');
                     if (refreshBtn) {
+                        // La relecture est finie : le bouton, éteint au clic, redevient actif.
+                        refreshBtn.disabled = !m.matchUrl;
+                        refreshBtn.style.opacity = '';
                         refreshBtn.onclick = function() {
                             this.style.opacity = '0.5';
                             this.disabled = true;
