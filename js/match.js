@@ -208,6 +208,46 @@ export function categoriesCompatibles(cat1, m1, cat2, m2) {
   return false;
 }
 
+/* Spectacle de catch désigné par un libellé, ou '' si ce n'en est pas un.
+
+   « Raw, c'est WWE, ça se peut que ça soit pas identifié Raw mais WWE, comme F1. »
+   (8 septembre 2026) Exact, et mesuré le jour même : UN seul spectacle portait TROIS noms
+   dans les données, dont deux venaient d'ESPN lui-même.
+
+       « RAW #1737 »            ESPN et footybite   0 lien
+       « WWE » / « Raw »        ESPN                0 lien
+       « WWE Monday Night RAW » sportsurge          9 liens
+
+   Aucun des trois ne s'appariait : la grille montrait deux cartes pour la même émission,
+   et les neuf liens n'atteignaient ni l'une ni l'autre. Le nom de la FÉDÉRATION (WWE, AEW)
+   et le numéro d'épisode ne disent rien de ce qu'on regarde ; ce qui identifie la soirée
+   est le nom du SPECTACLE. On le dégage donc, exactement comme un Grand Prix est dégagé de
+   « F1 » et de « Race » plus bas.
+
+   Deux spectacles différents ne s'apparient JAMAIS : « WWE NXT » (4 liens ce jour-là) ne
+   doit pas déverser ses flux sur Raw. Les plus longs d'abord, pour qu'un nom composé ne
+   soit pas capturé par un nom plus court qu'il contient. */
+var SPECTACLES_CATCH = ['smackdown', 'dynamite', 'rampage', 'collision', 'nxt', 'raw'];
+export function spectacleDeCatch(nom) {
+  var n = normName(nom || '');
+  if (!n) return '';
+  /* `normName` retire les espaces : « raw » se retrouverait DANS « Crawley Town », un
+     vrai club anglais. On n'accepte donc le nom d'un spectacle que dans deux cas nets :
+     le libellé est ce spectacle et rien d'autre (« RAW #1737 » une fois le numéro
+     d'épisode retiré), ou il est précédé du nom de sa fédération (« WWE … RAW »). */
+  var federation = /^(wwe|aew|tna|impact|roh)/.test(n);
+  var reste = n
+      .replace(/^(wwe|aew|tna|impact|roh)/, '')
+      .replace(/^(monday|friday|saturday|tuesday|sunday|wednesday|thursday)?night/, '')
+      .replace(/\d+$/, '');
+  for (var i = 0; i < SPECTACLES_CATCH.length; i++) {
+    var t = SPECTACLES_CATCH[i];
+    if (reste === t) return t;
+    if (federation && reste.indexOf(t) >= 0) return t;
+  }
+  return '';
+}
+
 export function isMatchPair(m1, m2) {
   return debugMatchPair(m1, m2).isMatch;
 }
@@ -246,6 +286,17 @@ export function debugMatchPair(m1, m2) {
   var isRacingEvent2 = m2.homeTeam.toLowerCase().includes('grand prix') || m2.homeTeam.toLowerCase().includes('formula 1') || m2.homeTeam.toLowerCase() === 'f1' || m2.homeTeam.toLowerCase().includes('indy') || m2.homeTeam.toLowerCase() === 'wwe' || m2.league === 'F1' || m2.league === 'INDYCAR' || m2.league === 'WWE' || isEsports2;
 
   if (isRacingEvent1 || isRacingEvent2) {
+      /* Le spectacle de catch prime sur la comparaison de lettres : « RAW #1737 » et
+         « WWE Monday Night RAW » n'ont presque rien en commun à lire, et sont pourtant la
+         même soirée ; « Raw » et « NXT » se ressemblent davantage et n'en sont pas. */
+      var sp1 = spectacleDeCatch(m1.homeTeam + ' ' + m1.awayTeam);
+      var sp2 = spectacleDeCatch(m2.homeTeam + ' ' + m2.awayTeam);
+      if (sp1 && sp2) {
+          return sp1 === sp2
+              ? { isMatch: true, reason: 'Même spectacle de catch (' + sp1 + ')' }
+              : { isMatch: false, reason: 'Spectacles de catch différents (' + sp1 + ' vs ' + sp2 + ')' };
+      }
+
       var combo1 = normName(m1.homeTeam + " " + m1.awayTeam);
       var combo2 = normName(m2.homeTeam + " " + m2.awayTeam);
       if (isMatch(combo1, combo2, true) || combo1.includes(combo2) || combo2.includes(combo1)) {

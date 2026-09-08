@@ -1,7 +1,7 @@
 import { lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier, resolvePairing } from './db.js';
-import { isMatch, isMatchPair, mergeAltUrls } from './match.js';
+import { isMatch, isMatchPair, mergeAltUrls, spectacleDeCatch } from './match.js';
 import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
@@ -1088,6 +1088,40 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
           am.refreshedOnStartScrape = prevMatch.refreshedOnStartScrape;
       }
   });
+
+  /* Deux entrées pour la MÊME soirée de catch. ESPN en livre deux (relevées le
+     8 septembre 2026 à une minute d'écart : « RAW #1737 » à 19:59 et « WWE / Raw » à
+     20:00), et la grille montrait donc deux cartes pour une seule émission — dont une
+     seule recevait les liens. On n'en garde qu'une, et elle reçoit ceux de l'autre.
+
+     Le regroupement se fait sur le SPECTACLE et le jour, jamais sur les lettres : deux
+     soirées différentes (Raw et NXT) ne se rejoignent pas, et un club dont le nom contient
+     « raw » n'est pas un spectacle (voir spectacleDeCatch, js/match.js). */
+  var parSpectacle = {};
+  var sansDoublon = [];
+  for (var iS = 0; iS < apiMatches.length; iS++) {
+      var mS = apiMatches[iS];
+      var spectacle = spectacleDeCatch((mS.homeTeam || '') + ' ' + (mS.awayTeam || ''));
+      if (!spectacle) { sansDoublon.push(mS); continue; }
+      var cleS = spectacle + '|' + (mS.matchDate || '');
+      var garde = parSpectacle[cleS];
+      if (!garde) { parSpectacle[cleS] = mS; sansDoublon.push(mS); continue; }
+      garde.streamLinks = garde.streamLinks || [];
+      var aAjouter = mS.streamLinks || [];
+      for (var jS = 0; jS < aAjouter.length; jS++) {
+          var lS = aAjouter[jS];
+          if (!lS || !lS.url) continue;
+          var connu = false;
+          for (var kS = 0; kS < garde.streamLinks.length; kS++) { if (garde.streamLinks[kS].url === lS.url) { connu = true; break; } }
+          if (!connu) garde.streamLinks.push(lS);
+      }
+      if (!garde.matchUrl && mS.matchUrl) garde.matchUrl = mS.matchUrl;
+      if (garde.streamLinks.length) garde.streamsLoaded = true;
+  }
+  if (sansDoublon.length !== apiMatches.length) {
+      lg('Spectacles en double', (apiMatches.length - sansDoublon.length) + ' entrée(s) réunie(s) — même soirée, plusieurs noms');
+      apiMatches = sansDoublon;
+  }
 
   /* Durée de la fusion, pour la page Logs. Relevé le 8 septembre 2026 : sur un
      téléphone, « Fusion : pas encore faite » alors que le calendrier et les liens étaient

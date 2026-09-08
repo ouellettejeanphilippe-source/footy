@@ -2,6 +2,20 @@
 ## En cours
 
 ## Fait
+- 2026-09-08 - **« Raw, c'est WWE, ça se peut que ça soit pas identifié Raw mais WWE, comme F1. »** Exact, et mesuré le jour même : **une seule soirée portait trois noms**, dont deux venaient d'ESPN lui-même.
+
+    | nom | provenance | liens |
+    |---|---|---|
+    | `RAW #1737` | ESPN et footybite | 0 |
+    | `WWE` / `Raw` | ESPN | 0 |
+    | `WWE Monday Night RAW` | sportsurge | **9** |
+
+  Aucun ne s'appariait : **deux cartes pour une seule émission**, et les neuf liens n'atteignaient ni l'une ni l'autre.
+  - `spectacleDeCatch(nom)` (js/match.js) dégage le spectacle de la fédération (WWE, AEW, TNA…), du jour de diffusion (« Monday Night ») et du numéro d'épisode — exactement comme un Grand Prix est dégagé de « F1 » et de « Race » plus bas dans la même fonction. Utilisé en tête de la branche « épreuve » de `debugMatchPair` : le spectacle prime sur la comparaison de lettres, car « RAW #1737 » et « WWE Monday Night RAW » n'ont presque rien en commun à lire et sont pourtant la même soirée, tandis que « Raw » et « NXT » se ressemblent davantage et n'en sont pas.
+  - **Le piège évité** : `normName` retire les espaces, donc « raw » se retrouve DANS « crawleytown » — Crawley Town est un club anglais bien réel, qui aurait reçu les flux de la WWE. On n'accepte donc un nom de spectacle que dans deux cas nets : le libellé EST ce spectacle une fois le numéro retiré, ou il est précédé du nom de sa fédération.
+  - **Les doublons d'ESPN sont réunis** (fin de `mergeFluxToApi`, js/api.js) : deux entrées du même spectacle le même jour n'en font plus qu'une, qui reçoit les liens de l'autre. Vérifié sur les données réelles : une seule carte WWE, avec ses 9 liens (avant : deux cartes, 0 lien).
+  - Tests : `tests/unit_spectaclecatch.test.js` (4 groupes, ajouté à `npm test`) — les trois noms du jour, le club « Crawley Town » qui n'est pas un spectacle, les trois entrées qui s'apparient enfin, et NXT / SmackDown / un match de football qui ne s'y joignent jamais.
+- 2026-09-08 - **« Background toujours blanc » dans le lecteur.** Vérifié d'abord d'où vient le blanc : la tuile de l'application est déjà noire (`background:#000` sur son conteneur), le blanc vient de la page du site de diffusion **à l'intérieur du cadre**, sous la vidéo. Un document d'une autre origine : aucune feuille de style d'ici ne l'atteint. Ce qui EST à notre portée a été fait — `background:#000` et `color-scheme: dark` sur le cadre lui-même (js/multiview.js) : la zone que la page n'a pas encore peinte (chargement, page vide, lecteur qui n'occupe pas toute la hauteur) est noire au lieu d'être blanche. Une page qui déclare son propre fond blanc reste blanche : c'est le script utilisateur qui la nettoie, ou le bouton ⤢ de la tuile qui recadre sur la vidéo.
 - 2026-09-08 - **« Fusion : pas encore faite » — la capture a tranché.** Page Logs d'un téléphone, une minute après le chargement : « Calendrier ✅ 30 matchs · local », « Liens ✅ 241 matchs · généré il y a 45 min », « Stockage local ✅ 19 Ko », « Version ✅ sports-guide-v12 » — et **« Fusion (liens ↔ matchs) : pas encore faite »**, donc toutes les cartes avec la loupe. Ni un fichier manquant, ni un stockage plein, ni une copie ancienne : les liens étaient là, en mémoire, et le rattachement n'avait simplement pas eu lieu.
   - **Ce n'est pas de la lenteur** : la fusion mesurée sur les données réelles coûte **25 ms** (`fusionMs`, js/api.js, désormais affiché dans la page Logs). L'étape n'était pas lente, elle n'était pas ATTEINTE.
   - **La cause.** Quand l'application décide de relire les sources elle-même — script utilisateur présent et dernière passe de plus de cinq minutes, ou cache serveur trop vieux — elle enchaîne une dizaine de pages de liste par proxys CORS **avant** de fusionner quoi que ce soit. Des dizaines de secondes, parfois des minutes sur un téléphone, pendant lesquelles la grille reste celle du cache local, sans liens. Et c'est **aussi l'explication de « je reload les streams sont là, je reload c'est vide »** : selon qu'une passe précédente avait eu le temps d'écrire ses liens dans le cache local, on voyait les liens ou la loupe.
