@@ -430,6 +430,9 @@ export function showPage(id) {
   if (marea && !id) marea.style.display = 'flex';
   var sf = document.getElementById('sport-filters-container');
   if (sf) sf.style.display = id ? 'none' : 'flex';
+  /* Le bouton « Actualiser » n'a de sens que devant la grille : sur les pages Logs,
+     Options et Script il n'y a rien à rafraîchir (styles.css, `body.view-page`). */
+  if (document.body) document.body.classList.toggle('view-page', !!id);
 }
 
 /* Onglet actif : une classe, pas des styles en ligne. L'ancienne version posait

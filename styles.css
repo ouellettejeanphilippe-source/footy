@@ -874,3 +874,21 @@ body[data-icon-pack="rounded"] .ic-close {
 .mv-sortie-titre { font-weight: 800; font-size: 15px; }
 .mv-sortie-texte { font-size: 13px; color: var(--muted2); line-height: 1.4; }
 .mv-sortie-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+/* Bouton « Actualiser » posé devant la grille (8 septembre 2026 : « un sur le guide pour
+   avoir scores et streams à jour »). Depuis que le haut de page a été vidé, il n'existait
+   plus aucun geste pour redemander les données. Masqué sur les pages Logs / Options /
+   Script, où il n'y a rien à rafraîchir. */
+.fab-actualiser { position: fixed; right: 16px; bottom: calc(20px + var(--safe-bottom)); z-index: 900; display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 999px; border: 1px solid var(--border2); background: var(--bg-elev); color: var(--text); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.5); transition: background var(--t-fast), transform var(--t-fast); }
+.fab-actualiser:hover { background: var(--bg3); }
+.fab-actualiser:active { transform: scale(0.97); }
+.fab-actualiser:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.fab-actualiser[disabled] { opacity: 0.75; cursor: progress; }
+.fab-actualiser .fab-ic { font-size: 16px; line-height: 1; display: inline-block; }
+.fab-actualiser.tourne .fab-ic { animation: spin 0.8s linear infinite; }
+body.view-page .fab-actualiser { display: none; }
+@media (max-width: 900px) {
+  /* Au-dessus de la barre d'onglets du bas, et réduit à son icône. */
+  .fab-actualiser { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 14px); right: 14px; padding: 12px; }
+  .fab-actualiser .fab-lb { display: none; }
+}
