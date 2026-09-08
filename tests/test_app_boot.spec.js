@@ -129,7 +129,25 @@ async function bootOffline(page) {
      dépassement de délai. */
   await page.waitForFunction(() => document.querySelectorAll('.match-card, .mb').length > 0,
     null, { timeout: 30000 });
+  await attendreGrilleStable(page);
   return pageErrors;
+}
+
+/* Le premier chargement dessine la grille avec les liens déjà connus, puis la REDESSINE
+   quand la lecture des sources finit — quelques centaines de millisecondes plus tard,
+   au hasard des refus de proxys. Un test qui commençait entre les deux tenait des titres
+   de section détachés du document (`nextElementSibling` nul) : « chaque section
+   repliable… » tombait une fois sur deux, ici comme en intégration continue. On attend
+   donc que le compteur de rendus (`window.rendusGrille`, js/ui.js) reste immobile. */
+async function attendreGrilleStable(page) {
+  let precedent = -1;
+  for (let essai = 0; essai < 20; essai++) {
+    const courant = await page.evaluate(() => window.rendusGrille || 0);
+    if (courant === precedent) return;
+    precedent = courant;
+    await page.waitForTimeout(600);
+  }
+  throw new Error('la grille se redessine sans cesse : ' + precedent + ' rendus');
 }
 
 test('l\'application démarre et affiche des matchs sans réseau externe', async ({ page }) => {
@@ -910,7 +928,7 @@ async function attendreGrille(page) {
   await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
   await page.waitForFunction(() => document.querySelectorAll('.match-card, .mb').length > 0, null, { timeout: 30000 });
-  await page.waitForTimeout(500);
+  await attendreGrilleStable(page);
 }
 
 test('cache serveur injoignable au démarrage : deux essais, badge ⚠ plutôt que 🔎, et un toucher rétablit les liens', async ({ browser }) => {

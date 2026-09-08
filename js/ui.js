@@ -195,6 +195,12 @@ if (typeof window !== 'undefined') {
 }
 
 export function buildEPG(matches){
+  /* Compteur de rendus, lu par les tests : « la grille est stable » veut dire que ce
+     nombre n'a pas bougé depuis un moment. Le premier chargement dessine la grille
+     avec les liens déjà connus, puis la redessine quand la lecture des sources finit
+     (js/main.js) ; un test qui lisait le DOM entre les deux tenait des éléments
+     détachés — c'est ce qui rendait « chaque section repliable… » instable. */
+  if (typeof window !== 'undefined') window.rendusGrille = (window.rendusGrille || 0) + 1;
   try {
     buildEPGInner(matches);
   } catch (e) {
