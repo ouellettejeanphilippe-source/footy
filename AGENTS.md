@@ -1,34 +1,41 @@
 # AGENTS.md
 
+Règles de travail dans ce dépôt, pour les agents comme pour les humains.
+
 ## Règle d'or
-Avant toute modification : lire `docs/ARCHITECTURE.md`, lire `docs/WORKLOG.md`, et **faire un grep de la fonction/symbole** avant de la créer ou de la supprimer. Prenez soin de la base de code, elle est votre environnement de travail.
+
+Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), parcourir `docs/WORKLOG.md` (les décisions récentes et leurs raisons), et **faire un grep du symbole** avant de le créer, de le renommer ou de le supprimer. De nombreuses fonctions sont exposées sur `window` et appelées depuis du HTML construit en chaîne : un `grep` sur le nom, y compris dans `index.html` et `legacy.html`, est le seul moyen de savoir qui l'utilise.
 
 ## Workflow par tâche
+
 1. Lire `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`.
-2. Écrire l'intention dans `docs/WORKLOG.md` sous la section "## En cours".
-3. Faire le travail en manipulant avec parcimonie `index.html`.
-4. Mettre à jour `docs/ARCHITECTURE.md` si un fichier ou une fonction publique a changé (par exemple, si vous extrayez une fonction de `index.html` vers un nouveau fichier JS).
-5. **Nettoyage (OBLIGATOIRE)** : Supprimer absolument TOUS les fichiers temporaires, de test, de log ou de debug que vous avez créés pendant la session de travail.
-6. Déplacer l'entrée du `docs/WORKLOG.md` vers "## Fait" avec date, fichiers touchés, résumé et problèmes restants.
+2. Écrire l'intention dans `docs/WORKLOG.md` sous « ## En cours ».
+3. Faire le travail : un nouveau comportement va dans un module de `js/`, pas dans `index.html`.
+4. Écrire ou compléter un test qui aurait vu le problème (`tests/unit_*.test.js`, ou une suite Playwright), et lancer `npm test`.
+5. Mettre à jour `docs/ARCHITECTURE.md` si un module, une fonction publique ou une règle change ; `FEATURES.md` si l'interface change ; le `README` si la prise en main change.
+6. **Nettoyer** : supprimer tout fichier temporaire, script jetable, capture ou journal créé pendant la session. C'est un prérequis de chaque commit.
+7. Déplacer l'entrée du `WORKLOG` vers « ## Fait » avec la date, les fichiers touchés, le résumé et ce qui reste.
 
-## Anti-patterns interdits
-- **Patches et scripts jetables en cascade** : La création de scripts jetables (ex: `fix_*.py`, `test_*.js`, etc.) à la racine du projet est tolérée UNIQUEMENT pendant le processus de réflexion. **Vous devez impérativement et systématiquement supprimer TOUS les fichiers temporaires créés (scripts de test, images de debug, fichiers textes) avant de terminer votre tâche.** C'est un prérequis strict pour chaque commit.
-- **Suppression à l'aveugle** : Ne supprimez rien sans faire un grep complet. De nombreuses fonctions dépendent les unes des autres de manière implicite.
-- **Recréation d'une fonction existante** : `index.html` contient plus de 130 fonctions. Par exemple, il existe deux déclarations de `cacheLogo`. Vérifiez toujours si une fonction utilitaire (`getOfficialTeamName`, `normName`, `esc`, `pad`) n'existe pas déjà.
-- **Ajout de logique lourde dans `index.html`** : le fichier n'est plus que la coquille de l'application ; la logique vit dans les modules de `js/`. Toute nouvelle fonctionnalité DOIT être créée dans un fichier externe s'il n'y a pas d'obligation stricte.
-- **Modification du service worker sans bump** : Toute modification de `sw.js` doit s'accompagner d'une mise à jour de `CACHE_NAME`.
-- **Modification du manifest** : Toute modification de `manifest.json` doit être loggée dans le WORKLOG.
+## Ce qui est interdit
 
-## Règles spécifiques au stack détecté
-- Application Front-End (PWA) reposant quasi exclusivement sur un unique fichier `index.html` (qui embarque HTML, CSS, et JS applicatif).
-- Multiview Cleaner : Script GreaseMonkey/Tampermonkey embarqué (`multiview-cleaner.user.js`).
-- Outils : `package.json` ne porte que des dépendances de développement (`@playwright/test`, `playwright`, `jsdom`) ; `npm test` enchaîne les tests unitaires Node et deux suites Playwright. Aucun script Python : les seuls scripts à la racine sont les `.mjs` de `scripts/`, lancés par les workflows. L'environnement est principalement testé localement via protocole `file://` avec Playwright.
+- **Scripts jetables laissés dans le dépôt** (`fix_*.py`, `test_*.js` à la racine, captures, logs). Tolérés le temps de réfléchir, supprimés avant le commit.
+- **Suppression à l'aveugle.** Rien ne part sans grep complet (code, HTML, tests, scripts, workflows, docs).
+- **Recréer une fonction qui existe.** Vérifier `js/utils.js` (`esc`, `escJs`, `pad`, `safeStorage*`, `fetchPage`), `js/db.js` (`normName`, `getOfficialTeamName`, `getLogo`, `leagueTier`), `js/match.js` (`isMatch`, `isMatchPair`) avant d'écrire la sienne.
+- **Modifier `sw.js` ou un fichier précaché sans bumper `CACHE_NAME`**, et sans recopier la même valeur dans `VERSION_APP` (`js/multiview.js`). Un nouveau module `js/` s'ajoute à `APP_SHELL`.
+- **Modifier `manifest.json`** sans le noter dans le `WORKLOG`.
+- **Poser un attribut `sandbox`** sur une iframe de lecteur : retiré à la demande de l'utilisateur, certains lecteurs le détectent. Un test le verrouille.
+- **Faire dépendre un test du réseau ou de l'heure.** Les tests de démarrage coupent le réseau et figent l'horloge ; suivre le même modèle.
+- **Traiter un test qui tombe comme une instabilité.** Reproduire (`--repeat-each`), trouver la cause, corriger la cause.
 
-## Règles PWA spécifiques à ce repo
-- **Service worker** : `./sw.js`
-- **Stratégie de cache actuelle** : Cache prioritaire ("Cache-First") pour l'accès hors ligne minimal (`./index.html` et `./manifest.json` sont mis en cache lors de l'installation).
-- **Stockage local** : Utilisation intensive du `localStorage` (ex: `api_calendar_cache` pour la sauvegarde du calendrier, préférences utilisateur).
-- **Schéma de migration** : Pas de schéma formel. Le localStorage est purgé ou écrasé manuellement si besoin.
+## Le dépôt en bref
+
+- Application statique (PWA) : `index.html` + modules `js/`, sans framework. `legacy.html` est l'interface classique sur le même moteur.
+- Huit modules forment un cycle d'imports (`api`, `config`, `ui`, `multiview`, `main`, `utils`, `scrapers`, `state`). Un script ou un test qui importe le noyau importe `js/scrapers.js` en premier et pose `window.__NO_AUTOSTART__ = true`. Les autres modules sont sans import : garder cette propriété quand c'est possible.
+- Données : `data/schedule.json` (calendrier, quotidien) et `data/streams.json` (liens, deux fois par heure) sont produits par `scripts/*.mjs` via les workflows ; `domains.json` porte les adresses courantes des sources. Ne pas les éditer à la main ; les régénérer avec les scripts si un test en a besoin.
+- Outils : `package.json` ne porte que des dépendances de développement (`@playwright/test`, `playwright`, `jsdom`). Les scripts serveur utilisent le `fetch` natif de Node 22. Pas de Python.
+- Tests : `npm test` (46 unitaires puis deux suites Playwright) ; `npm run test:domains` à part, parce qu'il dépend du réseau.
+- Fuseau : toutes les heures sont celles de New York ; un match porte `matchDate` et `startTime` dans ce fuseau.
 
 ## Quand t'arrêter
-Si tu écris le 3e patch consécutif sur le même fichier, OU tu supprimes du code que tu viens d'écrire, OU un test Playwright/Python échoue après 2 essais : **STOP**. Écris dans `docs/WORKLOG.md` sous "## Blocages" et demande de l'aide à l'utilisateur. Ne détruis pas la base de code !
+
+Si tu écris le troisième patch consécutif sur le même fichier, ou si tu supprimes du code que tu viens d'écrire, ou si un test échoue encore après deux essais : **stop**. Écris dans `docs/WORKLOG.md` sous « ## Blocages » ce que tu as vu et ce que tu as essayé, et demande de l'aide à l'utilisateur. Ne détruis pas la base de code.

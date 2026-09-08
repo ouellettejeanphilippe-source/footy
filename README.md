@@ -1,76 +1,91 @@
-# Guide des Sports - Documentation & Architecture
+# Guide des Sports
 
-Ce document décrit l'architecture complète, la philosophie et les éléments clés de l'application **Guide des Sports**. Il sert de référence exhaustive pour comprendre comment l'application est construite.
+Un guide télé des sports du jour, dans le navigateur : le programme sur une grille horaire, les scores en direct, et pour chaque match les liens de diffusion trouvés sur les sites agrégateurs, avec un lecteur qui joue jusqu'à quatre vidéos côte à côte. C'est une application web installable (PWA), sans serveur : des fichiers statiques, et deux automatisations GitHub qui régénèrent le calendrier et les liens.
 
-## 🟡 Fonctionnalités en cours / À faire (À FAIRE)
+Toutes les heures sont celles de New York (heure de l'Est).
 
-1.  **Amélioration de la Grille Temporelle EPG (Mobile)**
-    *   Optimisation des performances de défilement horizontal sur mobile.
-    *   Zones tactiles (*Touch targets*) améliorées pour l'ajout à la Multivision depuis la grille.
+## Ce qu'elle fait
 
-2.  **Précision du suivi des événements (Partiellement FAIT)**
-    *   Synchronisation plus fine de la durée des événements selon le sport (ex: un combat de boxe dure différemment d'un match de NFL). Actuellement, la valeur par défaut est de ~105/120 min.
-    *   Mise à jour en temps réel des pointages sans rafraîchir complètement la grille (via WebSocket ou Polling discret).
+- **Live** : les matchs en cours et ceux qui commencent dans l'heure, en cartes avec le score, la minute et le nombre de flux.
+- **Guide** : le programme complet du jour sur une grille de 24 h, par ligue, avec la ligne de l'heure courante. Un match commencé la veille qui joue encore après minuit reste affiché.
+- **Fiche de match** : buteurs, classement, statistiques de saison (matchs ESPN), et la liste des flux avec leurs actions.
+- **Lecteur** : jusqu'à quatre vidéos, dispositions automatiques, mode réduit pour continuer à naviguer, bascule automatique de source quand une vidéo ne démarre pas (avec le script utilisateur).
+- **Favoris, ligues, apparence** : équipes et ligues favorites, niveaux de ligue (principale, secondaire, ignorée), palettes et formes de cartes.
 
-3.  **Fiabilité de l'agrégation**
-    *   Rotation dynamique des serveurs mandataires (proxies) CORS si l'un d'eux échoue ou devient lent.
-    *   Ajout de nouvelles sources d'intégration multimédia de relève.
+Le détail, onglet par onglet, est dans [FEATURES.md](FEATURES.md).
 
-4.  **Filtres et Navigation**
-    *   Recherche globale plus rapide (auto-complétion).
-    *   Bouton "Retour au direct" plus visible lors de la navigation dans le calendrier.
+## Utiliser l'application
 
----
+L'application est un site statique : elle se sert telle quelle depuis le dépôt (GitHub Pages ou tout serveur HTTP). Ouvrez `index.html` par HTTP, jamais en `file://` (les modules et le service worker l'exigent).
 
-## 🧠 Philosophie du Projet
+### Installer sur téléphone ou ordinateur
 
-1.  **Architecture "API-First"** : Le guide télé utilise des sources de données officielles (API ESPN gratuite) comme **stricte source de vérité** pour construire la grille des événements. Cela empêche les doublons et assure des horaires exacts.
-2.  **Agrégation chirurgicale en relève** : L'application agrège des sources multimédias externes en utilisant des serveurs mandataires CORS (`fetchPage`). Les événements trouvés sont "fusionnés" (merge) dans la grille API-First grâce à un algorithme de similarité de chaînes (Fuzzy Matching).
-3.  **Expérience Utilisateur Premium (Apple TV / Prime Video)** : L'interface est pensée pour être fluide, sombre, avec des dégradés subtils. Les interactions doivent être rapides et sur demande (chargement paresseux des lecteurs au clic).
-4.  **Garantie de Noms Officiels (No duplicates)** : Les sources externes écrivent parfois mal les noms d'équipes. Nous imposons une correspondance stricte via `STATIC_TEAM_MAP` lors du *parsing* afin de normaliser instantanément les noms agrégés vers notre base de données. Plus de doublons !
-5.  **Tout-en-un (Fichier unique)** : La grande majorité du code (HTML, CSS, JS) résidait historiquement dans un fichier unique pour la portabilité, l'architecture a depuis évolué en modules JS.
+Dans le navigateur, « Installer l'application » (ou « Ajouter à l'écran d'accueil »). Vous obtenez une icône, le plein écran et une copie hors ligne de l'interface. En ligne, c'est toujours la version publiée qui s'affiche. Si un appareil semble rester sur une ancienne version, `Plus → ↻ Mettre à jour l'app` force la relecture sans toucher à vos réglages.
 
----
+### Le script utilisateur (recommandé)
 
-## 🏗️ Fonctionnalités Principales (UI/UX)
+Les pages des lecteurs vidéo sont chargées telles quelles dans le lecteur. Sans aide, elles gardent leurs fenêtres surgissantes et leurs calques, et certaines refusent de s'afficher dans un cadre. Le script **Multiview Stream Cleaner** (`multiview-cleaner.user.js`) règle cela :
 
--   **Coquille refondue (septembre 2026)** : en-tête réduit aux onglets Live / Guide / Lecteur et au menu « Plus » — ni logo, ni recherche, ni date, ni pastilles de ligues en haut de page (l'interface classique les garde) ; sur téléphone, les onglets forment une barre au bas de l'écran. Échap ferme la fiche d'un match, qui n'a qu'une croix et devient une feuille pleine largeur sur mobile.
--   **Interface classique** : l'ancienne présentation reste disponible (Options → « Interface classique », ou menu « Plus ») pour comparer ; le choix est retenu d'une ouverture à l'autre.
--   **Lecteur (Multivision) — clair et par-dessus tout** : quatre boutons nommés (Ajouter, Disposition, Plein écran, Plus) ; chaque tuile porte « ↗ Site » (la page originale dans un nouvel onglet, quand la vidéo ne joue pas ici), un menu ⋮ et une croix. Les menus s'ouvrent par-dessus les tuiles, entiers, sur tous les écrans ; en portrait les vidéos s'empilent. Le script utilisateur (1.8) lance la vidéo sans clic : `play()` puis, s'il le faut, le gros bouton de lecture du lecteur.
--   **Multivision — ajustement du contenu** : chaque tuile porte un bouton ⤢ qui alterne entre *étiré* (le cadre prend toute la tuile), *ajusté* (16:9 entier, centré) et *rempli* (16:9 couvrant la tuile) ; le bouton ⤢ de la barre applique le même réglage à toutes les tuiles.
+1. installez **uBlock Origin** (bloqueur de publicités) ;
+2. installez **Tampermonkey** (gestionnaire de scripts) ;
+3. dans l'application, `Plus → 🧩 Script → Installer le script` (ou ouvrez [multiview-cleaner.user.js](./multiview-cleaner.user.js) et acceptez l'installation).
 
--   **Cartes en affiche verticale (mobile)** : sous 900 px, chaque section devient un rail horizontal d'affiches 2 : 3 (à la Netflix) plutôt qu'une pile de bandeaux pleine largeur ; le bouton « Tout voir » d'un titre de section déplie son rail en grille. Réglable dans Options → Style des Cartes → Forme des cartes.
--   **Liens manquants** : le badge d'une carte sans flux est le bouton 🔎 qui lance la recherche pour ce match ; « 🔎 Liens manquants » (barre d'outils de l'interface classique) balaie les matchs à venir qui n'en ont aucun.
--   **Inventaire des liens par domaine primaire** (page Logs) : combien de liens, combien intégrables, combien de matchs couverts par fournisseur — les sous-domaines sont repliés sur le domaine enregistrable. La même répartition sert de filtre dans la fiche d'un match.
--   **Grille EPG (Electronic Program Guide)** : L'interface principale est une ligne du temps stricte de 24h (00:00 à 23:59). Les événements sont positionnés en positionnement absolu (`left`, `width`) selon leur heure de début en EST (Eastern Standard Time) et leur durée.
--   **Indicateur "Maintenant"** : Une ligne rouge indique l'heure actuelle sur la grille.
--   **Lecteur Multivision** : Possibilité de regarder jusqu'à 4 lecteurs multimédias simultanément en *écran divisé*. Utilisation du glisser-déposer HTML5 pour réorganiser les lecteurs. Possibilité de recadrer ou changer la source d'un lecteur à la volée.
--   **Image sur image (PiP) interne** : Le lecteur peut être minimisé en bas à droite (ou transformé en colonne latérale en mode Multivision) pour continuer de naviguer dans le guide.
--   **Isolation des lecteurs** : Les iframes des lecteurs utilisent l'attribut `sandbox` pour bloquer les alertes et redirections, tout en autorisant les fenêtres contextuelles nécessaires à l'initialisation de certains lecteurs tiers.
+Ce que le script apporte : blocage des fenêtres surgissantes dès le premier octet de la page, nettoyage autour du lecteur, lecture automatique, une seule vidéo avec le son, bascule automatique de source, mesure du débit, et le **pont** qui lit les pages des sources depuis votre adresse quand les proxys sont refusés. Options → Réseau & proxys indique s'il est actif. Firefox demande quelques réglages en plus, expliqués sur la page 🧩 Script.
 
----
+Sur téléphone, les navigateurs ne prennent pas d'extensions : l'application fonctionne, mais sans nettoyage des lecteurs.
 
-## 🧩 Extensions Recommandées
+### D'où viennent les données
 
-Pour garantir une expérience optimale, sans interruptions indésirables ni pop-ups lors du chargement des sources multimédias, il est fortement conseillé d'utiliser les extensions suivantes :
+- **Calendrier et scores** : l'API publique d'ESPN (48 compétitions), complétée par quelques calendriers (PWHL, F1, IndyCar, sports de combat, WWE, LoL Esports). Un calendrier du jour est régénéré chaque matin sur le serveur (`data/schedule.json`) ; le navigateur relit les scores toutes les cinq minutes.
+- **Liens de diffusion** : onze sites agrégateurs, lus deux fois par heure sur le serveur (`data/streams.json`), puis relus par le navigateur quand il le peut. Les adresses courantes des sites, qui changent souvent, sont dans `domains.json`, mis à jour automatiquement.
 
-1.  **uBlock Origin** : Bloqueur de publicités et de traqueurs très efficace. Indispensable pour nettoyer les cadres des lecteurs vidéo et empêcher l'ouverture d'onglets indésirables.
-2.  **Tampermonkey** : Gestionnaire de scripts utilisateur, requis pour exécuter le script "Multiview cleaner" détaillé ci-dessous.
+L'application n'héberge ni ne diffuse aucune vidéo ; elle rassemble des liens publics.
 
----
+## Développer
 
-## 🔧 Script d'Installation (Tampermonkey)
+Prérequis : Node.js 22, npm. Chromium pour les tests Playwright.
 
-L'application utilise un script externe (*Multiview cleaner*) conçu pour interagir avec les lecteurs vidéo intégrés (iframes). Son rôle est d'automatiser certaines actions (comme la fermeture de calques superposés) et d'assurer une lecture continue.
+```bash
+npm ci
+npx playwright install chromium     # une fois
+npm test                            # tests unitaires puis suites Playwright
+npm run test:domains                # surveillance des domaines des sources (dépend du réseau)
+```
 
-Depuis la version 1.2, il sert aussi de **pont d'affichage** : certaines pages répondent `X-Frame-Options: DENY`, ce qui fait refuser leur affichage encadré par le navigateur lui-même — Firefox comme Chrome — avant même que la moindre ligne de JavaScript ne s'exécute. Le script télécharge alors la page pour l'application, qui **en extrait le lecteur** et le joue directement — ou, à défaut, reconstruit la page dans le lecteur (voir Options → Réseau & Proxys → « Reconstruire les pages non intégrables »). Sans le script, l'application se rabat sur les proxys CORS, plus fragiles. Si la page fabrique son lecteur depuis une adresse chiffrée, le tour échoue et l'ouverture en onglet reste proposée.
+Pour ouvrir l'application en local, servez le dossier par HTTP, par exemple :
 
-**Comment l'installer :**
-1. Installez l'extension **Tampermonkey** sur votre navigateur.
-2. Ajoutez le script au navigateur via ce lien ou depuis les Paramètres de l'application : **[multiview-cleaner.user.js](./multiview-cleaner.user.js)**
+```bash
+python3 -m http.server 8080
+# puis http://localhost:8080/index.html
+```
 
----
+Les scripts serveur se lancent aussi à la main : `node scripts/scrape_schedule.mjs` (calendrier), `npm run scrape:streams` (liens ; le script a besoin de beaucoup de mémoire, l'alias passe l'option qu'il faut), `node scripts/verify_players.mjs` (jouabilité, Chromium requis).
 
-## 📜 Dictionnaire des Fonctions JavaScript
+### Où est quoi
 
-Consultez le fichier [FEATURES.md](FEATURES.md) pour une documentation détaillée des fonctionnalités par onglet et menu.
+| | |
+|---|---|
+| `index.html`, `styles.css` | La coquille et son style. `legacy.html` est l'interface classique. |
+| `js/` | Les modules de l'application. Point d'entrée : `js/main.js`. |
+| `js/sources/` | Un adaptateur par site de flux. |
+| `scripts/` | Les scripts serveur lancés par les workflows. |
+| `data/` | Le calendrier et les liens régénérés automatiquement. |
+| `tests/` | Tests unitaires Node (`unit_*.test.js`) et suites Playwright (`*.spec.js`). |
+| `docs/ARCHITECTURE.md` | La référence technique : modules, flux de données, algorithmes, stockage, conventions. |
+| `docs/WORKLOG.md` | Le journal des changements, daté et argumenté. |
+| `AGENTS.md` | Les règles de travail dans ce dépôt (pour les humains et les agents). |
+
+### Automatisations
+
+| Workflow | Quand | Résultat |
+|---|---|---|
+| Tests | chaque push et chaque PR sur `main` | `npm test` |
+| Calendrier ESPN | chaque jour à 09:00 UTC, et à chaque push sur `main` | `data/schedule.json` commité |
+| Liens de diffusion | à :17 et :47 chaque heure | `data/streams.json` et `domains.json` commités |
+| Surveillance des domaines | chaque jour à 05:00 UTC | rapport seulement |
+
+### Règles à retenir
+
+- Une modification de `sw.js` ou d'un fichier précaché change `CACHE_NAME` dans `sw.js` **et** `VERSION_APP` dans `js/multiview.js` (des tests vérifient qu'ils sont identiques).
+- Une nouvelle ligue ESPN s'ajoute à la fois dans `js/api.js` et dans `scripts/scrape_schedule.mjs`.
+- Chaque changement s'accompagne d'un test et d'une entrée dans `docs/WORKLOG.md`.

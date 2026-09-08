@@ -911,7 +911,7 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
       waitForBridge(1500).then(function() { loadAll(false, false); }); // premier chargement sans cache : passe visible, avec l'écran d'attente
   }
 
-  // Background auto-update every 60 seconds
+  // Passe complète d'arrière-plan toutes les cinq minutes (liens + calendrier + fusion).
   setInterval(function() {
       if (window.hasLoadedOnce) {
           loadAll(true, false);
