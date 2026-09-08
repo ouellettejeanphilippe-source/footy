@@ -177,7 +177,32 @@ const tests = [
         name: "Nom inconnu contenant une équipe à une seule couleur (correspondance floue)",
         input: "Algeria U21",
         expected: "https://ui-avatars.com/api/?name=Algeria%20U21&background=5bbd19&color=ffffff&size=200&font-size=0.4"
-    }
+    },
+
+    /* ── Épreuves et galas : le logo de la fédération (8 septembre 2026) ──────────
+       « Ajouter logos WWE, F1, etc. » La comparaison se faisait sur le nom EXACT
+       (« wwe », « raw ») : « RAW #1737 », le libellé qu'ESPN emploie réellement, n'y
+       répondait pas et la carte affichait le carré gris « R# ». On lit désormais par mots
+       entiers. Les cinq adresses ont été vérifiées une par une chez ESPN ; NASCAR, MotoGP,
+       IndyCar et la boxe n'en ont pas et ne sont donc pas inventées. */
+    { name: "Catch : le libellé réel d'ESPN, avec son numéro d'épisode",
+      input: "RAW #1737", expected: "https://a.espncdn.com/i/teamlogos/leagues/500/wwe.png" },
+    { name: "Catch : le libellé d'une source, avec le jour de diffusion",
+      input: "WWE Monday Night RAW", expected: "https://a.espncdn.com/i/teamlogos/leagues/500/wwe.png" },
+    { name: "Catch : SmackDown et NXT sont aussi de la WWE",
+      input: "WWE NXT", expected: "https://a.espncdn.com/i/teamlogos/leagues/500/wwe.png" },
+    { name: "Catch : une autre fédération a son propre logo",
+      input: "AEW Dynamite", expected: "https://a.espncdn.com/i/teamlogos/leagues/500/aew.png" },
+    { name: "F1 : une séance, pas seulement un Grand Prix",
+      input: "F1 Main Race", expected: "https://a.espncdn.com/i/teamlogos/leagues/500/f1.png" },
+    { name: "F1 : le Grand Prix lui-même",
+      input: "Italy Grand Prix", expected: "https://a.espncdn.com/i/teamlogos/leagues/500/f1.png" },
+    { name: "UFC : le gala numéroté",
+      input: "UFC 320", expected: "https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png" },
+    /* Le piège : « raw » est CONTENU dans « crawley ». Crawley Town est un club anglais
+       bien réel — il doit garder son propre blason, pas celui de la WWE. */
+    { name: "Un club dont le nom contient « raw » garde le sien",
+      input: "Crawley Town", expected: "https://ui-avatars.com/api/?name=Crawley%20Town&background=333333&color=ffffff&size=200&font-size=0.4" }
 ];
 
 let failed = 0;

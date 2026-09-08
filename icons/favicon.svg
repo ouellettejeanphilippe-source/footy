@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Guide des Sports">
+  <!-- Icône de l'application (8 septembre 2026). Reprend le langage des cartes : fond
+       bleu nuit, liseré indigo, et la pastille du direct en dégradé rouge → rose.
+       Dessinée pour rester lisible à 16 px : une forme pleine, un seul symbole, un accent. -->
+  <defs>
+    <linearGradient id="fond" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e2745"/>
+      <stop offset="1" stop-color="#0b0e1a"/>
+    </linearGradient>
+    <linearGradient id="direct" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f43f5e"/>
+      <stop offset="1" stop-color="#ec4899"/>
+    </linearGradient>
+    <linearGradient id="lecture" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="116" fill="url(#fond)"/>
+  <rect x="10" y="10" width="492" height="492" rx="108" fill="none"
+        stroke="#818cf8" stroke-opacity="0.38" stroke-width="12"/>
+
+  <!-- Triangle de lecture, décalé à droite pour l'équilibre optique -->
+  <path d="M206 150 L370 256 L206 362 Z" fill="url(#lecture)" stroke="url(#lecture)"
+        stroke-width="34" stroke-linejoin="round"/>
+
+  <!-- Pastille du direct, la même que le bandeau des cartes -->
+  <circle cx="398" cy="118" r="70" fill="#0b0e1a"/>
+  <circle cx="398" cy="118" r="52" fill="url(#direct)"/>
+</svg>
