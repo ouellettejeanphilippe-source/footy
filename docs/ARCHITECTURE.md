@@ -490,3 +490,7 @@ Demande : « Enlever logo et favicon en haut à gauche, faire que le dropdown de
 - `instantDesDonnees` (tests/test_app_boot.spec.js) part du `fetchDate` de `data/schedule.json` et balaie ce jour-là : entre minuit et la passe quotidienne de 05:00, liens et calendrier ne sont pas datés du même jour, et l'ancien calcul (sur les liens) faisait tomber tous les tests de démarrage.
 - `buildEPG` (js/ui.js) incrémente `window.rendusGrille` à chaque rendu ; les tests de démarrage attendent que ce compteur soit immobile (`attendreGrilleStable`, tests/test_app_boot.spec.js) — le premier chargement redessine la grille à la fin de la lecture des sources, et un délai fixe laissait passer des éléments détachés.
 - `sw.js` → `sports-guide-v14` (pré-cache de `js/nuit.js`), `VERSION_APP` en phase. Tests : `tests/unit_nuit.test.js` (7 groupes, dans `npm test`) et « la nuit appartient à la veille : le match de 22:05 est encore là à 00:30… » (Playwright, ESPN simulé pour le jour et la veille).
+
+## Retrait de l'APK Android (8 septembre 2026)
+- Plus de projet Capacitor : `android/`, `capacitor.config.json`, le workflow `android-build.yml` et les dépendances `@capacitor/*` sont retirés. L'application est une PWA servie par GitHub Pages ; sur téléphone, on l'installe depuis le navigateur (icône, plein écran, cache hors ligne par `sw.js`).
+- Pourquoi : la coquille n'ajoutait rien (`MainActivity` vide), n'embarquait ni le script de nettoyage ni de bloqueur, et son workflow tournait à chaque PR.

@@ -71,33 +71,6 @@ Depuis la version 1.2, il sert aussi de **pont d'affichage** : certaines pages r
 
 ---
 
-## 📱 Création de l'application Android (APK)
-
-Le projet utilise **Capacitor** pour encapsuler l'application web dans une application Android native. Voici les étapes pour générer l'APK :
-
-**Prérequis :**
-*   Node.js installé.
-*   Android Studio installé et configuré (avec le SDK Android).
-
-**Étapes :**
-1. Installez les dépendances du projet si ce n'est pas déjà fait :
-   ```bash
-   npm install
-   ```
-2. Synchronisez les fichiers web vers le projet Android Capacitor :
-   ```bash
-   npx cap sync android
-   ```
-3. Ouvrez le projet dans Android Studio :
-   ```bash
-   npx cap open android
-   ```
-4. Dans Android Studio, attendez que la synchronisation Gradle soit terminée.
-5. Allez dans le menu **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
-6. Une fois la compilation terminée, Android Studio affichera une notification. Cliquez sur "locate" pour trouver le fichier `.apk` généré, prêt à être installé sur votre appareil Android.
-
----
-
 ## 📜 Dictionnaire des Fonctions JavaScript
 
 Pour la liste complète et détaillée des fonctions JavaScript, veuillez consulter le fichier **[SUIVI_FONCTIONS.md](./SUIVI_FONCTIONS.md)**.
