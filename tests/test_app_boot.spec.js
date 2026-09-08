@@ -555,6 +555,64 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
    geste pour redemander les données : il fallait attendre la minuterie de cinq minutes
    ou recharger la page. Le bouton n'a de sens que devant la grille — sur Logs, Options
    et Script il n'y a rien à rafraîchir. */
+/* Les liens déjà connus s'affichent AVANT la lecture des sources (8 septembre 2026).
+
+   Capture de la page Logs d'un téléphone : « Calendrier ✅ 30 matchs », « Liens ✅ 241
+   matchs », et pourtant « Fusion : pas encore faite » — donc toutes les cartes avec la
+   loupe. Les liens étaient là, en mémoire ; c'est le rattachement qui n'avait pas eu lieu,
+   parce que l'application était partie relire une dizaine de pages de liste par proxys
+   CORS avant de fusionner quoi que ce soit. Des minutes sur un téléphone.
+
+   Ici, le script utilisateur est déclaré présent (c'est ce qui force ce chemin) et RIEN
+   ne répond hors de l'origine : la lecture des sources ne finira jamais. La grille doit
+   quand même porter ses liens, tout de suite. */
+test('les liens déjà connus s\'affichent avant la lecture des sources, qui peut ne jamais finir', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {}
+    /* Le pont annonce sa présence par un message : on le simule, c'est le seul chemin
+       qui met `bridge.available` à vrai (js/embed-bridge.js). */
+    window.addEventListener('message', function relais(e) {
+      if (e && e.data && e.data.__mvBridge === 'mv_bridge_hello') {
+        window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.8' }, '*');
+      }
+    });
+    /* Aucune passe récente : sans cela le chemin rapide serait pris et le test ne
+       vérifierait rien. */
+    try { localStorage.removeItem('last_scrape_time'); } catch (e) {}
+  });
+  await page.clock.setFixedTime(instantDesDonnees());
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message));
+  /* Les requêtes sortantes ne sont pas REFUSÉES mais laissées EN SUSPENS : un refus
+     immédiat ferait finir la lecture des sources en une seconde, et le test ne
+     distinguerait rien. C'est bien l'attente qu'on veut reproduire — celle d'un proxy qui
+     ne répond pas, sur un téléphone. */
+  await page.route('**/*', (route) => { if (route.request().url().startsWith(origin)) route.continue(); });
+  await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
+
+  /* Le point du test : des compteurs de flux apparaissent SANS attendre la fin de la
+     lecture des sources — qui, ici, ne finira jamais. Vingt secondes est large pour une
+     fusion mesurée à 25 ms. */
+  await expect.poll(() => page.evaluate(() => document.querySelectorAll('div.card-streams').length),
+    { timeout: 20000 }).toBeGreaterThan(0);
+
+  const etat = await page.evaluate(() => ({
+    fusion: window.fusionInfo,
+    cartes: document.querySelectorAll('.match-card').length,
+    pont: window.getBridgeStatus ? window.getBridgeStatus().available : null,
+    /* La PREUVE que le chemin lent a bien été pris : cette ligne n'est écrite que là.
+       Sans elle, le test passerait par le chemin rapide et ne vérifierait rien. */
+    affichageImmediat: (window.S.log || []).some((e) => e.l === 'Affichage immédiat')
+  }));
+  expect(etat.pont, 'le script utilisateur est vu comme présent : c'
+    + '\'est lui qui force la lecture des sources').toBeTruthy();
+  expect(etat.affichageImmediat, 'la grille a été dessinée AVANT la lecture des sources').toBeTruthy();
+  expect(etat.fusion, 'la fusion a bien eu lieu, et la page Logs peut le dire').toBeTruthy();
+  expect(etat.fusion.avecLiens, 'des matchs ont reçu leurs liens').toBeGreaterThan(0);
+  expect(etat.cartes, 'et la grille est rendue').toBeGreaterThan(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 test('le bouton Actualiser est devant la grille, pas sur les pages, et dit qu\'il travaille', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });

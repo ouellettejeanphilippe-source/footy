@@ -279,7 +279,7 @@ function noterFusion(liste) {
     if (typeof window === 'undefined') return;
     var avecLiens = 0;
     for (var i = 0; i < liste.length; i++) if ((liste[i].streamLinks || []).length) avecLiens++;
-    window.fusionInfo = { grille: liste.length, avecLiens: avecLiens, at: Date.now() };
+    window.fusionInfo = { grille: liste.length, avecLiens: avecLiens, at: Date.now(), ms: window.fusionMs || null };
 }
 
 /* Âge au-delà duquel le cache serveur est relu (passe d'arrière-plan, retour au premier plan). */
@@ -618,6 +618,41 @@ async function loadAllRun(isBackground, forceScrape){
           }, 0);
 
           return Promise.reject('SKIP_SCRAPING_SUCCESS'); // Reject to skip the rest of the promise chain cleanly
+      }
+
+      /* ── Afficher d'abord ce qu'on a déjà, LIRE les sources ensuite ────────────────
+         Capture du 8 septembre 2026, page Logs d'un téléphone : « Calendrier ✅ 30 matchs »,
+         « Liens ✅ 241 matchs », et pourtant « Fusion : pas encore faite » — donc toutes
+         les cartes avec la loupe. Les liens étaient là, en mémoire ; c'est le rattachement
+         qui n'avait pas eu lieu.
+
+         La raison : quand l'application décide de relire les sources elle-même (script
+         utilisateur présent et dernière passe de plus de cinq minutes, ou cache serveur
+         trop vieux), elle enchaîne une dizaine de pages de liste par proxys CORS AVANT de
+         fusionner quoi que ce soit. Des dizaines de secondes, parfois des minutes sur un
+         téléphone, pendant lesquelles la grille reste celle du cache local — sans liens.
+         Et c'est ce qui explique « je reload les streams sont là, je reload c'est vide » :
+         selon qu'une passe précédente avait eu le temps d'écrire ses liens dans le cache,
+         on voit les liens ou la loupe.
+
+         La fusion coûte 25 ms (mesurée sur les données réelles) et les liens pré-calculés
+         sont déjà chargés : rien ne justifie d'attendre le réseau pour les montrer. On
+         fusionne et on dessine tout de suite ; la lecture des sources continue derrière et
+         redessine quand elle apporte quelque chose de plus. */
+      var dateVisee = getEstDateStrFromDate(TARGET_DATE);
+      var liensDejaConnus = (isToday && window.prefetchedStreamMatches) ? window.prefetchedStreamMatches.slice() : [];
+      if (liensDejaConnus.length) {
+          try {
+              var provisoire = mergeFluxToApi(apiMatches, liensDejaConnus, true);
+              setMatches(provisoire.filter(function(m) { return m.matchDate === dateVisee; }));
+              noterFusion(S.matches);
+              buildEPG(S.matches);
+              window.hasLoadedOnce = true;
+              if (!isBackground) hideLoadingOverlay();
+              lg('Affichage immédiat', S.matches.length + ' matchs avec les liens déjà connus, avant la lecture des sources');
+          } catch (e) {
+              lg('Affichage immédiat', 'échec : ' + (e && e.message ? e.message : e));
+          }
       }
 
             // Sports présents dans la grille du jour : limite les sous-pages à télécharger
