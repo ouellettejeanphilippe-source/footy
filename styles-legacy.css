@@ -846,6 +846,19 @@ body.cards-poster .match-grid.expanded {
 }
 body.cards-poster .rail-toggle { display: inline-block; }
 
+/* Un SEUL fond pour la page, pas une copie par section (8 septembre 2026 : « un seul
+   background pour page Live, pas une répétition du même »).
+
+   Les titres de section sont collants : quand les cartes défilent dessous, il faut bien
+   qu'ils restent lisibles. C'était fait en repeignant `var(--bg)` en dégradé — donc en
+   posant, sur le fond unique de la page (`#app-bg-container`, un dégradé ou un motif selon
+   les Options), une bande de couleur PLATE, répétée à chaque section. Cinq sections, cinq
+   rectangles : le fond de la page ne se voyait plus, il se répétait.
+
+   On ne repeint donc plus rien : un flou d'arrière-plan suffit à détacher le titre de ce
+   qui passe dessous, et il laisse voir le fond de la page tel qu'il est. L'ombre du texte
+   prend le relais là où le flou ne suffit pas (une affiche claire qui passe juste
+   dessous). */
 body.cards-poster .section-title {
   position: sticky;
   top: 0;
@@ -856,8 +869,19 @@ body.cards-poster .section-title {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   border-bottom: none;
-  background: linear-gradient(to bottom, var(--bg, #000) 55%, transparent);
+  background: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.65);
 }
+
+/* Repli : sans flou d'arrière-plan (navigateurs anciens), le titre collant n'aurait plus
+   rien pour se détacher des cartes qui défilent dessous. On y remet une bande — mais
+   seulement là, et jamais quand le flou est disponible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.cards-poster .section-title { background: linear-gradient(to bottom, var(--bg, #000) 55%, transparent); }
+}
+
 
 body.cards-poster .match-card { gap: 0; }
 body.cards-poster .prime-thumbnail { aspect-ratio: 2 / 3; border-radius: 12px; }

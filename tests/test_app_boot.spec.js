@@ -613,6 +613,44 @@ test('les liens déjà connus s\'affichent avant la lecture des sources, qui peu
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* Un seul fond pour la page (8 septembre 2026 : « un seul background pour page Live, pas
+   une répétition du même »).
+
+   Les titres de section sont collants, et ils restaient lisibles en repeignant `var(--bg)`
+   en dégradé : sur le fond unique de la page (`#app-bg-container`, un dégradé ou un motif
+   selon les Options), cela posait une bande de couleur PLATE, répétée à chaque section.
+   Cinq sections, cinq rectangles — le fond ne se voyait plus, il se répétait. */
+test('la page Live n\'a qu\'un fond : aucune section n\'en repeint une copie', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+
+  const fonds = await page.evaluate(() => {
+    const titres = [...document.querySelectorAll('.section-title')];
+    return {
+      nb: titres.length,
+      /* Le dégradé des CARTES est voulu : on ne regarde que les titres de section. */
+      avecFond: titres.filter((t) => getComputedStyle(t).backgroundImage !== 'none').length,
+      collants: titres.filter((t) => getComputedStyle(t).position === 'sticky').length,
+      /* Ce qui remplace la bande : le flou laisse voir le fond de la page au lieu d'en
+         reposer une copie. */
+      flous: titres.filter((t) => {
+        const c = getComputedStyle(t);
+        return /blur/.test(c.backdropFilter || '') || /blur/.test(c.webkitBackdropFilter || '');
+      }).length,
+      /* Le fond unique de la page, posé une seule fois et à demeure. */
+      conteneurs: document.querySelectorAll('#app-bg-container').length
+    };
+  });
+
+  expect(fonds.nb, 'plusieurs sections sont rendues, sinon le test ne prouve rien').toBeGreaterThan(1);
+  expect(fonds.avecFond, 'aucun titre de section ne repeint le fond de la page').toBe(0);
+  expect(fonds.collants, 'ils restent collants : c\'est ce qui les rendait nécessaires').toBe(fonds.nb);
+  expect(fonds.flous, 'et se détachent par un flou, qui laisse voir le fond unique').toBe(fonds.nb);
+  expect(fonds.conteneurs, 'un seul conteneur de fond pour toute la page').toBe(1);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 test('le bouton Actualiser est devant la grille, pas sur les pages, et dit qu\'il travaille', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
