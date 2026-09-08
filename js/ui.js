@@ -1,5 +1,6 @@
-import { getEstTimeStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
+import { getEstTimeStrFromDate, getEstDateStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
          minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN } from './config.js';
+import { minutesDansLaJournee, comparerHeures } from './nuit.js';
 import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
@@ -220,6 +221,10 @@ function buildEPGInner(matches){
   var currentEst = getEstTimeStrFromDate(now);
   var currentParts = currentEst.split(':');
   var currentMins = parseInt(currentParts[0], 10) * 60 + parseInt(currentParts[1], 10);
+  /* Jour affiché : les heures se comparent et se placent par rapport à SON minuit —
+     un match d'hier soir qui déborde sur cette nuit passe avant 00:00 (js/nuit.js). */
+  var jourGrille = getEstDateStrFromDate(TARGET_DATE);
+  var grilleDuJour = jourGrille === getEstDateStrFromDate(now);
 
   var filtered = matches.filter(function(m){
     /* Onglet Live : en cours, ou coup d'envoi dans l'heure. Rien d'autre.
@@ -288,15 +293,16 @@ function buildEPGInner(matches){
       var getSortTime = function(lgMatches) {
           var active = lgMatches.filter(function(x){return x.status!=='finished';});
           if(active.length>0) {
-              active.sort(function(x,y){return x.startTime.localeCompare(y.startTime);});
-              return active[0].startTime;
+              active.sort(function(x,y){return comparerHeures(x, y, jourGrille);});
+              var t = minutesDansLaJournee(active[0], jourGrille);
+              return t === null ? 9999 : t;
           }
-          return "99:99";
+          return 9999;
       };
 
       var aStart = getSortTime(lgMap[a].matches);
       var bStart = getSortTime(lgMap[b].matches);
-      if (aStart !== bStart) return aStart.localeCompare(bStart);
+      if (aStart !== bStart) return aStart - bStart;
       return a.localeCompare(b);
   });
 
@@ -308,7 +314,7 @@ function buildEPGInner(matches){
         var w1 = m1.status==='live'?0:(m1.status==='upcoming'?1:2);
         var w2 = m2.status==='live'?0:(m2.status==='upcoming'?1:2);
         if(w1 !== w2) return w1 - w2;
-        return m1.startTime.localeCompare(m2.startTime);
+        return comparerHeures(m1, m2, jourGrille);
     });
     return lgMap[k];
   });
@@ -671,10 +677,7 @@ function buildEPGInner(matches){
                   var wa = a.status === 'live' ? 0 : (a.status === 'finished' ? 2 : 1);
                   var wb = b.status === 'live' ? 0 : (b.status === 'finished' ? 2 : 1);
                   if (wa !== wb) return wa - wb;
-                  if (!a.startTime && !b.startTime) return 0;
-                  if (!a.startTime) return 1;
-                  if (!b.startTime) return -1;
-                  return a.startTime.localeCompare(b.startTime);
+                  return comparerHeures(a, b, getEstDateStrFromDate(TARGET_DATE));
               });
               renderMatches(sorted, host, k, true, subId);
           });
@@ -926,18 +929,29 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               var mM = parseInt(parts[1], 10);
 
               var duration = m.durationMinutes || 105;
-              if (m.status === 'live') {
-                  var matchStartMins = mH * 60 + mM;
+              /* Match d'hier soir qui déborde sur cette nuit (js/nuit.js) : son départ est
+                 négatif par rapport au minuit de la grille ; sa case commence à 00:00, sur
+                 ce qui lui reste. */
+              var debutGrille = minutesDansLaJournee(m, jourGrille);
+              var dHierSoir = debutGrille !== null && debutGrille < 0;
+              if (m.status === 'live' && (!dHierSoir || grilleDuJour)) {
+                  var matchStartMins = dHierSoir ? debutGrille : mH * 60 + mM;
                   var tempCurrentMins = currentMins;
-                  if (tempCurrentMins < matchStartMins && (matchStartMins - tempCurrentMins) > 12 * 60) {
-                      tempCurrentMins += 24 * 60; // wrap around midnight
-                  } else if (matchStartMins < tempCurrentMins && (tempCurrentMins - matchStartMins) > 12 * 60) {
-                      matchStartMins += 24 * 60; // match start is near midnight previous day
+                  if (!dHierSoir) {
+                      if (tempCurrentMins < matchStartMins && (matchStartMins - tempCurrentMins) > 12 * 60) {
+                          tempCurrentMins += 24 * 60; // wrap around midnight
+                      } else if (matchStartMins < tempCurrentMins && (tempCurrentMins - matchStartMins) > 12 * 60) {
+                          matchStartMins += 24 * 60; // match start is near midnight previous day
+                      }
                   }
                   var matchEndMins = matchStartMins + duration;
                   if (tempCurrentMins > matchEndMins - 15) {
                       duration = (tempCurrentMins - matchStartMins) + 15;
                   }
+              }
+              if (dHierSoir) {
+                  duration = Math.max(duration + debutGrille, 15);
+                  mH = 0; mM = 0;
               }
 
               b.style.setProperty('--start-h', mH);

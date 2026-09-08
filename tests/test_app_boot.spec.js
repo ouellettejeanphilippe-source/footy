@@ -1084,3 +1084,97 @@ test('sans nouvelle d\'ESPN, un match trop long passe à « Fin ? » et quitte l
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
+
+/* ═══ La nuit appartient à la veille (8 septembre 2026) ═══════════════════════════
+
+   « Ya des matchs qui finissent dans la nuit. » À 00:30, le match de base-ball
+   commencé à 22:05 est en septième manche. Mais « aujourd'hui » venait de changer, et
+   tout était filtré sur `matchDate === aujourd'hui` : plus de match dans la grille ni
+   dans le Live, ESPN relu pour la seule date du jour (donc plus de score), liens du
+   cache serveur écartés. Ce test rejoue exactement cette nuit-là, ESPN simulé : le
+   jour demandé ET la veille sont lus, seul ce qui déborde sur la nuit est gardé, la
+   case du Guide commence à 00:00 sur ce qui reste, et le score continue de suivre.
+
+   Le service worker est bloqué : il servirait sinon sa copie de data/schedule.json. */
+test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:30, dans le Live, la grille et les scores', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+
+  // 00:30 à New York, le 8 septembre 2026 (heure d'été : UTC−4).
+  const NUIT = new Date(Date.UTC(2026, 8, 8, 4, 30));
+  expect(estParts(NUIT)).toEqual({ jour: '2026-09-08', minutes: 30 });
+  await page.clock.setFixedTime(NUIT);
+
+  const etat = { score: [2, 1], demandes: {} };
+  const evenement = (id, iso, state, score) => ({
+    id, date: iso, season: { type: 2 },
+    status: { type: { state, shortDetail: state === 'in' ? 'Top 7th' : '' }, displayClock: null, period: state === 'in' ? 7 : 0 },
+    competitions: [{ id: id + 'c', date: iso, competitors: [
+      { homeAway: 'home', team: { displayName: 'Los Angeles Dodgers', name: 'Dodgers', logo: '' }, score: String(score[0]) },
+      { homeAway: 'away', team: { displayName: 'San Francisco Giants', name: 'Giants', logo: '' }, score: String(score[1]) }
+    ] }]
+  });
+  await page.route('**/*', (route) => {
+    const u = route.request().url();
+    if (u.startsWith(origin)) return route.continue();
+    const espn = /site\.api\.espn\.com\/apis\/site\/v2\/sports\/([^?]+)\/scoreboard\?dates=(\d{8})/.exec(u);
+    if (!espn) return route.abort();
+    const chemin = espn[1], jour = espn[2];
+    etat.demandes[jour] = (etat.demandes[jour] || 0) + 1;
+    let events = [];
+    if (chemin === 'baseball/mlb' && jour === '20260907') {
+      events = [
+        evenement('nuit1', '2026-09-08T02:05Z', 'in', etat.score),   // hier 22:05, en cours : déborde sur cette nuit
+        evenement('nuit3', '2026-09-07T23:05Z', 'post', [5, 4])      // hier 19:05, fini à 22:05 : n'a rien à faire ici
+      ];
+    }
+    if (chemin === 'baseball/mlb' && jour === '20260908') {
+      events = [evenement('nuit2', '2026-09-08T05:05Z', 'pre', [0, 0])]; // 01:05 cette nuit, à venir
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ leagues: [{ name: 'MLB' }], events }) });
+  });
+  await attendreGrille(page);
+
+  expect(etat.demandes['20260908'], 'ESPN lu pour le jour').toBeGreaterThan(0);
+  expect(etat.demandes['20260907'], 'et pour la veille, puisqu\'il fait nuit').toBeGreaterThan(0);
+
+  const grille = await page.evaluate(() => {
+    const m = (id) => window.S.matchMap.get(id);
+    const carte = (id) => document.getElementById('mb-' + id);
+    return {
+      filtre: window.S.filter,
+      nuit1: m('espn_nuit1') && { statut: m('espn_nuit1').status, jour: m('espn_nuit1').matchDate, heure: m('espn_nuit1').startTime, score: m('espn_nuit1').score },
+      nuit2: m('espn_nuit2') && { statut: m('espn_nuit2').status, jour: m('espn_nuit2').matchDate, heure: m('espn_nuit2').startTime },
+      nuit3: !!m('espn_nuit3'),
+      carteNuit1: carte('espn_nuit1') && carte('espn_nuit1').classList.contains('live'),
+      carteNuit2: !!carte('espn_nuit2')
+    };
+  });
+  expect(grille.filtre).toBe('live');
+  expect(grille.nuit1, 'le match d\'hier soir est dans la journée').toEqual({ statut: 'live', jour: '2026-09-07', heure: '22:05', score: [2, 1] });
+  expect(grille.nuit2, 'le match de cette nuit aussi').toEqual({ statut: 'upcoming', jour: '2026-09-08', heure: '01:05' });
+  expect(grille.nuit3, 'celui d\'hier soir qui a fini avant minuit, non').toBeFalsy();
+  expect(grille.carteNuit1, 'le Live montre le match de 22:05 en direct').toBeTruthy();
+  expect(grille.carteNuit2, 'et celui de 01:05 comme imminent').toBeTruthy();
+
+  // Guide : la case du match d'hier commence à 00:00 et ne couvre que ce qui lui reste (01:05).
+  await page.evaluate(() => window.applyFilter('all'));
+  await page.waitForTimeout(500);
+  const cases = await page.evaluate(() => {
+    const lire = (id) => { const b = document.getElementById('mb-' + id); return b && { h: b.style.getPropertyValue('--start-h'), m: b.style.getPropertyValue('--start-m'), d: b.style.getPropertyValue('--duration-m') }; };
+    return { nuit1: lire('espn_nuit1'), nuit2: lire('espn_nuit2') };
+  });
+  expect(cases.nuit1, 'hier 22:05 + 3 h : de 00:00 à 01:05 sur la grille du jour').toEqual({ h: '0', m: '0', d: '65' });
+  expect(cases.nuit2, 'cette nuit 01:05 : à sa place').toEqual({ h: '1', m: '5', d: '180' });
+
+  // Le score continue de suivre : le rafraîchissement relit la veille tant qu'il fait nuit.
+  etat.score = [3, 1];
+  const suivi = await page.evaluate(() => window.backgroundUpdateGuide(new Date()).then(() => window.S.matchMap.get('espn_nuit1').score));
+  expect(suivi, 'le score du match d\'hier soir a bougé').toEqual([3, 1]);
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  await ctx.close();
+});

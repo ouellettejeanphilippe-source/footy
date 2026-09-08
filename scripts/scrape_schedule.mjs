@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { JSDOM } from 'jsdom';
+import { appartientAuJour, nuitEnCours, veille } from '../js/nuit.js';
 
 // We emulate some DOM/window globals required by `scrapers.js` regex parsing if needed
 const dom = new JSDOM();
@@ -390,7 +391,9 @@ async function run() {
     const promises = espnPaths.map(path => fetchEspnSchedule(path, todayStr));
     const results = await Promise.all(promises);
 
-    results.forEach(res => {
+    /* `seulementLaNuit` : passe sur la veille (js/nuit.js), dont on ne garde que les
+       matchs qui débordent sur cette nuit. */
+    const traiterEspn = (res, seulementLaNuit) => {
         if(!res || !res.data || !res.data.events) return;
         const data = res.data;
         const path = res.path;
@@ -465,15 +468,30 @@ async function run() {
                     status, score, minute, streamLinks: [], streamsLoaded: false, source: 'api', isPlayoff
                 };
 
+                if(seulementLaNuit && !appartientAuJour(matchObj, targetDateStr)) return;
                 if(!baseMatchesById[matchObj.id]) {
                     baseMatches.push(matchObj);
                     baseMatchesById[matchObj.id] = matchObj;
                 }
             });
         });
-    });
+    };
+    results.forEach((res) => traiterEspn(res, false));
 
     console.log(`Parsed ${baseMatches.length} ESPN matches.`);
+
+    /* La nuit appartient à la veille (js/nuit.js) : un cache produit avant 06:00 (heure de
+       New York) relit la veille et garde ce qui déborde sur cette nuit — le match de 22:05
+       encore en cours à 00:30 — pour que le navigateur qui lit ce cache le voie aussi. */
+    const [hNow, mNow] = getEstTimeStrFromDate(new Date()).split(':').map(Number);
+    const veilleStr = veille(targetDateStr);
+    if (veilleStr && nuitEnCours(hNow * 60 + mNow)) {
+        const veilleEspn = veilleStr.replace(/-/g, '');
+        const avant = baseMatches.length;
+        const resultsVeille = await Promise.all(espnPaths.map(path => fetchEspnSchedule(path, veilleEspn)));
+        resultsVeille.forEach((res) => traiterEspn(res, true));
+        console.log(`Nuit : ${baseMatches.length - avant} match(s) de la veille (${veilleStr}) débordant sur cette nuit.`);
+    }
 
     // F1 & IndyCar
     const f1Html = await fetchPage('https://ics.ecal.com/ecal-sub/65cfbda721adce1847679093/Formula%201.ics');
