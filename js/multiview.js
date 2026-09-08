@@ -1749,7 +1749,16 @@ export function updateMultivisionLayout() {
 
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
-                iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;';
+                /* Fond noir et `color-scheme: dark` sur le cadre lui-même (8 septembre 2026,
+                   « background toujours blanc ») : tant que la page du site n'a rien peint —
+                   chargement, page vide, lecteur qui n'occupe pas toute la hauteur — le
+                   navigateur affichait du BLANC au milieu d'une application sombre. Ces deux
+                   déclarations valent pour la zone que le cadre n'a pas encore peinte, et pour
+                   les pages qui ne fixent pas leur propre fond. Une page qui, elle, déclare un
+                   fond blanc reste blanche : son document est d'une autre origine, aucune
+                   feuille de style d'ici ne l'atteint — c'est le script utilisateur qui la
+                   nettoie, ou le bouton ⤢ de la tuile qui recadre sur la vidéo. */
+                iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;background:#000;color-scheme:dark;';
                 iframe.setAttribute('allowfullscreen', 'true');
                 iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
                 /* Aucun attribut `sandbox` : retiré le 5 septembre 2026 sur demande répétée de
