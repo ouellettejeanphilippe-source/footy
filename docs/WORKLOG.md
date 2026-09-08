@@ -2,6 +2,16 @@
 ## En cours
 
 ## Fait
+- 2026-09-08 - **« Ajouter logos WWE, F1, etc. »** `getLogo` connaissait déjà ces deux-là, mais sur le nom EXACT (`lowerName === 'raw'`) : « RAW #1737 », le libellé qu'ESPN emploie réellement, n'y répondait pas — et depuis que les doublons du même spectacle sont réunis sur la première entrée, c'est justement celui-là qui restait, avec son carré gris « R# ».
+  - `js/db.js` : lecture par MOTS ENTIERS. `\braw\b` reconnaît « raw #1737 » et « wwe monday night raw », et ne reconnaît jamais « crawley town » — un club anglais bien réel qui contient les mêmes lettres (le nom garde ici ses espaces, contrairement à `normName`). Ajoutés : AEW (Dynamite, Rampage, Collision), TNA/Impact, les séances de F1 (« F1 Main Race » et pas seulement les Grands Prix), UFC et PFL.
+  - **Les cinq adresses ont été vérifiées une par une** chez ESPN (`leagues/500/…`) : wwe, aew, f1, ufc, pfl répondent 200. NASCAR, MotoGP, IndyCar, boxe, MMA générique répondent 404 — elles ne sont donc PAS inventées, le blason générique vaut mieux qu'un lien mort.
+  - `js/api.js` : la réunion des doublons fait suivre `homeLogo`/`awayLogo` de l'entrée écartée, pour que garder la première ne coûte jamais son blason à la carte.
+  - Tests : 8 cas ajoutés à `tests/getLogo.test.js`, dont « Crawley Town garde le sien ». Vérifié au rendu : la carte WWE affiche `500/wwe.png`.
+- 2026-09-08 - **« Créer favicon. »** Il n'y en avait **aucune** : ni `<link rel="icon">` dans les pages, ni fichier à la racine. Le navigateur demandait `/favicon.ico`, recevait un 404, et l'onglet comme l'écran d'accueil restaient vides. Le manifeste ne portait que deux SVG en data-URI, qu'iOS ignore pour l'écran d'accueil.
+  - `icons/favicon.svg` : dessinée dans le langage des cartes — fond bleu nuit en dégradé, liseré indigo, triangle de lecture, et la pastille du direct en dégradé rouge → rose. Une forme pleine, un seul symbole, un accent : elle reste lisible à 16 px (vérifié au rendu).
+  - PNG produits depuis ce SVG par Chromium (32, 180, 192, 512) : `favicon-32` pour les navigateurs sans SVG, `apple-touch-icon` (180) pour l'écran d'accueil iOS, 192 et 512 pour le manifeste, la 512 servant aussi d'icône « maskable » pour qu'Android ne la rogne pas de travers.
+  - Déclarée dans `index.html` **et** `legacy.html`, pointée par `manifest.json` (plus aucun data-URI), pré-cachée par `sw.js`. `CACHE_NAME` et `VERSION_APP` → `sports-guide-v13`.
+  - Tests : `tests/unit_favicon.test.js` (4 groupes, ajouté à `npm test`) — les fichiers existent et **les PNG font bien la taille annoncée** (signature et en-tête IHDR lus, un fichier au bon nom mais au mauvais format ne se verrait pas autrement) ; les deux pages les déclarent ; le manifeste pointe vers des fichiers présents ; les icônes sont pré-cachées et `VERSION_APP` suit `CACHE_NAME`. Suite complète verte.
 - 2026-09-08 - **« Raw, c'est WWE, ça se peut que ça soit pas identifié Raw mais WWE, comme F1. »** Exact, et mesuré le jour même : **une seule soirée portait trois noms**, dont deux venaient d'ESPN lui-même.
 
     | nom | provenance | liens |

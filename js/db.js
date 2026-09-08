@@ -509,11 +509,33 @@ export function getLogo(teamName) {
     if(!teamName) return null;
     var lowerName = teamName.toLowerCase().trim();
 
-    if (lowerName === 'wwe' || lowerName === 'raw' || lowerName === 'smackdown' || lowerName === 'nxt' || lowerName.includes('wrestlemania')) {
-        return 'https://a.espncdn.com/i/teamlogos/leagues/500/wwe.png';
+    /* Épreuves et galas : ce n'est pas une équipe qui joue, c'est un ÉVÉNEMENT, et ce qui
+       l'identifie est le logo de sa fédération ou de son championnat.
+
+       La comparaison se faisait sur le nom EXACT (« wwe », « raw ») : « RAW #1737 », le
+       libellé qu'ESPN emploie réellement, n'y répondait pas — la carte affichait le carré
+       gris « R# ». On lit maintenant par MOTS ENTIERS : `\braw\b` reconnaît « raw #1737 »
+       et « wwe monday night raw », et ne reconnaît jamais « crawley town », qui contient
+       pourtant les mêmes lettres (le nom garde ici ses espaces, contrairement à normName).
+
+       Les adresses ci-dessous ont été vérifiées une par une le 8 septembre 2026. Celles qui
+       n'existent pas chez ESPN — NASCAR, MotoGP, IndyCar, boxe, MMA générique — ne sont pas
+       inventées : mieux vaut le blason générique qu'un lien mort. */
+    var LOGO_LIGUE = 'https://a.espncdn.com/i/teamlogos/leagues/500/';
+    if (/^aew\b/.test(lowerName) || /\b(dynamite|rampage|collision)\b/.test(lowerName)) {
+        return LOGO_LIGUE + 'aew.png';
     }
-    if (lowerName === 'f1' || lowerName.includes('grand prix') || lowerName.includes('formula 1') || lowerName.includes('gp ')) {
-        return 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
+    if (/^(wwe|tna|impact)\b/.test(lowerName) || /\b(raw|smackdown|nxt)\b/.test(lowerName) || lowerName.includes('wrestlemania')) {
+        return LOGO_LIGUE + 'wwe.png';
+    }
+    if (/^f1\b/.test(lowerName) || /\bformula\s*1\b/.test(lowerName) || lowerName.includes('grand prix') || lowerName.includes('gp ')) {
+        return LOGO_LIGUE + 'f1.png';
+    }
+    if (/\bufc\b/.test(lowerName)) {
+        return LOGO_LIGUE + 'ufc.png';
+    }
+    if (/^pfl\b/.test(lowerName)) {
+        return LOGO_LIGUE + 'pfl.png';
     }
     if (lowerName === 'indycar' || lowerName.includes('indy 500') || lowerName.includes('indianapolis 500') || lowerName.includes('indycar series')) {
         // Since we don't have a reliable direct link for IndyCar, use a UI avatar with IndyCar colors (Red and Black)

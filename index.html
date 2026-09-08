@@ -8,6 +8,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Sports Guide">
 <meta name="color-scheme" content="dark">
+<!-- Icône de l'application (8 septembre 2026). Il n'y en avait AUCUNE : le navigateur
+     demandait /favicon.ico, recevait un 404, et l'onglet comme l'écran d'accueil restaient
+     vides. Le SVG sert aux navigateurs modernes (net à toute taille), le PNG de 32 px aux
+     autres, et apple-touch-icon à l'écran d'accueil iOS, qui ignore le SVG. -->
+<link rel="icon" type="image/svg+xml" href="./icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <link rel="manifest" href="./manifest.json">
 <title>Guide des Sports</title>
 <script>try{if(localStorage.getItem('ui_legacy')==='1')location.replace('legacy.html'+location.search+location.hash);}catch(e){}</script>

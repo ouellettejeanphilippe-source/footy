@@ -1115,6 +1115,10 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
           for (var kS = 0; kS < garde.streamLinks.length; kS++) { if (garde.streamLinks[kS].url === lS.url) { connu = true; break; } }
           if (!connu) garde.streamLinks.push(lS);
       }
+      /* Les blasons suivent : deux entrées de la même soirée n'ont pas forcément les
+         mêmes, et garder la première ne doit pas coûter son logo à la carte. */
+      if (!garde.homeLogo && mS.homeLogo) garde.homeLogo = mS.homeLogo;
+      if (!garde.awayLogo && mS.awayLogo) garde.awayLogo = mS.awayLogo;
       if (!garde.matchUrl && mS.matchUrl) garde.matchUrl = mS.matchUrl;
       if (garde.streamLinks.length) garde.streamsLoaded = true;
   }

@@ -18,7 +18,7 @@
       fichier par fichier pour qu'une seule ressource absente ne fasse pas échouer
       l'installation entière. */
 
-const CACHE_NAME = 'sports-guide-v12';
+const CACHE_NAME = 'sports-guide-v13';
 
 const APP_SHELL = [
   './index.html',
@@ -54,6 +54,11 @@ const APP_SHELL = [
   './js/sources/streameast.js',
   './js/sources/vipleague.js',
   './js/sources/liveleagues.js',
+  './icons/favicon.svg',
+  './icons/favicon-32.png',
+  './icons/apple-touch-icon.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   './js/tv-navigation.js',
   './data/streams.json',
   './data/schedule.json'
