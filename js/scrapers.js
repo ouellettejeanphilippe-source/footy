@@ -1,5 +1,5 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
-import { extractPlayers, canonical, createRegistry, noteEmbedResult } from './extractors.js';
+import { extractPlayers, canonical, createRegistry } from './extractors.js';
 import { getBridgeStatus } from './embed-bridge.js';
 import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
@@ -460,65 +460,6 @@ export function parseIndycarIcs(txt) {
     return matches;
 }
 
-export function parseWWEIcs(txt) {
-    var matches = [];
-    try {
-        var lines = txt.split(/\r?\n/);
-        var unfoldedLines = [];
-        for (var j = 0; j < lines.length; j++) {
-            if (lines[j].startsWith(' ') || lines[j].startsWith('\t')) {
-                if (unfoldedLines.length > 0) {
-                    unfoldedLines[unfoldedLines.length - 1] += lines[j].substring(1);
-                }
-            } else {
-                unfoldedLines.push(lines[j]);
-            }
-        }
-
-        var currentEvent = null;
-
-        for (var i = 0; i < unfoldedLines.length; i++) {
-            var line = unfoldedLines[i];
-            if (line === 'BEGIN:VEVENT') {
-                currentEvent = {};
-            } else if (line === 'END:VEVENT') {
-                if (currentEvent && currentEvent.SUMMARY && currentEvent.DTSTART) {
-                    var dtstart = currentEvent.DTSTART;
-                    var dateObj = new Date(
-                        dtstart.substring(0, 4) + '-' +
-                        dtstart.substring(4, 6) + '-' +
-                        dtstart.substring(6, 8) + 'T' +
-                        (dtstart.length > 8 ? dtstart.substring(9, 11) + ':' + dtstart.substring(11, 13) + ':' + dtstart.substring(13, 15) + 'Z' : '00:00:00Z')
-                    );
-
-                    if (!isNaN(dateObj)) {
-                        var summary = currentEvent.SUMMARY.trim();
-
-                        matches.push({
-                            id: 'wwe_ics_' + summary.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + dtstart,
-                            homeTeam: 'WWE',
-                            awayTeam: summary,
-                            date: dateObj.toISOString()
-                        });
-                    }
-                }
-                currentEvent = null;
-            } else if (currentEvent) {
-                var splitIndex = line.indexOf(':');
-                if (splitIndex !== -1) {
-                    var keyRaw = line.substring(0, splitIndex);
-                    var value = line.substring(splitIndex + 1);
-                    var key = keyRaw.split(';')[0];
-                    currentEvent[key] = value.replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\n/g, ' ');
-                }
-            }
-        }
-    } catch (e) {
-        console.error('Error parsing WWE ICS', e);
-        lg('Error parsing WWE ICS', e);
-    }
-    return matches;
-}
 
 
 /* ══ PARSE SPORTSURGE ═════════════════ */
@@ -1966,15 +1907,6 @@ export function getEmbedRegistry() {
 export function saveEmbedRegistry() {
     safeStorageSetJSON('embed_registry', getEmbedRegistry());
 }
-/* Appelé par le lecteur : `embedded` vaut false quand l'iframe est restée vide
-   (X-Frame-Options). Deux refus sans aucun succès suffisent à basculer l'hôte
-   en ouverture d'onglet pour tous ses liens, présents et futurs. */
-export function recordEmbedResult(host, embedded) {
-    if (!host) return;
-    noteEmbedResult(getEmbedRegistry(), host, embedded);
-    saveEmbedRegistry();
-}
-
 /* Combien de flux réellement exploitables ce match porte-t-il ?
 
    La question n'est pas « combien de liens », mais « combien de liens qu'on peut jouer ».
@@ -3163,7 +3095,6 @@ window.parseStreameast = parseStreameast;
 window.parseF1Ics = parseF1Ics;
 window.parseIndycarIcs = parseIndycarIcs;
 window.parsePWHLSchedule = parsePWHLSchedule;
-window.parseWWEIcs = parseWWEIcs;
 window.parseSportsDbEvents = parseSportsDbEvents;
 window.describeStreamLink = describeStreamLink;
 window.isIndexPageUrl = isIndexPageUrl;
@@ -3183,5 +3114,4 @@ window.saveStreamCache = saveStreamCache;
 window.fetchSubPages = fetchSubPages;
 window.scrapeMatchFlux = scrapeMatchFlux;
 window.updateMatchUiAfterScrape = updateMatchUiAfterScrape;
-window.recordEmbedResult = recordEmbedResult;
 window.getEmbedRegistry = getEmbedRegistry;

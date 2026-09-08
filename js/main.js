@@ -969,8 +969,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-export var appTheaterTimer;
-
 // Menu toggle logic
 export function toggleMenu(e) {
   if (e) e.stopPropagation();
@@ -1473,7 +1471,6 @@ window.reevaluerFinsPresumees = reevaluerFinsPresumees;
 window.loadAll = loadAll;
 window.actualiserMaintenant = actualiserMaintenant;
 window.toggleSportFilters = toggleSportFilters;
-window.appTheaterTimer = appTheaterTimer;
 window.toggleMenu = toggleMenu;
 window.currentZoomLevel = currentZoomLevel;
 window.updateZoomDisplay = updateZoomDisplay;

@@ -31,8 +31,6 @@ export function fermerMenus() {
     if (ancreOuverte) { try { ancreOuverte.setAttribute('aria-expanded', 'false'); } catch (e) {} ancreOuverte = null; }
 }
 
-export function menuEstOuvert() { return !!menuOuvert; }
-
 /* Ramène le menu dans la fenêtre : sous le bouton par défaut, au-dessus s'il n'y a
    pas la place, et jamais hors des bords. */
 function positionner(menu, ancre) {

@@ -1,3 +1,0 @@
-## 2024-05-19 - Levenshtein Distance Algorithmic Optimization
-**Learning:** `js/match.js` defines a `levenshtein` distance function which was implemented using an unoptimized O(N*M) 2D array space complexity. Since this function is called inside the `stringSimilarity` scoring mechanism—which handles aggressive cross-validation and nested loop validation when matching arrays of scraped streams—the memory allocation pressure scales heavily.
-**Action:** Implemented a space-optimized O(min(N, M)) 1D array variation of the Levenshtein distance algorithm which recycles a single `row` array. This drastically reduces Garbage Collection (GC) pauses during large array merges.

@@ -8,19 +8,15 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - **Frontend** : HTML/CSS/JS (Vanilla JS, sans framework externe majeur) principalement concentré dans `index.html`.
 - **Backend / API** : Appels directs aux APIs (ex: ESPN) et scrapers de sites de streaming intégrés dans le client JS.
 - **PWA** : Service Worker (`sw.js`) basique et Manifest (`manifest.json`).
-- **Outils & Tests** : Node.js (avec Express, node-fetch, jsdom) et Playwright pour les tests UI (`package.json`).
-- **Utilitaires** : Python (`run_checks.py`, scripts divers de validation).
+- **Outils & Tests** : Node.js 22 (jsdom) et Playwright pour les tests (`package.json`, `npm test`). Aucune dépendance d'exécution : les scripts serveur (`scripts/*.mjs`) utilisent le `fetch` natif.
 
 ## Arborescence
 .
-├── .jules/               # Configuration et cache de l'agent
-├── __pycache__/          # Fichiers compilés Python
 ├── docs/                 # Documentation (ARCHITECTURE.md, WORKLOG.md)
-├── index.html            # Cœur de l'application (Monolithe de +9000 lignes, UI + Logique)
+├── index.html            # Coquille de l'application ; la logique vit dans js/
 ├── manifest.json         # Manifest de la PWA
 ├── multiview-cleaner.user.js # Script utilisateur pour nettoyer/encadrer les streams vidéo
-├── package.json          # Dépendances de développement (Playwright, jsdom, express)
-├── run_checks.py         # Script Python pour automatiser les tests locaux
+├── package.json          # Dépendances de développement (Playwright, jsdom)
 └── sw.js                 # Service worker (gestion du cache PWA)
 
 ## Modules et responsabilités
@@ -34,7 +30,7 @@ Application web/PWA monolithique servant de Guide TV sportif et agrégeant des s
 - **Data APIs** : `fetchGameStats()`, `fetchLeagueStandings()`. Polling sur ESPN. `updateLiveScores()` optimized with `matchCardCache`.
 - **Scrapers** : Fonctions de parsing (`parseOnHockey`, `parseFootybite`, `parseSportsurge`, `parseBuffstreams`, `parseMlbbite`, `parseNflbite`, `parseStreameast`, `parseTotalsportek`, `parseVipleague`, `parseMethstreams`, etc.) pour injecter les flux externes dans la liste des matchs de l'API.
 - **Normalisation** : `getOfficialTeamName()`, `formatLeagueName()`, `normName()`. Base de données de couleurs/logos hardcodée.
-- **Notes** : Dette technique majeure. Le fichier est extrêmement volumineux (>9000 lignes) et doit être découpé en différents fichiers (styles.css, app.js, config.js, scrapers.js).
+- **Notes** : le monolithe historique a été découpé ; `index.html` ne porte plus que la coquille, la logique vit dans les modules de `js/`.
 
 ### `sw.js`
 - **Rôle** : Service Worker fournissant les capacités PWA.
@@ -91,9 +87,6 @@ le monde, sans extension et sous Firefox.
 Le script porte donc le nettoyage visuel, le pont, et le blocage des popups (qui n'a
 plus d'autre chemin depuis le retrait du bac à sable).
 - **Exporte** : Rien, s'exécute automatiquement dans le DOM ciblé.
-
-### `run_checks.py`
-- **Rôle** : Exécuteur de tests et de validation syntaxique pour garantir la non-régression (invoqué souvent avant des commits).
 
 ## Flux de données principaux
 1. **Initialisation (Load)** : Chargement de `index.html` → Restauration de `userPrefs` → `loadAll()` → Vérification du cache du calendrier (ESPN) → Fetch du calendrier si >24h.
@@ -170,7 +163,7 @@ Chaque agrégateur publie son lecteur différemment — une `<iframe>` posée, u
 
 `js/extractors.js` (sans dépendance, comme `js/fetcher.js`) récolte tous les candidats par des stratégies indépendantes du site — `harvestIframes`, `harvestSwitchers` (gestionnaires `onclick`), `harvestRawDataAttrs` (tout attribut `data-*`, quel que soit son nom, en un balayage linéaire du HTML brut — c'est la forme la plus générale du « bouton qui change l'iframe »), `harvestJsonBlobs` (Next.js recollé + littéraux JSON isolés à parenthèses équilibrées, sans expression régulière paresseuse), `harvestAnchors`, `harvestEncoded` (base64, pourcent-encodage) — puis les note (`scoreCandidate`) : provenance structurelle, indices de chemin (`.m3u8`, `/embed/`…), domaine externe ou non, réputation de l'hôte. `extractPlayers(html, pageUrl, {registry})` renvoie la liste triée avec `kind: 'embed' | 'page'`.
 
-**Registre d'intégrabilité** (`getEmbedRegistry`/`recordEmbedResult`, `js/scrapers.js`, persistant sous `localStorage.embed_registry`) : impossible de savoir depuis une adresse si son hôte acceptera d'être affiché dans une iframe — c'est l'en-tête `X-Frame-Options`/`frame-ancestors` du serveur distant qui en décide, illisible depuis une iframe cross-origin en JavaScript. Deux sources l'alimentent : le script serveur (`readFramePolicy`, `scripts/scrape_streams.mjs`) lit ces en-têtes directement et les publie dans `data/streams.json.hostPolicy` — c'est la source fiable, injectée dans le registre client dès `loadPrefetchedStreams` (`js/main.js`) ; et le lecteur Multivision enregistre un refus quand l'utilisateur clique « Ouvrir dans un onglet » depuis l'avertissement affiché sur un lien classé « page » (`fallbackToIframe`, `js/multiview.js`) — un signal plus rare mais qui couvre les hôtes que le serveur n'a pas sondés (footybite.bid par exemple, dont `MATCH_PAGE_BLOCKED_HOSTS` empêche le serveur de visiter les pages).
+**Registre d'intégrabilité** (`getEmbedRegistry`, `js/scrapers.js`, persistant sous `localStorage.embed_registry`) : impossible de savoir depuis une adresse si son hôte acceptera d'être affiché dans une iframe — c'est l'en-tête `X-Frame-Options`/`frame-ancestors` du serveur distant qui en décide, illisible depuis une iframe cross-origin en JavaScript. Deux sources l'alimentent : le script serveur (`readFramePolicy`, `scripts/scrape_streams.mjs`) lit ces en-têtes directement et les publie dans `data/streams.json.hostPolicy` — c'est la source fiable, injectée dans le registre client dès `loadPrefetchedStreams` (`js/main.js`) ; et le lecteur Multivision enregistre un refus quand l'utilisateur clique « Ouvrir dans un onglet » depuis l'avertissement affiché sur un lien classé « page » (`fallbackToIframe`, `js/multiview.js`) — un signal plus rare mais qui couvre les hôtes que le serveur n'a pas sondés (footybite.bid par exemple, dont `MATCH_PAGE_BLOCKED_HOSTS` empêche le serveur de visiter les pages).
 
 Dans `extractStreamLinks`, le moteur repasse en complément des branches par site (étape « 5 bis ») : un lien déjà trouvé garde son libellé mais reçoit le classement du moteur (`topLevel` fait autorité) ; un lien nouveau est ajouté. Testé sur des domaines fictifs (`tests/unit_extractors.test.js`) pour garantir qu'aucun test ne dépend du nom d'un site réel.
 

@@ -73,5 +73,4 @@ Depuis la version 1.2, il sert aussi de **pont d'affichage** : certaines pages r
 
 ## 📜 Dictionnaire des Fonctions JavaScript
 
-Pour la liste complète et détaillée des fonctions JavaScript, veuillez consulter le fichier **[SUIVI_FONCTIONS.md](./SUIVI_FONCTIONS.md)**.
 Consultez le fichier [FEATURES.md](FEATURES.md) pour une documentation détaillée des fonctionnalités par onglet et menu.

@@ -15,14 +15,14 @@ Avant toute modification : lire `docs/ARCHITECTURE.md`, lire `docs/WORKLOG.md`, 
 - **Patches et scripts jetables en cascade** : La création de scripts jetables (ex: `fix_*.py`, `test_*.js`, etc.) à la racine du projet est tolérée UNIQUEMENT pendant le processus de réflexion. **Vous devez impérativement et systématiquement supprimer TOUS les fichiers temporaires créés (scripts de test, images de debug, fichiers textes) avant de terminer votre tâche.** C'est un prérequis strict pour chaque commit.
 - **Suppression à l'aveugle** : Ne supprimez rien sans faire un grep complet. De nombreuses fonctions dépendent les unes des autres de manière implicite.
 - **Recréation d'une fonction existante** : `index.html` contient plus de 130 fonctions. Par exemple, il existe deux déclarations de `cacheLogo`. Vérifiez toujours si une fonction utilitaire (`getOfficialTeamName`, `normName`, `esc`, `pad`) n'existe pas déjà.
-- **Ajout de logique lourde dans `index.html`** : Le fichier fait plus de 9000 lignes. Toute nouvelle fonctionnalité DOIT être créée dans un fichier externe s'il n'y a pas d'obligation stricte.
+- **Ajout de logique lourde dans `index.html`** : le fichier n'est plus que la coquille de l'application ; la logique vit dans les modules de `js/`. Toute nouvelle fonctionnalité DOIT être créée dans un fichier externe s'il n'y a pas d'obligation stricte.
 - **Modification du service worker sans bump** : Toute modification de `sw.js` doit s'accompagner d'une mise à jour de `CACHE_NAME`.
 - **Modification du manifest** : Toute modification de `manifest.json` doit être loggée dans le WORKLOG.
 
 ## Règles spécifiques au stack détecté
 - Application Front-End (PWA) reposant quasi exclusivement sur un unique fichier `index.html` (qui embarque HTML, CSS, et JS applicatif).
 - Multiview Cleaner : Script GreaseMonkey/Tampermonkey embarqué (`multiview-cleaner.user.js`).
-- Scripts Python et JS à la racine : Présence de code Python gérant vraisemblablement des routines d'audit (`check_db.py`, `check_js.py`, `run_checks.py`), et un `package.json` contenant `playwright`, `jsdom`, `node-fetch`, `express`. L'environnement est principalement testé localement via protocole `file://` avec Playwright.
+- Outils : `package.json` ne porte que des dépendances de développement (`@playwright/test`, `playwright`, `jsdom`) ; `npm test` enchaîne les tests unitaires Node et deux suites Playwright. Aucun script Python : les seuls scripts à la racine sont les `.mjs` de `scripts/`, lancés par les workflows. L'environnement est principalement testé localement via protocole `file://` avec Playwright.
 
 ## Règles PWA spécifiques à ce repo
 - **Service worker** : `./sw.js`
