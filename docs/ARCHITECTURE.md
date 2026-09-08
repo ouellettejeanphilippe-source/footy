@@ -105,7 +105,8 @@ Minuteries et réveils :
 
 ### 5.1 Sources
 
-- **ESPN** : `ESPN_LEAGUES` (`js/api.js`) associe 74 noms de ligue à 48 chemins distincts ; chaque chemin est interrogé sur `https://site.api.espn.com/apis/site/v2/sports/<chemin>/scoreboard?dates=<AAAAMMJJ>`, en direct, sans proxy, délai 8 s. Le compte des tentatives et des échecs (`espnInfo`) est affiché dans Logs → Cet appareil. La liste doit rester identique à celle de `scripts/scrape_schedule.mjs` (`unit_leagues` le vérifie).
+- **ESPN** : `ESPN_LEAGUES` (`js/api.js`) associe 74 noms de ligue à 47 chemins distincts ; chaque chemin est interrogé sur `https://site.api.espn.com/apis/site/v2/sports/<chemin>/scoreboard?dates=<AAAAMMJJ>`, en direct, sans proxy, délai 8 s. Le compte des tentatives et des échecs (`espnInfo`) est affiché dans Logs → Cet appareil. La liste doit rester identique à celle de `scripts/scrape_schedule.mjs` (`unit_leagues` le vérifie).
+- **Six chemins à la fois** (`ESPN_CONCURRENCE`, `enPiscine`). Un navigateur n'ouvre que six connexions par hôte, et `AbortSignal.timeout` compte depuis la **création** du signal, pas depuis l'envoi : lancés tous ensemble, les derniers chemins expiraient dans la file d'attente sans avoir été envoyés. La nuit, où la veille est relue aussi, cela faisait 94 requêtes simultanées. Une seule file couvre les deux journées, et une tâche qui échoue n'arrête pas sa voie.
 - **Annexes** : LoL Esports (API), PWHL (page de calendrier), F1 et IndyCar (fichiers ICS), TheSportsDB (sports de combat), wwe.com (JSON des événements). Les mêmes six sources existent dans le script serveur.
 
 ### 5.2 D'où vient le calendrier affiché
@@ -116,7 +117,11 @@ Minuteries et réveils :
 2. sinon, pour aujourd'hui, `data/schedule.json` si son `fetchDate` est le jour ;
 3. sinon ESPN et les annexes en direct (`fetchAndProcessApiMatches`), avec un repli sur le cache local même périmé si tout échoue, et un avertissement.
 
-Deux garde-fous dans la lecture en direct : un résultat **vide** n'est jamais écrit comme calendrier du jour ; et une passe où **aucune requête ESPN n'a répondu** est un échec même si une source annexe a fourni un match (sinon un gala de catch devenait le calendrier entier).
+Trois garde-fous dans la lecture en direct :
+
+- un résultat **vide** n'est jamais écrit comme calendrier du jour ;
+- une passe où **aucune requête ESPN n'a répondu** est un échec même si une source annexe a fourni un match (sinon un gala de catch devenait le calendrier entier) ;
+- une passe **partielle** (certains chemins muets) ne décrit pas la journée entière : `fusionnerPassePartielle` garde du calendrier connu ce que la passe n'a pas revu, et seule une passe **complète** fait autorité et élague. Sans cela, une ligue dont le chemin échouait disparaissait du calendrier, puis de la grille à la passe suivante, avec ses scores — c'est ce qui faisait apparaître et disparaître les scores d'un tour à l'autre. Le rafraîchissement des scores emprunte ce chemin toutes les cinq minutes et à chaque retour au premier plan. `window.calendrierInfo.source` indique `espn (partiel)` dans ce cas.
 
 ### 5.3 L'objet match
 
@@ -271,7 +276,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 | `scrape_streams.yml` | à :17 et :47 chaque heure, à la demande (une exécution à la fois, 30 min max) | `node --max-old-space-size=8192 scripts/scrape_streams.mjs`, puis `scripts/verify_players.mjs` (sans faire échouer le passage) | `data/streams.json`, `domains.json` |
 | `domains-watch.yml` | tous les jours à 05:00 UTC, à la demande | `npm run test:domains` | rien (surveillance ; sortie de `npm test` parce que Cloudflare répond selon l'adresse du runner) |
 
-- `scripts/scrape_schedule.mjs` reconstruit le calendrier du jour (ESPN et annexes) avec ses propres copies des aides de date et en important `js/nuit.js` ; avant 06:00 (heure de New York) il relit aussi la veille.
+- `scripts/scrape_schedule.mjs` reconstruit le calendrier du jour (ESPN et annexes) avec ses propres copies des aides de date et en important `js/nuit.js` ; avant 06:00 (heure de New York) il relit aussi la veille. Mêmes règles que le client : six chemins à la fois, et une passe partielle **fusionne** avec le `data/schedule.json` déjà publié du même jour au lieu de le remplacer — sinon un passage où quelques chemins échouent publiait un calendrier amputé pour tous les appareils jusqu'au suivant. Aucune réponse du tout : le fichier n'est pas touché.
 - `scripts/scrape_streams.mjs` réutilise **les parseurs du client** dans un DOM jsdom (`__NO_AUTOSTART__`), avec un `fetch` direct (User-Agent de navigateur, Referer), lit chaque source et ses sous-pages, puis les pages de match (`--limit`, 900 par défaut), relève la politique d'intégration de chaque hôte, promeut les miroirs et réécrit `domains.json`.
 - `scripts/verify_players.mjs` charge dans un vrai Chromium, encadrés comme une tuile, les lecteurs des matchs en direct ou imminents (budget 5 min, 150 au plus) et pose `verified` par lien et `hostPlay` par hôte.
 

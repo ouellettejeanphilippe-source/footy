@@ -128,6 +128,68 @@ function noterEspn(ok, err) {
   return ok;
 }
 
+/* Combien de chemins ESPN sont interrogés EN MÊME TEMPS.
+
+   Ils partaient tous d'un coup : 47 requêtes vers le même hôte, et 94 pendant la nuit
+   depuis que la veille est relue. Un navigateur n'ouvre que six connexions par hôte ;
+   les autres attendent leur tour. Or `AbortSignal.timeout(8000)` compte à partir de la
+   CRÉATION du signal, pas de l'envoi : sur un réseau lent, l'attente en file mange le
+   délai et les dernières requêtes expirent sans avoir jamais été envoyées. C'est ce qui
+   rend les échecs ESPN partiels et intermittents, variables selon l'appareil et le
+   réseau. Six à la fois : le délai mesure alors la requête, pas la file d'attente. */
+export var ESPN_CONCURRENCE = 6;
+
+/* Exécute `faire` sur chaque élément, `taille` à la fois. Une tâche qui échoue n'arrête
+   pas sa voie : sans ce filet, une seule réponse illisible priverait la passe de tous
+   les chemins restants de cette voie. */
+export function enPiscine(items, taille, faire) {
+    var i = 0;
+    function suivant() {
+        if (i >= items.length) return Promise.resolve();
+        var item = items[i++];
+        return Promise.resolve()
+            .then(function() { return faire(item); })
+            .catch(function(e) { lg('ESPN', 'tâche ignorée : ' + ((e && e.message) || e)); })
+            .then(suivant);
+    }
+    var voies = [];
+    for (var v = 0; v < Math.max(1, Math.min(taille, items.length)); v++) voies.push(suivant());
+    return Promise.all(voies);
+}
+
+/* Une passe où CERTAINES requêtes ESPN ont échoué ne décrit pas la journée entière :
+   les ligues dont le chemin n'a pas répondu en sont simplement absentes. Écrite telle
+   quelle, elle effaçait ces ligues du calendrier du jour — et le rafraîchissement des
+   scores, qui passe par là toutes les cinq minutes et à chaque retour au premier plan,
+   la réécrivait sans cesse. D'où « les scores sont parfois là, parfois pas là » : des
+   matchs entiers disparaissaient à la passe suivante, puis revenaient quand leur
+   chemin répondait de nouveau.
+
+   On fusionne donc : ce qui vient d'ESPN fait foi, ce qu'on connaissait déjà et qu'on
+   n'a pas revu est conservé. Un match réellement retiré par ESPN survit jusqu'à la
+   prochaine passe COMPLÈTE, qui elle fait autorité et élague — c'est le prix, bien
+   moindre que de perdre des ligues entières. */
+export function fusionnerPassePartielle(frais, cache, jour) {
+    frais = Array.isArray(frais) ? frais : [];
+    var connus = (cache && cache.fetchDate === jour && Array.isArray(cache.matches)) ? cache.matches : [];
+    if (!connus.length) return frais;
+    var cle = function(m) {
+        if (!m) return null;
+        if (m.id !== undefined && m.id !== null && m.id !== '') return 'id:' + m.id;
+        return 'x:' + String(m.homeTeam || '') + '|' + String(m.awayTeam || '') + '|' + String(m.matchDate || '') + '|' + String(m.startTime || '');
+    };
+    var vus = {};
+    for (var i = 0; i < frais.length; i++) { var k = cle(frais[i]); if (k) vus[k] = true; }
+    var sortie = frais.slice();
+    for (var j = 0; j < connus.length; j++) {
+        var kc = cle(connus[j]);
+        if (!kc || vus[kc]) continue;
+        vus[kc] = true;
+        sortie.push(connus[j]);
+    }
+    return sortie;
+}
+
 export function fetchEspnSchedule(leaguePath, dateStr) {
   var url = 'https://site.api.espn.com/apis/site/v2/sports/' + leaguePath + '/scoreboard?dates=' + dateStr;
   return fetch(url, { signal: AbortSignal.timeout(8000) })
@@ -438,14 +500,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
   }
 
   // Always fetch directly when falling back to this method
-  espnPaths.forEach(function(path) {
-      promises.push(
-        fetchEspnSchedule(path, todayStr).then(function(data) {
-          if(!data || !data.events) return;
-          processEspnData(data, path);
-        })
-      );
-  });
+  var taches = espnPaths.map(function(path) { return { path: path, jour: todayStr, nuit: false }; });
 
   /* La nuit appartient à la veille (js/nuit.js). Pendant la nuit, pour le jour courant,
      on relit aussi la veille et on n'en garde que les matchs qui débordent sur cette
@@ -457,15 +512,16 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
   if (veilleStr && targetDateStr === getEstDateStrFromDate(maintenant)
       && nuitEnCours(parseInt(minutesMaintenant[0], 10) * 60 + parseInt(minutesMaintenant[1], 10))) {
       var veilleEspn = veilleStr.replace(/-/g, '');
-      espnPaths.forEach(function(path) {
-          promises.push(
-            fetchEspnSchedule(path, veilleEspn).then(function(data) {
-              if(!data || !data.events) return;
-              processEspnData(data, path, true);
-            })
-          );
-      });
+      espnPaths.forEach(function(path) { taches.push({ path: path, jour: veilleEspn, nuit: true }); });
   }
+
+  /* Une seule file pour les deux journées : la nuit, c'est 94 requêtes, et les lancer
+     toutes ensemble revient à les faire expirer en file d'attente (voir ESPN_CONCURRENCE). */
+  promises.push(enPiscine(taches, ESPN_CONCURRENCE, function(t) {
+      return fetchEspnSchedule(t.path, t.jour).then(function(data) {
+          if (data && data.events) processEspnData(data, t.path, t.nuit);
+      });
+  }));
 
   promises.push(
       Promise.all([
@@ -826,7 +882,8 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
          requêtes n'a répondu, ce qu'on tient n'est pas un calendrier, c'est une miette —
          un échec, comme la liste vide. */
       var tentatives = espnInfo.tentatives - espnAvant.tentatives;
-      var reponses = tentatives - (espnInfo.echecs - espnAvant.echecs);
+      var echecs = espnInfo.echecs - espnAvant.echecs;
+      var reponses = tentatives - echecs;
       if (tentatives > 0 && reponses === 0) {
           lg('Calendrier', 'ESPN injoignable (' + tentatives + ' requêtes sans réponse) : ' + baseMatches.length + ' match(s) d\'autres sources écartés, le calendrier local est conservé');
           return [];
@@ -835,9 +892,24 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           lg('Calendrier', 'aucune réponse de l\'API : le calendrier local est conservé');
           return baseMatches;
       }
-      safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: baseMatches });
-      if (typeof window !== 'undefined') window.calendrierInfo = { source: 'espn', ageMin: 0, count: baseMatches.length };
-      return baseMatches;
+
+      /* Passe PARTIELLE : voir `fusionnerPassePartielle`. Une ligue dont le chemin n'a pas
+         répondu ne doit pas disparaître de la journée — c'est ce qui faisait clignoter les
+         scores d'une passe à l'autre. Seule une passe complète fait autorité et élague. */
+      var complete = echecs === 0;
+      var aEcrire = baseMatches;
+      if (!complete) {
+          aEcrire = fusionnerPassePartielle(baseMatches, safeStorageGetJSON('api_calendar_cache_' + todayStr), todayStr);
+          lg('Calendrier', 'passe partielle (' + reponses + '/' + tentatives + ' réponses ESPN) : '
+             + baseMatches.length + ' match(s) relus, ' + (aEcrire.length - baseMatches.length) + ' conservé(s) du calendrier connu');
+      }
+      aEcrire.sort(function(a, b) {
+          return (a.startTime > b.startTime) ? 1 : ((a.startTime < b.startTime) ? -1 : 0);
+      });
+
+      safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: aEcrire });
+      if (typeof window !== 'undefined') window.calendrierInfo = { source: complete ? 'espn' : 'espn (partiel)', ageMin: 0, count: aEcrire.length, reponses: reponses, tentatives: tentatives };
+      return aEcrire;
   });
 }
 

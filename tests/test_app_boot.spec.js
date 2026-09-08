@@ -1208,3 +1208,122 @@ test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:3
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
   await ctx.close();
 });
+
+/* ═══ Passe ESPN partielle (8 septembre 2026) ═══════════════════════════════════════
+
+   « ESPN, les scores sont parfois là, parfois pas là. »
+
+   Le calendrier du jour vient de 47 chemins ESPN. Le garde-fou ne voyait que le cas où
+   AUCUN n'avait répondu : quand 46 répondaient et un échouait, le résultat — amputé de
+   la ligue muette — était écrit tel quel comme LE calendrier du jour. La passe suivante
+   lisait ce calendrier amputé et les matchs de cette ligue disparaissaient de la grille,
+   leurs scores avec ; au tour d'après ils revenaient. Le rafraîchissement des scores
+   passe par ce chemin toutes les cinq minutes et à chaque retour au premier plan.
+
+   Ce test rejoue exactement cela : deux ligues, un score qui bouge, puis une seule des
+   deux qui répond. */
+test('une passe ESPN partielle ne fait pas disparaître les ligues muettes ni leurs scores', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+
+  // 20:00 à New York le 8 septembre 2026 ; les deux matchs ont commencé à 19:00.
+  const SOIR = new Date(Date.UTC(2026, 8, 9, 0, 0));
+  expect(estParts(SOIR)).toEqual({ jour: '2026-09-08', minutes: 20 * 60 });
+  await page.clock.setFixedTime(SOIR);
+
+  const etat = { nbaMuette: false, scoreMlb: [3, 1], demandes: {} };
+  const evenement = (id, score) => ({
+    id, date: '2026-09-08T23:00Z', season: { type: 2 },
+    status: { type: { state: 'in', shortDetail: 'En cours' }, displayClock: '12:00', period: 2 },
+    competitions: [{ id: id + 'c', date: '2026-09-08T23:00Z', competitors: [
+      { homeAway: 'home', team: { displayName: 'Los Angeles Dodgers', name: 'Dodgers', logo: '' }, score: String(score[0]) },
+      { homeAway: 'away', team: { displayName: 'San Francisco Giants', name: 'Giants', logo: '' }, score: String(score[1]) }
+    ] }]
+  });
+  const evenementNba = (score) => ({
+    id: 'nba1', date: '2026-09-08T23:00Z', season: { type: 2 },
+    status: { type: { state: 'in', shortDetail: 'En cours' }, displayClock: '5:00', period: 3 },
+    competitions: [{ id: 'nba1c', date: '2026-09-08T23:00Z', competitors: [
+      { homeAway: 'home', team: { displayName: 'Boston Celtics', name: 'Celtics', logo: '' }, score: String(score[0]) },
+      { homeAway: 'away', team: { displayName: 'Miami Heat', name: 'Heat', logo: '' }, score: String(score[1]) }
+    ] }]
+  });
+
+  await page.route('**/*', (route) => {
+    const u = route.request().url();
+    // Pas de calendrier publié : c'est ESPN, simulé ici, qui fournit la journée.
+    if (u.startsWith(origin) && /data\/schedule\.json/.test(u)) return route.fulfill({ status: 404, body: 'absent' });
+    if (u.startsWith(origin)) return route.continue();
+    const espn = /site\.api\.espn\.com\/apis\/site\/v2\/sports\/([^?]+)\/scoreboard\?dates=(\d{8})/.exec(u);
+    if (!espn) return route.abort();
+    const chemin = espn[1], jour = espn[2];
+    etat.demandes[chemin] = (etat.demandes[chemin] || 0) + 1;
+    if (jour !== '20260908') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ leagues: [], events: [] }) });
+    if (chemin === 'basketball/nba') {
+      if (etat.nbaMuette) return route.abort();   // le chemin ne répond plus : réseau, filtre, délai
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ leagues: [{ name: 'NBA' }], events: [evenementNba([88, 84])] }) });
+    }
+    if (chemin === 'baseball/mlb') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ leagues: [{ name: 'MLB' }], events: [evenement('mlb1', etat.scoreMlb)] }) });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ leagues: [], events: [] }) });
+  });
+  await attendreGrille(page);
+
+  const lire = () => page.evaluate(() => {
+    const cle = Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_'))[0];
+    let cache = [];
+    try { cache = (JSON.parse(localStorage.getItem(cle)).matches || []).map((m) => m.id); } catch (e) {}
+    const m = (id) => window.S.matchMap.get(id);
+    return {
+      cache,
+      mlb: m('espn_mlb1') ? m('espn_mlb1').score : null,
+      nba: m('espn_nba1') ? m('espn_nba1').score : null,
+      rendus: ['espn_mlb1', 'espn_nba1'].filter((id) => !!document.getElementById('mb-' + id))
+    };
+  });
+
+  // ── Départ : les deux ligues répondent ────────────────────────────────────
+  const avant = await lire();
+  expect(avant.cache, 'les deux matchs sont dans le calendrier du jour').toEqual(expect.arrayContaining(['espn_mlb1', 'espn_nba1']));
+  expect(avant.mlb).toEqual([3, 1]);
+  expect(avant.nba).toEqual([88, 84]);
+  expect(avant.rendus, 'les deux sont rendus').toEqual(['espn_mlb1', 'espn_nba1']);
+
+  // ── La NBA se tait, le score de la MLB bouge : passe PARTIELLE ────────────
+  etat.nbaMuette = true;
+  etat.scoreMlb = [4, 1];
+  const demandesAvant = etat.demandes['basketball/nba'];
+  await page.evaluate(() => window.backgroundUpdateGuide(new Date()));
+  await page.waitForTimeout(500);
+  expect(etat.demandes['basketball/nba'], 'la NBA a bien été redemandée').toBeGreaterThan(demandesAvant);
+
+  const pendant = await lire();
+  expect(pendant.mlb, 'la ligue qui répond porte son nouveau score').toEqual([4, 1]);
+  expect(pendant.cache, 'le calendrier du jour garde la ligue muette').toEqual(expect.arrayContaining(['espn_mlb1', 'espn_nba1']));
+  expect(pendant.nba, 'et son score connu').toEqual([88, 84]);
+
+  /* Le cœur de la panne : c'est la passe SUIVANTE qui lisait le calendrier amputé et
+     faisait disparaître la ligue muette de la grille. */
+  await page.evaluate(() => window.loadAll(true, false));
+  await page.waitForTimeout(1500);
+  const apres = await lire();
+  expect(apres.cache, 'après une nouvelle passe, les deux matchs sont toujours là').toEqual(expect.arrayContaining(['espn_mlb1', 'espn_nba1']));
+  expect(apres.rendus, 'et tous deux sont encore rendus').toEqual(['espn_mlb1', 'espn_nba1']);
+  expect(apres.nba, 'la ligue muette n\'a pas perdu son score').toEqual([88, 84]);
+  expect(apres.mlb).toEqual([4, 1]);
+
+  // ── La NBA répond de nouveau : ESPN fait foi ─────────────────────────────
+  etat.nbaMuette = false;
+  await page.evaluate(() => window.backgroundUpdateGuide(new Date()));
+  await page.waitForTimeout(500);
+  const retour = await lire();
+  expect(retour.nba, 'quand le chemin répond, c\'est ESPN qui fait foi').toEqual([88, 84]);
+  expect(retour.rendus).toEqual(['espn_mlb1', 'espn_nba1']);
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  await ctx.close();
+});
