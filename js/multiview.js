@@ -929,6 +929,47 @@ function poserPleinCadre(mvc) {
     mvc.classList.add('mv-full');
 }
 
+/* Où est la grille des tuiles : dans la page, ou dans la fenêtre détachée ?
+
+   `toggleDocumentPiP` déplace `#mv-grid-wrapper` dans le document d'une autre fenêtre.
+   Tout ce qui la cherchait sous `#mv-container` ne la trouvait plus. */
+export function grilleDuLecteur() {
+    var g = document.getElementById('mv-grid-wrapper');
+    if (g) return g;
+    if (docPiPWindow && docPiPWindow.document) return docPiPWindow.document.getElementById('mv-grid-wrapper');
+    return null;
+}
+
+/* La grille est-elle hors de la page (fenêtre détachée) ? */
+export function grilleDetachee() {
+    var g = grilleDuLecteur();
+    return !!(g && g.ownerDocument && g.ownerDocument !== document);
+}
+
+/* Efface (ou rétablit) les commandes du lecteur : la barre, et les en-têtes de tuiles
+   DANS LA GRILLE, où qu'elle soit. `barre` vaut null quand la grille est détachée : la
+   barre, elle, reste dans la page. Rend le nombre d'en-têtes touchés — c'est ce compte
+   qui valait zéro en fenêtre détachée, faute de chercher au bon endroit. */
+export function appliquerRepos(grille, barre, cacher) {
+    if (barre) {
+        barre.style.opacity = cacher ? '0' : '1';
+        barre.style.pointerEvents = cacher ? 'none' : 'auto';
+    }
+    if (!grille) return 0;
+    grille.style.cursor = cacher ? 'none' : 'default';
+    var hdrs = grille.querySelectorAll('.mv-hdr');
+    for (var i = 0; i < hdrs.length; i++) {
+        hdrs[i].style.opacity = cacher ? '0' : '1';
+        hdrs[i].style.pointerEvents = cacher ? 'none' : 'auto';
+    }
+    var ovs = grille.querySelectorAll('.mv-idle-overlay');
+    for (var j = 0; j < ovs.length; j++) {
+        ovs[j].style.display = cacher ? 'block' : 'none';
+        if (cacher) ovs[j].style.pointerEvents = 'auto';
+    }
+    return hdrs.length;
+}
+
 export function setupMultivisionUI() {
     if(document.getElementById('mv-container')) return;
 
@@ -1361,31 +1402,33 @@ export function setupMultivisionUI() {
 
 
 window.mvIdleTimer = null;
+/* Le repos du lecteur : trois secondes sans un geste, et la barre comme les en-têtes de
+   tuiles s'effacent pour ne pas rester posés sur la vidéo.
+
+   Tout cela cherchait ses éléments dans `#mv-container` et n'écoutait que lui. Or la
+   fenêtre détachée (`toggleDocumentPiP`) DÉPLACE `#mv-grid-wrapper` — donc toutes les
+   tuiles — dans un AUTRE document : plus aucun geste n'y atteignait `#mv-container`, et
+   `mvContainer.querySelectorAll('.mv-hdr')` n'y trouvait plus rien. Les boutons de tuile
+   restaient donc posés sur la vidéo, définitivement. On travaille désormais sur la
+   grille là où elle se trouve (`grilleDuLecteur`), et `toggleDocumentPiP` fait écouter
+   la fenêtre qui la porte. */
 window.resetMvIdleTimer = function() {
-        var tb = document.getElementById('mv-toolbar');
-        if (tb) { tb.style.opacity = '1'; tb.style.pointerEvents = 'auto'; }
-        mvContainer.style.cursor = 'default';
-
-        var hdrs = mvContainer.querySelectorAll('.mv-hdr');
-        hdrs.forEach(function(h) { h.style.opacity = '1'; h.style.pointerEvents = 'auto'; });
-
-        var overlays = mvContainer.querySelectorAll('.mv-idle-overlay');
-        overlays.forEach(function(o) { o.style.display = 'none'; });
+        var grille = grilleDuLecteur();
+        if (!grilleDetachee()) mvContainer.style.cursor = 'default';
+        appliquerRepos(grille, document.getElementById('mv-toolbar'), false);
 
         clearTimeout(window.mvIdleTimer);
         window.mvIdleTimer = setTimeout(function() {
+            var g = grilleDuLecteur();
+            if (!g) return;
+            var horsPage = grilleDetachee();
             var mvc = document.getElementById('mv-container');
-            if (mvc && !mvc.classList.contains('mv-pip')) {
-                var tb = document.getElementById('mv-toolbar');
-                if (tb) { tb.style.opacity = '0'; tb.style.pointerEvents = 'none'; }
-                mvc.style.cursor = 'none';
-
-                var latestHdrs = mvc.querySelectorAll('.mv-hdr');
-                latestHdrs.forEach(function(h) { h.style.opacity = '0'; h.style.pointerEvents = 'none'; });
-
-                var latestOverlays = mvc.querySelectorAll('.mv-idle-overlay');
-                latestOverlays.forEach(function(o) { o.style.display = 'block'; o.style.pointerEvents = 'auto'; });
-            }
+            /* Réduit dans la page (colonne latérale, fenêtre flottante, barre) : le
+               lecteur est déjà petit, ses commandes doivent rester atteignables.
+               Détaché, la grille remplit sa fenêtre : on efface, comme en plein écran. */
+            if (!horsPage && mvc && mvc.classList.contains('mv-pip')) return;
+            if (!horsPage && mvc) mvc.style.cursor = 'none';
+            appliquerRepos(g, horsPage ? null : document.getElementById('mv-toolbar'), true);
         }, 3000);
     }
 
@@ -2573,6 +2616,14 @@ export async function toggleDocumentPiP() {
         // Move the grid to the PiP window
         docPiPWindow.document.body.appendChild(gridWrapper);
 
+        /* Le repos suit la grille. Sans ces écouteurs, aucun geste fait DANS la fenêtre
+           détachée ne réarmait le compte à rebours — et les en-têtes de tuiles restaient
+           posés sur la vidéo. */
+        docPiPWindow.document.addEventListener('mousemove', window.resetMvIdleTimer);
+        docPiPWindow.document.addEventListener('click', window.resetMvIdleTimer);
+        docPiPWindow.document.addEventListener('touchstart', window.resetMvIdleTimer, { passive: true });
+        if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
+
         // Add the placeholder to the main container
         mvContainer.appendChild(placeholder);
 
@@ -2590,6 +2641,8 @@ export async function toggleDocumentPiP() {
 
             mvContainer.classList.remove('mv-doc-pip-active');
             docPiPWindow = null;
+            // La grille est revenue dans la page : ses commandes redeviennent visibles.
+            if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
         });
 
     } catch (e) {
@@ -3309,7 +3362,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v15';
+export var VERSION_APP = 'sports-guide-v16';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

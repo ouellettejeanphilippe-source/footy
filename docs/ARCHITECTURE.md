@@ -94,7 +94,8 @@ Minuteries et réveils :
 | Quoi | Période | Où |
 |---|---|---|
 | Passe complète d'arrière-plan | 5 min | `js/main.js` |
-| Rafraîchissement des scores ESPN | 5 min, et au retour au premier plan (au plus une fois par minute) | `js/api.js` (`startLiveScoreRefresh`, armé seulement quand le jour visé est aujourd'hui) |
+| Rafraîchissement des scores ESPN (passe complète) | 5 min, et au retour au premier plan (au plus une fois par minute) | `js/api.js` (`startLiveScoreRefresh`, armé seulement quand le jour visé est aujourd'hui) |
+| Scores des matchs en cours (passe ciblée) | 1 min, à l'ouverture, et au retour au premier plan | `js/api.js` (`rafraichirScoresEnDirect`, §5.7) |
 | Réévaluation des fins présumées | 1 min | `js/main.js` (`reevaluerFinsPresumees`) |
 | Relecture des liens au retour au premier plan | si le cache serveur a plus de 10 min ou a échoué, au plus une fois par minute | `js/main.js` |
 | Ligne du direct dans le Guide | 1 min | `js/ui.js` (`updateNowLine`) |
@@ -160,7 +161,18 @@ Un match ne passe à « Fin » que sur l'ordre d'ESPN. Quand ESPN ne répond plu
 
 ### 5.7 Scores
 
-`refreshLiveScores` → `backgroundUpdateGuide(new Date())` → `fetchAndProcessApiMatches` → `applyScoreUpdates` (`js/main.js`) qui met à jour `S.matches` par identifiant (statut, score, minute, période, libellé, `_scoreAt`) puis le DOM (`updateLiveScores`), et reconstruit le Live si l'ensemble des cartes attendues a changé (`liveViewIsStale`).
+Deux passes, de portée et de cadence différentes.
+
+**La passe complète**, toutes les 5 minutes : `refreshLiveScores` → `backgroundUpdateGuide` → `fetchAndProcessApiMatches` → `applyScoreUpdates` (`js/main.js`), qui met à jour `S.matches` par identifiant (statut, score, minute, période, libellé, `_scoreAt`) puis le DOM (`updateLiveScores`), et reconstruit le Live si l'ensemble des cartes attendues a changé (`liveViewIsStale`). Elle reconstruit toute la journée : 47 chemins ESPN plus les calendriers annexes.
+
+**La passe ciblée**, toutes les minutes et dès l'ouverture : `rafraichirScoresEnDirect` (`js/api.js`). Un score ne demande que les ligues qui ont un match **en cours** — une à cinq adresses, pas quarante-sept :
+
+- `tachesEnDirect(matches, now)` rend les couples (chemin, jour) distincts des matchs que `isLiveNow` retient. Le chemin vient de `m.espnPath`, mémorisé sur le match par `processEspnData` ; à défaut (calendrier rangé par une version antérieure) le nom de la ligue le retrouve dans `ESPN_LEAGUES`. Le jour est celui du match, pas celui du jour courant : un match d'hier soir encore en cours est rangé chez ESPN sous la date d'hier (§5.4).
+- `etatsDepuisEspn(data, path)` réduit la réponse à ce que les cartes affichent — identifiant, statut, score, minute, période, libellé, heure — sans reconstruire équipes, logos ni ligue. Pour une épreuve, c'est l'état de la séance qui compte, pas celui du week-end.
+- `majScoresDansCache(todayStr, etats)` reporte ces états dans `api_calendar_cache_<jour>`. **Indispensable** : `mergeFluxToApi` ne reporte pas les scores d'un état à l'autre, donc la passe complète suivante, qui relit ce calendrier, ramènerait les scores d'avant.
+- Une passe à la fois (`enVolScoresDirects`), et jamais deux à moins de `SCORE_LIVE_MIN_GAP_MS` (15 s), pour que l'intervalle et le retour au premier plan ne se doublent pas.
+
+À l'ouverture, la grille vient souvent du calendrier local, dont les scores peuvent avoir dix minutes ; la passe ciblée part 1,5 s après le démarrage, le temps que `S.matches` soit posé.
 
 ## 6. Les liens de diffusion
 
@@ -210,11 +222,17 @@ Une tuile est une iframe qui charge la page du site telle quelle, **sans attribu
 
 Le script utilisateur, quand il est installé, répond dans la fenêtre principale à un protocole `postMessage` de quatre messages (`mv_bridge_hello`, `mv_bridge_ready`, `mv_bridge_fetch`, `mv_bridge_page`) : il télécharge une page par `GM_xmlhttpRequest`, depuis l'adresse de l'utilisateur et avec ses cookies, là où les proxys sont refusés. `getBridgeStatus()` dit s'il est là et sa version ; `fetchViaBridge` est le premier transport de `fetchPage`. Pour une page qui refuse l'iframe, `resolveBlockedEmbed` récupère son HTML (pont puis proxy), en extrait un lecteur encadrable (`pickEmbeddablePlayer`) ou, à défaut, reconstruit le document en `srcdoc` (`buildEmbedDocument`), récursivement jusqu'à trois niveaux. La reconstruction sert à la lecture des pages, pas à peupler les tuiles.
 
-### 7.5 Sortie forcée
+### 7.5 Le repos des commandes
+
+Trois secondes sans un geste, et la barre du lecteur comme les en-têtes de tuiles s'effacent pour ne pas rester posés sur la vidéo (`window.resetMvIdleTimer`, `appliquerRepos`). Deux exceptions : en mode réduit dans la page (colonne, fenêtre flottante, barre), tout reste, parce que le lecteur est déjà petit.
+
+Le point délicat est la **fenêtre détachée** : `toggleDocumentPiP` déplace `#mv-grid-wrapper`, donc toutes les tuiles, dans le document d'une autre fenêtre. Tout ce qui raisonnait sur `#mv-container` cessait alors d'opérer : aucun geste fait là-bas n'y parvenait, et `mvContainer.querySelectorAll('.mv-hdr')` n'y trouvait plus rien. On agit donc sur la grille là où elle se trouve (`grilleDuLecteur`, `grilleDetachee`), et `toggleDocumentPiP` fait écouter la fenêtre qui la porte.
+
+### 7.6 Sortie forcée
 
 Si la fenêtre est quittée dans les 15 s qui suivent la pose d'une tuile, les adresses posées sont notées (`mv_sortie_forcee`, dix minutes). Au retour, la tuile le dit et propose d'ouvrir le site ou de charger quand même.
 
-### 7.6 Signaux du script utilisateur
+### 7.7 Signaux du script utilisateur
 
 Dans une page de lecteur, le script remonte à la fenêtre principale `video_state` (une vidéo joue : allume la pastille et permet la bascule automatique), `video_stats` (débit et définition, `js/debit.js`) et `media_url` (manifeste vu passer, `js/directmedia.js`). Il obéit à `mv_mute` et `mv_unmute` (une seule tuile a le son) et à `mv_clean`.
 

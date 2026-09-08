@@ -1,5 +1,5 @@
 import { lg, getLeagueDuration, fetchPage, esc } from './utils.js';
-import { getEstTimeStrFromDate, getEstDateStrFromDate } from './config.js';
+import { getEstTimeStrFromDate, getEstDateStrFromDate, isLiveNow } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier, resolvePairing } from './db.js';
 import { isMatch, isMatchPair, mergeAltUrls, spectacleDeCatch } from './match.js';
 import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
@@ -260,13 +260,160 @@ export function refreshLiveScores(raison) {
     return backgroundUpdateGuide(new Date());
 }
 
+/* ══ SCORES EN DIRECT ════════════════════════════════════════════════════════════
+
+   La passe complète ci-dessus reconstruit toute la journée : 47 chemins ESPN, plus les
+   calendriers annexes. C'est ce qu'il faut pour tenir le programme à jour, et c'est bien
+   trop lourd pour suivre un score minute par minute — d'où sa cadence de cinq minutes,
+   et des scores qui pouvaient avoir dix minutes de retard à l'ouverture de l'application.
+
+   Un score, lui, ne demande que les ligues qui ont un match EN COURS : une à cinq
+   adresses, pas quarante-sept. On peut donc le faire chaque minute, et tout de suite au
+   démarrage — « ça devrait être pas mal en direct, les scores ».
+
+   Cette passe ne touche PAS au calendrier : elle ne fait que porter statut, score et
+   minute dans les matchs déjà connus. Elle corrige en revanche le calendrier rangé en
+   local, sans quoi la passe complète suivante, qui le relit, ramènerait les scores
+   d'avant (`mergeFluxToApi` ne reporte pas les scores d'un état à l'autre). */
+export var SCORE_LIVE_REFRESH_MS = 60 * 1000;
+export var SCORE_LIVE_MIN_GAP_MS = 15 * 1000;
+
+/* Quelles adresses ESPN redemander : celles des ligues qui ont un match en cours, avec
+   LE JOUR de ce match — un match d'hier soir qui joue encore après minuit est rangé
+   sous la date d'hier chez ESPN (voir js/nuit.js). Un match venu d'un calendrier rangé
+   avant que le chemin ne soit mémorisé se rattrape par le nom de sa ligue. */
+export function tachesEnDirect(matches, now) {
+    now = now || new Date();
+    var vues = {}, sortie = [];
+    for (var i = 0; i < (matches || []).length; i++) {
+        var m = matches[i];
+        if (!m || !isLiveNow(m, now)) continue;
+        var chemin = m.espnPath || ESPN_LEAGUES[String(m.league || '').toLowerCase()];
+        if (!chemin) continue;
+        var jour = /^\d{4}-\d{2}-\d{2}$/.test(String(m.matchDate || ''))
+            ? m.matchDate.replace(/-/g, '') : getEspnDateStr(now);
+        var cle = chemin + '|' + jour;
+        if (vues[cle]) continue;
+        vues[cle] = true;
+        sortie.push({ path: chemin, jour: jour });
+    }
+    return sortie;
+}
+
+/* Ce qu'ESPN dit d'un match, réduit à ce que les cartes affichent. Même lecture que
+   `processEspnData`, sans reconstruire ni les équipes, ni les logos, ni la ligue. */
+export function etatsDepuisEspn(data, path) {
+    if (!data || !Array.isArray(data.events)) return [];
+    var leagueName = (data.leagues && data.leagues[0] && data.leagues[0].name) || path || '';
+    var l = String(leagueName).toLowerCase();
+    var isRacing = l.indexOf('f1') > -1 || l.indexOf('indycar') > -1 || String(path || '').indexOf('racing') > -1;
+    var sortie = [];
+    data.events.forEach(function(ev) {
+        if (!ev || !ev.status || !ev.status.type) return;
+        var comps = isRacing ? (ev.competitions || []) : ((ev.competitions && ev.competitions.length) ? [ev.competitions[0]] : []);
+        comps.forEach(function(comp) {
+            if (!comp) return;
+            var etat = (isRacing && comp.status && comp.status.type && comp.status.type.state) || ev.status.type.state;
+            var status = 'upcoming';
+            if (etat === 'in') status = 'live';
+            if (etat === 'post') status = 'finished';
+
+            var score = null;
+            if (status !== 'upcoming' && !isRacing && comp.competitors) {
+                var dom = comp.competitors.find(function(c) { return c.homeAway === 'home'; });
+                var ext = comp.competitors.find(function(c) { return c.homeAway === 'away'; });
+                if (dom && ext && dom.score !== undefined && ext.score !== undefined) {
+                    score = [parseInt(dom.score, 10), parseInt(ext.score, 10)];
+                }
+            }
+
+            var minute = null;
+            if (status === 'live' && ev.status.displayClock) minute = ev.status.displayClock;
+            else if (status === 'live' && ev.status.period) minute = 'P' + ev.status.period;
+
+            var stObj = (isRacing && comp.status && comp.status.type) ? comp.status : ev.status;
+            sortie.push({
+                id: isRacing ? 'espn_' + ev.id + '_' + comp.id : 'espn_' + ev.id,
+                status: status,
+                score: score,
+                minute: minute,
+                period: (stObj && stObj.period) || null,
+                detail: (stObj && stObj.type && (stObj.type.shortDetail || stObj.type.detail)) || null,
+                startTime: getEstTimeStrFromDate(new Date(comp.date || ev.date))
+            });
+        });
+    });
+    return sortie;
+}
+
+/* Reporte les états frais dans le calendrier rangé en local, par identifiant. Sans cela,
+   la passe complète suivante relit le cache et ramène les scores d'avant. */
+export function majScoresDansCache(todayStr, etats) {
+    if (!etats || !etats.length) return 0;
+    var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+    if (!cache || cache.fetchDate !== todayStr || !Array.isArray(cache.matches)) return 0;
+    var parId = {};
+    for (var i = 0; i < etats.length; i++) if (etats[i] && etats[i].id) parId[String(etats[i].id)] = etats[i];
+    var touches = 0;
+    for (var j = 0; j < cache.matches.length; j++) {
+        var m = cache.matches[j];
+        var f = m && parId[String(m.id)];
+        if (!f) continue;
+        m.status = f.status; m.score = f.score; m.minute = f.minute;
+        m.period = f.period || null; m.detail = f.detail || null;
+        if (f.startTime) m.startTime = f.startTime;
+        touches++;
+    }
+    if (touches) safeStorageSetJSON('api_calendar_cache_' + todayStr, cache);
+    return touches;
+}
+
+var enVolScoresDirects = false;
+var dernierScoreDirect = 0;
+
+/* Redemande à ESPN les seules ligues qui ont un match en cours, et porte les scores. */
+export function rafraichirScoresEnDirect(raison) {
+    var maintenant = Date.now();
+    if (enVolScoresDirects || maintenant - dernierScoreDirect < SCORE_LIVE_MIN_GAP_MS) return Promise.resolve(0);
+    var taches = tachesEnDirect(S.matches, new Date());
+    if (!taches.length) return Promise.resolve(0);
+
+    enVolScoresDirects = true;
+    dernierScoreDirect = maintenant;
+    var etats = [];
+    return enPiscine(taches, ESPN_CONCURRENCE, function(t) {
+        return fetchEspnSchedule(t.path, t.jour).then(function(data) {
+            var e = etatsDepuisEspn(data, t.path);
+            for (var i = 0; i < e.length; i++) etats.push(e[i]);
+        });
+    }).then(function() {
+        if (!etats.length) return 0;
+        var changes = (typeof window !== 'undefined' && typeof window.applyScoreUpdates === 'function')
+            ? window.applyScoreUpdates(etats) : 0;
+        majScoresDansCache(getEspnDateStr(new Date()), etats);
+        if (changes) lg('scores en direct (' + (raison || 'intervalle') + ')', changes + ' match(s) mis à jour sur ' + taches.length + ' ligue(s) interrogée(s)');
+        return changes;
+    }).catch(function(e) {
+        lg('scores en direct', 'échec : ' + ((e && e.message) || e));
+        return 0;
+    }).then(function(r) { enVolScoresDirects = false; return r; });
+}
+
 export function startLiveScoreRefresh() {
     if (typeof window === 'undefined' || window._backgroundRefreshStarted) return false;
     window._backgroundRefreshStarted = true;
     setInterval(function() { refreshLiveScores('intervalle'); }, SCORE_REFRESH_MS);
+    /* Les scores des matchs en cours, eux, chaque minute : c'est peu de chemins. */
+    setInterval(function() { rafraichirScoresEnDirect('intervalle'); }, SCORE_LIVE_REFRESH_MS);
+    /* Et tout de suite : à l'ouverture, la grille vient souvent du calendrier rangé en
+       local, dont les scores peuvent avoir dix minutes. Le délai laisse la première
+       passe poser S.matches. */
+    setTimeout(function() { rafraichirScoresEnDirect('ouverture'); }, 1500);
     if (typeof document !== 'undefined' && document.addEventListener) {
         document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) refreshLiveScores('retour au premier plan');
+            if (document.hidden) return;
+            rafraichirScoresEnDirect('retour au premier plan');
+            refreshLiveScores('retour au premier plan');
         });
     }
     return true;
@@ -478,7 +625,10 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           streamLinks: [],
           streamsLoaded: false,
           source: 'api',
-          isPlayoff: isPlayoff
+          isPlayoff: isPlayoff,
+          /* Le chemin d'où vient ce match : c'est lui qui permet de ne redemander que
+             les ligues qui ont un match en cours (voir `rafraichirScoresEnDirect`). */
+          espnPath: path
         };
 
         if (seulementLaNuit && !appartientAuJour(matchObj, targetDateStr)) return;
@@ -1504,3 +1654,4 @@ window.renderScorersHtml = renderScorersHtml;
 window.fetchGameStats = fetchGameStats;
 window.fetchLeagueStandings = fetchLeagueStandings;
 window.fetchTeamSchedule = fetchTeamSchedule;
+window.rafraichirScoresEnDirect = rafraichirScoresEnDirect;

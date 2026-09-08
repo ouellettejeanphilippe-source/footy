@@ -46,7 +46,7 @@ Les ligues classées « ignorée » n'apparaissent nulle part. Quand rien n'est 
 
 De haut en bas :
 
-1. **Bandeau d'état** : `Direct` avec une pastille rouge clignotante, ou l'heure du coup d'envoi, ou `Fin`, ou **`Fin ?`** en ambre. « Fin ? » veut dire : ESPN ne donne plus de nouvelles de ce match depuis plus de 12 minutes et il a dépassé la durée normale de son sport de plus de 45 minutes (120 en prolongation connue). Le survol explique le calcul. Une nouvelle d'ESPN efface la présomption.
+1. **Bandeau d'état** : `Direct` avec une pastille rouge clignotante, ou l'heure du coup d'envoi, ou `Fin`, ou **`Fin ?`** en ambre. Le score d'un match en cours est redemandé **chaque minute**, et dès l'ouverture de l'application. « Fin ? » veut dire : ESPN ne donne plus de nouvelles de ce match depuis plus de 12 minutes et il a dépassé la durée normale de son sport de plus de 45 minutes (120 en prolongation connue). Le survol explique le calcul. Une nouvelle d'ESPN efface la présomption.
 2. **Compteur de flux** à droite : `▶ N`. Sans aucun lien, le badge devient un bouton : **`🔎`** lance la recherche de liens pour ce match tout de suite ; **`⚠`** signale que le fichier des liens du serveur n'a pas pu être lu et le relit d'un toucher.
 3. **Vignette** aux couleurs des deux équipes, avec leurs blasons.
 4. **Ligue** (drapeau ou icône, nom).
@@ -134,6 +134,7 @@ Quitter le plein écran vers le guide réduit automatiquement le lecteur.
 
 En-tête : poignée de glissement, numéro (`Touche N`), pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré, bouton d'ajustement, puis **`↗ Site`**, le menu **`⋮`** et **`✕`**.
 
+- **Au repos** : trois secondes sans un geste et la barre comme les en-têtes de tuiles s'effacent, pour laisser la vidéo seule. Un mouvement les rappelle. En mode réduit dans la page, ils restent : le lecteur est déjà petit. En fenêtre détachée, ils s'effacent comme en plein écran.
 - **Ajustement** (bouton de tuile, ou `⤢` de la barre pour toutes) : *étiré* (le cadre prend toute la tuile), *ajusté* (16:9 entier, centré), *rempli* (16:9 couvrant la tuile). Retenu par tuile.
 - **Menu ⋮** : ouvrir sur le site, source suivante, choisir une autre source, changer de match, recharger la vidéo, infos et statistiques ; l'ajustement ; lire le flux direct ou revenir à la page ; déplacer à gauche ou à droite ; préférer ou éviter ce site ; fermer cette vidéo.
 - **Réordonner** : glisser-déposer entre tuiles (poignée masquée sur écran tactile), ou le menu.
