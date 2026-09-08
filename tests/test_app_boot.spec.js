@@ -550,6 +550,55 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
 /* Deux croix se superposaient dans la fiche : `document.querySelector('.mhd')` attrapait
    l'en-tête de l'Investigator (première `.mhd` du document), jamais celui de la fiche, et
    openMod injectait une seconde croix par-dessus la colonne des flux. */
+/* Actualisation à la demande (8 septembre 2026 : « un sur le guide pour avoir scores et
+   streams à jour »). Depuis que le haut de page a été vidé, il n'existait plus aucun
+   geste pour redemander les données : il fallait attendre la minuterie de cinq minutes
+   ou recharger la page. Le bouton n'a de sens que devant la grille — sur Logs, Options
+   et Script il n'y a rien à rafraîchir. */
+test('le bouton Actualiser est devant la grille, pas sur les pages, et dit qu\'il travaille', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+
+  /* `offsetParent` est TOUJOURS nul pour un élément en position fixe : c'est le style
+     calculé qui dit s'il est affiché, pas lui. */
+  const surGrille = await page.evaluate(() => {
+    const b = document.getElementById('btn-actualiser');
+    const r = b.getBoundingClientRect();
+    const nav = document.getElementById('nav-links').getBoundingClientRect();
+    return { affiche: getComputedStyle(b).display !== 'none', bas: r.bottom, navHaut: nav.top, droite: r.right, largeur: window.innerWidth };
+  });
+  expect(surGrille.affiche, 'le bouton est offert devant la grille').toBeTruthy();
+  expect(surGrille.bas, 'et posé AU-DESSUS de la barre d\'onglets, pas dessous').toBeLessThanOrEqual(surGrille.navHaut);
+  expect(surGrille.droite, 'sans déborder de l\'écran').toBeLessThanOrEqual(surGrille.largeur);
+
+  await page.evaluate(() => window.applyFilter('logs'));
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('btn-actualiser')).display),
+    'rien à rafraîchir sur la page Logs').toBe('none');
+
+  await page.evaluate(() => window.applyFilter('live'));
+  await page.waitForTimeout(300);
+
+  /* L'état « je travaille » est posé AVANT le premier aller-retour : on le lit dans la
+     même évaluation que le clic, donc sans course. */
+  const pendant = await page.evaluate(() => {
+    const b = document.getElementById('btn-actualiser');
+    b.click();
+    return { desactive: b.disabled, tourne: b.classList.contains('tourne') };
+  });
+  expect(pendant.desactive, 'le bouton se désactive pendant la passe : pas de double appel').toBeTruthy();
+  expect(pendant.tourne, 'et le dit visiblement').toBeTruthy();
+
+  await expect.poll(() => page.evaluate(() => !document.getElementById('btn-actualiser').disabled),
+    { timeout: 60000 }).toBeTruthy();
+  expect(await page.evaluate(() => document.getElementById('btn-actualiser').classList.contains('tourne')),
+    'et l\'animation s\'arrête à la fin').toBeFalsy();
+  expect(await page.evaluate(() => document.querySelectorAll('.match-card').length),
+    'la grille est toujours là après l\'actualisation').toBeGreaterThan(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 test('la fiche de match a une seule croix, se ferme par Échap, et ses flux portent leurs actions', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
   const pageErrors = await bootOffline(page);

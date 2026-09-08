@@ -50,6 +50,7 @@
         <button class="nav-btn" id="filter-logs" role="menuitem" onclick="applyFilter('logs'); toggleMenu(event);">📋 Logs</button>
         <button class="nav-btn" id="filter-script" role="menuitem" onclick="applyFilter('script'); toggleMenu(event);">🧩 Script</button>
         <button class="nav-btn menu-sep" id="btn-legacy-ui" role="menuitem" onclick="toggleLegacyUi(true)" title="Revenir à l'ancienne présentation pour comparer">↩ Interface classique</button>
+        <button class="nav-btn" id="btn-maj-app" role="menuitem" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">↻ Mettre à jour l'app</button>
       </div>
     </div>
   </nav>
@@ -84,6 +85,13 @@
     <!-- Les matchs sont insérés ici par buildEPG -->
   </div>
 </main>
+
+<!-- Actualisation à la demande : scores (ESPN) et liens (cache serveur), puis la grille
+     est redessinée. Masqué sur les pages Logs / Options / Script (body.view-page). -->
+<button type="button" id="btn-actualiser" class="fab-actualiser" onclick="actualiserMaintenant()"
+        title="Actualiser les scores et les liens maintenant" aria-label="Actualiser les scores et les liens">
+  <span class="fab-ic" aria-hidden="true">↻</span><span class="fab-lb">Actualiser</span>
+</button>
 
 <!-- ═══ DÉBOGAGE ══════════════════════════════════════════════════════════════ -->
 <div class="dbg" id="dbg">

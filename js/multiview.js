@@ -3243,10 +3243,65 @@ export function buildSwatches() {
 }
 
 
+/* Mise à jour forcée de l'application installée (« Ajouter bouton actualiser pour
+   version pwa ? », 8 septembre 2026).
+
+   Installée sur l'écran d'accueil, l'application est servie par son service worker. Une
+   version publiée peut donc mettre du temps à la remplacer — et c'est précisément le cas
+   qu'on soupçonnait quand un appareil ne montrait pas la même chose qu'un autre. Rien ne
+   permettait de forcer : recharger la page ne suffit pas, puisque c'est le service worker
+   qui répond.
+
+   Ce bouton désinstalle le service worker, vide TOUS ses caches, puis recharge sur une
+   adresse neuve pour que le cache HTTP ne réponde pas non plus. Le service worker se
+   réinstalle seul au chargement suivant (index.html l'enregistre).
+
+   Ce qui est GARDÉ : le stockage local — préférences, favoris, calendrier du jour, liens
+   retenus. On met à jour le code, on n'efface pas les réglages de l'utilisateur. */
+export function viderCachesApplication() {
+    var bilan = { serviceWorkers: 0, caches: 0 };
+    var taches = [];
+    try {
+        if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            taches.push(navigator.serviceWorker.getRegistrations()
+                .then(function(regs) {
+                    bilan.serviceWorkers = regs.length;
+                    return Promise.all(regs.map(function(r) { return r.unregister(); }));
+                })
+                .catch(function() {}));
+        }
+    } catch (e) {}
+    try {
+        if (typeof caches !== 'undefined' && caches.keys) {
+            taches.push(caches.keys()
+                .then(function(noms) {
+                    bilan.caches = noms.length;
+                    return Promise.all(noms.map(function(nom) { return caches.delete(nom); }));
+                })
+                .catch(function() {}));
+        }
+    } catch (e) {}
+    return Promise.all(taches).then(function() { return bilan; });
+}
+
+export function mettreAJourApplication() {
+    showToast('Mise à jour de l\'application…');
+    return viderCachesApplication().then(function(bilan) {
+        lg('Mise à jour', bilan.serviceWorkers + ' service worker(s) retiré(s), ' + bilan.caches + ' cache(s) vidé(s)');
+        /* Adresse neuve : sans cela le cache HTTP peut resservir la même page et le bouton
+           semblerait ne rien faire. `replace` pour ne pas empiler d'historique. */
+        try {
+            var base = String(location.pathname || '/').replace(/[?#].*$/, '');
+            location.replace(base + '?maj=' + Date.now());
+        } catch (e) { try { location.reload(); } catch (e2) {} }
+        return bilan;
+    });
+}
+
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v11';
+export var VERSION_APP = 'sports-guide-v12';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -3304,6 +3359,10 @@ export function diagnosticAppareilHtml() {
     var sw = 'sans service worker';
     try { if (navigator.serviceWorker && navigator.serviceWorker.controller) sw = 'service worker actif'; } catch (e) {}
     html += ligne('Version', 'ok', VERSION_APP + ' · ' + sw);
+    html += '<div style="display:flex; justify-content:flex-end; padding-top:8px;">'
+          + '<button class="btn xs" onclick="mettreAJourApplication()" '
+          + 'title="Retire le service worker, vide ses caches et recharge. Les réglages, favoris et liens gardés en local ne sont pas touchés.">'
+          + '↻ Mettre à jour l\'application</button></div>';
 
     return html + '</div>';
 }
@@ -3848,6 +3907,8 @@ window.ouvrirMenuBarre = ouvrirMenuBarre;
 window.ouvrirPageOriginale = ouvrirPageOriginale;
 window.chargerQuandMeme = chargerQuandMeme;
 window.diagnosticAppareilHtml = diagnosticAppareilHtml;
+window.mettreAJourApplication = mettreAJourApplication;
+window.viderCachesApplication = viderCachesApplication;
 window.rechargerTuile = rechargerTuile;
 window.fermerToutesLesVideos = fermerToutesLesVideos;
 window.toggleMultiview = toggleMultiview;

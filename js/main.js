@@ -1,7 +1,7 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
-import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr } from './api.js';
+import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
 import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
 import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
@@ -407,6 +407,39 @@ export function loadPrefetchedStreams(force) {
             }
             window.prefetchedStreamsLoadedAt = 0;
             return list;
+        });
+}
+
+/* Actualisation à la demande (« un sur le guide pour avoir scores et streams à jour »,
+   8 septembre 2026).
+
+   Depuis que le haut de page a été vidé (6 septembre), il n'existait plus aucun geste
+   pour redemander les données : il fallait attendre la minuterie de cinq minutes, ou
+   recharger la page. Les scores et les liens ne viennent pas du même endroit et ne se
+   rafraîchissent pas au même rythme — on redemande donc les DEUX, dans l'ordre où ils
+   servent : le fichier des liens, les scores auprès d'ESPN, puis une passe complète qui
+   refait la fusion et redessine la grille.
+
+   `loadAll(true, true)` plutôt que `loadAll(false, …)` : la passe de premier plan vide
+   `S.matches` avant de recommencer, ce qui ferait clignoter la grille. En arrière-plan
+   forcé, la grille reste affichée pendant que les données arrivent. */
+export function actualiserMaintenant() {
+    var btn = document.getElementById('btn-actualiser');
+    if (btn && btn.disabled) return Promise.resolve(false);
+    if (btn) { btn.disabled = true; btn.classList.add('tourne'); }
+    showToast('Actualisation des scores et des liens…');
+
+    return loadPrefetchedStreams(true)
+        .catch(function() {})
+        .then(function() { return backgroundUpdateGuide(new Date()); })
+        .catch(function() {})
+        .then(function() { return loadAll(true, true); })
+        .catch(function(e) { lg('Actualisation', 'échec : ' + (e && e.message ? e.message : e)); })
+        .then(function() {
+            if (btn) { btn.disabled = false; btn.classList.remove('tourne'); }
+            var info = (typeof window !== 'undefined' && window.fusionInfo) || null;
+            showToast(info ? ('À jour : ' + info.avecLiens + ' matchs sur ' + info.grille + ' ont des liens') : 'À jour');
+            return true;
         });
 }
 
@@ -1400,6 +1433,7 @@ window.applyScoreUpdates = applyScoreUpdates;
 window.rebuildPreservingScroll = rebuildPreservingScroll;
 window.reevaluerFinsPresumees = reevaluerFinsPresumees;
 window.loadAll = loadAll;
+window.actualiserMaintenant = actualiserMaintenant;
 window.toggleSportFilters = toggleSportFilters;
 window.appTheaterTimer = appTheaterTimer;
 window.toggleMenu = toggleMenu;
