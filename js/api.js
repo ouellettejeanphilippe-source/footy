@@ -6,6 +6,7 @@ import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } f
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { liensDunEvenementEsports } from './esports.js';
+import { appartientAuJour, nuitEnCours, veille } from './nuit.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 /* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
@@ -341,7 +342,9 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
 
   var espnPaths = Array.from(new Set(Object.values(ESPN_LEAGUES || {})));
 
-  function processEspnData(data, path) {
+  /* `seulementLaNuit` : passe sur la veille (js/nuit.js) — on ne garde que ce qui
+     déborde sur cette nuit, jamais le programme entier d'hier. */
+  function processEspnData(data, path, seulementLaNuit) {
       var leagueName = data.leagues && data.leagues[0] ? data.leagues[0].name : path;
       data.events.forEach(function(ev) {
         var isRacing = leagueName.toLowerCase().indexOf('f1') > -1 || leagueName.toLowerCase().indexOf('indycar') > -1 || path.indexOf('racing') > -1;
@@ -416,6 +419,8 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           isPlayoff: isPlayoff
         };
 
+        if (seulementLaNuit && !appartientAuJour(matchObj, targetDateStr)) return;
+
         var existingMatch = baseMatchesById[matchObj.id];
         if (existingMatch) {
           existingMatch.status = matchObj.status;
@@ -441,6 +446,26 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
         })
       );
   });
+
+  /* La nuit appartient à la veille (js/nuit.js). Pendant la nuit, pour le jour courant,
+     on relit aussi la veille et on n'en garde que les matchs qui débordent sur cette
+     nuit : c'est ainsi que le match de 22:05 est encore là, avec son score, à 00:30 —
+     et que le rafraîchissement des scores (qui passe par ici) continue de le suivre. */
+  var maintenant = new Date();
+  var minutesMaintenant = getEstTimeStrFromDate(maintenant).split(':');
+  var veilleStr = veille(targetDateStr);
+  if (veilleStr && targetDateStr === getEstDateStrFromDate(maintenant)
+      && nuitEnCours(parseInt(minutesMaintenant[0], 10) * 60 + parseInt(minutesMaintenant[1], 10))) {
+      var veilleEspn = veilleStr.replace(/-/g, '');
+      espnPaths.forEach(function(path) {
+          promises.push(
+            fetchEspnSchedule(path, veilleEspn).then(function(data) {
+              if(!data || !data.events) return;
+              processEspnData(data, path, true);
+            })
+          );
+      });
+  }
 
   promises.push(
       Promise.all([

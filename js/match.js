@@ -1,5 +1,6 @@
 import { normName, NORM_TEAM_KEYS, sportOfLeague } from './db.js';
 import { TEAM_DATA } from './teams.js';
+import { memeMatchATraversLaNuit } from './nuit.js';
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
 export function mergeMatches(mainList, newList) {
@@ -347,8 +348,9 @@ export function debugMatchPair(m1, m2) {
   var m2H = normName(m2.homeTeam);
   var m2A = normName(m2.awayTeam);
 
-  // Check explicitly for different dates before ANY matching
-  if (m1.matchDate && m2.matchDate && m1.matchDate !== m2.matchDate) {
+  // Check explicitly for different dates before ANY matching — sauf le match d'hier
+  // soir relu après minuit, daté du jour par le serveur (js/nuit.js).
+  if (m1.matchDate && m2.matchDate && m1.matchDate !== m2.matchDate && !memeMatchATraversLaNuit(m1, m2)) {
       return { isMatch: false, reason: "Dates différentes (" + m1.matchDate + " vs " + m2.matchDate + ")" };
   }
 
