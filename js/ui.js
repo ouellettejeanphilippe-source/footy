@@ -749,7 +749,7 @@ function buildEPGInner(matches){
           vide.className = 'empty-state';
           vide.innerHTML = '<div style="font-size:34px;">' + (S.searchQuery ? '🔍' : '📺') + '</div>'
             + '<div style="font-weight:700; font-size:16px; color:var(--text);">' + (S.searchQuery ? 'Aucun match ne correspond à « ' + esc(S.searchQuery) + ' »' : 'Aucun match en direct pour le moment') + '</div>'
-            + '<div>' + (S.searchQuery ? 'Essayez un autre nom d\'équipe ou de ligue.' : 'Le Guide montre tout le programme du jour, et les flèches de date les autres jours.') + '</div>'
+            + '<div>' + (S.searchQuery ? 'Essayez un autre nom d\'équipe ou de ligue.' : 'Le Guide montre tout le programme du jour.') + '</div>'
             + (S.searchQuery
                 ? '<button class="btn sm" onclick="setSearchQuery(\'\'); var i=document.getElementById(\'search-input\'); if(i) i.value=\'\';">Effacer la recherche</button>'
                 : '<button class="btn sm" onclick="applyFilter(\'all\')">Ouvrir le Guide</button>');

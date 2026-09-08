@@ -222,7 +222,6 @@ export var globalStatsInterval = null;
 /* Les autres modules ne peuvent pas affecter une liaison importée : ils passent par ce
    setter (même motif que setCustomLgOrder / setLeagueTier). */
 export function setGlobalStatsInterval(v) { globalStatsInterval = v; window.globalStatsInterval = v; }
-export var currentGlobalStatsMatchId = null;
 export var activeMvStatsCards = [];
 
 export function toggleMvGameMode() {
@@ -3880,7 +3879,6 @@ window.mvGameModeInterval = mvGameModeInterval;
 window.gmCurrentTab = gmCurrentTab;
 window.gmPinnedMatches = gmPinnedMatches;
 window.globalStatsInterval = globalStatsInterval;
-window.currentGlobalStatsMatchId = currentGlobalStatsMatchId;
 window.activeMvStatsCards = activeMvStatsCards;
 window.toggleMvGameMode = toggleMvGameMode;
 window.switchGmTab = switchGmTab;

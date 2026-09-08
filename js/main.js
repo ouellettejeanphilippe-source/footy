@@ -911,7 +911,7 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
       waitForBridge(1500).then(function() { loadAll(false, false); }); // premier chargement sans cache : passe visible, avec l'écran d'attente
   }
 
-  // Background auto-update every 60 seconds
+  // Passe complète d'arrière-plan toutes les cinq minutes (liens + calendrier + fusion).
   setInterval(function() {
       if (window.hasLoadedOnce) {
           loadAll(true, false);
@@ -968,8 +968,6 @@ document.addEventListener('click', function(e) {
         layoutDropdown.style.display = 'none';
     }
 });
-
-export var appTheaterTimer;
 
 // Menu toggle logic
 export function toggleMenu(e) {
@@ -1473,7 +1471,6 @@ window.reevaluerFinsPresumees = reevaluerFinsPresumees;
 window.loadAll = loadAll;
 window.actualiserMaintenant = actualiserMaintenant;
 window.toggleSportFilters = toggleSportFilters;
-window.appTheaterTimer = appTheaterTimer;
 window.toggleMenu = toggleMenu;
 window.currentZoomLevel = currentZoomLevel;
 window.updateZoomDisplay = updateZoomDisplay;
