@@ -18,7 +18,7 @@
       fichier par fichier pour qu'une seule ressource absente ne fasse pas échouer
       l'installation entière. */
 
-const CACHE_NAME = 'sports-guide-v14';
+const CACHE_NAME = 'sports-guide-v15';
 
 const APP_SHELL = [
   './index.html',

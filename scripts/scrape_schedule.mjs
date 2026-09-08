@@ -388,8 +388,27 @@ async function run() {
     let baseMatches = [];
     let baseMatchesById = {};
 
-    const promises = espnPaths.map(path => fetchEspnSchedule(path, todayStr));
-    const results = await Promise.all(promises);
+    /* Six chemins à la fois, comme le client (voir ESPN_CONCURRENCE, js/api.js) : lancer
+       les 47 d'un coup fait expirer les derniers en file d'attente, et une passe qui
+       n'obtient qu'une partie des ligues écrivait jusqu'ici un calendrier amputé. */
+    const CONCURRENCE = 6;
+    async function enPiscine(items, taille, faire) {
+        const sortie = new Array(items.length);
+        let i = 0;
+        const voie = async () => {
+            while (i < items.length) {
+                const k = i++;
+                try { sortie[k] = await faire(items[k]); }
+                catch (e) { sortie[k] = null; }
+            }
+        };
+        await Promise.all(Array.from({ length: Math.max(1, Math.min(taille, items.length)) }, voie));
+        return sortie;
+    }
+
+    const results = await enPiscine(espnPaths, CONCURRENCE, (path) => fetchEspnSchedule(path, todayStr));
+    const echecsEspn = results.filter((r) => !r).length;
+    if (echecsEspn) console.log(`ESPN : ${espnPaths.length - echecsEspn}/${espnPaths.length} chemins ont répondu.`);
 
     /* `seulementLaNuit` : passe sur la veille (js/nuit.js), dont on ne garde que les
        matchs qui débordent sur cette nuit. */
@@ -488,7 +507,7 @@ async function run() {
     if (veilleStr && nuitEnCours(hNow * 60 + mNow)) {
         const veilleEspn = veilleStr.replace(/-/g, '');
         const avant = baseMatches.length;
-        const resultsVeille = await Promise.all(espnPaths.map(path => fetchEspnSchedule(path, veilleEspn)));
+        const resultsVeille = await enPiscine(espnPaths, CONCURRENCE, (path) => fetchEspnSchedule(path, veilleEspn));
         resultsVeille.forEach((res) => traiterEspn(res, true));
         console.log(`Nuit : ${baseMatches.length - avant} match(s) de la veille (${veilleStr}) débordant sur cette nuit.`);
     }
@@ -612,6 +631,34 @@ async function run() {
         console.log(`TheSportsDB (Fighting) : ${added} événements`);
     } catch (e) {
         console.log('TheSportsDB indisponible :', e && e.message ? e.message : e);
+    }
+
+    /* Une passe où certains chemins ESPN n'ont pas répondu ne décrit pas la journée
+       entière : les ligues concernées en sont absentes. L'écrire telle quelle publiait un
+       calendrier amputé pour TOUS les appareils jusqu'au prochain passage — c'est la
+       moitié serveur de « les scores sont parfois là, parfois pas là ». On fusionne donc
+       avec le calendrier déjà publié du même jour : ce qui vient d'ESPN fait foi, ce
+       qu'on connaissait et qu'on n'a pas revu est conservé. Une passe COMPLÈTE écrit
+       telle quelle et élague. Aucune réponse du tout : on ne touche à rien. */
+    if (echecsEspn === espnPaths.length) {
+        console.log(`ESPN injoignable (${espnPaths.length} requêtes sans réponse) : data/schedule.json est laissé intact.`);
+        return;
+    }
+    if (echecsEspn > 0) {
+        let connus = [];
+        try {
+            const precedent = JSON.parse(fs.readFileSync('data/schedule.json', 'utf8'));
+            if (precedent && precedent.fetchDate === todayStr && Array.isArray(precedent.matches)) connus = precedent.matches;
+        } catch (e) { /* pas de calendrier publié : rien à conserver */ }
+        const vus = new Set(baseMatches.map((m) => String(m.id)));
+        let gardes = 0;
+        for (const m of connus) {
+            if (!m || vus.has(String(m.id))) continue;
+            vus.add(String(m.id));
+            baseMatches.push(m);
+            gardes++;
+        }
+        console.log(`Passe partielle : ${gardes} match(s) conservé(s) du calendrier déjà publié.`);
     }
 
     baseMatches.sort((a,b) => a.startTime > b.startTime ? 1 : -1);
