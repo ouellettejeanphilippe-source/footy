@@ -3344,7 +3344,7 @@ export function diagnosticAppareilHtml() {
     var fus = (typeof window !== 'undefined' && window.fusionInfo) || null;
     if (!fus) html += ligne('Fusion (liens ↔ matchs)', 'warn', 'pas encore faite');
     else if (!fus.avecLiens) html += ligne('Fusion (liens ↔ matchs)', 'ko', 'aucun des ' + fus.grille + ' matchs n\'a reçu de lien');
-    else html += ligne('Fusion (liens ↔ matchs)', 'ok', fus.avecLiens + ' matchs sur ' + fus.grille + ' ont des liens');
+    else html += ligne('Fusion (liens ↔ matchs)', 'ok', fus.avecLiens + ' matchs sur ' + fus.grille + ' ont des liens' + (fus.ms ? ' · ' + (fus.ms >= 1000 ? (fus.ms / 1000).toFixed(1) + ' s' : fus.ms + ' ms') : ''));
 
     /* Un stockage local plein est invisible : les écritures ne prennent pas, les lectures
        rendent une version ancienne. Sur téléphone la limite est de quelques mégaoctets. */

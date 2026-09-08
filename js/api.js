@@ -829,6 +829,7 @@ function minutesOfTime(t) {
 }
 
 export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
+  var _t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   if (typeof window.streamMissingCounts === 'undefined') window.streamMissingCounts = {};
   S.unmatchedStreams = [];   // flux sans match dans la grille, pour le diagnostic (voir plus bas)
 
@@ -1087,6 +1088,15 @@ export function mergeFluxToApi(apiMatches, scrapedMatches, skipScraping) {
           am.refreshedOnStartScrape = prevMatch.refreshedOnStartScrape;
       }
   });
+
+  /* Durée de la fusion, pour la page Logs. Relevé le 8 septembre 2026 : sur un
+     téléphone, « Fusion : pas encore faite » alors que le calendrier et les liens étaient
+     tous deux chargés — l'étape était simplement encore EN COURS, et les cartes
+     montraient la loupe en attendant. C'est ce qui explique « je reload les streams sont
+     là, je reload c'est vide » : selon le moment où l'on regarde, la fusion a fini ou
+     non. On mesure donc, au lieu de supposer. */
+  var _t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  if (typeof window !== 'undefined') window.fusionMs = Math.round(_t1 - _t0);
 
   return apiMatches;
 }
