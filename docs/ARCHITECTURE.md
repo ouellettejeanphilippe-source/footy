@@ -178,7 +178,7 @@ Deux passes, de portée et de cadence différentes.
 
 ### 6.1 Cache serveur (`data/streams.json`)
 
-Produit deux fois par heure par `scripts/scrape_streams.mjs` (§11). Clés : `generatedAt`, `date`, `fetch`, `sources[]` (état de chaque source), `hostPolicy` (intégrabilité par hôte, lue des en-têtes X-Frame-Options et CSP côté serveur), `hostPlay` (jouabilité observée par hôte), `verifiedAt`, `matches[]`. Le navigateur le lit par `loadPrefetchedStreams` → `lireCacheServeur` (deux essais à 1,5 s d'écart, puis le cache HTTP du navigateur en troisième essai) → `appliquerCacheServeur` (filtre du jour, marquage `prefetched`, politique d'intégration versée dans le registre appris, registre de jouabilité). Le dernier cache lu avec succès est conservé en mémoire et réappliqué si une lecture échoue ; `window.prefetchedStreamsError` retient l'échec, que les cartes affichent (badge ⚠).
+Produit par `scripts/scrape_streams.mjs` (§12), planifié deux fois par heure mais exécuté par GitHub cinq à six fois par jour (§12). Clés : `generatedAt`, `date`, `fetch`, `sources[]` (état de chaque source), `hostPolicy` (intégrabilité par hôte, lue des en-têtes X-Frame-Options et CSP côté serveur), `hostPlay` (jouabilité observée par hôte), `verifiedAt`, `matches[]`. Le navigateur le lit par `loadPrefetchedStreams` → `lireCacheServeur` (deux essais à 1,5 s d'écart, puis le cache HTTP du navigateur en troisième essai) → `appliquerCacheServeur` (filtre du jour, marquage `prefetched`, politique d'intégration versée dans le registre appris, registre de jouabilité). Le dernier cache lu avec succès est conservé en mémoire et réappliqué si une lecture échoue ; `window.prefetchedStreamsError` retient l'échec, que les cartes affichent (badge ⚠).
 
 ### 6.2 Sources (`SCRAPERS_CONFIG`, `js/config.js`)
 
@@ -250,6 +250,7 @@ Dans une page de lecteur, le script remonte à la fenêtre principale `video_sta
 
 - **État** : `S` (`js/state.js`) porte `matches`, `matchMap`, `filter` (`live` / `all`), `searchQuery`, les sections repliées, les rails, les flux non appariés.
 - **Rendu** : `buildEPG(matches)` (`js/ui.js`) protège `buildEPGInner` : une exception de rendu ne peut plus effacer l'application (la boîte d'erreur est recréée si besoin). Chaque rendu incrémente `window.rendusGrille`, que les tests utilisent pour attendre une grille stable. En mode Live, les cartes `.prime-*` par section ; en mode Guide, la grille horaire positionnée par variables CSS (`--start-h`, `--start-m`, `--duration-m`).
+- **Identifiant d'une carte** : `mb-<id du match>`, seul lien entre le DOM et `S.matchMap`. Un favori figure dans la section Favoris **et** dans sa section : sa copie Favoris porte `mb-<id>_fav_copy`, sinon deux éléments partageraient un `id` et `getElementById` ne verrait que le premier. Tout code qui remonte d'une carte au match passe par `getOriginalMatchId` (`js/ui.js`), qui retire ce suffixe ; la mise à jour des scores en place (`js/main.js`) cherche les deux identifiants.
 - **Niveaux de ligue** : `leagueTier` (`js/db.js`) rend `main`, `secondary`, `other` ou `ignored` ; le choix de l'utilisateur (`league_tiers`) prime sur `DEFAULT_LEAGUES` et `OTHER_LEAGUES`.
 - **Fiche** : `openMod(m)` dessine la bannière, charge les compléments ESPN (`fetchGameStats`, `fetchTeamInfo`) et la colonne des flux ; la page du match est relue à l'ouverture (`doitRelireLaPage`) puis chaque minute.
 - **Préférences d'apparence** : `userPrefs` (`user_prefs`), appliquées par `applyUserPrefs` → `initPrefs` → reconstruction.
@@ -279,7 +280,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 
 ## 11. Service worker et version
 
-`sw.js` : `CACHE_NAME = 'sports-guide-v14'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes, les deux fichiers de données), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation.
+`sw.js` : `CACHE_NAME = 'sports-guide-v17'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
 
 **Règle** : toute modification de `sw.js` ou d'un fichier précaché s'accompagne d'une nouvelle valeur de `CACHE_NAME`, recopiée dans `VERSION_APP` (`js/multiview.js`), qui est ce que Logs → Cet appareil affiche. Trois tests (`unit_diagnosticappareil`, `unit_favicon`, `unit_majapp`) vérifient que les deux chaînes sont identiques. Un nouveau module `js/` doit être ajouté à `APP_SHELL`.
 
@@ -289,20 +290,20 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 
 | Workflow | Déclencheur | Ce qu'il fait | Ce qu'il commite |
 |---|---|---|---|
-| `tests.yml` | push et PR sur `main` | `npm ci`, Chromium Playwright, `npm test` | rien |
-| `scrape_schedule.yml` | tous les jours à 09:00 UTC, à chaque push sur `main`, à la demande | `node scripts/scrape_schedule.mjs` | `data/schedule.json` |
-| `scrape_streams.yml` | à :17 et :47 chaque heure, à la demande (une exécution à la fois, 30 min max) | `node --max-old-space-size=8192 scripts/scrape_streams.mjs`, puis `scripts/verify_players.mjs` (sans faire échouer le passage) | `data/streams.json`, `domains.json` |
-| `domains-watch.yml` | tous les jours à 05:00 UTC, à la demande | `npm run test:domains` | rien (surveillance ; sortie de `npm test` parce que Cloudflare répond selon l'adresse du runner) |
+| `tests.yml` | push et PR sur `main` | `npm ci`, Chromium Playwright (mis en cache d'une exécution à l'autre), `npm test` ; lecture seule, 20 min max | rien |
+| `scrape_schedule.yml` | tous les jours à 09:00 UTC, à la demande, et sur un push sur `main` qui touche le script du calendrier ou les bases d'équipes (un passage à la fois, 20 min max) | `node scripts/scrape_schedule.mjs` | `data/schedule.json` |
+| `scrape_streams.yml` | planifié à :17 et :47 chaque heure, à la demande (une exécution à la fois, 30 min max). **Cadence réelle** relevée le 9 septembre 2026 : GitHub retarde ou saute les crons fréquents, et ce workflow ne tourne que cinq à six fois par jour, à 3 à 5 h d'écart ; tenir deux passages par heure demanderait un déclencheur externe | `node --max-old-space-size=8192 scripts/scrape_streams.mjs`, puis `scripts/verify_players.mjs` (sans faire échouer le passage) | `data/streams.json`, `domains.json` |
+| `domains-watch.yml` | tous les jours à 05:00 UTC, à la demande | `npm run test:domains` ; lecture seule, 20 min max | rien (surveillance ; sortie de `npm test` parce que Cloudflare répond selon l'adresse du runner) |
 
 - `scripts/scrape_schedule.mjs` reconstruit le calendrier du jour (ESPN et annexes) avec ses propres copies des aides de date et en important `js/nuit.js` ; avant 06:00 (heure de New York) il relit aussi la veille. Mêmes règles que le client : six chemins à la fois, et une passe partielle **fusionne** avec le `data/schedule.json` déjà publié du même jour au lieu de le remplacer — sinon un passage où quelques chemins échouent publiait un calendrier amputé pour tous les appareils jusqu'au suivant. Aucune réponse du tout : le fichier n'est pas touché.
-- `scripts/scrape_streams.mjs` réutilise **les parseurs du client** dans un DOM jsdom (`__NO_AUTOSTART__`), avec un `fetch` direct (User-Agent de navigateur, Referer), lit chaque source et ses sous-pages, puis les pages de match (`--limit`, 900 par défaut), relève la politique d'intégration de chaque hôte, promeut les miroirs et réécrit `domains.json`.
+- `scripts/scrape_streams.mjs` réutilise **les parseurs du client** dans un DOM jsdom (`__NO_AUTOSTART__`), avec un `fetch` direct (User-Agent de navigateur, Referer), lit chaque source et ses sous-pages, puis les pages de match (`--limit`, 900 par défaut), relève la politique d'intégration de chaque hôte, promeut les miroirs et réécrit `domains.json`. Mêmes garde-fous que le calendrier depuis le 9 septembre 2026 : **aucune source vivante, le fichier n'est pas touché** ; une passe partielle **conserve** les matchs déjà publiés des sources muettes, à partir de la veille (`conserverSourcesMuettes`, `js/config.js`), et une date antérieure à la veille est écartée. Le gagnant d'une source est fixé après sa lecture par `gagnantApresLecture` (`js/config.js`) : l'adresse qui a répondu, à condition d'avoir livré des matchs.
 - `scripts/verify_players.mjs` charge dans un vrai Chromium, encadrés comme une tuile, les lecteurs des matchs en direct ou imminents (budget 5 min, 150 au plus) et pose `verified` par lien et `hostPlay` par hôte.
 
 Les commits automatiques ne déclenchent pas `tests.yml`.
 
 ## 13. Tests
 
-`npm test` enchaîne 46 fichiers unitaires Node (`tests/unit_*.test.js`, `tests/getLogo.test.js`) puis deux suites Playwright : `test_app_boot.spec.js` (démarrage et interface) et `test_cleaner.spec.js` (le script utilisateur). `npm run test:domains` lance à part `test_domains.spec.js`.
+`npm test` lance `npm run test:unit`, c'est-à-dire `node --test tests/*.test.js` (tous les fichiers unitaires Node, découverts par le motif : un nouveau test n'a rien à déclarer, et un échec n'arrête pas les autres), puis deux suites Playwright : `test_app_boot.spec.js` (démarrage et interface) et `test_cleaner.spec.js` (le script utilisateur). `npm run test:domains` lance à part `test_domains.spec.js`.
 
 Chaque test unitaire ouvre par un commentaire qui dit quel problème l'a motivé. Les modules du noyau sont chargés sous jsdom (`window` et `localStorage` factices) ; les modules sans import sont importés directement.
 

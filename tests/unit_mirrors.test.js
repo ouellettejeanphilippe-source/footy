@@ -86,6 +86,28 @@ async function main() {
     ok('shouldPromoteSource exige des matchs livrés, pas seulement un code 200');
   }
 
+  // ── Le gagnant après lecture ─────────────────────────────────────────────
+  /* Relevé le 9 septembre 2026 : le script serveur ne posait le gagnant que s'il était
+     ABSENT, or fetchWithMirrors le pose toujours après un succès ; le cas sain tombait
+     dans le `else` et remettait le gagnant à null. shouldPromoteSource refusait alors
+     tout, et domains.json n'a jamais été réécrit par le bot. C'est CE cas qui compte. */
+  {
+    const trouve = { winner: A, dead: [], candidates: [A, B] };
+    assert.strictEqual(C.gagnantApresLecture(trouve, 12, A), A,
+      'source saine, gagnant déjà posé et matchs livrés : le gagnant reste');
+    assert.strictEqual(C.gagnantApresLecture({ winner: null, dead: [], candidates: [A] }, 12, B), B,
+      'sans gagnant posé, l\'adresse lue en tient lieu');
+    assert.strictEqual(C.gagnantApresLecture(trouve, 0, A), null,
+      'aucun match livré : pas de gagnant, quel que soit le code HTTP');
+    assert.strictEqual(C.gagnantApresLecture(null, 12, A), null);
+    assert.strictEqual(C.gagnantApresLecture(trouve, undefined, A), null);
+    // Enchaîné avec la promotion : le cas sain doit finir par une écriture.
+    const apres = Object.assign({}, trouve, { winner: C.gagnantApresLecture(trouve, 12, A) });
+    assert.strictEqual(C.shouldPromoteSource({ id: 'x', ok: true, matches: 12 }, apres), true,
+      'une source saine est promue au bout de la chaîne');
+    ok('gagnantApresLecture garde le gagnant d\'une source qui a livré des matchs');
+  }
+
   // ── Origine canonique : un site qui a déménagé le dit lui-même ──────────
   /* Relevé le 6 septembre 2026 : footybite.bid redirige vers footybite.im et ses pages de
      match répondent 403 ; la page d'accueil, elle, livre ses matchs, donc aucun miroir

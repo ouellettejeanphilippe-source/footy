@@ -132,6 +132,52 @@ export function shouldPromoteSource(report, finding) {
     return (report.matches || 0) > 0;
 }
 
+/* Quelle adresse retenir comme gagnante une fois la source LUE ?
+
+   `fetchWithMirrors` pose déjà `winner` dès qu'une adresse répond. La lecture décide
+   ensuite : si la source a livré des matchs, ce gagnant reste (ou, à défaut, l'adresse
+   lue) ; si elle n'en a livré aucun, il n'y a pas de gagnant, quel que soit le code HTTP.
+
+   Relevé le 9 septembre 2026 : le script serveur ne posait le gagnant que s'il était
+   ABSENT — or il ne l'est jamais après un succès — et l'effaçait sinon. Dans le cas
+   sain, le gagnant était donc remis à null, `shouldPromoteSource` refusait tout, et
+   `domains.json` n'a jamais été réécrit par le bot. Fonction pure, verrouillée par
+   unit_mirrors. */
+export function gagnantApresLecture(finding, nbMatchs, urlLue) {
+    if (!finding) return null;
+    if (!(nbMatchs > 0)) return null;
+    return finding.winner || urlLue || null;
+}
+
+/* Passe PARTIELLE des liens (script serveur).
+
+   Une source qui n'a pas répondu cette fois-ci ne doit pas effacer les liens qu'elle
+   avait livrés au passage précédent : ils restent valables des heures, et le fichier
+   publié est lu par TOUS les appareils jusqu'au passage suivant. On reprend donc, du
+   fichier déjà publié, les matchs des sources muettes qui ne sont pas déjà connus, à
+   partir de `depuisJour` (la veille : la nuit appartient à la journée). Les sources qui
+   ont répondu font foi : rien de ce qu'elles ne livrent plus n'est conservé. */
+export function conserverSourcesMuettes(frais, publies, rapports, depuisJour) {
+    var muettes = {};
+    (rapports || []).forEach(function (r) { if (r && r.id && !r.ok) muettes[r.id] = true; });
+    var out = (frais || []).slice();
+    if (!Object.keys(muettes).length || !publies || !Array.isArray(publies.matches)) return { matches: out, conserves: 0 };
+    var cle = function (m) { return (m.source || '') + '|' + (m.matchUrl || ((m.homeTeam || '') + '|' + (m.awayTeam || '') + '|' + (m.matchDate || ''))); };
+    var vus = {};
+    out.forEach(function (m) { if (m) vus[cle(m)] = true; });
+    var conserves = 0;
+    publies.matches.forEach(function (m) {
+        if (!m || !muettes[m.source]) return;
+        if (depuisJour && /^\d{4}-\d{2}-\d{2}$/.test(String(m.matchDate || '')) && m.matchDate < depuisJour) return;
+        var k = cle(m);
+        if (vus[k]) return;
+        vus[k] = true;
+        out.push(m);
+        conserves++;
+    });
+    return { matches: out, conserves: conserves };
+}
+
 /* Nouvel ordre d'essai d'une source après une exécution, du plus prometteur au moins.
 
    L'adresse qui a répondu passe en tête. Celles qui ont ÉCHOUÉ cette fois-ci vont en

@@ -31,9 +31,9 @@ Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), 
 
 - Application statique (PWA) : `index.html` + modules `js/`, sans framework. `legacy.html` est l'interface classique sur le même moteur.
 - Huit modules forment un cycle d'imports (`api`, `config`, `ui`, `multiview`, `main`, `utils`, `scrapers`, `state`). Un script ou un test qui importe le noyau importe `js/scrapers.js` en premier et pose `window.__NO_AUTOSTART__ = true`. Les autres modules sont sans import : garder cette propriété quand c'est possible.
-- Données : `data/schedule.json` (calendrier, quotidien) et `data/streams.json` (liens, deux fois par heure) sont produits par `scripts/*.mjs` via les workflows ; `domains.json` porte les adresses courantes des sources. Ne pas les éditer à la main ; les régénérer avec les scripts si un test en a besoin.
+- Données : `data/schedule.json` (calendrier, quotidien) et `data/streams.json` (liens, plusieurs fois par jour) sont produits par `scripts/*.mjs` via les workflows ; `domains.json` porte les adresses courantes des sources. Ne pas les éditer à la main ; les régénérer avec les scripts si un test en a besoin.
 - Outils : `package.json` ne porte que des dépendances de développement (`@playwright/test`, `playwright`, `jsdom`). Les scripts serveur utilisent le `fetch` natif de Node 22. Pas de Python.
-- Tests : `npm test` (46 unitaires puis deux suites Playwright) ; `npm run test:domains` à part, parce qu'il dépend du réseau.
+- Tests : `npm test` (`node --test tests/*.test.js`, puis deux suites Playwright ; un fichier `tests/*.test.js` est pris en compte sans rien déclarer) ; `npm run test:domains` à part, parce qu'il dépend du réseau.
 - Fuseau : toutes les heures sont celles de New York ; un match porte `matchDate` et `startTime` dans ce fuseau.
 
 ## Quand t'arrêter

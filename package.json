@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "test": "node tests/unit_escJs.test.js && node tests/getLogo.test.js && node tests/unit_fetcher.test.js && node tests/unit_extractors.test.js && node tests/unit_teamAliases.test.js && node tests/unit_scrapers.test.js && node tests/unit_footybitedomaine.test.js && node tests/unit_footybitepair.test.js && node tests/unit_fluxutiles.test.js && node tests/unit_relecture.test.js && node tests/unit_framepolicy.test.js && node tests/unit_bridgefetch.test.js && node tests/unit_leagues.test.js && node tests/unit_merge.test.js && node tests/unit_matchmerge.test.js && node tests/unit_links.test.js && node tests/unit_fetchbridge.test.js && node tests/unit_sports.test.js && node tests/unit_pairing.test.js && node tests/unit_blocked.test.js && node tests/unit_scorerefresh.test.js && node tests/unit_scrapequeue.test.js && node tests/unit_livewindow.test.js && node tests/unit_directmedia.test.js && node tests/unit_streamed.test.js && node tests/unit_mirrors.test.js && node tests/unit_footybitesections.test.js && node tests/unit_mvlien.test.js && node tests/unit_playability.test.js && node tests/unit_sourcepages.test.js && node tests/unit_categorie.test.js && node tests/unit_adaptateurs.test.js && node tests/unit_fiche_continue.test.js && node tests/unit_soft404.test.js && node tests/unit_decor.test.js && node tests/unit_esports.test.js && node tests/unit_debit.test.js && node tests/unit_finpresumee.test.js && node tests/unit_sortieforcee.test.js && node tests/unit_calendrierperime.test.js && node tests/unit_troisiemeessai.test.js && node tests/unit_diagnosticappareil.test.js && node tests/unit_majapp.test.js && node tests/unit_spectaclecatch.test.js && node tests/unit_favicon.test.js && node tests/unit_nuit.test.js && node tests/unit_espnpartiel.test.js && node tests/unit_scoresdirects.test.js && node tests/unit_reposlecteur.test.js && npx playwright test tests/test_app_boot.spec.js tests/test_cleaner.spec.js",
+    "test": "npm run test:unit && npx playwright test tests/test_app_boot.spec.js tests/test_cleaner.spec.js",
+    "test:unit": "node --test tests/*.test.js",
     "scrape:streams": "node --max-old-space-size=8192 scripts/scrape_streams.mjs",
     "test:domains": "npx playwright test tests/test_domains.spec.js"
   },
@@ -23,6 +24,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/ouellettejeanphilippe-source/footy/issues"

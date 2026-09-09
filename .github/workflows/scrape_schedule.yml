@@ -4,12 +4,29 @@ on:
   schedule:
     - cron: '0 9 * * *' # 09:00 UTC = 4:00 AM EST / 5:00 AM EDT
   workflow_dispatch:
+  # Relancé sur un push SEULEMENT quand ce qui produit le calendrier change. Jusqu'au
+  # 9 septembre 2026, chaque fusion de PR (même une ligne de documentation) relançait
+  # un scrape ESPN complet et recommitait data/schedule.json : c'est ce qui créait la
+  # course avec le workflow des liens décrite plus bas.
   push:
     branches:
       - main
+    paths:
+      - 'scripts/scrape_schedule.mjs'
+      - 'js/nuit.js'
+      - 'js/db.js'
+      - 'js/teams.js'
+      - '.github/workflows/scrape_schedule.yml'
 
 permissions:
   contents: write
+
+# Deux passages en même temps se rebaseraient l'un sur l'autre : on ne garde que le
+# dernier demandé, l'autre attend son tour (rien n'est annulé : un passage commencé
+# a déjà interrogé ESPN, autant le laisser écrire).
+concurrency:
+  group: scrape-schedule
+  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -17,6 +34,7 @@ env:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -27,7 +45,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies

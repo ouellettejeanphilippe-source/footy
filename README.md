@@ -37,18 +37,19 @@ Sur téléphone, les navigateurs ne prennent pas d'extensions : l'application fo
 ### D'où viennent les données
 
 - **Calendrier et scores** : l'API publique d'ESPN (48 compétitions), complétée par quelques calendriers (PWHL, F1, IndyCar, sports de combat, WWE, LoL Esports). Un calendrier du jour est régénéré chaque matin sur le serveur (`data/schedule.json`) ; le navigateur relit les scores toutes les cinq minutes.
-- **Liens de diffusion** : onze sites agrégateurs, lus deux fois par heure sur le serveur (`data/streams.json`), puis relus par le navigateur quand il le peut. Les adresses courantes des sites, qui changent souvent, sont dans `domains.json`, mis à jour automatiquement.
+- **Liens de diffusion** : onze sites agrégateurs, relus sur le serveur plusieurs fois par jour (`data/streams.json` ; le passage est planifié deux fois par heure, mais GitHub ne l'exécute que cinq à six fois par jour), puis relus par le navigateur quand il le peut. Les adresses courantes des sites, qui changent souvent, sont dans `domains.json`, mis à jour automatiquement.
 
 L'application n'héberge ni ne diffuse aucune vidéo ; elle rassemble des liens publics.
 
 ## Développer
 
-Prérequis : Node.js 22, npm. Chromium pour les tests Playwright.
+Prérequis : Node.js 22 (`.nvmrc`), npm. Chromium pour les tests Playwright.
 
 ```bash
 npm ci
 npx playwright install chromium     # une fois
-npm test                            # tests unitaires puis suites Playwright
+npm test                            # tests unitaires (node --test) puis suites Playwright
+npm run test:unit                   # les tests unitaires seuls, en parallèle
 npm run test:domains                # surveillance des domaines des sources (dépend du réseau)
 ```
 
@@ -80,8 +81,8 @@ Les scripts serveur se lancent aussi à la main : `node scripts/scrape_schedule.
 | Workflow | Quand | Résultat |
 |---|---|---|
 | Tests | chaque push et chaque PR sur `main` | `npm test` |
-| Calendrier ESPN | chaque jour à 09:00 UTC, et à chaque push sur `main` | `data/schedule.json` commité |
-| Liens de diffusion | à :17 et :47 chaque heure | `data/streams.json` et `domains.json` commités |
+| Calendrier ESPN | chaque jour à 09:00 UTC, et sur un push sur `main` qui touche le script du calendrier | `data/schedule.json` commité |
+| Liens de diffusion | planifié à :17 et :47 ; exécuté en pratique cinq à six fois par jour | `data/streams.json` et `domains.json` commités |
 | Surveillance des domaines | chaque jour à 05:00 UTC | rapport seulement |
 
 ### Règles à retenir

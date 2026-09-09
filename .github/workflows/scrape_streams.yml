@@ -5,6 +5,14 @@ on:
     # Deux fois par heure (6 septembre 2026) : les sites publient leurs liens dans l'heure
     # qui précède le coup d'envoi, et un cache horaire les manquait pour la moitié des
     # matchs. Un passage dure ~13 min ; décalé de :00 pour éviter la congestion des runners.
+    #
+    # Cadence RÉELLE, relevée le 9 septembre 2026 sur l'historique des exécutions : GitHub
+    # n'honore ce cron que cinq à six fois par jour (00:15, 04:48, 09:46, 13:57, 17:50,
+    # 20:56), soit un passage toutes les 3 à 5 h, tous réussis. Les crons fréquents sont
+    # retardés ou sautés en période de charge ; ce n'est pas un échec du script. Pour
+    # tenir vraiment deux passages par heure, il faudrait un déclencheur externe qui
+    # appelle `workflow_dispatch` avec un jeton. En attendant, le navigateur relit les
+    # sources lui-même et Logs → Cet appareil montre l'âge du fichier.
     - cron: '17,47 * * * *'
   workflow_dispatch:
 
@@ -32,11 +40,19 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
+
+      # Chromium (~150 Mo) était retéléchargé à chaque passage : gardé d'une fois sur
+      # l'autre, clé sur le lockfile, qui fixe la version de Playwright.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Prefetch stream links from all sources
         # Marge de securite au-dela des bornes posees dans le script lui-meme :
