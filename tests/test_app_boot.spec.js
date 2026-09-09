@@ -434,7 +434,7 @@ test('l\'onglet Live ne montre que le direct et l\'heure qui vient', async ({ pa
        l'ensemble des matchs rendus restait vide et le test passait sans rien vérifier. */
     const rendus = new Set();
     document.querySelectorAll('#marea .match-card[id^="mb-"]').forEach((c) => {
-      rendus.add(c.id.slice(3));
+      rendus.add(window.getOriginalMatchId(c.id.slice(3)));   // la copie Favoris porte un suffixe
     });
 
     const hors = [];
@@ -846,12 +846,19 @@ test('un match terminé selon ESPN quitte le Live, et le Guide suit le score', a
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
+  /* Un favori est rendu deux fois dans le Live (section Favoris, puis sa section) : sa
+     copie porte le suffixe `_fav_copy`, sans quoi deux cartes partageaient un `id` et
+     la seconde ne suivait plus les scores. On compte donc les cartes DU match, et on
+     exige des identifiants tous distincts. */
   const cible = await page.evaluate(() => {
     const card = document.querySelector('#marea .match-card.live[id^="mb-"]') || document.querySelector('#marea .match-card[id^="mb-"]');
-    const id = card.id.slice(3);
+    const id = window.getOriginalMatchId(card.id.slice(3));
     const m = window.S.matchMap.get(id);
-    return { id, status: m.status, cartes: document.querySelectorAll('#marea .match-card').length };
+    const ids = [...document.querySelectorAll('#marea .match-card')].map((c) => c.id);
+    return { id, status: m.status, cartes: ids.length, ids, copies: ids.filter((x) => window.getOriginalMatchId(x.slice(3)) === id).length };
   });
+  expect(new Set(cible.ids).size, 'aucune carte ne partage son id avec une autre').toBe(cible.ids.length);
+  expect(cible.copies, 'le match choisi a au moins une carte').toBeGreaterThan(0);
 
   // Rafraîchissement ESPN simulé : ce match est terminé, 4-2.
   const apres = await page.evaluate((c) => {
@@ -868,7 +875,7 @@ test('un match terminé selon ESPN quitte le Live, et le Guide suit le score', a
   expect(apres.statut, 'S.matches porte le nouveau statut').toBe('finished');
   expect(apres.score).toEqual([4, 2]);
   expect(apres.encoreRendu, 'le match terminé a quitté l\'onglet Live').toBeFalsy();
-  expect(apres.cartes).toBe(cible.cartes - 1);
+  expect(apres.cartes, 'toutes ses cartes sont parties, la copie Favoris comprise').toBe(cible.cartes - cible.copies);
 
   // Dans le Guide, le bloc de ce match affiche le score final ; un score qui bouge se voit.
   await page.evaluate(() => window.applyFilter('all'));

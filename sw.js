@@ -16,9 +16,15 @@
       été découpée en modules, il lui manquait hors ligne sa feuille de style et tout son
       code : elle ne pouvait pas démarrer. La coquille complète est maintenant pré-chargée,
       fichier par fichier pour qu'une seule ressource absente ne fasse pas échouer
-      l'installation entière. */
+      l'installation entière.
 
-const CACHE_NAME = 'sports-guide-v16';
+   Les données (`data/streams.json`, `data/schedule.json`) ne sont plus pré-cachées
+   (9 septembre 2026) : périmées en trente minutes, elles coûtaient 1,2 Mo à chaque
+   nouvelle version pour une copie que le premier chargement remplace aussitôt. Le
+   gestionnaire `fetch` ci-dessous les range de toute façon dès leur première lecture,
+   ce qui suffit au repli hors ligne. */
+
+const CACHE_NAME = 'sports-guide-v17';
 
 const APP_SHELL = [
   './index.html',
@@ -60,9 +66,7 @@ const APP_SHELL = [
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './js/tv-navigation.js',
-  './data/streams.json',
-  './data/schedule.json'
+  './js/tv-navigation.js'
 ];
 
 /* Adresse de rangement : même origine → on ignore la chaîne de requête, qui ne sert

@@ -20,6 +20,16 @@
 
 
 <link rel="stylesheet" href="styles-legacy.css">
+<!-- Les modules sont découverts en cascade depuis js/main.js : on annonce les plus lourds
+     tout de suite pour que le navigateur les télécharge en parallèle (9 septembre 2026). -->
+<link rel="modulepreload" href="js/scrapers.js">
+<link rel="modulepreload" href="js/config.js">
+<link rel="modulepreload" href="js/utils.js">
+<link rel="modulepreload" href="js/api.js">
+<link rel="modulepreload" href="js/ui.js">
+<link rel="modulepreload" href="js/multiview.js">
+<link rel="modulepreload" href="js/db.js">
+<link rel="modulepreload" href="js/teams.js">
 <style id="custom-ui-effects">
   .neon-glow-effect .btn {
       box-shadow: 0 0 10px var(--accent), inset 0 0 10px var(--accent) !important;

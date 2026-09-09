@@ -9,7 +9,7 @@ import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
 import { appartientAuJour, DUREE_LARGE_MIN } from './nuit.js';
 import { isMatchPair } from './match.js';
-import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute } from './ui.js';
+import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId } from './ui.js';
 import { setMatches } from './state.js';
 import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
 
@@ -101,7 +101,7 @@ function liveViewIsStale(matches) {
     var now = new Date();
     var rendered = {};
     var cards = container.querySelectorAll('.match-card[id^="mb-"]');
-    for (var i = 0; i < cards.length; i++) rendered[cards[i].id.slice(3)] = true;
+    for (var i = 0; i < cards.length; i++) rendered[getOriginalMatchId(cards[i].id.slice(3))] = true;   // la copie Favoris porte un suffixe
     var expected = {};
     for (var j = 0; j < matches.length; j++) {
         var m = matches[j];

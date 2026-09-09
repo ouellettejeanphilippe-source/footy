@@ -504,7 +504,13 @@ function buildEPGInner(matches){
                   var b = document.createElement('div');
                   var presume = m.status === 'live' && finPresumee(m);
                   b.className = 'match-card' + (m.status==='live' && !presume ? ' live' : '') + (m.status==='finished' || presume ? ' finished' : '');
-                  b.id = 'mb-'+m.id;
+                  /* La section Favoris montre un match qui figure AUSSI dans Live ou À venir :
+                     deux cartes pour un match. Avec le même `id`, getElementById ne voyait
+                     que la première et la seconde ne suivait plus les scores (relevé le
+                     9 septembre 2026 : CF Montréal, favori par défaut, en cours). La copie
+                     porte le suffixe que la mise à jour des scores (js/main.js) et la fiche
+                     (getOriginalMatchId) attendaient déjà. */
+                  b.id = 'mb-' + m.id + (sectionId === 'liveFavoris' ? '_fav_copy' : '');
                   b.setAttribute('data-lg', lg.league);
                   b.style.display = isCollapsed ? 'none' : 'flex';
 

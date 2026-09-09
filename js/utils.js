@@ -4,7 +4,7 @@ import { PROXIES, resolveUrl } from './config.js';
 import { inspectPageContent, orderProxies, recordProxyResult, DEFAULT_PROXY_TIMEOUT, statutAcceptable } from './fetcher.js';
 import { getBridgeStatus, fetchViaBridge } from './embed-bridge.js';
 import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
-import { userPrefs, buildEPG } from './ui.js';
+import { userPrefs, buildEPG, getOriginalMatchId } from './ui.js';
 import { openFavPage } from './main.js';
 
 /* ══ HELPERS ═══════════════════════════ */
@@ -640,7 +640,7 @@ export function toggleAccordion(lgName) {
       var matchesToFetch = [];
       var rowsToFetch = document.querySelectorAll('.mrow[data-lg="' + lgName + '"], .match-card[data-lg="' + lgName + '"]');
       rowsToFetch.forEach(function(el) {
-          var id = el.id.replace('mb-', '');
+          var id = getOriginalMatchId(el.id.replace('mb-', ''));   // la copie Favoris porte un suffixe
           if (id) {
               var m = S.matchMap.get(id);
               if (m && !m.streamsLoaded) {

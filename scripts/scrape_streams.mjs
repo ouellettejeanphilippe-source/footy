@@ -72,8 +72,9 @@ const scrapers = await import('../js/scrapers.js');
 const config = await import('../js/config.js');
 const utils = await import('../js/utils.js');
 const match = await import('../js/match.js');
+const { veille } = await import('../js/nuit.js');
 
-const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, canonicalOrigin, sourceIdPourHote } = config;
+const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, gagnantApresLecture, conserverSourcesMuettes, canonicalOrigin, sourceIdPourHote } = config;
 const { fetchPage } = utils;
 
 const parsers = {
@@ -206,9 +207,10 @@ for (const sc of SCRAPERS_CONFIG) {
             if (!reste.length) break;
             console.log(`  [${sc.id}] ${home.url} repond mais ne livre aucun match : on essaie un miroir`);
         }
+        // Gagnant pour domains.json : l'adresse qui a répondu, à condition d'avoir livré
+        // des matchs (voir gagnantApresLecture, js/config.js).
+        if (mirrorFindings[sc.id]) mirrorFindings[sc.id].winner = gagnantApresLecture(mirrorFindings[sc.id], read.list.length, home.url);
         rep.url = (mirrorFindings[sc.id] && mirrorFindings[sc.id].winner) || home.url;
-        if (read.list.length && mirrorFindings[sc.id] && !mirrorFindings[sc.id].winner) mirrorFindings[sc.id].winner = home.url;
-        else if (mirrorFindings[sc.id]) mirrorFindings[sc.id].winner = null;
         const list = read.list;
         list.forEach((m) => { m.source = m.source || sc.id; if (!m.matchDate) m.matchDate = today; });
         rep.ok = read.pages > 0;
@@ -224,8 +226,21 @@ for (const sc of SCRAPERS_CONFIG) {
     sourcesReport.push(rep);
 }
 
+/* Aucune source n'a répondu (Cloudflare qui refuse l'adresse du runner, panne réseau) :
+   écrire quand même publierait un fichier VIDE pour tous les appareils jusqu'au passage
+   suivant, à la place d'un fichier de liens encore bons. Même règle que le calendrier
+   (scripts/scrape_schedule.mjs) : on ne touche à rien. */
+if (!sourcesReport.some((s) => s.ok)) {
+    console.log(`\nAucune des ${sourcesReport.length} sources n'a répondu : data/streams.json est laissé intact.`);
+    process.exit(0);
+}
+
 // ── 2. Pages de match : extraction des flux (concurrence limitée) ──────────
 all = all.filter((m) => m && m.matchUrl && (m.homeTeam || m.awayTeam));
+/* Une date antérieure à la veille est une erreur de lecture (un « 2016-12-01 » traînait
+   dans le fichier) : elle n'a rien à faire dans les liens du jour. */
+const depuisJour = veille(today);
+all = all.filter((m) => !(depuisJour && /^\d{4}-\d{2}-\d{2}$/.test(String(m.matchDate || '')) && m.matchDate < depuisJour));
 if (!NO_SUBPAGES) {
     /* Priorité de traitement, et non plus seulement un plafond de COMPTE.
 
@@ -464,6 +479,15 @@ const out = {
             l.verified ? { verified: l.verified, verifiedAt: l.verifiedAt } : {}))
     }))
 };
+/* Passe partielle : les sources muettes gardent leurs liens déjà publiés (voir
+   conserverSourcesMuettes, js/config.js). Les sources qui ont répondu font foi. */
+if (sourcesReport.some((s) => !s.ok)) {
+    let precedent = null;
+    try { precedent = JSON.parse(fs.readFileSync('data/streams.json', 'utf8')); } catch (e) { /* premier passage : rien à conserver */ }
+    const fusion = conserverSourcesMuettes(out.matches, precedent, sourcesReport, depuisJour);
+    out.matches = fusion.matches;
+    console.log(`Passe partielle (${sourcesReport.filter((s) => !s.ok).map((s) => s.id).join(', ')} muettes) : ${fusion.conserves} match(s) conservé(s) du fichier déjà publié.`);
+}
 fs.mkdirSync('data', { recursive: true });
 fs.writeFileSync('data/streams.json', JSON.stringify(out, null, 1));
 const totalStreams = out.matches.reduce((n, m) => n + m.streamLinks.filter((l) => !l.topLevel).length, 0);
