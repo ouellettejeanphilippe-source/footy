@@ -3,7 +3,7 @@ import { S } from './state.js';
 import { PROXIES, resolveUrl } from './config.js';
 import { inspectPageContent, orderProxies, recordProxyResult, DEFAULT_PROXY_TIMEOUT, statutAcceptable } from './fetcher.js';
 import { getBridgeStatus, fetchViaBridge } from './embed-bridge.js';
-import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview } from './multiview.js';
+import { mvFlux, toggleMultiviewPip, openOptionsPage, openLogsPage, openScriptPage, toggleMultiview, quitterModeCinema } from './multiview.js';
 import { userPrefs, buildEPG, getOriginalMatchId } from './ui.js';
 import { openFavPage } from './main.js';
 
@@ -469,6 +469,10 @@ export function applyFilter(f){
   if(mvc && mvc.style.display !== 'none' && !mvc.classList.contains('mv-pip')) {
       toggleMultiviewPip();
   }
+  /* Filet : on revient à une vue de la page, elle doit défiler. Le mode Cinéma du
+     lecteur bloque `body { overflow }` ; quel que soit le chemin par lequel on est
+     arrivé ici, c'est fini (voir quitterModeCinema, js/multiview.js). */
+  quitterModeCinema();
 
   /* Les contrôles « Maintenant » et ± pilotent uniquement la grille temporelle du Guide
      (visibilité portée par body.view-timeline, styles.css). */

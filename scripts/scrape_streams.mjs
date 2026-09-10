@@ -74,7 +74,7 @@ const utils = await import('../js/utils.js');
 const match = await import('../js/match.js');
 const { veille } = await import('../js/nuit.js');
 
-const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, gagnantApresLecture, conserverSourcesMuettes, canonicalOrigin, sourceIdPourHote } = config;
+const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, gagnantApresLecture, conserverSourcesMuettes, canonicalOrigin, sourceIdPourHote, appliquerSurchargeSources, appliquerHotesDistants, sourcesActives } = config;
 const { fetchPage } = utils;
 
 const parsers = {
@@ -116,6 +116,13 @@ function applyDomainsFile() {
             if (Array.isArray(list) && list.length) SOURCE_MIRRORS[id] = list.slice();
         }
     }
+    /* Les blocs SOURCES et HOSTS suivent le même chemin que les adresses : le script
+       serveur doit lire EXACTEMENT la configuration que les navigateurs appliquent,
+       sinon il produirait des liens à partir de pages que personne ne relit. */
+    const touches = appliquerSurchargeSources(d.SOURCES);
+    const hotes = appliquerHotesDistants(d.HOSTS);
+    if (touches.length) console.log(`Structure de sources surchargee par domains.json : ${touches.join(', ')}`);
+    if (hotes.junk || hotes.players) console.log(`Listes d'hotes distantes : ${hotes.junk} ecartes, ${hotes.players} lecteurs`);
 }
 applyDomainsFile();
 
@@ -177,17 +184,25 @@ async function readSourceAt(sc, home) {
         catch (e) { console.log(`  [${sc.id}] sous-page KO ${pg.url}: ${String(e && e.message ? e.message : e).split('\n')[0]}`); }
     }
     let list = [];
+    let generiques = 0;
     for (const pg of htmls) {
-        try { list = match.mergeMatches(list, parsers[sc.id](pg.html, pg.url) || []); }
+        /* Parseur dédié, puis repli générique s'il ne rend rien : une source qui a refait
+           son HTML continue de livrer, sans attendre qu'on lui réécrive un parseur
+           (js/genericlist.js). */
+        try {
+            const r = scrapers.analyserPageDeListe(parsers[sc.id], pg.html, pg.url, sc.id);
+            if (r.generique) { generiques++; console.log(`  [${sc.id}] repli generique sur ${pg.url} : ${r.liste.length} matchs`); }
+            list = match.mergeMatches(list, r.liste);
+        }
         catch (e) { console.log(`  [${sc.id}] parse KO ${pg.url}: ${e.message}`); }
     }
-    return { list, pages: htmls.length };
+    return { list, pages: htmls.length, generiques };
 }
 
 // ── 1. Pages d'accueil + sous-pages par sport : découverte des matchs ──────
-for (const sc of SCRAPERS_CONFIG) {
+for (const sc of sourcesActives()) {
     const t0 = Date.now();
-    const rep = { id: sc.id, url: sc.url, ok: false, matches: 0, streams: 0, pages: 0, error: null, ms: 0 };
+    const rep = { id: sc.id, url: sc.url, ok: false, matches: 0, streams: 0, pages: 0, generiques: 0, error: null, ms: 0 };
     try {
         /* On juge une adresse sur les MATCHS qu'elle livre, pas sur son code HTTP. Un
            domaine expiré puis racheté répond 200 : s'arrêter au premier succès HTTP
@@ -216,6 +231,9 @@ for (const sc of SCRAPERS_CONFIG) {
         rep.ok = read.pages > 0;
         rep.pages = read.pages;
         rep.matches = list.length;
+        /* Combien de pages ont dû passer par le repli générique : une source qui vit
+           dessus a un parseur à réécrire, sans urgence puisqu'elle livre encore. */
+        rep.generiques = read.generiques || 0;
         all = match.mergeMatches(all, list);
         console.log(`[${sc.id}] ${home.url} (${read.pages} pages) -> ${list.length} matchs`);
     } catch (e) {

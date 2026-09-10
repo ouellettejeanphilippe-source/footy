@@ -2,9 +2,9 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
-import { getDomain, getEstDateStrFromDate, SCRAPERS_CONFIG, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee } from './config.js';
+import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
-import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
+import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
 import { appartientAuJour, DUREE_LARGE_MIN } from './nuit.js';
@@ -682,50 +682,61 @@ async function loadAllRun(isBackground, forceScrape){
                     : 'Recherche des liens en cours…');
             }
 
+            /* Quel parseur lit quelle source. Cette table vivait plus bas, APRÈS le
+               téléchargement, ce qui masquait une dépense inutile : `streamed` n'y figure
+               pas (son API JSON n'est lue que par le script serveur), et le navigateur
+               téléchargeait pourtant ses douze points d'API à chaque passe — par proxy
+               CORS — pour jeter le résultat. On la remonte pour ne demander que les pages
+               qu'on sait lire. */
+            var scraperFunctions = {
+                'footybite': parseFootybite,
+                'mlbbite': parseMlbbite,
+                'sportsurge': parseSportsurge,
+                'buffstreams': parseBuffstreams,
+                'streameast': parseStreameast,
+                'onhockey': parseOnHockey,
+                'vipleague': parseVipleague,
+                'methstreams': parseMethstreams,
+                'flexfitness': parseFlexfitness,
+                'liveleagues': parseLiveleagues
+            };
+
+            /* Les sources que la configuration distante n'a pas coupées (`enabled: false`
+               dans `domains.json` retire une source en panne sans publier de version), et
+               dont ce navigateur sait lire les pages. */
+            var sources = sourcesActives().filter(function(sc) { return typeof scraperFunctions[sc.id] === 'function'; });
+
             return Promise.allSettled(
-          SCRAPERS_CONFIG.map(function(scraper) { return fetchSourcePages(scraper, todaySports); })
+          sources.map(function(scraper) { return fetchSourcePages(scraper, todaySports); })
       ).then(function(results) {
           if (!results) return;
           if (!isBackground) { stepOk(2);  }
 
 
           // Check for failures and notify user (un seul toast regroupé)
-          var sources = SCRAPERS_CONFIG.map(function(s) { return s.url; });
           var failedDomains = [];
           results.forEach(function(r, idx) {
               if (r.status === 'rejected') {
-                  var domain = getDomain(sources[idx]);
-                  console.error('Failed to fetch:', sources[idx], r.reason);
+                  var domain = getDomain(sources[idx].url);
+                  console.error('Failed to fetch:', sources[idx].url, r.reason);
                   var errMsg = (r.reason && r.reason.message ? r.reason.message : 'Échec de la connexion');
-                  addScrapeLog(sources[idx], 'error', errMsg);
+                  addScrapeLog(sources[idx].url, 'error', errMsg);
                   updateSourceStatus(domain, 'error', 0, errMsg.split('\n')[0]);
                   failedDomains.push(domain);
               } else {
-                  addScrapeLog(sources[idx], 'success', '');
+                  addScrapeLog(sources[idx].url, 'success', '');
               }
           });
-          if (failedDomains.length > 0 && failedDomains.length < SCRAPERS_CONFIG.length) {
+          if (failedDomains.length > 0 && failedDomains.length < sources.length) {
               showToast('Sources injoignables : ' + failedDomains.join(', '));
-          } else if (failedDomains.length === SCRAPERS_CONFIG.length) {
+          } else if (sources.length && failedDomains.length === sources.length) {
               showToast('Aucune source de streams joignable (proxys CORS hors service ?). Liens pré-calculés utilisés.');
           }
 
           // Flux pré-calculés côté serveur (data/streams.json) : servent de base même si tous les proxys sont morts
           var scrapedMatches = window.prefetchedStreamMatches ? window.prefetchedStreamMatches.slice() : [];
 
-                    var scraperFunctions = {
-              'footybite': parseFootybite,
-              'mlbbite': parseMlbbite,
-              'sportsurge': parseSportsurge,
-              'buffstreams': parseBuffstreams,
-              'streameast': parseStreameast,
-              'onhockey': parseOnHockey,
-              'vipleague': parseVipleague,
-              'methstreams': parseMethstreams,
-              'flexfitness': parseFlexfitness,
-              'liveleagues': parseLiveleagues
-          };
-          var tasks = SCRAPERS_CONFIG.map(function(sc) {
+          var tasks = sources.map(function(sc) {
               return { fn: scraperFunctions[sc.id], url: sc.url, id: sc.id };
           });
 
@@ -741,10 +752,13 @@ async function loadAllRun(isBackground, forceScrape){
                               try {
                                   var pages = results[idx].value;
                                   var m = [];
+                                  var pagesGeneriques = 0;
                                   pages.forEach(function(pg) {
-                                      var parsed = [];
-                                      try { parsed = task.fn(pg.html, pg.url) || []; } catch(pe) { console.error('Parse error', task.id, pg.url, pe); }
-                                      m = mergeMatches(m, parsed);
+                                      /* Parseur dédié, puis repli générique s'il ne rend rien : une
+                                         source qui refait son HTML n'est plus muette (js/genericlist.js). */
+                                      var r = analyserPageDeListe(task.fn, pg.html, pg.url, task.id);
+                                      if (r.generique) pagesGeneriques++;
+                                      m = mergeMatches(m, r.liste);
                                   });
                                   var matchedCount = 0;
                                   m.forEach(function(scrapedMatch) {
@@ -752,10 +766,11 @@ async function loadAllRun(isBackground, forceScrape){
                                           matchedCount++;
                                       }
                                   });
-                                  window.scraperStats[task.id] = { total: m.length, matched: matchedCount };
+                                  window.scraperStats[task.id] = { total: m.length, matched: matchedCount, generique: pagesGeneriques };
                                   safeStorageSetJSON('scraper_stats', window.scraperStats);
 
-                                  updateSourceStatus(getDomain(task.url), 'success', m.length, 'OK');
+                                  updateSourceStatus(getDomain(task.url), 'success', m.length,
+                                      pagesGeneriques ? 'OK (repli générique sur ' + pagesGeneriques + ' page' + (pagesGeneriques > 1 ? 's' : '') + ')' : 'OK');
                                   scrapedMatches = mergeMatches(scrapedMatches, m);
                               } catch(e) {
                                   console.error('Error parsing ' + task.url, e);

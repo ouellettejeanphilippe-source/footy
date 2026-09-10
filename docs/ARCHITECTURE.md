@@ -23,7 +23,8 @@ styles.css, styles-legacy.css, tv.css
 sw.js                   Service worker (précache de la coquille, réseau d'abord)
 manifest.json           Manifeste PWA
 multiview-cleaner.user.js   Script utilisateur Tampermonkey (nettoyage des lecteurs, pont)
-domains.json            Adresses courantes des sources et leurs miroirs (réécrit par le serveur)
+domains.json            Surcharge vivante : adresses des sources et miroirs (réécrits par le serveur),
+                        structure des sources (SOURCES) et listes d'hôtes (HOSTS) — voir §6.3
 js/                     Modules de l'application (voir §3)
 js/sources/             Un adaptateur par domaine de source
 scripts/                Scripts serveur (Node) lancés par les workflows
@@ -60,13 +61,14 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 | `js/finpresumee.js` | Fin présumée d'un match quand ESPN se tait (§5.6). |
 | `js/playability.js` | Jouabilité observée d'un lien ou d'un hôte, partagée entre le navigateur et `scripts/verify_players.mjs` (§7.3). |
 | `js/fetcher.js` | Aides pures de `fetchPage` : liste et ordre des proxys, relégation, statut acceptable, détection des pages d'erreur servies en 200. Importable en Node. |
-| `js/extractors.js` | Moteur générique de découverte de lecteurs dans une page, sans branche par site (§6.5). |
+| `js/extractors.js` | Moteur générique de découverte de lecteurs dans une page, sans branche par site (§6.5). Porte aussi les listes d'hôtes surchargeables à distance (§6.3). |
+| `js/genericlist.js` | Repli d'analyse d'une liste de matchs, par la forme et sans connaître le site : ce qui reste quand le parseur dédié d'une source ne rend plus rien (§6.5 bis). |
 | `js/embed-bridge.js` | Pont avec le script utilisateur, et reconstruction d'une page qui refuse l'iframe (§7.4). |
 | `js/links.js` | Inventaire des liens par domaine, matchs sans lien, relances de recherche (badge 🔎, « Liens manquants »). |
 | `js/debit.js` | Débit et définition réellement mesurés pendant la lecture. |
 | `js/directmedia.js` | Lecture directe d'un manifeste `.m3u8` / `.mpd` remonté par le script utilisateur. |
 | `js/esports.js` | Transforme les liens LoL Esports en adresses de lecteur encadrables. |
-| `js/mv-menu.js` | Le menu flottant unique du lecteur (position fixe, un seul ouvert, clavier). |
+| `js/mv-menu.js` | Le menu flottant unique du lecteur (position fixe, un seul ouvert, clavier). Il s'ouvre dans le **document de son bouton** : en fenêtre détachée, c'est celui de l'autre fenêtre (§7.5 bis). |
 | `js/tv-navigation.js` | Navigation aux flèches pour le mode TV. Ce n'est pas un module : il est injecté par `<script src>` quand le mode s'active. |
 | `js/sources/index.js` et `js/sources/*.js` | Registre des adaptateurs par domaine. Contrat d'un adaptateur : `hotes`, `extraireLiens(ctx)` et/ou `filtrerLiens(liens)`. Aucun n'importe le module central. |
 
@@ -87,7 +89,7 @@ Le démarrage (`js/main.js`, fin de fichier) :
 3. lecture du calendrier local du jour (`api_calendar_cache_<AAAAMMJJ>`). S'il existe, la grille est dessinée tout de suite avec lui, puis une passe **d'arrière-plan** part ; sinon une passe **de premier plan** part, avec l'écran d'attente ;
 4. dans les deux cas, `waitForBridge(1500)` laisse au script utilisateur jusqu'à 1,5 s pour s'annoncer : c'est lui qui décide si le navigateur lira les sources lui-même.
 
-Une passe (`loadAll(isBackground, forceScrape)`, dédoublonnée par `loadInFlight`) enchaîne : configuration distante (première fois), lecture du cache serveur des liens si absent ou vieux de plus de `PREFETCH_STALE_MS` (10 min), calendrier du jour (`getApiFirstMatches`), puis la décision de lire ou non les sources (`skipScraping`) : on saute la lecture si le cache serveur est utilisable (moins de 3 h) et qu'aucune passe récente n'a eu lieu (5 min avec le pont, 15 min sans). Sans lecture, on fusionne et on sort. Avec lecture, la grille est **d'abord dessinée avec les liens déjà connus**, puis les sources sont lues (`fetchSourcePages` pour chaque entrée de `SCRAPERS_CONFIG`), puis la fusion finale redessine. `window.hasLoadedOnce` passe à vrai et l'événement `loadSequenceComplete` est émis.
+Une passe (`loadAll(isBackground, forceScrape)`, dédoublonnée par `loadInFlight`) enchaîne : configuration distante (première fois), lecture du cache serveur des liens si absent ou vieux de plus de `PREFETCH_STALE_MS` (10 min), calendrier du jour (`getApiFirstMatches`), puis la décision de lire ou non les sources (`skipScraping`) : on saute la lecture si le cache serveur est utilisable (moins de 3 h) et qu'aucune passe récente n'a eu lieu (5 min avec le pont, 15 min sans). Sans lecture, on fusionne et on sort. Avec lecture, la grille est **d'abord dessinée avec les liens déjà connus**, puis les sources sont lues (`fetchSourcePages` pour chaque source retenue), puis la fusion finale redessine. Les sources retenues sont celles de `sourcesActives()` (§6.3) **dont ce navigateur a un parseur** : `streamed` n'est lu que par le script serveur, et ses douze points d'API étaient jusqu'ici téléchargés par proxy à chaque passe pour rien. Chaque page est analysée par `analyserPageDeListe` : parseur dédié, puis repli générique s'il ne rend rien (§6.5 bis). `window.hasLoadedOnce` passe à vrai et l'événement `loadSequenceComplete` est émis.
 
 Minuteries et réveils :
 
@@ -184,9 +186,25 @@ Produit toutes les 30 min par `scripts/scrape_streams.mjs` (§12, relais). Clés
 
 Onze sources : footybite, mlbbite, sportsurge, buffstreams, streameast, onhockey, vipleague, streamed (API JSON), methstreams, flexfitness, liveleagues. Chaque entrée dit si l'accueil porte des matchs, quelles sous-pages lire par sport (`getSourcePages`, restreint aux sports du jour par `sportOfLeague`), et quel parseur de `js/scrapers.js` s'applique. `MATCH_PAGE_BLOCKED_HOSTS` liste les hôtes dont les pages de match sont refusées côté serveur.
 
-### 6.3 Adresses, miroirs et promotion
+### 6.3 Adresses, miroirs et promotion — et la surcharge vivante
 
 Les sites changent de domaine sans prévenir : c'est la panne la plus fréquente. `domains.json` porte l'adresse courante de chaque source et ses miroirs (`MIRRORS`). Le navigateur le lit au démarrage (`fetchRemoteConfig`, depuis `raw.githubusercontent.com`, délai 5 s) et applique chaque adresse par `applySourceUrl`. Le script serveur essaie l'adresse puis les miroirs (`getSourceCandidates`) et ne **promeut** un miroir (`shouldPromoteSource`) que s'il a répondu **et livré au moins un match** : un domaine racheté rend un 200 de parking. `canonicalOrigin` détecte un domaine qui ne fait plus que rediriger. Le résultat est réécrit dans `domains.json` et commité.
+
+`domains.json` ne porte plus seulement des adresses : c'est la **surcharge vivante** de la configuration, relue par le navigateur à chaque démarrage et appliquée par le script serveur au même endroit (`applyDomainsFile`). Réparer une source n'exige donc plus une publication d'application ni une nouvelle version du service worker sur tous les appareils — une modification du fichier est effective au chargement suivant. Deux blocs facultatifs s'ajoutent aux adresses et aux miroirs :
+
+```json
+"SOURCES": {
+  "buffstreams": { "pages": [{ "path": "mlb-streams-live-11", "sports": ["mlb"] }] },
+  "sportsurge":  { "homepageHasMatches": false, "discoverPages": "href=[\"']([^\"']*?watch-[a-z0-9-]+-streams/?)[\"']" },
+  "methstreams": { "enabled": false }
+},
+"HOSTS": { "junk": ["nouvelle-regie.tv"], "players": ["newembed.st"] }
+```
+
+- `SOURCES` (`appliquerSurchargeSources`, `js/config.js`) corrige, par identifiant de source, `pages`, `homepageHasMatches` et `discoverPages` ; `enabled: false` est le **coupe-circuit** — la source reste déclarée mais `sourcesActives()` ne la lit plus, ce que le navigateur comme le script serveur respectent. Tout est facultatif et **validé clé par clé** : un chemin en `javascript:`, une expression régulière illégale ou sans groupe de capture, un type faux sont ignorés **sans toucher au reste**, parce que ce fichier s'écrit à la main, en urgence. Une source inconnue ne s'invente pas.
+- `HOSTS` (`appliquerHotesDistants`, `js/extractors.js`) ajoute aux listes en dur : `junk` écarte définitivement un hôte (la famille des régies déguisées en lecteurs, cf. `cbox.ws`), `players` amorce sa réputation de lecteur sans attendre que le registre apprenne. Les entrées sont comparées comme des **hôtes** — égalité ou sous-domaine — jamais compilées en expression régulière.
+
+`window.surchargeDistante` retient ce qui a été appliqué.
 
 ### 6.4 `fetchPage` (`js/utils.js`)
 
@@ -195,6 +213,20 @@ Ordre : cache mémoire et déduplication des requêtes en vol → **pont du scri
 ### 6.5 Extraction des liens d'une page de match
 
 `scrapeMatchFlux(m)` lit la page (`matchUrl`, puis `altUrls`), applique le parseur de la source, puis le moteur générique `extractPlayers` (`js/extractors.js`) : six récolteurs indépendants du site (iframes, boutons de bascule `data-*`, attributs `data-*` bruts, blobs JSON Next.js/Nuxt, ancres, adresses encodées), dédoublonnage par adresse canonique, note par provenance, indices de chemin, domaine et réputation apprise (`embed_registry`), puis classement `embed` (encadrable) ou `page`. Les adaptateurs de `js/sources/` filtrent ou complètent par domaine. `finalizeStreamLinks` normalise chaque lien (nom, qualité, langue, chaîne, `topLevel`) et `retirerLiensDeDecor` écarte les liens de menu déguisés en lecteurs. Résultat mis en cache 30 min (`stream_cache`).
+
+### 6.5 bis Repli générique d'analyse des listes (`js/genericlist.js`)
+
+La découverte des **lecteurs** est déjà sans branche par site (§6.5) : une source qui change de gabarit de lecteur continue de livrer. La découverte des **matchs** était l'inverse — quinze parseurs `parse*` écrits sur le gabarit exact d'un site. Le jour où une source refait son HTML, son parseur rend zéro, la source est morte, et il faut lire la page, écrire un parseur et publier.
+
+`analyserPageDeListe(parseur, html, url, id)` (`js/scrapers.js`) est le second rideau, appelé par la passe du navigateur (`js/main.js`) et par le script serveur : le parseur dédié d'abord ; **s'il rend zéro ou s'il lève**, `parseGenerique` cherche la forme commune à toutes ces listes, sans connaître le site — une ancre par rencontre, un titre « A vs B », souvent une heure à côté.
+
+- Séparateurs, du plus explicite au plus ambigu : `vs`, `v`, `@` (forme américaine « visiteur @ local », les camps s'inversent), puis `-` — qui ne compte **que** confirmé par une heure, faute de quoi « Premier League - Live Streams » deviendrait une rencontre. À défaut de titre, le slug de l'adresse est lu de la même façon (`-vs-`, `-at-`), sans l'identifiant que les sites y collent.
+- L'heure : un **instant** seulement quand le site a écrit son fuseau (horodatage Unix, ISO avec `Z` ou décalage). Un « 19:30 » lu dans la page est d'un fuseau inconnu : il est gardé comme texte, sans date, et `isMatchPair` ne ferme alors pas l'appariement sur la date.
+- Rejets : ressources, protocoles non http, hôtes de réseaux sociaux, autres domaines, et tout côté d'affrontement qui n'est que du vocabulaire de site (`watch`, `free`, `streams`, `schedule`…).
+
+Deux propriétés le rendent sûr. Il ne s'exécute **jamais** tant qu'un parseur dédié fonctionne : une source en bonne santé ne le paie pas et ne peut pas être salie par lui. Et son pire échec est bénin — `mergeFluxToApi` n'attache les liens qu'aux matchs que le **calendrier** connaît, un match inventé ne crée donc pas de carte (§6.6).
+
+Portée : la forme reconnue est « une ancre par match », celle de neuf des onze sources. OnHockey (un tableau dont les liens *sont* les flux) et Streamed (une API JSON) ont une autre forme ; leur repli reste leur parseur. Le recours au repli est compté : `scraper_stats[id].generique` et le message « OK (repli générique sur N pages) » dans Logs côté navigateur, `sources[].generiques` dans `data/streams.json` côté serveur. Une source qui vit sur son repli a un parseur à réécrire — sans urgence, puisqu'elle livre encore.
 
 ### 6.6 Fusion dans le calendrier (`mergeFluxToApi`, `js/api.js`)
 
@@ -227,6 +259,19 @@ Le script utilisateur, quand il est installé, répond dans la fenêtre principa
 Trois secondes sans un geste, et la barre du lecteur comme les en-têtes de tuiles s'effacent pour ne pas rester posés sur la vidéo (`window.resetMvIdleTimer`, `appliquerRepos`). Deux exceptions : en mode réduit dans la page (colonne, fenêtre flottante, barre), tout reste, parce que le lecteur est déjà petit.
 
 Le point délicat est la **fenêtre détachée** : `toggleDocumentPiP` déplace `#mv-grid-wrapper`, donc toutes les tuiles, dans le document d'une autre fenêtre. Tout ce qui raisonnait sur `#mv-container` cessait alors d'opérer : aucun geste fait là-bas n'y parvenait, et `mvContainer.querySelectorAll('.mv-hdr')` n'y trouvait plus rien. On agit donc sur la grille là où elle se trouve (`grilleDuLecteur`, `grilleDetachee`), et `toggleDocumentPiP` fait écouter la fenêtre qui la porte.
+
+### 7.5 bis Ce que le lecteur pose sur le reste de la page
+
+Le lecteur pose des états **globaux** : le défilement de la page, une marge sur le guide, une classe de plein écran, un menu. Chacun d'eux a été, à un moment, rendu par un seul chemin de sortie — et resté en place quand on sortait par un autre. C'est la famille de défauts qui se voit le plus **loin** du lecteur.
+
+| État posé | Qui le rend, désormais |
+|---|---|
+| `body { overflow: hidden }` du mode Cinéma | `quitterModeCinema()` — appelé par le bouton, par le passage en mode réduit, par la fenêtre détachée, et par `applyFilter` à chaque changement de vue. Il rend le défilement **même** si la classe a disparu par un autre chemin : si la page ne défile plus, c'est nous. |
+| Marge droite du guide (`#epg { padding-right }`) | Seule la **colonne** réserve de la place. La fenêtre flottante et la barre passent par-dessus : leur marge est zéro, à l'application du mode comme au redimensionnement. |
+| Classe `.mv-fullscreen` et bouton de sortie | `quitterPleinEcranLecteur()`, sur `fullscreenchange` **et** `webkitfullscreenchange`, appliqué à `#mv-grid-wrapper` comme à `#mv-grid` — c'est le *wrapper* que la barre passe en plein écran, et l'ancien nettoyage ne visait que la grille. |
+| Menu flottant du lecteur | Fermé aux deux transitions de la fenêtre détachée : un menu appartient au document qu'on s'apprête à vider. |
+
+Deux règles valent aussi sur téléphone. Un `resize` n'y signifie pas un changement de mise en page voulu : replier la barre d'adresse en émet un, et l'ancienne règle en profitait pour poser `display: none` sur une fenêtre flottante — la vidéo disparaissait au premier défilement. Et c'est `applyPipModeStyles` qui décide de cacher le lecteur sur mobile, pour la colonne seule.
 
 ### 7.6 Sortie forcée
 
@@ -281,7 +326,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 
 ## 11. Service worker et version
 
-`sw.js` : `CACHE_NAME = 'sports-guide-v18'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
+`sw.js` : `CACHE_NAME = 'sports-guide-v19'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
 
 **Règle** : toute modification de `sw.js` ou d'un fichier précaché s'accompagne d'une nouvelle valeur de `CACHE_NAME`, recopiée dans `VERSION_APP` (`js/multiview.js`), qui est ce que Logs → Cet appareil affiche. Trois tests (`unit_diagnosticappareil`, `unit_favicon`, `unit_majapp`) vérifient que les deux chaînes sont identiques. Un nouveau module `js/` doit être ajouté à `APP_SHELL`.
 
@@ -315,6 +360,7 @@ Pour lancer les suites Playwright avec un Chromium déjà installé ailleurs, un
 ## 14. Conventions
 
 - **Ajouter une source de flux** : une entrée dans `SCRAPERS_CONFIG` et `SOURCE_VAR_NAMES` (`js/config.js`), l'adresse et ses miroirs dans `domains.json` et `SOURCE_MIRRORS`, un parseur dans `js/scrapers.js`, au besoin un adaptateur dans `js/sources/` (déclaré dans `js/sources/index.js`), un test unitaire, et l'ajout dans `test_domains.spec.js`.
+- **Réparer une source en panne** : commencer par `domains.json`, pas par le code. Adresse changée → la clé de la source et ses `MIRRORS` (le script serveur le fait déjà seul). Sous-pages renumérotées ou déplacées, accueil qui ne porte plus de matchs → `SOURCES` (§6.3). Domaine racheté qui sert de la publicité → `SOURCES.<id>.enabled = false`. Nouvelle régie servie comme lecteur → `HOSTS.junk`. Un changement de code n'est nécessaire que si la **forme** de la page est nouvelle — et même là, le repli générique (§6.5 bis) tient la source en vie en attendant.
 - **Ajouter une ligue ESPN** : dans `ESPN_LEAGUES` (`js/api.js`) **et** dans `scripts/scrape_schedule.mjs` ; `DEFAULT_LEAGUES` ou `OTHER_LEAGUES` (`js/db.js`) pour son niveau ; `getLeagueDuration` (`js/utils.js`) pour sa durée.
 - **Nouveau module** : sans import si possible ; sinon entrer dans le cycle en connaissance de cause ; l'ajouter à `APP_SHELL` et bumper la version.
 - **Toute modification** : un test qui l'aurait vue tomber, une entrée dans `docs/WORKLOG.md`, et cette page si un module, une fonction publique ou une règle change.

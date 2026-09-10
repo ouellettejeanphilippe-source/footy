@@ -80,6 +80,57 @@ export var PLAYER_PATH_HINTS = [
    (`-vs-`, `/game/`, `/embed`, `/watch/`) : « /watch/live/…-free-live-stream » la vise. */
 export var NAV_PATH_RE = /\/[a-z0-9-]*(streams?|cracked)\d*\/?$|\/(league|category|sport|sports|tag|schedule)\//i;
 
+/* ── Surcharge vivante des listes d'hôtes ──────────────────────────────────
+
+   « Que ça se répare sans toujours faire du code » (10 septembre 2026). Les trois
+   listes ci-dessus sont écrites en dur, et chaque nouvelle régie déguisée en lecteur
+   (le cas mesuré : la boîte de dialogue cbox.ws servie comme flux sur neuf pages)
+   demandait une modification de ce fichier, un test, une publication et une nouvelle
+   version du service worker sur tous les appareils.
+
+   `domains.json` — que le navigateur relit à chaque démarrage depuis
+   raw.githubusercontent.com et que le script serveur applique aussi — peut désormais
+   porter un bloc `HOSTS` :
+
+       "HOSTS": { "junk": ["cbox.ws", "nouvelle-regie.tv"], "players": ["newembed.st"] }
+
+   `junk` écarte un hôte définitivement, `players` amorce sa réputation de lecteur.
+   Les listes viennent d'un fichier de données : on ne compile jamais ce qu'elles
+   contiennent en expression régulière, on compare des hôtes (égalité ou sous-domaine).
+   Une entrée qui n'est pas une chaîne d'hôte plausible est ignorée. */
+export var HOTES_EXCLUS_SUP = [];
+export var HOTES_LECTEUR_SUP = [];
+
+var HOTE_VALIDE_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
+function hotesValides(liste) {
+    if (!Array.isArray(liste)) return [];
+    var out = [];
+    for (var i = 0; i < liste.length && out.length < 200; i++) {
+        var h = String(liste[i] || '').trim().toLowerCase().replace(/^www\./, '');
+        if (h.length > 1 && h.length < 100 && HOTE_VALIDE_RE.test(h) && out.indexOf(h) < 0) out.push(h);
+    }
+    return out;
+}
+
+/* Applique le bloc `HOSTS` de la configuration distante. Rend le compte appliqué. */
+export function appliquerHotesDistants(hosts) {
+    if (!hosts || typeof hosts !== 'object') return { junk: 0, players: 0 };
+    HOTES_EXCLUS_SUP = hotesValides(hosts.junk);
+    HOTES_LECTEUR_SUP = hotesValides(hosts.players);
+    return { junk: HOTES_EXCLUS_SUP.length, players: HOTES_LECTEUR_SUP.length };
+}
+
+/* `hote` est-il dans `liste`, lui-même ou l'un de ses sous-domaines ? */
+export function hoteDansListe(hote, liste) {
+    hote = String(hote || '').toLowerCase().replace(/^www\./, '');
+    if (!hote || !liste || !liste.length) return false;
+    for (var i = 0; i < liste.length; i++) {
+        if (hote === liste[i] || hote.slice(-(liste[i].length + 1)) === '.' + liste[i]) return true;
+    }
+    return false;
+}
+
 export var EMBED_THRESHOLD = 30;   // au-dessus : jouable dans une iframe
 export var KEEP_THRESHOLD = 0;     // au-dessus : gardé, mais ouvert dans un onglet
 
@@ -545,6 +596,8 @@ export function scoreCandidate(cand, ctx) {
        le salon de discussion du direct, pas le direct. Même famille que les boîtes de
        dialogue écartées plus haut, à ceci près que l'hôte, lui, est légitime. */
     if (JUNK_HOST_RE.test(host) && !(/youtube\.com$/.test(host) && /^\/embed\//.test(path))) return { score: -999, kind: 'reject', reasons: ['hôte jamais lecteur'] };
+    /* Même verdict, mais depuis domains.json : écarter une régie ne demande plus de code. */
+    if (hoteDansListe(host, HOTES_EXCLUS_SUP)) return { score: -999, kind: 'reject', reasons: ['hôte écarté par la configuration distante'] };
     if (/(^|\.)youtube\.com$/.test(host) && !/^\/embed\//.test(path)) {
         return { score: -999, kind: 'reject', reasons: ['YouTube hors /embed/ : ' + path] };
     }
@@ -571,6 +624,9 @@ export function scoreCandidate(cand, ctx) {
 
     var rep = reputationOf(ctx.registry, host);
     if (rep) { score += rep; reasons.push('réputation de l\'hôte (' + (rep > 0 ? '+' : '') + rep + ')'); }
+    /* Lecteur annoncé par domains.json : même effet qu'une réputation acquise, mais
+       disponible dès la première rencontre, sans attendre que le registre apprenne. */
+    if (hoteDansListe(host, HOTES_LECTEUR_SUP)) { score += 25; reasons.push('hôte de lecteur déclaré (+25)'); }
 
     if (pageHost && host && host !== pageHost) { score += 12; reasons.push('domaine externe (+12)'); }
     else if (pageHost && host === pageHost) { score -= 10; reasons.push('même domaine que la page (-10)'); }

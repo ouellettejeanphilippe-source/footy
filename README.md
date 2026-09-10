@@ -39,6 +39,8 @@ Sur téléphone, les navigateurs ne prennent pas d'extensions : l'application fo
 - **Calendrier et scores** : l'API publique d'ESPN (48 compétitions), complétée par quelques calendriers (PWHL, F1, IndyCar, sports de combat, WWE, LoL Esports). Un calendrier du jour est régénéré chaque matin sur le serveur (`data/schedule.json`) ; le navigateur relit les scores toutes les cinq minutes.
 - **Liens de diffusion** : onze sites agrégateurs, relus sur le serveur toutes les 30 minutes (`data/streams.json`), puis relus par le navigateur quand il le peut. Les adresses courantes des sites, qui changent souvent, sont dans `domains.json`, mis à jour automatiquement.
 
+Ces sites changent sans prévenir, et l'application est faite pour l'encaisser sans qu'on écrive du code à chaque fois. Un site qui déménage est suivi tout seul (miroirs et adresse canonique). Un site qui refait son HTML garde ses matchs : quand son analyseur dédié ne rend plus rien, un repli générique les retrouve à leur *forme* — un lien par rencontre, « A vs B », une heure à côté. Et quand une correction est nécessaire, elle se fait dans `domains.json` : sous-pages, coupure d'une source en panne, hôtes à écarter. Le fichier est relu à chaque démarrage, donc la réparation est effective au chargement suivant, sans publier de version. Le détail est dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (§6.3 et §6.5 bis).
+
 L'application n'héberge ni ne diffuse aucune vidéo ; elle rassemble des liens publics.
 
 ## Développer
