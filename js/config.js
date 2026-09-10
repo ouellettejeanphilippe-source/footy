@@ -9,6 +9,7 @@ import { buildProxyList } from './fetcher.js';
 import { playabilityScore, hostOfUrl, tileTarget } from './playability.js';
 import { finPresumee as finPresumeeBrute, raisonFinPresumee as raisonFinPresumeeBrute } from './finpresumee.js';
 import { getLeagueDuration } from './utils.js';
+import { appliquerHotesDistants } from './extractors.js';
 
 /* ══ CONFIG ═════════════════════════════ */
 /* footybite.im plutôt que .bid, et ce n'est pas un détail de miroir.
@@ -117,6 +118,102 @@ export function applySourceUrl(id, url) {
     for (var i = 0; i < SCRAPERS_CONFIG.length; i++) {
         if (SCRAPERS_CONFIG[i].id === id) SCRAPERS_CONFIG[i].url = url;
     }
+}
+
+/* ══ SURCHARGE VIVANTE DE LA STRUCTURE DES SOURCES ═════════════════════════
+
+   « Que ça se répare sans toujours faire du code » (10 septembre 2026).
+
+   `domains.json` ne portait que des ADRESSES : la panne la plus fréquente, mais pas la
+   seule. Un site qui renumérote ses sous-pages (« mlb-streams-live-10 » devient
+   « ...-11 »), qui déplace ses matchs de l'accueil vers des pages par sport, ou qui
+   part en vrille et qu'il vaut mieux couper, demandait jusqu'ici de modifier
+   `SCRAPERS_CONFIG` ici même, de publier, et de faire redescendre une nouvelle version
+   du service worker sur tous les appareils. Or `domains.json` est relu à CHAQUE
+   démarrage, en cinq secondes, sans publication d'application.
+
+   Le fichier accepte donc un bloc `SOURCES`, entièrement facultatif :
+
+       "SOURCES": {
+         "buffstreams": {
+           "pages": [{ "path": "mlb-streams-live-11", "sports": ["mlb"] }],
+           "homepageHasMatches": false
+         },
+         "methstreams": { "enabled": false }
+       }
+
+   Règles : rien n'est obligatoire, chaque clé est validée séparément, et une valeur
+   malformée est ignorée SANS toucher au reste — un fichier à moitié faux ne doit
+   jamais casser une source qui marche. `discoverPages` est une expression régulière
+   fournie par un fichier de données : elle est compilée dans un try, bornée en
+   longueur, et refusée si elle ne contient pas de groupe de capture.
+
+   `enabled: false` retire la source de la liste lue : c'est le coupe-circuit quand un
+   domaine racheté sert de la publicité, sans attendre une publication. */
+
+/* Sources désactivées par la configuration distante (identifiants). */
+export var SOURCES_DESACTIVEES = [];
+
+function pagesValides(liste) {
+    if (!Array.isArray(liste)) return null;
+    var out = [];
+    for (var i = 0; i < liste.length && out.length < 60; i++) {
+        var pg = liste[i];
+        if (!pg || typeof pg.path !== 'string') continue;
+        var path = pg.path.trim();
+        if (!path || path.length > 300 || /^(javascript|data):/i.test(path)) continue;
+        var sports = Array.isArray(pg.sports)
+            ? pg.sports.filter(function(x) { return typeof x === 'string' && x.length < 40; }).slice(0, 20)
+            : [];
+        out.push({ path: path, sports: sports });
+    }
+    return out.length ? out : null;
+}
+
+function regexValide(source) {
+    if (typeof source !== 'string' || !source || source.length > 400) return null;
+    if (source.indexOf('(') < 0) return null;   // sans groupe de capture, getSourcePages n'a rien à lire
+    try { return new RegExp(source, 'i'); } catch (e) { return null; }
+}
+
+/* Applique le bloc `SOURCES`. Rend la liste des identifiants réellement modifiés,
+   pour le journal. */
+export function appliquerSurchargeSources(bloc) {
+    SOURCES_DESACTIVEES = [];
+    if (!bloc || typeof bloc !== 'object') return [];
+    var touches = [];
+    Object.keys(bloc).forEach(function(id) {
+        var sc = null;
+        for (var i = 0; i < SCRAPERS_CONFIG.length; i++) if (SCRAPERS_CONFIG[i].id === id) sc = SCRAPERS_CONFIG[i];
+        if (!sc) return;                                  // une source inconnue ne s'invente pas ici
+        var o = bloc[id];
+        if (!o || typeof o !== 'object') return;
+        var change = false;
+
+        var pages = pagesValides(o.pages);
+        if (pages) { sc.pages = pages; change = true; }
+
+        if (typeof o.homepageHasMatches === 'boolean') { sc.homepageHasMatches = o.homepageHasMatches; change = true; }
+
+        if (o.discoverPages !== undefined) {
+            var re = regexValide(o.discoverPages);
+            if (re) { sc.discoverPages = re; change = true; }
+            else if (o.discoverPages === null || o.discoverPages === false) { delete sc.discoverPages; change = true; }
+        }
+
+        if (o.enabled === false) { SOURCES_DESACTIVEES.push(id); change = true; }
+
+        if (change) touches.push(id);
+    });
+    return touches;
+}
+
+/* Les sources à lire : `SCRAPERS_CONFIG` moins celles que la configuration distante a
+   coupées. Tout ce qui parcourt les sources passe par ici, pour que le coupe-circuit
+   vaille partout. */
+export function sourcesActives() {
+    if (!SOURCES_DESACTIVEES.length) return SCRAPERS_CONFIG;
+    return SCRAPERS_CONFIG.filter(function(sc) { return SOURCES_DESACTIVEES.indexOf(sc.id) < 0; });
 }
 
 /* Faut-il retenir l'adresse qui a répondu comme nouvelle adresse principale ?
@@ -236,6 +333,15 @@ export async function fetchRemoteConfig() {
                     if (Array.isArray(data.MIRRORS[id]) && data.MIRRORS[id].length) SOURCE_MIRRORS[id] = data.MIRRORS[id].slice();
                 });
             }
+            /* Au-delà des adresses : structure des sources et listes d'hôtes. Le fichier
+               est relu à chaque démarrage, donc une réparation y est effective en cinq
+               secondes, sans publier de version de l'application. */
+            var touches = appliquerSurchargeSources(data.SOURCES);
+            var hotes = appliquerHotesDistants(data.HOSTS);
+            if (typeof window !== 'undefined') {
+                window.surchargeDistante = { sources: touches, coupees: SOURCES_DESACTIVEES.slice(), hotes: hotes };
+            }
+            if (touches.length) console.log('Structure de sources surchargée : ' + touches.join(', '));
             console.log('Dynamic domains loaded successfully from remote config.');
         }
     } catch(e) {

@@ -889,6 +889,11 @@ export function toggleMultiviewPip() {
     } else {
         // Switch to PIP mode
         fermerMenus();
+        /* Le lecteur rapetisse : ni le mode Cinéma ni le plein écran n'ont plus de sens,
+           et tous deux laissent derrière eux quelque chose qui déborde sur la page (le
+           défilement bloqué, une grille étalée par-dessus le guide). */
+        quitterModeCinema();
+        quitterPleinEcranLecteur();
         mvc.classList.add('mv-pip');
         epg.style.display = 'flex';
         syncNavState(S.filter || 'live');
@@ -898,17 +903,40 @@ export function toggleMultiviewPip() {
     }
 }
 
-// Ensure resize events also apply the correct PIP mode styling if resizing while in PIP
+/* Redimensionnement de la fenêtre pendant que le lecteur est en mode réduit.
+
+   Cette branche traitait les TROIS modes réduits comme la colonne : sous 768 px elle
+   cachait le lecteur, au-dessus elle poussait le guide de la largeur du lecteur. Deux
+   défauts mesurables en découlaient, tous deux visibles depuis le guide :
+
+   1. En fenêtre flottante ou en barre, le guide recevait une marge droite de la largeur
+      de la fenêtre flottante (400 px par défaut) — une colonne vide à droite, sans
+      raison, alors que ces deux modes flottent PAR-DESSUS la page et ne lui prennent
+      rien. Seule la colonne (`sidebar`) réserve de la place.
+   2. Sur téléphone, la fenêtre flottante disparaissait au premier défilement : replier
+      la barre d'adresse change la hauteur de la fenêtre, donc émet `resize`, donc
+      passait ici avec `innerWidth <= 768` et posait `display:none`. La vidéo s'arrêtait
+      d'être visible sans que personne n'ait rien demandé, et rien ne la rétablissait.
+      `applyPipModeStyles` ne cache le lecteur sur mobile que pour la COLONNE, qui n'y a
+      pas la place ; c'est cette règle-là qui fait foi.
+
+   On délègue donc au mode, au lieu de le contredire. */
 window.addEventListener('resize', function() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
     if(mvc && mvc.classList.contains('mv-pip')) {
-        if(window.innerWidth <= 768) {
-            mvc.style.display = 'none';
-            if(epg) epg.style.paddingRight = '0';
-        } else {
-            mvc.style.display = 'flex';
-            if(epg) epg.style.paddingRight = mvc.offsetWidth + 'px';
+        var mode = localStorage.getItem('multiviewPipMode') || 'sidebar';
+        if (mode === 'sidebar') {
+            if(window.innerWidth <= 768) {
+                mvc.style.display = 'none';
+                if(epg) epg.style.paddingRight = '0';
+            } else {
+                mvc.style.display = 'flex';
+                if(epg) epg.style.paddingRight = mvc.offsetWidth + 'px';
+            }
+        } else if(epg) {
+            /* Flottante et barre : elles passent par-dessus, le guide garde toute sa largeur. */
+            epg.style.paddingRight = '0';
         }
     }
 
@@ -2449,16 +2477,34 @@ export function toggleMultiview() {
     }
 }
 
+/* Quitte le mode Cinéma s'il est actif, et RÉTABLIT le défilement de la page.
+
+   Le mode Cinéma pose `document.body.style.overflow = 'hidden'` pour éviter deux barres
+   de défilement. Seul le bouton « Quitter » le rendait. Or on peut quitter le lecteur
+   par ailleurs — l'onglet Live, le Guide, Options, le bouton du bas — et la page restait
+   alors DÉFINITIVEMENT non défilante : la grille du jour ne bougeait plus, sans que rien
+   ne dise pourquoi, jusqu'au rechargement. C'est le défaut du lecteur qui se voit le
+   plus loin de lui. Un seul point de sortie, appelé aussi par les bascules de vue. */
+export function quitterModeCinema() {
+    var actif = false;
+    var candidats = [grilleDuLecteur(), document.getElementById('mv-grid-wrapper'), document.getElementById('mv-grid')];
+    for (var i = 0; i < candidats.length; i++) {
+        if (candidats[i] && candidats[i].classList.contains('mv-theater')) { candidats[i].classList.remove('mv-theater'); actif = true; }
+    }
+    var btn = document.getElementById('mv-close-theater');
+    if (btn) { btn.remove(); actif = true; }
+    /* Rendu sans condition : si la page ne défile plus, c'est nous, et c'est à nous de
+       le défaire — y compris quand la classe a disparu par un autre chemin. */
+    if (document.body && document.body.style.overflow === 'hidden') document.body.style.overflow = '';
+    return actif;
+}
+
 export function toggleTheaterMode(elem) {
-  elem = elem || document.getElementById('mv-grid-wrapper');
+  elem = elem || grilleDuLecteur() || document.getElementById('mv-grid-wrapper');
   if (!elem) return;
 
   if (elem.classList.contains('mv-theater')) {
-      elem.classList.remove('mv-theater');
-      var closeBtn = document.getElementById('mv-close-theater');
-      if(closeBtn) closeBtn.remove();
-      // Restore overflow
-      document.body.style.overflow = '';
+      quitterModeCinema();
   } else {
       elem.classList.add('mv-theater');
       // Hide body overflow to avoid double scrollbars
@@ -2518,14 +2564,7 @@ export function toggleFullscreen(elem) {
     }
   } else {
     // Restaurer le state si on quitte le plein écran de la grille
-    var grid = document.getElementById('mv-grid-wrapper');
-    if (!grid) grid = document.getElementById('mv-grid'); // Fallback
-
-    if (grid && grid.classList.contains('mv-fullscreen')) {
-        grid.classList.remove('mv-fullscreen');
-        var closeFsBtn = document.getElementById('mv-close-fs');
-        if(closeFsBtn) closeFsBtn.remove();
-    }
+    quitterPleinEcranLecteur();
 
     if (document.exitFullscreen) {
       document.exitFullscreen();
@@ -2539,16 +2578,28 @@ export function toggleFullscreen(elem) {
   }
 }
 
-// Ensure the button disappears if we exit fullscreen via ESC key
-document.addEventListener("fullscreenchange", function() {
-    if (!document.fullscreenElement) {
-        var grid = document.getElementById('mv-grid');
-        if (grid && grid.classList.contains('mv-fullscreen')) {
-            grid.classList.remove('mv-fullscreen');
-            var closeFsBtn = document.getElementById('mv-close-fs');
-            if(closeFsBtn) closeFsBtn.remove();
-        }
-    }
+/* Sortie du plein écran par Échap, par le geste du système, ou par le bouton du
+   navigateur : le nettoyage ne visait que `#mv-grid`, alors que la barre du lecteur
+   demande le plein écran sur `#mv-grid-WRAPPER` (c'est l'élément que le bouton
+   « ⛶ Plein écran » passe à `toggleFullscreen`, et celui que la fonction marque).
+   Quitter par Échap laissait donc `.mv-fullscreen` posée sur la grille — qui reste
+   étalée sur tout l'écran, par-dessus le guide — et le bouton rouge de sortie collé en
+   haut de la page, sans plus rien à fermer. On nettoie les deux, et la fenêtre détachée
+   au passage (`grilleDuLecteur`). */
+export function quitterPleinEcranLecteur() {
+    var vus = [];
+    [grilleDuLecteur(), document.getElementById('mv-grid-wrapper'), document.getElementById('mv-grid')].forEach(function(g) {
+        if (g && vus.indexOf(g) < 0) { vus.push(g); g.classList.remove('mv-fullscreen'); }
+    });
+    var closeFsBtn = document.getElementById('mv-close-fs');
+    if (closeFsBtn) closeFsBtn.remove();
+}
+
+['fullscreenchange', 'webkitfullscreenchange'].forEach(function(ev) {
+    document.addEventListener(ev, function() {
+        if (document.fullscreenElement || document.webkitFullscreenElement) return;
+        quitterPleinEcranLecteur();
+    });
 });
 
 /* ══ DOCUMENT PICTURE-IN-PICTURE ═══════════ */
@@ -2613,6 +2664,12 @@ export async function toggleDocumentPiP() {
                                 '<div style="margin-bottom:20px;">Les streams sont actuellement en cours de lecture dans une fenêtre flottante.</div>' +
                                 '<button class="btn p" onclick="toggleDocumentPiP()">Restaurer la vue</button>';
 
+        /* Un menu ouvert appartient au document qu'on s'apprête à vider : il partirait
+           avec, et `menuOuvert` resterait pointé sur un nœud détaché — le clic suivant
+           sur le même bouton l'aurait alors « refermé » au lieu de l'ouvrir. */
+        fermerMenus();
+        quitterModeCinema();
+
         // Move the grid to the PiP window
         docPiPWindow.document.body.appendChild(gridWrapper);
 
@@ -2632,6 +2689,7 @@ export async function toggleDocumentPiP() {
 
         // Handle PiP window close
         docPiPWindow.addEventListener('pagehide', function() {
+            fermerMenus();   // même raison, dans l'autre sens
             // Remove placeholder
             var p = document.getElementById('mv-pip-placeholder');
             if (p) p.remove();
@@ -3362,7 +3420,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v18';
+export var VERSION_APP = 'sports-guide-v19';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -3974,6 +4032,8 @@ window.fermerToutesLesVideos = fermerToutesLesVideos;
 window.toggleMultiview = toggleMultiview;
 window.toggleDocumentPiP = toggleDocumentPiP;
 window.toggleTheaterMode = toggleTheaterMode;
+window.quitterModeCinema = quitterModeCinema;
+window.quitterPleinEcranLecteur = quitterPleinEcranLecteur;
 window.toggleFullscreen = toggleFullscreen;
 window.openFlux = openFlux;
 window.toggleDirectMode = toggleDirectMode;

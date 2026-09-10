@@ -8,6 +8,7 @@ import { getTeamInfo, isMatchPair } from './match.js';
 import { S, addScrapeLog, favTeams, matchCardCache } from './state.js';
 import { renderFluxItem } from './ui.js';
 import { adaptateurPour } from './sources/index.js';
+import { extraireMatchsGeneriques } from './genericlist.js';
 
 
 export function extractQuality(text) {
@@ -1563,6 +1564,84 @@ export function officialTeamNameForLeague(name, league) {
   if (sport === 'cfb' || sport === 'ncaab') return getOfficialTeamName(name, true);
   var attendu = TEAM_SPORT_OF_LEAGUE_SPORT[sport] || '';
   return attendu ? getOfficialTeamName(name, false, attendu) : getOfficialTeamName(name);
+}
+
+
+/* ══ REPLI GÉNÉRIQUE ═══════════════════════════════════════════════════════
+
+   « Que ça brise pas ou que ça se répare sans toujours faire du code »
+   (10 septembre 2026). Quand un site refait son HTML, son parseur dédié rend zéro et
+   la source est morte jusqu'à ce que quelqu'un lise la page, écrive un parseur et
+   publie. `js/genericlist.js` cherche la FORME commune à toutes ces listes — un lien
+   par rencontre, un titre « A vs B », une heure à côté — sans connaître le site.
+
+   Ce repli n'est tenté QUE sur une page dont le parseur dédié n'a rien tiré, et il
+   n'écrase jamais un résultat : tant que la source va bien, il ne s'exécute pas.
+   Son pire échec reste bénin — `mergeFluxToApi` n'attache les liens qu'aux matchs que
+   le CALENDRIER connaît, un match inventé ne crée pas de carte.
+
+   L'heure : le module générique ne rend un instant que quand le site l'a écrit avec
+   son fuseau (horodatage Unix, ISO avec « Z » ou décalage). Un simple « 19:30 » lu
+   dans la page est d'un fuseau inconnu — on le garde tel quel, sans date : `isMatchPair`
+   ne ferme alors pas l'appariement sur la date, et l'écart d'heure n'est départagé que
+   dans un programme double. Mieux vaut un match à l'heure approximative qu'aucun.
+
+   Portée honnête : la forme reconnue est « une ancre par match », celle de neuf des
+   onze sources. OnHockey (un tableau dont les liens SONT les flux) et Streamed (une
+   API JSON) ont une autre forme ; leur repli reste leur parseur. */
+
+export function parseGenerique(html, pageUrl, sourceId) {
+    var bruts;
+    try { bruts = extraireMatchsGeneriques(html, pageUrl) || []; }
+    catch (e) { return []; }
+
+    var out = [];
+    for (var i = 0; i < bruts.length; i++) {
+        var b = bruts[i];
+        var league = formatLeagueName(b.ligue || leagueOfTeamName(b.home) || leagueOfTeamName(b.away) || 'Autre');
+        var startTime = '00:00', matchDate = null;
+        if (b.instant) { startTime = getEstTimeStrFromDate(b.instant); matchDate = getEstDateStrFromDate(b.instant); }
+        else if (b.heureTexte) { startTime = b.heureTexte; }
+
+        out.push({
+            id: (sourceId || 'gen') + '_gen_' + i,
+            league: league,
+            flag: lgFlag(league),
+            color: lgColor(league),
+            homeTeam: officialTeamNameForLeague(b.home, league),
+            awayTeam: b.away ? officialTeamNameForLeague(b.away, league) : '',
+            matchUrl: b.matchUrl,
+            startTime: startTime,
+            matchDate: matchDate,
+            durationMinutes: getLeagueDuration(league),
+            status: b.statut,
+            streamLinks: [],
+            streamsLoaded: false,
+            source: sourceId || 'generique',
+            parAnalyseGenerique: true
+        });
+    }
+    return out;
+}
+
+/* Analyse une page de liste : le parseur dédié, et le repli générique s'il ne rend rien.
+   Rend `{ liste, generique }` — `generique` vrai quand c'est le repli qui a servi, ce que
+   les journaux et la page Logs affichent (une source qui vit sur son repli a un parseur
+   à réécrire, sans urgence). */
+export function analyserPageDeListe(parseur, html, pageUrl, sourceId) {
+    /* Pas de parseur du tout : la source n'est pas de notre ressort ici (l'API JSON de
+       Streamed n'est lue que par le script serveur). Le repli ne comble pas cette
+       absence-là — il rattrape un parseur qui a CESSÉ de rendre, pas un qui n'existe pas. */
+    if (typeof parseur !== 'function') return { liste: [], generique: false };
+    var liste = [];
+    try { liste = parseur(html, pageUrl) || []; }
+    catch (e) { liste = []; }
+    if (liste.length) return { liste: liste, generique: false };
+
+    var repli = parseGenerique(html, pageUrl, sourceId);
+    if (!repli.length) return { liste: [], generique: false };
+    lg('Repli générique ' + (sourceId || '?'), repli.length + ' matchs retrouvés sur ' + pageUrl);
+    return { liste: repli, generique: true };
 }
 
 export function parseFootybite(html){
