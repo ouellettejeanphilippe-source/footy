@@ -276,6 +276,9 @@ select.btn, .select {
 .prime-head { position: relative; display: flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 44px; background: rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted2); font-variant-numeric: tabular-nums; }
 .prime-head .status-text { display: flex; align-items: center; gap: 7px; }
 .prime-head .status-minute { line-height: 1; }
+/* « hier » / « demain » : le jour du match quand ce n'est pas celui de la grille (js/nuit.js) */
+.prime-day { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; margin-right: 8px; line-height: 1; }
+.fb-center .prime-day { display: block; margin: 8px 0 -6px; text-align: center; color: var(--muted); }
 .match-card.live .prime-head { background: linear-gradient(90deg, #e11d48 0%, #ec4899 100%); color: #fff; border-bottom-color: transparent; }
 .prime-head .live-indicator .mb-ld { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: blink 1s infinite; display: inline-block; box-shadow: 0 0 6px rgba(255,255,255,0.8); }
 .prime-head .status-text.presume { color: var(--amber); }

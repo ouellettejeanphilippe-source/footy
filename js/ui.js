@@ -1,6 +1,6 @@
 import { getEstTimeStrFromDate, getEstDateStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
          minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN } from './config.js';
-import { minutesDansLaJournee, comparerHeures } from './nuit.js';
+import { minutesDansLaJournee, comparerHeures, libelleJour } from './nuit.js';
 import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
@@ -615,7 +615,11 @@ function buildEPGInner(matches){
                      d'équipes (le gradient reste), ligue en titre, lignes équipe/score,
                      sport et minute en pied. Les classes .prime-* sont conservées : les
                      tests et la feuille classique les connaissent. */
+                  /* « hier » / « demain » à part du bandeau d'état : la mise à jour des scores
+                     en place (js/main.js) réécrit .status-text et ne doit pas l'effacer. */
+                  var jourHtml = libelleJour(m, jourGrille) ? '<span class="prime-day">' + libelleJour(m, jourGrille) + '</span>' : '';
                   b.innerHTML = '<div class="prime-head">'
+                              +   jourHtml
                               +   statusHtml
                               +   streamsHtml
                               + '</div>'
@@ -1126,20 +1130,23 @@ window.addEventListener('filterChanged', function() {
    sur leur texte de construction — un match pouvait y afficher « 19:05 » une heure après
    le coup d'envoi, et le score n'y bougeait jamais. */
 export function timelineBadgeHtml(m) {
+    // « hier · » / « demain · » devant un match qui n'est pas daté du jour affiché (js/nuit.js).
+    var prefixe = libelleJour(m, getEstDateStrFromDate(TARGET_DATE));
+    prefixe = prefixe ? prefixe + ' · ' : '';
     var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
     var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
     var scoreTxt = (homeScore !== '' && awayScore !== '') ? esc(String(homeScore)) + ' - ' + esc(String(awayScore)) : '';
     if (m.status === 'live' && finPresumee(m)) {
-        return '<div class="mb-time" title="' + esc(raisonFinPresumee(m)) + '" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">Fin ?' + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
+        return '<div class="mb-time" title="' + esc(raisonFinPresumee(m)) + '" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + prefixe + 'Fin ?' + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
     }
     if (m.status === 'live') {
-        return '<div class="mb-time mb-time-live" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + esc(formatLiveMinute(m) === 'DIRECT' ? 'LIVE' : formatLiveMinute(m)) + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
+        return '<div class="mb-time mb-time-live" style="background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + prefixe + esc(formatLiveMinute(m) === 'DIRECT' ? 'LIVE' : formatLiveMinute(m)) + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
     }
     if (m.status === 'finished') {
-        if (scoreTxt) return '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">Terminé | ' + scoreTxt + '</div>';
-        return '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:var(--muted);padding:2px 8px;border-radius:6px;font-weight:bold;">' + esc(m.startTime || '') + '</div>';
+        if (scoreTxt) return '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + prefixe + 'Terminé | ' + scoreTxt + '</div>';
+        return '<div class="mb-time" style="background:rgba(255,255,255,0.1);color:var(--muted);padding:2px 8px;border-radius:6px;font-weight:bold;">' + prefixe + esc(m.startTime || '') + '</div>';
     }
-    return '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + esc(m.startTime || '') + '</div>';
+    return '<div class="mb-time" style="padding:2px 8px;border-radius:6px;font-weight:bold;background:rgba(0,0,0,0.3);">' + prefixe + esc(m.startTime || '') + '</div>';
 }
 
 /* Un match a-t-il sa place dans l'onglet Live ? Même règle que le filtre de buildEPG :
@@ -1615,6 +1622,7 @@ export function openMod(m,col){
       + '<div class="fb-center">'
       +   '<div class="fb-league">' + (m.flag || lgFlag(m.league) || '') + ' ' + esc(m.league || '') + '</div>'
       +   (isRacing ? '' : centerScoreHtml)
+      +   (libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) ? '<span class="prime-day">' + libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) + '</span>' : '')
       +   statusHtml
       + '</div>'
       + (isRacing ? '' : '<div class="fb-team away">' + awayLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.awayTeam) + '">' + etoile(m.awayTeam) + ' ' + esc(m.awayTeam) + '</div></div>')

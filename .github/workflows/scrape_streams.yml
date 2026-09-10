@@ -9,19 +9,21 @@ on:
     # Cadence RÉELLE, relevée le 9 septembre 2026 sur l'historique des exécutions : GitHub
     # n'honore ce cron que cinq à six fois par jour (00:15, 04:48, 09:46, 13:57, 17:50,
     # 20:56), soit un passage toutes les 3 à 5 h, tous réussis. Les crons fréquents sont
-    # retardés ou sautés en période de charge ; ce n'est pas un échec du script. Pour
-    # tenir vraiment deux passages par heure, il faudrait un déclencheur externe qui
-    # appelle `workflow_dispatch` avec un jeton. En attendant, le navigateur relit les
-    # sources lui-même et Logs → Cet appareil montre l'âge du fichier.
+    # retardés ou sautés en période de charge ; ce n'est pas un échec du script. Le cron
+    # reste comme AMORCE et filet de sécurité : c'est le relais (job `relais`, plus bas)
+    # qui tient la cadence, en relançant ce workflow lui-même toutes les 30 min.
     - cron: '17,47 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# Un seul passage à la fois. Sans annulation (10 septembre 2026) : un cron qui tombait
+# pendant un scrape annulait ce scrape et perdait son cache ; il attend maintenant son
+# tour, et GitHub ne garde qu'un passage en attente, ce qui absorbe les doublons.
 concurrency:
   group: scrape-streams
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -54,6 +56,21 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
+      # Le calendrier du jour, si la passe quotidienne (scrape_schedule.yml, 09:00 UTC) n'a
+      # pas encore tourné : son cron subit les mêmes retards que celui-ci (le 10 septembre
+      # 2026, toujours rien à 12:30 UTC, et le 9, quatre heures de retard). Entre minuit et
+      # cette passe, liens et calendrier n'étaient jamais datés du même jour. Ce workflow,
+      # lui, repasse toutes les 30 min grâce au relais : il rattrape.
+      - name: Regenerate the schedule cache if it is not today's
+        run: |
+          jour=$(TZ=America/New_York date +%Y%m%d)
+          if grep -q "\"fetchDate\": \"$jour\"" data/schedule.json 2>/dev/null; then
+            echo "data/schedule.json est déjà du $jour"
+          else
+            echo "data/schedule.json n'est pas du $jour : on le régénère"
+            node scripts/scrape_schedule.mjs
+          fi
+
       - name: Prefetch stream links from all sources
         # Marge de securite au-dela des bornes posees dans le script lui-meme :
         # le passage du 5 septembre est mort a 4 Go, le defaut de Node sur ce runner.
@@ -79,9 +96,9 @@ jobs:
       # conflit sur le fichier lui-même, la version produite à l'instant l'emporte.
       - name: Rebase on latest main before committing
         run: |
-          git stash push --include-untracked -- data/streams.json domains.json || true
+          git stash push --include-untracked -- data/streams.json data/schedule.json domains.json || true
           git pull --rebase origin main
-          git stash pop || { git checkout --theirs -- data/streams.json domains.json; git add data/streams.json domains.json; git stash drop; }
+          git stash pop || { git checkout --theirs -- data/streams.json data/schedule.json domains.json; git add data/streams.json data/schedule.json domains.json; git stash drop; }
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -90,5 +107,50 @@ jobs:
           # domains.json est réécrit par le script quand un domaine meurt et qu'un
           # miroir prend le relais : sans le commiter, l'apprentissage serait perdu à
           # chaque exécution et le navigateur de l'utilisateur repartirait sur l'adresse
-          # morte, qu'il lit dans ce fichier au démarrage.
-          file_pattern: "data/streams.json domains.json"
+          # morte, qu'il lit dans ce fichier au démarrage. data/schedule.json n'y figure
+          # que les fois où l'étape « Regenerate the schedule cache » l'a produit.
+          file_pattern: "data/streams.json data/schedule.json domains.json"
+
+  # ══ RELAIS : deux passages par heure, malgré le cron ═══════════════════════════
+  # GitHub retarde ou saute les crons fréquents (cinq à six exécutions par jour au lieu
+  # de 48, relevé le 9 septembre 2026). Un déclencheur externe demanderait un jeton et
+  # un service de plus. Le dépôt peut le faire seul : le GITHUB_TOKEN a le droit de
+  # lancer un `workflow_dispatch`, et c'est l'une des deux exceptions à la règle « un
+  # workflow ne déclenche pas de workflow ». Ce job attend donc le créneau suivant
+  # (30 min après le début du passage), vérifie qu'aucun autre passage n'est déjà en
+  # route ou en attente (le cron en amorce un de temps en temps : il reprend alors le
+  # relais), et relance le workflow. Il tourne même si le scrape a échoué (`always()`),
+  # sinon un seul échec casserait la chaîne ; si le runner est perdu, le cron suivant la
+  # rétablit dans les cinq heures. Le dépôt est public : les minutes du runner en attente
+  # ne coûtent rien. Pour arrêter le relais sans commit : Settings → Secrets and
+  # variables → Actions → variable SCRAPE_RELAIS = off.
+  relais:
+    needs: scrape
+    if: always() && vars.SCRAPE_RELAIS != 'off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      actions: write
+    steps:
+      - name: Attendre le prochain créneau, puis relancer le workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          INTERVALLE_S: '1800'
+        run: |
+          # Créneau compté depuis le DÉBUT du scrape (pas depuis la demande : un passage
+          # amorcé par le cron peut avoir attendu son tour dans la file).
+          debut=$(gh run view "$GITHUB_RUN_ID" --json jobs -q '[.jobs[] | select(.name == "scrape") | .startedAt][0] // empty')
+          [ -n "$debut" ] || debut=$(gh run view "$GITHUB_RUN_ID" --json createdAt -q .createdAt)
+          cible=$(( $(date -u -d "$debut" +%s) + INTERVALLE_S ))
+          attente=$(( cible - $(date -u +%s) ))
+          echo "Passage commencé à $debut ; prochain créneau dans ${attente}s"
+          if [ "$attente" -gt 0 ]; then sleep "$attente"; fi
+          autres=$(gh run list --workflow scrape_streams.yml --limit 20 --json databaseId,status \
+            -q "[.[] | select(.databaseId != $GITHUB_RUN_ID) | select(.status == \"in_progress\" or .status == \"queued\" or .status == \"waiting\" or .status == \"requested\" or .status == \"pending\")] | length")
+          if [ "${autres:-0}" -gt 0 ]; then
+            echo "Un autre passage est déjà en route ou en attente ($autres) : il reprend le relais."
+            exit 0
+          fi
+          gh workflow run scrape_streams.yml --ref main
+          echo "Passage suivant demandé."

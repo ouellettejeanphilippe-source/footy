@@ -46,7 +46,7 @@ Les ligues classées « ignorée » n'apparaissent nulle part. Quand rien n'est 
 
 De haut en bas :
 
-1. **Bandeau d'état** : `Direct` avec une pastille rouge clignotante, ou l'heure du coup d'envoi, ou `Fin`, ou **`Fin ?`** en ambre. Le score d'un match en cours est redemandé **chaque minute**, et dès l'ouverture de l'application. « Fin ? » veut dire : ESPN ne donne plus de nouvelles de ce match depuis plus de 12 minutes et il a dépassé la durée normale de son sport de plus de 45 minutes (120 en prolongation connue). Le survol explique le calcul. Une nouvelle d'ESPN efface la présomption.
+1. **Bandeau d'état** : `Direct` avec une pastille rouge clignotante, ou l'heure du coup d'envoi, ou `Fin`, ou **`Fin ?`** en ambre ; précédé de **`hier`** pour un match de la veille encore dans la journée (ou `demain`). Le score d'un match en cours est redemandé **chaque minute**, et dès l'ouverture de l'application. « Fin ? » veut dire : ESPN ne donne plus de nouvelles de ce match depuis plus de 12 minutes et il a dépassé la durée normale de son sport de plus de 45 minutes (120 en prolongation connue). Le survol explique le calcul. Une nouvelle d'ESPN efface la présomption.
 2. **Compteur de flux** à droite : `▶ N`. Sans aucun lien, le badge devient un bouton : **`🔎`** lance la recherche de liens pour ce match tout de suite ; **`⚠`** signale que le fichier des liens du serveur n'a pas pu être lu et le relit d'un toucher.
 3. **Vignette** aux couleurs des deux équipes, avec leurs blasons.
 4. **Ligue** (drapeau ou icône, nom).
@@ -67,7 +67,7 @@ Une grille horaire de 00:00 à 24:00, une ligne par match, groupées par ligue.
 - **Ligne du direct** : un trait rouge vertical avec l'heure en étiquette, déplacé chaque minute. Visible seulement si le jour affiché est aujourd'hui.
 - **`Maintenant`** fait défiler la grille jusqu'à l'heure courante. C'est aussi ce que fait l'application à la fin d'un chargement et à chaque retour sur le Guide.
 - **Lignes de ligue** : un en-tête collant (drapeau, nom, nombre de matchs) qui se replie d'un clic, puis une ligne par match avec les équipes (blasons, ★ favori) et un bloc positionné à l'heure du coup d'envoi, large comme la durée normale du sport. Un match en cours qui dépasse sa durée voit son bloc s'allonger jusqu'à l'heure courante.
-- **Bloc** : `LIVE` ou la minute, le score, `Terminé | score`, `Fin ? | score`, ou l'heure ; et `N flux` à droite. Le clic ouvre la fiche.
+- **Bloc** : `LIVE` ou la minute, le score, `Terminé | score`, `Fin ? | score`, ou l'heure, précédé de `hier · ` pour un match d'hier soir ; et `N flux` à droite. Le clic ouvre la fiche.
 - **Un match commencé la veille au soir** qui joue encore après minuit est dessiné à partir de 00:00, sur ce qui lui reste, et passe avant les matchs de la nuit dans les listes.
 - **Ligues secondaires (n)** : leur propre grille, sous un titre repliable. **Autres streams (n)** : en cartes, repliée.
 
