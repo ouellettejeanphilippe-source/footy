@@ -314,12 +314,19 @@ test('une carte sans lien porte le bouton de recherche, une carte pourvue son co
       handlerExists: typeof window.cardSearchLinks === 'function',
       duplicates: document.querySelectorAll('.match-card').length > 0
         && Array.from(document.querySelectorAll('.match-card'))
-             .every((c) => c.querySelectorAll('.card-streams').length <= 1)
+             .every((c) => c.querySelectorAll('.card-streams').length <= 1),
+      // Un match rendu dans le Live porte-t-il des liens ? Sinon, aucun compteur à vérifier.
+      lienRendu: Array.from(document.querySelectorAll('#marea .match-card[id^="mb-"]'))
+        .some((c) => { const m = window.S.matchMap.get(window.getOriginalMatchId(c.id.slice(3))); return !!(m && (m.streamLinks || []).length); })
     };
   });
 
   expect(pageErrors).toEqual([]);
-  expect(badges.counter, 'le compteur de flux affiche « ▶ n »').toMatch(/^▶ \d+$/);
+  /* Le 10 septembre 2026, le calendrier publié était de la veille (cron quotidien en
+     retard) et aucun match rendu ne portait de lien : le compteur n'existait pas, sans
+     qu'aucun code soit en cause. Le compteur n'est exigé que s'il y a de quoi le faire. */
+  if (badges.lienRendu) expect(badges.counter, 'le compteur de flux affiche « ▶ n »').toMatch(/^▶ \d+$/);
+  else expect(badges.counter, 'sans match pourvu, pas de compteur').toBeNull();
   expect(badges.handlerExists, 'cardSearchLinks est exposé aux attributs onclick').toBeTruthy();
   /* `data/streams.json` est régénéré chaque heure : rien ne garantit qu'un match sans
      lien figure dans la grille du jour. On vérifie le badge quand il y en a un. */
@@ -1187,9 +1194,13 @@ test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:3
       nuit2: m('espn_nuit2') && { statut: m('espn_nuit2').status, jour: m('espn_nuit2').matchDate, heure: m('espn_nuit2').startTime },
       nuit3: !!m('espn_nuit3'),
       carteNuit1: carte('espn_nuit1') && carte('espn_nuit1').classList.contains('live'),
-      carteNuit2: !!carte('espn_nuit2')
+      carteNuit2: !!carte('espn_nuit2'),
+      jourNuit1: carte('espn_nuit1') && carte('espn_nuit1').querySelector('.prime-day') && carte('espn_nuit1').querySelector('.prime-day').textContent,
+      jourNuit2: carte('espn_nuit2') && !!carte('espn_nuit2').querySelector('.prime-day')
     };
   });
+  expect(grille.jourNuit1, 'la carte du match d\'hier soir dit « hier »').toBe('hier');
+  expect(grille.jourNuit2, 'celle du match de cette nuit ne dit rien').toBe(false);
   expect(grille.filtre).toBe('live');
   expect(grille.nuit1, 'le match d\'hier soir est dans la journée').toEqual({ statut: 'live', jour: '2026-09-07', heure: '22:05', score: [2, 1] });
   expect(grille.nuit2, 'le match de cette nuit aussi').toEqual({ statut: 'upcoming', jour: '2026-09-08', heure: '01:05' });
@@ -1202,10 +1213,13 @@ test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:3
   await page.waitForTimeout(500);
   const cases = await page.evaluate(() => {
     const lire = (id) => { const b = document.getElementById('mb-' + id); return b && { h: b.style.getPropertyValue('--start-h'), m: b.style.getPropertyValue('--start-m'), d: b.style.getPropertyValue('--duration-m') }; };
-    return { nuit1: lire('espn_nuit1'), nuit2: lire('espn_nuit2') };
+    const texte = (id) => { const b = document.getElementById('mb-' + id); const t = b && b.querySelector('.mb-time'); return t ? t.textContent.trim() : null; };
+    return { nuit1: lire('espn_nuit1'), nuit2: lire('espn_nuit2'), texteNuit1: texte('espn_nuit1'), texteNuit2: texte('espn_nuit2') };
   });
   expect(cases.nuit1, 'hier 22:05 + 3 h : de 00:00 à 01:05 sur la grille du jour').toEqual({ h: '0', m: '0', d: '65' });
   expect(cases.nuit2, 'cette nuit 01:05 : à sa place').toEqual({ h: '1', m: '5', d: '180' });
+  expect(cases.texteNuit1, 'la case du match d\'hier soir commence par « hier »').toMatch(/^hier · /);
+  expect(cases.texteNuit2, 'celle de cette nuit donne l\'heure seule').toBe('01:05');
 
   // Le score continue de suivre : le rafraîchissement relit la veille tant qu'il fait nuit.
   etat.score = [3, 1];

@@ -83,6 +83,16 @@ async function main() {
   assert.strictEqual(N.memeMatchATraversLaNuit(mlb('22:05'), { startTime: '22:05' }), false, 'sans date : rien à traverser');
   ok('memeMatchATraversLaNuit laisse l\'appariement passer d\'un jour à l\'autre, à la même heure');
 
+  // ── 7. « hier » sur la carte, la case et la fiche ─────────────────────────
+  assert.strictEqual(N.libelleJour(mlb('22:05'), AUJ), 'hier', 'match de la veille vu depuis le jour');
+  assert.strictEqual(N.libelleJour(mlb('22:05', { matchDate: AUJ }), AUJ), '', 'daté du jour : rien');
+  assert.strictEqual(N.libelleJour(mlb('01:00', { matchDate: DEMAIN }), AUJ), 'demain');
+  assert.strictEqual(N.libelleJour(mlb('22:05', { matchDate: '2026-09-06' }), AUJ), '', 'avant-hier : rien, il n\'est pas censé être là');
+  assert.strictEqual(N.libelleJour({ startTime: '22:05' }, AUJ), '', 'sans date : rien');
+  assert.strictEqual(N.libelleJour(mlb('22:05'), null), '', 'sans jour de référence : rien');
+  assert.strictEqual(N.libelleJour(null, AUJ), '');
+  ok('libelleJour dit « hier » ou « demain », et rien pour le jour affiché');
+
   console.log('unit_nuit: ' + n + ' groupes de tests OK');
 }
 main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });

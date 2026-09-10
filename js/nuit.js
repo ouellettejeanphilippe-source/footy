@@ -95,6 +95,16 @@ export function minutesDansLaJournee(m, jour) {
     return debut;
 }
 
+/* « hier » pour un match de la veille vu depuis `jour`, « demain » pour un match du
+   lendemain, rien sinon. La case d'un match d'hier soir affichait « 22:05 » sans le
+   dire ; à 00:30, on lisait un coup d'envoi dans vingt-deux heures. */
+export function libelleJour(m, jour) {
+    if (!m || !jour || !m.matchDate || m.matchDate === jour) return '';
+    if (m.matchDate === veille(jour)) return 'hier';
+    if (m.matchDate === lendemain(jour)) return 'demain';
+    return '';
+}
+
 /* Comparateur d'heures pour les tris de cartes : ce qui n'a pas d'heure va à la fin. */
 export function comparerHeures(a, b, jour) {
     var ma = minutesDansLaJournee(a, jour), mb = minutesDansLaJournee(b, jour);
