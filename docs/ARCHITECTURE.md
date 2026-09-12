@@ -57,6 +57,7 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 
 | Fichier | Rôle |
 |---|---|
+| `js/cable.js` | Mode câble : lecture d'un geste (seuils, axe dominant), liste des « chaînes » et voisinage, lien voisin dans les deux sens, contenu de l'incrustation (§7.8). Sans import. |
 | `js/nuit.js` | La nuit appartient à la veille : un match d'hier soir qui joue encore après minuit reste dans la journée (§5.4). Lu aussi par le script serveur. |
 | `js/finpresumee.js` | Fin présumée d'un match quand ESPN se tait (§5.6). |
 | `js/playability.js` | Jouabilité observée d'un lien ou d'un hôte, partagée entre le navigateur et `scripts/verify_players.mjs` (§7.3). |
@@ -281,6 +282,17 @@ Si la fenêtre est quittée dans les 15 s qui suivent la pose d'une tuile, les a
 
 Dans une page de lecteur, le script remonte à la fenêtre principale `video_state` (une vidéo joue : allume la pastille et permet la bascule automatique), `video_stats` (débit et définition, `js/debit.js`) et `media_url` (manifeste vu passer, `js/directmedia.js`). Il obéit à `mv_mute` et `mv_unmute` (une seule tuile a le son) et à `mv_clean`.
 
+### 7.8 Mode câble (zapping)
+
+« Le swipe vertical change le match qui joue, le swipe horizontal change le stream. » Mode facultatif du lecteur (`⋯ Plus → 📺 Mode câble`, retenu sous `mode_cable`), qui range les deux façons de changer ce qu'on regarde sur deux axes : **vertical = la chaîne** (un autre match), **horizontal = la source** (le même match, un autre flux).
+
+- `js/cable.js` (sans import) porte tout ce qui se raisonne sans DOM : `detecterGeste(dx, dy, dt)` (seuil 48 px, axe dominant d'une fois et demie — une diagonale est **refusée**, pas devinée —, une seconde au plus), `actionDuGeste`, `chainesDisponibles` / `chaineVoisine` / `indexDeChaine`, `lienVoisin` (le pendant à deux sens de `nextLinkAfter`), `etiquetteChaine`.
+- Une **chaîne** est un match regardable maintenant : `isLiveNow` ou `startsWithin(60)`, et **au moins un lien** — sinon le zapping tomberait sur un écran noir. L'ordre (en cours d'abord, puis heure, ligue, identifiant) est totalement déterminé : « la chaîne d'à côté » doit désigner la même d'un geste à l'autre. Les prédicats de direct sont **injectés** par `js/multiview.js` (`chainesDuCable`) pour que le module reste sans import.
+- `js/multiview.js` porte le reste : `zapperChaine(idx, sens)` (remplace le match de la tuile et prend sa source la mieux classée), `changerSourceTuile(idx, sens)` (l'avant emprunte `nextFluxForTile`, le chemin du bouton ⏭), `gesteCable`, `annoncerCable` (l'incrustation, 2,5 s), et les flèches du clavier dans l'écouteur existant du lecteur.
+- **Ce qu'une tuile oublie en changeant d'adresse** est décidé au même endroit pour tous les chemins (`poserLienSurTuile`) : lecture observée, manifeste vu passer, mode direct, et marque de sortie forcée — qui visait l'adresse précédente.
+- **La surface qui écoute.** Une tuile est une iframe d'une autre origine : un `touchstart` fait dedans ne parvient jamais ici. Le mode pose donc un calque (`.mv-cable-surface`, posé une fois par tuile, montré par `majSurfacesCable`) qui prend aussi les clics destinés à la page. D'où l'échappatoire, par tuile : deux appuis rapprochés, ou le bouton 📺/🖐 de l'en-tête, appellent `basculerGestesTuile` — le calque s'efface et `gesteCable` refuse d'agir (le clavier passe par là aussi, « suspendu » doit vouloir dire la même chose par tous les chemins).
+
+
 ## 8. Appariement (`js/match.js`)
 
 `isMatchPair(a, b)` → `debugMatchPair`, qui rend `{isMatch, reason}` pour le diagnostic. Gardes dans l'ordre :
@@ -319,6 +331,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 | `direct_media`, `debits` | Manifestes directs et mesures de débit, 3 h. |
 | `fav_teams`, `league_tiers`, `custom_lg_order`, `lg_order_migrated_v2` | Favoris, niveaux et ordre des ligues. |
 | `user_prefs` | Apparence et options. |
+| `mode_cable` | Mode câble du lecteur allumé ou éteint (§7.8). |
 | `mv_state`, `mv_sortie_forcee`, `multiviewPipMode`, `multiviewPipPrevMode`, `multiviewFloatingRect`, `multiviewMinimizedRect`, `gmPinnedMatches` | État du lecteur. |
 | `custom_scraper_rules` | Règles de l'Investigator. |
 | `custom_proxy_url`, `cors_sh_api_key`, `corsproxy_io_api_key` | Réglages réseau. |
@@ -326,7 +339,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 
 ## 11. Service worker et version
 
-`sw.js` : `CACHE_NAME = 'sports-guide-v19'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
+`sw.js` : `CACHE_NAME = 'sports-guide-v20'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
 
 **Règle** : toute modification de `sw.js` ou d'un fichier précaché s'accompagne d'une nouvelle valeur de `CACHE_NAME`, recopiée dans `VERSION_APP` (`js/multiview.js`), qui est ce que Logs → Cet appareil affiche. Trois tests (`unit_diagnosticappareil`, `unit_favicon`, `unit_majapp`) vérifient que les deux chaînes sont identiques. Un nouveau module `js/` doit être ajouté à `APP_SHELL`.
 
