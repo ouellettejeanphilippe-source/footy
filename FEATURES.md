@@ -111,7 +111,7 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 | **➕ Ajouter** | Réduit le lecteur et invite à choisir un match dans le guide. |
 | **⊞ Disposition** | `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`. En portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. |
 | **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
-| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
+| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (zapping au doigt)`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
 | **➖ Réduire** / **⤢ Agrandir** | Visibles quand le lecteur est réduit. |
 
 Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois ; ils se ferment d'un clic ailleurs, par Échap, au défilement ou au redimensionnement ; les flèches ↑/↓ s'y déplacent.
@@ -149,7 +149,22 @@ La page du site est chargée telle quelle dans une iframe, sans attribut `sandbo
 - Les sources des matchs affichés sont relues toutes les 3 minutes.
 - **Sortie forcée** : si un site fait quitter la page dans les 15 s qui suivent la pose d'une tuile, l'adresse est notée dix minutes. Au retour, la tuile dit « Ce site a fait sortir la page du lecteur » avec `↗ Ouvrir sur le site` et `Charger quand même`.
 
-### 5.6 Panneau « Scores et statistiques »
+### 5.6 Mode câble (zapping au doigt)
+
+`⋯ Plus → 📺 Mode câble`, retenu d'une fois à l'autre. Le lecteur se conduit alors comme un décodeur : **deux gestes sur la vidéo**, un par axe.
+
+| Geste | Effet |
+|---|---|
+| Glisser **↑** / **↓** (ou `↑` / `↓` au clavier) | **Chaîne** suivante / précédente : un autre match, celui d'à côté parmi les matchs en direct — ou qui commencent dans l'heure — qui ont au moins un lien. La tuile prend la source la mieux classée du nouveau match. |
+| Glisser **←** / **→** (ou `←` / `→` au clavier) | **Source** suivante / précédente pour le match en cours, dans l'ordre où la tuile les essaie. Le match ne change pas. |
+
+Une incrustation s'affiche deux secondes et demie après chaque geste — `CH 3/12`, le match, la ligue ou le score, la source utilisée — puis s'efface.
+
+Les gestes s'appliquent à la tuile touchée ; les autres tuiles, les dispositions et le son ne bougent pas. Un glissement de moins de 48 px, une diagonale ou un doigt qui traîne plus d'une seconde ne déclenchent rien.
+
+**Cliquer dans la page du site** : le mode pose un calque transparent sur la vidéo pour voir le doigt (une iframe d'un autre site ne le laisse pas passer), et ce calque prend aussi les clics. Deux appuis rapprochés sur la vidéo — ou le bouton **📺 / 🖐** de l'en-tête de tuile — suspendent les gestes de cette tuile le temps de cliquer dans la page (lancer la lecture, accepter un avis) ; deux appuis de plus les reprennent. Éteindre le mode les rend toutes.
+
+### 5.7 Panneau « Scores et statistiques »
 
 Colonne de 350 px accolée au lecteur, deux onglets (`Stats du Match`, `Scores Live`), matchs épinglables, rafraîchie toutes les 5 minutes.
 
