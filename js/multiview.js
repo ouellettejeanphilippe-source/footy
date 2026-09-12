@@ -6,14 +6,14 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
-import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs } from './playability.js';
+import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
-import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS } from './scrapers.js';
+import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
 import { ouvrirMenu, fermerMenus } from './mv-menu.js';
-import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine } from './cable.js';
+import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -1563,7 +1563,7 @@ export function moveMultiviewStream(idx, direction) {
 
 /* ══ PERSISTENCE MULTIVISION ═══════════ */
 export function saveMultivisionState() {
-    safeStorageSetJSON('mv_state', { flux: mvFlux, layout: mvLayout });
+    safeStorageSetJSON('mv_state', { flux: mvFlux, layout: mvLayout, horsCable: fluxHorsCable });
 }
 
 export function restoreMultivisionState() {
@@ -1580,6 +1580,10 @@ export function restoreMultivisionState() {
             } else if (parsed && parsed.flux && Array.isArray(parsed.flux)) {
                 mvFlux = parsed.flux;
                 if (parsed.layout) mvLayout = parsed.layout;
+                /* Les vidéos mises de côté en entrant dans le mode câble : elles doivent
+                   survivre à un rechargement, sinon éteindre le mode après une reprise de
+                   session les perdrait sans rien dire. */
+                if (Array.isArray(parsed.horsCable)) fluxHorsCable = parsed.horsCable;
                 setTimeout(function() {
                     updateMultivisionLayout();
                 }, 500);
@@ -1827,7 +1831,14 @@ export function updateMultivisionLayout() {
             }
             container.innerHTML = '';
             s._currentUrl = url;
-            if (s._sortieForcee) { poserAvertissementSortie(container, cell, s); return; }
+            if (s._sortieForcee) {
+                /* Mode câble : un avertissement n'est pas une chaîne. On passe à la
+                   source suivante — celles qui ont fait sortir la page sont déjà écartées
+                   de la liste (optionsCable), donc ce chemin ne tourne pas en rond — et
+                   on ne montre le panneau que s'il ne reste rien à essayer. */
+                if (modeCable && nextFluxForTile(parseInt(cell.dataset.index, 10), 'auto')) return;
+                poserAvertissementSortie(container, cell, s); return;
+            }
             resolveStreamUrl(url).then(function(finalUrl) {
                 if (s._currentUrl !== url) return;
                 container.innerHTML = '';
@@ -2092,7 +2103,7 @@ export function updateMultivisionLayout() {
            cette tuile pour cliquer dans la page du site (lancer la lecture, accepter un
            avis), puis les reprendre. Le double appui sur le calque fait la même chose. */
         var boutonGestes = modeCable
-            ? '<button type="button" class="mv-hdr-btn mv-cable-btn' + (s._gestesSuspendus ? '' : ' on') + '" title="' + (s._gestesSuspendus ? 'Reprendre les gestes de zapping' : 'Suspendre les gestes pour cliquer dans la page') + '" aria-label="Gestes de zapping" onclick="basculerGestesTuile(' + idx + '); event.stopPropagation();">' + (s._gestesSuspendus ? '🖐' : '📺') + '</button>'
+            ? '<button type="button" class="mv-hdr-btn mv-cable-btn' + (s._gestesSuspendus ? '' : ' on') + '" title="' + (s._gestesSuspendus ? 'Reprendre les gestes de zapping' : 'Suspendre les gestes tant qu\'on travaille dans la page (un simple appui les rend quatre secondes)') + '" aria-label="Gestes de zapping" onclick="basculerGestesTuile(' + idx + '); event.stopPropagation();">' + (s._gestesSuspendus ? '🖐' : '📺') + '</button>'
             : '';
 
         /* Trois boutons toujours visibles, nommés : « Site » (la page originale dans un
@@ -2186,7 +2197,15 @@ function liensDuMatch(mid) {
     var m = null;
     for (var k = 0; k < liste.length; k++) { if (String(liste[k].id) === String(mid)) { m = liste[k]; break; } }
     if (!m || !Array.isArray(m.streamLinks)) return [];
-    return sortFluxLinks(m.streamLinks.filter(function(l) { return !!(l && l.url); }));
+    var classes = sortFluxLinks(m.streamLinks.filter(function(l) { return !!(l && l.url); }));
+    if (!modeCable) return classes;
+    /* Mode câble : la liste des sources est celle qui peut JOUER, flux que l'application
+       lit elle-même en tête (voir liensCable, js/cable.js). Un seul endroit à filtrer :
+       tout ce qui change de source passe par ici (⏭, geste horizontal, bascule
+       automatique, pastille « source k/n »). Si le filtre ne laisse rien, on rend la
+       liste complète — mieux vaut une source douteuse que pas de source. */
+    var jouables = liensCable(classes, optionsCable());
+    return jouables.length ? jouables : classes;
 }
 
 /* Position du flux d'une tuile parmi les liens de son match : { k, n } (1-based), ou null. */
@@ -2333,6 +2352,28 @@ export function armerRafraichissementTuiles() {
 
 export function addToMultivision(url, name, mid) {
     mid = getOriginalMatchId(mid);
+    /* Mode câble : une seule vidéo. Choisir un match ailleurs dans l'application CHANGE
+       de chaîne au lieu d'ajouter une tuile — sans quoi le mode perdrait sa promesse au
+       premier match choisi dans le Guide. */
+    if (modeCable && mvFlux.length) {
+        var s0 = mvFlux[0];
+        s0.mid = mid;
+        s0.name = name;
+        s0._autoTried = 0;
+        poserLienSurTuile(s0, url);
+        activeMvIdx = 0;
+        saveMultivisionState();
+        updateMultivisionLayout();
+        applyMvFocusStyling();
+        applyMvAudioState();
+        armerRafraichissementTuiles();
+        var mvcCable = document.getElementById('mv-container');
+        if (mvcCable && mvcCable.style.display === 'none') toggleMultiview();
+        relancerLectureTuile(0);
+        annoncerCable(0);
+        showToast('📺 ' + name);
+        return;
+    }
     if(mvFlux.length >= 4) {
         showToast('Maximum 4 streams en Multivision.');
         return;
@@ -2391,11 +2432,33 @@ try { modeCable = (localStorage.getItem('mode_cable') === '1'); } catch (e) { mo
    chaîne légitime — le décodeur affichait aussi les chaînes qui n'avaient pas commencé. */
 var CABLE_AVANCE_MIN = 60;
 
-export function chainesDuCable() {
-    return chainesDisponibles((S && S.matches) || [], {
+/* Tout ce que le mode câble doit savoir du monde extérieur, en un seul endroit : ce qui
+   est en direct, ce qui commence bientôt, ce qui est BLOQUÉ (hôte qui refuse d'être
+   encadré, lien observé bloqué, adresse qui a fait sortir la page) et ce que
+   l'application sait jouer elle-même. `js/cable.js` ne connaît rien de tout cela : il
+   reçoit des prédicats. */
+export function optionsCable() {
+    var registre = getEmbedRegistry();
+    var bloques = (registre && registre.blocked) || {};
+    var ledger = playLedger();
+    var sortie = safeStorageGetJSON(CLE_SORTIE, null);
+    var sorties = (sortie && Array.isArray(sortie.urls) && sortie.at
+        && (Date.now() - sortie.at) >= 0 && (Date.now() - sortie.at) <= VALIDITE_SORTIE_MS) ? sortie.urls : [];
+    var direct = registreDirect();
+    var o = {
         estEnDirect: function(m) { return isLiveNow(m); },
-        bientot: function(m) { return startsWithin(m, CABLE_AVANCE_MIN); }
-    });
+        bientot: function(m) { return startsWithin(m, CABLE_AVANCE_MIN); },
+        estBloque: function(url) { return !!bloques[hostOfUrl(tileTarget({ url: url }))]; },
+        aFaitSortir: function(url) { return sorties.indexOf(url) >= 0; },
+        estMedia: function(url) { return estMediaDirecte(url) || !!mediaDirectPour(direct, url); },
+        score: function(lien) { return playabilityScore(lien, ledger); }
+    };
+    o.lienOk = function(lien) { return lienJouable(lien, o); };
+    return o;
+}
+
+export function chainesDuCable() {
+    return chainesDisponibles((S && S.matches) || [], optionsCable());
 }
 
 /* Pose une adresse sur une tuile : c'est le seul endroit qui sait ce qu'il faut oublier
@@ -2410,6 +2473,60 @@ function poserLienSurTuile(s, url) {
     s._sortieForcee = false;
     s.mode = 'page';
     s.url = url;
+    /* « Lecture automatique des lecteurs » (12 septembre 2026). Quand l'application sait
+       jouer ce flux ELLE-MÊME — une adresse `.m3u8`/`.mp4`, ou un manifeste déjà vu pour
+       cette page — le mode câble le lui demande : son `<video>` porte `autoplay`, `muted`
+       et `playsinline`, donc il démarre sans clic et sans script utilisateur. Pour une
+       page, c'est `relancerLectureTuile` qui demande, faute de pouvoir agir dedans. */
+    if (modeCable && (estMediaDirecte(url) || mediaDirectPour(registreDirect(), url))) s.mode = 'direct';
+}
+
+/* Trois rappels, à 1,2 s d'intervalle : le lecteur d'un site apparaît souvent APRÈS le
+   chargement, et un seul appel arriverait trop tôt. `mv_clean` relance la recherche du
+   lecteur, `mv_play` lance la vidéo, `mv_unmute` (par applyMvAudioState) donne le son à
+   la tuile qu'on regarde — et, dans le script utilisateur, le clic qu'attend un lecteur
+   en pause. Une tuile qui joue déjà ne reçoit plus rien. */
+export var RAPPELS_LECTURE = 3;
+export var DELAI_RAPPEL_LECTURE_MS = 1200;
+/* Les minuteurs de rappel vivent ICI, pas sur la tuile : `saveMultivisionState`
+   sérialise les tuiles, et un handle de minuteur n'est un nombre que dans un
+   navigateur — ailleurs (Node, donc les tests) c'est un objet circulaire, et
+   l'enregistrement de l'état mourait dessus. */
+var rappelsLecture = {};
+export function relancerLectureTuile(idx) {
+    var s = mvFlux[idx];
+    if (!s) return false;
+    var envoyer = function() {
+        var el = document.getElementById('mv-iframe-' + idx);
+        if (!el) return;
+        if (el.tagName === 'VIDEO') {
+            try {
+                var p = el.play();
+                if (p && typeof p.catch === 'function') p.catch(function() {
+                    el.muted = true;
+                    try { var q = el.play(); if (q && q.catch) q.catch(function() {}); } catch (e) {}
+                });
+            } catch (e) {}
+            return;
+        }
+        if (!el.contentWindow) return;
+        try {
+            el.contentWindow.postMessage('mv_clean', '*');
+            el.contentWindow.postMessage('mv_play', '*');
+        } catch (e) {}
+    };
+    envoyer();
+    var n = 0;
+    if (rappelsLecture[idx]) clearInterval(rappelsLecture[idx]);
+    rappelsLecture[idx] = setInterval(function() {
+        if (++n >= RAPPELS_LECTURE || s._playing || mvFlux[idx] !== s) {
+            clearInterval(rappelsLecture[idx]);
+            delete rappelsLecture[idx];
+        }
+        if (!s._playing) envoyer();
+    }, DELAI_RAPPEL_LECTURE_MS);
+    applyMvAudioState();
+    return true;
 }
 
 /* Chaîne suivante (`sens` = +1) ou précédente (-1) pour la tuile `idx`. */
@@ -2420,7 +2537,7 @@ export function zapperChaine(idx, sens) {
     if (!chaines.length) { showToast('Aucun match en direct avec un lien : rien à zapper.'); return false; }
     var m = chaineVoisine(chaines, s.mid, sens);
     if (!m) { showToast('Une seule chaîne pour l\'instant.'); return false; }
-    var liens = sortFluxLinks((m.streamLinks || []).filter(function(l) { return l && l.url; }));
+    var liens = liensDuMatch(m.id);
     if (!liens.length) return false;
     s.mid = String(m.id);
     s.name = (m.homeTeam && m.awayTeam) ? (m.homeTeam + ' vs ' + m.awayTeam) : (m.name || getDomain(liens[0].url));
@@ -2429,6 +2546,7 @@ export function zapperChaine(idx, sens) {
     saveMultivisionState();
     updateMultivisionLayout();
     armerRafraichissementTuiles();
+    relancerLectureTuile(idx);
     annoncerCable(idx);
     return true;
 }
@@ -2440,7 +2558,7 @@ export function changerSourceTuile(idx, sens) {
     if (!s) return false;
     if (sens >= 0) {
         var avance = nextFluxForTile(idx);
-        if (avance) annoncerCable(idx);
+        if (avance) { relancerLectureTuile(idx); annoncerCable(idx); }
         return avance;
     }
     var L = liensDuMatch(s.mid);
@@ -2449,6 +2567,7 @@ export function changerSourceTuile(idx, sens) {
     poserLienSurTuile(s, precedent.url);
     saveMultivisionState();
     updateMultivisionLayout();
+    relancerLectureTuile(idx);
     annoncerCable(idx);
     return true;
 }
@@ -2469,7 +2588,7 @@ export function gesteCable(idx, direction) {
    Numéro de chaîne, match, ligue ou score, source utilisée. Deux secondes et demie,
    puis elle s'efface : c'est une confirmation, pas un bandeau. */
 var OSD_MS = 2500;
-export function annoncerCable(idx) {
+export function annoncerCable(idx, note) {
     var s = mvFlux[idx];
     var cell = document.querySelector('.mv-cell[data-index="' + idx + '"]');
     if (!s || !cell) return null;
@@ -2487,7 +2606,8 @@ export function annoncerCable(idx) {
     }
     osd.innerHTML = (e.numero ? '<div style="font-size:11px;letter-spacing:1px;opacity:0.7;">' + esc(e.numero) + '</div>' : '')
         + '<div style="font-weight:700;font-size:14px;">' + esc(e.titre) + '</div>'
-        + (e.details ? '<div style="font-size:12px;opacity:0.75;">' + esc(e.details) + '</div>' : '');
+        + (e.details ? '<div style="font-size:12px;opacity:0.75;">' + esc(e.details) + '</div>' : '')
+        + (note ? '<div style="font-size:12px;opacity:0.75;">' + esc(note) + '</div>' : '');
     osd.style.opacity = '1';
     if (osd._minuteur) clearTimeout(osd._minuteur);
     osd._minuteur = setTimeout(function() { osd.style.opacity = '0'; }, OSD_MS);
@@ -2516,14 +2636,19 @@ function poserSurfaceCable(cell, idx) {
         if (isNaN(i)) i = idx;
         var direction = detecterGeste(x - x0, y - y0, Date.now() - t0);
         if (direction) { gesteCable(i, direction); return; }
-        /* Pas un geste : un appui. Le premier réveille les commandes et rappelle où on
-           en est ; deux appuis rapprochés suspendent (ou reprennent) les gestes, pour
-           laisser cliquer dans la page du site. */
+        /* Pas un geste : un appui. Il RÉVEILLE les commandes, rappelle où on en est, et
+           rend les clics à la page pour quatre secondes — le temps de toucher le bouton
+           de lecture d'un site qui l'exige — puis le calque revient tout seul.
+
+           C'était un double appui jusqu'ici, qui suspendait les gestes jusqu'à ce qu'on
+           pense à les reprendre. « Aucun blocage » (12 septembre 2026) : ni un geste à
+           connaître, ni un état à défaire. Le bouton ✋ de l'en-tête reste pour une
+           suspension longue, quand on veut vraiment travailler dans la page du site. */
         var maintenant = Date.now();
-        if (maintenant - dernierAppui < 400) { dernierAppui = 0; basculerGestesTuile(i); return; }
         dernierAppui = maintenant;
         if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
-        annoncerCable(i);
+        rendreLesClics(i);
+        annoncerCable(i, '✋ clics rendus à la page');
     };
 
     surface.addEventListener('touchstart', function(e) {
@@ -2538,6 +2663,25 @@ function poserSurfaceCable(cell, idx) {
     surface.addEventListener('mousedown', function(e) { debut(e.clientX, e.clientY); e.preventDefault(); });
     surface.addEventListener('mouseup', function(e) { fin(e.clientX, e.clientY); });
     surface.addEventListener('mouseleave', function() { actif = false; });
+}
+
+/* Rend les clics à la page pour quelques secondes : le calque s'efface, puis revient
+   tout seul. C'est la réponse à un appui qui n'était pas un geste — le cas du site qui
+   exige un clic pour démarrer — et elle ne laisse aucun état derrière elle. */
+export var PASSAGE_CLICS_MS = 4000;
+var minuteursClics = {};   // hors des tuiles : voir rappelsLecture
+export function rendreLesClics(idx) {
+    var s = mvFlux[idx];
+    if (!s) return false;
+    s._passeClics = Date.now() + PASSAGE_CLICS_MS;
+    majSurfacesCable();
+    if (minuteursClics[idx]) clearTimeout(minuteursClics[idx]);
+    minuteursClics[idx] = setTimeout(function() {
+        delete minuteursClics[idx];
+        s._passeClics = 0;
+        majSurfacesCable();
+    }, PASSAGE_CLICS_MS);
+    return true;
 }
 
 /* Suspend ou reprend les gestes d'une tuile : le calque s'efface, la page du site
@@ -2563,27 +2707,72 @@ export function majSurfacesCable() {
         var s = isNaN(idx) ? null : mvFlux[idx];
         var surface = cells[i].querySelector('.mv-cable-surface');
         if (!surface) continue;
-        surface.style.display = (modeCable && s && !s._gestesSuspendus) ? 'block' : 'none';
+        var passe = !!(s && s._passeClics && s._passeClics > Date.now());
+        surface.style.display = (modeCable && s && !s._gestesSuspendus && !passe) ? 'block' : 'none';
     }
 }
 
+/* ── Une seule vidéo ─────────────────────────────────────────────────────────
+   « Le câble, ça devrait être un mode spécifique, un seul vidéo » (12 septembre 2026).
+   Le mode n'est plus un réglage posé sur la grille : il la RÉDUIT à la tuile qu'on
+   regarde, comme un téléviseur n'a qu'un écran. Les autres sont mises de côté — pas
+   fermées — et reviennent telles quelles en sortant du mode, y compris après un
+   rechargement (elles sont enregistrées avec l'état du lecteur). */
+var fluxHorsCable = [];
+
+function reduireAUneVideo() {
+    if (mvFlux.length <= 1) { activeMvIdx = mvFlux.length ? 0 : null; return 0; }
+    var garde = (activeMvIdx !== null && activeMvIdx < mvFlux.length) ? activeMvIdx : 0;
+    var reste = mvFlux[garde];
+    fluxHorsCable = mvFlux.filter(function(f, i) { return i !== garde; });
+    mvFlux.length = 0;
+    mvFlux.push(reste);
+    activeMvIdx = 0;
+    return fluxHorsCable.length;
+}
+
+function rendreLesVideosMisesDeCote() {
+    if (!fluxHorsCable.length) return 0;
+    var n = 0;
+    fluxHorsCable.forEach(function(f) { if (mvFlux.length < 4) { mvFlux.push(f); n++; } });
+    fluxHorsCable = [];
+    return n;
+}
+
+export function videosMisesDeCote() { return fluxHorsCable.length; }
+
 export function setModeCable(v) {
+    var avant = modeCable;
     modeCable = !!v;
     try { localStorage.setItem('mode_cable', modeCable ? '1' : '0'); } catch (e) {}
     var mvc = document.getElementById('mv-container');
     if (mvc) mvc.classList.toggle('mv-cable', modeCable);
-    if (!modeCable) mvFlux.forEach(function(s) { s._gestesSuspendus = false; });
+    var bouge = 0;
+    if (modeCable && !avant) bouge = reduireAUneVideo();
+    if (!modeCable && avant) bouge = rendreLesVideosMisesDeCote();
+    if (!modeCable) mvFlux.forEach(function(s, i) {
+        s._gestesSuspendus = false;
+        s._passeClics = 0;
+        if (minuteursClics[i]) { clearTimeout(minuteursClics[i]); delete minuteursClics[i]; }
+    });
+    if (bouge) saveMultivisionState();
     updateMultivisionLayout();
+    if (modeCable) { applyMvFocusStyling(); applyMvAudioState(); }
     return modeCable;
 }
 
 export function toggleModeCable() {
     fermerMenus();
+    var misesDeCote = mvFlux.length > 1 ? mvFlux.length - 1 : 0;
     var actif = setModeCable(!modeCable);
     showToast(actif
-        ? '📺 Mode câble : ↑↓ change de match, ←→ change de source. Double appui pour cliquer dans la page.'
+        ? '📺 Mode câble : une seule vidéo. ↑↓ change de match, ←→ change de source. Un appui rend les clics à la page.'
+            + (misesDeCote ? ' ' + misesDeCote + ' vidéo(s) mise(s) de côté, rendue(s) en sortant.' : '')
         : 'Mode câble désactivé.');
-    if (actif && mvFlux.length) annoncerCable(activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : 0);
+    if (actif && mvFlux.length) {
+        relancerLectureTuile(0);
+        annoncerCable(0);
+    }
     return actif;
 }
 
@@ -2670,7 +2859,7 @@ export function ouvrirMenuBarre(bouton, event) {
         { icon: '⤢', label: 'Ajuster toutes les images', title: 'étiré → ajusté → rempli', onSelect: function() { cycleMvFitAll(); } },
         { icon: '🎬', label: 'Mode cinéma', onSelect: function() { toggleTheaterMode(document.getElementById('mv-grid-wrapper')); } },
         { icon: '📊', label: 'Scores et statistiques', actif: mvGameModeActive, onSelect: function() { toggleMvGameMode(); } },
-        { icon: '📺', label: 'Mode câble (zapping au doigt)', title: '↑↓ changer de match, ←→ changer de source', actif: modeCable, onSelect: function() { toggleModeCable(); } },
+        { icon: '📺', label: 'Mode câble (une seule vidéo, zapping au doigt)', title: '↑↓ changer de match, ←→ changer de source ; un appui rend les clics à la page', actif: modeCable, onSelect: function() { toggleModeCable(); } },
         ('documentPictureInPicture' in window) ? { icon: '🖼', label: 'Fenêtre détachée', onSelect: function() { toggleDocumentPiP(); } } : null,
         { sep: true },
         (!enPip && !mobile) ? { icon: '◫', label: 'Réduire dans un coin', onSelect: function() { toggleMultiviewPip(); } } : null,
@@ -3676,7 +3865,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v21';
+export var VERSION_APP = 'sports-guide-v22';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

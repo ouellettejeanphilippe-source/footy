@@ -59,6 +59,15 @@ const SITE = `<html><body style="margin:0">
         v.setAttribute('style', 'width:640px;height:360px');
         document.getElementById('zone').appendChild(v);
       }
+      /* Une vidéo trop petite pour que le nettoyage la prenne pour le lecteur (il exige
+         plus de 50 px) : la page n'est donc jamais nettoyée, et rien ne lance cette
+         vidéo — sauf un ordre explicite. C'est le différentiel du test de mv_play. */
+      if (e.data === 'poser_video_minuscule') {
+        var vp = document.createElement('video');
+        vp.id = 'minuscule'; vp.width = 40; vp.height = 30;
+        vp.setAttribute('style', 'width:40px;height:30px');
+        document.getElementById('zone').appendChild(vp);
+      }
       /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
          bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
       if (e.data === 'poser_lecteur_bouton') {
@@ -275,12 +284,22 @@ test('la tuile obéit aux ordres même sans nettoyage préalable', async ({ page
      n'existait pas, l'ancien code ne le posant qu'à la fin d'un nettoyage réussi. */
   await expect(cadre.locator('#decor')).toBeVisible();
 
-  const repond = await page.evaluate(async () => {
-    const f = document.getElementById('tuile');
-    f.contentWindow.postMessage('mv_clean', '*');
-    return true;
-  });
-  expect(repond).toBe(true);
+  /* L'ordre doit avoir un effet OBSERVABLE, sinon le test ne prouve rien.
+
+     C'est ce qui manquait jusqu'au 12 septembre 2026 : ce test posait `mv_clean` puis
+     vérifiait que le décor disparaissait — ce que la recherche automatique fait de toute
+     façon. Il passait donc alors que la tuile n'obéissait à RIEN : le piège
+     anti-détournement remplace `window.parent` par un Proxy neuf à chaque lecture, et le
+     filtre « seule la fenêtre qui nous encadre commande » (`e.source !== window.parent`)
+     rejetait tous les messages, y compris ceux de l'application. Le son de la tuile
+     active, le nettoyage à la demande et le lancement de la lecture étaient morts.
+     `window.mvUnmutedState` est le témoin : il ne change que si l'ordre est reçu. */
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('mv_unmute', '*'); });
+  await expect.poll(() => cadre.evaluate(() => window.mvUnmutedState), { timeout: 5000 }).toBe(true);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('mv_mute', '*'); });
+  await expect.poll(() => cadre.evaluate(() => window.mvUnmutedState), { timeout: 5000 }).toBe(false);
+
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('mv_clean', '*'); });
 
   // L'ordre est reçu : on pose ensuite le lecteur, et le nettoyage doit suivre.
   await page.evaluate(() => {
@@ -289,15 +308,37 @@ test('la tuile obéit aux ordres même sans nettoyage préalable', async ({ page
   await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
 });
 
+/* « Lecture automatique des lecteurs » (12 septembre 2026). Le mode câble envoie `mv_play`
+   après chaque changement de chaîne ou de source. Contrairement à `mv_unmute`, cet ordre
+   n'attend pas que le nettoyage ait réussi : c'est justement sur une page où le lecteur
+   n'a pas été trouvé que la vidéo reste en pause. Différentiel : la vidéo posée ici est
+   trop petite pour que le nettoyage la reconnaisse, donc rien ne la lance tant que
+   l'ordre n'arrive pas. */
+test('mv_play lance la vidéo même quand le lecteur n\'a jamais été trouvé', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_video_minuscule', '*'); });
+  await expect(cadre.locator('#minuscule')).toBeAttached();
+  await page.waitForTimeout(1500);
+  expect(await cadre.evaluate(() => window.__appelsPlay), 'le nettoyage ignore cette vidéo : personne ne la lance').toBe(0);
+  await expect(cadre.locator('#decor')).toBeVisible();
+
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('mv_play', '*'); });
+  await expect.poll(() => cadre.evaluate(() => window.__appelsPlay), { timeout: 8000 }).toBeGreaterThanOrEqual(2);
+  expect(await cadre.evaluate(() => window.__dernierMuet), 'refusée avec le son, relancée muette').toBe(true);
+});
+
 test('seule la fenêtre qui encadre la tuile peut lui donner des ordres', async ({ page }) => {
   /* Sans ce filtre, n'importe quel cadre de la page — une régie publicitaire, par
-     exemple — pourrait piloter le lecteur. On vérifie qu'un message qui ne vient pas du
-     parent est ignoré : le décor reste, faute d'ordre valable. */
+     exemple — pourrait piloter le lecteur. Le témoin est le même que ci-dessus
+     (`mvUnmutedState`) : « le décor reste » ne prouvait rien, puisqu'il reste aussi quand
+     l'ordre est accepté mais qu'aucun lecteur n'a été trouvé. */
   const cadre = await monterTuile(page);
   await cadre.evaluate(() => {
-    // Message émis DEPUIS le cadre lui-même : e.source vaut ce cadre, pas window.parent.
+    // Message émis DEPUIS le cadre lui-même : e.source vaut ce cadre, pas la fenêtre parente.
+    window.postMessage('mv_unmute', '*');
     window.postMessage('mv_clean', '*');
   });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(600);
+  expect(await cadre.evaluate(() => window.mvUnmutedState), 'un ordre qui ne vient pas de la fenêtre parente est ignoré').toBe(false);
   await expect(cadre.locator('#decor')).toBeVisible();
 });

@@ -20,6 +20,20 @@
         return;
     }
 
+    /* La fenêtre qui nous encadre, capturée MAINTENANT — avant le piège
+       anti-détournement posé juste en dessous, qui remplace `window.parent` par un Proxy
+       reconstruit à CHAQUE lecture.
+
+       Relevé le 12 septembre 2026 en instrumentant le cadre : `e.source !== window.parent`
+       était donc toujours vrai, et la tuile n'obéissait à AUCUN ordre de l'application —
+       ni couper le son, ni le rendre (donc la lecture ne se lançait pas quand la tuile
+       devenait celle qu'on regarde), ni relancer la recherche du lecteur. Le filtre
+       « seule la fenêtre qui nous encadre commande » se refusait à lui-même. Deux tests
+       passaient pourtant : ils vérifiaient un effet que la recherche automatique produit
+       aussi, donc ils ne prouvaient rien. */
+    var FENETRE_PARENTE = null;
+    try { FENETRE_PARENTE = window.parent; } catch (e) { FENETRE_PARENTE = null; }
+
     /* Le blocage des popups se pose ICI, avant le premier script de la page
        (@run-at document-start). Posé à document-idle comme avant, il arrivait après que la
        régie (Adcash `aclib.runPop` sur embed.st, par exemple) eut gardé sa propre référence
@@ -540,8 +554,10 @@
     window.mvUnmutedState = false;
     window.addEventListener('message', function(e) {
         /* Seule la fenêtre qui nous encadre commande. Sans ce filtre, n'importe quel
-           cadre de la page (une régie publicitaire, par exemple) pourrait nous piloter. */
-        if (e.source !== window.parent) return;
+           cadre de la page (une régie publicitaire, par exemple) pourrait nous piloter.
+           La comparaison porte sur la référence CAPTURÉE au démarrage : `window.parent`
+           rend un Proxy neuf à chaque lecture depuis le piège anti-détournement. */
+        if (e.source !== FENETRE_PARENTE) return;
 
         if (e.data === 'mv_mute' || e.data === 'mv_unmute') {
             const couper = (e.data === 'mv_mute');
@@ -559,6 +575,24 @@
                lecteur apparaît souvent pour la première fois, longtemps après que la
                recherche automatique a renoncé. */
             relancerRecherche();
+        } else if (e.data === 'mv_play') {
+            /* « Lecture automatique des lecteurs » (12 septembre 2026). Le mode câble
+               l'envoie après chaque changement de chaîne ou de source, trois fois à 1,2 s
+               d'intervalle : le lecteur d'un site apparaît souvent après le chargement.
+               Contrairement à `mv_unmute`, cet ordre n'attend PAS que le nettoyage ait
+               réussi — c'est justement sur une page où le lecteur n'a pas été trouvé que
+               la vidéo reste en pause, et `tenterLecture` sait travailler sur tout le
+               document. */
+            lancerLectureImmediate(mainPlayerBase || document);
+        } else if (e.data === 'mv_play') {
+            /* « Lecture automatique des lecteurs » (12 septembre 2026). Le mode câble
+               l'envoie après chaque changement de chaîne ou de source, trois fois à 1,2 s
+               d'intervalle : le lecteur d'un site apparaît souvent après le chargement.
+               Contrairement à `mv_unmute`, cet ordre n'attend PAS que le nettoyage ait
+               réussi — c'est justement sur une page où le lecteur n'a pas été trouvé que
+               la vidéo reste en pause, et `tenterLecture` sait travailler sur tout le
+               document. */
+            lancerLectureImmediate(mainPlayerBase || document);
         }
     });
 

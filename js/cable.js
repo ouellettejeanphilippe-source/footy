@@ -67,19 +67,68 @@ export function actionDuGeste(direction) {
    Les prédicats viennent de l'appelant (`estEnDirect`, `bientot` : `isLiveNow` et
    `startsWithin` de js/config.js) pour que ce module reste sans import. À défaut, le
    statut du match sert de repli. */
-export function aUnLien(m) {
+export function aUnLien(m, opts) {
     var L = (m && m.streamLinks) || [];
-    for (var i = 0; i < L.length; i++) { if (L[i] && L[i].url) return true; }
+    var filtre = opts && typeof opts.lienOk === 'function' ? opts.lienOk : null;
+    for (var i = 0; i < L.length; i++) {
+        if (!L[i] || !L[i].url) continue;
+        if (filtre && !filtre(L[i])) continue;
+        return true;
+    }
     return false;
 }
 
 export function estChaine(m, opts) {
-    if (!m || !aUnLien(m)) return false;
+    if (!m || !aUnLien(m, opts)) return false;
     var o = opts || {};
     if (m.status === 'finished' || m._finPresumee) return false;
     var direct = typeof o.estEnDirect === 'function' ? !!o.estEnDirect(m) : m.status === 'live';
     var proche = typeof o.bientot === 'function' ? !!o.bientot(m) : false;
     return direct || proche;
+}
+
+/* ── Ce qui peut JOUER, et ce qui joue TOUT SEUL ──────────────────────────────
+
+   « Un seul vidéo, avec aucun blocage, lecture automatique des lecteurs »
+   (12 septembre 2026). Un mode qui zappe doit toujours montrer quelque chose : la
+   chaîne d'à côté ne peut pas être un écran de refus du navigateur, ni une page qui
+   attend un clic qu'on ne sait pas où donner.
+
+   Deux règles, et elles viennent des mesures que l'application a déjà sous la main :
+
+   - `lienJouable` ÉCARTE ce dont on sait qu'il ne jouera pas ici : un lien dont l'hôte
+     refuse d'être encadré (relevé par le serveur dans les en-têtes X-Frame-Options et
+     CSP, versé dans le registre appris), un lien observé bloqué, une adresse qui a déjà
+     fait sortir la page du lecteur. Ce ne sont pas des jugements de qualité — un lien
+     lent ou médiocre reste une chaîne — mais des BLOCAGES constatés.
+   - `liensCable` remonte devant les flux que l'application joue ELLE-MÊME : un `.m3u8`
+     ou un `.mp4` va dans son propre `<video autoplay muted playsinline>`, donc démarre
+     sans clic et sans script utilisateur. C'est la seule lecture automatique dont on ait
+     la maîtrise ; pour les pages, on ne peut que demander au script installé.
+
+   Les prédicats sont injectés (`estBloque`, `estMedia`, `score`), comme ceux du direct :
+   ce module reste sans import. Sans eux, rien n'est écarté — le mode dégrade vers son
+   comportement d'avant plutôt que de vider la liste des chaînes. */
+export function lienJouable(lien, opts) {
+    if (!lien || !lien.url) return false;
+    var o = opts || {};
+    if (lien.verified === 'blocked') return false;
+    if (typeof o.estBloque === 'function' && o.estBloque(lien.url)) return false;
+    if (typeof o.aFaitSortir === 'function' && o.aFaitSortir(lien.url)) return false;
+    if (typeof o.score === 'function' && o.score(lien) < 0) return false;
+    return true;
+}
+
+export function liensCable(liens, opts) {
+    var o = opts || {};
+    var gardes = (liens || []).filter(function(l) { return lienJouable(l, o); });
+    if (typeof o.estMedia !== 'function') return gardes;
+    /* Tri STABLE : on ne refait pas le classement de `sortFluxLinks` (préférences de
+       l'utilisateur, jouabilité observée, qualité), on ne fait que remonter ce qui
+       démarre tout seul. */
+    var media = [], reste = [];
+    gardes.forEach(function(l) { (o.estMedia(l.url) ? media : reste).push(l); });
+    return media.concat(reste);
 }
 
 /* Ordre des chaînes : les matchs en cours d'abord, puis par heure de coup d'envoi, puis
