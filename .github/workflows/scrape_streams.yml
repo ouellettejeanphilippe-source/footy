@@ -4,7 +4,9 @@ on:
   schedule:
     # Deux fois par heure (6 septembre 2026) : les sites publient leurs liens dans l'heure
     # qui précède le coup d'envoi, et un cache horaire les manquait pour la moitié des
-    # matchs. Un passage dure ~13 min ; décalé de :00 pour éviter la congestion des runners.
+    # matchs. Les liens sont PUBLIÉS au bout de ~5 min (la lecture des sources), la
+    # vérification des lecteurs continuant ensuite pour ~5 min de plus et donnant un
+    # second commit ; décalé de :00 pour éviter la congestion des runners.
     #
     # Cadence RÉELLE, relevée le 9 septembre 2026 sur l'historique des exécutions : GitHub
     # n'honore ce cron que cinq à six fois par jour (00:15, 04:48, 09:46, 13:57, 17:50,
@@ -76,30 +78,31 @@ jobs:
         # le passage du 5 septembre est mort a 4 Go, le defaut de Node sur ce runner.
         run: node --max-old-space-size=8192 scripts/scrape_streams.mjs
 
-      # Verification observee des lecteurs (scripts/verify_players.mjs) : un vrai
-      # Chromium charge les lecteurs des matchs en direct et note ce qui joue. Le
-      # navigateur est installe ici, pas dans le script : un echec ici ne bloque pas
-      # le commit du cache deja produit par l'etape precedente.
-      - name: Install Chromium for player verification
-        run: npx playwright install --with-deps chromium
-        continue-on-error: true
-
-      - name: Verify which players actually play
-        run: node scripts/verify_players.mjs
-        continue-on-error: true
-
-      # Le passage de 14 h 10 (6 septembre 2026) a produit un cache frais et n'a pas pu le
-      # pousser : main avait bougé pendant les huit minutes du scrape (fusions de PR,
-      # commit de la grille), et l'action de commit ne rebase pas -> « non-fast-forward »,
-      # cache perdu, et l'application est restée deux heures sur des liens périmés. On
-      # met de côté le fichier produit, on se replace sur main, on le remet : en cas de
-      # conflit sur le fichier lui-même, la version produite à l'instant l'emporte.
+      # ══ PUBLIER D'ABORD, VÉRIFIER ENSUITE ═══════════════════════════════════════
+      # « C'est vraiment long » (12 septembre 2026). Mesuré sur le passage de 19:35 :
+      # la lecture des onze sources dure 4 min 28 s, et le cache était pourtant commité
+      # à 19:44:56 — dix minutes après le début — parce que la vérification des lecteurs
+      # (un vrai Chromium qui charge les flux en direct, 5 min 13 s ce jour-là) passait
+      # AVANT le commit. Les liens frais attendaient donc derrière une étape qui ne fait
+      # que les annoter, et un runner perdu ou une vérification qui traîne les emportait
+      # avec elle.
+      #
+      # On publie donc en deux temps : le cache dès qu'il existe, l'annotation ensuite.
+      # L'application voit les liens deux fois plus vite, et la vérification devient ce
+      # qu'elle est — un bonus, pas un péage.
       - name: Rebase on latest main before committing
         run: |
           git stash push --include-untracked -- data/streams.json data/schedule.json domains.json || true
           git pull --rebase origin main
           git stash pop || { git checkout --theirs -- data/streams.json data/schedule.json domains.json; git add data/streams.json data/schedule.json domains.json; git stash drop; }
 
+      # Le passage de 14 h 10 (6 septembre 2026) a produit un cache frais et n'a pas pu le
+      # pousser : main avait bougé pendant les huit minutes du scrape (fusions de PR,
+      # commit de la grille), et l'action de commit ne rebase pas -> « non-fast-forward »,
+      # cache perdu, et l'application est restée deux heures sur des liens périmés. D'où
+      # l'étape ci-dessus : on met de côté le fichier produit, on se replace sur main, on
+      # le remet ; en cas de conflit sur le fichier lui-même, la version produite à
+      # l'instant l'emporte.
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -110,6 +113,34 @@ jobs:
           # morte, qu'il lit dans ce fichier au démarrage. data/schedule.json n'y figure
           # que les fois où l'étape « Regenerate the schedule cache » l'a produit.
           file_pattern: "data/streams.json data/schedule.json domains.json"
+
+      # Verification observee des lecteurs (scripts/verify_players.mjs) : un vrai
+      # Chromium charge les lecteurs des matchs en direct et note ce qui joue
+      # (`verified` par lien, `hostPlay` par hote, `verifiedAt`). Le navigateur est
+      # installe ici, pas dans le script : un echec ici ne bloque rien, le cache est
+      # deja publie par l'etape precedente.
+      - name: Install Chromium for player verification
+        run: npx playwright install --with-deps chromium
+        continue-on-error: true
+
+      - name: Verify which players actually play
+        run: node scripts/verify_players.mjs
+        continue-on-error: true
+
+      # Second temps : l'annotation. `main` a pu bouger pendant la verification (un autre
+      # passage, une fusion de PR), donc on se replace avant de commiter. Sans changement
+      # — verification sautee ou sans nouvelle observation — l'action ne commite rien.
+      - name: Rebase again before committing the verification
+        run: |
+          git stash push --include-untracked -- data/streams.json || true
+          git pull --rebase origin main
+          git stash pop || { git checkout --theirs -- data/streams.json; git add data/streams.json; git stash drop; }
+
+      - name: Commit the player verification
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: note which players actually play"
+          file_pattern: "data/streams.json"
 
   # ══ RELAIS : deux passages par heure, malgré le cron ═══════════════════════════
   # GitHub retarde ou saute les crons fréquents (cinq à six exécutions par jour au lieu
