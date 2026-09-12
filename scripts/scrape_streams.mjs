@@ -72,10 +72,17 @@ const scrapers = await import('../js/scrapers.js');
 const config = await import('../js/config.js');
 const utils = await import('../js/utils.js');
 const match = await import('../js/match.js');
+const extractors = await import('../js/extractors.js');
 const { veille } = await import('../js/nuit.js');
 
-const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, gagnantApresLecture, conserverSourcesMuettes, canonicalOrigin, sourceIdPourHote, appliquerSurchargeSources, appliquerHotesDistants, sourcesActives } = config;
+const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, gagnantApresLecture, conserverSourcesMuettes, canonicalOrigin, sourceIdPourHote, appliquerSurchargeSources, sourcesActives } = config;
 const { fetchPage } = utils;
+/* `appliquerHotesDistants` vit dans js/extractors.js, PAS dans js/config.js : config.js
+   l'importe pour son propre `fetchRemoteConfig` mais ne le ré-exporte pas. Le prendre sur
+   `config` rendait `undefined`, et le script mourait sur `appliquerHotesDistants is not a
+   function` au tout premier appel, avant même de lire une source — 45 h sans un seul
+   passage de liens (10 septembre 16:28 UTC au 12 septembre). On le prend là où il est. */
+const { appliquerHotesDistants } = extractors;
 
 const parsers = {
     footybite: scrapers.parseFootybite,

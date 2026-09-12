@@ -249,6 +249,170 @@ export function spectacleDeCatch(nom) {
   return '';
 }
 
+/* ══ SÉANCES D'ÉPREUVE : F1, F2, F3, MotoGP… ═══════════════════════════════════════
+   « Moins de liens ce matin, dont zéro f1 » (12 septembre 2026). Exact, et les deux
+   moitiés de la phrase avaient deux causes distinctes ; celle-ci est la seconde.
+
+   Une épreuve automobile n'est pas une rencontre : il n'y a pas deux équipes, mais UNE
+   épreuve (le Grand Prix d'Espagne) déclinée en SÉANCES (FP1, FP2, FP3, qualifs, course),
+   chacune à son heure, parfois sur trois jours. Chaque source la nomme autrement. Relevé
+   le 12 septembre 2026 sur les données réelles du jour :
+
+       ESPN (calendrier)  « Tag Heuer Spanish Grand Prix » / « FP3 », « Qual », « Race »
+       liveleagues        « FIA 2026: Spain GP Practice 3 » (1 lien)
+       liveleagues        « FIA 2026: Spain GP Qualifying » (1 lien)
+       streamed           « Spanish Grand Prix Practice 1 » (46 liens)
+       buffstreams        « Italy Grand Prix » / « Formula1 Race »
+
+   L'ancien raccourci « Racing/Event » retirait les mots génériques et comparait le reste :
+   « tagheuerspanishfp3 » contre « fia2026spaingppractice3 ». Aucun appariement, donc zéro
+   lien sur les cartes de F1 — les 46 liens des essais libres restaient sur une carte
+   fantôme. Trois obstacles, tous dans les données : le nom du PARRAIN de l'épreuve (Tag
+   Heuer, et il change à chaque Grand Prix), le gentilé contre le pays (« Spanish » /
+   « Spain »), et l'abréviation de la séance (« FP3 » / « Practice 3 », « Qual » /
+   « Qualifying »).
+
+   On lit donc les trois choses qui identifient réellement une séance, au lieu de comparer
+   des lettres : la SÉRIE (f1, f3, motogp…), l'ÉPREUVE (le mot qui précède « Grand Prix »
+   ou « GP » — c'est là que les sites mettent le pays ou le circuit, après les parrains),
+   et la SÉANCE. Deux séances ne s'apparient que si les trois concordent, exactement comme
+   deux spectacles de catch ci-dessus.
+
+   Ce que ça REFUSE compte autant : les essais libres 3 ne doivent pas recevoir les liens
+   des qualifications (l'ancien raccourci, lui, réduisait les cinq séances d'un Grand Prix
+   au seul nom du pays — la première carte de la liste ramassait les liens de toutes les
+   autres), et la F3 de Barcelone (« Spain F3GP Feature Race », même week-end, même
+   circuit) ne doit rien déverser sur la F1. */
+var SERIES_COURSE = [
+    [/\bformula\s*e\b|\bfe\b/, 'formulae'],
+    [/\bformula\s*1\b|\bformula1\b|\bf1\b/, 'f1'],
+    [/\bformula\s*2\b|\bformula2\b|\bf2\b/, 'f2'],
+    [/\bformula\s*3\b|\bformula3\b|\bf3\b/, 'f3'],
+    [/\bmotogp\b/, 'motogp'],
+    [/\bmoto\s*2\b/, 'moto2'],
+    [/\bmoto\s*3\b/, 'moto3'],
+    [/\bindycar\b|\bindy\b/, 'indycar'],
+    [/\bnascar\b/, 'nascar'],
+    [/\bwrc\b|\brally\b/, 'rally'],
+    [/\bsuperbike\b|\bwsbk\b/, 'superbike'],
+    [/\bspeedway\b/, 'speedway']
+];
+/* Le gentilé et le pays sont le même lieu : « Spanish Grand Prix » (ESPN) et « Spain GP »
+   (liveleagues) sont l'épreuve de Barcelone. Table explicite, sur le calendrier réel des
+   épreuves, plutôt qu'une racine devinée : « spain » et « spanish » ne partagent que
+   trois lettres, et deviner sur trois lettres apparierait des épreuves sans rapport. */
+var LIEUX_EPREUVE = {
+    spanish: 'spain', italian: 'italy', british: 'britain', english: 'britain',
+    belgian: 'belgium', dutch: 'netherlands', hungarian: 'hungary', austrian: 'austria',
+    canadian: 'canada', mexican: 'mexico', brazilian: 'brazil', japanese: 'japan',
+    australian: 'australia', chinese: 'china', bahraini: 'bahrain', qatari: 'qatar',
+    azerbaijani: 'azerbaijan', singaporean: 'singapore', french: 'france',
+    german: 'germany', portuguese: 'portugal', turkish: 'turkey', russian: 'russia',
+    korean: 'korea', vietnamese: 'vietnam', american: 'usa', us: 'usa', usa: 'usa',
+    monegasque: 'monaco', saudi: 'saudiarabia', emirati: 'abudhabi'
+};
+/* Mots qui ne désignent aucune épreuve : la séance, le sanctionneur, le décor. */
+var MOTS_HORS_EPREUVE = ['gp', 'grand', 'prix', 'gran', 'grande', 'premio', 'race', 'races',
+    'qualifying', 'qualification', 'qualifications', 'quali', 'qual', 'practice', 'free', 'fp',
+    'sprint', 'shootout', 'session', 'sessions', 'main', 'feature', 'pre', 'post', 'warm', 'up',
+    'shakedown', 'round', 'rd', 'day', 'live', 'stream', 'streams', 'nr', 'no', 'the', 'and',
+    'de', 'di', 'du', 'of', 'fia', 'fim', 'championship', 'world', 'series', 'cup', 'tv', 'hd',
+    'formula', 'moto', 'motogp', 'f1', 'f2', 'f3', 'fe', 'indycar', 'indy', 'nascar', 'wrc',
+    'rally', 'superbike', 'wsbk', 'speedway', 'event'];
+
+/* La séance nommée par un libellé, sous une forme unique. Les plus précises d'abord :
+   « Sprint Race » est un sprint et non une course, « Spain GP Practice 3 » est la séance
+   d'essais 3 et non le Grand Prix. */
+function seanceDepuisTexte(t) {
+    var m = /\b(?:free\s*practice|practice|fp|p)\s*([123])\b/.exec(t);
+    if (m) return 'practice' + m[1];
+    if (/\bsprint\s*(?:shootout|qualifying|quali|qual)\b/.test(t)) return 'sprintqualifying';
+    if (/\bsprint\b/.test(t)) return 'sprint';
+    if (/\bqualifying\b|\bqualification\b|\bquali\b|\bqual\b/.test(t)) return 'qualifying';
+    if (/\bpractice\b|\bwarm\s*up\b|\bshakedown\b/.test(t)) return 'practice';
+    /* « Pre Race » et « Post Race » sont l'avant et l'après-course du même diffuseur, sur
+       la même chaîne : c'est le flux de la course, avec sa présentation. Les ranger
+       ailleurs laisserait une carte sans lien à côté d'une carte de liens sans nom. */
+    if (/\bfeature\s*race\b|\bmain\s*race\b|\bpre\s*race\b|\bpost\s*race\b|\brace\b|\bgrand\s*prix\b|\bgran\s*premio\b|\bgp\b/.test(t)) return 'race';
+    return '';
+}
+
+/* Rend { serie, epreuve, seance } pour un libellé de séance d'épreuve, ou null si le
+   libellé n'en est pas un (aucune séance nommée, ou aucun mot qui désigne l'épreuve).
+   Null veut dire « je ne sais pas » : l'appelant garde alors son ancien chemin. */
+export function seanceDeCourse(nom, league) {
+    function aplatir(x) {
+        return ' ' + String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, ' ')
+            /* « f3gp » -> « f3 gp » : liveleagues colle la série au GP. Un chiffre devant,
+               pour ne pas couper « motogp » en « moto gp » et perdre la série. */
+            .replace(/([0-9])gp\b/g, '$1 gp') + ' ';
+    }
+    var t = aplatir(nom);
+
+    var seance = seanceDepuisTexte(t);
+    if (!seance) return null;
+
+    /* La LIGUE ne sert qu'à la série : « Fia F1 » dit la série d'un libellé qui ne la dit
+       pas (« FIA 2026: Spain GP Practice 3 »). Elle ne peut pas nommer l'épreuve — sinon
+       « Motorsport » deviendrait une épreuve, et tout ce que buffstreams range sous cette
+       étiquette s'apparierait. */
+    var serie = '';
+    var avecLigue = t + aplatir(league);
+    for (var i = 0; i < SERIES_COURSE.length; i++) {
+        if (SERIES_COURSE[i][0].test(avecLigue)) { serie = SERIES_COURSE[i][1]; break; }
+    }
+
+    var mots = t.trim().split(/\s+/);
+    var marqueur = -1;   // position du « GP » : l'épreuve est le mot juste avant
+    for (var j = 0; j < mots.length; j++) {
+        if (mots[j] === 'gp' || mots[j] === 'prix' || mots[j] === 'premio') { marqueur = j; break; }
+    }
+    var designants = [];
+    for (var k = 0; k < mots.length; k++) {
+        var w = mots[k];
+        if (/^(19|20)\d\d$/.test(w) || /^\d+$/.test(w)) continue;           // l'année, le numéro d'épisode
+        if (MOTS_HORS_EPREUVE.indexOf(w) >= 0) continue;
+        if (w.length < 3) continue;
+        designants.push({ mot: LIEUX_EPREUVE[w] || w, avant: marqueur >= 0 && k < marqueur });
+    }
+    if (!designants.length) return null;
+
+    /* Le mot qui précède le « GP » est l'épreuve — après les parrains, qui passent
+       devant (« Tag Heuer Spanish Grand Prix ») et changent d'un Grand Prix à l'autre.
+       Sans marqueur, on prend le premier mot désignant (« Spanish Grand Prix Practice 1 »
+       a son marqueur ; « Monza Race », non). */
+    var avant = designants.filter(function(d) { return d.avant; });
+    var epreuve = avant.length ? avant[avant.length - 1].mot : designants[0].mot;
+    if (epreuve.length < 4) return null;   // « us », « spa » : trop court pour identifier seul
+    return { serie: serie, epreuve: epreuve, seance: seance };
+}
+
+/* Deux séances d'épreuve sont-elles la même ? Série, épreuve et séance doivent concorder.
+   Une série inconnue d'un côté (« Motor », « Motorsport ») ne contredit rien ; deux séries
+   connues et différentes, si. */
+export function memeSeanceDeCourse(a, b) {
+    if (!a || !b) return { isMatch: false, reason: 'Pas une séance d\'épreuve' };
+    if (a.serie && b.serie && a.serie !== b.serie) {
+        return { isMatch: false, reason: 'Séries différentes (' + a.serie + ' vs ' + b.serie + ')' };
+    }
+    var memeEpreuve = a.epreuve === b.epreuve
+        || (a.epreuve.length >= 4 && b.epreuve.length >= 4
+            && (a.epreuve.indexOf(b.epreuve) >= 0 || b.epreuve.indexOf(a.epreuve) >= 0));
+    if (!memeEpreuve) {
+        return { isMatch: false, reason: 'Épreuves différentes (' + a.epreuve + ' vs ' + b.epreuve + ')' };
+    }
+    /* Des essais libres non numérotés (« Practice Session ») contre des essais numérotés :
+       la source parle de ceux qui se courent, on l'accepte. Deux numéros différents, non. */
+    var memeSeance = a.seance === b.seance
+        || (a.seance === 'practice' && /^practice[123]$/.test(b.seance))
+        || (b.seance === 'practice' && /^practice[123]$/.test(a.seance));
+    if (!memeSeance) {
+        return { isMatch: false, reason: 'Séances différentes (' + a.seance + ' vs ' + b.seance + ')' };
+    }
+    return { isMatch: true, reason: 'Même séance d\'épreuve (' + (a.serie || b.serie || '?') + ' ' + a.epreuve + ' ' + a.seance + ')' };
+}
+
 export function isMatchPair(m1, m2) {
   return debugMatchPair(m1, m2).isMatch;
 }
@@ -283,8 +447,15 @@ export function debugMatchPair(m1, m2) {
   var isEsports1 = esportsLeagues.includes((m1.league || '').toUpperCase()) || m1.homeTeam.toLowerCase().includes('esports') || m1.awayTeam.toLowerCase().includes('esports');
   var isEsports2 = esportsLeagues.includes((m2.league || '').toUpperCase()) || m2.homeTeam.toLowerCase().includes('esports') || m2.awayTeam.toLowerCase().includes('esports');
 
-  var isRacingEvent1 = m1.homeTeam.toLowerCase().includes('grand prix') || m1.homeTeam.toLowerCase().includes('formula 1') || m1.homeTeam.toLowerCase() === 'f1' || m1.homeTeam.toLowerCase().includes('indy') || m1.homeTeam.toLowerCase() === 'wwe' || m1.league === 'F1' || m1.league === 'INDYCAR' || m1.league === 'WWE' || isEsports1;
-  var isRacingEvent2 = m2.homeTeam.toLowerCase().includes('grand prix') || m2.homeTeam.toLowerCase().includes('formula 1') || m2.homeTeam.toLowerCase() === 'f1' || m2.homeTeam.toLowerCase().includes('indy') || m2.homeTeam.toLowerCase() === 'wwe' || m2.league === 'F1' || m2.league === 'INDYCAR' || m2.league === 'WWE' || isEsports2;
+  /* Les séances d'épreuve sont lues d'abord : elles décident aussi de l'ENTRÉE dans le
+     raccourci. « FIA 2026: Spain GP Qualifying » (liveleagues, ligue « Fia F1 ») ne dit ni
+     « grand prix », ni « f1 » dans son nom d'équipe, et restait donc dehors dès que l'autre
+     match n'était pas d'ESPN. */
+  var course1 = seanceDeCourse(m1.homeTeam + ' ' + m1.awayTeam, m1.league);
+  var course2 = seanceDeCourse(m2.homeTeam + ' ' + m2.awayTeam, m2.league);
+
+  var isRacingEvent1 = m1.homeTeam.toLowerCase().includes('grand prix') || m1.homeTeam.toLowerCase().includes('formula 1') || m1.homeTeam.toLowerCase() === 'f1' || m1.homeTeam.toLowerCase().includes('indy') || m1.homeTeam.toLowerCase() === 'wwe' || m1.league === 'F1' || m1.league === 'INDYCAR' || m1.league === 'WWE' || isEsports1 || !!course1;
+  var isRacingEvent2 = m2.homeTeam.toLowerCase().includes('grand prix') || m2.homeTeam.toLowerCase().includes('formula 1') || m2.homeTeam.toLowerCase() === 'f1' || m2.homeTeam.toLowerCase().includes('indy') || m2.homeTeam.toLowerCase() === 'wwe' || m2.league === 'F1' || m2.league === 'INDYCAR' || m2.league === 'WWE' || isEsports2 || !!course2;
 
   if (isRacingEvent1 || isRacingEvent2) {
       /* Le spectacle de catch prime sur la comparaison de lettres : « RAW #1737 » et
@@ -296,6 +467,17 @@ export function debugMatchPair(m1, m2) {
           return sp1 === sp2
               ? { isMatch: true, reason: 'Même spectacle de catch (' + sp1 + ')' }
               : { isMatch: false, reason: 'Spectacles de catch différents (' + sp1 + ' vs ' + sp2 + ')' };
+      }
+
+      /* Deux séances d'épreuve : la série, l'épreuve et la séance tranchent, dans les deux
+         sens (voir seanceDeCourse). Le jour compte aussi — un Grand Prix étale ses séances
+         sur trois jours, et le raccourci Racing/Event répondait AVANT le contrôle des dates
+         plus bas : les essais du vendredi pouvaient ramasser les liens du dimanche. */
+      if (course1 && course2) {
+          if (m1.matchDate && m2.matchDate && m1.matchDate !== m2.matchDate && !memeMatchATraversLaNuit(m1, m2)) {
+              return { isMatch: false, reason: "Séances d'épreuve de jours différents (" + m1.matchDate + " vs " + m2.matchDate + ")" };
+          }
+          return memeSeanceDeCourse(course1, course2);
       }
 
       var combo1 = normName(m1.homeTeam + " " + m1.awayTeam);

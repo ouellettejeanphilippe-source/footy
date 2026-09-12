@@ -107,6 +107,38 @@ async function main() {
     assert.strictEqual(f.details, 'MLS · 19:00', 'une source unique ne s\'annonce pas');
     ok('l\'incrustation dit la chaîne, le match et la source');
 
+    // ── 7. Aucun blocage : ce qui ne peut pas jouer sort de la liste ──────────
+    /* « Un seul vidéo, avec aucun blocage » (12 septembre 2026). La chaîne d'à côté ne
+       peut pas être un écran de refus du navigateur : on écarte ce dont l'application
+       SAIT qu'il ne jouera pas ici, et on remonte devant ce qu'elle joue elle-même. */
+    const optsJeu = {
+        estBloque: (u) => /refuse\.test/.test(u),
+        aFaitSortir: (u) => u === 'https://sortie.test/x',
+        estMedia: (u) => /\.m3u8(\?|$)/.test(u),
+        score: (l) => (l.verified === 'none' ? -1 : 1)
+    };
+    const bruts = [
+        lien('https://refuse.test/1'),
+        { url: 'https://verifie.test/2', verified: 'blocked' },
+        lien('https://sortie.test/x'),
+        { url: 'https://mort.test/3', verified: 'none' },
+        lien('https://bon.test/4'),
+        lien('https://cdn.test/live.m3u8')
+    ];
+    assert.deepStrictEqual(C.liensCable(bruts, optsJeu).map((l) => l.url),
+        ['https://cdn.test/live.m3u8', 'https://bon.test/4'],
+        'l\'hôte qui refuse le cadre, le lien observé bloqué, l\'adresse qui a fait sortir la page et l\'hôte mort sortent ; le flux que l\'application joue elle-même passe devant');
+    assert.strictEqual(C.lienJouable(lien('https://bon.test/4'), optsJeu), true);
+    assert.strictEqual(C.lienJouable({ url: '' }, optsJeu), false);
+    assert.strictEqual(C.liensCable(bruts, {}).length, bruts.length - 1,
+        'sans prédicats, seul un lien déjà observé bloqué est écarté : le mode dégrade, il ne vide pas');
+    const lienOkJeu = (l) => C.lienJouable(l, optsJeu);
+    assert.strictEqual(C.estChaine(M('bloque', { streamLinks: [lien('https://refuse.test/1')] }), Object.assign({ lienOk: lienOkJeu }, direct)), false,
+        'un match dont le seul lien est bloqué n\'est pas une chaîne : le zapping ne s\'arrête pas dessus');
+    assert.strictEqual(C.estChaine(M('bon', { streamLinks: [lien('https://refuse.test/1'), lien('https://bon.test/4')] }), Object.assign({ lienOk: lienOkJeu }, direct)), true,
+        'mais il l\'est dès qu\'un seul lien peut jouer');
+    ok('les liens et les chaînes qui ne peuvent pas jouer sortent du zapping');
+
     // ══ B. Le câblage dans le lecteur ══════════════════════════════════════════
     const dom = new JSDOM('<!doctype html><html><body>' +
         '<div id="epg"></div>' +
@@ -209,7 +241,23 @@ async function main() {
     assert.strictEqual(mv.mvFlux[0].url, stable, 'un appui qui a bougé de huit pixels ne change rien');
     ok('le calque lit le glissement et déclenche la bonne action');
 
-    // ── 11. L'échappatoire : cliquer dans la page du site ─────────────────────
+    // ── 11. Aucun blocage : l'appui rend les clics à la page, sans cérémonie ──
+    /* Un appui qui n'est pas un geste (le cas du site qui exige un clic pour démarrer)
+       efface le calque quatre secondes, puis le rend. C'était un DOUBLE appui jusqu'ici,
+       qui suspendait les gestes jusqu'à ce qu'on pense à les reprendre. */
+    mv.mvFlux[0]._passeClics = 0;
+    mv.majSurfacesCable();
+    assert.strictEqual(surface().style.display, 'block');
+    glisser(5, -6);
+    assert.ok(mv.mvFlux[0]._passeClics > Date.now(), 'l\'appui ouvre une fenêtre de clics pour la page');
+    assert.strictEqual(surface().style.display, 'none', 'le calque s\'efface : le clic suivant va au lecteur du site');
+    assert.ok(!mv.mvFlux[0]._gestesSuspendus, 'et il ne laisse aucun état à défaire');
+    mv.mvFlux[0]._passeClics = Date.now() - 1;   // la fenêtre a passé
+    mv.majSurfacesCable();
+    assert.strictEqual(surface().style.display, 'block', 'passé le délai, le calque revient tout seul');
+    ok('un appui rend les clics à la page quatre secondes, puis le zapping reprend');
+
+    // ── 12. La suspension longue reste, par le bouton de l'en-tête ────────────
     mv.basculerGestesTuile(0);
     assert.strictEqual(mv.mvFlux[0]._gestesSuspendus, true);
     assert.strictEqual(surface().style.display, 'none', 'gestes suspendus : la page du site redevient cliquable');
@@ -217,10 +265,10 @@ async function main() {
     glisser(0, -120);
     assert.strictEqual(mv.mvFlux[0].mid, fige, 'et plus rien ne zappe tant qu\'ils sont suspendus');
     mv.basculerGestesTuile(0);
-    assert.strictEqual(surface().style.display, 'block', 'un second appui double les reprend');
-    ok('les gestes se suspendent par tuile, pour laisser cliquer dans la page du site');
+    assert.strictEqual(surface().style.display, 'block', 'le bouton les reprend');
+    ok('la suspension longue reste disponible, pour travailler dans la page du site');
 
-    // ── 12. Les mêmes deux axes au clavier ────────────────────────────────────
+    // ── 13. Les mêmes deux axes au clavier ────────────────────────────────────
     const touche = (key) => w.dispatchEvent(new w.KeyboardEvent('keydown', { key, bubbles: true }));
     const avantClavier = mv.mvFlux[0].mid;
     touche('ArrowUp');
@@ -236,6 +284,92 @@ async function main() {
     touche('ArrowUp');
     assert.strictEqual(mv.mvFlux[0].mid, avantClavier, 'mode éteint : les flèches ne sont plus à nous');
     ok('les flèches du clavier font les mêmes deux axes que le doigt');
+
+    // ── 14. Un mode spécifique : une seule vidéo ──────────────────────────────
+    /* « Le câble, ça devrait être un mode spécifique, un seul vidéo ». Le mode réduit la
+       grille à la tuile qu'on regarde ; les autres sont mises de côté, pas fermées, et
+       reviennent en sortant. */
+    mv.setModeCable(false);
+    mv.mvFlux.length = 0;
+    mv.mvFlux.push({ url: 'https://s1.test/a', name: 'M1', mid: 'm1', _autoTried: 0 });
+    mv.mvFlux.push({ url: 'https://s4.test/d', name: 'M2', mid: 'm2', _autoTried: 0 });
+    mv.mvFlux.push({ url: 'https://s2.test/b', name: 'M1 bis', mid: 'm1', _autoTried: 0 });
+    mv.updateMultivisionLayout();
+    mv.focusStream(1);
+    assert.strictEqual(document.querySelectorAll('.mv-cell').length, 3);
+    mv.setModeCable(true);
+    assert.strictEqual(mv.mvFlux.length, 1, 'une seule vidéo en mode câble');
+    assert.strictEqual(mv.mvFlux[0].mid, 'm2', 'celle qu\'on regardait, pas la première de la liste');
+    assert.strictEqual(mv.videosMisesDeCote(), 2, 'les deux autres sont mises de côté');
+    assert.strictEqual(document.querySelectorAll('.mv-cell').length, 1, 'et la grille n\'a plus qu\'une tuile');
+    mv.setModeCable(false);
+    assert.strictEqual(mv.mvFlux.length, 3, 'en sortant, elles reviennent');
+    assert.strictEqual(mv.videosMisesDeCote(), 0);
+    assert.deepStrictEqual(mv.mvFlux.map((f) => f.name), ['M2', 'M1', 'M1 bis']);
+    ok('le mode câble réduit à une seule vidéo et rend les autres en sortant');
+
+    // ── 15. Choisir un match ailleurs CHANGE de chaîne ────────────────────────
+    mv.mvFlux.length = 0;
+    mv.mvFlux.push({ url: 'https://s1.test/a', name: 'M1', mid: 'm1', _autoTried: 0 });
+    mv.setModeCable(true);
+    mv.addToMultivision('https://s4.test/d', 'M2 Home vs M2 Away', 'm2');
+    assert.strictEqual(mv.mvFlux.length, 1, 'le mode garde sa promesse : toujours une seule vidéo');
+    assert.strictEqual(mv.mvFlux[0].mid, 'm2', 'le match choisi devient la chaîne en cours');
+    assert.strictEqual(mv.mvFlux[0].url, 'https://s4.test/d');
+    ok('en mode câble, ajouter un match change de chaîne au lieu d\'ouvrir une tuile');
+
+    // ── 16. Le zapping évite les blocages et préfère ce qui joue tout seul ────
+    /* `refuse.test` est un hôte que le serveur a mesuré comme refusant d'être encadré :
+       il est dans le registre appris, donc le mode ne s'y arrête pas. Et entre une page
+       et un flux que l'application lit elle-même (`.m3u8`, donc `<video autoplay>`), le
+       mode prend le second : c'est la seule lecture automatique qu'il maîtrise. */
+    const scr = await import('../js/scrapers.js');
+    const registre = scr.getEmbedRegistry();
+    registre.blocked = registre.blocked || {};
+    registre.blocked['refuse.test'] = Date.now();
+
+    state.setMatches([
+        enDirect('m1', ['https://s1.test/a', 'https://s2.test/b']),
+        enDirect('m3', ['https://refuse.test/x', 'https://bon.test/y']),
+        enDirect('m4', ['https://page.test/z', 'https://cdn.test/live.m3u8'])
+    ]);
+    mv.mvFlux.length = 0;
+    mv.mvFlux.push({ url: 'https://s1.test/a', name: 'M1', mid: 'm1', _autoTried: 0 });
+    mv.updateMultivisionLayout();
+
+    assert.strictEqual(mv.zapperChaine(0, 1), true);
+    assert.strictEqual(mv.mvFlux[0].mid, 'm3');
+    assert.strictEqual(mv.mvFlux[0].url, 'https://bon.test/y',
+        'la chaîne suivante ne s\'ouvre pas sur l\'hôte qui refuse le cadre');
+    assert.strictEqual(mv.zapperChaine(0, 1), true);
+    assert.strictEqual(mv.mvFlux[0].mid, 'm4');
+    assert.strictEqual(mv.mvFlux[0].url, 'https://cdn.test/live.m3u8',
+        'et elle prend le flux que l\'application joue elle-même, qui démarre sans clic');
+    /* La source suivante du même match reste jouable, elle aussi. */
+    assert.strictEqual(mv.changerSourceTuile(0, 1), true);
+    assert.strictEqual(mv.mvFlux[0].url, 'https://page.test/z');
+    assert.strictEqual(mv.mvFlux[0].mid, 'm4');
+    ok('le zapping saute les blocages connus et préfère ce qui démarre tout seul');
+
+    // ── 17. Lecture automatique : la tuile reçoit l'ordre de jouer ────────────
+    /* Pour une PAGE, l'application ne peut que demander (le cadre est d'une autre
+       origine) : `mv_clean` puis `mv_play`, et `mv_unmute` par le son. Pour un <video>
+       qui est le sien, elle appelle `play()` — et réessaie en muet si le navigateur
+       refuse le son, comme le fait le script utilisateur. */
+    cell().querySelectorAll('.mv-media').forEach((el) => el.removeAttribute('id'));
+    const faux = document.createElement('video');
+    faux.id = 'mv-iframe-0';
+    let joue = 0, muetApresRefus = 0;
+    faux.play = function() { joue++; return joue === 1 ? Promise.reject(new Error('autoplay refusé')) : Promise.resolve(); };
+    Object.defineProperty(faux, 'muted', { set: function() { muetApresRefus++; }, get: function() { return false; }, configurable: true });
+    cell().querySelector('.mv-video-container').appendChild(faux);
+    assert.strictEqual(mv.relancerLectureTuile(0), true);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.ok(joue >= 1, 'la vidéo de la tuile reçoit play()');
+    assert.ok(muetApresRefus >= 1, 'et un refus du navigateur la relance en muet plutôt que de la laisser arrêtée');
+    ok('la lecture est relancée sur la tuile, sans attendre un clic');
+
+    mv.setModeCable(false);
 
     console.log(`unit_cable: ${n} groupes de tests OK`);
     process.exit(0);

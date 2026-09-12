@@ -111,7 +111,7 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 | **➕ Ajouter** | Réduit le lecteur et invite à choisir un match dans le guide. |
 | **⊞ Disposition** | `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`. En portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. |
 | **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
-| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (zapping au doigt)`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
+| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
 | **➖ Réduire** / **⤢ Agrandir** | Visibles quand le lecteur est réduit. |
 
 Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois ; ils se ferment d'un clic ailleurs, par Échap, au défilement ou au redimensionnement ; les flèches ↑/↓ s'y déplacent.
@@ -151,7 +151,15 @@ La page du site est chargée telle quelle dans une iframe, sans attribut `sandbo
 
 ### 5.6 Mode câble (zapping au doigt)
 
-`⋯ Plus → 📺 Mode câble`, retenu d'une fois à l'autre. Le lecteur se conduit alors comme un décodeur : **deux gestes sur la vidéo**, un par axe.
+`⋯ Plus → 📺 Mode câble`, retenu d'une fois à l'autre. C'est un **mode à part entière** : le lecteur se conduit comme un téléviseur — **une seule vidéo**, qu'on zappe **au doigt**, et qui **démarre toute seule**.
+
+**Une seule vidéo.** Allumer le mode réduit la grille à la tuile qu'on regardait ; les autres sont mises de côté (pas fermées) et reviennent telles quelles en éteignant le mode, même après un rechargement. Tant que le mode est allumé, choisir un match ailleurs dans l'application **change de chaîne** au lieu d'ouvrir une seconde tuile.
+
+**Aucun blocage.** Le zapping ne s'arrête que sur ce qui peut jouer ici : un hôte dont le serveur a mesuré qu'il refuse d'être encadré, un lien déjà observé bloqué ou une adresse qui a détourné la page sont écartés de la liste des chaînes et des sources. Si une tuile tombe malgré tout sur un écran de refus, elle passe à la source suivante au lieu d'afficher un avertissement.
+
+**Lecture automatique.** Entre deux sources, le mode prend d'abord celle que l'application sait jouer elle-même (un flux `.m3u8` ou `.mp4` va dans son propre lecteur, avec `autoplay`) ; pour une page de site, elle demande au script utilisateur de lancer la vidéo — trois fois, à 1,2 s d'intervalle, le temps que le lecteur du site apparaisse.
+
+Puis **deux gestes sur la vidéo**, un par axe.
 
 | Geste | Effet |
 |---|---|
@@ -160,9 +168,9 @@ La page du site est chargée telle quelle dans une iframe, sans attribut `sandbo
 
 Une incrustation s'affiche deux secondes et demie après chaque geste — `CH 3/12`, le match, la ligue ou le score, la source utilisée — puis s'efface.
 
-Les gestes s'appliquent à la tuile touchée ; les autres tuiles, les dispositions et le son ne bougent pas. Un glissement de moins de 48 px, une diagonale ou un doigt qui traîne plus d'une seconde ne déclenchent rien.
+Un glissement de moins de 48 px, une diagonale ou un doigt qui traîne plus d'une seconde ne déclenchent rien.
 
-**Cliquer dans la page du site** : le mode pose un calque transparent sur la vidéo pour voir le doigt (une iframe d'un autre site ne le laisse pas passer), et ce calque prend aussi les clics. Deux appuis rapprochés sur la vidéo — ou le bouton **📺 / 🖐** de l'en-tête de tuile — suspendent les gestes de cette tuile le temps de cliquer dans la page (lancer la lecture, accepter un avis) ; deux appuis de plus les reprennent. Éteindre le mode les rend toutes.
+**Cliquer dans la page du site** : le mode pose un calque transparent sur la vidéo pour voir le doigt (une iframe d'un autre site ne le laisse pas passer), et ce calque prend aussi les clics. **Un simple appui** rend donc les clics à la page pendant quatre secondes — le temps de toucher le bouton de lecture d'un site qui l'exige — puis le calque revient tout seul : rien à apprendre, rien à défaire. Le bouton **📺 / 🖐** de l'en-tête de tuile reste là pour une suspension longue, quand on veut vraiment travailler dans la page du site.
 
 ### 5.7 Panneau « Scores et statistiques »
 
