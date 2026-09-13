@@ -1278,8 +1278,18 @@ export function setupMultivisionUI() {
                     if (activeMvIdx !== idx) {
                         focusStream(idx);
                     }
+                    /* Le clic est une activation que le navigateur vient d'accorder :
+                       c'est la seule occasion de rendre le son après un refus. */
+                    donnerLeSon(idx, 'geste');
                 }
             });
+        }
+        /* Le son a été refusé par le navigateur dans la tuile (le script utilisateur a
+           dû remuer la vidéo pour qu'elle continue de jouer). */
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'sound_state' && e.data.blocked) {
+            var idxSon = indexDeTuilePour(e.source);
+            if (idxSon >= 0) noterSonBloque(idxSon);
+            return;
         }
         /* « Vidéo en lecture » (ou plus), envoyé par multiview-cleaner.user.js depuis le
            cadre où joue le lecteur — souvent un cadre imbriqué, d'où la remontée des
@@ -1321,6 +1331,10 @@ export function setupMultivisionUI() {
                 s._playing = true;
                 if (s._autoTimer) { clearTimeout(s._autoTimer); s._autoTimer = null; }
                 if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
+                /* Son automatique : la vidéo existe et joue, c'est maintenant que le son
+                   peut lui être rendu — avant, le navigateur refusait et le script
+                   utilisateur remettait le muet pour obtenir la lecture. */
+                donnerLeSon(idx, 'joue');
             } else if (!joue && s._playing) {
                 s._playing = false;
             }
@@ -1657,6 +1671,76 @@ export function applyMvAudioState() {
     });
 }
 
+
+/* ── SON AUTOMATIQUE ─────────────────────────────────────────────────────────────
+   « Son automatique on » (13 septembre 2026).
+
+   Un navigateur REFUSE une lecture automatique avec le son : la vidéo doit démarrer
+   muette, et le son ne peut lui être rendu qu'ENSUITE, une fois qu'elle joue et que la
+   page a reçu une activation. L'application ne faisait que la première moitié du
+   chemin : `applyMvAudioState` envoie `mv_unmute` à la tuile active au moment où on la
+   pose — donc AVANT que la vidéo ne joue. Le script utilisateur coupait alors le son
+   pour obtenir la lecture (c'est son repli), et personne ne revenait le rendre : on
+   regardait un match muet en cherchant le bouton.
+
+   Trois moments, donc, et un seul point de décision (`donnerLeSon`) :
+     - la tuile annonce qu'elle JOUE (`video_state`) — le bon moment, la vidéo existe ;
+     - un clic est fait DANS son cadre (`mv_frame_clicked`) — une activation fraîche,
+       que le navigateur accepte, et la seule sortie quand il a refusé une fois ;
+     - la tuile devient celle qu'on regarde (`focusStream`, chemin existant).
+
+   Si le son est refusé, la tuile le dit (`sound_state`, blocked) : on note le refus,
+   on le dit UNE fois, et on n'insiste plus jusqu'au prochain geste — insister ferait
+   osciller la lecture entre muet et arrêté. Réglage retenu sous `son_auto`, allumé
+   par défaut, parce que c'est la demande ; le menu ⋯ le coupe. */
+export var sonAuto = true;
+try { sonAuto = (localStorage.getItem('son_auto') !== '0'); } catch (e) { sonAuto = true; }
+
+export function setSonAuto(v) {
+    sonAuto = !!v;
+    try { localStorage.setItem('son_auto', sonAuto ? '1' : '0'); } catch (e) {}
+    if (sonAuto) mvFlux.forEach(function(s) { s._sonBloque = false; });
+    applyMvAudioState();
+    return sonAuto;
+}
+
+export function toggleSonAuto() {
+    fermerMenus();
+    var actif = setSonAuto(!sonAuto);
+    showToast(actif
+        ? '🔊 Son automatique : la vidéo qu\'on regarde prend le son dès qu\'elle joue.'
+        : '🔇 Son automatique coupé : les tuiles restent muettes jusqu\'à ce qu\'on le demande.');
+    return actif;
+}
+
+/* Rend le son à la tuile `idx` si c'est bien celle qu'on regarde. `raison` vaut 'joue'
+   (la vidéo vient de démarrer), 'geste' (un clic dans le cadre : on retente même après
+   un refus) ou 'focus'. Rend true si la demande a été faite. */
+export function donnerLeSon(idx, raison) {
+    if (!sonAuto) return false;
+    var s = mvFlux[idx];
+    if (!s) return false;
+    var cible = (activeMvIdx !== null && activeMvIdx < mvFlux.length) ? activeMvIdx : (mvFlux.length ? 0 : -1);
+    if (idx !== cible) return false;
+    if (s._sonBloque && raison !== 'geste') return false;
+    if (raison === 'geste') s._sonBloque = false;
+    applyMvAudioState();
+    return true;
+}
+
+/* La tuile dit que le navigateur a refusé le son : on le note, on le dit une fois, et
+   on attend un geste. Sans cette mémoire, chaque `video_state` relancerait une demande
+   que le navigateur refusera de la même façon. */
+export function noterSonBloque(idx) {
+    var s = mvFlux[idx];
+    if (!s || s._sonBloque) return false;
+    s._sonBloque = true;
+    if (!window._sonBloqueDit) {
+        window._sonBloqueDit = true;
+        showToast('Le navigateur refuse le son sans un geste : touchez la vidéo une fois et il restera.');
+    }
+    return true;
+}
 
 /* Disposition réellement rendue. En portrait (téléphone, tablette debout), deux tuiles
    côte à côte font deux bandes de la largeur d'un pouce : on les empile, quel que soit le
@@ -2860,6 +2944,7 @@ export function ouvrirMenuBarre(bouton, event) {
         { icon: '🎬', label: 'Mode cinéma', onSelect: function() { toggleTheaterMode(document.getElementById('mv-grid-wrapper')); } },
         { icon: '📊', label: 'Scores et statistiques', actif: mvGameModeActive, onSelect: function() { toggleMvGameMode(); } },
         { icon: '📺', label: 'Mode câble (une seule vidéo, zapping au doigt)', title: '↑↓ changer de match, ←→ changer de source ; un appui rend les clics à la page', actif: modeCable, onSelect: function() { toggleModeCable(); } },
+        { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', title: 'La vidéo qu\'on regarde prend le son dès qu\'elle joue (le navigateur exige parfois un premier geste)', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
         ('documentPictureInPicture' in window) ? { icon: '🖼', label: 'Fenêtre détachée', onSelect: function() { toggleDocumentPiP(); } } : null,
         { sep: true },
         (!enPip && !mobile) ? { icon: '◫', label: 'Réduire dans un coin', onSelect: function() { toggleMultiviewPip(); } } : null,
@@ -3865,7 +3950,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v22';
+export var VERSION_APP = 'sports-guide-v23';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4463,6 +4548,7 @@ window.addToMultivision = addToMultivision;
 window.lienDuMatchPourFlux = lienDuMatchPourFlux;
 window.nextFluxForTile = nextFluxForTile;
 window.toggleModeCable = toggleModeCable;
+window.toggleSonAuto = toggleSonAuto;
 window.basculerGestesTuile = basculerGestesTuile;
 window.zapperChaine = zapperChaine;
 window.changerSourceTuile = changerSourceTuile;

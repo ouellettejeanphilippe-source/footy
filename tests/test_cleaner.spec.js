@@ -62,6 +62,22 @@ const SITE = `<html><body style="margin:0">
       /* Une vidéo trop petite pour que le nettoyage la prenne pour le lecteur (il exige
          plus de 50 px) : la page n'est donc jamais nettoyée, et rien ne lance cette
          vidéo — sauf un ordre explicite. C'est le différentiel du test de mv_play. */
+      /* Un navigateur qui n'autorise la lecture QUE muette : play() rejette dès que le
+         son est rendu, et la vidéo se met en pause — exactement ce que fait Chrome sans
+         activation de l'utilisateur. */
+      if (e.data === 'poser_lecteur_sonrefuse') {
+        var vs = document.createElement('video');
+        vs.id = 'lecteur'; vs.width = 640; vs.height = 360;
+        vs.setAttribute('style', 'width:640px;height:360px');
+        var enPause = true;
+        Object.defineProperty(vs, 'paused', { get: function () { return enPause; } });
+        vs.play = function () {
+          window.__appelsPlay++; window.__dernierMuet = this.muted;
+          if (!this.muted) { enPause = true; return Promise.reject(new DOMException('son refuse', 'NotAllowedError')); }
+          enPause = false; return Promise.resolve();
+        };
+        document.getElementById('zone').appendChild(vs);
+      }
       if (e.data === 'poser_video_minuscule') {
         var vp = document.createElement('video');
         vp.id = 'minuscule'; vp.width = 40; vp.height = 30;
@@ -325,6 +341,35 @@ test('mv_play lance la vidéo même quand le lecteur n\'a jamais été trouvé',
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('mv_play', '*'); });
   await expect.poll(() => cadre.evaluate(() => window.__appelsPlay), { timeout: 8000 }).toBeGreaterThanOrEqual(2);
   expect(await cadre.evaluate(() => window.__dernierMuet), 'refusée avec le son, relancée muette').toBe(true);
+});
+
+/* « Son automatique on » (13 septembre 2026). Rendre le son peut ARRÊTER la vidéo : sans
+   activation de l'utilisateur, le navigateur n'autorise que le muet. Le script vérifie
+   donc le résultat au lieu de le supposer — il remet le muet pour que la vidéo continue
+   de jouer, et le DIT à l'application (`sound_state`, blocked), qui n'insistera plus
+   jusqu'au prochain geste. Sans ce rapport, la tuile restait muette sans que personne
+   sache pourquoi. */
+test('le son rendu est vérifié : la vidéo qui s\'arrête est remise en muet, et le refus est rapporté', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => {
+    window.__etatsSon = [];
+    window.addEventListener('message', (e) => { if (e.data && e.data.__mv === 'sound_state') window.__etatsSon.push(e.data); });
+    document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_sonrefuse', '*');
+  });
+  await expect(cadre.locator('#lecteur')).toBeAttached();
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  // La vidéo joue, muette (le repli du script).
+  await expect.poll(() => cadre.evaluate(() => !document.querySelector('#lecteur').paused), { timeout: 8000 }).toBe(true);
+
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('mv_unmute', '*'); });
+  await expect.poll(() => page.evaluate(() => window.__etatsSon.length), { timeout: 8000 }).toBeGreaterThan(0);
+
+  const rapport = await page.evaluate(() => window.__etatsSon[window.__etatsSon.length - 1]);
+  expect(rapport.blocked, 'le refus du navigateur est rapporté à l\'application').toBe(true);
+  expect(rapport.unmuted, 'et le son n\'est pas annoncé comme rendu').toBe(false);
+  const etat = await cadre.evaluate(() => ({ muet: document.querySelector('#lecteur').muted, joue: !document.querySelector('#lecteur').paused }));
+  expect(etat.muet, 'le muet est remis : une vidéo qui joue sans son vaut mieux qu\'une vidéo arrêtée').toBe(true);
+  expect(etat.joue, 'et elle joue de nouveau').toBe(true);
 });
 
 test('seule la fenêtre qui encadre la tuile peut lui donner des ordres', async ({ page }) => {

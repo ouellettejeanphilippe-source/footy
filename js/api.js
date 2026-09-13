@@ -6,7 +6,7 @@ import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } f
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { liensDunEvenementEsports } from './esports.js';
-import { appartientAuJour, nuitEnCours, veille } from './nuit.js';
+import { appartientAuJour, nuitEnCours, veille, lendemain } from './nuit.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 /* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
@@ -663,6 +663,18 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
       && nuitEnCours(parseInt(minutesMaintenant[0], 10) * 60 + parseInt(minutesMaintenant[1], 10))) {
       var veilleEspn = veilleStr.replace(/-/g, '');
       espnPaths.forEach(function(path) { taches.push({ path: path, jour: veilleEspn, nuit: true }); });
+  }
+
+  /* LE LENDEMAIN (13 septembre 2026) : la grille couvre 48 h. Ce chemin-ci est le REPLI
+     — il ne sert que quand `data/schedule.json` manque ou n'est pas du jour, le cache du
+     serveur portant les deux journées lui-même. Sans cette passe, la fenêtre de 48 h
+     rétrécirait silencieusement à 24 h dès que le serveur est muet, ce qui est
+     exactement le moment où l'on compte sur l'application seule. Passe complète : on
+     garde tout ce que le lendemain porte, chaque match avec sa propre date. */
+  var lendemainStr = lendemain(targetDateStr);
+  if (lendemainStr) {
+      var lendemainEspn = lendemainStr.replace(/-/g, '');
+      espnPaths.forEach(function(path) { taches.push({ path: path, jour: lendemainEspn, nuit: false }); });
   }
 
   /* Une seule file pour les deux journées : la nuit, c'est 94 requêtes, et les lancer

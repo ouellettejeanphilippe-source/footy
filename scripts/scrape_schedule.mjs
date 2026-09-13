@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { JSDOM } from 'jsdom';
-import { appartientAuJour, nuitEnCours, veille } from '../js/nuit.js';
+import { appartientAuJour, nuitEnCours, veille, lendemain } from '../js/nuit.js';
 
 // We emulate some DOM/window globals required by `scrapers.js` regex parsing if needed
 const dom = new JSDOM();
@@ -512,21 +512,42 @@ async function run() {
         console.log(`Nuit : ${baseMatches.length - avant} match(s) de la veille (${veilleStr}) débordant sur cette nuit.`);
     }
 
+    /* LE LENDEMAIN EN ENTIER (13 septembre 2026) : « tu montres 48 h au lieu de 24 h ».
+       La grille du navigateur couvre désormais deux jours, et c'est ici que les matchs du
+       second arrivent : le client lit `data/schedule.json` au démarrage et ne fait AUCUN
+       appel à ESPN quand ce fichier est du jour — si le lendemain n'y est pas, il n'est
+       nulle part. Passe complète (pas `seulementLaNuit`) : on garde tout ce que le
+       lendemain porte, chaque match avec sa propre date.
+
+       Les échecs de cette passe ne comptent pas dans `echecsEspn`, qui ne juge que la
+       journée d'aujourd'hui : une panne d'ESPN limitée au lendemain ne doit pas faire
+       passer le calendrier du jour pour partiel, ni retenir son écriture. */
+    const lendemainStr = lendemain(targetDateStr);
+    if (lendemainStr) {
+        const lendemainEspn = lendemainStr.replace(/-/g, '');
+        const avantDemain = baseMatches.length;
+        const resultsLendemain = await enPiscine(espnPaths, CONCURRENCE, (path) => fetchEspnSchedule(path, lendemainEspn));
+        resultsLendemain.forEach((res) => traiterEspn(res, false));
+        console.log(`Demain : ${baseMatches.length - avantDemain} match(s) du ${lendemainStr} (fenêtre de 48 h).`);
+    }
+
     // F1 & IndyCar
     const f1Html = await fetchPage('https://ics.ecal.com/ecal-sub/65cfbda721adce1847679093/Formula%201.ics');
     if(f1Html) {
-        parseIcs(f1Html, targetDateStr).forEach(m => {
+        /* Les deux jours de la fenêtre : une séance de F1 du lendemain est exactement ce
+           qu'on veut voir la veille au soir. */
+        [targetDateStr, lendemainStr].filter(Boolean).forEach((jour) => parseIcs(f1Html, jour).forEach(m => {
             m.flag = lgFlag('F1'); m.color = lgColor('F1'); m.source = 'api'; m.league = 'F1'; m.status = 'upcoming'; m.durationMinutes = 120;
             if(!baseMatches.find(x => isMatch(x.homeTeam, m.homeTeam) && x.matchDate === m.matchDate)) baseMatches.push(m);
-        });
+        }));
     }
 
     const indyHtml = await fetchPage('https://www.indycar.com/-/media/Files/2024/ICS/INDYCAR.ics');
     if(indyHtml) {
-         parseIcs(indyHtml, targetDateStr).forEach(m => {
+         [targetDateStr, lendemainStr].filter(Boolean).forEach((jour) => parseIcs(indyHtml, jour).forEach(m => {
             m.flag = lgFlag('IndyCar'); m.color = lgColor('IndyCar'); m.source = 'api'; m.league = 'INDYCAR'; m.status = 'upcoming'; m.durationMinutes = 120;
             if(!baseMatches.find(x => isMatch(x.homeTeam, m.homeTeam) && x.matchDate === m.matchDate)) baseMatches.push(m);
-        });
+        }));
     }
 
     // PWHL
@@ -661,7 +682,13 @@ async function run() {
         console.log(`Passe partielle : ${gardes} match(s) conservé(s) du calendrier déjà publié.`);
     }
 
-    baseMatches.sort((a,b) => a.startTime > b.startTime ? 1 : -1);
+    /* Tri sur (date, heure) depuis la fenêtre de 48 h : trier sur la seule heure
+       entrelaçait les deux jours — « 01:00 demain » avant « 23:00 aujourd'hui ». */
+    baseMatches.sort((a, b) => {
+        const ja = String(a.matchDate || ''), jb = String(b.matchDate || '');
+        if (ja !== jb) return ja < jb ? -1 : 1;
+        return String(a.startTime || '') > String(b.startTime || '') ? 1 : -1;
+    });
 
     const cacheData = { fetchDate: todayStr, matches: baseMatches };
 

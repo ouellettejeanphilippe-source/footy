@@ -75,6 +75,31 @@ export function appartientAuJour(m, jour, dureeDefaut) {
     return m.matchDate === veille(jour) && debordeSurLaNuit(m, dureeDefaut);
 }
 
+/* ══ LA FENÊTRE DE 48 HEURES ══════════════════════════════════════════════════
+
+   « Possible d'avoir aujourd'hui et demain pour aider avec matchs dans la nuit ? »
+   (13 septembre 2026), puis, sur la façon de le faire : « tu montres 48 h au lieu
+   de 24 h ».
+
+   La règle d'avant regardait UN jour civil, la veille exceptée pour ce qui déborde sur
+   la nuit. Le défaut se voit à 23 h : un match à 02:00 est daté de demain, donc absent,
+   et le seul moyen de le voir était de changer de jour — ce qui fait disparaître la
+   soirée en cours. Or ces matchs-là (Europe le matin, Asie la nuit) sont précisément
+   ceux qu'on cherche quand on regarde tard.
+
+   La fenêtre affichée va donc de minuit aujourd'hui à minuit après-demain : 48 heures,
+   ce que la grille dessine en une seule règle horaire continue. Rien n'est retiré —
+   la veille qui déborde sur cette nuit reste, par `appartientAuJour`. */
+export var FENETRE_HEURES = 48;
+
+/* Le match fait-il partie de la fenêtre affichée depuis `jour` : ce jour (veille qui
+   déborde comprise), ou le lendemain ? */
+export function appartientALaFenetre(m, jour, dureeDefaut) {
+    if (appartientAuJour(m, jour, dureeDefaut)) return true;
+    if (!m || !m.matchDate || !jour) return false;
+    return m.matchDate === lendemain(jour);
+}
+
 /* Est-on encore dans la nuit, à `minutesDepuisMinuit` (heure de New York) ? */
 export function nuitEnCours(minutesDepuisMinuit) {
     return typeof minutesDepuisMinuit === 'number' && minutesDepuisMinuit >= 0 && minutesDepuisMinuit < NUIT_FIN_MIN;
