@@ -1,6 +1,6 @@
 import { getEstTimeStrFromDate, getEstDateStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
          minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN } from './config.js';
-import { minutesDansLaJournee, comparerHeures, libelleJour } from './nuit.js';
+import { minutesDansLaJournee, comparerHeures, libelleJour, FENETRE_HEURES } from './nuit.js';
 import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
@@ -797,11 +797,18 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
     corner.textContent = 'Compétition';
     rulerRow.appendChild(corner);
 
+    /* Règle de 48 h (js/nuit.js, FENETRE_HEURES) : « tu montres 48 h au lieu de 24 h »
+       (13 septembre 2026). Une seule règle continue, pas deux grilles côte à côte : un
+       match à 02:00 est alors à sa place naturelle, deux heures après minuit, et on le
+       voit sans quitter la soirée en cours. La frontière porte « demain », et la
+       dernière borne (48:00) est le minuit d'après-demain. */
     var rulerTimes = document.createElement('div');
     rulerTimes.className = 'ruler-times';
     var hhtml = '';
-    for(var h=0; h<=24; h++){
-        hhtml += '<div class="tc">' + pad(h) + ':00</div>';
+    for(var h=0; h<=FENETRE_HEURES; h++){
+        var frontiere = (h === 24);
+        hhtml += '<div class="tc' + (frontiere ? ' tc-jour' : '') + '">'
+            + (frontiere ? 'demain' : pad(h % 24) + ':00') + '</div>';
     }
     rulerTimes.innerHTML = hhtml;
     rulerRow.appendChild(rulerTimes);
@@ -939,10 +946,18 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
                               + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
               }
 
-              // Calculate position via CSS vars
+              /* Position : les minutes comptées depuis le minuit de la grille
+                 (`minutesDansLaJournee`, js/nuit.js) — négatives pour un match d'hier
+                 soir, au-delà de 1440 pour un match de demain, qui se place ainsi de
+                 lui-même dans la seconde moitié de la règle. */
               var parts = m.startTime.split(':');
               var mH = parseInt(parts[0], 10);
               var mM = parseInt(parts[1], 10);
+              var minutesGrille = minutesDansLaJournee(m, jourGrille);
+              if (minutesGrille !== null && minutesGrille >= 1440) {
+                  mH = Math.floor(minutesGrille / 60);
+                  mM = minutesGrille % 60;
+              }
 
               var duration = m.durationMinutes || 105;
               /* Match d'hier soir qui déborde sur cette nuit (js/nuit.js) : son départ est

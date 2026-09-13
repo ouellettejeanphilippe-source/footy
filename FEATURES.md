@@ -11,7 +11,7 @@ L'en-tête ne porte que quatre boutons. Sur téléphone (largeur ≤ 768 px), il
 | Bouton | Ce qu'il ouvre |
 |---|---|
 | **Live** | Les matchs en cours et ceux qui commencent dans l'heure, en cartes. |
-| **Guide** | Le programme complet du jour sur une grille horaire de 24 h. |
+| **Guide** | Le programme sur une grille horaire de **48 h** : aujourd'hui et demain, d'une seule traite. |
 | **Lecteur** | Le Multivision : jusqu'à quatre vidéos côte à côte. Le bouton se marque quand des vidéos sont chargées et qu'on est ailleurs. |
 | **Plus** | Un menu : `⭐ Favoris`, `⚙️ Options`, `📋 Logs`, `🧩 Script`, `↩ Interface classique`, `↻ Mettre à jour l'app`. Se ferme d'un clic à l'extérieur ou par Échap. |
 
@@ -61,7 +61,9 @@ Sous 900 px, les cartes deviennent des affiches verticales (2:3). Chaque section
 
 ## 3. Onglet Guide
 
-Une grille horaire de 00:00 à 24:00, une ligne par match, groupées par ligue.
+Une grille horaire de **48 heures** — de 00:00 aujourd'hui à 00:00 après-demain —, une ligne par match, groupées par ligue.
+
+**Pourquoi 48 h.** Un match à 02:00 est daté de *demain* : à 23 h, il était donc invisible, et le seul moyen de le voir était de changer de jour, ce qui faisait disparaître la soirée en cours. Les matchs de la nuit (l'Europe le matin, l'Asie la nuit) sont précisément ceux qu'on cherche quand on regarde tard. La règle est maintenant continue : **la frontière de minuit porte « demain »** et un liseré vertical la marque dans la grille ; un match de 02:00 demain est à sa place naturelle, deux heures après cette frontière.
 
 - **Règle des heures** en haut, coin `Compétition` figé à gauche. Une heure fait 220 px sur ordinateur, 140 px sur téléphone, multiplié par le zoom (de 40 % à 300 %, par pas de 20 %).
 - **Ligne du direct** : un trait rouge vertical avec l'heure en étiquette, déplacé chaque minute. Visible seulement si le jour affiché est aujourd'hui.
@@ -69,6 +71,7 @@ Une grille horaire de 00:00 à 24:00, une ligne par match, groupées par ligue.
 - **Lignes de ligue** : un en-tête collant (drapeau, nom, nombre de matchs) qui se replie d'un clic, puis une ligne par match avec les équipes (blasons, ★ favori) et un bloc positionné à l'heure du coup d'envoi, large comme la durée normale du sport. Un match en cours qui dépasse sa durée voit son bloc s'allonger jusqu'à l'heure courante.
 - **Bloc** : `LIVE` ou la minute, le score, `Terminé | score`, `Fin ? | score`, ou l'heure, précédé de `hier · ` pour un match d'hier soir ; et `N flux` à droite. Le clic ouvre la fiche.
 - **Un match commencé la veille au soir** qui joue encore après minuit est dessiné à partir de 00:00, sur ce qui lui reste, et passe avant les matchs de la nuit dans les listes.
+- **Un match de demain** porte `demain · ` devant son heure, sur la case comme sur la carte. Les liens de demain sont là aussi : le cache du serveur couvre les deux journées.
 - **Ligues secondaires (n)** : leur propre grille, sous un titre repliable. **Autres streams (n)** : en cartes, repliée.
 
 ## 4. Fiche de match
@@ -111,7 +114,7 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 | **➕ Ajouter** | Réduit le lecteur et invite à choisir un match dans le guide. |
 | **⊞ Disposition** | `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`. En portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. |
 | **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
-| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
+| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
 | **➖ Réduire** / **⤢ Agrandir** | Visibles quand le lecteur est réduit. |
 
 Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois ; ils se ferment d'un clic ailleurs, par Échap, au défilement ou au redimensionnement ; les flèches ↑/↓ s'y déplacent.
@@ -148,6 +151,12 @@ La page du site est chargée telle quelle dans une iframe, sans attribut `sandbo
 - **Choix du flux** : les liens sont classés (observations de lecture, domaines préférés, qualité annoncée) et la tuile essaie le mieux classé. **Avec le script utilisateur**, si aucune vidéo n'est signalée en 30 s (90 s pour un hôte connu comme lent), la tuile passe seule à la source suivante, une fois par lien. Sans le script, seul `⏭` change de source.
 - Les sources des matchs affichés sont relues toutes les 3 minutes.
 - **Sortie forcée** : si un site fait quitter la page dans les 15 s qui suivent la pose d'une tuile, l'adresse est notée dix minutes. Au retour, la tuile dit « Ce site a fait sortir la page du lecteur » avec `↗ Ouvrir sur le site` et `Charger quand même`.
+
+### 5.5 bis Son automatique
+
+`⋯ Plus → 🔊 Son automatique`, allumé par défaut et retenu. La vidéo qu'on regarde prend le son **dès qu'elle joue** — pas avant, parce qu'un navigateur refuse une lecture automatique avec le son : elle démarre muette, et le son lui est rendu ensuite. Les autres tuiles restent muettes.
+
+Si le navigateur refuse quand même (il exige parfois un premier geste), la tuile le dit une fois — « touchez la vidéo une fois et il restera » — et le son est rendu au premier clic dans la vidéo. La vidéo, elle, continue de jouer muette plutôt que de s'arrêter.
 
 ### 5.6 Mode câble (zapping au doigt)
 

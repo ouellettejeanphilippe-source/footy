@@ -552,6 +552,32 @@
        où l'utilisateur a besoin d'agir — la tuile n'obéissait donc à rien : ni couper le
        son, ni nettoyer. */
     window.mvUnmutedState = false;
+
+    /* Le son a-t-il TENU ? La question n'est pas comment il échoue — la vidéo peut se
+       mettre en pause, ou la relance muette de `tenterLecture` peut reprendre la main —
+       mais s'il est là 400 ms plus tard. On regarde donc l'état réel : une vidéo qui
+       joue mais qui est muette, alors qu'on a demandé le son, est un refus.
+
+       Et si rendre le son l'a ARRÊTÉE, on remet le muet et on la relance : une vidéo qui
+       joue sans son vaut mieux qu'une vidéo arrêtée. */
+    function verifierLeSon() {
+        setTimeout(() => {
+            const videos = Array.from(document.querySelectorAll('video'));
+            const v = videos.find((x) => x.offsetWidth > 50 || x.offsetHeight > 50) || videos[0];
+            if (!v) return;
+            if (v.paused) {
+                v.muted = true;
+                v.volume = 0;
+                try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+            }
+            const bloque = !!v.muted;
+            if (bloque) window.mvUnmutedState = false;
+            try {
+                window.parent.postMessage({ __mv: 'sound_state', unmuted: !bloque, blocked: bloque }, '*');
+            } catch (e) {}
+        }, 400);
+    }
+
     window.addEventListener('message', function(e) {
         /* Seule la fenêtre qui nous encadre commande. Sans ce filtre, n'importe quel
            cadre de la page (une régie publicitaire, par exemple) pourrait nous piloter.
@@ -569,6 +595,13 @@
             /* La tuile qui prend le son est celle qu'on regarde : si sa vidéo attend
                encore un clic, on le donne. */
             if (!couper && cleaned) tenterLecture(mainPlayerBase);
+            /* « Son automatique on » (13 septembre 2026). Rendre le son peut faire
+               ARRÊTER la vidéo : sans activation de l'utilisateur, le navigateur
+               n'autorise que le muet. On vérifie donc le résultat plutôt que de le
+               supposer — et si la lecture est tombée, on remet le muet (une vidéo qui
+               joue sans son vaut mieux qu'une vidéo arrêtée) et on le DIT à
+               l'application, qui n'insistera plus jusqu'au prochain geste. */
+            if (!couper) verifierLeSon();
         } else if (e.data === 'mv_clean') {
             /* Nettoyage à la demande. L'application l'envoie quand la tuile vient de se
                charger et quand l'utilisateur lève le bac à sable : à ce moment-là le

@@ -7,7 +7,7 @@ import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES,
 import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
-import { appartientAuJour, DUREE_LARGE_MIN } from './nuit.js';
+import { appartientALaFenetre, DUREE_LARGE_MIN } from './nuit.js';
 import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId } from './ui.js';
 import { setMatches } from './state.js';
@@ -336,7 +336,9 @@ function appliquerCacheServeur(data) {
     var todayStr = getEstDateStrFromDate(new Date());
     /* Un flux d'hier soir dont le match déborde sur cette nuit reste (js/nuit.js) :
        sans durée connue, on retient large. */
-    var list = data.matches.filter(function(m) { return !m.matchDate || appartientAuJour(m, todayStr, DUREE_LARGE_MIN); });
+    /* Fenêtre de 48 h (js/nuit.js) : les liens des matchs de demain entrent aussi, sans
+       quoi la grille montrerait des cases sans flux sur toute sa seconde moitié. */
+    var list = data.matches.filter(function(m) { return !m.matchDate || appartientALaFenetre(m, todayStr, DUREE_LARGE_MIN); });
     list.forEach(function(m) {
         m.prefetched = true;
         /* « Chargé » veut dire « porte un flux jouable », pas « porte un lien ».
@@ -589,7 +591,7 @@ async function loadAllRun(isBackground, forceScrape){
 
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
-              return appartientAuJour(m, targetDateStr);
+              return appartientALaFenetre(m, targetDateStr);
           }));
           noterFusion(S.matches);
 
@@ -647,7 +649,7 @@ async function loadAllRun(isBackground, forceScrape){
       if (liensDejaConnus.length) {
           try {
               var provisoire = mergeFluxToApi(apiMatches, liensDejaConnus, true);
-              setMatches(provisoire.filter(function(m) { return appartientAuJour(m, dateVisee); }));
+              setMatches(provisoire.filter(function(m) { return appartientALaFenetre(m, dateVisee); }));
               noterFusion(S.matches);
               buildEPG(S.matches);
               window.hasLoadedOnce = true;
@@ -672,7 +674,7 @@ async function loadAllRun(isBackground, forceScrape){
             if (!isBackground && !window.hasLoadedOnce && apiMatches.length) {
                 var prevImmediat = (isToday && window.prefetchedStreamMatches && window.prefetchedStreamMatches.length) ? window.prefetchedStreamMatches.slice() : [];
                 var targetImmediat = getEstDateStrFromDate(TARGET_DATE);
-                setMatches(mergeFluxToApi(apiMatches, prevImmediat, true).filter(function(m) { return appartientAuJour(m, targetImmediat); }));
+                setMatches(mergeFluxToApi(apiMatches, prevImmediat, true).filter(function(m) { return appartientALaFenetre(m, targetImmediat); }));
                 buildEPG(S.matches);
                 hideLoadingOverlay();
                 window.hasLoadedOnce = true;
@@ -801,7 +803,7 @@ async function loadAllRun(isBackground, forceScrape){
 
                     var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
-              return appartientAuJour(m, targetDateStr);
+              return appartientALaFenetre(m, targetDateStr);
           }));
           noterFusion(S.matches);
           if (!isBackground) { hideLoadingOverlay(); }
@@ -910,7 +912,7 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
 
   if (cache && cache.fetchDate === todayStr && cache.matches && cache.matches.length > 0) {
             setMatches(cache.matches.filter(function(m) {
-          return appartientAuJour(m, getEstDateStrFromDate(TARGET_DATE));
+          return appartientALaFenetre(m, getEstDateStrFromDate(TARGET_DATE));
       }));
       if (S.matches.length > 0) {
           setTimeout(function() { buildEPG(S.matches); }, 0);

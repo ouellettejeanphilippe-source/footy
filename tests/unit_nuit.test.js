@@ -93,6 +93,31 @@ async function main() {
   assert.strictEqual(N.libelleJour(null, AUJ), '');
   ok('libelleJour dit « hier » ou « demain », et rien pour le jour affiché');
 
+  // ── 8. La fenêtre de 48 h : aujourd'hui et demain ─────────────────────────
+  /* « Possible d'avoir aujourd'hui et demain pour aider avec matchs dans la nuit ? »
+     (13 septembre 2026), puis « tu montres 48 h au lieu de 24 h ». Ce que la fenêtre
+     ajoute au jour : le lendemain EN ENTIER. Ce qu'elle ne change pas : la veille qui
+     déborde reste, et l'avant-veille comme le surlendemain restent dehors — sans quoi la
+     grille se remplirait de matchs qu'on ne regardera pas cette nuit. */
+  assert.strictEqual(N.FENETRE_HEURES, 48);
+  const dansLaFenetre = (jour, heure, extra) => N.appartientALaFenetre(
+      Object.assign({ matchDate: jour, startTime: heure, durationMinutes: 180 }, extra || {}), AUJ);
+  assert.strictEqual(dansLaFenetre(AUJ, '19:00'), true, 'ce soir');
+  assert.strictEqual(dansLaFenetre(DEMAIN, '02:00'), true, 'la nuit prochaine : c\'est la demande');
+  assert.strictEqual(dansLaFenetre(DEMAIN, '15:00'), true, 'et demain après-midi aussi : 48 h, pas « jusqu\'à 06:00 »');
+  assert.strictEqual(dansLaFenetre(HIER, '22:05'), true, 'hier soir qui déborde sur cette nuit : inchangé');
+  assert.strictEqual(dansLaFenetre(HIER, '13:00'), false, 'hier après-midi, fini depuis longtemps');
+  assert.strictEqual(dansLaFenetre('2026-09-10', '20:00'), false, 'le surlendemain est hors fenêtre');
+  assert.strictEqual(dansLaFenetre('2026-09-06', '22:05'), false, 'l\'avant-veille aussi');
+  assert.strictEqual(N.appartientALaFenetre({ startTime: '19:00' }, AUJ), false, 'sans date : pas de fenêtre');
+  assert.strictEqual(N.appartientALaFenetre(null, AUJ), false);
+  assert.strictEqual(N.appartientALaFenetre({ matchDate: DEMAIN }, null), false, 'sans jour de référence');
+  /* La place dans la grille suit : un match de demain est au-delà de la 24e heure, ce qui
+     le pose tout seul dans la seconde moitié de la règle. */
+  assert.strictEqual(N.minutesDansLaJournee({ matchDate: DEMAIN, startTime: '02:00' }, AUJ), 1560, '26 h depuis le minuit de la grille');
+  assert.strictEqual(N.minutesDansLaJournee({ matchDate: HIER, startTime: '22:05' }, AUJ), -115, 'et hier soir reste négatif');
+  ok('la fenêtre couvre 48 h : le jour, la veille qui déborde, et tout le lendemain');
+
   console.log('unit_nuit: ' + n + ' groupes de tests OK');
 }
 main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });

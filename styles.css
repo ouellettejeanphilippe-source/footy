@@ -397,11 +397,13 @@ body.cards-poster .card-streams-search, body.cards-poster .card-streams-retry { 
 .epg-wrapper { display: flex; min-width: max-content; flex-direction: column; position: relative; }
 .ruler-row { display: flex; position: sticky; top: 0; z-index: 40; height: var(--ruler-h); }
 .ruler-times { display: flex; background: rgb(10, 10, 12); border-bottom: 1px solid var(--border2); }
+/* La frontière de minuit dans la règle de 48 h : elle porte « demain » plutôt que « 00:00 », qui s'y lirait deux fois. */
+.ruler-times .tc-jour { color: var(--text); font-weight: 700; border-left: 2px solid var(--border2); }
 .corner { width: var(--chan-w); height: var(--ruler-h); flex-shrink: 0; position: sticky; left: 0; z-index: 45; border-bottom: 1px solid var(--border2); border-right: 1px solid var(--border2); display: flex; align-items: center; padding: 0 16px; font-weight: 700; font-size: 11px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; background: rgb(10,10,12); }
 .tc { flex-shrink: 0; width: var(--hour-px); display: flex; align-items: center; padding-left: 12px; border-right: 1px solid var(--border); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12px; color: var(--muted2); }
 .tc.nh { color: var(--red); font-weight: 800; }
 .marea-row { display: flex; position: relative; flex: 1; }
-.marea { position: relative; width: calc(25 * var(--hour-px)); min-width: calc(25 * var(--hour-px)); background: repeating-linear-gradient(90deg, transparent, transparent calc(var(--hour-px) - 1px), var(--border) calc(var(--hour-px) - 1px), var(--border) var(--hour-px)); }
+.marea { position: relative; width: calc(49 * var(--hour-px)); min-width: calc(49 * var(--hour-px)); background: linear-gradient(90deg, transparent calc(24 * var(--hour-px) - 1px), var(--border2) calc(24 * var(--hour-px) - 1px), var(--border2) calc(24 * var(--hour-px) + 1px), transparent calc(24 * var(--hour-px) + 1px)), repeating-linear-gradient(90deg, transparent, transparent calc(var(--hour-px) - 1px), var(--border) calc(var(--hour-px) - 1px), var(--border) var(--hour-px)); }
 .mrow { display: flex; height: var(--row-h); border-bottom: 1px solid var(--border); position: relative; }
 .mrow:nth-child(even) { background: rgba(255,255,255,0.015); }
 .mrow.hidden-lg { display: none !important; }

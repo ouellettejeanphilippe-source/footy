@@ -1138,6 +1138,101 @@ test('sans nouvelle d\'ESPN, un match trop long passe à « Fin ? » et quitte l
    case du Guide commence à 00:00 sur ce qui reste, et le score continue de suivre.
 
    Le service worker est bloqué : il servirait sinon sa copie de data/schedule.json. */
+/* « Possible d'avoir aujourd'hui et demain pour aider avec matchs dans la nuit ? »
+   (13 septembre 2026), puis « tu montres 48 h au lieu de 24 h ».
+
+   À 21:00, un match à 02:00 est daté de DEMAIN : il était donc absent, et le seul moyen
+   de le voir était de changer de jour — ce qui fait disparaître la soirée en cours. La
+   grille couvre maintenant 48 h d'une seule règle continue.
+
+   Ce test passe par le REPLI (data/schedule.json absent), qui est le cas où l'application
+   doit se débrouiller seule : il vérifie donc aussi qu'elle demande le lendemain à ESPN,
+   et pas seulement que le cache du serveur le lui sert. */
+test('la grille couvre 48 h : un match de 02:00 demain est là ce soir, après la frontière de minuit', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+
+  // 21:00 à New York, le 13 septembre 2026 (heure d'été : UTC−4).
+  const SOIR = new Date(Date.UTC(2026, 8, 14, 1, 0));
+  expect(estParts(SOIR)).toEqual({ jour: '2026-09-13', minutes: 21 * 60 });
+  await page.clock.setFixedTime(SOIR);
+
+  const demandes = {};
+  const evenement = (id, iso, state) => ({
+    id, date: iso, season: { type: 2 },
+    status: { type: { state, shortDetail: '' }, displayClock: null, period: 0 },
+    competitions: [{ id: id + 'c', date: iso, competitors: [
+      { homeAway: 'home', team: { displayName: 'Los Angeles Dodgers', name: 'Dodgers', logo: '' }, score: '0' },
+      { homeAway: 'away', team: { displayName: 'San Francisco Giants', name: 'Giants', logo: '' }, score: '0' }
+    ] }]
+  });
+  await page.route('**/*', (route) => {
+    const u = route.request().url();
+    // Pas de calendrier publié : c'est le repli, ESPN, qui doit fournir les deux journées.
+    if (u.startsWith(origin) && /data\/schedule\.json/.test(u)) return route.fulfill({ status: 404, body: 'pas publié' });
+    if (u.startsWith(origin)) return route.continue();
+    const espn = /site\.api\.espn\.com\/apis\/site\/v2\/sports\/([^?]+)\/scoreboard\?dates=(\d{8})/.exec(u);
+    if (!espn) return route.abort();
+    const chemin = espn[1], jour = espn[2];
+    demandes[jour] = (demandes[jour] || 0) + 1;
+    let events = [];
+    if (chemin === 'baseball/mlb' && jour === '20260913') events = [evenement('soir', '2026-09-13T23:00Z', 'pre')];      // 19:00 ce soir
+    if (chemin === 'baseball/mlb' && jour === '20260914') events = [
+      evenement('nuitProchaine', '2026-09-14T06:00Z', 'pre'),   // 02:00 cette nuit — le cas de la demande
+      evenement('demainJour', '2026-09-14T19:00Z', 'pre')       // 15:00 demain : dans la fenêtre aussi
+    ];
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ leagues: [{ name: 'MLB' }], events }) });
+  });
+  await attendreGrille(page);
+
+  expect(demandes['20260913'], 'ESPN lu pour aujourd\'hui').toBeGreaterThan(0);
+  expect(demandes['20260914'], 'et pour demain : sans ça, la fenêtre de 48 h rétrécit dès que le serveur est muet').toBeGreaterThan(0);
+
+  // La grille du Guide, pour lire la règle et la position des cases.
+  await page.evaluate(() => window.applyFilter('all'));
+  await attendreGrilleStable(page);
+
+  const vue = await page.evaluate(() => {
+    const m = (id) => window.S.matchMap.get('espn_' + id);
+    const bornes = [...document.querySelectorAll('#marea .ruler-times .tc')].map((t) => t.textContent.trim());
+    const piste = document.querySelector('#marea .marea');
+    const heurePx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour-px')) || 0;
+    const caseDe = (id) => {
+      const b = document.querySelector('#marea .mb[data-mid="espn_' + id + '"]')
+          || [...document.querySelectorAll('#marea .mb')].find((x) => (x.textContent || '').includes('Dodgers'));
+      return b ? { debutH: b.style.getPropertyValue('--start-h'), debutM: b.style.getPropertyValue('--start-m') } : null;
+    };
+    return {
+      bornes: bornes.length, premiere: bornes[0], frontiere: bornes[24], derniere: bornes[bornes.length - 1],
+      largeurPiste: piste ? piste.getBoundingClientRect().width : 0, heurePx,
+      soir: m('soir') && { jour: m('soir').matchDate, heure: m('soir').startTime },
+      nuitProchaine: m('nuitProchaine') && { jour: m('nuitProchaine').matchDate, heure: m('nuitProchaine').startTime },
+      demainJour: m('demainJour') && { jour: m('demainJour').matchDate, heure: m('demainJour').startTime },
+      casesParDebut: [...document.querySelectorAll('#marea .mb')].map((b) => b.style.getPropertyValue('--start-h')).sort((a, b) => a - b),
+      libellesJour: [...document.querySelectorAll('#marea .kd-day, #marea .prime-day')].map((e) => e.textContent.trim())
+    };
+  });
+
+  expect(pageErrors, 'aucune erreur de page').toEqual([]);
+  // Les trois matchs sont dans la grille, chacun avec sa date.
+  expect(vue.soir).toEqual({ jour: '2026-09-13', heure: '19:00' });
+  expect(vue.nuitProchaine, 'le match de 02:00 de la nuit prochaine est là, sans changer de jour').toEqual({ jour: '2026-09-14', heure: '02:00' });
+  expect(vue.demainJour, 'et celui de demain après-midi aussi').toEqual({ jour: '2026-09-14', heure: '15:00' });
+  // La règle : 49 bornes (00:00 aujourd'hui → 00:00 après-demain), la 25e marque « demain ».
+  expect(vue.bornes, '49 bornes pour 48 h').toBe(49);
+  expect(vue.premiere).toBe('00:00');
+  expect(vue.frontiere, 'la frontière porte « demain » plutôt qu\'un second « 00:00 »').toBe('demain');
+  expect(vue.derniere).toBe('00:00');
+  // La piste fait bien 49 heures de large, et une case de demain est posée au-delà de la 24e.
+  expect(vue.largeurPiste).toBeGreaterThan(vue.heurePx * 48);
+  expect(vue.casesParDebut.map(Number).some((h) => h >= 24), 'une case au moins est posée dans la seconde journée').toBe(true);
+  expect(vue.casesParDebut.map(Number).includes(26), 'le match de 02:00 demain est à la 26e heure de la règle').toBe(true);
+  await ctx.close();
+});
+
 test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:30, dans le Live, la grille et les scores', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
