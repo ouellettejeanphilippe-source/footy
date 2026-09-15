@@ -1178,7 +1178,11 @@ export function updateNowLine() {
     if(lines.length === 0) return;
 
     var now = new Date();
-    var isToday = (TARGET_DATE.toDateString() === now.toDateString());
+    /* En jours de New York, fuseau de toute l'application : comparer des
+       `toDateString()` locaux masquait la ligne du direct un jour sur deux pour qui ne
+       vit pas dans ce fuseau, et la faisait disparaître à minuit avant que le jour
+       affiché ne bascule (js/main.js, verifierBasculeDeJour). */
+    var isToday = getEstDateStrFromDate(TARGET_DATE) === getEstDateStrFromDate(now);
 
     lines.forEach(function(line) {
         if(isToday) {
@@ -1205,7 +1209,11 @@ export function scrollToNow(){
     if(!rootContainer || rootContainer.style.display === 'none' || !epgContainer) return;
 
     var now = new Date();
-    var isToday = (TARGET_DATE.toDateString() === now.toDateString());
+    /* En jours de New York, fuseau de toute l'application : comparer des
+       `toDateString()` locaux masquait la ligne du direct un jour sur deux pour qui ne
+       vit pas dans ce fuseau, et la faisait disparaître à minuit avant que le jour
+       affiché ne bascule (js/main.js, verifierBasculeDeJour). */
+    var isToday = getEstDateStrFromDate(TARGET_DATE) === getEstDateStrFromDate(now);
 
     var rootStyles = getComputedStyle(document.documentElement);
     var hourPx = parseFloat(rootStyles.getPropertyValue('--hour-px')) || (window.innerWidth <= 768 ? 140 : 220);

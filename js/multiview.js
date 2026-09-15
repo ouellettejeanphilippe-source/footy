@@ -3950,7 +3950,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v23';
+export var VERSION_APP = 'sports-guide-v24';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

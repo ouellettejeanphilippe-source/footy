@@ -100,6 +100,27 @@ export function appartientALaFenetre(m, jour, dureeDefaut) {
     return m.matchDate === lendemain(jour);
 }
 
+/* ══ MINUIT PASSE PENDANT QU'ON REGARDE ═══════════════════════════════════════
+
+   « C'est pour pas que ça brise quand le match dépasse minuit » (15 septembre 2026).
+
+   Le jour affiché est fixé au CHARGEMENT et ne bascule pas tout seul. Une application
+   laissée ouverte le soir traverse donc minuit en croyant être encore la veille, et tout
+   ce qui se compare à « aujourd'hui » se met à mentir : la ligne du direct disparaît, la
+   case d'un match en cours cesse de s'allonger, et les matchs de la nouvelle journée
+   passent pour ceux de demain. Le match, lui, continue de jouer — c'est l'INTERFACE
+   autour de lui qui se périme.
+
+   `jourDepasse` est la question, posée en deux chaînes de jours : le calendrier a-t-il
+   dépassé le jour affiché ? L'appelant (js/main.js) la pose chaque demi-minute et au
+   retour au premier plan, parce qu'un téléphone gèle ses minuteries en arrière-plan et
+   peut traverser la nuit d'un coup. */
+export function jourDepasse(jourAffiche, jourCourant) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(jourAffiche || ''))) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(jourCourant || ''))) return false;
+    return jourAffiche < jourCourant;
+}
+
 /* Est-on encore dans la nuit, à `minutesDepuisMinuit` (heure de New York) ? */
 export function nuitEnCours(minutesDepuisMinuit) {
     return typeof minutesDepuisMinuit === 'number' && minutesDepuisMinuit >= 0 && minutesDepuisMinuit < NUIT_FIN_MIN;

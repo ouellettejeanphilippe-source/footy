@@ -7,7 +7,7 @@ import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES,
 import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
-import { appartientALaFenetre, DUREE_LARGE_MIN } from './nuit.js';
+import { appartientALaFenetre, jourDepasse, DUREE_LARGE_MIN } from './nuit.js';
 import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId } from './ui.js';
 import { setMatches } from './state.js';
@@ -935,6 +935,8 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
       }
   }, 300000);
   setInterval(function() { if (window.hasLoadedOnce) reevaluerFinsPresumees(); }, 60000);
+  /* Minuit : on regarde toutes les 30 s (voir verifierBasculeDeJour). */
+  setInterval(function() { verifierBasculeDeJour(); }, 30000);
 
   /* Retour au premier plan : sur téléphone, l'onglet est gelé en arrière-plan et la
      minuterie ci-dessus ne tourne pas. Les scores, eux, sont déjà relus à ce moment
@@ -945,6 +947,11 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
   var dernierRetourPremierPlan = 0;
   document.addEventListener('visibilitychange', function() {
       if (document.hidden || !window.hasLoadedOnce) return;
+      /* Un téléphone gèle ses minuteries en arrière-plan : l'appareil peut avoir traversé
+         minuit — ou la nuit entière — pendant que l'onglet dormait. La bascule de jour se
+         vérifie donc AUSSI au retour, avant tout le reste : elle relance elle-même une
+         passe d'arrière-plan, qui rendrait la relecture ci-dessous inutile. */
+      if (verifierBasculeDeJour()) { dernierRetourPremierPlan = Date.now(); return; }
       var age = window.prefetchedStreamsLoadedAt ? Date.now() - window.prefetchedStreamsLoadedAt : Infinity;
       if (age <= PREFETCH_STALE_MS && !window.prefetchedStreamsError) return;
       if (Date.now() - dernierRetourPremierPlan < 60 * 1000) return;
@@ -1511,19 +1518,19 @@ window.resetLeagueTiersPref = resetLeagueTiersPref;
 window.filterFavTeams = filterFavTeams;
 window.switchFavTab = switchFavTab;
 
-export function applyTargetDate(d) {
-    setApiTargetDate(d);
+/* L'étiquette de date et la marque `data-today`, seules — la bascule de minuit
+   (`verifierBasculeDeJour`) s'en sert aussi, mais sans recharger l'interface. La
+   comparaison se fait en jours de New YORK, fuseau de toute l'application : comparer
+   des `toDateString()` locaux faisait mentir l'étiquette pour qui n'y vit pas. */
+export function majLibelleDate(d) {
+    var jour = getEstDateStrFromDate(d);
+    var maintenant = new Date();
+    var isToday = jour === getEstDateStrFromDate(maintenant);
 
-    var now = new Date();
-    var isToday = (d.toDateString() === now.toDateString());
-
-    var d2 = new Date(now);
-    d2.setDate(now.getDate() - 1);
-    var isYesterday = (d.toDateString() === d2.toDateString());
-
-    var d3 = new Date(now);
-    d3.setDate(now.getDate() + 1);
-    var isTomorrow = (d.toDateString() === d3.toDateString());
+    var d2 = new Date(maintenant); d2.setDate(maintenant.getDate() - 1);
+    var d3 = new Date(maintenant); d3.setDate(maintenant.getDate() + 1);
+    var isYesterday = jour === getEstDateStrFromDate(d2);
+    var isTomorrow = jour === getEstDateStrFromDate(d3);
 
     var text = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
     text = text.charAt(0).toUpperCase() + text.slice(1);
@@ -1533,14 +1540,55 @@ export function applyTargetDate(d) {
     else if (isTomorrow) text = "Demain";
 
     var displayEl = document.getElementById('current-date-display');
-    if (displayEl) {
-        displayEl.textContent = text;
-    }
+    if (displayEl) displayEl.textContent = text;
     document.body.setAttribute('data-today', isToday ? 'true' : 'false');
+    return isToday;
+}
+
+export function applyTargetDate(d) {
+    setApiTargetDate(d);
+    majLibelleDate(d);
 
     window.hasLoadedOnce = false; // Force a full reload sequence with UI
     loadAll(false, false);
 }
+
+/* ══ MINUIT PASSE PENDANT QU'ON REGARDE ═══════════════════════════════════════════
+   « C'est pour pas que ça brise quand le match dépasse minuit » (15 septembre 2026).
+
+   Le jour affiché était fixé au chargement et ne bougeait plus. Une application ouverte
+   le soir traversait donc minuit en croyant être encore la veille, et tout ce qui se
+   compare à « aujourd'hui » se mettait à mentir : la ligne du direct disparaissait
+   (`updateNowLine` la masque dès que le jour affiché n'est plus le jour courant), la case
+   d'un match en cours cessait de s'allonger, et les matchs de la nouvelle journée
+   passaient pour ceux de demain. Le match, lui, continuait de jouer : c'est l'interface
+   autour de lui qui se périmait.
+
+   On réancre donc sur le nouveau jour, SANS écran d'attente — une passe d'arrière-plan,
+   comme celle des cinq minutes — et la grille est redessinée sur le nouveau minuit. Le
+   match commencé hier soir reste : `appartientALaFenetre` le garde (§5.4), et c'est bien
+   tout l'intérêt de la règle.
+
+   Deux déclencheurs, parce qu'un téléphone gèle ses minuteries en arrière-plan et peut
+   traverser la nuit d'un coup : la demi-minute, et le retour au premier plan. Et un
+   garde-fou : si l'utilisateur a navigué vers un autre jour (`data-today` à `false`), on
+   ne lui reprend pas sa navigation. */
+export function verifierBasculeDeJour() {
+    if (!window.hasLoadedOnce) return false;
+    if (document.body && document.body.getAttribute('data-today') === 'false') return false;
+    var jourAffiche = getEstDateStrFromDate(TARGET_DATE);
+    var jourCourant = getEstDateStrFromDate(new Date());
+    if (!jourDepasse(jourAffiche, jourCourant)) return false;
+
+    lg('Minuit', jourAffiche + ' → ' + jourCourant + ' : le jour affiché bascule');
+    setApiTargetDate(new Date());
+    majLibelleDate(new Date());
+    buildEPG(S.matches);
+    if (typeof window.updateNowLine === 'function') window.updateNowLine();
+    loadAll(true, false);   // arrière-plan : pas d'écran d'attente sur un match en cours
+    return true;
+}
+window.verifierBasculeDeJour = verifierBasculeDeJour;
 
 export function changeTargetDate(offsetDays) {
     var newDate = new Date(TARGET_DATE);
