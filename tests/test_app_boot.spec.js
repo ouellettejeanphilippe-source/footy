@@ -1148,6 +1148,104 @@ test('sans nouvelle d\'ESPN, un match trop long passe à « Fin ? » et quitte l
    Ce test passe par le REPLI (data/schedule.json absent), qui est le cas où l'application
    doit se débrouiller seule : il vérifie donc aussi qu'elle demande le lendemain à ESPN,
    et pas seulement que le cache du serveur le lui sert. */
+/* « C'est pour pas que ça brise quand le match dépasse minuit » (15 septembre 2026).
+
+   Le jour affiché (`TARGET_DATE`) est fixé au CHARGEMENT et ne bascule jamais. Une
+   application laissée ouverte le soir traverse donc minuit en croyant être encore la
+   veille, et tout ce qui se compare à « aujourd'hui » se met à mentir : la ligne du
+   direct disparaît (`updateNowLine` la masque dès que le jour affiché n'est plus le
+   jour courant), la case d'un match en cours cesse de s'allonger, et les matchs de la
+   nouvelle journée sont dessinés comme ceux de « demain ».
+
+   Ce test traverse minuit l'horloge à la main, avec un match commencé à 22:00 qui joue
+   encore, et un autre à 00:30. */
+test('minuit passe pendant qu\'on regarde : le jour affiché bascule, le match en cours reste, la ligne du direct suit', async ({ browser }) => {
+  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+
+  // 23:50 à New York, le 14 septembre 2026 (heure d'été : UTC−4).
+  const AVANT_MINUIT = new Date(Date.UTC(2026, 8, 15, 3, 50));
+  expect(estParts(AVANT_MINUIT)).toEqual({ jour: '2026-09-14', minutes: 23 * 60 + 50 });
+  await page.clock.install({ time: AVANT_MINUIT });
+
+  const evenement = (id, iso, state) => ({
+    id, date: iso, season: { type: 2 },
+    status: { type: { state, shortDetail: state === 'in' ? 'Top 8th' : '' }, displayClock: null, period: state === 'in' ? 8 : 0 },
+    competitions: [{ id: id + 'c', date: iso, competitors: [
+      { homeAway: 'home', team: { displayName: 'Los Angeles Dodgers', name: 'Dodgers', logo: '' }, score: '3' },
+      { homeAway: 'away', team: { displayName: 'San Francisco Giants', name: 'Giants', logo: '' }, score: '2' }
+    ] }]
+  });
+  await page.route('**/*', (route) => {
+    const u = route.request().url();
+    if (u.startsWith(origin) && /data\/schedule\.json/.test(u)) return route.fulfill({ status: 404, body: 'pas publié' });
+    if (u.startsWith(origin)) return route.continue();
+    const espn = /site\.api\.espn\.com\/apis\/site\/v2\/sports\/([^?]+)\/scoreboard\?dates=(\d{8})/.exec(u);
+    if (!espn) return route.abort();
+    const chemin = espn[1], jour = espn[2];
+    let events = [];
+    // Le match de 22:00 le 14, en cours : il dépasse minuit (base-ball, 3 h).
+    if (chemin === 'baseball/mlb' && jour === '20260914') events = [evenement('tardif', '2026-09-15T02:00Z', 'in')];
+    // Et un match à 00:30 le 15, qui devient « ce soir » une fois minuit passé.
+    if (chemin === 'baseball/mlb' && jour === '20260915') events = [evenement('apresMinuit', '2026-09-15T04:30Z', 'pre')];
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ leagues: [{ name: 'MLB' }], events }) });
+  });
+  await attendreGrille(page);
+  await page.evaluate(() => window.applyFilter('all'));
+  await attendreGrilleStable(page);
+
+  const avant = await page.evaluate(() => ({
+    jourAffiche: window.getEstDateStrFromDate ? window.getEstDateStrFromDate(window.TARGET_DATE) : null,
+    tardif: !!window.S.matchMap.get('espn_tardif'),
+    ligne: (() => { const l = document.querySelector('#marea .now-line'); return l ? l.style.display !== 'none' : null; })()
+  }));
+  expect(avant.tardif, 'le match de 22:00 est là avant minuit').toBe(true);
+  expect(avant.ligne, 'et la ligne du direct est visible').toBe(true);
+
+  /* ── On traverse minuit : il est maintenant 00:10 le 15 ───────────────────
+     Format hh:mm:ss, écrit en entier : « 00:20 » vaudrait vingt SECONDES (mm:ss), et le
+     test ne traverserait rien du tout — première version de ce test, justement. */
+  await page.clock.fastForward('00:20:00');
+  await page.waitForTimeout(300);
+  await attendreGrilleStable(page);
+
+  const apres = await page.evaluate(() => {
+    const m = (id) => window.S.matchMap.get('espn_' + id);
+    const caseDe = (id) => {
+      const b = document.querySelector('#marea .mb[data-mid="espn_' + id + '"]');
+      return b ? Number(b.style.getPropertyValue('--start-h')) : null;
+    };
+    const l = document.querySelector('#marea .now-line');
+    return {
+      jourAffiche: window.getEstDateStrFromDate(window.TARGET_DATE),
+      tardif: m('tardif') && { statut: m('tardif').status, jour: m('tardif').matchDate, heure: m('tardif').startTime },
+      apresMinuit: m('apresMinuit') && { jour: m('apresMinuit').matchDate, heure: m('apresMinuit').startTime },
+      ligneVisible: l ? l.style.display !== 'none' : null,
+      ligneH: l ? Number(l.style.getPropertyValue('--now-h')) : null,
+      caseApresMinuit: caseDe('apresMinuit')
+    };
+  });
+
+  expect(pageErrors, 'aucune erreur de page').toEqual([]);
+  // 1. Le jour affiché a basculé : sans cela, tout ce qui se compare à « aujourd'hui » ment.
+  expect(apres.jourAffiche, 'le jour affiché suit le calendrier de New York').toBe('2026-09-15');
+  // 2. Le match qui dépasse minuit est TOUJOURS là, avec son statut.
+  expect(apres.tardif, 'le match commencé à 22:00 hier joue encore et reste dans la grille')
+      .toEqual({ statut: 'live', jour: '2026-09-14', heure: '22:00' });
+  // 3. La ligne du direct suit, à 00:10.
+  expect(apres.ligneVisible, 'la ligne du direct reste visible après minuit').toBe(true);
+  expect(apres.ligneH, 'et elle est posée sur la nouvelle heure').toBe(0);
+  // 4. Le match de 00:30 est celui de CE matin, pas « demain » : dans les 24 premières heures.
+  expect(apres.apresMinuit).toEqual({ jour: '2026-09-15', heure: '00:30' });
+  if (apres.caseApresMinuit !== null) {
+    expect(apres.caseApresMinuit, 'sa case est dans la première journée de la règle').toBeLessThan(24);
+  }
+  await ctx.close();
+});
+
 test('la grille couvre 48 h : un match de 02:00 demain est là ce soir, après la frontière de minuit', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();

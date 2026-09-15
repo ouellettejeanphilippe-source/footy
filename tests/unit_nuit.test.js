@@ -118,6 +118,22 @@ async function main() {
   assert.strictEqual(N.minutesDansLaJournee({ matchDate: HIER, startTime: '22:05' }, AUJ), -115, 'et hier soir reste négatif');
   ok('la fenêtre couvre 48 h : le jour, la veille qui déborde, et tout le lendemain');
 
+  // ── 9. Minuit passe pendant qu'on regarde ─────────────────────────────────
+  /* « C'est pour pas que ça brise quand le match dépasse minuit » (15 septembre 2026).
+     Le jour affiché était figé au chargement : une application ouverte le soir traversait
+     minuit en croyant être encore la veille, et tout ce qui se compare à « aujourd'hui »
+     se mettait à mentir (la ligne du direct disparaissait, la case d'un match en cours
+     cessait de s'allonger). `jourDepasse` est la question posée chaque demi-minute. */
+  assert.strictEqual(N.jourDepasse(HIER, AUJ), true, 'minuit est passé : le jour affiché est dépassé');
+  assert.strictEqual(N.jourDepasse(AUJ, AUJ), false, 'même jour : rien à faire');
+  assert.strictEqual(N.jourDepasse(DEMAIN, AUJ), false, 'un jour affiché dans le futur n\'est pas dépassé (navigation manuelle)');
+  assert.strictEqual(N.jourDepasse('2026-09-05', AUJ), true, 'une application laissée ouverte trois jours bascule aussi');
+  assert.strictEqual(N.jourDepasse('2025-12-31', '2026-01-01'), true, 'changement d\'année');
+  assert.strictEqual(N.jourDepasse('hier', AUJ), false, 'une date illisible ne déclenche rien');
+  assert.strictEqual(N.jourDepasse(null, AUJ), false);
+  assert.strictEqual(N.jourDepasse(AUJ, undefined), false);
+  ok('jourDepasse dit quand le calendrier a dépassé le jour affiché');
+
   console.log('unit_nuit: ' + n + ' groupes de tests OK');
 }
 main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
