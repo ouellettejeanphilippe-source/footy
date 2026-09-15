@@ -14,6 +14,7 @@ import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
 import { ouvrirMenu, fermerMenus } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
+import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -3950,7 +3951,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v24';
+export var VERSION_APP = 'sports-guide-v25';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -3983,7 +3984,15 @@ export function diagnosticAppareilHtml() {
     var err = (typeof window !== 'undefined' && window.prefetchedStreamsError) || null;
     var info = (typeof window !== 'undefined' && window.prefetchedStreamsInfo) || null;
     if (err) html += ligne('Liens (data/streams.json)', 'ko', 'illisible · ' + err);
-    else if (info) html += ligne('Liens (data/streams.json)', 'ok', info.count + ' matchs · généré il y a ' + info.ageMin + ' min');
+    else if (info) {
+        /* Verte tant que le cache est frais, AVERTISSEMENT au-delà de 45 min : affichée en
+           vert quel que soit l'âge, cette ligne a laissé passer 45 h de panne sans que
+           personne ne la lise comme un problème (js/rattrapage.js). */
+        var etatCache = etatCacheServeur(info, { erreur: !!window.prefetchedStreamsError });
+        html += ligne('Liens (data/streams.json)', etatCache.niveau === 'ok' ? 'ok' : 'warn',
+            info.count + ' matchs · généré il y a ' + ageEnClair(info.ageMin)
+            + (etatCache.niveau === 'perime' ? ' — le serveur ne publie plus' : (etatCache.niveau === 'vieux' ? ' — un passage manqué' : '')));
+    }
     else html += ligne('Liens (data/streams.json)', 'warn', 'pas encore chargé');
 
     /* Les trois sources peuvent être vertes et les cartes rester vides : ce qui manque
