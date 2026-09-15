@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "npm run test:unit && npx playwright test tests/test_app_boot.spec.js tests/test_cleaner.spec.js",
+    "test": "npm run test:unit && npx playwright test tests/test_app_boot.spec.js tests/test_cleaner.spec.js tests/test_rattrapage.spec.js",
     "test:unit": "node --test tests/*.test.js",
     "scrape:streams": "node --max-old-space-size=8192 scripts/scrape_streams.mjs",
     "test:domains": "npx playwright test tests/test_domains.spec.js"

@@ -19,6 +19,10 @@ Autres éléments toujours présents :
 
 - **`↻ Actualiser`**, bouton flottant devant la grille : relit les liens du serveur, puis les scores ESPN, puis refait la fusion. L'icône tourne pendant l'opération, et un message dit combien de matchs ont des liens. Masqué sur les pages annexes ; réduit à l'icône sous 900 px.
 - **Écran de chargement** au premier démarrage : « Connexion API… », puis trois étapes cochées (Téléchargement Guide télé, Recherche de streams, Fusion et Affichage). En cas d'échec, une boîte 📡 avec le message, le code replié et `↺ Réessayer`.
+- **Bandeau de l'état des liens**, juste au-dessus de la grille. Les liens sont republiés toutes les 30 min ; quand ça s'arrête, l'application le dit au lieu de servir des liens d'avant-hier sans un mot (ce qu'elle a fait pendant 45 h les 10-12 septembre 2026) :
+  - moins de 45 min : rien du tout (la gigue du cron ne se raconte pas) ;
+  - à partir de 45 min, en gris : « Liens datant de 50 min : un passage du serveur a été manqué », avec `↻ Actualiser` ;
+  - passé 90 min, ou si le fichier est injoignable, en ambre : « le serveur ne publie plus », avec **`🔎 Chercher les liens ici`** — l'application va alors lire elle-même les pages des matchs qu'on peut regarder maintenant, et le bandeau montre l'avancement (« 2/4 matchs lus — 1 pourvu »). Elle le fait aussi d'elle-même, une fois le chargement fini, et prévient par un message quand un match reçoit ses liens.
 - **Messages** (toasts) en bas de l'écran, 2,5 s, remontés au-dessus de la barre d'onglets sur mobile.
 - **Zoom** (`Maintenant`, `−`, pourcentage, `+`) en bas à droite, visible dans le Guide seulement.
 
@@ -226,7 +230,7 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 
 ## 8. Logs (menu Plus → 📋 Logs)
 
-- **Cet appareil** : six lignes ✅ / ⚠️ / ❌ pour comparer deux appareils qui ne voient pas la même chose. Calendrier (nombre de matchs, source, âge), ESPN (réponses sur tentatives, dernière erreur), Liens (`data/streams.json`, âge), Fusion (« N matchs sur M ont des liens »), Stockage local (Ko, écritures refusées), Version (`sports-guide-v14`, service worker actif ou non). Puis `↻ Mettre à jour l'application`.
+- **Cet appareil** : six lignes ✅ / ⚠️ / ❌ pour comparer deux appareils qui ne voient pas la même chose. Calendrier (nombre de matchs, source, âge), ESPN (réponses sur tentatives, dernière erreur), Liens (`data/streams.json`, âge en clair, en orange dès 45 min et avec la raison — passage manqué ou serveur muet), Fusion (« N matchs sur M ont des liens »), Stockage local (Ko, écritures refusées), Version (`sports-guide-v14`, service worker actif ou non). Puis `↻ Mettre à jour l'application`.
 - **État des sources** du dernier scraping : pastille, nom, bouton 🕵️ vers l'Investigator, message, nombre de matchs, heure.
 - **Liens par domaine primaire** (`↻ Recalculer`) : combien de liens, d'intégrables, de pages et de matchs par fournisseur, sous-domaines repliés sur le domaine principal.
 - **Historique des requêtes** : journal horodaté, `📋 Copier le log` sur les entrées longues, `📥 Exporter` (fichier `jmtv-debug-logs-<date>.json`).

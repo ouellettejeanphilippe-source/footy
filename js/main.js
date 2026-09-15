@@ -2,14 +2,15 @@ import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, set
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
 import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
-import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee } from './config.js';
+import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee, isLiveNow, startsWithin, minutesUntilStart, isMatchPageBlocked, LIVE_WINDOW_MIN } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
-import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry } from './scrapers.js';
+import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry, scrapeMatchFlux } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { mergeMatches } from './match.js';
 import { appartientALaFenetre, jourDepasse, DUREE_LARGE_MIN } from './nuit.js';
+import { etatCacheServeur, rattrapageNecessaire, ciblesDeRattrapage, CIBLES_AVEC_PONT, CIBLES_SANS_PONT, INTERVALLE_RATTRAPAGE_MS } from './rattrapage.js';
 import { isMatchPair } from './match.js';
-import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId } from './ui.js';
+import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId, majBandeauCache } from './ui.js';
 import { setMatches } from './state.js';
 import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
 
@@ -351,6 +352,9 @@ function appliquerCacheServeur(data) {
     // Jouabilité observée par le serveur (scripts/verify_players.mjs) : lue par sortFluxLinks.
     window.hostPlayLedger = (data.hostPlay && typeof data.hostPlay === 'object') ? data.hostPlay : {};
     window.prefetchedStreamsLoadedAt = Date.now();
+    /* Le bandeau dit l'âge du cache dès qu'on le connaît (js/ui.js, majBandeauCache) :
+       c'est ce qui a manqué pendant les 45 h de la panne du 10 septembre. */
+    try { majBandeauCache(); } catch (e) {}
 
     /* Politique d'intégration relevée côté serveur (en-têtes X-Frame-Options /
        CSP frame-ancestors, illisibles depuis le navigateur). On l'injecte dans
@@ -874,6 +878,11 @@ async function loadAllRun(isBackground, forceScrape){
           setTimeout(function() { installTampermonkey(); }, 500);
       }
       window.hasLoadedOnce = true;
+      try { majBandeauCache(); } catch (e) {}
+      /* Le serveur ne publie plus ? L'application lit elle-même les pages des matchs
+         qu'on peut regarder maintenant (lancerRattrapage). Après la passe, pour ne pas
+         retarder l'affichage, et borné de l'intérieur. */
+      try { lancerRattrapage(false); } catch (e) {}
       window.dispatchEvent(new Event('loadSequenceComplete'));
   });
 }
@@ -1552,6 +1561,86 @@ export function applyTargetDate(d) {
     window.hasLoadedOnce = false; // Force a full reload sequence with UI
     loadAll(false, false);
 }
+
+/* ══ QUAND LE SERVEUR SE TAIT : L'APPLICATION CHERCHE ELLE-MÊME ═══════════════════
+
+   « L'app peut pas le faire par elle-même si GitHub Actions bugge, c'est pas super comme
+   workflow » (12 septembre 2026), après 45 heures sans liens frais.
+
+   Elle savait déjà se replier sur les pages de LISTE des sources (une dizaine) au-delà de
+   trois heures de cache. Ce qui manquait est le gros du travail du serveur : les **pages
+   de match**, celles qui portent les dizaines de lecteurs. Mesuré pendant la panne :
+   4985 liens côté serveur contre 2 par match en repli.
+
+   Le rattrapage les lit donc lui-même, mais BORNÉ, parce qu'un téléphone n'est pas un
+   runner : ce qu'on peut regarder maintenant (en direct, ou coup d'envoi dans l'heure) et
+   qui n'a aucun lien, au plus douze pages avec le script utilisateur — qui lit en direct,
+   depuis l'adresse de l'utilisateur, celle qui passe là où le centre de données de GitHub
+   est refusé — et quatre sans lui, chaque page partant alors par un proxy CORS public.
+   Une seule page à la fois : trente requêtes lancées ensemble par un proxy public
+   expirent en file d'attente (la leçon d'ESPN_CONCURRENCE).
+
+   Le choix des cibles et la décision de partir sont dans `js/rattrapage.js`, pur et
+   testable ; ici, la lecture, la progression et le bandeau. */
+var rattrapageEnCours = false;
+
+export function lancerRattrapage(force) {
+    if (rattrapageEnCours) return Promise.resolve(0);
+    var etat = etatCacheServeur(window.prefetchedStreamsInfo, { erreur: !!window.prefetchedStreamsError });
+    if (!force && !rattrapageNecessaire(etat)) return Promise.resolve(0);
+    var maintenant = Date.now();
+    if (!force && window.dernierRattrapage && (maintenant - window.dernierRattrapage) < INTERVALLE_RATTRAPAGE_MS) {
+        return Promise.resolve(0);
+    }
+    var pont = !!(getBridgeStatus() || {}).available;
+    var cibles = ciblesDeRattrapage(S.matches, {
+        estEnDirect: function(m) { return isLiveNow(m); },
+        bientot: function(m) { return startsWithin(m, LIVE_WINDOW_MIN); },
+        minutesAvant: function(m) { return minutesUntilStart(m); },
+        aDesLiens: function(m) { return compterFluxUtiles(m) > 0; },
+        pageBloquee: function(u) { return isMatchPageBlocked(u); },
+        max: pont ? CIBLES_AVEC_PONT : CIBLES_SANS_PONT
+    });
+    if (!cibles.length) return Promise.resolve(0);
+
+    window.dernierRattrapage = maintenant;
+    rattrapageEnCours = true;
+    window.rattrapageEtat = { total: cibles.length, faits: 0, trouves: 0 };
+    majBandeauCache();
+    lg('Rattrapage', cibles.length + ' page(s) de match lue(s) par le navigateur (cache serveur ' + etat.niveau + (pont ? ', script utilisateur présent' : ', par proxy') + ')');
+
+    /* Une page à la fois, et un échec n'arrête pas la file : c'est justement quand les
+       proxys refusent qu'on en essaie plusieurs. */
+    var suite = Promise.resolve();
+    cibles.forEach(function(m) {
+        suite = suite.then(function() {
+            var avant = compterFluxUtiles(m);
+            return scrapeMatchFlux(m, true, false).catch(function() {}).then(function() {
+                m.pageLueA = Date.now();
+                var apres = compterFluxUtiles(m);
+                window.rattrapageEtat.faits++;
+                if (apres > avant) window.rattrapageEtat.trouves++;
+                majBandeauCache();
+            });
+        });
+    });
+    return suite.then(function() {
+        var r = window.rattrapageEtat;
+        lg('Rattrapage', r.faits + ' page(s) lue(s), ' + r.trouves + ' match(s) pourvu(s)');
+        if (r.trouves) showToast('🔎 ' + r.trouves + ' match' + (r.trouves > 1 ? 's' : '') + ' a reçu ses liens : le serveur était muet, l\'application a cherché elle-même.');
+        rattrapageEnCours = false;
+        window.rattrapageEtat = null;
+        majBandeauCache();
+        return r.trouves;
+    }).catch(function(e) {
+        rattrapageEnCours = false;
+        window.rattrapageEtat = null;
+        majBandeauCache();
+        lg('Rattrapage', 'échec : ' + (e && e.message ? e.message : e));
+        return 0;
+    });
+}
+window.lancerRattrapage = lancerRattrapage;
 
 /* ══ MINUIT PASSE PENDANT QU'ON REGARDE ═══════════════════════════════════════════
    « C'est pour pas que ça brise quand le match dépasse minuit » (15 septembre 2026).

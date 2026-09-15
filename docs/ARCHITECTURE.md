@@ -58,6 +58,7 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 | Fichier | Rôle |
 |---|---|
 | `js/cable.js` | Mode câble : lecture d'un geste (seuils, axe dominant), liste des « chaînes » et voisinage, liens qui peuvent jouer (`lienJouable`, `liensCable`), lien voisin dans les deux sens, contenu de l'incrustation (§7.8). Sans import. |
+| `js/rattrapage.js` | Quand le serveur se tait : l'état du cache des liens (`etatCacheServeur`, `ageEnClair`) et le choix des pages de match que l'application lira elle-même (`ciblesDeRattrapage`), bornes comprises (§6.8). Sans import. |
 | `js/nuit.js` | La nuit appartient à la veille, et la fenêtre affichée fait 48 h — aujourd'hui plus le lendemain (§5.4). Lu aussi par le script serveur. |
 | `js/finpresumee.js` | Fin présumée d'un match quand ESPN se tait (§5.6). |
 | `js/playability.js` | Jouabilité observée d'un lien ou d'un hôte, partagée entre le navigateur et `scripts/verify_players.mjs` (§7.3). |
@@ -102,6 +103,7 @@ Minuteries et réveils :
 | Réévaluation des fins présumées | 1 min | `js/main.js` (`reevaluerFinsPresumees`) |
 | Relecture des liens au retour au premier plan | si le cache serveur a plus de 10 min ou a échoué, au plus une fois par minute | `js/main.js` |
 | Ligne du direct dans le Guide | 1 min | `js/ui.js` (`updateNowLine`) |
+| Bandeau de l'état du cache des liens | 1 min | `js/ui.js` (`majBandeauCache`, §6.8) |
 | Relecture de la page du match, fiche ouverte | 60 s | `js/scrapers.js` (`INTERVALLE_FICHE_MS`) |
 | Relecture des sources des matchs du lecteur | 3 min | `js/scrapers.js` (`INTERVALLE_TUILE_MS`) |
 
@@ -191,7 +193,7 @@ Deux passes, de portée et de cadence différentes.
 
 ### 6.1 Cache serveur (`data/streams.json`)
 
-Produit toutes les 30 min par `scripts/scrape_streams.mjs` (§12, relais). Clés : `generatedAt`, `date`, `fetch`, `sources[]` (état de chaque source), `hostPolicy` (intégrabilité par hôte, lue des en-têtes X-Frame-Options et CSP côté serveur), `hostPlay` (jouabilité observée par hôte), `verifiedAt`, `matches[]`. Le navigateur le lit par `loadPrefetchedStreams` → `lireCacheServeur` (deux essais à 1,5 s d'écart, puis le cache HTTP du navigateur en troisième essai) → `appliquerCacheServeur` (filtre du jour, marquage `prefetched`, politique d'intégration versée dans le registre appris, registre de jouabilité). Le dernier cache lu avec succès est conservé en mémoire et réappliqué si une lecture échoue ; `window.prefetchedStreamsError` retient l'échec, que les cartes affichent (badge ⚠).
+Produit toutes les 30 min par `scripts/scrape_streams.mjs` (§12, relais). Clés : `generatedAt`, `date`, `fetch`, `sources[]` (état de chaque source), `hostPolicy` (intégrabilité par hôte, lue des en-têtes X-Frame-Options et CSP côté serveur), `hostPlay` (jouabilité observée par hôte), `verifiedAt`, `matches[]`. Le navigateur le lit par `loadPrefetchedStreams` → `lireCacheServeur` (deux essais à 1,5 s d'écart, puis le cache HTTP du navigateur en troisième essai) → `appliquerCacheServeur` (filtre du jour, marquage `prefetched`, politique d'intégration versée dans le registre appris, registre de jouabilité). Le dernier cache lu avec succès est conservé en mémoire et réappliqué si une lecture échoue ; `window.prefetchedStreamsError` retient l'échec, que les cartes affichent (badge ⚠). Ce que l'âge de ce cache déclenche — le bandeau et le rattrapage — est en §6.8.
 
 ### 6.2 Sources (`SCRAPERS_CONFIG`, `js/config.js`)
 
@@ -246,6 +248,16 @@ Un index des matchs de la grille par nom d'équipe normalisé (nom entier, puis 
 ### 6.7 Liens manquants
 
 Badge 🔎 sur une carte sans lien (`cardSearchLinks`, `js/links.js`) : recherche immédiate pour ce match. Badge ⚠ si le cache serveur est en échec (`cardRetryLinks` : relecture). « 🔎 Liens manquants » de l'interface classique (`findMissingLinks`) balaie tous les matchs à venir sans lien.
+
+### 6.8 Quand le serveur se tait (`js/rattrapage.js`)
+
+Du 10 au 12 septembre 2026, le workflow des liens est resté mort **45 heures**. L'application a servi les liens de l'avant-veille tout ce temps sans un mot, alors qu'elle connaissait l'âge du cache (`ageMin`) et s'en servait déjà pour décider de relire les sources. Deux manques, deux réponses.
+
+**Dire.** `etatCacheServeur(info, { erreur })` rend un mot : `ok`, `vieux` (45 min, un passage manqué), `perime` (90 min, deux passages : le workflow ne publie plus), `absent` (lecture en échec, ou cache lu mais vide — il ne porte aucun lien, quelle que soit sa fraîcheur). Les seuils viennent du rythme de publication (30 min) ; sous 45 min, c'est de la gigue de cron et on n'en parle pas. `majBandeauCache` (`js/ui.js`) le rend dans `#bandeau-cache`, au-dessus de la grille : rien quand tout va bien, une ligne grise à `vieux`, une ligne ambre avec un bouton « 🔎 Chercher les liens ici » à `perime` et `absent`, l'avancement pendant une passe. Relu chaque minute, parce que l'âge grandit tout seul. L'écran Journaux passe du vert à l'orange sur le même verdict, et dit l'âge en clair (`ageEnClair` : « 2 h 15 », pas « 135 min »).
+
+**Chercher.** `lancerRattrapage(force)` (`js/main.js`) lit les **pages de match** — celles qui portent les lecteurs, et que le repli sur les pages de liste (§4, `prefetchUsable`, au-delà de 3 h) ne touche pas. C'est l'écart mesuré pendant la panne : 4985 liens côté serveur contre 2 par match en repli. Elle part en fin de passe de chargement (jamais avant l'affichage) et au bouton du bandeau, et **seulement** quand le cache est `perime` ou `absent` : un cache d'une heure reste meilleur que ce qu'un téléphone lit par proxy. Trois bornes : cinq minutes entre deux passes (`INTERVALLE_RATTRAPAGE_MS`), **une page à la fois** (trente requêtes lancées ensemble par un proxy public expirent en file d'attente), et au plus 12 pages avec le pont du script utilisateur (`CIBLES_AVEC_PONT` — il lit depuis l'adresse de l'utilisateur, celle qui passe) ou 4 sans lui (`CIBLES_SANS_PONT`, chaque page partant alors par un proxy CORS public).
+
+`ciblesDeRattrapage(matches, opts)` choisit : ce qu'on peut **regarder maintenant** (en direct, ou coup d'envoi dans l'heure) et qui n'a **aucun lien utile**, avec une page lisible (`matchUrl` présente, hôte pas dans `MATCH_PAGE_BLOCKED_HOSTS`). Écartés : les matchs finis ou présumés finis, ceux déjà pourvus (le rattrapage comble des trous), ceux de ce soir (ils attendront le prochain passage du serveur). L'ordre est l'urgence — en direct d'abord, le plus avancé en tête, puis le plus imminent, puis l'identifiant pour que deux passes voient la même liste. Le module est pur et sans import : les prédicats (`estEnDirect`, `bientot`, `minutesAvant`, `aDesLiens`, `pageBloquee`) sont injectés par `js/main.js`.
 
 ## 7. Le lecteur
 
@@ -360,7 +372,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 
 ## 11. Service worker et version
 
-`sw.js` : `CACHE_NAME = 'sports-guide-v20'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
+`sw.js` : `CACHE_NAME = 'sports-guide-v25'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
 
 **Règle** : toute modification de `sw.js` ou d'un fichier précaché s'accompagne d'une nouvelle valeur de `CACHE_NAME`, recopiée dans `VERSION_APP` (`js/multiview.js`), qui est ce que Logs → Cet appareil affiche. Trois tests (`unit_diagnosticappareil`, `unit_favicon`, `unit_majapp`) vérifient que les deux chaînes sont identiques. Un nouveau module `js/` doit être ajouté à `APP_SHELL`.
 
@@ -385,11 +397,13 @@ Les commits automatiques ne déclenchent pas `tests.yml`.
 
 ## 13. Tests
 
-`npm test` lance `npm run test:unit`, c'est-à-dire `node --test tests/*.test.js` (tous les fichiers unitaires Node, découverts par le motif : un nouveau test n'a rien à déclarer, et un échec n'arrête pas les autres), puis deux suites Playwright : `test_app_boot.spec.js` (démarrage et interface) et `test_cleaner.spec.js` (le script utilisateur). `npm run test:domains` lance à part `test_domains.spec.js`.
+`npm test` lance `npm run test:unit`, c'est-à-dire `node --test tests/*.test.js` (tous les fichiers unitaires Node, découverts par le motif : un nouveau test n'a rien à déclarer, et un échec n'arrête pas les autres), puis trois suites Playwright : `test_app_boot.spec.js` (démarrage et interface), `test_cleaner.spec.js` (le script utilisateur) et `test_rattrapage.spec.js` (le bandeau et le rattrapage, §6.8, sur ses propres gabarits de calendrier, de liens et de pages de match). `npm run test:domains` lance à part `test_domains.spec.js`.
 
 Chaque test unitaire ouvre par un commentaire qui dit quel problème l'a motivé. Les modules du noyau sont chargés sous jsdom (`window` et `localStorage` factices) ; les modules sans import sont importés directement.
 
 Les tests de démarrage servent le dépôt par un serveur HTTP local, **coupent tout réseau extérieur** (ni ESPN, ni proxy, ni source : l'application tourne sur `data/schedule.json` et `data/streams.json` du dépôt), **figent l'horloge** à l'instant du calendrier où le plus de matchs sont en cours (`instantDesDonnees`, à partir du `fetchDate` de `data/schedule.json`), attendent `window.hasLoadedOnce`, l'apparition des cartes, puis une grille stable (`attendreGrilleStable`, sur `window.rendusGrille`). Un test simule ESPN quand il le faut (`page.route` sur `site.api.espn.com`). Les erreurs de page sont collectées et doivent être vides.
+
+Deux pièges déjà payés, à ne pas repayer : **`page.route` n'intercepte pas les requêtes du service worker**, qui lit le réseau lui-même (`test_rattrapage` servait un faux cache de deux heures et l'application lisait le vrai `data/streams.json` du dépôt, sans une ligne pour le signaler) — un gabarit se sert donc depuis le serveur HTTP local, pas depuis `page.route` ; et **un test ne doit pas dépendre de l'âge des données du dépôt** : `bootOffline` déclare une passe de rattrapage déjà faite (`window.dernierRattrapage`), sans quoi le démarrage lirait des pages de match ou non selon l'heure à laquelle le dernier cache a été publié.
 
 Pour lancer les suites Playwright avec un Chromium déjà installé ailleurs, une configuration locale peut fixer `use.launchOptions.executablePath`.
 

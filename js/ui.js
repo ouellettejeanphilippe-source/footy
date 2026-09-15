@@ -1,6 +1,7 @@
 import { getEstTimeStrFromDate, getEstDateStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
          minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN } from './config.js';
 import { minutesDansLaJournee, comparerHeures, libelleJour, FENETRE_HEURES } from './nuit.js';
+import { etatCacheServeur, rattrapageNecessaire, ageEnClair } from './rattrapage.js';
 import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, resolveStreamUrl } from './utils.js';
@@ -1172,6 +1173,58 @@ export function belongsToLive(m, now) {
     now = now || new Date();
     return isLiveNow(m, now) || startsWithin(m, LIVE_WINDOW_MIN, now);
 }
+
+/* ── LE BANDEAU DU CACHE SERVEUR ─────────────────────────────────────────────
+   Pendant la panne du 10 au 12 septembre 2026, l'application a servi des liens de
+   l'avant-veille pendant 45 heures SANS RIEN DIRE. Elle savait pourtant que le cache
+   avait 2700 minutes : elle s'en servait pour décider de relire les sources, mais
+   l'écran Journaux l'affichait en vert, et seul un double appui sur « recharger »
+   lâchait un « le workflow tourne encore ? ».
+
+   Le bandeau dit donc l'état, en clair, au-dessus de la grille :
+     - rien tant que le cache a moins de 45 min (la gigue du cron ne se raconte pas) ;
+     - une ligne grise à partir de 45 min : un passage manqué ;
+     - une ligne ambre passé 90 min, ou si le fichier est illisible : le serveur ne
+       publie plus — avec le bouton qui lance la recherche directe (`lancerRattrapage`),
+       parce qu'à ce moment-là l'utilisateur ne doit pas avoir à deviner qu'un bouton
+       « actualiser » existe ailleurs.
+   Pendant une passe de rattrapage, il montre l'avancement : c'est la seule preuve que
+   quelque chose se passe quand les cartes sont encore vides. */
+export function majBandeauCache() {
+    var el = document.getElementById('bandeau-cache');
+    if (!el) return null;
+    var etat = etatCacheServeur(window.prefetchedStreamsInfo, { erreur: !!window.prefetchedStreamsError });
+    var course = window.rattrapageEtat;
+
+    if (course) {
+        el.hidden = false;
+        el.className = 'bandeau-cache';
+        el.innerHTML = '<span class="bc-txt">🔎 Le serveur ne publie plus : recherche directe, '
+            + course.faits + '/' + course.total + ' match' + (course.total > 1 ? 's' : '') + ' lu'
+            + (course.faits > 1 ? 's' : '') + (course.trouves ? ' — ' + course.trouves + ' pourvu' + (course.trouves > 1 ? 's' : '') : '')
+            + '.</span><button type="button" class="bc-btn" disabled>Recherche…</button>';
+        return etat;
+    }
+
+    if (etat.niveau === 'ok') { el.hidden = true; el.innerHTML = ''; return etat; }
+
+    var age = ageEnClair(etat.ageMin);
+    var texte;
+    if (etat.niveau === 'absent') texte = '⚠️ Liens du serveur injoignables' + (age ? ' (dernière copie : ' + age + ')' : '') + '.';
+    else if (etat.niveau === 'perime') texte = '⚠️ Liens datant de ' + age + ' : le serveur ne publie plus (il republie normalement toutes les 30 min).';
+    else texte = 'Liens datant de ' + age + ' : un passage du serveur a été manqué.';
+
+    el.hidden = false;
+    el.className = 'bandeau-cache' + (etat.niveau === 'vieux' ? ' vieux' : '');
+    el.innerHTML = '<span class="bc-txt">' + esc(texte) + '</span>'
+        + (rattrapageNecessaire(etat)
+            ? '<button type="button" class="bc-btn" onclick="lancerRattrapage(true)">🔎 Chercher les liens ici</button>'
+            : '<button type="button" class="bc-btn" onclick="actualiserMaintenant()">↻ Actualiser</button>');
+    return etat;
+}
+window.majBandeauCache = majBandeauCache;
+/* L'âge grandit tout seul : le bandeau se relit chaque minute, comme la ligne du direct. */
+setInterval(majBandeauCache, 60000);
 
 export function updateNowLine() {
     var lines = document.querySelectorAll('.now-line');

@@ -71,6 +71,36 @@ async function main() {
     'VERSION_APP et CACHE_NAME (sw.js) doivent rester en phase, sinon la ligne ment');
   ok('la version affichée est celle du cache du service worker, et les deux restent en phase');
 
+  // ── 5. La ligne des liens change de couleur quand le serveur se tait ──────
+  /* Elle était verte QUEL QUE SOIT l'âge du cache. C'est ce qui a laissé passer les 45 h
+     de panne du 10 au 12 septembre 2026 : l'écran fait pour diagnostiquer disait « ✅
+     241 matchs · généré il y a 2700 min », et personne ne l'a lu comme un problème.
+     Elle doit donc avertir — et AVERTIR, pas crier à l'erreur : un passage manqué n'est
+     pas une panne, et une croix rouge à 45 minutes ne serait plus crue à 45 heures.
+     (Écrite parce que `'warning'`, au lieu de `'warn'`, rendait justement une croix
+     rouge : le tableau des états ne connaît que 'ok', 'warn' et le reste.) */
+  const ligneDesLiens = () => mv.diagnosticAppareilHtml()
+      .split('<div style="display:flex; justify-content:space-between')
+      .filter((bloc) => bloc.indexOf('data/streams.json') >= 0)[0] || '';
+
+  w.prefetchedStreamsInfo = { count: 241, ageMin: 22 };
+  let l = ligneDesLiens();
+  assert.ok(/✅/.test(l) && !/⚠️/.test(l), 'un cache de 22 min ne dit rien de plus');
+
+  w.prefetchedStreamsInfo = { count: 241, ageMin: 50 };
+  l = ligneDesLiens();
+  assert.ok(/⚠️/.test(l), 'à 50 min, la ligne avertit');
+  assert.ok(!/❌/.test(l), 'mais un passage manqué n\'est pas une erreur');
+  assert.ok(/50 min/.test(l) && /passage manqué/.test(l), 'et elle dit l\'âge et ce qu\'il signifie');
+
+  w.prefetchedStreamsInfo = { count: 241, ageMin: 2700 };
+  l = ligneDesLiens();
+  assert.ok(/⚠️/.test(l), 'les 45 heures de la panne : la ligne avertit');
+  assert.ok(/45 h/.test(l), 'l\'âge est dit en clair — « 2700 min » ne se lit pas');
+  assert.ok(/ne publie plus/.test(l), 'et la conclusion est écrite : ce n\'est plus de la gigue de cron');
+  w.prefetchedStreamsInfo = { count: 241, ageMin: 22 };
+  ok('la ligne des liens avertit dès 45 min, et dit l\'âge en clair');
+
   console.log(`unit_diagnosticappareil: ${n} groupes de tests OK`);
   process.exit(0);
 }

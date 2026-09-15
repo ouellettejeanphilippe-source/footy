@@ -115,6 +115,19 @@ function instantDesDonnees() {
 
 async function bootOffline(page) {
   await page.clock.setFixedTime(instantDesDonnees());
+  /* Le rattrapage (`js/rattrapage.js`) lirait ici des pages de match — ou pas — selon
+     l'âge du `data/streams.json` du dépôt au moment où la suite tourne : la même suite
+     ne ferait donc pas la même chose d'une vérification à l'autre, ce qui est
+     exactement ce qu'interdit AGENTS.md. On déclare une passe déjà faite à l'instant
+     gelé ; l'intervalle de cinq minutes la retient (l'horloge ne bouge pas), et ces
+     tests restent ceux du démarrage. Le rattrapage a les siens, sur ses propres
+     gabarits : tests/test_rattrapage.spec.js. */
+  await page.addInitScript(() => { window.dernierRattrapage = Date.now(); });
+  /* Et la fenêtre « Installer le script », qui ne s'ouvre qu'au tout premier chargement,
+     n'a rien à voir avec ce qu'on mesure : elle recouvre le haut de la grille et
+     interceptait les clics de ces tests. La plupart posaient déjà ce drapeau chacun de
+     leur côté ; il est ici pour tous. */
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   // Tout ce qui n'est pas servi localement est refusé : ni ESPN, ni proxy, ni site source.
@@ -510,11 +523,21 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
     const h = document.getElementById('app-header');
     const r = h.getBoundingClientRect();
     const epg = document.getElementById('epg').getBoundingClientRect();
-    return { enfants: Array.from(h.children).map((c) => c.id), hauteur: r.height, debutGrille: epg.top };
+    /* Le bandeau du cache serveur (§6.8) se glisse entre les deux quand le serveur ne
+       publie plus. Il est haut de zéro quand tout va bien, et l'âge du cache du dépôt
+       n'est pas connu d'avance : on mesure donc ce qui est AU-DESSUS de la grille, pas
+       une constante. */
+    const bc = document.getElementById('bandeau-cache');
+    return {
+      enfants: Array.from(h.children).map((c) => c.id), hauteur: r.height,
+      bandeau: bc ? bc.getBoundingClientRect().height : 0,
+      debutGrille: epg.top
+    };
   });
   expect(entete.enfants, 'l\'en-tête ne contient que la navigation').toEqual(['nav-links']);
   expect(entete.hauteur, 'un en-tête d\'une seule rangée').toBeLessThanOrEqual(64);
-  expect(entete.debutGrille, 'la grille commence juste sous les onglets').toBeLessThanOrEqual(entete.hauteur + 1);
+  expect(entete.debutGrille, 'la grille commence juste sous les onglets, et sous le seul bandeau qui ait le droit de s\'y glisser')
+    .toBeLessThanOrEqual(entete.hauteur + entete.bandeau + 1);
 
   await page.evaluate(() => window.applyFilter('all'));
   await page.waitForTimeout(400);
