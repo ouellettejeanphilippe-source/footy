@@ -152,7 +152,9 @@ En-tête : poignée de glissement, numéro (`Touche N`), pastille **`source k/n`
 
 La page du site est chargée telle quelle dans une iframe, sans attribut `sandbox` (certains lecteurs le détectent et refusent de jouer). Les adresses YouTube et Twitch sont converties en lecteur intégré. Un flux direct (`.m3u8`) est joué par un lecteur vidéo natif.
 
-- **Choix du flux** : les liens sont classés (observations de lecture, domaines préférés, qualité annoncée) et la tuile essaie le mieux classé. **Avec le script utilisateur**, si aucune vidéo n'est signalée en 30 s (90 s pour un hôte connu comme lent), la tuile passe seule à la source suivante, une fois par lien. Sans le script, seul `⏭` change de source.
+- **Choix du flux** : les liens sont classés (observations de lecture, domaines préférés, qualité annoncée) et la tuile essaie le mieux classé.
+- **Rien ne joue : on recharge avant de changer de source.** **Avec le script utilisateur**, si aucune vidéo n'est signalée en 30 s (90 s pour un hôte connu comme lent), la tuile **recharge la même source** et lui laisse une seconde chance ; elle ne passe à la suivante qu'après ce second silence, une fois par lien. Une page de lecteur rate souvent son démarrage sans que le lien soit en cause, et le même lien rechargé joue. Une tuile seule sur son match est rechargée elle aussi. Sans le script, seul `⏭` change de source.
+- **Le flux s'arrête en cours de match : on le recharge, on ne le remplace pas.** Douze secondes pour qu'il revienne seul (un ré-tampon ne coûte donc rien), puis la tuile recharge la même source. Une vidéo que **vous** avez mise en pause n'est jamais rechargée.
 - Les sources des matchs affichés sont relues toutes les 3 minutes.
 - **Sortie forcée** : si un site fait quitter la page dans les 15 s qui suivent la pose d'une tuile, l'adresse est notée dix minutes. Au retour, la tuile dit « Ce site a fait sortir la page du lecteur » avec `↗ Ouvrir sur le site` et `Charger quand même`.
 

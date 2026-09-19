@@ -6,7 +6,7 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
-import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore } from './playability.js';
+import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, ESSAIS_PAR_SOURCE } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
@@ -1279,6 +1279,10 @@ export function setupMultivisionUI() {
                     if (activeMvIdx !== idx) {
                         focusStream(idx);
                     }
+                    /* Quand la tuile s'arrêtera, il faudra savoir si c'est l'utilisateur
+                       qui l'a arrêtée : mettre une vidéo en pause demande un clic,
+                       ré-tamponner n'en demande aucun (voir armerRepriseTuile). */
+                    s._dernierGeste = Date.now();
                     /* Le clic est une activation que le navigateur vient d'accorder :
                        c'est la seule occasion de rendre le son après un refus. */
                     donnerLeSon(idx, 'geste');
@@ -1330,7 +1334,13 @@ export function setupMultivisionUI() {
             var joue = !!e.data.playing;
             if (joue && !s._playing) {
                 s._playing = true;
-                if (s._autoTimer) { clearTimeout(s._autoTimer); s._autoTimer = null; }
+                couperMinuteur(s, 'auto');
+                /* La vidéo est revenue d'elle-même : le rechargement armé par l'arrêt
+                   n'a plus lieu d'être. Un ré-tampon ne coûte donc rien. */
+                couperMinuteur(s, 'reprise');
+                /* La source a PROUVÉ qu'elle joue. Si elle lâche plus tard, elle a droit
+                   à ses essais entiers plutôt qu'au reliquat de son démarrage. */
+                s._essais = 0;
                 if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
                 /* Son automatique : la vidéo existe et joue, c'est maintenant que le son
                    peut lui être rendu — avant, le navigateur refusait et le script
@@ -1338,6 +1348,7 @@ export function setupMultivisionUI() {
                 donnerLeSon(idx, 'joue');
             } else if (!joue && s._playing) {
                 s._playing = false;
+                armerRepriseTuile(s, e.data);
             }
             rafraichirPastille(idx);
         }
@@ -1603,6 +1614,11 @@ export function restoreMultivisionState() {
                     updateMultivisionLayout();
                 }, 500);
             }
+            /* Les compteurs d'une tuile sont sérialisés avec elle, et ils ne veulent rien
+               dire dans une session neuve : une tuile restaurée avec ses deux essais déjà
+               dépensés serait quittée au premier silence, sans le rechargement qu'on vient
+               de lui accorder. Un onglet rouvert est un premier chargement. */
+            mvFlux.forEach(function(s) { delete s._essais; delete s._essaisUrl; delete s._dernierGeste; });
             /* Des tuiles restaurées au démarrage ne passent pas par addToMultivision :
                sans cela, une session reprise ne relisait plus jamais ses sources. */
             if (mvFlux.length) armerRafraichissementTuiles();
@@ -2329,10 +2345,56 @@ export function nextFluxForTile(idx, raison) {
     return true;
 }
 
+/* Les minuteurs d'une tuile vivent ICI, pas sur la tuile : `saveMultivisionState`
+   sérialise `mvFlux` en JSON, et un handle de minuteur n'est un nombre que dans un
+   navigateur — ailleurs (Node, donc les tests) c'est un objet circulaire, et
+   l'enregistrement de l'état mourrait dessus. Même règle que `rappelsLecture`.
+
+   Rangés par TUILE et non par index : fermer une tuile décale toutes celles de droite,
+   et un minuteur indexé agirait alors sur la voisine — ou serait jeté avec l'index qu'il
+   croyait tenir. L'index se relit au moment d'agir ; une tuile fermée n'en a plus, et
+   son minuteur se tait. Une tuile a au plus un minuteur de chaque sorte. */
+var minuteursTuile = new Map();
+function couperMinuteur(s, nom) {
+    var m = minuteursTuile.get(s);
+    if (!m || !m[nom]) return;
+    clearTimeout(m[nom]);
+    delete m[nom];
+    if (!Object.keys(m).length) minuteursTuile.delete(s);
+}
+function armerMinuteur(s, nom, fn, delai) {
+    couperMinuteur(s, nom);
+    var m = minuteursTuile.get(s);
+    if (!m) { m = {}; minuteursTuile.set(s, m); }
+    m[nom] = setTimeout(function() {
+        couperMinuteur(s, nom);
+        var idx = mvFlux.indexOf(s);
+        if (idx < 0) return; // tuile fermée entre-temps
+        fn(idx);
+    }, delai);
+}
+
+/* Combien de fois cette adresse a déjà été chargée dans cette tuile. Le compteur
+   appartient à l'ADRESSE, pas à la tuile : changer de source rend ses essais entiers à
+   la suivante sans que `poserLienSurTuile` ait à le savoir, et une adresse retrouvée
+   plus tard repart à zéro. */
+function compterEssai(s, url) {
+    if (s._essaisUrl !== url) { s._essaisUrl = url; s._essais = 0; }
+    s._essais = (s._essais | 0) + 1;
+    return s._essais;
+}
+
 /* Le script utilisateur, quand il est installé, dit à la tuile si une vidéo joue. Sans
-   nouvelle dans les 30 s, et s'il reste des sources, la tuile passe à la suivante —
-   au plus une fois par lien, pour ne pas tourner en rond. Sans le script, aucun signal
-   ne peut venir : on ne bascule pas seul, le bouton ⏭ reste à portée.
+   nouvelle au bout de sa patience, la tuile RECHARGE la même source ; si le silence dure
+   encore après ce second essai, alors seulement elle passe à la suivante — au plus une
+   fois par lien, pour ne pas tourner en rond. Sans le script, aucun signal ne peut
+   venir : on ne fait rien seul, le bouton ⏭ reste à portée.
+
+   Le rechargement est la réponse à « trop vite à switch de sources quand ça bugge, au
+   lieu de tenter de recharger » (19 septembre 2026) : le compte et la décision sont dans
+   `actionSansVideo` (js/playability.js), avec la raison. Une tuile SEULE sur son match
+   arme aussi son minuteur — elle n'a nulle part où aller, mais elle a le droit d'être
+   rechargée, ce que l'ancienne borne `L.length < 2` lui refusait.
 
    30 s pour un lien inconnu ; 90 s pour un lien qui joue d'ordinaire (voir `patienceMs`,
    js/playability.js) : embed.st met souvent plus de 30 s à démarrer, et la tuile le
@@ -2340,19 +2402,56 @@ export function nextFluxForTile(idx, raison) {
 var DELAI_SANS_VIDEO_MS = 30000;
 var DELAI_HOTE_LENT_MS = 90000;
 function armerBasculeAuto(s, idx, url) {
-    if (s._autoTimer) { clearTimeout(s._autoTimer); s._autoTimer = null; }
+    couperMinuteur(s, 'auto');
     var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
     if (!pont || !pont.available) return;
     var L = liensDuMatch(s.mid);
-    if (L.length < 2) return;
     var lien = lienDuMatchPourFlux(s, url) || { url: url };
     var delai = patienceMs(lien, playLedger(), DELAI_SANS_VIDEO_MS, DELAI_HOTE_LENT_MS);
-    s._autoTimer = setTimeout(function() {
-        s._autoTimer = null;
+    var essais = compterEssai(s, url);
+    armerMinuteur(s, 'auto', function(place) {
+        /* La tuile a pu changer de source depuis (⏭, geste, sélecteur) : l'adresse
+           surveillée est celle qui a armé le minuteur, pas celle qui est là. */
         if (s._playing || s._currentUrl !== url) return;
-        if ((s._autoTried | 0) >= L.length - 1) return;
-        nextFluxForTile(idx, 'auto');
+        var reste = L.length > 1 && (s._autoTried | 0) < L.length - 1;
+        var action = actionSansVideo(essais, reste);
+        if (action === 'recharger') {
+            showToast('Aucune vidéo : on recharge la source (essai ' + (essais + 1) + '/' + ESSAIS_PAR_SOURCE + ')');
+            rechargerTuile(place);
+            return;
+        }
+        if (action === 'suivante') nextFluxForTile(place, 'auto');
     }, delai);
+}
+
+/* Un flux qui S'ARRÊTE après avoir joué n'est pas une source qui ne marche pas : c'est
+   presque toujours la même source qui a hoqueté — segment manquant, pair perdu, réseau
+   qui bouge. Le script utilisateur signale un simple ré-tampon comme un arrêt, donc on
+   laisse d'abord `DELAI_REPRISE_MS` à la vidéo pour revenir seule (le signal `video_state`
+   à `true` coupe le minuteur), puis on RECHARGE la même source.
+
+   Jamais de changement de source ici : abandonner un lien qui vient de jouer pour un
+   inconnu, c'est exactement ce que l'utilisateur reprochait. Et jamais de rechargement
+   quand c'est LUI qui a mis en pause — `arretMeriteRechargement` (js/playability.js)
+   lit la cause donnée par le script, ou à défaut le dernier clic vu dans le cadre. */
+var DELAI_REPRISE_MS = 12000;
+var FENETRE_GESTE_MS = 20000;
+export function armerRepriseTuile(s, signal) {
+    couperMinuteur(s, 'reprise');
+    var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
+    if (!pont || !pont.available) return false;
+    if (!arretMeriteRechargement({
+        cause: signal && signal.cause,
+        gesteIlYaMs: s._dernierGeste ? Date.now() - s._dernierGeste : null,
+        fenetreGeste: FENETRE_GESTE_MS
+    })) return false;
+    var url = s._currentUrl;
+    armerMinuteur(s, 'reprise', function(place) {
+        if (s._playing || s._currentUrl !== url) return;
+        showToast('Flux interrompu : on recharge la même source');
+        rechargerTuile(place);
+    }, DELAI_REPRISE_MS);
+    return true;
 }
 
 /* Met à jour la pastille « source k/n · ● » d'une tuile sans re-rendre la cellule. */
@@ -3951,7 +4050,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v25';
+export var VERSION_APP = 'sports-guide-v26';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
