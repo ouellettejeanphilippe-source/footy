@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.8
+// @version      1.9
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -678,12 +678,23 @@
     let derniereLecture = null;
     function signalerLecture() {
         let joue = false;
+        let enPause = false;
         document.querySelectorAll('video').forEach((v) => {
             if (v.readyState >= 3 && !v.paused && (v.currentTime > 0 || !v.ended)) joue = true;
+            else if (v.readyState >= 3 && v.paused && !v.ended) enPause = true;
         });
         if (joue === derniereLecture) return;
         derniereLecture = joue;
-        try { window.top.postMessage({ __mv: 'video_state', playing: joue, host: location.hostname }, '*'); } catch (e) {}
+        /* `cause` dit à l'application POURQUOI ça ne joue plus, et c'est elle qui décide :
+           une vidéo prête mais arrêtée (`pause`) est un geste de l'utilisateur, recharger
+           la tuile par-dessus serait une nuisance ; un ré-tampon ou un segment perdu
+           (`attente`) et un lecteur disparu de la page (`absente`) méritent au contraire
+           un rechargement de la MÊME source, plutôt qu'un changement de source
+           (js/playability.js, arretMeriteRechargement). Un script plus ancien n'envoie
+           pas ce champ : l'application retombe alors sur le dernier clic vu dans le
+           cadre, qui distingue déjà une pause d'une panne. */
+        const cause = joue ? 'joue' : (enPause ? 'pause' : (document.querySelector('video') ? 'attente' : 'absente'));
+        try { window.top.postMessage({ __mv: 'video_state', playing: joue, cause: cause, host: location.hostname }, '*'); } catch (e) {}
     }
     /* Mode direct (voir js/directmedia.js) : pendant que la page joue, on voit passer le
        MANIFESTE vidéo que son lecteur demande (.m3u8 / .mpd, dans la chronologie des
@@ -914,7 +925,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.8';
+    var VERSION = '1.9';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

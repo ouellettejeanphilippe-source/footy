@@ -249,6 +249,51 @@ test('le script signale à la fenêtre principale quand une vidéo joue', async 
   expect(signal.host).toBe('localhost');
 });
 
+/* POURQUOI ça ne joue plus, et non seulement que ça ne joue plus.
+
+   « Trop vite à switch de sources quand ça bugge, au lieu de tenter de recharger »
+   (19 septembre 2026) : l'application recharge maintenant la source quand un flux
+   s'arrête, et deux arrêts ne se ressemblent pas. Une vidéo PRÊTE mais arrêtée, c'est
+   l'utilisateur qui l'a mise en pause — recharger par-dessus serait une nuisance. Une
+   vidéo qui n'a plus ses données, ou un lecteur disparu de la page, c'est une panne, et
+   c'est elle qui mérite le rechargement. Seul le script, qui est DANS le cadre, peut
+   faire la différence ; il la remonte dans `cause` (js/playability.js,
+   arretMeriteRechargement). */
+test('le script dit POURQUOI la vidéo ne joue plus : une pause n\'est pas une panne', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => {
+    window.__signaux = [];
+    window.addEventListener('message', (e) => { if (e.data && e.data.__mv === 'video_state') window.__signaux.push(e.data); });
+  });
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*'); });
+  await expect(cadre.locator('#lecteur')).toBeAttached();
+
+  /* Un état que le test PILOTE : les trois propriétés que le script consulte sont lues
+     depuis un objet, pour pouvoir les changer en cours de route. */
+  await cadre.evaluate(() => {
+    const v = document.getElementById('lecteur');
+    window.__etat = { readyState: 4, paused: false, currentTime: 12 };
+    ['readyState', 'paused', 'currentTime'].forEach((k) => {
+      Object.defineProperty(v, k, { configurable: true, get: () => window.__etat[k] });
+    });
+  });
+  const dernier = async () => (await page.evaluate(() => window.__signaux)).slice(-1)[0];
+  await expect.poll(async () => (await dernier() || {}).playing, { timeout: 8000 }).toBe(true);
+  expect((await dernier()).cause).toBe('joue');
+
+  // L'utilisateur met en pause : la vidéo reste PRÊTE, seulement arrêtée.
+  await cadre.evaluate(() => { window.__etat.paused = true; });
+  await expect.poll(async () => (await dernier() || {}).playing, { timeout: 8000 }).toBe(false);
+  expect((await dernier()).cause, 'une vidéo prête et arrêtée est une pause, pas une panne').toBe('pause');
+
+  // Elle repart, puis elle perd ses données : là, c'est une panne.
+  await cadre.evaluate(() => { window.__etat.paused = false; });
+  await expect.poll(async () => (await dernier() || {}).playing, { timeout: 8000 }).toBe(true);
+  await cadre.evaluate(() => { window.__etat.readyState = 1; });
+  await expect.poll(async () => (await dernier() || {}).playing, { timeout: 8000 }).toBe(false);
+  expect((await dernier()).cause, 'plus de données prêtes : ré-tampon ou segment perdu').toBe('attente');
+});
+
 test('le décor du site disparaît quand le lecteur arrive tardivement', async ({ page }) => {
   const cadre = await monterTuile(page, true);
 

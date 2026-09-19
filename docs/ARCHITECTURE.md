@@ -265,9 +265,15 @@ Du 10 au 12 septembre 2026, le workflow des liens est resté mort **45 heures**.
 
 Une tuile est une iframe qui charge la page du site telle quelle, **sans attribut `sandbox`** (certains lecteurs le détectent et refusent de jouer ; retiré le 5 septembre 2026, verrouillé par un test). YouTube et Twitch sont convertis en lecteur intégré ; les règles de l'Investigator (`custom_scraper_rules`) s'appliquent (`resolveStreamUrl`). Un manifeste direct (`.m3u8`, `.mpd`) est joué par un élément `<video>` avec hls.js (`js/directmedia.js`).
 
-### 7.2 Choix du flux et bascule
+### 7.2 Choix du flux, rechargement et bascule
 
-`sortFluxLinks` (`js/config.js`) classe les liens : observation de lecture (`js/playability.js`) d'abord, puis domaines préférés ou évités (`domain_prefs`), puis qualité annoncée. La tuile prend le premier. Si le script utilisateur est présent et qu'aucune vidéo n'est signalée dans les `patienceMs` (30 s, 90 s pour un hôte connu comme lent), la tuile passe seule au suivant, une fois par lien. Sans script, seule la commande ⏭ change de source.
+`sortFluxLinks` (`js/config.js`) classe les liens : observation de lecture (`js/playability.js`) d'abord, puis domaines préférés ou évités (`domain_prefs`), puis qualité annoncée. La tuile prend le premier.
+
+**Une source n'est abandonnée qu'après avoir été rechargée** (19 septembre 2026, « trop vite à switch de sources quand ça bugge, au lieu de tenter de recharger »). Si le script utilisateur est présent et qu'aucune vidéo n'est signalée dans les `patienceMs` (30 s, 90 s pour un hôte connu comme lent), `armerBasculeAuto` applique `actionSansVideo` (`js/playability.js`) : `recharger` tant qu'il reste un essai sur cette adresse (`ESSAIS_PAR_SOURCE` = 2 : le chargement, puis un rechargement), `suivante` ensuite — une seule fois par lien —, `rien` quand il n'y a nulle part où aller. Le compteur (`_essais`) appartient à l'ADRESSE, pas à la tuile : changer de source rend ses essais entiers à la suivante, et une source qui a joué les retrouve. Une tuile seule sur son match arme son minuteur elle aussi : elle n'a pas de suivante, mais elle a droit à son rechargement.
+
+**Un flux qui s'arrête après avoir joué est rechargé, jamais remplacé** (`armerRepriseTuile`). Le script signale un simple ré-tampon comme un arrêt : on laisse 12 s à la vidéo pour revenir seule (le `video_state` à `true` coupe le minuteur), puis on recharge la MÊME source. `arretMeriteRechargement` (`js/playability.js`) écarte l'arrêt volontaire : le script à jour donne la `cause` (`pause` = vidéo prête et arrêtée, `attente` = ré-tampon, `absente` = lecteur disparu) ; un script plus ancien ne la donne pas, et c'est le dernier clic vu dans le cadre (`_dernierGeste`, 20 s) qui départage.
+
+Sans le script utilisateur, aucun signal de lecture ne peut venir : ni rechargement ni bascule, seule la commande ⏭ change de source. Les minuteurs d'une tuile vivent dans `minuteursTuile`, une `Map` rangée **par tuile** et non par index (`saveMultivisionState` sérialise `mvFlux` en JSON, et fermer une tuile décale toutes celles de droite).
 
 ### 7.3 Jouabilité observée (`js/playability.js`)
 
@@ -302,7 +308,9 @@ Si la fenêtre est quittée dans les 15 s qui suivent la pose d'une tuile, les a
 
 ### 7.7 Signaux du script utilisateur
 
-Dans une page de lecteur, le script remonte à la fenêtre principale `video_state` (une vidéo joue : allume la pastille et permet la bascule automatique), `video_stats` (débit et définition, `js/debit.js`) et `media_url` (manifeste vu passer, `js/directmedia.js`). Il obéit à `mv_mute` et `mv_unmute` (une seule tuile a le son) et à `mv_clean`.
+Dans une page de lecteur, le script remonte à la fenêtre principale `video_state` (une vidéo joue : allume la pastille, et son arrêt déclenche le rechargement de la source — §7.2), `video_stats` (débit et définition, `js/debit.js`) et `media_url` (manifeste vu passer, `js/directmedia.js`). Il obéit à `mv_mute` et `mv_unmute` (une seule tuile a le son) et à `mv_clean`.
+
+`video_state` porte aussi `cause` depuis la version 1.9 du script : `joue`, `pause` (vidéo prête mais arrêtée — un geste de l'utilisateur), `attente` (plus de données prêtes) ou `absente` (aucun `<video>` dans la page). L'application s'en sert pour ne pas recharger une tuile que l'utilisateur vient de mettre en pause ; un script plus ancien n'envoie pas le champ, et le repli est le dernier clic vu dans le cadre.
 
 ### 7.7 bis Son automatique (`js/multiview.js`)
 
@@ -372,7 +380,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 
 ## 11. Service worker et version
 
-`sw.js` : `CACHE_NAME = 'sports-guide-v25'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
+`sw.js` : `CACHE_NAME = 'sports-guide-v26'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
 
 **Règle** : toute modification de `sw.js` ou d'un fichier précaché s'accompagne d'une nouvelle valeur de `CACHE_NAME`, recopiée dans `VERSION_APP` (`js/multiview.js`), qui est ce que Logs → Cet appareil affiche. Trois tests (`unit_diagnosticappareil`, `unit_favicon`, `unit_majapp`) vérifient que les deux chaînes sont identiques. Un nouveau module `js/` doit être ajouté à `APP_SHELL`.
 

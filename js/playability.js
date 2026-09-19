@@ -13,7 +13,8 @@
    2. `sortFluxLinks` (js/config.js) classe les liens d'après ces observations — celles du
       serveur (`hostPlay` dans data/streams.json) et celles du navigateur de l'utilisateur
       (registre local, alimenté par le script utilisateur qui voit la vidéo jouer).
-   3. La tuile (js/multiview.js) passe à la source suivante quand rien ne joue.
+   3. La tuile (js/multiview.js) recharge la source quand rien ne joue, et ne passe à la
+      suivante qu'après cet essai (`actionSansVideo`, `arretMeriteRechargement`).
 
    Module sans aucun import : chargé par le script serveur, par le navigateur, et par les
    tests, sans tirer le graphe des modules. */
@@ -124,6 +125,44 @@ export function playabilityScore(link, ledger) {
    (score ≥ 2), mérite la patience longue ; un inconnu ou un douteux garde la courte. */
 export function patienceMs(link, ledger, courte, longue) {
     return playabilityScore(link, ledger) >= 2 ? longue : courte;
+}
+
+/* Combien de fois une même source est chargée dans une tuile avant d'être abandonnée :
+   le premier chargement, puis UN rechargement. */
+export var ESSAIS_PAR_SOURCE = 2;
+
+/* Que faire d'une tuile où rien ne joue au bout de sa patience : `recharger` la même
+   source tant qu'il lui reste un essai, `suivante` ensuite, `rien` quand il n'y a nulle
+   part où aller.
+
+   « Trop vite à switch de sources quand ça bugge, au lieu de tenter de recharger »
+   (19 septembre 2026). La règle d'avant abandonnait une source au PREMIER silence, alors
+   qu'une page de lecteur rate souvent son démarrage sans que le lien soit en cause —
+   script posé avant le lecteur, publicité qui vole le premier clic, segment initial
+   perdu, cadre posé pendant que l'onglet était en arrière-plan — et le même lien,
+   rechargé, joue. Passer à la suivante coûtait alors une source qui marchait, et la
+   suivante repartait de zéro. On ne quitte donc une source qu'après l'avoir rechargée. */
+export function actionSansVideo(essais, resteDesSources, essaisMax) {
+    var max = essaisMax || ESSAIS_PAR_SOURCE;
+    if ((essais | 0) < max) return 'recharger';
+    return resteDesSources ? 'suivante' : 'rien';
+}
+
+/* Une vidéo qui S'ARRÊTE après avoir joué mérite-t-elle un rechargement de sa source ?
+
+   Oui, sauf si c'est l'utilisateur qui l'a arrêtée. Le script utilisateur à jour le dit
+   (`cause`) : `pause` est une vidéo prête et volontairement arrêtée, `attente` un
+   ré-tampon ou un segment perdu, `absente` un lecteur qui a disparu de la page. Un
+   script plus ancien n'envoie pas ce champ ; on se rabat alors sur le dernier clic vu
+   dans le cadre, parce que mettre une vidéo en pause demande un geste et que ré-tamponner
+   n'en demande aucun. */
+export function arretMeriteRechargement(opts) {
+    var o = opts || {};
+    if (o.cause === 'pause') return false;
+    if (o.cause === 'attente' || o.cause === 'absente') return true;
+    var fenetre = (o.fenetreGeste == null) ? 20000 : o.fenetreGeste;
+    if (typeof o.gesteIlYaMs === 'number' && o.gesteIlYaMs >= 0 && o.gesteIlYaMs < fenetre) return false;
+    return true;
 }
 
 /* Cibles à éprouver pendant un passage : les matchs par ordre de `rank` (0 = en direct,
