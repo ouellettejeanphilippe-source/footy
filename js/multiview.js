@@ -6,7 +6,7 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
-import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, ESSAIS_PAR_SOURCE } from './playability.js';
+import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
@@ -1341,6 +1341,10 @@ export function setupMultivisionUI() {
                 /* La source a PROUVÉ qu'elle joue. Si elle lâche plus tard, elle a droit
                    à ses essais entiers plutôt qu'au reliquat de son démarrage. */
                 s._essais = 0;
+                /* Depuis quand elle joue : c'est ce qui distingue le flux qu'on regardait
+                   depuis dix minutes du flux qui ne tient jamais deux secondes, et qu'il
+                   ne sert à rien de recharger en boucle (budgetReprise). */
+                s._joueDepuis = Date.now();
                 if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
                 /* Son automatique : la vidéo existe et joue, c'est maintenant que le son
                    peut lui être rendu — avant, le navigateur refusait et le script
@@ -1618,7 +1622,7 @@ export function restoreMultivisionState() {
                dire dans une session neuve : une tuile restaurée avec ses deux essais déjà
                dépensés serait quittée au premier silence, sans le rechargement qu'on vient
                de lui accorder. Un onglet rouvert est un premier chargement. */
-            mvFlux.forEach(function(s) { delete s._essais; delete s._essaisUrl; delete s._dernierGeste; });
+            mvFlux.forEach(function(s) { delete s._essais; delete s._essaisUrl; delete s._reprises; delete s._joueDepuis; delete s._dernierGeste; });
             /* Des tuiles restaurées au démarrage ne passent pas par addToMultivision :
                sans cela, une session reprise ne relisait plus jamais ses sources. */
             if (mvFlux.length) armerRafraichissementTuiles();
@@ -2379,7 +2383,7 @@ function armerMinuteur(s, nom, fn, delai) {
    la suivante sans que `poserLienSurTuile` ait à le savoir, et une adresse retrouvée
    plus tard repart à zéro. */
 function compterEssai(s, url) {
-    if (s._essaisUrl !== url) { s._essaisUrl = url; s._essais = 0; }
+    if (s._essaisUrl !== url) { s._essaisUrl = url; s._essais = 0; s._reprises = 0; }
     s._essais = (s._essais | 0) + 1;
     return s._essais;
 }
@@ -2407,16 +2411,22 @@ function armerBasculeAuto(s, idx, url) {
     if (!pont || !pont.available) return;
     var L = liensDuMatch(s.mid);
     var lien = lienDuMatchPourFlux(s, url) || { url: url };
-    var delai = patienceMs(lien, playLedger(), DELAI_SANS_VIDEO_MS, DELAI_HOTE_LENT_MS);
+    var ledger = playLedger();
     var essais = compterEssai(s, url);
+    /* Le second essai ne rachète PAS la longue patience : le premier l'a déjà donnée à
+       l'hôte lent. Sans cette ligne, embed.st coûtait 180 s à lui seul (20 septembre). */
+    var delai = essais > 1 ? DELAI_SANS_VIDEO_MS : patienceMs(lien, ledger, DELAI_SANS_VIDEO_MS, DELAI_HOTE_LENT_MS);
+    /* Combien d'essais cette source-ci mérite (essaisPourSource, js/playability.js) : la
+       tuile qui PARCOURT déjà la liste, et l'hôte connu pour ne pas jouer, n'en ont qu'un. */
+    var essaisMax = essaisPourSource(lien, ledger, (s._autoTried | 0) > 0);
     armerMinuteur(s, 'auto', function(place) {
         /* La tuile a pu changer de source depuis (⏭, geste, sélecteur) : l'adresse
            surveillée est celle qui a armé le minuteur, pas celle qui est là. */
         if (s._playing || s._currentUrl !== url) return;
         var reste = L.length > 1 && (s._autoTried | 0) < L.length - 1;
-        var action = actionSansVideo(essais, reste);
+        var action = actionSansVideo(essais, reste, essaisMax);
         if (action === 'recharger') {
-            showToast('Aucune vidéo : on recharge la source (essai ' + (essais + 1) + '/' + ESSAIS_PAR_SOURCE + ')');
+            showToast('Aucune vidéo : on recharge la source (essai ' + (essais + 1) + '/' + essaisMax + ')');
             rechargerTuile(place);
             return;
         }
@@ -2445,6 +2455,13 @@ export function armerRepriseTuile(s, signal) {
         gesteIlYaMs: s._dernierGeste ? Date.now() - s._dernierGeste : null,
         fenetreGeste: FENETRE_GESTE_MS
     })) return false;
+    /* Borne des reprises (budgetReprise, js/playability.js) : un flux qui joue deux
+       secondes, meurt et rejoue deux secondes bouclerait sans fin, puisque la lecture
+       remet le compteur d'essais à zéro. Une source qui a TENU avant de lâcher retrouve
+       son budget : c'est un match qu'on regardait, pas une source cassée. */
+    var b = budgetReprise(s._reprises, s._joueDepuis ? Date.now() - s._joueDepuis : null);
+    if (!b.autorisee) return false;
+    s._reprises = b.reprises;
     var url = s._currentUrl;
     armerMinuteur(s, 'reprise', function(place) {
         if (s._playing || s._currentUrl !== url) return;
@@ -4050,7 +4067,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v26';
+export var VERSION_APP = 'sports-guide-v27';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
