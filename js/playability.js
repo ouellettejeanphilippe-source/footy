@@ -78,6 +78,53 @@ export function recordObservation(ledger, host, verdict, cap) {
     return l;
 }
 
+/* Ce que la vérification a appris, REPORTÉ d'un passage au suivant.
+
+   Défaut trouvé le 20 septembre 2026, après « tous les matchs, aucune source ne marche ».
+   `scripts/scrape_streams.mjs` réécrit `data/streams.json` toutes les 30 minutes sans y
+   remettre `hostPlay` (le mot n'apparaissait pas une seule fois dans le fichier), et
+   `verify_players.mjs` repartait donc d'un registre VIDE à chaque passage, n'y laissant
+   que les ~81 observations de son propre budget. Le registre ne pouvait jamais
+   s'accumuler.
+
+   Ça n'était pas un détail de comptabilité : `playabilityScore` n'ose rétrograder un hôte
+   qu'à partir de `tested >= 3`. Avec un ou deux essais par hôte, un CDN mort restait
+   « jamais éprouvé » (score 1) et passait DEVANT un hôte réellement mesuré. Mesuré le
+   jour même : `embed.st` à 1/1 dans le registre alors que son manifeste répondait
+   `HTTP 500` — en accès isolé comme en rafale, donc pas une limite par IP. L'application
+   le classait en tête à chaque passage, et l'utilisateur parcourait des sources mortes.
+
+   Les verdicts par LIEN se reportent aussi, mais avec une péremption : un lien marqué
+   `blocked` ne doit pas l'être à vie, un hôte se répare. Au-delà de `VERIF_VALIDITE_MS`,
+   l'observation est oubliée et le lien redevient à éprouver. Rend le nombre de liens
+   effectivement repris. */
+export var VERIF_VALIDITE_MS = 6 * 60 * 60 * 1000;
+export function reporterVerifications(matches, precedent, maintenant, validiteMs) {
+    var now = maintenant || Date.now();
+    var validite = (validiteMs == null) ? VERIF_VALIDITE_MS : validiteMs;
+    var vus = {};
+    ((precedent && precedent.matches) || []).forEach(function (m) {
+        (((m && m.streamLinks) || [])).forEach(function (l) {
+            if (!l || !l.url || !l.verified) return;
+            var at = l.verifiedAt ? Date.parse(l.verifiedAt) : NaN;
+            if (isNaN(at) || now - at > validite || now - at < 0) return;
+            vus[l.url] = { verified: l.verified, verifiedAt: l.verifiedAt };
+        });
+    });
+    var n = 0;
+    (matches || []).forEach(function (m) {
+        (((m && m.streamLinks) || [])).forEach(function (l) {
+            if (!l || !l.url || l.verified) return; // une observation fraîche prime toujours
+            var v = vus[l.url];
+            if (!v) return;
+            l.verified = v.verified;
+            l.verifiedAt = v.verifiedAt;
+            n++;
+        });
+    });
+    return n;
+}
+
 export function mergeLedgers(a, b) {
     var out = {};
     [a, b].forEach(function (l) {
