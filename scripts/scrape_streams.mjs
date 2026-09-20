@@ -74,6 +74,7 @@ const utils = await import('../js/utils.js');
 const match = await import('../js/match.js');
 const extractors = await import('../js/extractors.js');
 const { veille } = await import('../js/nuit.js');
+const play = await import('../js/playability.js');
 
 const { SCRAPERS_CONFIG, getSourceCandidates, applySourceUrl, getSourcePages, getEstDateStrFromDate, isMatchPageBlocked, SOURCE_VAR_NAMES, SOURCE_MIRRORS, reorderCandidates, shouldPromoteSource, gagnantApresLecture, conserverSourcesMuettes, canonicalOrigin, sourceIdPourHote, appliquerSurchargeSources, sourcesActives } = config;
 const { fetchPage } = utils;
@@ -504,15 +505,31 @@ const out = {
             l.verified ? { verified: l.verified, verifiedAt: l.verifiedAt } : {}))
     }))
 };
+/* Le fichier déjà publié, lu UNE fois : il sert à deux choses très différentes — garder
+   les liens des sources muettes (ci-dessous), et surtout reporter ce que la vérification
+   a appris, qui était jeté à chaque passage (voir reporterVerifications, js/playability.js). */
+let precedent = null;
+try { precedent = JSON.parse(fs.readFileSync('data/streams.json', 'utf8')); } catch (e) { /* premier passage : rien à conserver */ }
+
 /* Passe partielle : les sources muettes gardent leurs liens déjà publiés (voir
    conserverSourcesMuettes, js/config.js). Les sources qui ont répondu font foi. */
 if (sourcesReport.some((s) => !s.ok)) {
-    let precedent = null;
-    try { precedent = JSON.parse(fs.readFileSync('data/streams.json', 'utf8')); } catch (e) { /* premier passage : rien à conserver */ }
     const fusion = conserverSourcesMuettes(out.matches, precedent, sourcesReport, depuisJour);
     out.matches = fusion.matches;
     console.log(`Passe partielle (${sourcesReport.filter((s) => !s.ok).map((s) => s.id).join(', ')} muettes) : ${fusion.conserves} match(s) conservé(s) du fichier déjà publié.`);
 }
+
+/* CE QUE LA VÉRIFICATION A APPRIS SURVIT AU SCRAPE.
+
+   Sans ces deux lignes, `verify_players.mjs` repartait d'un registre vide toutes les
+   30 minutes : le mot `hostPlay` n'apparaissait nulle part ici, donc il disparaissait du
+   fichier réécrit. Le registre ne dépassait jamais les ~81 observations d'un passage, et
+   `playabilityScore` — qui exige `tested >= 3` — ne rétrogradait presque aucun hôte. Un
+   CDN mort gardait la tête du classement passage après passage. */
+out.hostPlay = (precedent && precedent.hostPlay) || {};
+out.verifiedAt = (precedent && precedent.verifiedAt) || null;
+const reprises = play.reporterVerifications(out.matches, precedent);
+console.log(`Vérifications reportées : ${Object.keys(out.hostPlay).length} hôtes au registre, ${reprises} lien(s) gardent leur verdict.`);
 fs.mkdirSync('data', { recursive: true });
 fs.writeFileSync('data/streams.json', JSON.stringify(out, null, 1));
 const totalStreams = out.matches.reduce((n, m) => n + m.streamLinks.filter((l) => !l.topLevel).length, 0);
