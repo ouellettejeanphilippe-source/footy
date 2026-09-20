@@ -148,6 +148,51 @@ export function actionSansVideo(essais, resteDesSources, essaisMax) {
     return resteDesSources ? 'suivante' : 'rien';
 }
 
+/* Combien d'essais CETTE source mérite — le correctif du 20 septembre 2026, « les vidéos
+   se chargent pas bien dans le multiview aujourd'hui ».
+
+   Le rechargement introduit la veille était juste, mais il était PAYÉ PARTOUT : chaque
+   source morte coûtait deux fois sa patience, 60 s au lieu de 30, et 180 au lieu de 90
+   pour un hôte réputé lent. Parcourir quatorze sources mortes passait de 7 à 14 minutes.
+   Mesuré le jour même : les liens n'étaient pas en cause (40 % de lecture la veille,
+   42 % ce jour-là) — c'était bien le prix du second essai.
+
+   Le rechargement est un SECOURS, pas un péage. Il sert à rattraper la source sur
+   laquelle la tuile a ATTERRI quand sa page rate son démarrage : script posé avant le
+   lecteur, publicité qui vole le premier clic, segment initial perdu. Deux situations ne
+   le méritent pas :
+     - la tuile PARCOURT déjà la liste (une bascule automatique a eu lieu) : on ne
+       rattrape plus, on cherche, et chaque seconde de plus est une seconde sans image ;
+     - l'hôte est connu pour ne pas jouer (score ≤ 0 : cadre refusé, hôte éprouvé qui
+       ne joue jamais, lien déjà observé sans vidéo) — le recharger ne le fera pas jouer. */
+export function essaisPourSource(link, ledger, enParcours, essaisMax) {
+    if (enParcours) return 1;
+    if (playabilityScore(link, ledger) <= 0) return 1;
+    return essaisMax || ESSAIS_PAR_SOURCE;
+}
+
+/* Combien de fois on recharge une source qui S'ARRÊTE après avoir joué, et quand ce
+   compte est oublié.
+
+   Sans borne, la reprise du 19 septembre boucle : un flux qui joue deux secondes, meurt,
+   est rechargé, rejoue deux secondes… La lecture remettait le compteur d'essais à zéro,
+   donc rien n'arrêtait le cycle — un défaut introduit ce jour-là, jamais rapporté mais
+   bien réel. Une source qui ne tient pas est cassée ; la rallumer en boucle ne fait que
+   rallumer la même panne.
+
+   Mais une source qui a joué LONGTEMPS avant de lâcher est un tout autre cas : c'est un
+   match qu'on regardait, et il mérite qu'on le rattrape. Le compte est donc oublié quand
+   la vidéo a tenu `oubliMs`. Rend `{ autorisee, reprises }` : le nouveau compte à ranger
+   sur la tuile. */
+export var REPRISES_PAR_SOURCE = 2;
+export var REPRISE_OUBLI_MS = 120000;
+export function budgetReprise(reprises, jouaitDepuisMs, maxReprises, oubliMs) {
+    var max = maxReprises || REPRISES_PAR_SOURCE;
+    var oubli = (oubliMs == null) ? REPRISE_OUBLI_MS : oubliMs;
+    var n = (typeof jouaitDepuisMs === 'number' && jouaitDepuisMs >= oubli) ? 0 : (reprises | 0);
+    return { autorisee: n < max, reprises: n + 1 };
+}
+
 /* Une vidéo qui S'ARRÊTE après avoir joué mérite-t-elle un rechargement de sa source ?
 
    Oui, sauf si c'est l'utilisateur qui l'a arrêtée. Le script utilisateur à jour le dit

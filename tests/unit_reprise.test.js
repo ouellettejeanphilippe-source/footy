@@ -105,6 +105,37 @@ async function main() {
         return mv.mvFlux[0];
     };
 
+    // ── 2 bis. Le rechargement est un secours, pas un péage ──────────────────
+    /* « Les vidéos se chargent pas bien dans le multiview aujourd'hui » (20 septembre
+       2026). Le rechargement de la veille était payé sur CHAQUE source : 60 s au lieu de
+       30 par source morte, 180 au lieu de 90 pour un hôte réputé lent, et parcourir
+       quatorze sources mortes passait de 7 à 14 minutes. Mesuré le jour même, les liens
+       n'étaient pas en cause (40 % de lecture la veille, 42 % ce jour-là). */
+    assert.strictEqual(P.essaisPourSource({ url: 'https://inconnu.test/a' }, {}, false), 2,
+        'un hôte inconnu garde son second essai : c\'est le cas que le rechargement rattrape');
+    assert.strictEqual(P.essaisPourSource({ url: 'https://bon.test/a', verified: 'plays' }, {}, false), 2,
+        'un hôte qui joue d\'ordinaire aussi');
+    assert.strictEqual(P.essaisPourSource({ url: 'https://x.test/a' }, {}, true), 1,
+        'mais la tuile qui PARCOURT déjà la liste n\'en a qu\'un : on ne rattrape plus, on cherche');
+    assert.strictEqual(P.essaisPourSource({ url: 'https://x.test/a', verified: 'blocked' }, {}, false), 1,
+        'un cadre refusé ne jouera pas mieux au second essai');
+    assert.strictEqual(P.essaisPourSource({ url: 'https://mort.test/a' }, { 'mort.test': { tested: 8, plays: 0 } }, false), 1,
+        'ni un hôte éprouvé qui ne joue jamais');
+    ok('le second essai va à la source qu\'on rattrape, pas à celles qu\'on traverse');
+
+    // ── 2 ter. Les reprises sont bornées ────────────────────────────────────
+    /* Défaut introduit le 19 septembre et corrigé ici : la lecture remet le compteur
+       d'essais à zéro, donc un flux qui joue deux secondes, meurt et rejoue deux secondes
+       se faisait recharger sans fin. */
+    assert.deepStrictEqual(P.budgetReprise(0, 3000), { autorisee: true, reprises: 1 }, 'première reprise : oui');
+    assert.deepStrictEqual(P.budgetReprise(1, 3000), { autorisee: true, reprises: 2 }, 'deuxième : encore');
+    assert.deepStrictEqual(P.budgetReprise(2, 3000), { autorisee: false, reprises: 3 },
+        'troisième sur un flux qui ne tient jamais : non, la source est cassée');
+    assert.deepStrictEqual(P.budgetReprise(5, 300000), { autorisee: true, reprises: 1 },
+        'mais un flux qui a TENU cinq minutes avant de lâcher retrouve son budget : c\'est un match qu\'on regardait');
+    assert.strictEqual(P.budgetReprise(0, null).autorisee, true, 'aucune durée connue : on ne pénalise pas');
+    ok('une source qui ne tient jamais n\'est pas rechargée en boucle');
+
     // ── 3. Sans le script utilisateur, la tuile ne décide rien seule ─────────
     assert.strictEqual(pont.getBridgeStatus().available, false, 'le pont n\'est pas encore annoncé');
     await poser(DEUX_SOURCES, A, 'm1');
@@ -140,6 +171,51 @@ async function main() {
     assert.strictEqual(mv.mvFlux[0]._autoTried, 1);
     assert.strictEqual(mv.mvFlux[0]._essais, 1, 'et la suivante repart avec ses essais entiers');
     ok('deux silences pour quitter une source, un seul pour la recharger');
+
+    // ── 4 bis. En parcours, une seule patience par source ───────────────────
+    /* Le correctif du 20 septembre. La source sur laquelle on ATTERRIT garde ses deux
+       essais — c'est elle que le rechargement rattrape. Dès qu'on parcourt, chaque source
+       n'en a plus qu'un : on ne rattrape plus, on cherche, et chaque seconde de plus est
+       une seconde d'écran noir. Sans cette règle, quatorze sources mortes coûtaient
+       quatorze minutes au lieu de sept. */
+    const C = 'https://c.test/trois';
+    const TROIS = [{ id: 'm3', homeTeam: 'A', awayTeam: 'B', streamLinks: [{ url: A }, { url: B }, { url: C }] }];
+    await poser(TROIS, A, 'm3');
+    const vues = [mv.mvFlux[0].url];
+
+    declencher(30000); await attendre();
+    assert.strictEqual(mv.mvFlux[0].url, vues[0], 'la source d\'atterrissage est rechargée, pas quittée');
+    assert.strictEqual(mv.mvFlux[0]._essais, 2, 'elle a bien ses deux essais');
+
+    declencher(30000); await attendre();
+    assert.strictEqual(mv.mvFlux[0]._autoTried, 1, 'second silence : on passe à la suivante');
+    vues.push(mv.mvFlux[0].url);
+    assert.notStrictEqual(vues[1], vues[0]);
+    assert.strictEqual(mv.mvFlux[0]._essais, 1, 'la suivante est chargée une fois');
+
+    /* Le cœur du correctif : UN seul déclenchement suffit maintenant à quitter la
+       deuxième source. Avant, il en fallait deux (rechargement puis bascule). */
+    declencher(30000); await attendre();
+    assert.strictEqual(mv.mvFlux[0]._autoTried, 2,
+        'une seule patience a suffi pour quitter la deuxième source : plus de rechargement en parcours');
+    vues.push(mv.mvFlux[0].url);
+    assert.notStrictEqual(vues[2], vues[1], 'et la tuile est bien passée à la troisième');
+    ok('en parcours, une seule patience par source : le rechargement ne se paie qu\'à l\'atterrissage');
+
+    // ── 4 ter. Le second essai ne rachète pas la longue patience ────────────
+    /* Un hôte réputé lent a droit à 90 s pour DÉMARRER (embed.st, 6 septembre). Son
+       rechargement, lui, repart sur la patience courte : sinon une seule source coûtait
+       180 s. */
+    localStorage.setItem('play_ledger', JSON.stringify({ 'lent.test': { tested: 10, plays: 9 } }));
+    const LENT = 'https://lent.test/a';
+    await poser([{ id: 'm4', homeTeam: 'L', awayTeam: 'M', streamLinks: [{ url: LENT }, { url: B }] }], LENT, 'm4');
+    assert.strictEqual(armes(90000), 1, 'premier essai : la longue patience, comme avant');
+    declencher(90000); await attendre();
+    assert.strictEqual(mv.mvFlux[0].url, LENT, 'rechargée, pas quittée');
+    assert.strictEqual(armes(30000), 1, 'mais le rechargement repart sur la patience courte');
+    assert.strictEqual(armes(90000), 0, 'la longue n\'est pas redonnée une seconde fois');
+    localStorage.removeItem('play_ledger');
+    ok('la longue patience se donne une fois, pas deux');
 
     // ── 5. Une tuile seule sur son match est rechargée aussi ─────────────────
     await poser([{ id: 'seul', homeTeam: 'C', awayTeam: 'D', streamLinks: [{ url: A }] }], A, 'seul');
@@ -186,6 +262,22 @@ async function main() {
     t3._dernierGeste = Date.now() - 120000;
     assert.strictEqual(mv.armerRepriseTuile(t3, {}), true, 'mais un clic d\'il y a deux minutes n\'explique plus l\'arrêt');
     ok('la reprise laisse l\'utilisateur tranquille quand c\'est lui qui a arrêté');
+
+    // ── 8 bis. Une source qui ne tient jamais cesse d'être rallumée ─────────
+    /* La borne, dans la vraie tuile : sans elle, la lecture remet le compteur d'essais à
+       zéro et un flux qui joue deux secondes, meurt et rejoue deux secondes se fait
+       recharger sans fin. Défaut introduit le 19 septembre, corrigé le 20. */
+    const t4 = await poser(DEUX_SOURCES, A, 'm1');
+    t4._joueDepuis = Date.now() - 3000;   // n'a tenu que trois secondes
+    t4._playing = false;
+    assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), true, 'première reprise : on tente');
+    assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), true, 'deuxième : encore');
+    assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), false,
+        'troisième : la source ne tient pas trois secondes, la rallumer ne fait que rallumer la panne');
+    t4._joueDepuis = Date.now() - 300000; // cette fois elle avait tenu cinq minutes
+    assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), true,
+        'un flux qu\'on regardait depuis cinq minutes retrouve son budget : ce n\'est pas la même panne');
+    ok('une source qui ne tient jamais cesse d\'être rechargée, celle qui a tenu y a droit');
 
     // ── 9. Les minuteurs ne vivent pas sur la tuile ──────────────────────────
     /* `saveMultivisionState` sérialise `mvFlux` en JSON. Un handle de minuteur n'est un
