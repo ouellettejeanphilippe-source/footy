@@ -715,6 +715,100 @@ export function adressesNonSpecifiques(matches) {
   return out;
 }
 
+/* ── Les pages de match récoltées comme si elles étaient des flux ────────────────
+   « Le lien amène à la liste des liens sur la page de match sur MLBite, pas aux liens
+   eux-mêmes des streams » (20 septembre 2026).
+
+   Une page de match liste les lecteurs ; elle n'en est pas un. Mais elle liste aussi les
+   AUTRES matchs du site, et l'extracteur ramassait cette navigation comme autant de
+   sources. Relevé sur un Rangers–Blue Jays : neuf liens `mlbbite.plus/watch/live/…`,
+   dont six nommaient un tout autre match (`boston-red-sox-at-texas-rangers`,
+   `detroit-tigers-at-toronto-blue-jays`). Scanné ensuite sur tout le cache :
+   `mlbbite.plus` et `soccersurge.io` n'apportent QUE ça, `app.buffstreams.is` aussi
+   (ses 73 liens sont littéralement les `matchUrl` d'autres matchs), `liveleagues.me`
+   pour 41 % — environ 295 liens, ~15 % du catalogue.
+
+   La règle qui devait les écarter existait déjà (`isFallback`, scripts/scrape_streams.mjs)
+   mais reconnaissait une page de match à son NOM (« Page du match sur X ») : seules celles
+   que l'application fabrique elle-même s'appellent ainsi, et les autres passaient à travers.
+
+   On les reconnaît donc par PREUVE, sans un seul nom d'équipe : une adresse qui est le
+   `matchUrl` d'un match de la grille EST une page de match. Les adresses de même forme
+   (mêmes segments, identifiants masqués) le sont aussi dès que la forme est attestée
+   plusieurs fois — sans quoi un lecteur isolé partageant par hasard la forme d'une page
+   serait écarté sur un seul exemple.
+
+   Trois tentatives de détection par noms d'équipes ont précédé celle-ci ; les trois ont
+   donné des faux positifs (accents, un seul camp qui concorde, noms collés en un mot).
+   Rien ici ne lit un nom d'équipe. */
+function hoteDe(u) {
+  try { return new URL(String(u)).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
+}
+export function formeDAdresse(u) {
+  var h = hoteDe(u);
+  if (!h) return '';
+  try {
+    var segs = new URL(String(u)).pathname.split('/').filter(Boolean)
+      .map(function(s) { return (/\d/.test(s) || s.length > 22) ? '*' : s; });
+    return h + '/' + segs.join('/');
+  } catch (e) { return ''; }
+}
+
+/* Les pages de match de la grille : l'ensemble des adresses, et les formes attestées au
+   moins `minForme` fois. */
+export var MIN_FORME_PAGE = 3;
+export function pagesDeMatch(matches, minForme) {
+  var seuil = minForme || MIN_FORME_PAGE;
+  var urls = {}, compte = {};
+  (matches || []).forEach(function(m) {
+    if (!m || !m.matchUrl) return;
+    urls[m.matchUrl] = true;
+    var f = formeDAdresse(m.matchUrl);
+    if (f) compte[f] = (compte[f] || 0) + 1;
+  });
+  var formes = {};
+  Object.keys(compte).forEach(function(f) { if (compte[f] >= seuil) formes[f] = true; });
+  return { urls: urls, formes: formes };
+}
+
+/* Un lien est-il une page de match plutôt qu'un lecteur ? */
+export function estPageDeMatch(url, pages) {
+  if (!url || !pages) return false;
+  if (pages.urls && pages.urls[url]) return true;
+  var f = formeDAdresse(url);
+  return !!(f && pages.formes && pages.formes[f]);
+}
+
+/* Applique la politique déjà en vigueur pour les pages de match : elles disparaissent dès
+   qu'un vrai lecteur existe, et sinon il n'en reste qu'UNE par site — une porte de
+   secours, pas une liste. La page du match lui-même n'est jamais retirée : c'est le repli
+   « Page du match sur X », qui a sa raison d'être. Rend le nombre de liens écartés. */
+export function retirerPagesDeMatch(matches, pages) {
+  var n = 0;
+  (matches || []).forEach(function(m) {
+    if (!m || !Array.isArray(m.streamLinks)) return;
+    var avant = m.streamLinks.length;
+    var estPage = function(l) {
+      return l && l.url && l.url !== m.matchUrl && estPageDeMatch(l.url, pages);
+    };
+    var lecteurs = m.streamLinks.filter(function(l) { return l && l.url && !estPage(l); });
+    if (lecteurs.length) {
+      m.streamLinks = lecteurs;
+    } else {
+      var vus = {};
+      m.streamLinks = m.streamLinks.filter(function(l) {
+        if (!estPage(l)) return true;
+        var h = hoteDe(l.url);
+        if (vus[h]) return false;
+        vus[h] = true;
+        return true;
+      });
+    }
+    n += avant - m.streamLinks.length;
+  });
+  return n;
+}
+
 /* Retire ces adresses de tous les matchs. Rend le nombre de liens écartés. */
 export function retirerLiensDeDecor(matches, ecartees) {
   var n = 0;

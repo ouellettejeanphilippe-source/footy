@@ -395,6 +395,17 @@ if (nDecor) {
     Object.keys(decor).slice(0, 8).forEach((u) => console.log(`   ${u.slice(0, 90)}`));
 }
 
+/* Pages de match récoltées comme des flux (voir pagesDeMatch, js/match.js). Ici aussi, une
+   fois TOUTES les sources fusionnées : la preuve qu'une adresse est une page de match, c'est
+   qu'elle est le `matchUrl` d'un autre match de la grille — on a besoin de la grille entière
+   pour le savoir. Elles disparaissent dès qu'un vrai lecteur existe, et il n'en reste sinon
+   qu'une par site. */
+const pages = match.pagesDeMatch(all);
+const nPages = match.retirerPagesDeMatch(all, pages);
+if (nPages) {
+    console.log(`Pages de match écartées des flux : ${nPages} liens (${Object.keys(pages.urls).length} pages connues, ${Object.keys(pages.formes).length} formes attestées)`);
+}
+
 const linksBySource = {};
 for (const m of all) for (const l of (m.streamLinks || [])) {
     if (l.topLevel) continue;
