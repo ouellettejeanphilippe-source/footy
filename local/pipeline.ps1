@@ -59,6 +59,22 @@ param(
 $ICI = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $ICI
 
+# Les repertoires systeme d'abord, parce qu'ils manquent au PATH de cette machine.
+#
+# Releve le 26 septembre 2026 : le PATH machine (HKLM) ne contient ni
+# C:\Windows\System32, ni C:\Windows, ni System32\WindowsPowerShell\v1.0 — il a
+# visiblement ete ecrase par une copie du PATH utilisateur. Consequences vues
+# directement : electron-builder echouait sur « spawn powershell.exe ENOENT », et la
+# tache planifiee sur 0x80070002. npm et Playwright lancent eux aussi des outils
+# systeme.
+#
+# On ne repare pas la variable ici — c'est une modification machine, qui demande les
+# droits d'administrateur et ne regarde pas ce script. On se contente de ne pas en
+# dependre.
+foreach ($d in @("$env:SystemRoot\System32", $env:SystemRoot, "$env:SystemRoot\System32\WindowsPowerShell\v1.0", "$env:SystemRoot\System32\Wbem")) {
+    if ((Test-Path $d) -and ($env:PATH -split ';' -notcontains $d)) { $env:PATH = "$d;" + $env:PATH }
+}
+
 function Etape($n, $titre) { Write-Output "" ; Write-Output "===== $n  $titre  ($(Get-Date -Format HH:mm:ss)) =====" }
 
 # javac et les scrapers ecrivent sur la sortie d'erreur sans que ce soit une

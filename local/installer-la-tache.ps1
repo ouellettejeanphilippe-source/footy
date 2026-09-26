@@ -38,8 +38,28 @@ if ($Retirer) {
 
 if (-not (Test-Path $PIPELINE)) { throw "pipeline introuvable : $PIPELINE" }
 
+# Le chemin COMPLET de powershell.exe, jamais son seul nom.
+#
+# Le Planificateur resout le programme par le PATH de la machine, et sur ce poste
+# (26 septembre 2026) ce PATH ne contient AUCUN repertoire systeme : ni
+# C:\Windows\System32, ni C:\Windows, ni System32\WindowsPowerShell\v1.0. Il a
+# visiblement ete ecrase par une copie du PATH utilisateur. La tache echouait donc
+# aussitot avec 0x80070002 (« fichier introuvable ») — en designant powershell.exe,
+# pas le script, qui existait bien. Le meme defaut avait fait echouer
+# electron-builder plus tot, sur « spawn powershell.exe ENOENT ».
+#
+# Un chemin complet ne depend pas du PATH, donc la tache tient meme si personne ne
+# repare la variable.
+$pwshCandidats = @(
+    (Get-Command powershell.exe -ErrorAction SilentlyContinue).Source,
+    "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe",
+    "$env:SystemRoot\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+) | Where-Object { $_ -and (Test-Path $_) }
+if (-not $pwshCandidats) { throw "powershell.exe introuvable" }
+$PWSH = $pwshCandidats[0]
+
 $action = New-ScheduledTaskAction `
-    -Execute 'powershell.exe' `
+    -Execute $PWSH `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PIPELINE`"" `
     -WorkingDirectory $DEPOT
 
@@ -68,6 +88,8 @@ Write-Output "tache enregistree : $NOM"
 Write-Output "  toutes les 30 minutes, premier depart dans 2 minutes"
 Write-Output "  pipeline : $PIPELINE"
 Write-Output ''
-Write-Output 'Pour la voir tourner :   Get-ScheduledTaskInfo -TaskName "' + $NOM + '"'
-Write-Output 'Pour la lancer tout de suite :   Start-ScheduledTask -TaskName "' + $NOM + '"'
+# `Write-Output 'a' + $x + 'b'` n'est PAS une concaténation en PowerShell : les trois
+# valeurs partent comme trois objets distincts, et le message s'affiche en morceaux.
+Write-Output "Pour la voir tourner :   Get-ScheduledTaskInfo -TaskName `"$NOM`""
+Write-Output "Pour la lancer tout de suite :   Start-ScheduledTask -TaskName `"$NOM`""
 Write-Output 'Pour la retirer :   powershell -File local\installer-la-tache.ps1 -Retirer'
