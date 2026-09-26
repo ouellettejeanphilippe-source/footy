@@ -2472,6 +2472,11 @@ export function extractStreamLinks(html, m) {
             for (var iA = 0; iA < trouves.length; iA++) links.push(trouves[iA]);
         } catch (e) { lg('Adaptateur en échec ' + pageHost, e && e.message); }
     }
+    /* Combien de liens l'adaptateur a rendus. Sur un domaine dont la « page de match »
+       est en réalité une GRILLE (voir `pageEstUneGrille`, js/sources/onhockey.js), tout
+       ce que les branches génériques ajouteront ensuite appartient à d'autres
+       rencontres : on ne gardera que ces `nAdaptateur` premiers liens. */
+    var nAdaptateur = links.length;
 
 
     // Sportsurge v2 (2026) : <div class="stream-item" data-href="https://..."> avec .stream-row-site-name et .stream-row-spec (1080p, fps, bitrate, langue...)
@@ -2818,6 +2823,21 @@ export function extractStreamLinks(html, m) {
         });
         byCanon[canonical(p.url)] = links[links.length - 1];
     });
+
+    /* Sur une grille, l'appariement de l'adaptateur fait loi.
+
+       Les branches génériques ci-dessus récoltent tout ce qui ressemble à un flux sur
+       la page, sans savoir à quelle rencontre chaque lien appartient. C'est ce qu'il
+       faut sur une vraie page de match — la page ne parle que d'un match — et c'est
+       faux sur une grille, qui en porte des dizaines. Mesuré le 26 septembre 2026 sur
+       onhockey.tv : 170 liens nommant une équipe de la LHJMQ collés sur 35 matchs de
+       la LNH.
+
+       On ne coupe pas les branches génériques : elles enrichissent au passage les liens
+       déjà trouvés (qualité, nom, provenance). On jette seulement ce qu'elles ont
+       AJOUTÉ. Et si l'adaptateur n'a rien retenu, il reste zéro lien — le repli en bas
+       de cette fonction proposera alors la page du match, qui est la réponse honnête. */
+    if (adaptateur && adaptateur.pageEstUneGrille) links = links.slice(0, nAdaptateur);
 
     links = finalizeStreamLinks(links); // dédoublonnage, faux liens, provenance
 
