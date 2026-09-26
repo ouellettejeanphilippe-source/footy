@@ -44,6 +44,52 @@ Ces sites changent sans prévenir, et l'application est faite pour l'encaisser s
 
 L'application n'héberge ni ne diffuse aucune vidéo ; elle rassemble des liens publics.
 
+## Faire tourner l'application en local
+
+GitHub Pages ne sert plus le site et les Actions ne tournent plus. Trois dossiers prennent leur place.
+
+### `desktop/` — l'application de bureau
+
+```bash
+cd desktop && npm install && npm run build      # dist/Guide-des-Sports-portable.exe
+cd desktop && npm start                         # sans compiler
+```
+
+Elle sert le site sur `http://127.0.0.1:47821` plutôt que par `file://`, parce que les modules ES, le service worker et `localStorage` l'exigent. **Le port est fixe** : c'est lui qui porte l'origine sous laquelle vos favoris et vos réglages sont rangés — un port au hasard les perdrait à chaque lancement.
+
+Elle fait deux choses que la version hébergée ne pouvait pas faire :
+
+- **Le script utilisateur est injecté par l'application.** Pas de Tampermonkey à installer : `desktop/preload-userscript.js` pose `multiview-cleaner.user.js` à `document-start` et dans le monde de la page, dans toutes les iframes. `node desktop/verifier-injection.mjs` le prouve en interrogeant le pont.
+- **Les sources se lisent en direct, sans proxy.** Les en-têtes CORS des réponses tierces sont complétés localement, donc les proxys CORS publics — lents, souvent en panne, et qui voient tout ce qu'on demande — ne servent plus. Le blocage de publicité passe par les listes d'uBlock (l'extension elle-même ne bloque rien dans Electron, dont les API d'extension n'implémentent pas le filtrage réseau).
+
+**Sur la machine qui porte le dépôt, pointez-la sur le dépôt** : menu → « Travailler dans un dépôt… ». Sans cela elle travaille sur une copie dans `%APPDATA%`, qui ne reçoit pas ce que le pipeline produit — et c'est justement le pipeline qui fait la vérification des lecteurs.
+
+### `mobile/` — l'application Android
+
+```bash
+cd mobile && npm install
+powershell -ExecutionPolicy Bypass -File mobile\fabriquer-apk.ps1   # mobile\Guide-des-Sports.apk
+```
+
+Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins). L'APK n'embarque qu'un **instantané** des données : quand `data/schedule.json` n'est pas du jour, le client interroge ESPN lui-même (`js/api.js`, `apiOuCacheLocal`), donc il n'a besoin d'aucun serveur. Lancez le pipeline avant de fabriquer, sinon l'APK part avec des liens non vérifiés.
+
+### `local/` — les données
+
+```bash
+powershell -ExecutionPolicy Bypass -File local\pipeline.ps1
+powershell -ExecutionPolicy Bypass -File local\installer-la-tache.ps1   # toutes les 30 min
+```
+
+Le pipeline fait les trois étapes dans l'ordre : le calendrier (sauté s'il est déjà du jour), les liens, puis **la vérification des lecteurs**. Cette troisième étape est celle dont l'absence se voit le plus : c'est elle qui éprouve chaque lecteur dans un vrai Chromium et note lesquels jouent, et c'est sur ses observations que `sortFluxLinks` classe les liens et que la liste marque ceux qui ne jouent jamais.
+
+Ses bornes par défaut (`--total 150`, `--budget-ms 5 min`) sont taillées pour un runner GitHub. Au premier usage, ou après une longue pause, donnez-lui un vrai budget :
+
+```bash
+powershell -File local\pipeline.ps1 -VerifTotal 600 -VerifBudgetMs 1500000
+```
+
+Le pipeline finit sur un bilan qui dit combien de liens ont un verdict et lesquels sont jugés morts. C'est le chiffre à regarder : tant qu'une grande part des liens n'a pas de verdict, le classement travaille dans le vide.
+
 ## Développer
 
 Prérequis : Node.js 22 (`.nvmrc`), npm. Chromium pour les tests Playwright.
@@ -79,7 +125,9 @@ Les scripts serveur se lancent aussi à la main : `node scripts/scrape_schedule.
 | `docs/WORKLOG.md` | Le journal des changements, daté et argumenté. |
 | `AGENTS.md` | Les règles de travail dans ce dépôt (pour les humains et les agents). |
 
-### Automatisations
+### Automatisations (historiques)
+
+Ces workflows GitHub **ne tournent plus** : le dépôt vit hors de GitHub, et `local/pipeline.ps1` les remplace (voir « Faire tourner l'application en local »). Le tableau reste pour mémoire — les commentaires des fichiers de `.github/workflows/` expliquent des décisions qui valent toujours, notamment ce que le planificateur de GitHub livrait réellement.
 
 | Workflow | Quand | Résultat |
 |---|---|---|

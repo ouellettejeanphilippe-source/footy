@@ -28,6 +28,8 @@ mobile/android/.gradle/
 mobile/android/local.properties
 mobile/*.apk
 mobile/*.aab
+# apksigner depose aussi une signature v4 a cote de l APK.
+mobile/*.idsig
 
 # Les icones et ecrans de demarrage produits a partir de mobile/assets/ par
 # `npx @capacitor/assets generate --android`.

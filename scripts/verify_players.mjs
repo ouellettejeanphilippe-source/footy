@@ -41,6 +41,7 @@ globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} 
 await import('../js/scrapers.js');   // fixe l'ordre d'évaluation des modules circulaires
 const config = await import('../js/config.js');
 const play = await import('../js/playability.js');
+const media = await import('../js/directmedia.js');   // estManifeste : un manifeste, pas un segment
 
 function log(s) { console.log(s); }
 
@@ -92,13 +93,40 @@ await context.route(PROBE_ORIGIN + '/**', (route) => {
 
 async function observe(target) {
     const page = await context.newPage();
-    const obs = { mediaRequests: 0, videoReady: false, frameError: false, status: 0, sample: '' };
+    const obs = {
+        mediaRequests: 0,   // demandé   — diagnostic seulement
+        mediaOk: 0,         // ARRIVÉ    — c'est lui qui décide (voir verdictFromObservation)
+        mediaEchecs: 0,     // demandé, refusé (403, 404, 5xx)
+        videoReady: false,
+        frameError: false,
+        status: 0,
+        sample: '',
+        media: '',          // l'adresse du manifeste, ENTIÈRE : le mode direct s'en sert
+    };
     page.on('request', (r) => {
         const u = r.url();
         if (u.startsWith(PROBE_ORIGIN)) return;   // la page de sonde elle-même n'est pas de la vidéo
         if (play.isMediaRequest(u)) { obs.mediaRequests++; if (!obs.sample) obs.sample = u.slice(0, 100); }
     });
-    page.on('response', (r) => { if (r.url() === target || r.url().replace(/\/$/, '') === target.replace(/\/$/, '')) obs.status = r.status(); });
+    /* Les RÉPONSES, et pas seulement les requêtes. C'est l'écart entre les deux qui
+       était invisible : un lecteur qui demande un manifeste et n'obtient rien valait
+       « joue ». On ne lit que les en-têtes — lire un corps ici serait asynchrone et
+       ferait manquer les réponses arrivées pendant l'attente. */
+    page.on('response', (r) => {
+        const u = r.url();
+        if (u === target || u.replace(/\/$/, '') === target.replace(/\/$/, '')) obs.status = r.status();
+        if (u.startsWith(PROBE_ORIGIN) || !play.isMediaRequest(u)) return;
+        const st = r.status();
+        if (st < 200 || st >= 300) { obs.mediaEchecs++; return; }
+        obs.mediaOk++;
+        /* L'adresse du manifeste, gardée ENTIÈRE. Elle était tronquée à 100
+           caractères et ne servait qu'au journal — alors que `js/directmedia.js`
+           sait jouer un manifeste sans charger la page du site, et qu'il ne
+           l'apprenait jusqu'ici qu'une fois l'utilisateur déjà en train de
+           regarder. Mesuré sur un passage : 29 des 36 adresses observées n'ont ni
+           jeton ni expiration, donc restent jouables le temps de l'événement. */
+        if (!obs.media && media.estManifeste(u)) obs.media = u;
+    });
     try {
         await page.goto(PROBE_ORIGIN + '/probe.html?u=' + encodeURIComponent(target), { waitUntil: 'load', timeout: NAV_TIMEOUT_MS });
         await page.waitForTimeout(WATCH_MS);
@@ -123,7 +151,31 @@ async function observe(target) {
 const t0 = Date.now();
 let cursor = 0, done = 0, horsBudget = 0;
 const compte = { plays: 0, blocked: 0, none: 0 };
-const ledger = play.mergeLedgers(data.hostPlay || {}, {});
+/* LE REGISTRE REPART DE ZÉRO QUAND LA RÈGLE DU VERDICT A CHANGÉ.
+
+   Les compteurs de `hostPlay` sont des verdicts additionnés. Gagnés sous une règle
+   fausse, ils sont faux : embed.st portait 24 sur 24 « joue » parce qu'une requête
+   vidéo partie suffisait, alors que rien n'arrivait. Les garder, c'est garder en
+   tête du classement exactement les hôtes qu'on vient d'apprendre à reconnaître —
+   et `recordObservation` ne les dilue qu'à moitié tous les `cap` essais, donc il
+   faudrait des semaines pour que le passé faux cesse de peser.
+
+   Mieux vaut un registre vide, qu'un passage suffit à regarnir, qu'un registre
+   confiant et faux. */
+const critereStocke = data.hostPlayCritere | 0;
+let ledger;
+if (critereStocke !== play.CRITERE_VERDICT) {
+    log(`verify_players : le critère du verdict est passé de v${critereStocke || 1} à v${play.CRITERE_VERDICT} — le registre repart de zéro (${Object.keys(data.hostPlay || {}).length} hôtes écartés).`);
+    ledger = {};
+    // Les verdicts déjà posés sur les liens ont été gagnés sous l'ancienne règle.
+    for (const m of data.matches) {
+        for (const l of (m.streamLinks || [])) {
+            delete l.verified; delete l.verifiedAt; delete l.media; delete l.mediaAt;
+        }
+    }
+} else {
+    ledger = play.mergeLedgers(data.hostPlay || {}, {});
+}
 const parHote = {};
 
 async function worker() {
@@ -136,12 +188,28 @@ async function worker() {
         const link = data.matches[t.matchIndex].streamLinks[t.linkIndex];
         link.verified = verdict;
         link.verifiedAt = new Date().toISOString();
+        /* L'adresse du flux, quand on l'a vue arriver : elle permet au mode direct
+           (js/directmedia.js) d'être disponible dès la PREMIÈRE ouverture, au lieu
+           d'attendre que l'utilisateur ait déjà regardé la page pour l'apprendre. */
+        if (verdict === 'plays' && obs.media) {
+            link.media = obs.media;
+            link.mediaAt = link.verifiedAt;
+        } else {
+            delete link.media; delete link.mediaAt;
+        }
         play.recordObservation(ledger, t.host, verdict);
         parHote[t.host] = parHote[t.host] || { plays: 0, tested: 0 };
         parHote[t.host].tested++;
         if (verdict === 'plays') parHote[t.host].plays++;
         done++;
-        if (verdict === 'plays' || done <= 10) log(`  ${verdict.padEnd(7)} ${t.host.padEnd(30)} ${obs.sample || (obs.error ? 'err: ' + obs.error : '')}`);
+        /* Le journal dit maintenant DEMANDÉ/ARRIVÉ, parce que c'est l'écart entre les
+           deux qui était le défaut : un « 6/0 » se lit tout de suite comme un lecteur
+           qui réclame de la vidéo sans en recevoir — et c'était compté « joue ». */
+        if (verdict === 'plays' || done <= 10 || (obs.mediaRequests | 0) > 0) {
+            log(`  ${verdict.padEnd(7)} ${t.host.padEnd(28)} demandé ${String(obs.mediaRequests).padStart(3)} / arrivé ${String(obs.mediaOk).padStart(3)}`
+                + ((obs.mediaEchecs | 0) ? ` / refusé ${obs.mediaEchecs}` : '')
+                + '  ' + (obs.media || obs.sample || (obs.error ? 'err: ' + obs.error : '')));
+        }
     }
 }
 await Promise.all(Array.from({ length: CONCURRENCY }, worker));
@@ -149,6 +217,9 @@ try { await browser.close(); } catch (e) {}
 
 // ── Écriture ──────────────────────────────────────────────────────────────────
 data.hostPlay = ledger;
+// La règle sous laquelle CE registre a été gagné. Un passage qui lira une autre
+// valeur repartira de zéro plutôt que de faire confiance à des compteurs anciens.
+data.hostPlayCritere = play.CRITERE_VERDICT;
 data.verifiedAt = new Date().toISOString();
 fs.writeFileSync('data/streams.json', JSON.stringify(data, null, 1));
 

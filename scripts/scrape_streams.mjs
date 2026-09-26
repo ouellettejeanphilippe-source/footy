@@ -626,7 +626,10 @@ const out = {
         scrapeError: m.scrapeError || null,
         streamLinks: (m.streamLinks || []).map((l) => Object.assign({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, source: l.source || m.source },
             l.site ? { site: l.site } : {}, l.channel ? { channel: l.channel } : {}, l.topLevel ? { topLevel: true } : {},
-            l.verified ? { verified: l.verified, verifiedAt: l.verifiedAt } : {}))
+            l.verified ? { verified: l.verified, verifiedAt: l.verifiedAt } : {},
+            // L'adresse du flux observée par la vérification : sans cette ligne elle
+            // serait jetée à chaque passage, comme `hostPlay` l'était avant.
+            l.media ? { media: l.media, mediaAt: l.mediaAt } : {}))
     }))
 };
 /* Le fichier déjà publié, lu UNE fois : il sert à deux choses très différentes — garder
@@ -651,6 +654,9 @@ if (sourcesReport.some((s) => !s.ok)) {
    `playabilityScore` — qui exige `tested >= 3` — ne rétrogradait presque aucun hôte. Un
    CDN mort gardait la tête du classement passage après passage. */
 out.hostPlay = (precedent && precedent.hostPlay) || {};
+// La règle sous laquelle ce registre a été gagné doit voyager AVEC lui : sans elle,
+// `verify_players.mjs` le croirait à jour et garderait des compteurs faux.
+out.hostPlayCritere = (precedent && precedent.hostPlayCritere) || 0;
 out.verifiedAt = (precedent && precedent.verifiedAt) || null;
 const reprises = play.reporterVerifications(out.matches, precedent);
 console.log(`Vérifications reportées : ${Object.keys(out.hostPlay).length} hôtes au registre, ${reprises} lien(s) gardent leur verdict.`);

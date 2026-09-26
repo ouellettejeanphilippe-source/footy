@@ -521,11 +521,16 @@ body.view-timeline .zoom-controls { display: flex; }
    que .si-tab, mais teinté : ces deux marques répondent à « est-ce que ça va jouer ? »,
    pas à « comment ça s'ouvre ? ». La couleur passe par currentColor sur la bordure,
    pour rester lisible dans les deux thèmes et pour les palettes personnalisées. */
-.si-joue, .si-mort { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 4px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; opacity: .85; }
+.si-joue, .si-mort, .si-rare { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 4px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; opacity: .85; }
 .si-joue { color: #3fbf6f; }
-.si-mort { color: #d9534f; font-variant-numeric: tabular-nums; text-transform: none; }
+/* Les deux comptes sont des chiffres à comparer d'une ligne à l'autre : chasse fixe,
+   et pas de majuscules forcées qui déformeraient la barre de fraction. */
+.si-mort, .si-rare { font-variant-numeric: tabular-nums; text-transform: none; }
+.si-mort { color: #d9534f; }
+.si-rare { color: #d7952b; }
 /* Le nom du flux s'efface quand son hôte n'a jamais joué : le coup d'œil doit suffire,
-   sans avoir à lire chaque pastille. La ligne reste cliquable — un hôte peut revenir. */
+   sans avoir à lire chaque pastille. La ligne reste cliquable — un hôte peut revenir.
+   « Joue parfois » n'est PAS estompé : il marche, simplement pas à tous les coups. */
 .si:has(.si-mort) .si-n > span:first-child,
 .si:has(.si-mort) .si-meta { opacity: .5; }
 .si-meta { font-size: 11px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

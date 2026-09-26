@@ -6,6 +6,7 @@ import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, ge
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
 import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry, scrapeMatchFlux } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
+import { retenirMediaDirect } from './directmedia.js';
 import { mergeMatches } from './match.js';
 import { appartientALaFenetre, jourDepasse, DUREE_LARGE_MIN } from './nuit.js';
 import { etatCacheServeur, rattrapageNecessaire, ciblesDeRattrapage, CIBLES_AVEC_PONT, CIBLES_SANS_PONT, INTERVALLE_RATTRAPAGE_MS } from './rattrapage.js';
@@ -329,6 +330,49 @@ function lireCacheServeur(force, essai) {
         });
 }
 
+/* Les adresses de flux observées par la vérification, versées dans le registre du
+   mode direct.
+
+   Le mode direct (js/directmedia.js) joue le manifeste dans la tuile, sans charger la
+   page du site, sa régie ni son moteur pair-à-pair. Il ne l'apprenait que d'une seule
+   façon : le script utilisateur voyait passer le manifeste PENDANT que l'utilisateur
+   regardait déjà. La première ouverture se faisait donc toujours par la page sale — et
+   si elle restait noire, le mode direct n'apprenait rien et le bouton ▶ n'apparaissait
+   jamais.
+
+   Or `scripts/verify_players.mjs` voit ce manifeste côté serveur, pour chaque lien qu'il
+   éprouve. Le verser ici rend le mode direct disponible dès la PREMIÈRE ouverture, sur
+   tous les liens vérifiés, sans que l'utilisateur ait eu à regarder quoi que ce soit.
+
+   Ce que l'utilisateur a observé LUI-MÊME l'emporte toujours : c'est sa machine, son
+   réseau et son fournisseur, et le serveur peut être servi autrement que lui. */
+function semerLesDirectsDuServeur(matchs) {
+    try {
+        // Une purge à l'heure qu'il est d'abord : les entrées semées portent l'instant
+        // de leur OBSERVATION, qui est passé, et ne doivent pas servir de référence.
+        var registre = retenirMediaDirect(safeStorageGetJSON('direct_media', {}) || {}, null, null, Date.now());
+        var n = 0;
+        (matchs || []).forEach(function (m) {
+            (((m && m.streamLinks) || [])).forEach(function (l) {
+                if (!l || !l.url || !l.media) return;
+                var at = l.mediaAt ? Date.parse(l.mediaAt) : NaN;
+                if (isNaN(at)) return;
+                var deja = registre[l.url];
+                if (deja && typeof deja.at === 'number' && deja.at >= at) return;
+                registre = retenirMediaDirect(registre, l.url, { url: l.media, pageUrl: l.url }, at);
+                n++;
+            });
+        });
+        if (n) {
+            safeStorageSetJSON('direct_media', registre);
+            lg('Direct', n + ' flux direct(s) semé(s) depuis la vérification du serveur');
+        }
+    } catch (e) {
+        /* Stockage indisponible : le mode direct s'apprendra comme avant, par le script
+           utilisateur. Rien d'autre ne dépend de ce registre. */
+    }
+}
+
 /* Applique un cache serveur (lu à l'instant, ou conservé d'une lecture précédente) :
    filtre du jour, marquage, politique d'intégration, registre de jouabilité. Rend la
    liste du jour et la pose dans window.prefetchedStreamMatches. */
@@ -351,6 +395,7 @@ function appliquerCacheServeur(data) {
     window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {}, verifiedAt: data.verifiedAt || null };
     // Jouabilité observée par le serveur (scripts/verify_players.mjs) : lue par sortFluxLinks.
     window.hostPlayLedger = (data.hostPlay && typeof data.hostPlay === 'object') ? data.hostPlay : {};
+    semerLesDirectsDuServeur(list);
     window.prefetchedStreamsLoadedAt = Date.now();
     /* Le bandeau dit l'âge du cache dès qu'on le connaît (js/ui.js, majBandeauCache) :
        c'est ce qui a manqué pendant les 45 h de la panne du 10 septembre. */

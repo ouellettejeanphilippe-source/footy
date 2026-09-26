@@ -50,14 +50,29 @@ test("un hôte qui joue le plus souvent n'est pas marqué", () => {
     assert.equal(marqueJouabilite(lien('https://parfois.example/live/1'), REGISTRE), null);
 });
 
+test("un hôte qui ne joue qu'une fois sur quatre est marqué, distinctement d'un mort", () => {
+    /* `playabilityScore` ne dégrade qu'à `plays === 0` : un hôte à 1/4 obtient le
+       même score qu'un hôte JAMAIS éprouvé. Mesuré le 26 septembre 2026 après
+       correction du critère : embed.st tombe à 1/4 et porte 956 liens, soit 22 % de
+       la liste — un cinquième des liens se présentait comme « inconnu ». */
+    const mq = marqueJouabilite(lien('https://moitie.example/live/1'), REGISTRE);
+    assert.ok(mq, 'un hôte qui joue rarement doit être marqué');
+    assert.equal(mq.classe, 'si-rare');
+    assert.equal(mq.texte, '2/10');
+    // Et il ne doit pas être confondu avec un hôte qui ne joue jamais.
+    assert.notEqual(mq.classe, 'si-mort');
+});
+
 test("un hôte trop peu éprouvé n'est pas marqué", () => {
     // Le seuil de trois est celui de playabilityScore : au-dessous, l'hôte peut
     // simplement être tombé pendant l'essai. Marquer sur un doute serait du bruit.
     assert.equal(marqueJouabilite(lien('https://apeine.example/live/1'), REGISTRE), null);
 });
 
-test("un hôte qui joue parfois n'est pas marqué", () => {
-    assert.equal(marqueJouabilite(lien('https://moitie.example/live/1'), REGISTRE), null);
+test("un hôte qui joue au moins une fois sur deux n'est pas marqué", () => {
+    // 6 sur 10 : `playabilityScore` le place déjà au-dessus des autres (score 2).
+    // Le marquer en plus serait du bruit sur un lien qui marche.
+    assert.equal(marqueJouabilite(lien('https://parfois.example/live/1'), REGISTRE), null);
 });
 
 test('un lien vu en train de jouer porte sa marque, même sur un hôte douteux', () => {
@@ -109,4 +124,5 @@ test('la règle et son habillage restent branchés ensemble', () => {
     const css = fs.readFileSync(path.join(RACINE, 'styles.css'), 'utf8');
     assert.match(css, /\.si-joue/, '.si-joue doit être stylée');
     assert.match(css, /\.si-mort/, '.si-mort doit être stylée');
+    assert.match(css, /\.si-rare/, '.si-rare doit être stylée');
 });

@@ -17,14 +17,43 @@ async function main() {
     const ok = (name) => { n++; console.log('  ✓ ' + name); };
 
     // ── 1. Verdict d'une observation ────────────────────────────────────────
-    assert.strictEqual(P.verdictFromObservation({ mediaRequests: 3 }), 'plays', 'du trafic vidéo : ça joue');
+    /* LA VIDÉO DOIT ÊTRE ARRIVÉE, PAS SEULEMENT DEMANDÉE.
+
+       Ces assertions disaient l'inverse : `{ mediaRequests: 3 }` valait « joue ». Or
+       `mediaRequests` compte les requêtes PARTIES, et rien ne regardait les réponses.
+       Signalé le 26 septembre 2026 : « les embed.st, ya genre généralement RIEN qui
+       joue » — pendant qu'embed.st était noté 24 sur 24 « joue », donc premier au
+       classement, donc la première chose qu'une tuile chargeait. Son lecteur
+       pair-à-pair demande un manifeste dès l'ouverture ; que la réponse soit un 500
+       ne changeait rien au verdict. C'était déjà relevé le 20 septembre — « embed.st à
+       1/1 alors que son manifeste répondait HTTP 500 » — et attribué à tort au fait que
+       le registre ne s'accumulait pas.
+
+       Le verdict se gagne donc sur `videoReady`, ou sur `mediaOk` : les réponses vidéo
+       en 2xx. */
+    assert.strictEqual(P.verdictFromObservation({ mediaRequests: 9, mediaOk: 0, status: 200 }), 'none',
+        'demander de la vidéo sans en recevoir : ça NE joue pas');
+    assert.strictEqual(P.verdictFromObservation({ mediaRequests: 3, mediaOk: 1, status: 200 }), 'none',
+        'une seule réponse : le manifeste existe, aucun segment n’a suivi');
+    assert.strictEqual(P.verdictFromObservation({ mediaRequests: 3, mediaOk: 2 }), 'plays',
+        'le manifeste ET un segment sont arrivés : ça joue');
     assert.strictEqual(P.verdictFromObservation({ videoReady: true }), 'plays', 'un <video> avec des données : ça joue');
     assert.strictEqual(P.verdictFromObservation({ frameError: true }), 'blocked', 'cadre refusé');
     assert.strictEqual(P.verdictFromObservation({ status: 403 }), 'blocked', 'hôte mort');
     assert.strictEqual(P.verdictFromObservation({ status: 200 }), 'none', 'chargé, rien ne joue');
     assert.strictEqual(P.verdictFromObservation(null), 'none');
-    assert.strictEqual(P.verdictFromObservation({ mediaRequests: 1, frameError: true }), 'plays', 'la vidéo vue prime sur un cadre secondaire en erreur');
-    ok('verdict : plays / blocked / none');
+    assert.strictEqual(P.verdictFromObservation({ mediaOk: 4, frameError: true }), 'plays',
+        'la vidéo REÇUE prime sur un cadre secondaire en erreur');
+    assert.strictEqual(P.verdictFromObservation({ mediaRequests: 4, mediaOk: 0, mediaEchecs: 4, status: 200 }), 'none',
+        'quatre refus de suite : le lecteur réclame, le CDN ne donne rien');
+    ok('verdict : la vidéo arrivée, pas seulement demandée');
+
+    /* Le critère est versionné, et `verify_players.mjs` vide le registre quand il change :
+       des compteurs gagnés sous une règle fausse ne valent rien, et les laisser vieillir
+       tout seuls prendrait des semaines. */
+    assert.strictEqual(typeof P.CRITERE_VERDICT, 'number');
+    assert.ok(P.CRITERE_VERDICT >= 2, 'la règle « arrivé, pas demandé » est la v2');
+    ok('le critère du verdict porte une version');
 
     // ── 1 bis. Ce qui compte comme du trafic vidéo ──────────────────────────
     /* Relevé au premier passage réel : des bibliothèques JS dans un dossier « hls », et la

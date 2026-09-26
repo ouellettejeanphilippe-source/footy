@@ -50,15 +50,53 @@ export function tileTarget(link) {
     return (link && link.url) || '';
 }
 
+/* Le critère du verdict, versionné.
+
+   Il change de valeur quand la RÈGLE change, et `verify_players.mjs` repart alors
+   d'un registre vide : des compteurs gagnés sous une règle fausse ne valent rien,
+   et les laisser vieillir tout seuls prendrait des semaines pendant lesquelles le
+   classement continuerait de se tromper.
+
+   v2 (26 septembre 2026) : la vidéo doit être ARRIVÉE, pas seulement demandée. */
+export var CRITERE_VERDICT = 2;
+
 /* Verdict d'une observation en navigateur.
-   - `plays`   : du trafic vidéo est parti, ou un <video> a des données prêtes ;
+   - `plays`   : un <video> a des données prêtes, ou de la vidéo est vraiment arrivée ;
    - `blocked` : le cadre a été refusé (page d'erreur du navigateur) ou l'hôte a répondu
                  une erreur — ce lien ne jouera pour personne ;
    - `none`    : chargé, mais rien ne joue. Faible signal : un centre de données peut être
-                 traité autrement qu'un vrai visiteur. */
+                 traité autrement qu'un vrai visiteur.
+
+   POURQUOI CE N'EST PLUS LE NOMBRE DE REQUÊTES QUI DÉCIDE
+   -------------------------------------------------------
+   La règle d'avant était `mediaRequests > 0 || videoReady`, et `mediaRequests`
+   comptait les requêtes PARTIES (`page.on('request')`), jamais les réponses. Une
+   seule requête dont l'adresse ressemble à de la vidéo suffisait donc — qu'elle
+   réponde 403, 404, ou rien du tout.
+
+   Ce n'était pas une subtilité. Signalé le 26 septembre 2026 : « les embed.st, ya
+   genre généralement RIEN qui joue ». Or embed.st était noté 24 sur 24 « joue »,
+   donc premier au classement, donc la première chose qu'une tuile chargeait. Son
+   lecteur pair-à-pair DEMANDE un manifeste dès l'ouverture ; que rien n'arrive
+   ensuite ne changeait pas le verdict. Le classement récompensait l'intention de
+   jouer, pas le fait de jouer — et l'écran restait noir.
+
+   Deux preuves sont maintenant acceptées, et aucune autre :
+
+     `videoReady`  un <video> du cadre a `readyState >= 2` ou `currentTime > 0`.
+                   C'est la preuve directe : des données décodables sont là.
+
+     `mediaOk >= 2` au moins deux réponses vidéo en 2xx. Deux, et non une : une
+                   seule est le manifeste, qui prouve que la liste de lecture
+                   existe — pas qu'un segment ait suivi. Deux veut dire le
+                   manifeste ET un segment, ou deux segments.
+
+   `mediaRequests` est conservé, mais seulement pour le diagnostic : l'écart entre
+   « demandé » et « arrivé » est précisément ce qui était invisible. */
 export function verdictFromObservation(obs) {
     var o = obs || {};
-    if ((o.mediaRequests | 0) > 0 || o.videoReady) return 'plays';
+    if (o.videoReady) return 'plays';
+    if ((o.mediaOk | 0) >= 2) return 'plays';
     if (o.frameError || (o.status | 0) >= 400) return 'blocked';
     return 'none';
 }
@@ -108,7 +146,7 @@ export function reporterVerifications(matches, precedent, maintenant, validiteMs
             if (!l || !l.url || !l.verified) return;
             var at = l.verifiedAt ? Date.parse(l.verifiedAt) : NaN;
             if (isNaN(at) || now - at > validite || now - at < 0) return;
-            vus[l.url] = { verified: l.verified, verifiedAt: l.verifiedAt };
+            vus[l.url] = { verified: l.verified, verifiedAt: l.verifiedAt, media: l.media, mediaAt: l.mediaAt };
         });
     });
     var n = 0;
@@ -119,6 +157,10 @@ export function reporterVerifications(matches, precedent, maintenant, validiteMs
             if (!v) return;
             l.verified = v.verified;
             l.verifiedAt = v.verifiedAt;
+            /* L'adresse du flux voyage avec son verdict : elle a été observée au même
+               instant, et le mode direct a sa propre péremption (MEDIA_DIRECT_TTL_MS,
+               js/directmedia.js) qui la jettera plus tôt si elle était signée. */
+            if (v.media) { l.media = v.media; l.mediaAt = v.mediaAt; }
             n++;
         });
     });
@@ -175,12 +217,22 @@ export function playabilityScore(link, ledger) {
 
      'si-joue'   CE lien-ci a été vu en train de jouer ;
      'si-mort'   son hôte a été éprouvé N fois sans jamais jouer ;
-     null        hôte inconnu, éprouvé moins de trois fois, ou qui joue
-                 parfois — une marque sur un doute serait du bruit.
+     'si-rare'   il joue, mais moins d'une fois sur deux ;
+     null        hôte inconnu, ou éprouvé moins de trois fois — une marque sur un
+                 doute serait du bruit.
 
    Le seuil de trois est celui de `playabilityScore` : au-dessous, un hôte peut
    simplement être tombé pendant l'essai. Le compte part EN CLAIR plutôt qu'un
    jugement, parce que 0/4 et 0/24 ne méritent pas la même confiance.
+
+   POURQUOI « JOUE PARFOIS » EST MARQUÉ LUI AUSSI
+   ---------------------------------------------
+   `playabilityScore` ne rend 0 qu'à `plays === 0` ; un hôte à une réussite sur
+   quatre obtient 1, c'est-à-dire EXACTEMENT ce qu'obtient un hôte jamais éprouvé.
+   Mesuré le 26 septembre 2026, après correction du critère du verdict : embed.st
+   tombe à 1/4 — et porte 956 liens, soit 22 % de la liste. Sans marque, un
+   cinquième des liens se présentait comme « inconnu » alors qu'on savait qu'il
+   joue une fois sur quatre.
 
    Rend un descriptif, pas du HTML : ce module ne connaît pas l'interface, et
    c'est ce qui permet de l'éprouver sans navigateur ni DOM. */
@@ -195,13 +247,22 @@ export function marqueJouabilite(link, ledger) {
     }
     var e = ledger && ledger[hostOfUrl(tileTarget(link))];
     if (!e || (e.tested | 0) < 3) return null;
+    var compte = e.plays + '/' + e.tested;
     if ((e.plays | 0) === 0) {
         return {
             classe: 'si-mort',
-            texte: '0/' + e.tested,
+            texte: compte,
             infobulle: 'Cet hôte a été chargé ' + e.tested + ' fois dans un vrai navigateur sans '
                 + "qu'aucune vidéo ne démarre. Le lien reste ouvrable — un hôte peut revenir — mais "
                 + "il y a peu de chances qu'il joue.",
+        };
+    }
+    if (e.plays / e.tested < 0.5) {
+        return {
+            classe: 'si-rare',
+            texte: compte,
+            infobulle: 'Cet hôte n’a joué que ' + e.plays + ' fois sur ' + e.tested + ' essais dans un '
+                + 'vrai navigateur. Il peut marcher, mais rarement du premier coup.',
         };
     }
     return null;
