@@ -1,5 +1,8 @@
 import { getEstTimeStrFromDate, getEstDateStrFromDate, getDomain, domainPrefs, toggleDomainPref, sortFluxLinks, SCRAPERS_CONFIG,
-         minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN } from './config.js';
+         minutesUntilStart, isLiveNow, finPresumee, raisonFinPresumee, startsWithin, LIVE_WINDOW_MIN, playLedger } from './config.js';
+/* js/playability.js n'importe rien : le citer ici n'ajoute aucune arête au cycle
+   utils ↔ config ↔ ui ↔ multiview ↔ main ↔ scrapers ↔ api. */
+import { marqueJouabilite } from './playability.js';
 import { minutesDansLaJournee, comparerHeures, libelleJour, FENETRE_HEURES } from './nuit.js';
 import { etatCacheServeur, rattrapageNecessaire, ageEnClair } from './rattrapage.js';
 import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
@@ -1297,7 +1300,20 @@ export function scrollToNow(){
 export var QC ={'HD':'bHD','SD':'bSD','4K':'b4K','4k':'b4K'};
 export var QI ={'HD':'📺','SD':'📱','4K':'🖥','4k':'🖥'};
 
-export function renderFluxItem(s, i, m) {
+/* La marque de jouabilité, mise en HTML. Ce qu'elle dit et quand elle se tait est
+   décidé dans js/playability.js (marqueJouabilite) : ce module-ci ne fait que
+   l'habiller, et c'est ce qui permet d'éprouver la règle sans navigateur. */
+function badgeJouabilite(s, ledger) {
+    var mq = marqueJouabilite(s, ledger);
+    if (!mq) return '';
+    return '<span class="' + mq.classe + '" title="' + esc(mq.infobulle) + '">' + esc(mq.texte) + '</span>';
+}
+
+export function renderFluxItem(s, i, m, ledger) {
+    /* Le registre est passé par la liste quand elle en rend plusieurs : `playLedger`
+       relit localStorage et refusionne les deux registres à chaque appel, ce qui, sur
+       une fiche de cinquante liens, se paierait cinquante fois. */
+    if (!ledger) ledger = playLedger();
     var ev="openFlux(event,'"+escJs(encodeURIComponent(s.url||'#'))+"','"+escJs(encodeURIComponent(s.name||'Flux'))+"','"+escJs(m.id)+"',"+(s.topLevel?'true':'false')+")";
     /* Le clic envoie toujours vers le Multivision, intégrable ou non : ouvrir
        automatiquement un nouvel onglet pour les liens « page » ne faisait pas mieux
@@ -1339,7 +1355,8 @@ export function renderFluxItem(s, i, m) {
       +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
       +'<div class="si-inf">'
         +'<div class="si-n"><span>'+esc(s.name||'Flux '+(i+1))+'</span>'
-        +(s.topLevel?'<span class="si-tab" title="Cette page refuse l\'affichage intégré : le clic l\'ouvre dans un onglet">onglet</span>':'')+'</div>'
+        +(s.topLevel?'<span class="si-tab" title="Cette page refuse l\'affichage intégré : le clic l\'ouvre dans un onglet">onglet</span>':'')
+        + badgeJouabilite(s, ledger)+'</div>'
         + meta
       +'</div>'
       /* Badge de qualité seulement quand elle est réellement connue. */
@@ -1918,8 +1935,10 @@ export function openMod(m,col){
           contentHtml += '</div>';
       } else {
           contentHtml += renderDomainChips(m);
+          // Le registre, lu une seule fois pour toute la liste (voir renderFluxItem).
+          var registre = playLedger();
           contentHtml += sortedLinks.map(function(s,i){
-              return renderFluxItem(s, i, m);
+              return renderFluxItem(s, i, m, registre);
           }).join('');
       }
 

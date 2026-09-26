@@ -1,0 +1,19 @@
+{
+  "name": "footy-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "author": "Jean-Philippe Ouellette",
+  "description": "Guide des Sports en application Android",
+  "scripts": {
+    "www": "node assembler-www.mjs",
+    "sync": "npm run www && cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

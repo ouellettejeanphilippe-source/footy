@@ -1,0 +1,82 @@
+{
+  "name": "footy-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "author": "Jean-Philippe Ouellette",
+  "description": "Guide des Sports en application de bureau Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable nsis"
+  },
+  "build": {
+    "appId": "ca.local.footy",
+    "productName": "Guide des Sports",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload-userscript.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "..",
+        "to": "site",
+        "filter": [
+          "index.html",
+          "legacy.html",
+          "styles.css",
+          "styles-legacy.css",
+          "tv.css",
+          "sw.js",
+          "manifest.json",
+          "domains.json",
+          "multiview-cleaner.user.js",
+          "js/**/*",
+          "data/**/*",
+          "icons/**/*",
+          "scripts/**/*"
+        ]
+      },
+      {
+        "from": "deps/node_modules",
+        "to": "site/node_modules"
+      }
+    ],
+    "win": {
+      "icon": "../icons/icon-512.png",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Guide-des-Sports-portable.exe"
+    },
+    "nsis": {
+      "artifactName": "Guide-des-Sports-installateur.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Guide des Sports"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.18.2"
+  }
+}

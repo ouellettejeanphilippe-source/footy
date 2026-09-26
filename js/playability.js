@@ -161,6 +161,52 @@ export function playabilityScore(link, ledger) {
     return 1;
 }
 
+/* Ce que l'observation permet de DIRE d'un lien, sur sa ligne dans la liste.
+
+   Pourquoi la liste le dit, alors que `playabilityScore` le savait déjà :
+   `sortFluxLinks` mettait bien les liens jouables en tête, mais la liste
+   continuait d'afficher tous les autres à la suite, sans rien pour les
+   distinguer. Mesuré le 26 septembre 2026 sur le cache du jour : 2205 des
+   4825 liens (46 %) portaient sur un hôte éprouvé au moins trois fois qui
+   n'a JAMAIS joué — sportplus.watch à lui seul en portait 950, un cinquième
+   du total. Rien ne le disait, donc on cliquait dedans.
+
+   Ce qui est marqué, et ce qui ne l'est pas :
+
+     'si-joue'   CE lien-ci a été vu en train de jouer ;
+     'si-mort'   son hôte a été éprouvé N fois sans jamais jouer ;
+     null        hôte inconnu, éprouvé moins de trois fois, ou qui joue
+                 parfois — une marque sur un doute serait du bruit.
+
+   Le seuil de trois est celui de `playabilityScore` : au-dessous, un hôte peut
+   simplement être tombé pendant l'essai. Le compte part EN CLAIR plutôt qu'un
+   jugement, parce que 0/4 et 0/24 ne méritent pas la même confiance.
+
+   Rend un descriptif, pas du HTML : ce module ne connaît pas l'interface, et
+   c'est ce qui permet de l'éprouver sans navigateur ni DOM. */
+export function marqueJouabilite(link, ledger) {
+    if (!link || !link.url) return null;
+    if (link.verified === 'plays') {
+        return {
+            classe: 'si-joue',
+            texte: 'joue',
+            infobulle: 'Observé en train de jouer par la vérification des lecteurs.',
+        };
+    }
+    var e = ledger && ledger[hostOfUrl(tileTarget(link))];
+    if (!e || (e.tested | 0) < 3) return null;
+    if ((e.plays | 0) === 0) {
+        return {
+            classe: 'si-mort',
+            texte: '0/' + e.tested,
+            infobulle: 'Cet hôte a été chargé ' + e.tested + ' fois dans un vrai navigateur sans '
+                + "qu'aucune vidéo ne démarre. Le lien reste ouvrable — un hôte peut revenir — mais "
+                + "il y a peu de chances qu'il joue.",
+        };
+    }
+    return null;
+}
+
 /* Combien de temps la tuile attend une vidéo avant de passer à la source suivante.
 
    « embed.st, soit ça marche pas, soit c'est hyper long… finalement ça marche après x

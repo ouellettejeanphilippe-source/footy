@@ -517,6 +517,17 @@ body.view-timeline .zoom-controls { display: flex; }
 .si-n { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .si-n > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .si-tab { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; border: 1px solid var(--border2); border-radius: 4px; padding: 1px 5px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+/* Ce que l'observation dit du lien (voir marqueJouabilite, js/ui.js). Même gabarit
+   que .si-tab, mais teinté : ces deux marques répondent à « est-ce que ça va jouer ? »,
+   pas à « comment ça s'ouvre ? ». La couleur passe par currentColor sur la bordure,
+   pour rester lisible dans les deux thèmes et pour les palettes personnalisées. */
+.si-joue, .si-mort { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 4px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; opacity: .85; }
+.si-joue { color: #3fbf6f; }
+.si-mort { color: #d9534f; font-variant-numeric: tabular-nums; text-transform: none; }
+/* Le nom du flux s'efface quand son hôte n'a jamais joué : le coup d'œil doit suffire,
+   sans avoir à lire chaque pastille. La ligne reste cliquable — un hôte peut revenir. */
+.si:has(.si-mort) .si-n > span:first-child,
+.si:has(.si-mort) .si-meta { opacity: .5; }
 .si-meta { font-size: 11px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .si-meta .si-chan { font-weight: 700; color: var(--text); }
 .si-meta .si-lang { border: 1px solid var(--border2); border-radius: 4px; padding: 0 4px; }

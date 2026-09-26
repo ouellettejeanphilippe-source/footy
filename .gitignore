@@ -1,2 +1,36 @@
 node_modules/
 test-results/
+
+# ── Applications locales (bureau et Android) ─────────────────────────────────
+# Le CODE de ces deux dossiers est versionne ; ce que les outils FABRIQUENT, non.
+# Ce sont des artefacts reproductibles a partir des sources, et ils pesent des
+# centaines de mega-octets : Electron seul fait 368 Mo, chaque EXE 98 Mo.
+#
+# Pour tout refaire :
+#   desktop -> npm install && npm run build
+#   mobile  -> npm install && powershell -File mobile\fabriquer-apk.ps1
+#
+# ATTENTION : git ne reconnait un commentaire qu'en DEBUT de ligne. Un `#` mis
+# apres un motif en fait partie, et le motif ne filtre plus rien.
+
+# Version de bureau
+desktop/dist/
+
+# Version Android
+# `mobile/www/` est rassemble par assembler-www.mjs a chaque fabrication, et
+# `assets/public/` en est la copie que `cap sync` depose dans le projet Android :
+# deux duplicatas du site, que rien ne justifie de versionner.
+mobile/www/
+mobile/android/app/src/main/assets/public/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/*.apk
+mobile/*.aab
+
+# Les icones et ecrans de demarrage produits a partir de mobile/assets/ par
+# `npx @capacitor/assets generate --android`.
+mobile/android/app/src/main/res/mipmap-*/
+mobile/android/app/src/main/res/drawable-*/
+mobile/android/app/src/main/res/drawable/splash.png

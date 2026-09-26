@@ -1,7 +1,7 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry } from './extractors.js';
 import { getBridgeStatus } from './embed-bridge.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague, playLedger } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
@@ -3103,8 +3103,10 @@ export function updateMatchUiAfterScrape(m) {
                         var sortedLinks = sortFluxLinks(m.streamLinks);
                         // Mêmes pastilles de filtre par domaine qu'au premier rendu (js/ui.js).
                         linksHtml = (typeof window.renderDomainChips === 'function' ? window.renderDomainChips(m) : '');
+                        // Le registre, lu une seule fois pour toute la liste (voir renderFluxItem, js/ui.js).
+                        var registre = playLedger();
                         linksHtml += sortedLinks.map(function(s,idx){
-                            return renderFluxItem(s, idx, m);
+                            return renderFluxItem(s, idx, m, registre);
                         }).join('');
                     }
 

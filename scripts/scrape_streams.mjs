@@ -50,19 +50,132 @@ function unwrapProxyUrl(u) {
 function refererFor(target) {
     try { const o = new URL(target).origin; return o + '/'; } catch (e) { return undefined; }
 }
-const fetchStats = { ok: 0, fail: 0, byStatus: {} };
+/* ── Régulation par hôte ────────────────────────────────────────────────────
+
+   Ce que le passage du 26 septembre 2026 a mesuré, sur 2740 requêtes :
+
+       ok 1448  |  échecs 1292  dont  429 → 1170     403 → 95
+                                      404 →   14     451 →   5     réseau → 8
+
+   Neuf échecs sur DIX étaient un 429 — « tu demandes trop vite ». Ce n'étaient
+   donc pas des pages absentes ou interdites : c'étaient des pages qu'on avait
+   le droit de lire et qu'on a perdues en les demandant mal. Le symptôme le plus
+   visible ce jour-là : liveleagues n'a rendu que 50 de ses 205 pages de match.
+
+   Deux causes, toutes les deux ici :
+
+     1. La concurrence était GLOBALE (CONCURRENCY = 6, plus bas) et non par hôte.
+        Six pages du même site partaient donc ensemble — et une file de 205 pages
+        appartenant toutes au même site, c'est le cas normal d'une source qui
+        liste beaucoup de matchs.
+
+     2. Un 429 était définitif. Aucune reprise : la page était perdue pour le
+        passage, alors que le serveur venait précisément de dire « plus tard ».
+
+   Corrigé au seul endroit où tout le trafic passe. Au-dessus, rien ne change :
+   ni `fetchPage`, ni les ouvriers, ni la logique de miroirs.
+
+     · deux requêtes en vol au plus PAR HÔTE, et un écart minimal entre deux
+       départs vers le même hôte ;
+     · sur un 429, on attend ce que le serveur demande (`Retry-After`), sinon un
+       délai qui double, et on réessaie ;
+     · et l'écart de CET hôte double pour le reste du passage : un site qui vient
+       de se plaindre est un site à ménager jusqu'à la fin, pas seulement sur la
+       requête suivante.
+
+   Les hôtes sont indépendants : ménager liveleagues ne ralentit pas les neuf
+   autres sources, qui continuent à la vitesse du plafond global. */
+
+const REGULATION = {
+    parHote: 2,
+    espacementMin: 120,      // ms entre deux départs vers le même hôte
+    espacementMax: 4000,     // plafond : un hôte hostile ne doit pas bloquer le passage
+    essais: 3,               // la requête, puis deux reprises
+    attenteMax: 20000,       // ce qu'on accepte d'attendre sur un Retry-After
+};
+
+const hotes = new Map();
+function etatHote(h) {
+    if (!hotes.has(h)) hotes.set(h, { enVol: 0, file: [], espacement: REGULATION.espacementMin, prochain: 0 });
+    return hotes.get(h);
+}
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function prendreLeTour(h) {
+    const e = etatHote(h);
+    /* Le jeton se transmet directement d'une requête finie à la suivante (voir
+       rendreLeTour) : celle qui attendait n'a donc pas à le reprendre, sinon
+       deux requêtes se croiseraient sur le même jeton. */
+    if (e.enVol >= REGULATION.parHote) await new Promise((r) => e.file.push(r));
+    else e.enVol++;
+
+    const maintenant = Date.now();
+    const attente = Math.max(0, e.prochain - maintenant);
+    e.prochain = Math.max(maintenant, e.prochain) + e.espacement;
+    if (attente) await dormir(attente);
+}
+
+function rendreLeTour(h) {
+    const e = etatHote(h);
+    const suivante = e.file.shift();
+    if (suivante) suivante();
+    else e.enVol--;
+}
+
+/* Ce que le serveur demande, quand il le dit : `Retry-After` porte soit un
+   nombre de secondes, soit une date. À défaut, un délai qui double, avec du
+   hasard — deux requêtes refusées ensemble ne doivent pas repartir ensemble. */
+function attenteApres429(reponse, essai) {
+    const brut = reponse.headers.get('retry-after');
+    if (brut) {
+        const secondes = Number(brut);
+        if (Number.isFinite(secondes) && secondes >= 0) return Math.min(secondes * 1000, REGULATION.attenteMax);
+        const date = Date.parse(brut);
+        if (Number.isFinite(date)) return Math.min(Math.max(0, date - Date.now()), REGULATION.attenteMax);
+    }
+    return Math.min(1000 * Math.pow(2, essai - 1) + Math.random() * 500, REGULATION.attenteMax);
+}
+
+const fetchStats = { ok: 0, fail: 0, byStatus: {}, repris429: 0 };
+
 globalThis.fetch = async (u, init) => {
     const target = unwrapProxyUrl(String(u));
+    let hote;
+    try { hote = new URL(target).hostname; } catch (e) { hote = '(adresse illisible)'; }
+
     const headers = Object.assign({ 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9', 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8' }, (init && init.headers) || {});
     const ref = refererFor(target);
     if (ref && !headers.Referer) headers.Referer = ref;
-    try {
-        const r = await realFetch(target, Object.assign({}, init, { headers, redirect: 'follow' }));
-        if (r.ok) fetchStats.ok++; else { fetchStats.fail++; fetchStats.byStatus[r.status] = (fetchStats.byStatus[r.status] || 0) + 1; }
+
+    for (let essai = 1; ; essai++) {
+        await prendreLeTour(hote);
+        let r;
+        try {
+            r = await realFetch(target, Object.assign({}, init, { headers, redirect: 'follow' }));
+        } catch (e) {
+            rendreLeTour(hote);
+            fetchStats.fail++;
+            fetchStats.byStatus.network = (fetchStats.byStatus.network || 0) + 1;
+            throw e;
+        }
+        rendreLeTour(hote);
+
+        if (r.status === 429 && essai < REGULATION.essais) {
+            /* Le corps d'une réponse qu'on jette doit être relâché : sans cela
+               la connexion reste ouverte, et au bout de quelques centaines de
+               429 le pool s'épuise — ce qui ressemble alors à une panne réseau
+               et non à du throttling. */
+            try { await r.arrayBuffer(); } catch (e) {}
+            const e = etatHote(hote);
+            e.espacement = Math.min(e.espacement * 2, REGULATION.espacementMax);
+            fetchStats.repris429++;
+            await dormir(attenteApres429(r, essai));
+            continue;
+        }
+
+        if (r.ok) fetchStats.ok++;
+        else { fetchStats.fail++; fetchStats.byStatus[r.status] = (fetchStats.byStatus[r.status] || 0) + 1; }
         return r;
-    } catch (e) {
-        fetchStats.fail++; fetchStats.byStatus.network = (fetchStats.byStatus.network || 0) + 1;
-        throw e;
     }
 };
 
