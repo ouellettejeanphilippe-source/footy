@@ -1,4 +1,4 @@
-# Fabrique l'APK du Guide des Sports, signe et pret a installer.
+﻿# Fabrique l'APK du Guide des Sports, signe et pret a installer.
 #
 #   powershell -ExecutionPolicy Bypass -File mobile\fabriquer-apk.ps1
 #

@@ -1,6 +1,17 @@
-# Le pipeline de donnees du Guide des Sports, en local.
+﻿# Le pipeline de donnees du Guide des Sports : un RATTRAPAGE a la main.
 #
 #   powershell -ExecutionPolicy Bypass -File local\pipeline.ps1
+#
+# CE SCRIPT N EST PLUS LE CHEMIN NORMAL. L application de bureau fait ces trois
+# etapes elle-meme, toutes les 30 minutes, TANT QU ELLE EST OUVERTE (voir
+# desktop/main.js, passeComplete). Il n y a donc plus de tache planifiee : rien ne
+# tourne quand personne ne regarde, et il n y a rien a desinstaller.
+#
+# Ce script reste pour le cas ou l application n a pas tourne depuis longtemps et
+# qu on veut tout rattraper d un coup, avec un budget de verification qu une passe
+# de 8 minutes ne peut pas donner :
+#
+#   powershell -File local\pipeline.ps1 -VerifTotal 600 -VerifBudgetMs 1500000
 #
 # Ce qu'il remplace, et ce qui manquait
 # ------------------------------------

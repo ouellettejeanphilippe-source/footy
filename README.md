@@ -73,14 +73,20 @@ powershell -ExecutionPolicy Bypass -File mobile\fabriquer-apk.ps1   # mobile\Gui
 
 Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins). L'APK n'embarque qu'un **instantané** des données : quand `data/schedule.json` n'est pas du jour, le client interroge ESPN lui-même (`js/api.js`, `apiOuCacheLocal`), donc il n'a besoin d'aucun serveur. Lancez le pipeline avant de fabriquer, sinon l'APK part avec des liens non vérifiés.
 
-### `local/` — les données
+### Les données : l'application s'en charge
+
+Il n'y a **pas de tâche planifiée**. Tant que l'application de bureau est ouverte, elle refait les trois étapes elle-même toutes les 30 minutes — le calendrier, les liens, puis la vérification des lecteurs (`desktop/main.js`, `passeComplete`). Fermez la fenêtre et plus rien ne tourne : ces données ne valent que pour aujourd'hui et ne servent qu'à qui regarde. `⋯ Tout mettre à jour maintenant` (Ctrl+Maj+U) force une passe.
+
+Cela demande que l'application travaille **dans le dépôt** (menu → « Travailler dans un dépôt… ») : la vérification charge les lecteurs dans le Chromium de Playwright, qui n'est pas embarqué dans l'exécutable. Sans dépôt, seul le calendrier est rafraîchi.
+
+### `local/pipeline.ps1` — le rattrapage à la main
 
 ```bash
 powershell -ExecutionPolicy Bypass -File local\pipeline.ps1
-powershell -ExecutionPolicy Bypass -File local\installer-la-tache.ps1   # toutes les 30 min
+powershell -File local\pipeline.ps1 -VerifTotal 600 -VerifBudgetMs 1500000   # rattrapage complet
 ```
 
-Le pipeline fait les trois étapes dans l'ordre : le calendrier (sauté s'il est déjà du jour), les liens, puis **la vérification des lecteurs**. Cette troisième étape est celle dont l'absence se voit le plus : c'est elle qui éprouve chaque lecteur dans un vrai Chromium et note lesquels jouent, et c'est sur ses observations que `sortFluxLinks` classe les liens et que la liste marque ceux qui ne jouent jamais.
+Pour le cas où l'application n'a pas tourné depuis longtemps : les mêmes trois étapes, avec un budget de vérification qu'une passe de 8 minutes ne peut pas donner. Cette troisième étape est celle dont l'absence se voit le plus : c'est elle qui éprouve chaque lecteur dans un vrai Chromium et note lesquels jouent, et c'est sur ses observations que `sortFluxLinks` classe les liens et que la liste marque ceux qui ne jouent jamais.
 
 Ses bornes par défaut (`--total 150`, `--budget-ms 5 min`) sont taillées pour un runner GitHub. Au premier usage, ou après une longue pause, donnez-lui un vrai budget :
 

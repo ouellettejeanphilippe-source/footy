@@ -401,39 +401,97 @@ async function calendrierEstDuJour() {
   }
 }
 
-// Le scraper est un module ES qui écrit `data/schedule.json` en chemin
-// RELATIF : il doit tourner avec la racine du site comme dossier de travail.
-function regenererCalendrier() {
+/* Lancer un des scripts du dépôt.
+   Ils écrivent tous leurs fichiers en chemin RELATIF (`data/schedule.json`,
+   `data/streams.json`) : le dossier de travail doit donc être la racine du site. */
+function lancerScript(fichier, args, options) {
   return new Promise((resolve) => {
-    const script = path.join(RACINE, 'scripts', 'scrape_schedule.mjs');
-    const enfant = utilityProcess.fork(script, [], {
+    const script = path.join(RACINE, 'scripts', fichier);
+    if (!fs.existsSync(script)) { resolve({ code: -1, journal: 'script absent : ' + script }); return; }
+    const enfant = utilityProcess.fork(script, args || [], {
       cwd: RACINE,
       stdio: 'pipe',
-      serviceName: 'scrape-schedule',
+      serviceName: (options && options.nom) || 'script',
+      execArgv: (options && options.execArgv) || [],
     });
     let journal = '';
-    enfant.stdout?.on('data', (d) => {
-      journal += d.toString();
-    });
-    enfant.stderr?.on('data', (d) => {
-      journal += d.toString();
-    });
+    enfant.stdout?.on('data', (d) => { journal += d.toString(); });
+    enfant.stderr?.on('data', (d) => { journal += d.toString(); });
     enfant.on('exit', (code) => resolve({ code, journal }));
   });
 }
 
+function regenererCalendrier() {
+  return lancerScript('scrape_schedule.mjs', [], { nom: 'scrape-schedule' });
+}
+
+function relireLesSources() {
+  /* Le tas de 8 Go est ce que `npm run scrape:streams` passe au script : il lit des
+     centaines de pages et les analyse en mémoire. Sans lui, la passe meurt au milieu
+     sur un dépassement de tas, et les liens restent ceux d'avant. */
+  return lancerScript('scrape_streams.mjs', [], {
+    nom: 'scrape-streams',
+    execArgv: ['--max-old-space-size=8192'],
+  });
+}
+
+function eprouverLesLecteurs(budgetMs, total) {
+  /* La vérification charge les lecteurs dans un vrai Chromium, celui de Playwright.
+     Elle n'est donc possible que dans le dépôt, qui a `node_modules` et le navigateur
+     téléchargé — d'où le garde-fou de `travailPossible`. */
+  return lancerScript('verify_players.mjs',
+    ['--budget-ms', String(budgetMs), '--total', String(total)],
+    { nom: 'verify-players' });
+}
+
 let fenetre = null;
-let scrapeEnCours = false;
+let passeEnCours = false;
+let minuteurPasse = null;
+
+/* CE QUE LES ACTIONS GITHUB FAISAIENT, L'APPLICATION LE FAIT PENDANT QU'ELLE TOURNE.
+   ---------------------------------------------------------------------------------
+   Trois Actions portaient les données : le calendrier une fois par jour, les liens
+   toutes les 30 minutes, et la vérification des lecteurs juste après. Elles ont
+   d'abord été remplacées par une tâche du Planificateur de Windows — qui marche,
+   mais qui travaille même quand personne ne regarde, et qui laisse une trace de plus
+   à installer, à désinstaller et à oublier.
+
+   Ces données ne valent que pour aujourd'hui, et ne servent qu'à qui regarde. Les
+   rafraîchir depuis l'application, tant qu'elle est ouverte, donne le même résultat
+   sans rien laisser derrière : on ferme la fenêtre, plus rien ne tourne.
+
+   L'ordre est celui du pipeline, et il compte : le calendrier d'abord (les liens se
+   rattachent aux matchs du jour), les liens ensuite, la vérification en dernier —
+   elle a besoin des liens pour savoir quoi éprouver.
+
+   Aucune étape ne fait échouer les suivantes : un scraper muet laisse le fichier
+   précédent intact, et mieux vaut des liens d'il y a une heure qu'une page vide. */
+
+const INTERVALLE_PASSE_MS = 30 * 60 * 1000;
+const PREMIERE_PASSE_MS = 90 * 1000;      // la fenêtre doit d'abord s'afficher
+const VERIF_BUDGET_MS = 8 * 60 * 1000;
+const VERIF_TOTAL = 300;
+
+/* Le travail complet demande le dépôt : ses scripts, ses dépendances (`jsdom`,
+   Playwright) et le Chromium téléchargé. Une machine qui n'a que l'exécutable garde
+   le rafraîchissement du calendrier, qui n'a besoin que de `jsdom` — embarqué. */
+function travailPossible() {
+  return !!DEPOT && fs.existsSync(path.join(RACINE, 'node_modules'));
+}
+
+function titre(etat) {
+  fenetre?.setTitle(etat ? 'Guide des Sports — ' + etat : 'Guide des Sports');
+}
 
 async function majCalendrier({ force = false } = {}) {
-  if (scrapeEnCours) return;
+  if (passeEnCours) return;
   if (!force && (await calendrierEstDuJour())) return;
 
-  scrapeEnCours = true;
-  fenetre?.setTitle('Guide des Sports — mise à jour du calendrier…');
+  passeEnCours = true;
+  titre('mise à jour du calendrier…');
   const { code, journal } = await regenererCalendrier();
-  scrapeEnCours = false;
-  fenetre?.setTitle('Guide des Sports');
+  passeEnCours = false;
+  titre('');
 
   if (code === 0) {
     fenetre?.webContents.reload();
@@ -449,6 +507,44 @@ async function majCalendrier({ force = false } = {}) {
       (journal.trim().split('\n').slice(-12).join('\n') || 'Aucun détail.') +
       "\n\nL'application continue avec le calendrier précédent.",
   });
+}
+
+/* Une passe complète. `force` saute la question « le calendrier est-il déjà du
+   jour ? » ; sans lui, une passe qui tombe le même jour ne refait que les liens. */
+async function passeComplete({ force = false } = {}) {
+  if (passeEnCours) return;
+  if (!travailPossible()) return;
+  passeEnCours = true;
+  try {
+    if (force || !(await calendrierEstDuJour())) {
+      titre('calendrier…');
+      await regenererCalendrier();
+    }
+
+    titre('lecture des sources…');
+    const liens = await relireLesSources();
+    if (liens.code === 0) fenetre?.webContents.reload();
+
+    /* La vérification est la seule étape dont l'absence se voit vraiment : c'est elle
+       qui éprouve chaque lecteur dans un vrai navigateur et note lesquels jouent, et
+       c'est sur ses observations que les liens sont classés et que ceux qui ne jouent
+       jamais sont marqués. */
+    titre('vérification des lecteurs…');
+    const verif = await eprouverLesLecteurs(VERIF_BUDGET_MS, VERIF_TOTAL);
+    if (verif.code === 0) fenetre?.webContents.reload();
+  } finally {
+    passeEnCours = false;
+    titre('');
+    armerLaProchainePasse();
+  }
+}
+
+function armerLaProchainePasse() {
+  if (minuteurPasse) clearTimeout(minuteurPasse);
+  if (!travailPossible()) return;
+  // `unref` n'existe pas sur le minuteur du processus principal d'Electron ; c'est
+  // `before-quit` qui l'annule, pour qu'une fermeture n'attende pas la prochaine passe.
+  minuteurPasse = setTimeout(() => passeComplete(), INTERVALLE_PASSE_MS);
 }
 
 // --------------------------------------------------------------------------
@@ -549,6 +645,14 @@ function menu() {
             click: () => majCalendrier({ force: true }),
           },
           {
+            label: travailPossible()
+              ? 'Tout mettre à jour maintenant (calendrier, liens, vérification)'
+              : 'Tout mettre à jour — indisponible (pointez l’application sur le dépôt)',
+            enabled: travailPossible(),
+            accelerator: 'CmdOrCtrl+Shift+U',
+            click: () => passeComplete({ force: true }),
+          },
+          {
             label: 'Vider le cache hors ligne et recharger',
             click: async () => {
               await fenetre?.webContents.session.clearStorageData({
@@ -621,8 +725,23 @@ if (!app.requestSingleInstanceLock()) {
        s'ouvrent que quand l'utilisateur clique, bien après. */
     activerBlocage(session.defaultSession);
 
-    // Le calendrier se met à jour derrière si ce n'est pas celui du jour.
+    // Le calendrier tout de suite si ce n'est pas celui du jour : c'est lui qui décide
+    // ce que la grille affiche, et il coûte quelques secondes.
     majCalendrier();
+
+    /* La première passe complète après un délai : relire les sources prend une dizaine
+       de minutes et la vérification autant, et rien de cela ne doit disputer le
+       processeur à la fenêtre qui vient de s'ouvrir. Ensuite, toutes les 30 minutes
+       tant que l'application reste ouverte. */
+    if (travailPossible()) {
+      minuteurPasse = setTimeout(() => passeComplete(), PREMIERE_PASSE_MS);
+    }
+  });
+
+  /* Fermer la fenêtre arrête tout : c'est le sens de faire ce travail dans
+     l'application plutôt que dans une tâche planifiée. */
+  app.on('before-quit', () => {
+    if (minuteurPasse) { clearTimeout(minuteurPasse); minuteurPasse = null; }
   });
 
   app.on('window-all-closed', () => app.quit());
