@@ -20,6 +20,43 @@
 
 export var MEDIA_DIRECT_TTL_MS = 3 * 3600 * 1000;
 
+/* Une adresse SANS jeton ne peut pas expirer : on la garde plus longtemps.
+   --------------------------------------------------------------------
+   Trois heures conviennent à une adresse signée : elle porte sa propre péremption,
+   souvent d'une à trois heures. Mesuré sur un passage de vérification le 26 septembre
+   2026, sur 36 adresses observées :
+
+       avec jeton (`e=`, `st=`, `token=`…)    7    expirent en 1 à 3 h
+       SANS aucun jeton                      29    rien ne les fait expirer
+
+   Les vingt-neuf restaient bonnes tant que l'événement durait. Les jeter au bout de
+   trois heures n'obéissait à aucune contrainte du serveur : c'est nous qui les
+   oubliions.
+
+   Ça compte surtout sur TÉLÉPHONE. Là-bas, ni le nettoyage des lecteurs ni la
+   réécriture des en-têtes ne sont possibles — aucun navigateur mobile n'injecte de
+   script dans une iframe d'origine croisée. Le mode direct, qui ne pose aucune iframe,
+   y est donc la seule voie propre : « la vraie réponse aux pages qui refusent l'iframe
+   est ailleurs » (js/embed-bridge.js, 5 septembre 2026). Encore faut-il qu'il lui reste
+   quelque chose à jouer.
+
+   Douze heures, pas davantage : au-delà le match est fini de toute façon, et une
+   adresse morte coûte un essai à la tuile avant qu'elle ne revienne à la page. */
+export var MEDIA_DIRECT_TTL_LONG_MS = 12 * 3600 * 1000;
+
+/* Ce qui fait qu'une adresse porte sa propre expiration. Les noms varient d'un CDN à
+   l'autre ; ceux-ci couvrent ce qui a été réellement observé — `?st=…&e=…` chez
+   embedme.st et streame.center, `?s=…&e=…` chez dlive.sx. */
+export function adresseSignee(url) {
+    var q = String(url || '').split('#')[0].split('?')[1] || '';
+    if (!q) return false;
+    return /(^|&)(e|exp|expires|expiry|st|s|token|hash|md5|sig|signature|key)=/i.test(q);
+}
+
+export function dureeDeVie(url) {
+    return adresseSignee(url) ? MEDIA_DIRECT_TTL_MS : MEDIA_DIRECT_TTL_LONG_MS;
+}
+
 /* Un manifeste, pas un segment ni une bibliothèque : jugé sur le chemin, sans requête. */
 export function estManifeste(url) {
     var u = String(url || '');
@@ -37,7 +74,9 @@ export function retenirMediaDirect(registre, lienUrl, media, now) {
     var t = now === undefined ? Date.now() : now;
     Object.keys(r).forEach(function (k) {
         var e = r[k];
-        if (!e || typeof e.at !== 'number' || t - e.at > MEDIA_DIRECT_TTL_MS) delete r[k];
+        // Chaque entrée vieillit à SON rythme : une adresse signée expire vite, une
+        // adresse nue tient le temps de l'événement (voir dureeDeVie).
+        if (!e || typeof e.at !== 'number' || t - e.at > dureeDeVie(e.url)) delete r[k];
     });
     if (lienUrl && media && estManifeste(media.url)) {
         r[lienUrl] = { url: media.url, pageUrl: media.pageUrl || '', at: t, echecs: (r[lienUrl] && r[lienUrl].url === media.url) ? (r[lienUrl].echecs | 0) : 0 };
@@ -49,7 +88,7 @@ export function mediaDirectPour(registre, lienUrl, now) {
     var e = registre && registre[lienUrl];
     if (!e || !estManifeste(e.url)) return null;
     var t = now === undefined ? Date.now() : now;
-    if (typeof e.at !== 'number' || t - e.at > MEDIA_DIRECT_TTL_MS) return null;
+    if (typeof e.at !== 'number' || t - e.at > dureeDeVie(e.url)) return null;
     return e;
 }
 

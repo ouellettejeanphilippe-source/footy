@@ -57,6 +57,11 @@
   --hdr-height: 56px;
   --bottom-nav: 60px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Le pendant en haut, qui manquait. `viewport-fit=cover` (index.html) fait dessiner
+     l'application BORD A BORD, et Android 15+ l'impose de toute facon : sans cette
+     marge, la barre d'outils du lecteur passe sous l'heure et la batterie.
+     Signale le 27 septembre 2026, capture a l'appui. */
+  --safe-top: env(safe-area-inset-top, 0px);
 
   /* Surchargés par les préférences utilisateur (initPrefs) */
   --radius-btn: 10px;
@@ -642,7 +647,9 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 /* ── 10. Multivision, panneau latéral, Investigator, débogage ─────────────── */
 /* Coquille du lecteur : plein cadre sous l'en-tête (bureau) ou au-dessus de la barre du
    bas (mobile, plus bas). `display` reste piloté en ligne par toggleMultiview. */
-#mv-container.mv-full { position: fixed; top: var(--hdr-height); left: 0; right: 0; bottom: 0; background: #000; z-index: 90; display: flex; flex-direction: column; }
+/* `position: fixed` : la marge posee sur le body ne l'atteint pas, il porte donc la
+   sienne. C'est cette barre-la qu'on voyait chevaucher l'heure. */
+#mv-container.mv-full { position: fixed; top: calc(var(--hdr-height) + var(--safe-top)); left: 0; right: 0; bottom: 0; background: #000; z-index: 90; display: flex; flex-direction: column; }
 #mv-toolbar { position: relative; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; direction: ltr; transition: opacity var(--t-fast); }
 .mv-title { font-weight: 800; font-size: 15px; color: var(--text); cursor: move; padding: 0 4px; white-space: nowrap; }
 .mv-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
@@ -802,7 +809,10 @@ body[data-icon-pack="rounded"] .ic-close {
 @media (max-width: 768px) {
   :root { --hdr-height: 0px; --base-hour-px: 140px; --chan-w: 104px; --row-h: 78px; }
   .hide-mobile { display: none !important; }
-  body { padding-bottom: calc(var(--bottom-nav) + var(--safe-bottom)); }
+  /* --hdr-height vaut 0 ici (juste au-dessus) : sans cette marge, tout demarre a y=0,
+     c'est-a-dire SOUS la barre d'etat. Meme raisonnement que le padding du bas, qui
+     degage la barre de navigation. */
+  body { padding-top: var(--safe-top); padding-bottom: calc(var(--bottom-nav) + var(--safe-bottom)); }
 
   /* Plus rien en haut : l'en-tête ne sert que de parent à la barre du bas (fixée).
      `position: static` : sinon son contexte d'empilement (z 60) enfermait la barre et le

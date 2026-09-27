@@ -67,14 +67,38 @@ async function main() {
   assert.deepStrictEqual(Object.keys(reg), ['https://site.test/game/a']);
   assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/a', T + 60000).url, 'https://cdn.test/a/master.m3u8');
   assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/b', T), null, 'lien inconnu : rien');
-  assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/a', T + dm.MEDIA_DIRECT_TTL_MS + 1), null, 'périmé après le TTL');
-  reg = dm.retenirMediaDirect(reg, 'https://site.test/game/b', { url: 'https://cdn.test/b.m3u8' }, T + dm.MEDIA_DIRECT_TTL_MS + 1);
+  /* L'adresse de ce registre n'a AUCUN jeton : rien ne la fait expirer côté serveur,
+     et elle tient donc le temps de l'événement (MEDIA_DIRECT_TTL_LONG_MS). Ce test
+     affirmait l'inverse -- trois heures pour tout le monde -- alors que sur 36 adresses
+     réellement observées le 26 septembre 2026, 29 n'avaient aucun jeton. Les oublier
+     aussi vite n'obéissait à aucune contrainte : c'était nous qui les jetions, et ça se
+     payait surtout sur téléphone, où le mode direct est la seule voie propre. */
+  assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/a', T + dm.MEDIA_DIRECT_TTL_MS + 1).url,
+    'https://cdn.test/a/master.m3u8', 'une adresse SANS jeton survit aux trois heures');
+  assert.strictEqual(dm.mediaDirectPour(reg, 'https://site.test/game/a', T + dm.MEDIA_DIRECT_TTL_LONG_MS + 1), null,
+    "mais pas au-dela du temps d'un evenement");
+
+  /* Une adresse SIGNÉE, elle, porte sa propre péremption : on ne la garde pas plus
+     longtemps que le serveur ne l'honore. `?st=…&e=…` est la forme observée chez
+     embedme.st et streame.center, `?s=…&e=…` chez dlive.sx. */
+  const signee = 'https://cdn.test/a/master.m3u8?st=jeton&e=1790465398';
+  assert.strictEqual(dm.adresseSignee(signee), true);
+  assert.strictEqual(dm.adresseSignee('https://cdn.test/a/master.m3u8'), false);
+  assert.strictEqual(dm.dureeDeVie(signee), dm.MEDIA_DIRECT_TTL_MS);
+  assert.strictEqual(dm.dureeDeVie('https://cdn.test/a/master.m3u8'), dm.MEDIA_DIRECT_TTL_LONG_MS);
+  let regS = dm.retenirMediaDirect({}, 'https://site.test/game/s', { url: signee, pageUrl: 'https://site.test/game/s' }, T);
+  assert.ok(dm.mediaDirectPour(regS, 'https://site.test/game/s', T + 60000), 'fraîche : gardée');
+  assert.strictEqual(dm.mediaDirectPour(regS, 'https://site.test/game/s', T + dm.MEDIA_DIRECT_TTL_MS + 1), null,
+    'signée : périmée après trois heures');
+  // La purge se juge sur la duree de CHAQUE entree : 'a' est une adresse nue, donc
+  // il faut depasser la duree longue pour qu'elle tombe.
+  reg = dm.retenirMediaDirect(reg, 'https://site.test/game/b', { url: 'https://cdn.test/b.m3u8' }, T + dm.MEDIA_DIRECT_TTL_LONG_MS + 1);
   assert.deepStrictEqual(Object.keys(reg), ['https://site.test/game/b'], 'retenir un nouveau lien purge les périmés');
   reg = dm.retenirMediaDirect(reg, 'https://site.test/game/c', { url: 'https://cdn.test/c/seg.ts' }, T);
   assert.strictEqual(reg['https://site.test/game/c'], undefined, 'un non-manifeste n\'est pas retenu');
-  ok('registre par lien : retenu, retrouvé, périmé après 3 h');
+  ok("registre par lien : retenu, retrouvé, périmé selon que l'adresse est signée ou non");
 
-  const T2 = T + dm.MEDIA_DIRECT_TTL_MS + 2;
+  const T2 = T + dm.MEDIA_DIRECT_TTL_LONG_MS + 2;
   assert.strictEqual(dm.aProposer(dm.mediaDirectPour(reg, 'https://site.test/game/b', T2)), true);
   dm.noterEchecDirect(reg, 'https://site.test/game/b');
   assert.strictEqual(dm.aProposer(dm.mediaDirectPour(reg, 'https://site.test/game/b', T2)), true, 'un échec : on propose encore');
