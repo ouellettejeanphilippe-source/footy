@@ -28,6 +28,10 @@ mobile/android/.gradle/
 mobile/android/local.properties
 mobile/*.apk
 mobile/*.aab
+# La liste d'hotes a bloquer : 1,9 Mo refabriques par
+# `node mobile/construire-blocage.mjs` depuis les listes d'uBlock, et qui
+# changent tous les jours. C'est un produit, pas une source.
+mobile/blocage-hotes.txt
 # apksigner depose aussi une signature v4 a cote de l APK.
 mobile/*.idsig
 

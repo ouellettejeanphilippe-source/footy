@@ -2490,6 +2490,62 @@ function rafraichirPastille(idx) {
     }
 }
 
+/* CE QUE LA COUCHE NATIVE ANDROID A VU PASSER.
+   -------------------------------------------
+   Sur ordinateur, c'est `multiview-cleaner.user.js` qui voit le manifeste : il tourne
+   DANS la page du lecteur et le renvoie par `postMessage`, si bien que `e.source`
+   désigne la tuile sans ambiguïté (voir indexDeTuilePour, juste en dessous).
+
+   Sur Android, rien ne peut tourner dans cette page : aucun navigateur mobile
+   n'injecte de script dans une iframe d'origine croisée. Mais la WebView, elle, voit
+   toutes les requêtes — l'application Android les intercepte déjà pour écarter les
+   régies (BloqueurWebViewClient.java), et un manifeste y passe comme le reste.
+
+   Elle ne peut pas pour autant se faire passer pour la fenêtre émettrice. Elle appelle
+   donc cette fonction-ci, avec la PAGE d'où la requête est partie — son en-tête
+   `Referer`. C'est ce qui remplace `e.source`.
+
+   L'appariement est délibérément prudent : l'adresse exacte d'abord, l'hôte ensuite, et
+   RIEN si deux tuiles partagent cet hôte. Poser un manifeste sur la mauvaise tuile lui
+   ferait jouer un autre match — pire que de ne rien poser. */
+export function mediaVuParAndroid(pageUrl, mediaUrl) {
+    if (!estManifeste(mediaUrl)) return false;
+    var page = String(pageUrl || '');
+    if (!page) return false;
+
+    var hote = '';
+    try { hote = new URL(page).hostname.replace(/^www\./, ''); } catch (e) { return false; }
+
+    var exact = -1, parHote = [], i;
+    for (i = 0; i < mvFlux.length; i++) {
+        var s = mvFlux[i];
+        if (!s || !s.url) continue;
+        if (s.url === page) { exact = i; break; }
+        var h = '';
+        try { h = new URL(s.url).hostname.replace(/^www\./, ''); } catch (e) { continue; }
+        if (h === hote) parHote.push(i);
+    }
+    var idx = exact >= 0 ? exact : (parHote.length === 1 ? parHote[0] : -1);
+
+    /* Le repli qui fait marcher le cas réel. Le `Referer` d'un manifeste est souvent la
+       page IMBRIQUÉE du lecteur (la tuile charge streame.center, qui embarque
+       edgestream3.pro, dont part la requête) : ni l'adresse ni l'hôte de la tuile ne
+       correspondent alors. Mais sur un téléphone on regarde UN match — quand il n'y a
+       qu'une tuile, il n'y a pas d'ambiguïté à lever.
+       Au-delà d'une tuile, on s'abstient : poser le manifeste sur la mauvaise ferait
+       jouer un autre match, ce qui est pire que de ne rien poser. */
+    if (idx < 0 && mvFlux.length === 1 && mvFlux[0] && mvFlux[0].url) idx = 0;
+    if (idx < 0) return false;
+
+    var t = mvFlux[idx];
+    if (t._media) return false;          // le premier vu est le manifeste maître
+    t._media = { url: mediaUrl, pageUrl: page, at: Date.now() };
+    safeStorageSetJSON('direct_media', retenirMediaDirect(registreDirect(), t.url, t._media));
+    saveMultivisionState();
+    rafraichirPastille(idx);
+    return true;
+}
+
 /* Quel index de tuile a envoyé ce message ? Le script tourne aussi dans les cadres
    imbriqués du lecteur : on remonte les parents jusqu'à l'iframe de la tuile. */
 function indexDeTuilePour(source) {
@@ -4697,6 +4753,10 @@ window.quitterPleinEcranLecteur = quitterPleinEcranLecteur;
 window.toggleFullscreen = toggleFullscreen;
 window.openFlux = openFlux;
 window.toggleDirectMode = toggleDirectMode;
+/* Appelée par la couche native Android (BloqueurWebViewClient.java) quand elle voit
+   passer un manifeste. C'est le seul chemin possible là-bas : aucun script ne peut
+   tourner dans l'iframe du lecteur. */
+window.mediaVuParAndroid = mediaVuParAndroid;
 window.applyBgStyle = applyBgStyle;
 window.initPrefs = initPrefs;
 window.applyUserPrefs = applyUserPrefs;

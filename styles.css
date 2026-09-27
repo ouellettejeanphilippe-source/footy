@@ -61,7 +61,17 @@
      l'application BORD A BORD, et Android 15+ l'impose de toute facon : sans cette
      marge, la barre d'outils du lecteur passe sous l'heure et la batterie.
      Signale le 27 septembre 2026, capture a l'appui. */
-  --safe-top: env(safe-area-inset-top, 0px);
+  /* DEUX SOURCES, ET IL FAUT LES DEUX.
+     `env(safe-area-inset-top)` ne vaut quelque chose que si la WebView laisse
+     passer les marges systeme. Capacitor 8 ne le fait que sur une WebView recente
+     ET avec `viewport-fit=cover` ; sinon il rembourre la WebView lui-meme. Dans les
+     deux cas il pose AUSSI `--safe-area-inset-top` sur <html> (plugin SystemBars,
+     reglage `insetsHandling: css` par defaut) -- a zero quand il a deja rembourre.
+     Prendre le plus grand des deux donne donc la bonne valeur partout, sans jamais
+     rembourrer deux fois.
+     `android.adjustMarginsForEdgeToEdge` appartenait a Capacitor 7 : le nom
+     n'apparait nulle part dans @capacitor/android 8, ce reglage ne faisait rien. */
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
 
   /* Surchargés par les préférences utilisateur (initPrefs) */
   --radius-btn: 10px;

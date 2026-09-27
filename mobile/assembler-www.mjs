@@ -43,6 +43,13 @@ const FICHIERS = [
 ];
 const DOSSIERS = ['js', 'data', 'icons'];
 
+/* La liste d'hôtes à bloquer vit dans `mobile/`, pas à la racine du dépôt : elle ne
+   sert qu'à Android. Elle passe par `www/` parce que c'est le seul chemin qui la
+   dépose dans les ressources de l'APK, où le code Java la lit
+   (`assets/public/blocage-hotes.txt`, voir BloqueurWebViewClient).
+   Fabriquée par `node mobile/construire-blocage.mjs`. */
+const FICHIERS_MOBILE = ['blocage-hotes.txt'];
+
 await fs.rm(WWW, { recursive: true, force: true });
 await fs.mkdir(WWW, { recursive: true });
 
@@ -51,6 +58,16 @@ for (const f of FICHIERS) {
 }
 for (const d of DOSSIERS) {
   await fs.cp(path.join(RACINE, d), path.join(WWW, d), { recursive: true });
+}
+for (const f of FICHIERS_MOBILE) {
+  try {
+    await fs.copyFile(path.join(ICI, f), path.join(WWW, f));
+  } catch {
+    /* Absente : l'application marche, elle ne bloquera simplement rien. On le DIT,
+       parce qu'un APK muet sur ce point ressemble à un bloqueur en panne. */
+    console.warn(`ATTENTION : ${f} manque — lancez « node mobile/construire-blocage.mjs ».`);
+    console.warn('           Cet APK ne bloquera aucune publicité.');
+  }
 }
 
 async function peser(dossier) {

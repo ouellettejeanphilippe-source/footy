@@ -55,6 +55,17 @@ foreach ($n in @("$Jdk\bin\java.exe", "$outils\zipalign.exe", "$outils\apksigner
 
 Write-Output '--- 1/5  rassemblement des fichiers ---'
 Set-Location $ICI
+
+# La liste d'hotes a bloquer, si elle manque ou si elle a plus d'une semaine. Les
+# listes d'uBlock changent tous les jours ; un blocage de six mois laisse passer les
+# regies apparues depuis. Le telechargement prend une quinzaine de secondes.
+$liste = Join-Path $ICI 'blocage-hotes.txt'
+$vieille = (Test-Path $liste) -and ((Get-Item $liste).LastWriteTime -lt (Get-Date).AddDays(-7))
+if (-not (Test-Path $liste) -or $vieille) {
+    Write-Output $(if ($vieille) { '      liste de blocage datee : on la refait' } else { '      liste de blocage absente : on la fabrique' })
+    node construire-blocage.mjs 2>&1 | Select-Object -Last 3
+}
+
 node assembler-www.mjs
 
 Write-Output '--- 2/5  synchronisation du projet Android ---'
