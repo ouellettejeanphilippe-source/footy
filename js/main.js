@@ -615,8 +615,9 @@ async function loadAllRun(isBackground, forceScrape){
          vipleague…) — et à l'instant, pas à l'heure ronde. Décision du 6 septembre 2026 :
          « l'application devrait aller fetch les liens à l'ouverture, puis quand on ouvre une
          carte ». Le cache serveur reste le point de départ (affiché tout de suite) et le
-         seul chemin sans script, où aucun transport public ne tient plus. Cinq minutes entre
-         deux passes au moins : chaque passe lit une dizaine de pages de liste. */
+         seul chemin sans script, où un seul transport public tient encore (r.jina.ai, 20
+         requêtes par minute — js/fetcher.js). Cinq minutes entre deux passes au moins :
+         chaque passe lit une dizaine de pages de liste. */
       var pontPresent = !!(getBridgeStatus() || {}).available;
       var skipScraping = !isToday
           || (!forceScrape && pontPresent && nowTime - window.lastScrapeTime < 5 * 60 * 1000)

@@ -30,8 +30,9 @@ export var SEUIL_PERIME_MIN = 90;
 /* Combien de pages de match l'application s'autorise à lire par passe de rattrapage.
    Avec le script utilisateur, elle lit en direct, depuis l'adresse de l'utilisateur —
    celle qui passe là où le centre de données de GitHub est refusé. Sans lui, chaque page
-   part par un proxy CORS public : c'est lent et souvent refusé, donc on en tente peu,
-   plutôt que d'attendre trente fois pour rien. */
+   part par le seul transport public encore debout (r.jina.ai, js/fetcher.js), limité à
+   20 requêtes par minute et partagé avec les pages de liste : on en tente peu, plutôt que
+   de se faire fermer la porte pour tout le monde. */
 export var CIBLES_AVEC_PONT = 12;
 export var CIBLES_SANS_PONT = 4;
 

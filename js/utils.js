@@ -302,7 +302,11 @@ export function fetchPage(url, opts){
      Le pont existait déjà et était éprouvé, mais n'était câblé que dans le tour de
      passe-passe. Le placer ici répare toutes ces voies d'un coup, pour qui a le script.
      En cas d'échec on retombe sur les proxys : le pont n'est pas un point de passage
-     obligé, seulement le premier essayé. */
+     obligé, seulement le premier essayé.
+
+     Sans le pont, le seul transport public qui tienne encore (29 septembre 2026) est le
+     lecteur de Jina, en tête de liste après l'accès direct — voir buildProxyList
+     (js/fetcher.js). C'est lui qui rend le rattrapage possible depuis la version web. */
   function fetchViaBridgeFirst() {
       var bridge = null;
       try { bridge = getBridgeStatus(); } catch (e) {}

@@ -11,6 +11,7 @@
 export var PROXY_COOLDOWN_MS = 3 * 60 * 1000;   // un transport en échec est relégué 3 min
 export var DEFAULT_PROXY_TIMEOUT = 8000;
 export var DIRECT_TIMEOUT = 5000;
+export var JINA_TIMEOUT = 15000;
 
 function encode(u) { return encodeURIComponent(u); }
 
@@ -25,6 +26,27 @@ export function applyProxyTemplate(template, url) {
     if (/[=?]$/.test(t)) return t + encode(url);
     if (!/\/$/.test(t)) t += '/';
     return t + url;
+}
+
+/* Ce que r.jina.ai rend n'est pas toujours la page brute.
+
+   Un point d'API (streamed.pk/api/…) revient enveloppé comme Chrome affiche du JSON :
+   `<html><head><meta name="color-scheme"…></head><body><pre>…</pre></body></html>`, le
+   contenu échappé. `parseStreamed` fait JSON.parse dessus et rendrait zéro match sans un
+   mot : on déballe. Et une erreur de Jina lui-même est du JSON (`{"code":422,…}`) : sous
+   un statut 2xx il passerait `inspectPageContent`, qui tolère le petit JSON légitime. On
+   la rejette ici pour que le transport suivant soit essayé. */
+export function parseJinaBody(t) {
+    var s = String(t || '');
+    var m = /^\s*<html><head><meta name="color-scheme"[^>]*><\/head><body><pre[^>]*>([\s\S]*)<\/pre><\/body><\/html>\s*$/i.exec(s);
+    if (m) {
+        return m[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+    }
+    var d = s.trim();
+    if (d.charAt(0) === '{' && /"(code|status)"\s*:\s*\d/.test(d.slice(0, 200)) && /"(message|name)"\s*:/.test(d.slice(0, 400))) {
+        throw new Error('jina : ' + d.slice(0, 80));
+    }
+    return s;
 }
 
 export function buildProxyList(opts) {
@@ -42,6 +64,28 @@ export function buildProxyList(opts) {
     // Tentative directe : gratuite, très rapide à échouer (CORS) dans le navigateur,
     // et c'est le chemin normal côté serveur (GitHub Actions) où il n'y a pas de CORS.
     list.push({ id: 'direct', label: 'Direct', direct: true, timeout: DIRECT_TIMEOUT, build: function(u) { return u; } });
+
+    /* Le lecteur de Jina (r.jina.ai) est le seul transport public encore debout depuis un
+       navigateur, relevé le 29 septembre 2026 : cors.sh et thingproxy n'ont plus d'adresse
+       DNS, allorigins et codetabs expirent, corsproxy.io, corsfix et cors-anywhere exigent
+       une clé, cors.lol et cors.eu.org rendent 429 à la première requête. Lui répond en
+       une demi-seconde, accepte l'en-tête Origin d'un site GitHub Pages (pré-vol compris),
+       et rend la page telle quelle quand on lui demande `X-Return-Format: html` — sans cet
+       en-tête il la réécrit en Markdown, illisible pour les extracteurs. Vérifié sur
+       l'accueil et une page de match de footybite : mêmes liens que l'accès direct.
+
+       Limite : 20 requêtes par minute sans clé. Au-delà il rend 429, ce que fetchPage
+       compte comme une faute du transport (relégation de PROXY_COOLDOWN_MS) : c'est le
+       comportement voulu, on attend plutôt que d'insister. Il charge la page dans un vrai
+       navigateur, donc plus lent qu'un relais brut : délai à part. */
+    list.push({
+        id: 'jina',
+        label: 'r.jina.ai',
+        headers: { 'X-Return-Format': 'html' },
+        timeout: JINA_TIMEOUT,
+        build: function(u) { return 'https://r.jina.ai/' + u; },
+        parse: parseJinaBody
+    });
 
     list.push({
         id: 'cors.sh',
