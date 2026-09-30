@@ -2,6 +2,16 @@
 ## En cours
 
 ## Fait
+- 2026-09-30 - **Quand ça s'arrête et que ça ne peut plus repartir, on charge la source suivante. Une fois.**
+
+  - **Pas un nouveau tri.** Le classement « lien cadrable devant `topLevel` » (#579) est retiré. embed.st n'est pas `topLevel` : il passait en tête et faisait sortir la fenêtre.
+
+  - **Une source qui a joué.** On la recharge encore (au moins deux essais). Si après ça il n'y a toujours pas d'image et qu'une autre source existe, `actionSansVideo` rend `suivante`. S'il n'y en a pas, la tuile reste. Un hoquet pendant la lecture ne change pas de lien : `armerRepriseTuile` ne fait que recharger.
+
+  - **Sortie forcée.** Hors mode câble aussi, une tuile marquée charge la source suivante au lieu de rester sur le panneau. Le panneau, avec « Charger quand même », ne s'affiche que s'il n'y a pas d'autre lien.
+
+  - **Fichiers** : `js/playability.js`, `js/multiview.js`, `js/config.js`, `sw.js` + `VERSION_APP` → `sports-guide-v33`, tests, `docs/ARCHITECTURE.md`.
+
 - 2026-09-30 - **Les liens « ouvrir dans un onglet » ne prennent plus la première tuile.**
 
   - **Constat.** `sortFluxLinks` classait préférence, puis jouabilité observée, puis qualité, et ignorait `topLevel`. Une page dont l'hôte refuse l'iframe passait devant un lecteur cadrable dès qu'elle annonçait une meilleure qualité. Sous Firefox la tuile charge cette page et affiche « Can't Open This Page ».

@@ -298,15 +298,13 @@ export var ESSAIS_PAR_SOURCE = 2;
    suivante repartait de zéro. On ne quitte donc une source qu'après l'avoir rechargée. */
 /* `aDejaJoue` (30 septembre 2026, « le switch se fait vite quand un stream lag ou
    buffer, mais c'est normal que ça arrive des fois ») : la source a joué dans CETTE tuile.
-   Son silence est alors un hoquet (ré-tampon, segment perdu), pas une panne de lien. On la
-   recharge avec ses essais entiers, même quand la tuile parcourait la liste, et on ne
-   passe JAMAIS seul à une autre source : si elle ne revient pas, la tuile attend et le
-   bouton ⏭ reste à portée. Avant, le rechargement d'une reprise repassait par la
-   patience de démarrage, et une tuile déjà en parcours (un seul essai) abandonnait un
-   flux qu'on regardait pour un inconnu. */
+   Son silence est alors un hoquet. On la recharge avec ses essais entiers, même quand la
+   tuile parcourait la liste. On ne passe à une autre source qu'APRÈS ces essais, et
+   seulement s'il en reste une : la tuile s'est arrêtée et ne revient pas. Avant, elle
+   restait noire avec pour seule issue le bouton ⏭. */
 export function actionSansVideo(essais, resteDesSources, essaisMax, aDejaJoue) {
     var max = essaisMax || ESSAIS_PAR_SOURCE;
-    if (aDejaJoue) { max = Math.max(max, ESSAIS_PAR_SOURCE); resteDesSources = false; }
+    if (aDejaJoue) max = Math.max(max, ESSAIS_PAR_SOURCE);
     if ((essais | 0) < max) return 'recharger';
     return resteDesSources ? 'suivante' : 'rien';
 }
