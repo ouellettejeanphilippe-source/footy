@@ -53,15 +53,18 @@ async function main() {
     assert.strictEqual(P.actionSansVideo(3, true), 'suivante', 'un compteur au-delà du budget ne boucle pas');
     ok('recharger d\'abord, changer de source ensuite');
 
-    // ── 1 bis. Une source qui a déjà joué n'est jamais quittée seule ─────────
-    /* « Le switch se fait vite quand un stream lag ou buff, mais c'est normal que ça
-       arrive des fois » (30 septembre 2026). */
+    // ── 1 bis. Une source qui a déjà joué est rechargée, puis quittée si elle ne revient pas ─
+    /* Un hoquet ne change pas de lien. Deux essais sans image, et une autre source
+       existe : là seulement on avance. Seule sur son match, la tuile reste. */
     assert.strictEqual(P.actionSansVideo(1, true, 1, true), 'recharger',
         'même en parcours (un seul essai), la source qui a joué retrouve son rechargement');
-    assert.strictEqual(P.actionSansVideo(2, true, 2, true), 'rien',
-        'et après ses essais elle RESTE : pas de bascule vers un inconnu');
-    assert.strictEqual(P.actionSansVideo(5, true, 1, true), 'rien', 'quel que soit le compteur');
-    ok('une source qui a joué est rechargée, jamais remplacée automatiquement');
+    assert.strictEqual(P.actionSansVideo(2, true, 2, true), 'suivante',
+        'après ses essais, s\'il reste une source, on y va : celle-ci ne revient pas');
+    assert.strictEqual(P.actionSansVideo(2, false, 2, true), 'rien',
+        'seule source du match : on ne va nulle part');
+    assert.strictEqual(P.actionSansVideo(5, true, 1, true), 'suivante',
+        'le budget d\'une source qui a joué est au moins deux essais, puis on avance');
+    ok('une source qui a joué est rechargée ; on la quitte seulement si elle ne revient pas');
 
     // ── 2. Un arrêt volontaire n'est pas une panne ────────────────────────────
     assert.strictEqual(P.arretMeriteRechargement({ cause: 'pause' }), false,
@@ -276,9 +279,9 @@ async function main() {
     declencher(45000); await attendre();
     assert.strictEqual(mv.mvFlux[0].url, A, 'toujours la même source après le premier silence');
     declencher(45000); await attendre();
-    assert.strictEqual(mv.mvFlux[0].url, A, 'et après le second : la tuile attend, ⏭ reste à portée');
-    assert.strictEqual(mv.mvFlux[0]._autoTried, 1, 'aucune bascule automatique consommée');
-    ok('un flux qui a joué puis hoqueté n\'est jamais remplacé tout seul');
+    assert.strictEqual(mv.mvFlux[0].url, B, 'après le second silence elle ne revient pas : on charge la suivante, une fois');
+    assert.strictEqual(mv.mvFlux[0]._autoTried, 2, 'une seule bascule, pas un parcours de la liste');
+    ok('un flux qui a joué puis ne revient pas passe à la source suivante');
 
     // ── 7. La vidéo qui revient seule annule le rechargement ────────────────
     const t3 = await poser(DEUX_SOURCES, A, 'm1');
