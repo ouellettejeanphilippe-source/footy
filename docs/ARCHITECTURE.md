@@ -266,7 +266,7 @@ Une tuile est une iframe qui charge la page du site telle quelle, **sans attribu
 
 ### 7.2 Choix du flux, rechargement et bascule
 
-`sortFluxLinks` (`js/config.js`) classe les liens : observation de lecture (`js/playability.js`) d'abord, puis domaines préférés ou évités (`domain_prefs`), puis qualité annoncée. La tuile prend le premier.
+`sortFluxLinks` (`js/config.js`) classe les liens : préférence de domaine (`domain_prefs`), puis lien cadrable avant lien `topLevel` (la tuile ne peut pas afficher ce dernier sous Firefox), puis observation de lecture (`js/playability.js`), puis qualité annoncée. La tuile prend le premier.
 
 **Une source n'est abandonnée qu'après avoir été rechargée** (19 septembre 2026, « trop vite à switch de sources quand ça bugge, au lieu de tenter de recharger »). Si le script utilisateur est présent et qu'aucune vidéo n'est signalée dans les `patienceMs` (30 s, 90 s pour un hôte connu comme lent), `armerBasculeAuto` applique `actionSansVideo` (`js/playability.js`) : `recharger` tant qu'il reste un essai sur cette adresse, `suivante` ensuite — une seule fois par lien —, `rien` quand il n'y a nulle part où aller. Le compteur (`_essais`) appartient à l'ADRESSE, pas à la tuile : changer de source rend ses essais entiers à la suivante, et une source qui a joué les retrouve. Une tuile seule sur son match arme son minuteur elle aussi : elle n'a pas de suivante, mais elle a droit à son rechargement.
 
