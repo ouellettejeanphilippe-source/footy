@@ -341,16 +341,19 @@ export function essaisPourSource(link, ledger, enParcours, essaisMax) {
    bien réel. Une source qui ne tient pas est cassée ; la rallumer en boucle ne fait que
    rallumer la même panne.
 
-   Mais une source qui a joué LONGTEMPS avant de lâcher est un tout autre cas : c'est un
-   match qu'on regardait, et il mérite qu'on le rattrape. Le compte est donc oublié quand
-   la vidéo a tenu `oubliMs`. Rend `{ autorisee, reprises }` : le nouveau compte à ranger
-   sur la tuile. */
+   Mais deux rechargements par tranche de dix minutes suffisent. Au-delà, démonter la
+   page ne fait que couper un flux qui aurait pu revenir seul. Le compte repart à zéro
+   quand la fenêtre est passée, pas parce que la vidéo a tenu deux minutes. Rend
+   `{ autorisee, reprises }` : le nouveau compte à ranger sur la tuile. Le second
+   argument est l'âge de la fenêtre en cours, en millisecondes. */
 export var REPRISES_PAR_SOURCE = 2;
-export var REPRISE_OUBLI_MS = 120000;
-export function budgetReprise(reprises, jouaitDepuisMs, maxReprises, oubliMs) {
+export var FENETRE_REPRISE_MS = 10 * 60 * 1000;
+/* Deux changements de source automatiques par tuile. Le bouton ⏭ n'est pas compté. */
+export var BASCULES_AUTO_MAX = 2;
+export function budgetReprise(reprises, ageFenetreMs, maxReprises, fenetreMs) {
     var max = maxReprises || REPRISES_PAR_SOURCE;
-    var oubli = (oubliMs == null) ? REPRISE_OUBLI_MS : oubliMs;
-    var n = (typeof jouaitDepuisMs === 'number' && jouaitDepuisMs >= oubli) ? 0 : (reprises | 0);
+    var fenetre = (fenetreMs == null) ? FENETRE_REPRISE_MS : fenetreMs;
+    var n = (typeof ageFenetreMs === 'number' && ageFenetreMs >= fenetre) ? 0 : (reprises | 0);
     return { autorisee: n < max, reprises: n + 1 };
 }
 
