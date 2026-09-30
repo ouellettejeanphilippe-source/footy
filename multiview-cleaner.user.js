@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.9
+// @version      1.10
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -788,6 +788,55 @@
         }, 1000);
     }
 
+    /* Cadre intérieur refusé par Firefox.
+
+       La page hôte, elle, s'est affichée. Le lecteur est souvent une iframe de plus,
+       et X-Frame-Options la remplace par « Firefox ne peut pas ouvrir cette page ».
+       Un cadre qui a VRAIMENT chargé une autre origine lève une exception quand on
+       lit son document : on n'y touche pas. Un cadre refusé, lui, laisse lire la page
+       d'erreur du navigateur. On ne reprend que celle-là, une seule fois : on
+       télécharge le HTML par GM_xmlhttpRequest (les cookies du visiteur, pas un proxy)
+       et on le pose en srcdoc. L'origine reste celle de la page hôte, pas celle de
+       l'application. about:blank et une page encore vide ne comptent pas. */
+    var REFUS_CADRE = /can.?t open this page|refused to (display|connect)|will not allow firefox to display|ne peut pas ouvrir cette page|n'autorise pas firefox|x-frame-options/i;
+    var cadresRepris = 0;
+    function reprendreCadreRefuse(iframe) {
+        if (!iframe || cadresRepris >= 1 || iframe.__mvRepris) return;
+        var src = iframe.getAttribute('src') || '';
+        if (!/^https?:\/\//i.test(src)) return;
+        var texte = '';
+        try {
+            var doc = iframe.contentDocument;
+            if (!doc || !doc.body) return;
+            texte = doc.body.innerText || '';
+        } catch (e) { return; }
+        if (texte.length < 40 || !REFUS_CADRE.test(texte)) return;
+        var GM_FETCH = (typeof GM_xmlhttpRequest === 'function') ? GM_xmlhttpRequest
+            : (typeof GM !== 'undefined' && GM && typeof GM.xmlHttpRequest === 'function') ? GM.xmlHttpRequest
+            : null;
+        if (!GM_FETCH) return;
+        iframe.__mvRepris = 1;
+        cadresRepris++;
+        try {
+            GM_FETCH({
+                method: 'GET',
+                url: src,
+                timeout: 15000,
+                headers: { 'Referer': src },
+                onload: function (res) {
+                    var body = res && typeof res.responseText === 'string' ? res.responseText : '';
+                    if (!body || body.length < 200 || !res || res.status < 200 || res.status >= 400) return;
+                    if (body.length > 1500000) body = body.slice(0, 1500000);
+                    var base = String((res && res.finalUrl) || src).replace(/"/g, '&quot;');
+                    try {
+                        iframe.removeAttribute('src');
+                        iframe.srcdoc = '<base href="' + base + '">' + body;
+                    } catch (e) {}
+                }
+            });
+        } catch (e) { iframe.__mvRepris = 0; cadresRepris--; }
+    }
+
     function findAndClean() {
         if (cleaned) return;
 
@@ -805,6 +854,12 @@
         const iframes = Array.from(document.querySelectorAll('iframe')).filter(ifr => ifr.offsetWidth > 200 && ifr.offsetHeight > 150);
         if (iframes.length > 0) {
             const bestIframe = iframes.sort((a, b) => (b.offsetWidth * b.offsetHeight) - (a.offsetWidth * a.offsetHeight))[0];
+            if (!bestIframe.__mvEcouteRefus) {
+                bestIframe.__mvEcouteRefus = 1;
+                bestIframe.addEventListener('load', function () { reprendreCadreRefuse(bestIframe); });
+                setTimeout(function () { reprendreCadreRefuse(bestIframe); }, 2000);
+            }
+            reprendreCadreRefuse(bestIframe);
             cleanEverythingOutside(bestIframe);
             return;
         }
@@ -925,7 +980,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.9';
+    var VERSION = '1.10';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

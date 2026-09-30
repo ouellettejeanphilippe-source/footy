@@ -2,15 +2,11 @@
 ## En cours
 
 ## Fait
-- 2026-09-30 - **Quand ça s'arrête et que ça ne peut plus repartir, on charge la source suivante. Une fois.**
+- 2026-09-30 - **Un cadre intérieur refusé par Firefox est relu par le script, pas par l'application.**
 
-  - **Pas un nouveau tri.** Le classement « lien cadrable devant `topLevel` » (#579) est retiré. embed.st n'est pas `topLevel` : il passait en tête et faisait sortir la fenêtre.
+  - La tuile charge toujours la page entière. On ne reconstruit pas cette page. Si le lecteur est une iframe de plus et que Firefox en affiche la page d'erreur (le document est alors lisible), `multiview-cleaner.user.js` 1.10 télécharge cette adresse avec `GM_xmlhttpRequest` et la pose en `srcdoc` dans CE cadre. Un cadre d'une autre origine qui s'est vraiment chargé lève une exception : on n'y touche pas. Une seule reprise par page. `about:blank` ne compte pas.
 
-  - **Une source qui a joué.** On la recharge encore (au moins deux essais). Si après ça il n'y a toujours pas d'image et qu'une autre source existe, `actionSansVideo` rend `suivante`. S'il n'y en a pas, la tuile reste. Un hoquet pendant la lecture ne change pas de lien : `armerRepriseTuile` ne fait que recharger.
-
-  - **Sortie forcée.** Hors mode câble aussi, une tuile marquée charge la source suivante au lieu de rester sur le panneau. Le panneau, avec « Charger quand même », ne s'affiche que s'il n'y a pas d'autre lien.
-
-  - **Fichiers** : `js/playability.js`, `js/multiview.js`, `js/config.js`, `sw.js` + `VERSION_APP` → `sports-guide-v33`, tests, `docs/ARCHITECTURE.md`.
+  - **Fichiers** : `multiview-cleaner.user.js`, `tests/unit_cadreinterieur.test.js`.
 
 - 2026-09-30 - **Les liens « ouvrir dans un onglet » ne prennent plus la première tuile.**
 
