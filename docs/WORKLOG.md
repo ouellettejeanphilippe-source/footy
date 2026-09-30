@@ -2,6 +2,18 @@
 ## En cours
 
 ## Fait
+- 2026-09-30 - **Les liens « ouvrir dans un onglet » ne prennent plus la première tuile.**
+
+  - **Constat.** `sortFluxLinks` classait préférence, puis jouabilité observée, puis qualité, et ignorait `topLevel`. Une page dont l'hôte refuse l'iframe passait devant un lecteur cadrable dès qu'elle annonçait une meilleure qualité. Sous Firefox la tuile charge cette page et affiche « Can't Open This Page ».
+
+  - **Règle.** Après la préférence explicite de domaine, un lien sans `topLevel` passe devant un lien `topLevel`, y compris si ce dernier a été observé en lecture. La jouabilité et la qualité ne départagent plus que des liens du même genre.
+
+  - **Tests** : `unit_playability` — une page 1080p `topLevel` passe après une tuile SD ; un `topLevel` marqué `plays` ne prend pas non plus la première place.
+
+  - **Fichiers** : `js/config.js`, `tests/unit_playability.test.js`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v32`.
+
+  - **Ce qui reste.** La vérification des lecteurs tourne encore dans Chromium. Les iframes imbriquées d'une page cadrable peuvent encore heurter X-Frame-Options. `HOSTS` dans `domains.json` est vide.
+
 - 2026-09-30 - **« Problèmes d'affichage ? »** (deux captures), puis **« le switch se fait vite quand un stream lag ou buff, faut pas que ça plante »**, puis **« supprimer style classique, garder nouvel UI seulement »**.
 
   - **Équipes WNBA renommées.** Le Live affichait « Indiana Pacers vs Las Vegas Raiders » et « New York City FC vs Minnesota Twins » pour Fever–Aces et Liberty–Lynx. Les données du serveur étaient justes ; c'est le navigateur qui, en relisant ESPN, passait chaque nom par `getOfficialTeamName`, dont l'appariement approximatif prend l'équipe la plus proche de la base même quand l'équipe n'y est pas. Mesuré sur `data/schedule.json` : **148 noms ESPN sur 370 renommés, aucun à raison** (« Michigan Wolverines » → « Iran », « Ball State Cardinals » → « Arsenal », « Toulon » → « Toulouse »). Nouveau `nomOfficielDansLigue` (`js/db.js`) : table et alias exacts seulement (`getOfficialTeamName` gagne un 4ᵉ argument `sansApproximation`), et refus d'une équipe d'une autre famille de ligue. Une passe ESPN qui revoit un match connu lui rend désormais ses noms, ce qui répare les calendriers déjà en cache. Alias « pau » retiré de St. Pauli (Pau est un club de rugby du Top 14).

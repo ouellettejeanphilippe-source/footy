@@ -2,8 +2,8 @@
 
    Pendant des semaines, la tuile ouvrait d'abord le lien dont l'adresse « faisait bien »
    (qualité annoncée, nom du site) — et presque rien ne jouait. Ces cas verrouillent le
-   nouvel ordre : le choix de l'utilisateur, puis ce qui a été OBSERVÉ en train de jouer,
-   puis seulement la forme du lien. */
+   nouvel ordre : le choix de l'utilisateur, puis un lien cadrable avant un `topLevel`,
+   puis ce qui a été OBSERVÉ en train de jouer, puis seulement la forme du lien. */
 const assert = require('assert');
 const { JSDOM } = require('jsdom');
 
@@ -172,7 +172,17 @@ async function main() {
     assert.strictEqual(P.playabilityScore({ url: 'https://inconnu.test/1' }, C.playLedger()), 2, 'trois lectures vues par le navigateur : l\'hôte devient fiable');
     const tri2 = C.sortFluxLinks([{ name: 'HD', url: 'https://mort.test/1', quality: '1080p' }, { name: 'Inconnu', url: 'https://inconnu.test/1' }]);
     assert.strictEqual(tri2[0].name, 'Inconnu', 'un hôte vu jouer passe devant un hôte mort, quelle que soit la qualité annoncée');
-    ok('sortFluxLinks : l\'observation prime sur la qualité annoncée');
+    const triCadre = C.sortFluxLinks([
+        { name: 'Onglet 1080p', url: 'https://page.test/1', quality: '1080p', topLevel: true },
+        { name: 'Tuile SD', url: 'https://lecteur.test/1' }
+    ]);
+    assert.strictEqual(triCadre[0].name, 'Tuile SD', 'un lien cadrable passe devant une page topLevel, même si elle annonce 1080p');
+    const triVu = C.sortFluxLinks([
+        { name: 'Onglet vu', url: 'https://page.test/2', topLevel: true, verified: 'plays' },
+        { name: 'Tuile', url: 'https://lecteur.test/2' }
+    ]);
+    assert.strictEqual(triVu[0].name, 'Tuile', 'même observé en lecture, un topLevel ne prend pas la tuile');
+    ok('sortFluxLinks : l\'observation prime sur la qualité annoncée, et un lien cadrable prime sur topLevel');
 
     console.log(`unit_playability: ${n} groupes de tests OK`);
     process.exit(0);
