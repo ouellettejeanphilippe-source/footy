@@ -13,7 +13,7 @@ L'en-tête ne porte que quatre boutons. Sur téléphone (largeur ≤ 768 px), il
 | **Live** | Les matchs en cours et ceux qui commencent dans l'heure, en cartes. |
 | **Guide** | Le programme sur une grille horaire de **48 h** : aujourd'hui et demain, d'une seule traite. |
 | **Lecteur** | Le Multivision : jusqu'à quatre vidéos côte à côte. Le bouton se marque quand des vidéos sont chargées et qu'on est ailleurs. |
-| **Plus** | Un menu : `⭐ Favoris`, `⚙️ Options`, `📋 Logs`, `🧩 Script`, `↩ Interface classique`, `↻ Mettre à jour l'app`. Se ferme d'un clic à l'extérieur ou par Échap. |
+| **Plus** | Un menu : `⭐ Favoris`, `⚙️ Options`, `📋 Logs`, `🧩 Script`, `↻ Mettre à jour l'app`. Se ferme d'un clic à l'extérieur ou par Échap. |
 
 Autres éléments toujours présents :
 
@@ -26,7 +26,7 @@ Autres éléments toujours présents :
 - **Messages** (toasts) en bas de l'écran, 2,5 s, remontés au-dessus de la barre d'onglets sur mobile.
 - **Zoom** (`Maintenant`, `−`, pourcentage, `+`) en bas à droite, visible dans le Guide seulement.
 
-Ce qui n'est **pas** dans cette coquille : la navigation par date, la recherche globale et les pastilles de filtre par ligue. Elles existent dans l'interface classique (section 9).
+Ce qui n'est **pas** dans l'application : la navigation par date, la recherche globale et les pastilles de filtre par ligue. Elles vivaient dans l'interface classique, retirée le 30 septembre 2026.
 
 ## 2. Onglet Live
 
@@ -216,7 +216,6 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 | **Forme des boutons** | Arrondis, Doux, Rectangulaires. |
 | **Forme des cartes** | Automatique (affiche sous 900 px), Affiche verticale (2:3), Carte large (2,4:1). |
 | **Couleur des cartes** | Dégradé extérieur → domicile, Dégradé diagonal, Deux couleurs pleines, Couleur de l'équipe à domicile, Couleur de la ligue, Foncé. |
-| **Interface classique** | Bascule vers l'ancienne présentation (section 9). Retenu d'une ouverture à l'autre. |
 | **Mode TV / tablette** | Zoom 1,3×, contour de focus très visible, navigation aux flèches et Entrée (télécommande). |
 
 ### 7.2 Réseau & proxys (replié, avancé)
@@ -239,15 +238,7 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 - **Historique des requêtes** : journal horodaté, `📋 Copier le log` sur les entrées longues, `📥 Exporter` (fichier `jmtv-debug-logs-<date>.json`).
 - **Diagnostics des flux manuels** : les rapports produits par la recherche manuelle de la fiche.
 
-## 9. Interface classique
-
-`Plus → ↩ Interface classique` (retour par `☰ → ✨ Nouvelle interface`). Même moteur, ancienne présentation :
-
-- onglets en haut de page, sans barre du bas ;
-- une barre d'outils avec `↻` (scores), **`🔎 Liens manquants`** (relance la recherche pour tous les matchs à venir sans lien, avec une barre de progression), le **sélecteur de date** (`❮`, `Aujourd'hui` / `Hier` / `Demain` ou la date, cliquable pour un calendrier, `❯`) et les **pastilles de ligues** (`Toutes` puis une par ligue, avec compteur) ;
-- les mêmes pages Favoris, Options, Logs et Script, sous d'autres titres.
-
-## 10. Script utilisateur (menu Plus → 🧩 Script)
+## 9. Script utilisateur (menu Plus → 🧩 Script)
 
 La page recommande **Firefox + uBlock Origin**, explique ce qui peut bloquer les tuiles sous Firefox (en-tête X-Frame-Options, lecture automatique, protection contre le pistage) et guide en trois étapes : le bloqueur, Tampermonkey, puis `Installer le script`. Une fenêtre le propose aussi au tout premier lancement.
 
@@ -256,6 +247,6 @@ Ce que le script **Multiview Stream Cleaner** (version 1.8) fait, et que l'appli
 - dans chaque page de lecteur : bloque les fenêtres surgissantes et les détournements dès le premier octet de la page, retire tout ce qui entoure le lecteur et les calques invisibles, lance la vidéo (`play()`, muet si nécessaire, puis le gros bouton de lecture des lecteurs connus), obéit aux ordres de son (`mv_mute` / `mv_unmute`), et remonte à l'application l'état de lecture, le débit et la définition, et les adresses de flux direct qu'il voit passer ; sur mobile, ajoute `📱 Force Native Player (Cast)` et `📺 Open in Cast App` ;
 - dans l'application : sert de **pont** pour télécharger les pages des sources depuis l'adresse de l'utilisateur, là où les proxys CORS sont refusés. Options → Réseau montre s'il est actif.
 
-## 11. Application installable (PWA)
+## 10. Application installable (PWA)
 
 `Sports Guide` (nom court `Sports`) s'installe depuis le navigateur : icône, plein écran, cache hors ligne de toute la coquille. En ligne, c'est toujours la version publiée qui s'affiche (réseau d'abord, cache en repli). `↻ Mettre à jour l'app` retire le service worker, vide ses caches et recharge la version publiée, **sans toucher** aux réglages, favoris et liens locaux.

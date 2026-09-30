@@ -1740,17 +1740,6 @@ export function setTargetDate(dateStr) {
     applyTargetDate(newDate);
 }
 
-/* Interface classique : l'ancienne coquille (legacy.html + styles-legacy.css) reste
-   livrée à côté de la nouvelle, le temps de la comparer à l'usage. Le choix est retenu
-   dans le stockage local ; index.html redirige au démarrage (script en tête de page)
-   pour que la préférence tienne d'une session à l'autre et depuis l'écran d'accueil. */
-export function toggleLegacyUi(enabled) {
-    safeStorageSet('ui_legacy', enabled ? '1' : '0');
-    var page = enabled ? 'legacy.html' : 'index.html';
-    window.location.href = page + window.location.search + window.location.hash;
-}
-window.toggleLegacyUi = toggleLegacyUi;
-
 window.applyTargetDate = applyTargetDate;
 window.changeTargetDate = changeTargetDate;
 window.setTargetDate = setTargetDate;
@@ -1799,8 +1788,6 @@ window.toggleTvMode = function(enabled) {
 
 // Auto-init at boot
 document.addEventListener('DOMContentLoaded', () => {
-    const legacyCb = document.getElementById('pref-legacy-ui');
-    if (legacyCb) legacyCb.checked = /legacy\.html$/i.test(window.location.pathname);
     const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
     const tvCheckbox = document.getElementById('pref-tv-mode');
     if (tvCheckbox) tvCheckbox.checked = isTvMode;

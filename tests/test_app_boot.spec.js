@@ -511,8 +511,8 @@ test('la vue « À venir » est retirée sans laisser de cul-de-sac', async ({ p
    « Enlever logo et favicon en haut à gauche… enlever tous les éléments dans le haut de
    la page (recherche, toggles de ligue et cie), garder l'interface la plus claire
    possible. » La coquille ne porte plus que les onglets ; ce test verrouille l'absence,
-   comme le précédent verrouillait la présence. Recherche, date et pastilles restent
-   dans l'interface classique (legacy.html), qui partage le même code. */
+   comme le précédent verrouillait la présence. Recherche, date et pastilles vivaient
+   dans l'interface classique, retirée le 30 septembre 2026. */
 test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni date, ni ligues', async ({ page }) => {
   const pageErrors = await bootOffline(page);
 
@@ -848,9 +848,10 @@ test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche 
   expect(pageErrors).toEqual([]);
 });
 
-/* L'interface classique reste livrée (legacy.html + styles-legacy.css) et partage tout le
-   code : elle doit démarrer aussi, et le choix doit tenir d'une ouverture à l'autre. */
-test('l\'interface classique démarre et la préférence redirige index.html', async ({ page }) => {
+/* L'interface classique a été retirée le 30 septembre 2026 (« c'est plus pertinent,
+   garder nouvel ui seulement »). Un appareil qui avait choisi l'ancienne présentation
+   garde la clé `ui_legacy` dans son stockage : elle ne doit plus mener nulle part. */
+test('l\'ancienne préférence d\'interface classique ne redirige plus', async ({ page }) => {
   await page.clock.setFixedTime(instantDesDonnees());
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
@@ -858,13 +859,11 @@ test('l\'interface classique démarre et la préférence redirige index.html', a
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); localStorage.setItem('ui_legacy', '1'); } catch (e) {} });
 
   await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForURL(/legacy\.html/, { timeout: 10000 });
   await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
-  await page.waitForFunction(() => document.querySelectorAll('.match-card, .mb').length > 0, null, { timeout: 30000 });
-
-  expect(await page.locator('link[rel="stylesheet"]').first().getAttribute('href')).toBe('styles-legacy.css');
-  await expect(page.locator('#btn-new-ui'), 'le retour vers la nouvelle interface est offert').toHaveCount(1);
-  expect(pageErrors, 'aucune exception dans l\'interface classique :\n' + pageErrors.join('\n')).toEqual([]);
+  expect(new URL(page.url()).pathname, 'on reste sur index.html').toBe('/index.html');
+  expect(await page.evaluate(() => localStorage.getItem('ui_legacy')), 'la clé périmée est effacée').toBeNull();
+  await expect(page.locator('#btn-legacy-ui, #pref-legacy-ui'), 'plus aucune bascule vers l\'ancienne présentation').toHaveCount(0);
+  expect(pageErrors).toEqual([]);
 });
 
 /* Scores en direct : le rafraîchissement ESPN doit se voir PARTOUT — dans S.matches (fiche,

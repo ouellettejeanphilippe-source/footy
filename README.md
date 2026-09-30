@@ -121,7 +121,7 @@ Les scripts serveur se lancent aussi à la main : `node scripts/scrape_schedule.
 
 | | |
 |---|---|
-| `index.html`, `styles.css` | La coquille et son style. `legacy.html` est l'interface classique. |
+| `index.html`, `styles.css` | La coquille et son style. |
 | `js/` | Les modules de l'application. Point d'entrée : `js/main.js`. |
 | `js/sources/` | Un adaptateur par site de flux. |
 | `scripts/` | Les scripts serveur lancés par les workflows. |

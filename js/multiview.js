@@ -1345,6 +1345,10 @@ export function setupMultivisionUI() {
                    depuis dix minutes du flux qui ne tient jamais deux secondes, et qu'il
                    ne sert à rien de recharger en boucle (budgetReprise). */
                 s._joueDepuis = Date.now();
+                /* L'adresse qui a JOUÉ dans cette tuile : un arrêt plus tard sera un hoquet
+                   à rattraper sur place, jamais une raison de changer de source
+                   (actionSansVideo, js/playability.js). */
+                s._aJoueUrl = s._currentUrl || s.url;
                 if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
                 /* Son automatique : la vidéo existe et joue, c'est maintenant que le son
                    peut lui être rendu — avant, le navigateur refusait et le script
@@ -1622,7 +1626,7 @@ export function restoreMultivisionState() {
                dire dans une session neuve : une tuile restaurée avec ses deux essais déjà
                dépensés serait quittée au premier silence, sans le rechargement qu'on vient
                de lui accorder. Un onglet rouvert est un premier chargement. */
-            mvFlux.forEach(function(s) { delete s._essais; delete s._essaisUrl; delete s._reprises; delete s._joueDepuis; delete s._dernierGeste; });
+            mvFlux.forEach(function(s) { delete s._essais; delete s._essaisUrl; delete s._reprises; delete s._joueDepuis; delete s._dernierGeste; delete s._aJoueUrl; });
             /* Des tuiles restaurées au démarrage ne passent pas par addToMultivision :
                sans cela, une session reprise ne relisait plus jamais ses sources. */
             if (mvFlux.length) armerRafraichissementTuiles();
@@ -2404,6 +2408,7 @@ function compterEssai(s, url) {
    js/playability.js) : embed.st met souvent plus de 30 s à démarrer, et la tuile le
    quittait juste avant. */
 var DELAI_SANS_VIDEO_MS = 30000;
+var DELAI_REDEMARRAGE_MS = 45000;
 var DELAI_HOTE_LENT_MS = 90000;
 function armerBasculeAuto(s, idx, url) {
     couperMinuteur(s, 'auto');
@@ -2415,7 +2420,11 @@ function armerBasculeAuto(s, idx, url) {
     var essais = compterEssai(s, url);
     /* Le second essai ne rachète PAS la longue patience : le premier l'a déjà donnée à
        l'hôte lent. Sans cette ligne, embed.st coûtait 180 s à lui seul (20 septembre). */
-    var delai = essais > 1 ? DELAI_SANS_VIDEO_MS : patienceMs(lien, ledger, DELAI_SANS_VIDEO_MS, DELAI_HOTE_LENT_MS);
+    /* Une source qui a déjà joué ici et qu'on recharge après un arrêt : elle a droit à la
+       patience d'un redémarrage, pas à la patience courte d'un second essai. */
+    var aJoue = !!url && s._aJoueUrl === url;
+    var delai = aJoue ? Math.max(DELAI_REDEMARRAGE_MS, patienceMs(lien, ledger, DELAI_SANS_VIDEO_MS, DELAI_HOTE_LENT_MS))
+        : essais > 1 ? DELAI_SANS_VIDEO_MS : patienceMs(lien, ledger, DELAI_SANS_VIDEO_MS, DELAI_HOTE_LENT_MS);
     /* Combien d'essais cette source-ci mérite (essaisPourSource, js/playability.js) : la
        tuile qui PARCOURT déjà la liste, et l'hôte connu pour ne pas jouer, n'en ont qu'un. */
     var essaisMax = essaisPourSource(lien, ledger, (s._autoTried | 0) > 0);
@@ -2424,13 +2433,14 @@ function armerBasculeAuto(s, idx, url) {
            surveillée est celle qui a armé le minuteur, pas celle qui est là. */
         if (s._playing || s._currentUrl !== url) return;
         var reste = L.length > 1 && (s._autoTried | 0) < L.length - 1;
-        var action = actionSansVideo(essais, reste, essaisMax);
+        var action = actionSansVideo(essais, reste, essaisMax, aJoue);
         if (action === 'recharger') {
             showToast('Aucune vidéo : on recharge la source (essai ' + (essais + 1) + '/' + essaisMax + ')');
             rechargerTuile(place);
             return;
         }
-        if (action === 'suivante') nextFluxForTile(place, 'auto');
+        if (action === 'suivante') { nextFluxForTile(place, 'auto'); return; }
+        if (aJoue && reste) showToast('Le flux ne revient pas : ⏭ pour essayer une autre source');
     }, delai);
 }
 
@@ -2444,7 +2454,10 @@ function armerBasculeAuto(s, idx, url) {
    inconnu, c'est exactement ce que l'utilisateur reprochait. Et jamais de rechargement
    quand c'est LUI qui a mis en pause — `arretMeriteRechargement` (js/playability.js)
    lit la cause donnée par le script, ou à défaut le dernier clic vu dans le cadre. */
-var DELAI_REPRISE_MS = 12000;
+/* 25 s, et non plus 12 (30 septembre 2026) : un ré-tampon de ces sites dure souvent plus
+   de dix secondes, et recharger la page PENDANT que la vidéo se rattrape la coupait net —
+   « c'est normal que ça arrive des fois, faut pas que ça plante ». */
+var DELAI_REPRISE_MS = 25000;
 var FENETRE_GESTE_MS = 20000;
 export function armerRepriseTuile(s, signal) {
     couperMinuteur(s, 'reprise');
@@ -4123,7 +4136,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v30';
+export var VERSION_APP = 'sports-guide-v31';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

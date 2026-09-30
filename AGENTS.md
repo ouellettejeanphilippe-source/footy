@@ -4,7 +4,7 @@ Règles de travail dans ce dépôt, pour les agents comme pour les humains.
 
 ## Règle d'or
 
-Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), parcourir `docs/WORKLOG.md` (les décisions récentes et leurs raisons), et **faire un grep du symbole** avant de le créer, de le renommer ou de le supprimer. De nombreuses fonctions sont exposées sur `window` et appelées depuis du HTML construit en chaîne : un `grep` sur le nom, y compris dans `index.html` et `legacy.html`, est le seul moyen de savoir qui l'utilise.
+Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), parcourir `docs/WORKLOG.md` (les décisions récentes et leurs raisons), et **faire un grep du symbole** avant de le créer, de le renommer ou de le supprimer. De nombreuses fonctions sont exposées sur `window` et appelées depuis du HTML construit en chaîne : un `grep` sur le nom, y compris dans `index.html`, est le seul moyen de savoir qui l'utilise.
 
 ## Workflow par tâche
 
@@ -29,7 +29,7 @@ Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), 
 
 ## Le dépôt en bref
 
-- Application statique (PWA) : `index.html` + modules `js/`, sans framework. `legacy.html` est l'interface classique sur le même moteur.
+- Application statique (PWA) : `index.html` + modules `js/`, sans framework. L'interface classique (`legacy.html`) a été retirée le 30 septembre 2026.
 - Huit modules forment un cycle d'imports (`api`, `config`, `ui`, `multiview`, `main`, `utils`, `scrapers`, `state`). Un script ou un test qui importe le noyau importe `js/scrapers.js` en premier et pose `window.__NO_AUTOSTART__ = true`. Les autres modules sont sans import : garder cette propriété quand c'est possible.
 - Données : `data/schedule.json` (calendrier, quotidien) et `data/streams.json` (liens, toutes les 30 min par relais) sont produits par `scripts/*.mjs` via les workflows ; `domains.json` porte les adresses courantes des sources. Ne pas les éditer à la main ; les régénérer avec les scripts si un test en a besoin.
 - Outils : `package.json` ne porte que des dépendances de développement (`@playwright/test`, `playwright`, `jsdom`). Les scripts serveur utilisent le `fetch` natif de Node 22. Pas de Python.

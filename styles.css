@@ -242,7 +242,8 @@ select.btn, .select {
 /* ── 5. (Barre d'outils retirée) ──────────────────────────────────────────
    Recherche, rafraîchissement, liens manquants, date et pastilles de ligues ne sont
    plus dans la coquille (index.html). Le code qui les servait (setSearchQuery,
-   renderSportChips, changeTargetDate…) reste, pour l'interface classique. */
+   renderSportChips, changeTargetDate…) servait aussi l'interface classique, retirée le
+   30 septembre 2026 ; il reste à trier. */
 
 /* ── 6. Vue Live : sections et cartes ─────────────────────────────────────── */
 /* ── Bandeau du cache serveur ────────────────────────────────────────────────
@@ -503,7 +504,11 @@ body.view-timeline .zoom-controls { display: flex; }
 .fiche-banner { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 16px 52px 14px 16px; color: #fff; min-height: 116px; }
 .fiche-banner.racing { grid-template-columns: 1fr; justify-items: center; text-align: center; }
 .fb-team { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; text-align: center; }
-.fb-team .prime-logo { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55)); font-size: 40px !important; }
+/* Remplissage en PIXELS : celui de .prime-logo (9 %) se calcule sur la largeur du bloc
+   parent. Dans la carte, c'est une petite case ; dans la bannière, une colonne de près de
+   500 px, soit plus de 40 px de chaque côté, qui ne laissaient rien à l'image : le blason
+   restait un disque blanc vide (capture du 29 septembre 2026). */
+.fb-team .prime-logo { width: 64px; height: 64px; padding: 9px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55)); font-size: 40px !important; }
 .fb-name { font-size: 14px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.7); display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
 .fb-fav { background: transparent; border: none; font-size: 16px; line-height: 1; cursor: pointer; padding: 2px; }
 .fb-center { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 88px; }
@@ -876,7 +881,7 @@ body[data-icon-pack="rounded"] .ic-close {
   .mhd { padding: 12px 52px 12px 16px; min-height: 52px; }
   .mhd.has-banner { padding: 0; }
   .fiche-banner { padding: 14px 48px 12px 12px; gap: 6px; min-height: 100px; }
-  .fb-team .prime-logo { width: 52px; height: 52px; font-size: 32px !important; }
+  .fb-team .prime-logo { width: 52px; height: 52px; padding: 7px; font-size: 32px !important; }
   .fb-name { font-size: 13px; }
   .mn { font-size: 15px; }
   .mbody { padding: 14px 14px calc(18px + var(--safe-bottom)); }

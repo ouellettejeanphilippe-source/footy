@@ -32,9 +32,7 @@ const WWW = path.join(ICI, 'www');
 
 const FICHIERS = [
   'index.html',
-  'legacy.html',
   'styles.css',
-  'styles-legacy.css',
   'tv.css',
   'sw.js',
   'manifest.json',

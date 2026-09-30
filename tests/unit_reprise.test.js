@@ -53,6 +53,16 @@ async function main() {
     assert.strictEqual(P.actionSansVideo(3, true), 'suivante', 'un compteur au-delà du budget ne boucle pas');
     ok('recharger d\'abord, changer de source ensuite');
 
+    // ── 1 bis. Une source qui a déjà joué n'est jamais quittée seule ─────────
+    /* « Le switch se fait vite quand un stream lag ou buff, mais c'est normal que ça
+       arrive des fois » (30 septembre 2026). */
+    assert.strictEqual(P.actionSansVideo(1, true, 1, true), 'recharger',
+        'même en parcours (un seul essai), la source qui a joué retrouve son rechargement');
+    assert.strictEqual(P.actionSansVideo(2, true, 2, true), 'rien',
+        'et après ses essais elle RESTE : pas de bascule vers un inconnu');
+    assert.strictEqual(P.actionSansVideo(5, true, 1, true), 'rien', 'quel que soit le compteur');
+    ok('une source qui a joué est rechargée, jamais remplacée automatiquement');
+
     // ── 2. Un arrêt volontaire n'est pas une panne ────────────────────────────
     assert.strictEqual(P.arretMeriteRechargement({ cause: 'pause' }), false,
         'une vidéo prête et mise en pause : recharger par-dessus serait une nuisance');
@@ -236,7 +246,7 @@ async function main() {
     t2._playing = false;
 
     assert.strictEqual(mv.armerRepriseTuile(t2, { cause: 'attente' }), true, 'un arrêt inexpliqué arme une reprise');
-    assert.strictEqual(declencher(12000), 1, 'la reprise laisse d\'abord à la vidéo le temps de revenir');
+    assert.strictEqual(declencher(25000), 1, 'la reprise laisse d\'abord à la vidéo le temps de revenir');
     await attendre();
     assert.strictEqual(mv.mvFlux[0].url, A,
         'la source qui vient de jouer est RECHARGÉE, pas remplacée : l\'abandonner pour un inconnu est le reproche même');
@@ -244,12 +254,38 @@ async function main() {
     assert.strictEqual(mv.mvFlux[0]._autoTried | 0, 0, 'aucune bascule automatique n\'a été consommée');
     ok('un flux interrompu est rechargé sur la même source');
 
+    // ── 6 bis. Le rechargement d'une reprise ne mène pas à une autre source ──
+    /* Le chemin réel du reproche : la tuile avait déjà basculé une fois (en parcours,
+       un seul essai par source), la source joue, puis ré-tamponne. La reprise la
+       recharge ; avant ce correctif, si la page tardait à redémarrer, la patience de
+       démarrage la jugeait morte au premier silence et passait à la suivante. */
+    /* Trois sources : avec deux et une bascule déjà faite, il ne resterait nulle part
+       où aller et le test passerait même sans le correctif (vérifié par sabotage). */
+    const TROIS_SOURCES = [{ id: 'm1', homeTeam: 'A', awayTeam: 'B', streamLinks: [{ url: A }, { url: B }, { url: 'https://c.test/trois' }] }];
+    const t2b = await poser(TROIS_SOURCES, A, 'm1');
+    t2b._autoTried = 1;
+    t2b._essais = 0;
+    t2b._aJoueUrl = A;
+    t2b._playing = false;
+    assert.strictEqual(mv.armerRepriseTuile(t2b, { cause: 'attente' }), true);
+    assert.strictEqual(armes(12000), 0, 'la reprise n\'intervient plus après 12 s : un ré-tampon dure souvent plus');
+    assert.strictEqual(declencher(25000), 1, 'elle laisse 25 s à la vidéo pour revenir seule');
+    await attendre();
+    assert.strictEqual(mv.mvFlux[0].url, A, 'rechargée sur place');
+    assert.strictEqual(armes(45000), 1, 'le redémarrage a une patience de redémarrage, pas celle d\'un second essai');
+    declencher(45000); await attendre();
+    assert.strictEqual(mv.mvFlux[0].url, A, 'toujours la même source après le premier silence');
+    declencher(45000); await attendre();
+    assert.strictEqual(mv.mvFlux[0].url, A, 'et après le second : la tuile attend, ⏭ reste à portée');
+    assert.strictEqual(mv.mvFlux[0]._autoTried, 1, 'aucune bascule automatique consommée');
+    ok('un flux qui a joué puis hoqueté n\'est jamais remplacé tout seul');
+
     // ── 7. La vidéo qui revient seule annule le rechargement ────────────────
     const t3 = await poser(DEUX_SOURCES, A, 'm1');
     t3._playing = false;
     assert.strictEqual(mv.armerRepriseTuile(t3, { cause: 'attente' }), true);
     t3._playing = true; // le ré-tampon s'est résorbé avant l'échéance
-    declencher(12000);
+    declencher(25000);
     await attendre();
     assert.strictEqual(mv.mvFlux[0]._essais, 1,
         'la tuile n\'a PAS été rechargée (un rechargement compterait un second essai) : un ré-tampon ne coûte rien');
@@ -300,13 +336,14 @@ async function main() {
        qu'on vient de lui accorder : un onglet rouvert est un premier chargement. */
     mv.mvFlux.length = 0;
     localStorage.setItem('mv_state', JSON.stringify({
-        flux: [{ url: A, name: 'M1', mid: 'm1', _autoTried: 1, _essais: 2, _essaisUrl: A, _dernierGeste: Date.now() }],
+        flux: [{ url: A, name: 'M1', mid: 'm1', _autoTried: 1, _essais: 2, _essaisUrl: A, _dernierGeste: Date.now(), _aJoueUrl: A }],
         layout: null
     }));
     mv.restoreMultivisionState();
     assert.strictEqual(mv.mvFlux[0]._essais, undefined, 'le compte des essais ne survit pas à la session');
     assert.strictEqual(mv.mvFlux[0]._essaisUrl, undefined);
     assert.strictEqual(mv.mvFlux[0]._dernierGeste, undefined, 'ni le dernier clic, qui ne veut plus rien dire');
+    assert.strictEqual(mv.mvFlux[0]._aJoueUrl, undefined, 'ni la preuve de lecture : un onglet rouvert doit la refaire');
     assert.strictEqual(mv.mvFlux[0].url, A, 'la tuile, elle, est bien revenue');
     ok('un onglet rouvert est un premier chargement, pas la suite du précédent');
 
