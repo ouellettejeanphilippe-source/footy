@@ -2,6 +2,12 @@
 ## En cours
 
 ## Fait
+- 2026-09-30 - **Un cadre intérieur refusé par Firefox est relu par le script, pas par l'application.**
+
+  - La tuile charge toujours la page entière. On ne reconstruit pas cette page. Si le lecteur est une iframe de plus et que Firefox en affiche la page d'erreur (le document est alors lisible), `multiview-cleaner.user.js` 1.10 télécharge cette adresse avec `GM_xmlhttpRequest` et la pose en `srcdoc` dans CE cadre. Un cadre d'une autre origine qui s'est vraiment chargé lève une exception : on n'y touche pas. Une seule reprise par page. `about:blank` ne compte pas.
+
+  - **Fichiers** : `multiview-cleaner.user.js`, `tests/unit_cadreinterieur.test.js`.
+
 - 2026-09-30 - **Les liens « ouvrir dans un onglet » ne prennent plus la première tuile.**
 
   - **Constat.** `sortFluxLinks` classait préférence, puis jouabilité observée, puis qualité, et ignorait `topLevel`. Une page dont l'hôte refuse l'iframe passait devant un lecteur cadrable dès qu'elle annonçait une meilleure qualité. Sous Firefox la tuile charge cette page et affiche « Can't Open This Page ».
