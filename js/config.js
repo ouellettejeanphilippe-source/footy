@@ -1433,20 +1433,15 @@ export function notePlayability(link, verdict) {
 }
 
 export function sortFluxLinks(links) {
-  /* Ordre : le choix explicite de l'utilisateur (⭐ / 👎 sur un domaine), puis ce qui
-     peut vivre dans une tuile (un lien `topLevel` ne s'affiche pas dans Firefox : le
-     navigateur refuse le cadre), puis ce qui a été OBSERVÉ en train de jouer
-     (js/playability.js), puis seulement la forme du lien (qualité annoncée, site).
-     Jusqu'au 30 septembre 2026 le classement ignorait `topLevel` : une page « ouvrir
-     dans un onglet » passait devant un lecteur cadrable dès qu'elle annonçait 1080p. */
+  /* Ordre : le choix explicite de l'utilisateur (⭐ / 👎 sur un domaine), puis ce qui a
+     été OBSERVÉ en train de jouer (js/playability.js), puis seulement la forme du lien
+     (qualité annoncée, site). Pendant des semaines l'ordre était l'inverse, et la tuile
+     ouvrait d'abord des pages intermédiaires ou mortes dont l'adresse « faisait bien ». */
   var ledger = playLedger();
   return links.slice().sort(function(a, b) {
     var prefA0 = domainPrefs[getDomain(a.url)] || 0;
     var prefB0 = domainPrefs[getDomain(b.url)] || 0;
     if (prefA0 !== prefB0) return prefB0 - prefA0;
-    var cadreA = a.topLevel ? 1 : 0;
-    var cadreB = b.topLevel ? 1 : 0;
-    if (cadreA !== cadreB) return cadreA - cadreB;
     var jouA = playabilityScore(a, ledger), jouB = playabilityScore(b, ledger);
     if (jouA !== jouB) return jouB - jouA;
 
