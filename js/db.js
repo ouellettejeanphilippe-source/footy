@@ -389,6 +389,16 @@ export function leagueTier(league, overrides) {
     if (key === 'AUTRES' || key === 'AUTRES FLUX') return 'other';
     if (DEFAULT_LEAGUES[key]) return 'main';
     if (OTHER_LEAGUES && OTHER_LEAGUES[key]) return 'secondary';
+    /* Libellé non reconnu tel quel : on essaie sa forme normalisée. Le calendrier du
+       serveur a publié « NATIONAL HOCKEY LEAGUE » le 29 septembre 2026, et la LNH
+       tombait dans les ligues « autres » : dans le Guide, ses matchs restaient des
+       cartes au lieu de blocs de la grille. Le choix de l'utilisateur, lui, reste lu
+       sous le libellé qu'il a vu. */
+    var normalise = String(formatLeagueName(league) || '').toUpperCase().trim();
+    if (normalise && normalise !== key) {
+        if (DEFAULT_LEAGUES[normalise]) return 'main';
+        if (OTHER_LEAGUES && OTHER_LEAGUES[normalise]) return 'secondary';
+    }
     return 'other';
 }
 
