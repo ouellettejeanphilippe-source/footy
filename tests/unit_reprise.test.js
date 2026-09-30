@@ -143,10 +143,13 @@ async function main() {
     assert.deepStrictEqual(P.budgetReprise(0, 3000), { autorisee: true, reprises: 1 }, 'première reprise : oui');
     assert.deepStrictEqual(P.budgetReprise(1, 3000), { autorisee: true, reprises: 2 }, 'deuxième : encore');
     assert.deepStrictEqual(P.budgetReprise(2, 3000), { autorisee: false, reprises: 3 },
-        'troisième sur un flux qui ne tient jamais : non, la source est cassée');
-    assert.deepStrictEqual(P.budgetReprise(5, 300000), { autorisee: true, reprises: 1 },
-        'mais un flux qui a TENU cinq minutes avant de lâcher retrouve son budget : c\'est un match qu\'on regardait');
-    assert.strictEqual(P.budgetReprise(0, null).autorisee, true, 'aucune durée connue : on ne pénalise pas');
+        'troisième dans la même fenêtre de dix minutes : non');
+    assert.deepStrictEqual(P.budgetReprise(5, 300000), { autorisee: false, reprises: 6 },
+        'cinq minutes plus tard, toujours dans la fenêtre : on ne redémonte pas');
+    assert.deepStrictEqual(P.budgetReprise(5, 10 * 60 * 1000), { autorisee: true, reprises: 1 },
+        'la fenêtre des dix minutes est passée : deux reprises redeviennent possibles');
+    assert.strictEqual(P.budgetReprise(0, null).autorisee, true, 'aucune fenêtre ouverte : la première reprise est permise');
+    assert.strictEqual(P.BASCULES_AUTO_MAX, 2, 'deux changements de source automatiques, pas la liste entière');
     ok('une source qui ne tient jamais n\'est pas rechargée en boucle');
 
     // ── 3. Sans le script utilisateur, la tuile ne décide rien seule ─────────
@@ -214,6 +217,21 @@ async function main() {
     vues.push(mv.mvFlux[0].url);
     assert.notStrictEqual(vues[2], vues[1], 'et la tuile est bien passée à la troisième');
     ok('en parcours, une seule patience par source : le rechargement ne se paie qu\'à l\'atterrissage');
+
+    // ── 4 quater. Deux bascules automatiques, puis on s'arrête ──────────────
+    const D = 'https://d.test/quatre';
+    const QUATRE = [{ id: 'm3b', homeTeam: 'A', awayTeam: 'B', streamLinks: [{ url: A }, { url: B }, { url: C }, { url: D }] }];
+    await poser(QUATRE, A, 'm3b');
+    declencher(30000); await attendre();
+    declencher(30000); await attendre();
+    assert.strictEqual(mv.mvFlux[0]._autoTried, 1);
+    declencher(30000); await attendre();
+    assert.strictEqual(mv.mvFlux[0]._autoTried, 2, 'deuxième changement automatique');
+    var posee = mv.mvFlux[0].url;
+    declencher(30000); await attendre();
+    assert.strictEqual(mv.mvFlux[0].url, posee, 'la troisième bascule n\'a pas lieu : ⏭ reste le seul moyen');
+    assert.strictEqual(mv.mvFlux[0]._autoTried, 2);
+    ok('deux changements automatiques par tuile, pas un parcours des 36 sources');
 
     // ── 4 ter. Le second essai ne rachète pas la longue patience ────────────
     /* Un hôte réputé lent a droit à 90 s pour DÉMARRER (embed.st, 6 septembre). Son
@@ -312,11 +330,14 @@ async function main() {
     assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), true, 'première reprise : on tente');
     assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), true, 'deuxième : encore');
     assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), false,
-        'troisième : la source ne tient pas trois secondes, la rallumer ne fait que rallumer la panne');
-    t4._joueDepuis = Date.now() - 300000; // cette fois elle avait tenu cinq minutes
+        'troisième : deux reprises dans la fenêtre, on laisse le lecteur revenir seul');
+    t4._joueDepuis = Date.now() - 300000;
+    assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), false,
+        'avoir tenu cinq minutes ne rouvre pas le budget');
+    t4._fenetreReprise = Date.now() - 10 * 60 * 1000;
     assert.strictEqual(mv.armerRepriseTuile(t4, { cause: 'attente' }), true,
-        'un flux qu\'on regardait depuis cinq minutes retrouve son budget : ce n\'est pas la même panne');
-    ok('une source qui ne tient jamais cesse d\'être rechargée, celle qui a tenu y a droit');
+        'dix minutes après la première coupure, deux reprises redeviennent possibles');
+    ok('deux rechargements par dix minutes, pas un par trou');
 
     // ── 9. Les minuteurs ne vivent pas sur la tuile ──────────────────────────
     /* `saveMultivisionState` sérialise `mvFlux` en JSON. Un handle de minuteur n'est un

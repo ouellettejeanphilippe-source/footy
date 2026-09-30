@@ -2,6 +2,14 @@
 ## En cours
 
 ## Fait
+- 2026-09-30 - **Deux coupures automatiques, pas plus.**
+
+  - **Rechargement.** Une source qui a déjà joué est rechargée au plus deux fois par tranche de dix minutes (`FENETRE_REPRISE_MS`). Avant, le compte repartait dès que la vidéo avait tenu deux minutes, donc un match long était démonté à chaque trou. Après le plafond, la tuile laisse le lecteur revenir seul. Le bouton ⏭ ne change pas.
+
+  - **Changement de source.** Au plus deux bascules automatiques par tuile (`BASCULES_AUTO_MAX`). La liste n'est plus parcourue. ⏭ avance encore, à la main.
+
+  - **Fichiers** : `js/playability.js`, `js/multiview.js`, `sw.js` + `VERSION_APP` → `sports-guide-v34`, `tests/unit_reprise.test.js`.
+
 - 2026-09-30 - **Un cadre intérieur refusé par Firefox est relu par le script, pas par l'application.**
 
   - La tuile charge toujours la page entière. On ne reconstruit pas cette page. Si le lecteur est une iframe de plus et que Firefox en affiche la page d'erreur (le document est alors lisible), `multiview-cleaner.user.js` 1.10 télécharge cette adresse avec `GM_xmlhttpRequest` et la pose en `srcdoc` dans CE cadre. Un cadre d'une autre origine qui s'est vraiment chargé lève une exception : on n'y touche pas. Une seule reprise par page. `about:blank` ne compte pas.
