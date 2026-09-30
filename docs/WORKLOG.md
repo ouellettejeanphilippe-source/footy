@@ -2,6 +2,14 @@
 ## En cours
 
 ## Fait
+- 2026-09-30 - **Le son automatique n'arrivait pas jusqu'à la vidéo.**
+
+  - **Constat.** `mv_unmute` s'arrêtait au cadre de la tuile. Le lecteur est souvent un cadre plus bas, donc le muet ne bougeait pas. Le clic, lui, remontait à `window.parent` et se perdait au même endroit. Et quand il arrivait, l'application renvoyait `mv_unmute` après le geste : Firefox avait déjà périmé l'activation et remettait le muet.
+
+  - **Règle.** Le script 1.11 rend le son dans le tour du clic. Il transmet `mv_unmute`, `mv_mute` et `mv_play` aux cadres intérieurs. Le clic et l'état du son remontent à la fenêtre principale ; l'application reconnaît la tuile même si le message vient d'un cadre imbriqué.
+
+  - **Fichiers** : `multiview-cleaner.user.js`, `js/multiview.js`, `sw.js` + `VERSION_APP` → `sports-guide-v35`, `tests/unit_soncadre.test.js`, `docs/ARCHITECTURE.md`.
+
 - 2026-09-30 - **Deux coupures automatiques, pas plus.**
 
   - **Rechargement.** Une source qui a déjà joué est rechargée au plus deux fois par tranche de dix minutes (`FENETRE_REPRISE_MS`). Avant, le compte repartait dès que la vidéo avait tenu deux minutes, donc un match long était démonté à chaque trou. Après le plafond, la tuile laisse le lecteur revenir seul. Le bouton ⏭ ne change pas.
