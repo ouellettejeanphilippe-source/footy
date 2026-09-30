@@ -61,6 +61,14 @@ async function main() {
   assert.strictEqual(mv.mvFlux[0]._sortieForcee, false, '« Charger quand même » lève la marque');
   ok('« Charger quand même » lève la marque et repose la tuile par le chemin normal');
 
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'js', 'multiview.js'), 'utf8');
+  const branche = src.slice(src.indexOf('if (s._sortieForcee)'), src.indexOf('if (s._sortieForcee)') + 700);
+  assert.ok(branche.indexOf("nextFluxForTile(parseInt(cell.dataset.index, 10), 'auto')") >= 0,
+    'une tuile qui ne peut pas repartir charge la source suivante');
+  assert.ok(!/modeCable && nextFluxForTile/.test(branche),
+    'ce n\'est pas réservé au mode câble : le panneau bloquait le lecteur');
+  ok('sortie forcée : source suivante, le panneau seulement s\'il n\'y a rien d\'autre');
+
   console.log(`unit_sortieforcee: ${n} groupes de tests OK`);
   process.exit(0);
 }

@@ -1345,9 +1345,9 @@ export function setupMultivisionUI() {
                    depuis dix minutes du flux qui ne tient jamais deux secondes, et qu'il
                    ne sert à rien de recharger en boucle (budgetReprise). */
                 s._joueDepuis = Date.now();
-                /* L'adresse qui a JOUÉ dans cette tuile : un arrêt plus tard sera un hoquet
-                   à rattraper sur place, jamais une raison de changer de source
-                   (actionSansVideo, js/playability.js). */
+                /* L'adresse qui a JOUÉ dans cette tuile. Un arrêt est d'abord un hoquet :
+                   on recharge. On ne change de source qu'une fois ces essais épuisés
+                   (actionSansVideo). */
                 s._aJoueUrl = s._currentUrl || s.url;
                 if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
                 /* Son automatique : la vidéo existe et joue, c'est maintenant que le son
@@ -1941,11 +1941,11 @@ export function updateMultivisionLayout() {
             container.innerHTML = '';
             s._currentUrl = url;
             if (s._sortieForcee) {
-                /* Mode câble : un avertissement n'est pas une chaîne. On passe à la
-                   source suivante — celles qui ont fait sortir la page sont déjà écartées
-                   de la liste (optionsCable), donc ce chemin ne tourne pas en rond — et
-                   on ne montre le panneau que s'il ne reste rien à essayer. */
-                if (modeCable && nextFluxForTile(parseInt(cell.dataset.index, 10), 'auto')) return;
+                /* La page ne peut pas repartir dans la tuile : la reposer relance la
+                   sortie. On charge la source suivante, une fois. Le panneau ne reste
+                   que s'il n'y a rien d'autre. « Charger quand même » est sur ce panneau,
+                   et sur un choix manuel de cette adresse. */
+                if (nextFluxForTile(parseInt(cell.dataset.index, 10), 'auto')) return;
                 poserAvertissementSortie(container, cell, s); return;
             }
             resolveStreamUrl(url).then(function(finalUrl) {
@@ -2440,7 +2440,7 @@ function armerBasculeAuto(s, idx, url) {
             return;
         }
         if (action === 'suivante') { nextFluxForTile(place, 'auto'); return; }
-        if (aJoue && reste) showToast('Le flux ne revient pas : ⏭ pour essayer une autre source');
+        if (!reste) showToast('Plus d\'autre source pour ce match');
     }, delai);
 }
 
@@ -4136,7 +4136,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v32';
+export var VERSION_APP = 'sports-guide-v33';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
