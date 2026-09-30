@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.10
+// @version      1.11
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -409,13 +409,13 @@
                 // If user manually unmutes or increases volume, notify parent to focus this stream
                 // This ensures other streams get muted
                 if (!mediaEl.muted && mediaEl.volume > 0 && !window.mvUnmutedState) {
-                    window.parent.postMessage('mv_frame_clicked', '*');
+                    window.top.postMessage('mv_frame_clicked', '*');
                 }
             });
 
             mediaEl.addEventListener('play', function() {
                  if (!mediaEl.muted && mediaEl.volume > 0 && !window.mvUnmutedState) {
-                    window.parent.postMessage('mv_frame_clicked', '*');
+                    window.top.postMessage('mv_frame_clicked', '*');
                 }
             });
         }
@@ -451,7 +451,7 @@
 
         // Detect clicks anywhere in the window to broadcast click to parent
         window.addEventListener('mousedown', function(e) {
-            window.parent.postMessage('mv_frame_clicked', '*');
+            window.top.postMessage('mv_frame_clicked', '*');
         }, true);
     }
 
@@ -573,7 +573,7 @@
             const bloque = !!v.muted;
             if (bloque) window.mvUnmutedState = false;
             try {
-                window.parent.postMessage({ __mv: 'sound_state', unmuted: !bloque, blocked: bloque }, '*');
+                window.top.postMessage({ __mv: 'sound_state', unmuted: !bloque, blocked: bloque }, '*');
             } catch (e) {}
         }, 400);
     }
@@ -584,6 +584,14 @@
            La comparaison porte sur la référence CAPTURÉE au démarrage : `window.parent`
            rend un Proxy neuf à chaque lecture depuis le piège anti-détournement. */
         if (e.source !== FENETRE_PARENTE) return;
+
+        if (e.data === 'mv_mute' || e.data === 'mv_unmute' || e.data === 'mv_play') {
+            try {
+                document.querySelectorAll('iframe').forEach(function (ifr) {
+                    if (ifr.contentWindow) ifr.contentWindow.postMessage(e.data, '*');
+                });
+            } catch (err) {}
+        }
 
         if (e.data === 'mv_mute' || e.data === 'mv_unmute') {
             const couper = (e.data === 'mv_mute');
@@ -628,6 +636,19 @@
             lancerLectureImmediate(mainPlayerBase || document);
         }
     });
+
+    /* Le clic est la seule activation que Firefox accepte pour le son. On le rend
+       dans le même tour que le geste : après un aller-retour avec l'application,
+       l'activation est périmée et le navigateur remet le muet. Le lecteur est souvent
+       un cadre plus bas ; ce script y tourne aussi, donc le clic tombe là où est la vidéo. */
+    window.addEventListener('mousedown', function () {
+        window.mvUnmutedState = true;
+        document.querySelectorAll('video, audio').forEach(function (el) {
+            el.muted = false;
+            el.volume = 1;
+        });
+        try { window.top.postMessage('mv_frame_clicked', '*'); } catch (e) {}
+    }, true);
 
     /* « Vidéo en lecture » : le seul signal fiable que la tuile puisse recevoir.
 
@@ -980,7 +1001,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.10';
+    var VERSION = '1.11';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

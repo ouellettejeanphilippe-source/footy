@@ -1273,21 +1273,12 @@ export function setupMultivisionUI() {
 
     window.addEventListener('message', function(e) {
         if (e.data === 'mv_frame_clicked') {
-            mvFlux.forEach(function(s, idx) {
-                var iframe = document.getElementById('mv-iframe-' + idx);
-                if (iframe && iframe.contentWindow === e.source) {
-                    if (activeMvIdx !== idx) {
-                        focusStream(idx);
-                    }
-                    /* Quand la tuile s'arrêtera, il faudra savoir si c'est l'utilisateur
-                       qui l'a arrêtée : mettre une vidéo en pause demande un clic,
-                       ré-tamponner n'en demande aucun (voir armerRepriseTuile). */
-                    s._dernierGeste = Date.now();
-                    /* Le clic est une activation que le navigateur vient d'accorder :
-                       c'est la seule occasion de rendre le son après un refus. */
-                    donnerLeSon(idx, 'geste');
-                }
-            });
+            var idxClic = indexDeTuilePour(e.source);
+            if (idxClic >= 0) {
+                if (activeMvIdx !== idxClic) focusStream(idxClic);
+                mvFlux[idxClic]._dernierGeste = Date.now();
+                donnerLeSon(idxClic, 'geste');
+            }
         }
         /* Le son a été refusé par le navigateur dans la tuile (le script utilisateur a
            dû remuer la vidéo pour qu'elle continue de jouer). */
@@ -4137,7 +4128,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v34';
+export var VERSION_APP = 'sports-guide-v35';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
