@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <link rel="manifest" href="./manifest.json">
 <title>Guide des Sports</title>
-<script>try{if(localStorage.getItem('ui_legacy')==='1')location.replace('legacy.html'+location.search+location.hash);}catch(e){}</script>
+<script>try{localStorage.removeItem('ui_legacy');}catch(e){}</script>
 <link rel="stylesheet" href="styles.css">
 <!-- Les modules sont découverts en cascade depuis js/main.js : on annonce les plus lourds
      tout de suite pour que le navigateur les télécharge en parallèle (9 septembre 2026). -->
@@ -66,8 +66,7 @@
         <button class="nav-btn" id="filter-options" role="menuitem" onclick="applyFilter('options'); toggleMenu(event);">⚙️ Options</button>
         <button class="nav-btn" id="filter-logs" role="menuitem" onclick="applyFilter('logs'); toggleMenu(event);">📋 Logs</button>
         <button class="nav-btn" id="filter-script" role="menuitem" onclick="applyFilter('script'); toggleMenu(event);">🧩 Script</button>
-        <button class="nav-btn menu-sep" id="btn-legacy-ui" role="menuitem" onclick="toggleLegacyUi(true)" title="Revenir à l'ancienne présentation pour comparer">↩ Interface classique</button>
-        <button class="nav-btn" id="btn-maj-app" role="menuitem" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">↻ Mettre à jour l'app</button>
+        <button class="nav-btn menu-sep" id="btn-maj-app" role="menuitem" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">↻ Mettre à jour l'app</button>
       </div>
     </div>
   </nav>
@@ -292,11 +291,6 @@
           <option value="league">Couleur de la ligue</option>
           <option value="dark">Foncé</option>
         </select>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Interface classique<small>Revenir à l'ancienne présentation, le temps de comparer. Le choix est retenu.</small></div>
-        <label class="switch"><input type="checkbox" id="pref-legacy-ui" onchange="toggleLegacyUi(this.checked)"><span class="slider"></span></label>
       </div>
 
       <div class="field row">

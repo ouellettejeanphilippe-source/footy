@@ -48,6 +48,11 @@ const LEAGUE_ALIASES = {
   'formula 1': 'f1',
   'nba': 'nba',
   'nhl': 'nhl',
+  /* ESPN a nommé la LNH « National Hockey League » au 29 septembre 2026 (présaison) : sans
+     cet alias, le calendrier publiait « NATIONAL HOCKEY LEAGUE », une ligue inconnue. */
+  'national hockey league': 'nhl',
+  'national basketball association': 'nba',
+  'national football league': 'nfl',
   'nfl': 'nfl',
   'mlb': 'mlb',
   'cfl': 'cfl',

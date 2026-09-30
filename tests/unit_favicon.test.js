@@ -35,8 +35,8 @@ FICHIERS.forEach((f) => {
 });
 ok('les cinq fichiers existent, et les PNG font bien la taille annoncée');
 
-// ── 2. Les deux pages les déclarent ───────────────────────────────────────────
-['index.html', 'legacy.html'].forEach((page) => {
+// ── 2. La page les déclare ───────────────────────────────────────────
+['index.html'].forEach((page) => {
     const html = lire(page);
     assert.ok(/<link rel="icon" type="image\/svg\+xml" href="\.\/icons\/favicon\.svg">/.test(html),
         page + ' déclare le SVG');
@@ -44,7 +44,7 @@ ok('les cinq fichiers existent, et les PNG font bien la taille annoncée');
     assert.ok(/<link rel="apple-touch-icon" sizes="180x180"/.test(html),
         page + ' déclare l\'icône d\'écran d\'accueil iOS, qui ignore le SVG');
 });
-ok('l\'interface actuelle ET l\'interface classique déclarent l\'icône');
+ok('index.html déclare l\'icône');
 
 // ── 3. Le manifeste pointe vers de vrais fichiers, pas des data-URI ───────────
 const manifeste = JSON.parse(lire('manifest.json'));

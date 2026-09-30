@@ -389,6 +389,16 @@ export function leagueTier(league, overrides) {
     if (key === 'AUTRES' || key === 'AUTRES FLUX') return 'other';
     if (DEFAULT_LEAGUES[key]) return 'main';
     if (OTHER_LEAGUES && OTHER_LEAGUES[key]) return 'secondary';
+    /* Libellé non reconnu tel quel : on essaie sa forme normalisée. Le calendrier du
+       serveur a publié « NATIONAL HOCKEY LEAGUE » le 29 septembre 2026, et la LNH
+       tombait dans les ligues « autres » : dans le Guide, ses matchs restaient des
+       cartes au lieu de blocs de la grille. Le choix de l'utilisateur, lui, reste lu
+       sous le libellé qu'il a vu. */
+    var normalise = String(formatLeagueName(league) || '').toUpperCase().trim();
+    if (normalise && normalise !== key) {
+        if (DEFAULT_LEAGUES[normalise]) return 'main';
+        if (OTHER_LEAGUES && OTHER_LEAGUES[normalise]) return 'secondary';
+    }
     return 'other';
 }
 
@@ -661,10 +671,10 @@ export function sportOfTeamName(name) {
    Quand le sport est fourni et que la résolution aboutit à une équipe d'un AUTRE sport,
    on rend le nom d'origine : non résolu, mais jamais faux — le même parti pris que pour
    les alias ambigus plus haut dans ce module. */
-export function getOfficialTeamName(n, bypassFuzzyMatch, sport) {
+export function getOfficialTeamName(n, bypassFuzzyMatch, sport, sansApproximation) {
     if (!n) return n;
     if (sport) {
-        var resolu = getOfficialTeamName(n, bypassFuzzyMatch);
+        var resolu = getOfficialTeamName(n, bypassFuzzyMatch, undefined, sansApproximation);
         if (resolu && resolu !== n) {
             var sr = sportOfTeamName(resolu);
             if (sr && sr !== sport) return n;
@@ -702,6 +712,9 @@ export function getOfficialTeamName(n, bypassFuzzyMatch, sport) {
         return STATIC_TEAM_MAP[stripped];
     }
 
+    /* `sansApproximation` : table et alias seulement (voir nomOfficielDansLigue). */
+    if (sansApproximation) return n;
+
     // Fuzzy matching against STATIC_TEAM_MAP keys
     // Avoid false positives for racing events by skipping fuzzy match if the name contains "grand prix" or "indy"
     var isRacingEvent = n.toLowerCase().includes('grand prix') || n.toLowerCase().includes('indy') || n.toLowerCase().includes('indianapolis') || n.toLowerCase() === 'race' || n.toLowerCase() === 'fp1' || n.toLowerCase() === 'fp2' || n.toLowerCase() === 'fp3' || n.toLowerCase() === 'qual' || n.toLowerCase() === 'qualifying' || n.toLowerCase() === 'sprint' || n.toLowerCase() === 'sr' || n.toLowerCase() === 'ss';
@@ -728,6 +741,30 @@ export function getOfficialTeamName(n, bypassFuzzyMatch, sport) {
 
     return n;
 }
+/* Nom officiel d'une équipe venue d'ESPN, ou le nom reçu.
+
+   ESPN donne déjà le nom complet et exact. Le résoudre avec getOfficialTeamName faisait
+   intervenir l'appariement approximatif, qui cherche l'équipe de la base la plus proche
+   même quand l'équipe n'y est pas. Relevé du 29 septembre 2026, onglet Live : « Indiana
+   Fever » affiché « Indiana Pacers », « Las Vegas Aces » → « Las Vegas Raiders »,
+   « New York Liberty » → « New York City FC ». Mesuré le 30 sur data/schedule.json :
+   l'approximation modifiait 148 des 370 noms ESPN (WNBA, NCAA, rugby, Coupe du Roi…),
+   et pas un seul à raison — « Michigan Wolverines » → « Iran », « Ball State
+   Cardinals » → « Arsenal », « Toulon » → « Toulouse ».
+
+   On garde donc la table et les alias exacts, jamais l'approximation. Et une résolution
+   exacte qui mène à une équipe d'une autre famille de ligue (sportOfLeague distingue
+   NBA et WNBA, MLB, NHL, soccer…) est refusée à son tour : un alias peut être partagé
+   entre sports. Quand l'une des deux familles est inconnue (« other »), on garde. */
+export function nomOfficielDansLigue(name, league) {
+    var r = getOfficialTeamName(name, false, undefined, true);
+    if (!r || r === name) return r;
+    var attendu = sportOfLeague(league);
+    var obtenu = sportOfLeague(leagueOfTeamName(r));
+    if (attendu !== 'other' && obtenu !== 'other' && attendu !== obtenu) return name;
+    return r;
+}
+
 /* Ligue déclarée pour un nom d'équipe dans TEAM_DATA, ou '' si inconnue.
 
    Sert à départager des catégories que les sources mêlent : streamed.pk range tout le

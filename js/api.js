@@ -1,6 +1,6 @@
 import { lg, getLeagueDuration, fetchPage, esc } from './utils.js';
 import { getEstTimeStrFromDate, getEstDateStrFromDate, isLiveNow } from './config.js';
-import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, normName, leagueTier, resolvePairing } from './db.js';
+import { formatLeagueName, lgFlag, lgColor, nomOfficielDansLigue, normName, leagueTier, resolvePairing } from './db.js';
 import { isMatch, isMatchPair, mergeAltUrls, spectacleDeCatch } from './match.js';
 import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
@@ -612,8 +612,8 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           league: formatLeagueName(leagueName),
           flag: lgFlag(leagueName),
           color: lgColor(leagueName),
-          homeTeam: getOfficialTeamName(homeName),
-          awayTeam: getOfficialTeamName(awayName),
+          homeTeam: nomOfficielDansLigue(homeName, leagueName),
+          awayTeam: nomOfficielDansLigue(awayName, leagueName),
           matchDate: matchDate,
           homeLogo: isRacing ? null : (comp.competitors.find(function(c){return c.homeAway==='home';}).team.logo || null),
           awayLogo: isRacing ? null : (comp.competitors.find(function(c){return c.homeAway==='away';}).team.logo || null),
@@ -641,6 +641,13 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           existingMatch.startTime = matchObj.startTime;
           existingMatch.matchDate = matchObj.matchDate;
           existingMatch.isPlayoff = isPlayoff;
+          /* Les noms aussi : un calendrier mis en cache avant le 30 septembre 2026 porte
+             « Indiana Pacers » pour les Indiana Fever (voir nomOfficielDansLigue). Même
+             identifiant ESPN, donc même match : le nom d'ESPN fait foi. */
+          if (!isRacing) {
+            existingMatch.homeTeam = matchObj.homeTeam;
+            existingMatch.awayTeam = matchObj.awayTeam;
+          }
         } else {
           baseMatches.push(matchObj);
           baseMatchesById[matchObj.id] = matchObj;

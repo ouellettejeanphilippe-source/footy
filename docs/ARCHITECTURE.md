@@ -18,8 +18,7 @@ Toutes les heures manipulées sont celles de New York (`America/New_York`), fuse
 
 ```
 index.html              Coquille de l'interface actuelle (onglets Live / Guide / Lecteur / Plus)
-legacy.html             Interface classique (même moteur, ancienne présentation)
-styles.css, styles-legacy.css, tv.css
+styles.css, tv.css
 sw.js                   Service worker (précache de la coquille, réseau d'abord)
 manifest.json           Manifeste PWA
 multiview-cleaner.user.js   Script utilisateur Tampermonkey (nettoyage des lecteurs, pont)
@@ -41,14 +40,14 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 
 | Fichier | Rôle | Exports à connaître |
 |---|---|---|
-| `js/main.js` | Amorçage, orchestration des passes de chargement (`loadAll`), minuteries, pages Favoris et ligues, choix de date, bascules interface classique et mode TV. | `loadAll`, `loadPrefetchedStreams`, `actualiserMaintenant`, `applyScoreUpdates`, `reevaluerFinsPresumees`, `updateLiveScores`, `applyTargetDate`, `PREFETCH_STALE_MS` |
+| `js/main.js` | Amorçage, orchestration des passes de chargement (`loadAll`), minuteries, pages Favoris et ligues, choix de date, bascule du mode TV. | `loadAll`, `loadPrefetchedStreams`, `actualiserMaintenant`, `applyScoreUpdates`, `reevaluerFinsPresumees`, `updateLiveScores`, `applyTargetDate`, `PREFETCH_STALE_MS` |
 | `js/api.js` | Calendrier : ESPN et sources annexes, cache local du jour, rafraîchissement des scores, fusion des flux dans la grille, statistiques et classements. | `ESPN_LEAGUES`, `getApiFirstMatches`, `backgroundUpdateGuide`, `mergeFluxToApi`, `refreshLiveScores`, `calendrierPerime`, `TARGET_DATE`, `fetchGameStats` |
 | `js/config.js` | Adresses des sources et miroirs, `SCRAPERS_CONFIG`, configuration distante, proxys, fenêtre Live, préférences de domaine, tri des liens. | `SCRAPERS_CONFIG`, `SOURCE_MIRRORS`, `fetchRemoteConfig`, `applySourceUrl`, `shouldPromoteSource`, `isLiveNow`, `startsWithin`, `minutesUntilStart`, `sortFluxLinks`, `PROXIES` |
 | `js/utils.js` | `fetchPage` (pont, proxys, relance parallèle), stockage local sécurisé, onglets et pages, échappement, durée par ligue. | `fetchPage`, `safeStorage*`, `applyFilter`, `showPage`, `getLeagueDuration`, `esc`, `escJs`, `showToast` |
 | `js/scrapers.js` | Parseurs par source, extraction des liens d'une page de match, caches (`stream_cache`, `embed_registry`), file de sous-pages. | `parse*`, `scrapeMatchFlux`, `extractStreamLinks`, `finalizeStreamLinks`, `compterFluxUtiles`, `getEmbedRegistry` |
 | `js/ui.js` | Rendu du Live et du Guide (`buildEPG`), fiche de match (`openMod`), badges, préférences d'apparence des cartes. | `buildEPG`, `openMod`, `closeMod`, `renderFluxItem`, `timelineBadgeHtml`, `belongsToLive`, `scrollToNow`, `userPrefs` |
 | `js/multiview.js` | Lecteur (tuiles, dispositions, modes réduits, plein écran), pages Options, Logs et Script, diagnostic « Cet appareil », mise à jour de l'application. | `setupMultivisionUI`, `addToMultivision`, `updateMultivisionLayout`, `openFlux`, `mettreAJourApplication`, `VERSION_APP` |
-| `js/db.js` | Base d'équipes dérivée de `teams.js` : alias, couleurs, logos, ligues, sport et niveau d'une ligue. | `leagueTier`, `DEFAULT_LEAGUES`, `OTHER_LEAGUES`, `getOfficialTeamName`, `normName`, `getLogo`, `sportOfLeague`, `formatLeagueName` |
+| `js/db.js` | Base d'équipes dérivée de `teams.js` : alias, couleurs, logos, ligues, sport et niveau d'une ligue. | `leagueTier`, `DEFAULT_LEAGUES`, `OTHER_LEAGUES`, `getOfficialTeamName`, `nomOfficielDansLigue`, `normName`, `getLogo`, `sportOfLeague`, `formatLeagueName` |
 | `js/match.js` | Appariement de deux matchs, fusion de listes, catégories (féminin, jeunes, réserve), spectacles de catch, séances de course, similarité de noms. | `isMatchPair`, `debugMatchPair`, `isMatch`, `mergeMatches`, `categorieDuMatch`, `spectacleDeCatch`, `seanceDeCourse`, `memeSeanceDeCourse` |
 | `js/state.js` | État global `S`, favoris, ordre et niveaux de ligue, journal des sources. | `S`, `setMatches`, `favTeams`, `toggleFavTeam`, `setLeagueTier`, `customLgOrder`, `addScrapeLog` |
 | `js/teams.js` | Données statiques `TEAM_DATA` (nom, ligue, couleurs, logo, alias). | `TEAM_DATA` |
@@ -80,7 +79,7 @@ Huit modules forment un cycle : `api ↔ config ↔ ui ↔ multiview ↔ main �
 
 ### 3.4 Points d'entrée
 
-`index.html` charge un seul module, `js/main.js`, en fin de page. Son unique script en ligne, en tête, redirige vers `legacy.html` si le stockage local porte `ui_legacy = '1'`. `legacy.html` charge le même module. Les gestionnaires `onclick` du HTML appellent des fonctions exposées sur `window` par leurs modules (par exemple `applyFilter` par `utils.js`, `applyUserPrefs` par `multiview.js`, `toggleTvMode` par `main.js`).
+`index.html` charge un seul module, `js/main.js`, en fin de page. Son unique script en ligne, en tête, efface la clé `ui_legacy` qu'avait laissée l'interface classique (retirée le 30 septembre 2026). Les gestionnaires `onclick` du HTML appellent des fonctions exposées sur `window` par leurs modules (par exemple `applyFilter` par `utils.js`, `applyUserPrefs` par `multiview.js`, `toggleTvMode` par `main.js`).
 
 ## 4. Démarrage et passes de chargement
 
@@ -121,7 +120,7 @@ Minuteries et réveils :
 
 1. cache local `api_calendar_cache_<jour>` s'il est **frais** : `calendrierPerime` le juge périmé au-delà de `CALENDAR_STALE_MS` (10 min), s'il est d'un autre jour, vide, ou sans horodatage `savedAt` ;
 2. sinon, pour aujourd'hui, `data/schedule.json` si son `fetchDate` est le jour ;
-3. sinon ESPN et les annexes en direct (`fetchAndProcessApiMatches`), avec un repli sur le cache local même périmé si tout échoue, et un avertissement.
+3. sinon ESPN et les annexes en direct (`fetchAndProcessApiMatches`). Les noms d'équipes d'ESPN passent par `nomOfficielDansLigue` (`js/db.js`) : table et alias exacts seulement, jamais l'appariement approximatif, qui renommait 148 noms ESPN sur 370 à tort (« Indiana Fever » → « Indiana Pacers », « Michigan Wolverines » → « Iran ») ; une passe qui revoit un match déjà connu lui rend les noms d'ESPN, avec un repli sur le cache local même périmé si tout échoue, et un avertissement.
 
 Trois garde-fous dans la lecture en direct :
 
@@ -273,7 +272,9 @@ Une tuile est une iframe qui charge la page du site telle quelle, **sans attribu
 
 **Mais le rechargement est un secours, pas un péage** (20 septembre 2026, « les vidéos se chargent pas bien dans le multiview aujourd'hui »). Payé sur chaque source, il doublait le temps d'un parcours : 60 s par source morte au lieu de 30, 180 au lieu de 90 pour un hôte réputé lent, et quatorze sources mortes coûtaient quatorze minutes au lieu de sept. `essaisPourSource(lien, registre, enParcours)` (`js/playability.js`) décide : `ESSAIS_PAR_SOURCE` (2) pour la source sur laquelle la tuile a ATTERRI, **1** dès qu'une bascule automatique a eu lieu (on ne rattrape plus, on cherche) et **1** pour un hôte de score ≤ 0 (cadre refusé, hôte éprouvé qui ne joue jamais). Et le second essai repart sur `DELAI_SANS_VIDEO_MS`, pas sur la longue patience : le premier l'a déjà donnée.
 
-**Un flux qui s'arrête après avoir joué est rechargé, jamais remplacé** (`armerRepriseTuile`). Le script signale un simple ré-tampon comme un arrêt : on laisse 12 s à la vidéo pour revenir seule (le `video_state` à `true` coupe le minuteur), puis on recharge la MÊME source. **Borné** (`budgetReprise`, 20 septembre 2026) : au plus `REPRISES_PAR_SOURCE` (2) rechargements par adresse, parce que la lecture remet `_essais` à zéro et qu'un flux qui joue deux secondes, meurt et rejoue deux secondes bouclerait sans fin. Le compte est oublié quand la vidéo a tenu `REPRISE_OUBLI_MS` (2 min) : un match qu'on regardait depuis dix minutes n'est pas une source cassée. `arretMeriteRechargement` (`js/playability.js`) écarte l'arrêt volontaire : le script à jour donne la `cause` (`pause` = vidéo prête et arrêtée, `attente` = ré-tampon, `absente` = lecteur disparu) ; un script plus ancien ne la donne pas, et c'est le dernier clic vu dans le cadre (`_dernierGeste`, 20 s) qui départage.
+**Un flux qui s'arrête après avoir joué est rechargé, jamais remplacé** (`armerRepriseTuile`). Le script signale un simple ré-tampon comme un arrêt : on laisse 25 s à la vidéo pour revenir seule (12 s jusqu'au 30 septembre 2026 : le rechargement coupait des ré-tampons qui se seraient résorbés) (le `video_state` à `true` coupe le minuteur), puis on recharge la MÊME source. **Borné** (`budgetReprise`, 20 septembre 2026) : au plus `REPRISES_PAR_SOURCE` (2) rechargements par adresse, parce que la lecture remet `_essais` à zéro et qu'un flux qui joue deux secondes, meurt et rejoue deux secondes bouclerait sans fin. Le compte est oublié quand la vidéo a tenu `REPRISE_OUBLI_MS` (2 min) : un match qu'on regardait depuis dix minutes n'est pas une source cassée. `arretMeriteRechargement` (`js/playability.js`) écarte l'arrêt volontaire : le script à jour donne la `cause` (`pause` = vidéo prête et arrêtée, `attente` = ré-tampon, `absente` = lecteur disparu) ; un script plus ancien ne la donne pas, et c'est le dernier clic vu dans le cadre (`_dernierGeste`, 20 s) qui départage.
+
+**Une source qui a joué dans la tuile n'est jamais quittée automatiquement** (30 septembre 2026, « le switch se fait vite quand un stream lag ou buff »). La tuile retient l'adresse qui a joué (`_aJoueUrl`, non restaurée d'une session à l'autre). Quand elle est rechargée après un arrêt, la minuterie de démarrage (`armerBasculeAuto`) lui laisse au moins `DELAI_REDEMARRAGE_MS` (45 s) et `actionSansVideo(…, aDejaJoue)` ne rend jamais `suivante` : au plus deux rechargements, puis la tuile attend, avec un message qui rappelle ⏭. Avant, une tuile qui avait déjà basculé une fois n'accordait qu'un essai par source, et un flux qu'on regardait était remplacé dès que son rechargement tardait.
 
 Sans le script utilisateur, aucun signal de lecture ne peut venir : ni rechargement ni bascule, seule la commande ⏭ change de source. Les minuteurs d'une tuile vivent dans `minuteursTuile`, une `Map` rangée **par tuile** et non par index (`saveMultivisionState` sérialise `mvFlux` en JSON, et fermer une tuile décale toutes celles de droite).
 
@@ -366,10 +367,9 @@ Dans une page de lecteur, le script remonte à la fenêtre principale `video_sta
 - **Rendu** : `buildEPG(matches)` (`js/ui.js`) protège `buildEPGInner` : une exception de rendu ne peut plus effacer l'application (la boîte d'erreur est recréée si besoin). Chaque rendu incrémente `window.rendusGrille`, que les tests utilisent pour attendre une grille stable. En mode Live, les cartes `.prime-*` par section ; en mode Guide, la grille horaire positionnée par variables CSS (`--start-h`, `--start-m`, `--duration-m`).
 - **« hier » / « demain »** : `libelleJour(m, jour)` (`js/nuit.js`) dit si un match n'est pas daté du jour affiché. La carte et la fiche portent alors un `<span class="prime-day">` à côté du bandeau d'état, hors de `.status-text` pour que la mise à jour des scores en place ne l'efface pas ; la case du Guide préfixe son texte (« hier · LIVE | 2 - 1 », « hier · 22:05 »).
 - **Identifiant d'une carte** : `mb-<id du match>`, seul lien entre le DOM et `S.matchMap`. Un favori figure dans la section Favoris **et** dans sa section : sa copie Favoris porte `mb-<id>_fav_copy`, sinon deux éléments partageraient un `id` et `getElementById` ne verrait que le premier. Tout code qui remonte d'une carte au match passe par `getOriginalMatchId` (`js/ui.js`), qui retire ce suffixe ; la mise à jour des scores en place (`js/main.js`) cherche les deux identifiants.
-- **Niveaux de ligue** : `leagueTier` (`js/db.js`) rend `main`, `secondary`, `other` ou `ignored` ; le choix de l'utilisateur (`league_tiers`) prime sur `DEFAULT_LEAGUES` et `OTHER_LEAGUES`.
+- **Niveaux de ligue** : `leagueTier` (`js/db.js`) rend `main`, `secondary`, `other` ou `ignored` ; le choix de l'utilisateur (`league_tiers`) prime sur `DEFAULT_LEAGUES` et `OTHER_LEAGUES`. Un libellé inconnu tel quel est essayé sous sa forme normalisée (`formatLeagueName`) : « NATIONAL HOCKEY LEAGUE » est la LNH.
 - **Fiche** : `openMod(m)` dessine la bannière, charge les compléments ESPN (`fetchGameStats`, `fetchTeamInfo`) et la colonne des flux ; la page du match est relue à l'ouverture (`doitRelireLaPage`) puis chaque minute.
 - **Préférences d'apparence** : `userPrefs` (`user_prefs`), appliquées par `applyUserPrefs` → `initPrefs` → reconstruction.
-- **Interface classique** : `legacy.html` + `styles-legacy.css`, même moteur ; bascule `toggleLegacyUi`, retenue sous `ui_legacy`, appliquée par le script en tête d'`index.html`.
 - **Mode TV** : `toggleTvMode` injecte `tv.css` et `js/tv-navigation.js` (navigation spatiale aux flèches, Entrée pour cliquer) et les retire proprement ; retenu sous `pref-tv-mode`.
 
 ## 10. Stockage local
@@ -392,11 +392,11 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 | `mv_state`, `mv_sortie_forcee`, `multiviewPipMode`, `multiviewPipPrevMode`, `multiviewFloatingRect`, `multiviewMinimizedRect`, `gmPinnedMatches` | État du lecteur. |
 | `custom_scraper_rules` | Règles de l'Investigator. |
 | `custom_proxy_url`, `cors_sh_api_key`, `corsproxy_io_api_key` | Réglages réseau. |
-| `ui_legacy`, `pref-tv-mode`, `hasSeenScriptModal` | Interface classique, mode TV, fenêtre du script déjà montrée. |
+| `pref-tv-mode`, `hasSeenScriptModal` | Mode TV, fenêtre du script déjà montrée. |
 
 ## 11. Service worker et version
 
-`sw.js` : `CACHE_NAME = 'sports-guide-v29'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
+`sw.js` : `CACHE_NAME = 'sports-guide-v31'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
 
 **Règle** : toute modification de `sw.js` ou d'un fichier précaché s'accompagne d'une nouvelle valeur de `CACHE_NAME`, recopiée dans `VERSION_APP` (`js/multiview.js`), qui est ce que Logs → Cet appareil affiche. Trois tests (`unit_diagnosticappareil`, `unit_favicon`, `unit_majapp`) vérifient que les deux chaînes sont identiques. Un nouveau module `js/` doit être ajouté à `APP_SHELL`.
 
