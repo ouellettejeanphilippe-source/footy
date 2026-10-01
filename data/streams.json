@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-10-01T08:09:38.386Z",
+ "generatedAt": "2026-10-01T08:39:32.611Z",
  "date": "2026-10-01",
  "fetch": {
-  "ok": 797,
+  "ok": 792,
   "fail": 32,
   "byStatus": {
    "403": 12,
@@ -12,18 +12,19 @@
   "repris429": 0
  },
  "playerHosts": {
-  "embed.st": 344,
-  "imgcdnngx.com": 238,
+  "embed.st": 335,
+  "imgcdnngx.com": 237,
   "app.buffstreams.is": 73,
   "embedsports.me": 44,
   "mlbbite.plus": 36,
-  "sportsupa.st": 30,
+  "sportsupa.st": 32,
   "dudestream1.com": 28,
   "resports.cfd": 25,
+  "powerstream.club": 25,
   "live.tophdstreams.com": 23,
-  "powerstream.club": 22,
   "odyssney.cfd": 19,
   "fast-streams.biz": 17,
+  "bally-sports.lat": 17,
   "zkotaa.cfd": 15,
   "soccersurge.io": 14,
   "volokit2.fun": 13,
@@ -32,26 +33,25 @@
   "vipleague.me": 7,
   "wildgames.bz": 5,
   "shd247.world": 4,
-  "streameast.ps": 3,
+  "thestreameast.fun": 3,
   "streamrush.top": 3,
-  "thestreameast.fun": 2,
-  "streameast.cf": 2,
+  "streameast.is": 2,
+  "streameast.ch": 2,
   "techydeals.best": 2,
   "smartcric.top": 1,
-  "streameast.ml": 1,
+  "streameast.sg": 1,
   "live.embedca.st": 1,
+  "streameast.ps": 1,
   "streameast.fi": 1,
   "streameast.ec": 1,
-  "streameast.sg": 1,
-  "thestreameast.ru": 1,
-  "streameast.ch": 1,
-  "streameast.is": 1,
+  "streameast.ga": 1,
+  "streameast.ms": 1,
+  "streameast.cf": 1,
   "goomdstea.click": 1,
   "sports247.ru": 1,
   "topstream.help": 1,
   "1ststreams.xyz": 1,
-  "everneverbee.info.pl": 1,
-  "poscihub.ru": 1
+  "everneverbee.info.pl": 1
  },
  "hostPolicy": {
   "imgcdnngx.com": {
@@ -64,10 +64,10 @@
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
-  "streameast.ml": {
-   "embeddable": false,
-   "reason": "X-Frame-Options: sameorigin",
-   "status": 403
+  "odyssney.cfd": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
   },
   "smartcric.top": {
    "embeddable": true,
@@ -79,57 +79,17 @@
    "reason": "X-Frame-Options: sameorigin",
    "status": 200
   },
-  "mlbbite.plus": {
-   "embeddable": false,
-   "reason": "X-Frame-Options: sameorigin",
-   "status": 200
-  },
-  "embed.st": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
-  "odyssney.cfd": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
   "resports.cfd": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
-  },
-  "streameast.ps": {
-   "embeddable": false,
-   "reason": "X-Frame-Options: sameorigin, sameorigin",
-   "status": 403
   },
   "powerstream.club": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 404
   },
-  "sportsupa.st": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
-  "streameast.fi": {
-   "embeddable": false,
-   "reason": "X-Frame-Options: sameorigin, sameorigin",
-   "status": 403
-  },
-  "nonstopservice.org": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
-  "live.embedca.st": {
-   "embeddable": false,
-   "reason": "X-Frame-Options: sameorigin",
-   "status": 200
-  },
-  "wildgames.bz": {
+  "embed.st": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
@@ -139,7 +99,42 @@
    "reason": "X-Frame-Options: sameorigin",
    "status": 403
   },
+  "nonstopservice.org": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
+  "streameast.ps": {
+   "embeddable": false,
+   "reason": "X-Frame-Options: sameorigin, sameorigin",
+   "status": 403
+  },
+  "streameast.fi": {
+   "embeddable": false,
+   "reason": "X-Frame-Options: sameorigin, sameorigin",
+   "status": 403
+  },
   "fast-streams.biz": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
+  "sportsupa.st": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
+  "bally-sports.lat": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 404
+  },
+  "wildgames.bz": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
+  "zkotaa.cfd": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
@@ -148,6 +143,11 @@
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
+  },
+  "streameast.ms": {
+   "embeddable": false,
+   "reason": "X-Frame-Options: sameorigin, sameorigin",
+   "status": 403
   },
   "soccersurge.io": {
    "embeddable": false,
@@ -164,12 +164,17 @@
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
-  "zkotaa.cfd": {
+  "sports247.ru": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
+   "status": 404
+  },
+  "live.embedca.st": {
+   "embeddable": false,
+   "reason": "X-Frame-Options: sameorigin",
    "status": 200
   },
-  "everneverbee.info.pl": {
+  "1ststreams.xyz": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
@@ -179,27 +184,22 @@
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
+  "everneverbee.info.pl": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
   "poscihub.ru": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
-  "techydeals.best": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
-  "1ststreams.xyz": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
+  "mlbbite.plus": {
+   "embeddable": false,
+   "reason": "X-Frame-Options: sameorigin",
    "status": 200
   },
   "live3.totalsporteke.st": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
-  "ripplestream.cyou": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
@@ -209,12 +209,17 @@
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
-  "sports247.ru": {
+  "techydeals.best": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
-   "status": 404
+   "status": 200
   },
   "pitchstream.xyz": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
+  "ripplestream.cyou": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
@@ -229,12 +234,7 @@
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
-  "pandastreamz.xyz": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
-  "gstream24.fun": {
+  "primestream.cc": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
@@ -244,7 +244,17 @@
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
-  "primestream.cc": {
+  "gstream24.fun": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
+  "pandastreamz.xyz": {
+   "embeddable": true,
+   "reason": "aucun en-tête restrictif",
+   "status": 200
+  },
+  "dudestream1.com": {
    "embeddable": true,
    "reason": "aucun en-tête restrictif",
    "status": 200
@@ -259,22 +269,12 @@
    "reason": "aucun en-tête restrictif",
    "status": 200
   },
-  "dudestream1.com": {
-   "embeddable": true,
-   "reason": "aucun en-tête restrictif",
-   "status": 200
-  },
   "foxxy.st": {
    "embeddable": false,
    "reason": "frame-ancestors: 'self'",
    "status": 404
   },
-  "streameast.sg": {
-   "embeddable": false,
-   "reason": "X-Frame-Options: sameorigin",
-   "status": 429
-  },
-  "thestreameast.fun": {
+  "streameast.ga": {
    "embeddable": false,
    "reason": "X-Frame-Options: sameorigin",
    "status": 429
@@ -284,9 +284,9 @@
    "reason": "X-Frame-Options: sameorigin",
    "status": 429
   },
-  "thestreameast.ru": {
+  "streameast.sg": {
    "embeddable": false,
-   "reason": "X-Frame-Options: sameorigin, sameorigin",
+   "reason": "X-Frame-Options: sameorigin",
    "status": 429
   },
   "streameast.ch": {
@@ -295,6 +295,11 @@
    "status": 429
   },
   "streameast.cf": {
+   "embeddable": false,
+   "reason": "X-Frame-Options: sameorigin",
+   "status": 429
+  },
+  "thestreameast.fun": {
    "embeddable": false,
    "reason": "X-Frame-Options: sameorigin",
    "status": 429
@@ -310,7 +315,7 @@
    "pages": 1,
    "generiques": 0,
    "error": null,
-   "ms": 640,
+   "ms": 661,
    "matchPagesOk": 181,
    "matchPagesFail": 0
   },
@@ -323,8 +328,8 @@
    "pages": 1,
    "generiques": 0,
    "error": null,
-   "ms": 276,
-   "matchPagesOk": 11,
+   "ms": 433,
+   "matchPagesOk": 9,
    "matchPagesFail": 0
   },
   {
@@ -332,11 +337,11 @@
    "url": "https://soccersurge.io/",
    "ok": true,
    "matches": 43,
-   "streams": 230,
+   "streams": 252,
    "pages": 73,
    "generiques": 0,
    "error": null,
-   "ms": 18077,
+   "ms": 18459,
    "matchPagesOk": 10,
    "matchPagesFail": 0
   },
@@ -349,7 +354,7 @@
    "pages": 9,
    "generiques": 0,
    "error": null,
-   "ms": 4178,
+   "ms": 5093,
    "matchPagesOk": 121,
    "matchPagesFail": 0
   },
@@ -362,7 +367,7 @@
    "pages": 1,
    "generiques": 0,
    "error": null,
-   "ms": 497,
+   "ms": 505,
    "matchPagesOk": 0,
    "matchPagesFail": 0
   },
@@ -375,7 +380,7 @@
    "pages": 0,
    "generiques": 0,
    "error": "https://onhockey.tv/ -> direct: HTTP 403",
-   "ms": 621,
+   "ms": 626,
    "matchPagesOk": 0,
    "matchPagesFail": 0
   },
@@ -388,7 +393,7 @@
    "pages": 1,
    "generiques": 0,
    "error": null,
-   "ms": 392,
+   "ms": 515,
    "matchPagesOk": 12,
    "matchPagesFail": 0
   },
@@ -396,13 +401,13 @@
    "id": "streamed",
    "url": "https://streamed.pk/",
    "ok": true,
-   "matches": 142,
-   "streams": 344,
+   "matches": 140,
+   "streams": 335,
    "pages": 15,
    "generiques": 0,
    "error": null,
-   "ms": 3434,
-   "matchPagesOk": 145,
+   "ms": 3632,
+   "matchPagesOk": 144,
    "matchPagesFail": 0
   },
   {
@@ -414,7 +419,7 @@
    "pages": 0,
    "generiques": 0,
    "error": "https://methstreams.gs/ -> direct: HTTP 403",
-   "ms": 642,
+   "ms": 950,
    "matchPagesOk": 0,
    "matchPagesFail": 0
   },
@@ -427,7 +432,7 @@
    "pages": 0,
    "generiques": 0,
    "error": "https://flexfitness.fit/ -> direct: HTTP 451",
-   "ms": 605,
+   "ms": 743,
    "matchPagesOk": 0,
    "matchPagesFail": 0
   },
@@ -435,13 +440,13 @@
    "id": "liveleagues",
    "url": "https://www.liveleagues.me/",
    "ok": true,
-   "matches": 238,
+   "matches": 237,
    "streams": 0,
    "pages": 25,
    "generiques": 15,
    "error": null,
-   "ms": 21306,
-   "matchPagesOk": 203,
+   "ms": 21414,
+   "matchPagesOk": 201,
    "matchPagesFail": 0
   }
  ],
@@ -451,7 +456,7 @@
    "league": "Cricket",
    "homeTeam": "India",
    "awayTeam": "Sri Lanka",
-   "startTime": "04:07",
+   "startTime": "04:37",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/india-vs-sri-lanka-10010430",
@@ -483,7 +488,7 @@
      "site": "imgcdnngx.com",
      "topLevel": true,
      "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:10:08.689Z"
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
     },
     {
      "name": "Live Games",
@@ -494,7 +499,7 @@
      "site": "vipleague.me",
      "topLevel": true,
      "verified": "none",
-     "verifiedAt": "2026-10-01T08:10:09.116Z"
+     "verifiedAt": "2026-10-01T03:11:45.655Z"
     }
    ]
   },
@@ -503,7 +508,7 @@
    "league": "Nations League",
    "homeTeam": "Azerbaijan",
    "awayTeam": "Liechtenstein",
-   "startTime": "12:02",
+   "startTime": "12:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/azerbaijan-vs-liechtenstein-2950022766",
@@ -606,7 +611,7 @@
    "league": "Nations League",
    "homeTeam": "Malta",
    "awayTeam": "Gibraltar",
-   "startTime": "14:47",
+   "startTime": "15:03",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/malta-vs-gibraltar-2654505694",
@@ -805,16 +810,84 @@
   },
   {
    "source": "footybite",
+   "league": "MLS",
+   "homeTeam": "Seattle Sounders FC",
+   "awayTeam": "Sporting Kansas City",
+   "startTime": "21:48",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://footybite.im/game/seattle-sounders-vs-sporting-kansas-city-1633415283",
+   "altUrls": [
+    "https://soccersurge.io/watch-65657-mls-seattle-sounders-fc-sporting-kansas-city/",
+    "https://streamed.pk/api/stream/admin/ppv-seattle-sounders-fc-vs-sporting-kansas-city",
+    "https://www.liveleagues.me/mls/tag-seattle-sounders-fc-vs-sporting-kansas-city-live"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Sportsurge · Resports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://resports.cfd/16449/0/all%20matches/23",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "resports.cfd"
+    },
+    {
+     "name": "Sportsurge · Dudestream1",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://dudestream1.com/nashgwgt4dt4htu6",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "dudestream1.com"
+    },
+    {
+     "name": "English - Apple TV",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-seattle-sounders-fc-vs-sporting-kansas-city/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "verified": "none",
+     "verifiedAt": "2026-10-01T03:39:21.030Z"
+    },
+    {
+     "name": "English - Apple TV",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-seattle-sounders-fc-vs-sporting-kansas-city/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "liveleagues",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    }
+   ]
+  },
+  {
+   "source": "footybite",
    "league": "WNBA",
    "homeTeam": "Las Vegas Aces",
    "awayTeam": "Indiana Fever",
-   "startTime": "21:02",
+   "startTime": "21:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/las-vegas-aces-vs-indiana-fever-10020100",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65641-wnba-indiana-fever-las-vegas-aces-7/",
-    "https://www.streameast.ml/wnba/indianafever-vs-las-vegas-aces-3/",
+    "https://www.streameast.sg/wnba/indianafever-vs-las-vegas-aces-3/",
     "https://streamed.pk/api/stream/admin/ppv-indiana-fever-vs-las-vegas-aces",
     "https://streamed.pk/api/stream/delta/live_wnba-playoffs_aces-fever-live-streaming-665180640",
     "https://www.liveleagues.me/wnba/tag-las-vegas-aces-w-vs-indiana-fever-w-live"
@@ -825,13 +898,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.ml/wnba/indianafever-vs-las-vegas-aces-3/",
+     "url": "https://www.streameast.sg/wnba/indianafever-vs-las-vegas-aces-3/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.ml",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:10:49.616Z"
+     "site": "streameast.sg",
+     "topLevel": true
     },
     {
      "name": "Lecteur · sportsupa.st",
@@ -904,6 +975,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/60.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -949,7 +1029,7 @@
    "league": "Tennis",
    "homeTeam": "Kinoshita Group Japan Open Tennis Championships",
    "awayTeam": "",
-   "startTime": "04:07",
+   "startTime": "04:37",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/kinoshita-group-japan-open-tennis-championships-09300100",
@@ -988,7 +1068,7 @@
    "league": "Tennis",
    "homeTeam": "China Open",
    "awayTeam": "",
-   "startTime": "04:07",
+   "startTime": "04:37",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/china-open-09300100",
@@ -1027,7 +1107,7 @@
    "league": "PGA",
    "homeTeam": "Bank of Utah Championship",
    "awayTeam": "",
-   "startTime": "04:07",
+   "startTime": "04:37",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/bank-of-utah-championship-2318319603",
@@ -1040,13 +1120,13 @@
    "league": "NCAA Football",
    "homeTeam": "Tulsa",
    "awayTeam": "North Texas",
-   "startTime": "21:02",
+   "startTime": "21:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/tulsa-vs-north-texas-7959522840",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65640-cfb-north-texas-mean-green-tulsa-golden-hurricane-3/",
-    "https://www.streameast.ps/cfb/north-texas-mean-green-vs-tulsa-golden-hurricane/",
+    "https://www.streameast.is/cfb/north-texas-mean-green-vs-tulsa-golden-hurricane/",
     "https://streamed.pk/api/stream/delta/live_cfb_tulsa-north-texas-live-streaming-663645744",
     "https://streamed.pk/api/stream/golf/1820",
     "https://www.liveleagues.me/college-football/tag-north-texas-vs-tulsa-live"
@@ -1057,13 +1137,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.ps/cfb/north-texas-mean-green-vs-tulsa-golden-hurricane/",
+     "url": "https://www.streameast.is/cfb/north-texas-mean-green-vs-tulsa-golden-hurricane/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.ps",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:11:19.449Z"
+     "site": "streameast.is",
+     "topLevel": true
     },
     {
      "name": "Lecteur · sportsupa.st",
@@ -1145,6 +1223,24 @@
      "site": "fast-streams.biz"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/32.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
+     "name": "Sportsurge · Powerstream",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://powerstream.club/P12/center/32.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "powerstream.club"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -1190,7 +1286,7 @@
    "league": "Copa Argentina",
    "homeTeam": "Platense",
    "awayTeam": "Estudiantes de La Plata",
-   "startTime": "20:17",
+   "startTime": "20:33",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/platense-vs-estudiantes-de-la-plata-8384465489",
@@ -1209,7 +1305,7 @@
      "site": "imgcdnngx.com",
      "topLevel": true,
      "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:11:28.033Z"
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
     }
    ]
   },
@@ -1218,7 +1314,7 @@
    "league": "Africa Cup Of Nations",
    "homeTeam": "Guinea",
    "awayTeam": "Kenya",
-   "startTime": "12:02",
+   "startTime": "12:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/guinea-vs-kenya-10011600",
@@ -1237,7 +1333,7 @@
      "site": "imgcdnngx.com",
      "topLevel": true,
      "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:11:30.434Z"
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
     }
    ]
   },
@@ -1246,7 +1342,7 @@
    "league": "Australian Nbl",
    "homeTeam": "Tasmania JackJumpers",
    "awayTeam": "Melbourne United",
-   "startTime": "05:32",
+   "startTime": "05:48",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/tasmania-jackjumpers-vs-melbourne-united-10010930",
@@ -1286,7 +1382,7 @@
      "site": "imgcdnngx.com",
      "topLevel": true,
      "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:11:31.718Z"
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
     }
    ]
   },
@@ -1295,7 +1391,7 @@
    "league": "NFL",
    "homeTeam": "Cleveland Browns",
    "awayTeam": "Pittsburgh Steelers",
-   "startTime": "20:17",
+   "startTime": "20:33",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/cleveland-browns-vs-pittsburgh-steelers-2572995993",
@@ -1428,6 +1524,24 @@
      "site": "fast-streams.biz"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/30.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
+     "name": "Sportsurge · Powerstream",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://powerstream.club/P12/center/30.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "powerstream.club"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -1502,13 +1616,13 @@
    "league": "NHL",
    "homeTeam": "Nashville Predators",
    "awayTeam": "Minnesota Wild",
-   "startTime": "20:02",
+   "startTime": "20:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/nashville-predators-vs-minnesota-wild-3209995141",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65648-hockey-minnesota-wild-nashville-predators-9/",
-    "https://www.streameast.cf/nhl/minnesota-wild-vs-nashville-predators-2/",
+    "https://www.streameast.ps/nhl/minnesota-wild-vs-nashville-predators-2/",
     "https://streamed.pk/api/stream/admin/ppv-minnesota-wild-vs-nashville-predators",
     "https://streamed.pk/api/stream/delta/live_nhl_predators-wild-live-streaming-653537376",
     "https://streamed.pk/api/stream/golf/1924",
@@ -1520,13 +1634,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.cf/nhl/minnesota-wild-vs-nashville-predators-2/",
+     "url": "https://www.streameast.ps/nhl/minnesota-wild-vs-nashville-predators-2/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.cf",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:11:47.051Z"
+     "site": "streameast.ps",
+     "topLevel": true
     },
     {
      "name": "Sportsurge · Gstream24",
@@ -1626,6 +1738,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/53.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -1689,7 +1810,7 @@
    "league": "NHL",
    "homeTeam": "Calgary Flames",
    "awayTeam": "Seattle Kraken",
-   "startTime": "21:02",
+   "startTime": "21:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/calgary-flames-vs-seattle-kraken-9698546011",
@@ -1811,6 +1932,15 @@
      "icon": "📺",
      "source": "sportsurge",
      "site": "powerstream.club"
+    },
+    {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/54.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
     },
     {
      "name": "Sportsurge · Sportsupa (Silver)",
@@ -2000,6 +2130,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/55.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -2063,7 +2202,7 @@
    "league": "Nations League",
    "homeTeam": "Israel",
    "awayTeam": "Kosovo",
-   "startTime": "14:47",
+   "startTime": "15:03",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/israel-vs-kosovo-7184808018",
@@ -2139,7 +2278,7 @@
    "league": "Nations League",
    "homeTeam": "Wales",
    "awayTeam": "Norway",
-   "startTime": "14:47",
+   "startTime": "15:03",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/wales-vs-norway-5083737288",
@@ -2244,7 +2383,7 @@
    "league": "Nations League",
    "homeTeam": "Denmark",
    "awayTeam": "Portugal",
-   "startTime": "14:47",
+   "startTime": "15:03",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/denmark-vs-portugal-4838852215",
@@ -2347,7 +2486,7 @@
    "league": "Nations League",
    "homeTeam": "Greece",
    "awayTeam": "Netherlands",
-   "startTime": "14:47",
+   "startTime": "15:03",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/greece-vs-netherlands-6228746296",
@@ -2450,7 +2589,7 @@
    "league": "Nations League",
    "homeTeam": "Germany",
    "awayTeam": "Serbia",
-   "startTime": "14:47",
+   "startTime": "15:03",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/germany-vs-serbia-7443258939",
@@ -2549,7 +2688,7 @@
    "league": "International Friendlies",
    "homeTeam": "Japan",
    "awayTeam": "Ecuador",
-   "startTime": "06:12",
+   "startTime": "06:28",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/japan-vs-ecuador-10011010",
@@ -2577,7 +2716,7 @@
    "league": "International Friendlies",
    "homeTeam": "Maldives",
    "awayTeam": "Lebanon",
-   "startTime": "08:02",
+   "startTime": "08:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/maldives-vs-lebanon-1066749245",
@@ -2615,7 +2754,7 @@
    "league": "International Friendlies",
    "homeTeam": "Germany U17",
    "awayTeam": "Israel U17",
-   "startTime": "10:02",
+   "startTime": "10:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/germany-u17-vs-israel-u17-8117191862",
@@ -2643,7 +2782,7 @@
    "league": "International Friendlies",
    "homeTeam": "Uzbekistan",
    "awayTeam": "Syria",
-   "startTime": "10:02",
+   "startTime": "10:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/uzbekistan-vs-syria-0144505614",
@@ -2681,13 +2820,13 @@
    "league": "NHL",
    "homeTeam": "Vancouver Canucks",
    "awayTeam": "Edmonton Oilers",
-   "startTime": "22:02",
+   "startTime": "22:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/vancouver-canucks-vs-edmonton-oilers-5467881802",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65652-hockey-edmonton-oilers-vancouver-canucks-17/",
-    "https://www.streameast.ps/nhl/edmonton-oilers-vs-vancouver-canucks-3/",
+    "https://www.streameast.ch/nhl/edmonton-oilers-vs-vancouver-canucks-3/",
     "https://streamed.pk/api/stream/admin/ppv-edmonton-oilers-vs-vancouver-canucks",
     "https://streamed.pk/api/stream/delta/live_nhl_canucks-oilers-live-streaming-653539104",
     "https://streamed.pk/api/stream/golf/1928",
@@ -2699,13 +2838,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.ps/nhl/edmonton-oilers-vs-vancouver-canucks-3/",
+     "url": "https://www.streameast.ch/nhl/edmonton-oilers-vs-vancouver-canucks-3/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.ps",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:13:05.282Z"
+     "site": "streameast.ch",
+     "topLevel": true
     },
     {
      "name": "Sportsurge · Gstream24",
@@ -2805,6 +2942,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/57.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -2870,13 +3016,13 @@
    "league": "NHL",
    "homeTeam": "San Jose Sharks",
    "awayTeam": "Florida Panthers",
-   "startTime": "22:02",
+   "startTime": "22:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/san-jose-sharks-vs-florida-panthers-1220070467",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65651-hockey-florida-panthers-san-jose-sharks-5/",
-    "https://www.streameast.sg/nhl/florida-panthers-vs-san-jose-sharks-1/",
+    "https://www.streameast.is/nhl/florida-panthers-vs-san-jose-sharks-1/",
     "https://streamed.pk/api/stream/admin/ppv-florida-panthers-vs-san-jose-sharks",
     "https://streamed.pk/api/stream/delta/live_nhl_sharks-panthers-live-streaming-653538672",
     "https://streamed.pk/api/stream/golf/1927",
@@ -2888,13 +3034,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.sg/nhl/florida-panthers-vs-san-jose-sharks-1/",
+     "url": "https://www.streameast.is/nhl/florida-panthers-vs-san-jose-sharks-1/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.sg",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:13:17.227Z"
+     "site": "streameast.is",
+     "topLevel": true
     },
     {
      "name": "Sportsurge · Gstream24",
@@ -2994,6 +3138,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/56.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -3059,13 +3212,13 @@
    "league": "NHL",
    "homeTeam": "Columbus Blue Jackets",
    "awayTeam": "Buffalo Sabres",
-   "startTime": "19:02",
+   "startTime": "19:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/columbus-blue-jackets-vs-buffalo-sabres-1306297994",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65645-hockey-buffalo-sabres-columbus-blue-jackets-10/",
-    "https://www.streameast.cf/nhl/buffalo-sabres-vs-columbus-blue-jackets-1/",
+    "https://www.streameast.ga/nhl/buffalo-sabres-vs-columbus-blue-jackets-1/",
     "https://streamed.pk/api/stream/admin/ppv-buffalo-sabres-vs-columbus-blue-jackets",
     "https://streamed.pk/api/stream/delta/live_nhl_blue-jackets-sabres-live-streaming-653536080",
     "https://streamed.pk/api/stream/golf/1921",
@@ -3077,13 +3230,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.cf/nhl/buffalo-sabres-vs-columbus-blue-jackets-1/",
+     "url": "https://www.streameast.ga/nhl/buffalo-sabres-vs-columbus-blue-jackets-1/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.cf",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:13:27.688Z"
+     "site": "streameast.ga",
+     "topLevel": true
     },
     {
      "name": "Sportsurge · Gstream24",
@@ -3185,6 +3336,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/50.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -3248,13 +3408,13 @@
    "league": "NHL",
    "homeTeam": "New York Rangers",
    "awayTeam": "Tampa Bay Lightning",
-   "startTime": "19:02",
+   "startTime": "19:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/new-york-rangers-vs-tampa-bay-lightning-2499010200",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65647-hockey-tampa-bay-lightning-new-york-rangers-10/",
-    "https://www.thestreameast.ru/nhl/tampa-bay-lightning-vs-new-york-rangers-1/",
+    "https://www.streameast.ms/nhl/tampa-bay-lightning-vs-new-york-rangers-1/",
     "https://streamed.pk/api/stream/admin/ppv-tampa-bay-lightning-vs-new-york-rangers",
     "https://streamed.pk/api/stream/delta/live_nhl_rangers-lightning-live-streaming-653536944",
     "https://streamed.pk/api/stream/golf/1923",
@@ -3266,13 +3426,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.thestreameast.ru/nhl/tampa-bay-lightning-vs-new-york-rangers-1/",
+     "url": "https://www.streameast.ms/nhl/tampa-bay-lightning-vs-new-york-rangers-1/",
      "icon": "📺",
      "source": "streameast",
-     "site": "thestreameast.ru",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:13:32.218Z"
+     "site": "streameast.ms",
+     "topLevel": true
     },
     {
      "name": "Sportsurge · Gstream24",
@@ -3374,6 +3532,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/52.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -3437,13 +3604,13 @@
    "league": "NHL",
    "homeTeam": "New Jersey Devils",
    "awayTeam": "Philadelphia Flyers",
-   "startTime": "19:02",
+   "startTime": "19:18",
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://footybite.im/game/new-jersey-devils-vs-philadelphia-flyers-7840654090",
    "altUrls": [
     "https://v2.sportsurge.net/watch-65646-hockey-philadelphia-flyers-new-jersey-devils-10/",
-    "https://www.streameast.ch/nhl/philadelphia-flyers-vs-new-jersey-devils-2/",
+    "https://www.thestreameast.fun/nhl/philadelphia-flyers-vs-new-jersey-devils-2/",
     "https://streamed.pk/api/stream/admin/ppv-philadelphia-flyers-vs-new-jersey-devils",
     "https://streamed.pk/api/stream/delta/live_nhl_devils-flyers-live-streaming-653536512",
     "https://streamed.pk/api/stream/golf/1922",
@@ -3455,13 +3622,11 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.ch/nhl/philadelphia-flyers-vs-new-jersey-devils-2/",
+     "url": "https://www.thestreameast.fun/nhl/philadelphia-flyers-vs-new-jersey-devils-2/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.ch",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T08:13:44.880Z"
+     "site": "thestreameast.fun",
+     "topLevel": true
     },
     {
      "name": "Sportsurge · Gstream24",
@@ -3557,6 +3722,15 @@
      "icon": "📺",
      "source": "sportsurge",
      "site": "powerstream.club"
+    },
+    {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/51.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
     },
     {
      "name": "Sportsurge · Sportsupa (Silver)",
@@ -3769,46 +3943,7 @@
      "site": "vipleague.me",
      "topLevel": true,
      "verified": "none",
-     "verifiedAt": "2026-10-01T08:13:58.982Z"
-    }
-   ]
-  },
-  {
-   "source": "vipleague",
-   "league": "Tennis",
-   "homeTeam": "WTA Beijing: Paula Badosa",
-   "awayTeam": "Daria Kasatkina",
-   "startTime": "01:35",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://vipleague.me/now-playing/tennis/wta-beijing-paula-badosa-vs-daria-kasatkina",
-   "altUrls": [
-    "https://www.liveleagues.me/wta-tour/tag-wta-beijing-paula-badosa-vs-daria-kasatkina-live"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "vipleague",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    },
-    {
-     "name": "Live Games",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://vipleague.me/watch-now",
-     "source": "vipleague",
-     "site": "vipleague.me",
-     "topLevel": true,
-     "verified": "none",
-     "verifiedAt": "2026-10-01T08:14:06.712Z"
+     "verifiedAt": "2026-10-01T03:11:45.655Z"
     }
    ]
   },
@@ -3823,45 +3958,6 @@
    "matchUrl": "https://vipleague.me/now-playing/cricket/western-australia-w-vs-tasmanian-tigers-w",
    "altUrls": [
     "https://www.liveleagues.me/odi-match/tag-western-australia-w-vs-tasmanian-tigers-w-live"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "vipleague",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    },
-    {
-     "name": "Live Games",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://vipleague.me/watch-now",
-     "source": "vipleague",
-     "site": "vipleague.me",
-     "topLevel": true,
-     "verified": "none",
-     "verifiedAt": "2026-10-01T08:14:11.661Z"
-    }
-   ]
-  },
-  {
-   "source": "vipleague",
-   "league": "Rugby",
-   "homeTeam": "Otago",
-   "awayTeam": "Auckland",
-   "startTime": "02:10",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://vipleague.me/now-playing/rugby/otago-vs-auckland",
-   "altUrls": [
-    "https://www.liveleagues.me/union-nrc/tag-otago-vs-auckland-live"
    ],
    "scrapeError": null,
    "streamLinks": [
@@ -3932,14 +4028,92 @@
   {
    "source": "vipleague",
    "league": "Tennis",
-   "homeTeam": "WTA Beijing: Lin Yu Jun",
-   "awayTeam": "Storm Hunter",
-   "startTime": "03:15",
+   "homeTeam": "ATP Beijing: Zhizhen Zhang/Yi Zhou",
+   "awayTeam": "Jakob Schnaitter/Mark Wallner",
+   "startTime": "03:35",
    "matchDate": "2026-10-01",
    "status": "live",
-   "matchUrl": "https://vipleague.me/now-playing/tennis/wta-beijing-lin-yu-jun-vs-storm-hunter",
+   "matchUrl": "https://vipleague.me/now-playing/tennis/atp-beijing-zhizhen-zhang-yi-zhou-vs-jakob-schnaitter-mark-wallner",
    "altUrls": [
-    "https://www.liveleagues.me/wta-tour/tag-wta-beijing-lin-yu-jun-vs-storm-hunter-live"
+    "https://www.liveleagues.me/atp-tour/tag-atp-beijing-zhizhen-zhang-yi-zhou-vs-jakob-schnaitter-mark-wallner-live"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "vipleague",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    },
+    {
+     "name": "Live Games",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://vipleague.me/watch-now",
+     "source": "vipleague",
+     "site": "vipleague.me",
+     "topLevel": true,
+     "verified": "none",
+     "verifiedAt": "2026-10-01T03:11:45.655Z"
+    }
+   ]
+  },
+  {
+   "source": "vipleague",
+   "league": "Tennis",
+   "homeTeam": "ATP Tokyo: Denis Shapovalov",
+   "awayTeam": "Sho Shimabukuro",
+   "startTime": "03:45",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://vipleague.me/now-playing/tennis/atp-tokyo-denis-shapovalov-vs-sho-shimabukuro",
+   "altUrls": [
+    "https://www.liveleagues.me/atp-tour/tag-atp-tokyo-denis-shapovalov-vs-sho-shimabukuro-live"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "vipleague",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    },
+    {
+     "name": "Live Games",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://vipleague.me/watch-now",
+     "source": "vipleague",
+     "site": "vipleague.me",
+     "topLevel": true,
+     "verified": "none",
+     "verifiedAt": "2026-10-01T03:11:45.655Z"
+    }
+   ]
+  },
+  {
+   "source": "vipleague",
+   "league": "Tennis",
+   "homeTeam": "WTA Beijing: Marina Bassols Ribera",
+   "awayTeam": "Kamilla Rakhimova",
+   "startTime": "03:45",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://vipleague.me/now-playing/tennis/wta-beijing-marina-bassols-ribera-vs-kamilla-rakhimova",
+   "altUrls": [
+    "https://www.liveleagues.me/wta-tour/tag-wta-beijing-marina-bassols-ribera-vs-kamilla-rakhimova-live"
    ],
    "scrapeError": null,
    "streamLinks": [
@@ -7987,84 +8161,6 @@
   {
    "source": "liveleagues",
    "league": "Atp Tour",
-   "homeTeam": "ATP Beijing: Zhizhen Zhang/Yi Zhou",
-   "awayTeam": "Jakob Schnaitter/Mark Wallner Live",
-   "startTime": "08:35",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://www.liveleagues.me/atp-tour/tag-atp-beijing-zhizhen-zhang-yi-zhou-vs-jakob-schnaitter-mark-wallner-live",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "liveleagues",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    }
-   ]
-  },
-  {
-   "source": "liveleagues",
-   "league": "Atp Tour",
-   "homeTeam": "ATP Tokyo: Denis Shapovalov",
-   "awayTeam": "Sho Shimabukuro Live",
-   "startTime": "08:45",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://www.liveleagues.me/atp-tour/tag-atp-tokyo-denis-shapovalov-vs-sho-shimabukuro-live",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "liveleagues",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    }
-   ]
-  },
-  {
-   "source": "liveleagues",
-   "league": "Wta Tour",
-   "homeTeam": "WTA Beijing: Marina Bassols Ribera",
-   "awayTeam": "Kamilla Rakhimova Live",
-   "startTime": "08:45",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-marina-bassols-ribera-vs-kamilla-rakhimova-live",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "liveleagues",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    }
-   ]
-  },
-  {
-   "source": "liveleagues",
-   "league": "Atp Tour",
    "homeTeam": "ATP Beijing: Shang Juncheng",
    "awayTeam": "Sebastian Baez Live",
    "startTime": "08:50",
@@ -8145,88 +8241,10 @@
    "league": "Wta Tour",
    "homeTeam": "WTA Beijing: Shao Yushan",
    "awayTeam": "Anastasia Zakharova Live",
-   "startTime": "09:20",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-shao-yushan-vs-anastasia-zakharova-live",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "liveleagues",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    }
-   ]
-  },
-  {
-   "source": "liveleagues",
-   "league": "Atp Tour",
-   "homeTeam": "ATP Tokyo: Adolfo Daniel Vallejo Alvarez",
-   "awayTeam": "Rafael Jodar Live",
    "startTime": "09:30",
    "matchDate": "2026-10-01",
    "status": "live",
-   "matchUrl": "https://www.liveleagues.me/atp-tour/tag-atp-tokyo-adolfo-daniel-vallejo-alvarez-vs-rafael-jodar-live",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "liveleagues",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    }
-   ]
-  },
-  {
-   "source": "liveleagues",
-   "league": "Wta Tour",
-   "homeTeam": "WTA Beijing: Lanlana Tararudee",
-   "awayTeam": "Camila Osorio Live",
-   "startTime": "09:40",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-lanlana-tararudee-vs-camila-osorio-live",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "liveleagues",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    }
-   ]
-  },
-  {
-   "source": "liveleagues",
-   "league": "Atp Tour",
-   "homeTeam": "ATP Tokyo: Alejandro Davidovich Fokina",
-   "awayTeam": "Matteo Berrettini Live",
-   "startTime": "09:55",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://www.liveleagues.me/atp-tour/tag-atp-tokyo-alejandro-davidovich-fokina-vs-matteo-berrettini-live",
+   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-shao-yushan-vs-anastasia-zakharova-live",
    "altUrls": [],
    "scrapeError": null,
    "streamLinks": [
@@ -8298,13 +8316,13 @@
   },
   {
    "source": "liveleagues",
-   "league": "Wta Tour",
-   "homeTeam": "WTA Beijing: Gao Xinyu",
-   "awayTeam": "Panna Udvardy Live",
-   "startTime": "10:00",
+   "league": "Atp Tour",
+   "homeTeam": "ATP Tokyo: Adolfo Daniel Vallejo Alvarez",
+   "awayTeam": "Rafael Jodar Live",
+   "startTime": "10:15",
    "matchDate": "2026-10-01",
    "status": "live",
-   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-gao-xinyu-vs-panna-udvardy-live",
+   "matchUrl": "https://www.liveleagues.me/atp-tour/tag-atp-tokyo-adolfo-daniel-vallejo-alvarez-vs-rafael-jodar-live",
    "altUrls": [],
    "scrapeError": null,
    "streamLinks": [
@@ -8324,39 +8342,13 @@
   },
   {
    "source": "liveleagues",
-   "league": "Wta Tour",
-   "homeTeam": "WTA Beijing: Alycia Parks",
-   "awayTeam": "Zhu Lin Live",
-   "startTime": "10:00",
+   "league": "Atp Tour",
+   "homeTeam": "ATP Tokyo: Alejandro Davidovich Fokina",
+   "awayTeam": "Matteo Berrettini Live",
+   "startTime": "10:30",
    "matchDate": "2026-10-01",
    "status": "live",
-   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-alycia-parks-vs-zhu-lin-live",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Follow the guide",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://imgcdnngx.com/free-vpn-guide.html",
-     "icon": "🔗",
-     "source": "liveleagues",
-     "site": "imgcdnngx.com",
-     "topLevel": true,
-     "verified": "blocked",
-     "verifiedAt": "2026-10-01T05:11:15.741Z"
-    }
-   ]
-  },
-  {
-   "source": "liveleagues",
-   "league": "Wta Tour",
-   "homeTeam": "WTA Beijing: Eva Lys",
-   "awayTeam": "Sun Xinran Live",
-   "startTime": "10:00",
-   "matchDate": "2026-10-01",
-   "status": "live",
-   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-eva-lys-vs-sun-xinran-live",
+   "matchUrl": "https://www.liveleagues.me/atp-tour/tag-atp-tokyo-alejandro-davidovich-fokina-vs-matteo-berrettini-live",
    "altUrls": [],
    "scrapeError": null,
    "streamLinks": [
@@ -8402,6 +8394,58 @@
   },
   {
    "source": "liveleagues",
+   "league": "Wta Tour",
+   "homeTeam": "WTA Beijing: Lanlana Tararudee",
+   "awayTeam": "Camila Osorio Live",
+   "startTime": "10:30",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-lanlana-tararudee-vs-camila-osorio-live",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "liveleagues",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    }
+   ]
+  },
+  {
+   "source": "liveleagues",
+   "league": "Wta Tour",
+   "homeTeam": "WTA Beijing: Alycia Parks",
+   "awayTeam": "Zhu Lin Live",
+   "startTime": "10:45",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-alycia-parks-vs-zhu-lin-live",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "liveleagues",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    }
+   ]
+  },
+  {
+   "source": "liveleagues",
    "league": "Atp Tour",
    "homeTeam": "Marques Goncalo",
    "awayTeam": "Jorda Sanchis David Live",
@@ -8409,6 +8453,58 @@
    "matchDate": "2026-10-01",
    "status": "live",
    "matchUrl": "https://www.liveleagues.me/atp-tour/tag-marques-goncalo-vs-jorda-sanchis-david-live",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "liveleagues",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    }
+   ]
+  },
+  {
+   "source": "liveleagues",
+   "league": "Wta Tour",
+   "homeTeam": "WTA Beijing: Gao Xinyu",
+   "awayTeam": "Panna Udvardy Live",
+   "startTime": "11:15",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-gao-xinyu-vs-panna-udvardy-live",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "liveleagues",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    }
+   ]
+  },
+  {
+   "source": "liveleagues",
+   "league": "Wta Tour",
+   "homeTeam": "WTA Beijing: Eva Lys",
+   "awayTeam": "Sun Xinran Live",
+   "startTime": "11:20",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://www.liveleagues.me/wta-tour/tag-wta-beijing-eva-lys-vs-sun-xinran-live",
    "altUrls": [],
    "scrapeError": null,
    "streamLinks": [
@@ -9208,6 +9304,32 @@
   },
   {
    "source": "liveleagues",
+   "league": "Europe Ehf",
+   "homeTeam": "Thor Akureyri",
+   "awayTeam": "Valur Live",
+   "startTime": "20:30",
+   "matchDate": "2026-10-01",
+   "status": "live",
+   "matchUrl": "https://www.liveleagues.me/europe-ehf/tag-thor-akureyri-vs-valur-live",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Follow the guide",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://imgcdnngx.com/free-vpn-guide.html",
+     "icon": "🔗",
+     "source": "liveleagues",
+     "site": "imgcdnngx.com",
+     "topLevel": true,
+     "verified": "blocked",
+     "verifiedAt": "2026-10-01T05:11:15.741Z"
+    }
+   ]
+  },
+  {
+   "source": "liveleagues",
    "league": "Poland Tauron Liga",
    "homeTeam": "Jaworzno",
    "awayTeam": "Lechia Tomaszow Mazowiecki Live",
@@ -9533,7 +9655,7 @@
    "league": "F1",
    "homeTeam": "Bahrain in Malaysia Grand Prix Practice 1",
    "awayTeam": "",
-   "startTime": "00:32",
+   "startTime": "00:48",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/bahrain-in-malaysia-grand-prix-practice-1-2245049037",
@@ -9562,7 +9684,7 @@
      "source": "buffstreams",
      "site": "embedsports.me",
      "verified": "none",
-     "verifiedAt": "2026-10-01T08:14:21.513Z"
+     "verifiedAt": "2026-10-01T08:14:24.955Z"
     }
    ]
   },
@@ -9610,7 +9732,9 @@
      "url": "https://embedsports.me/motorsports/motogp-qualifying-motogp-main-race-stream-1",
      "icon": "▶️",
      "source": "buffstreams",
-     "site": "embedsports.me"
+     "site": "embedsports.me",
+     "verified": "none",
+     "verifiedAt": "2026-10-01T08:14:24.955Z"
     }
    ]
   },
@@ -9619,7 +9743,7 @@
    "league": "International Friendlies",
    "homeTeam": "Slovakia U19",
    "awayTeam": "Switzerland U19",
-   "startTime": "05:32",
+   "startTime": "05:48",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/slovakia-u19-vs-switzerland-u19-10010930",
@@ -9632,7 +9756,7 @@
    "league": "International Friendlies",
    "homeTeam": "Venezuela U17",
    "awayTeam": "England U17",
-   "startTime": "05:32",
+   "startTime": "05:48",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/venezuela-u17-vs-england-u17-2919025904",
@@ -9671,7 +9795,7 @@
    "league": "Club Friendly",
    "homeTeam": "Olimpija Ljubljana",
    "awayTeam": "Slaven Belupo Koprivnica",
-   "startTime": "06:02",
+   "startTime": "06:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/olimpija-ljubljana-vs-slaven-belupo-koprivnica-6376858788",
@@ -9694,19 +9818,6 @@
    ]
   },
   {
-   "source": "footybite",
-   "league": "International Friendlies",
-   "homeTeam": "France U19",
-   "awayTeam": "Turkey U19",
-   "startTime": "06:47",
-   "matchDate": "2026-10-01",
-   "status": "upcoming",
-   "matchUrl": "https://footybite.im/game/france-u19-vs-turkey-u19-10011045",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": []
-  },
-  {
    "source": "buffstreams",
    "league": "Motorsport",
    "homeTeam": "Moto3 Main Race",
@@ -9725,9 +9836,24 @@
      "url": "https://embedsports.me/motorsports/motogp-qualifying-motogp-main-race-stream-1",
      "icon": "▶️",
      "source": "buffstreams",
-     "site": "embedsports.me"
+     "site": "embedsports.me",
+     "verified": "none",
+     "verifiedAt": "2026-10-01T08:14:24.955Z"
     }
    ]
+  },
+  {
+   "source": "footybite",
+   "league": "International Friendlies",
+   "homeTeam": "France U19",
+   "awayTeam": "Turkey U19",
+   "startTime": "07:03",
+   "matchDate": "2026-10-01",
+   "status": "upcoming",
+   "matchUrl": "https://footybite.im/game/france-u19-vs-turkey-u19-10011045",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": []
   },
   {
    "source": "footybite",
@@ -9759,7 +9885,7 @@
    "league": "Club Friendly",
    "homeTeam": "Stuttgart II",
    "awayTeam": "Würzburger Kickers",
-   "startTime": "07:32",
+   "startTime": "07:48",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/stuttgart-ii-vs-w-rzburger-kickers-10011130",
@@ -9772,7 +9898,7 @@
    "league": "Club Friendly",
    "homeTeam": "Jahn Regensburg",
    "awayTeam": "WSG Tirol",
-   "startTime": "08:02",
+   "startTime": "08:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/jahn-regensburg-vs-wsg-tirol-10011200",
@@ -9811,7 +9937,9 @@
      "url": "https://embedsports.me/motorsports/motogp-qualifying-motogp-main-race-stream-1",
      "icon": "▶️",
      "source": "buffstreams",
-     "site": "embedsports.me"
+     "site": "embedsports.me",
+     "verified": "none",
+     "verifiedAt": "2026-10-01T08:14:24.955Z"
     }
    ]
   },
@@ -9867,7 +9995,7 @@
    "league": "Club Friendly",
    "homeTeam": "DAC 1904 Dunajská Streda",
    "awayTeam": "Puskás Akadémia",
-   "startTime": "09:02",
+   "startTime": "09:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/dac-1904-dunajsk-streda-vs-pusks-akadmia-7476412043",
@@ -9915,7 +10043,7 @@
    "league": "International Friendlies",
    "homeTeam": "Croatia U19",
    "awayTeam": "Italy U19",
-   "startTime": "09:32",
+   "startTime": "09:48",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/croatia-u19-vs-italy-u19-4939053918",
@@ -9990,60 +10118,11 @@
      "url": "https://embedsports.me/motorsports/motogp-qualifying-motogp-main-race-stream-1",
      "icon": "▶️",
      "source": "buffstreams",
-     "site": "embedsports.me"
+     "site": "embedsports.me",
+     "verified": "none",
+     "verifiedAt": "2026-10-01T08:14:24.955Z"
     }
    ]
-  },
-  {
-   "source": "footybite",
-   "league": "Club Friendly",
-   "homeTeam": "VfL Wolfsburg",
-   "awayTeam": "Havelse",
-   "startTime": "10:02",
-   "matchDate": "2026-10-01",
-   "status": "upcoming",
-   "matchUrl": "https://footybite.im/game/wolfsburg-vs-havelse-6285966717",
-   "altUrls": [
-    "https://soccersurge.io/watch-65671-club-friendlies-vfl-wolfsburg-tsv-havelse/"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Flux externe",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://soccersurge.io/watch-65671-club-friendlies-vfl-wolfsburg-tsv-havelse/#face",
-     "source": "sportsurge",
-     "site": "soccersurge.io",
-     "topLevel": true
-    }
-   ]
-  },
-  {
-   "source": "footybite",
-   "league": "International Friendlies",
-   "homeTeam": "Sweden U18",
-   "awayTeam": "Uruguay U18",
-   "startTime": "10:02",
-   "matchDate": "2026-10-01",
-   "status": "upcoming",
-   "matchUrl": "https://footybite.im/game/sweden-u18-vs-uruguay-u18-10011400",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": []
-  },
-  {
-   "source": "footybite",
-   "league": "International Friendlies",
-   "homeTeam": "Faroe Islands U19",
-   "awayTeam": "Slovenia U19",
-   "startTime": "10:02",
-   "matchDate": "2026-10-01",
-   "status": "upcoming",
-   "matchUrl": "https://footybite.im/game/faroe-islands-u19-vs-slovenia-u19-10011400",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": []
   },
   {
    "source": "streamed",
@@ -10071,9 +10150,60 @@
   {
    "source": "footybite",
    "league": "Club Friendly",
+   "homeTeam": "VfL Wolfsburg",
+   "awayTeam": "Havelse",
+   "startTime": "10:18",
+   "matchDate": "2026-10-01",
+   "status": "upcoming",
+   "matchUrl": "https://footybite.im/game/wolfsburg-vs-havelse-6285966717",
+   "altUrls": [
+    "https://soccersurge.io/watch-65671-club-friendlies-vfl-wolfsburg-tsv-havelse/"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Flux externe",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://soccersurge.io/watch-65671-club-friendlies-vfl-wolfsburg-tsv-havelse/#face",
+     "source": "sportsurge",
+     "site": "soccersurge.io",
+     "topLevel": true
+    }
+   ]
+  },
+  {
+   "source": "footybite",
+   "league": "International Friendlies",
+   "homeTeam": "Sweden U18",
+   "awayTeam": "Uruguay U18",
+   "startTime": "10:18",
+   "matchDate": "2026-10-01",
+   "status": "upcoming",
+   "matchUrl": "https://footybite.im/game/sweden-u18-vs-uruguay-u18-10011400",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": []
+  },
+  {
+   "source": "footybite",
+   "league": "International Friendlies",
+   "homeTeam": "Faroe Islands U19",
+   "awayTeam": "Slovenia U19",
+   "startTime": "10:18",
+   "matchDate": "2026-10-01",
+   "status": "upcoming",
+   "matchUrl": "https://footybite.im/game/faroe-islands-u19-vs-slovenia-u19-10011400",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": []
+  },
+  {
+   "source": "footybite",
+   "league": "Club Friendly",
    "homeTeam": "VfB Stuttgart",
    "awayTeam": "Greuther Fürth",
-   "startTime": "11:32",
+   "startTime": "11:48",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/stuttgart-vs-greuther-f-rth-10011530",
@@ -10434,7 +10564,7 @@
    "league": "Club Friendly",
    "homeTeam": "Trabzonspor",
    "awayTeam": "Drogheda United",
-   "startTime": "12:02",
+   "startTime": "12:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/trabzonspor-vs-drogheda-united-1101668029",
@@ -10459,7 +10589,7 @@
    "league": "International Friendlies",
    "homeTeam": "Brazil U20",
    "awayTeam": "United States U20",
-   "startTime": "12:02",
+   "startTime": "12:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/brazil-u20-vs-united-states-u20-10011600",
@@ -10472,7 +10602,7 @@
    "league": "International Friendlies",
    "homeTeam": "Morocco U23",
    "awayTeam": "Mali U23",
-   "startTime": "12:02",
+   "startTime": "12:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/morocco-u23-vs-mali-u23-10011600",
@@ -10883,7 +11013,7 @@
    "league": "Club Friendly",
    "homeTeam": "FC Liefering",
    "awayTeam": "TSV St. Johann",
-   "startTime": "13:02",
+   "startTime": "13:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/fc-liefering-vs-tsv-st-johann-10011700",
@@ -11125,7 +11255,7 @@
    "league": "Club Friendly",
    "homeTeam": "Real Betis",
    "awayTeam": "Sporting Ceuta",
-   "startTime": "14:02",
+   "startTime": "14:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/real-betis-vs-ceuta-10011800",
@@ -12035,9 +12165,7 @@
      "url": "https://embedsports.me/nba/toronto-raptors-vs-denver-nuggets-stream-1",
      "icon": "▶️",
      "source": "buffstreams",
-     "site": "embedsports.me",
-     "verified": "none",
-     "verifiedAt": "2026-10-01T02:11:42.580Z"
+     "site": "embedsports.me"
     }
    ]
   },
@@ -12734,11 +12862,34 @@
    "streamLinks": []
   },
   {
+   "source": "buffstreams",
+   "league": "NFL",
+   "homeTeam": "Kansas City Chiefs",
+   "awayTeam": "Denver Broncos",
+   "startTime": "20:15",
+   "matchDate": "2026-10-01",
+   "status": "upcoming",
+   "matchUrl": "https://app.buffstreams.is/nfl-streams/kansas-city-chiefs-live-stream",
+   "altUrls": [],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Lecteur direct · embedsports.me",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://embedsports.me/american-football/miami-dolphins-vs-kansas-city-chiefs-stream-1",
+     "icon": "▶️",
+     "source": "buffstreams",
+     "site": "embedsports.me"
+    }
+   ]
+  },
+  {
    "source": "footybite",
    "league": "NCAA Football",
    "homeTeam": "New Mexico State",
    "awayTeam": "Western Kentucky",
-   "startTime": "20:02",
+   "startTime": "20:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/new-mexico-state-vs-western-kentucky-4613435346",
@@ -12834,6 +12985,24 @@
      "site": "fast-streams.biz"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/31.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
+     "name": "Sportsurge · Powerstream",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://powerstream.club/P12/center/31.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "powerstream.club"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -12867,17 +13036,17 @@
    "league": "MLB",
    "homeTeam": "Atlanta Braves",
    "awayTeam": "Philadelphia Phillies",
-   "startTime": "20:02",
+   "startTime": "20:18",
    "matchDate": "2026-10-01",
    "status": "upcoming",
    "matchUrl": "https://footybite.im/game/atlanta-braves-vs-philadelphia-phillies-10011800",
    "altUrls": [
     "https://mlbbite.plus/watch/live/philadelphia-phillies-at-atlanta-braves-40-free-live-stream",
     "https://v2.sportsurge.net/watch-65643-baseball-philadelphia-phillies-atlanta-braves-36/",
-    "https://www.streameast.ps/mlb/philadelphia-phillies-vs-atlanta-braves-9/",
+    "https://www.streameast.cf/mlb/philadelphia-phillies-vs-atlanta-braves-9/",
     "https://streamed.pk/api/stream/admin/ppv-philadelphia-phillies-vs-atlanta-braves",
     "https://streamed.pk/api/stream/delta/live_mlb-playoffs_braves-phillies-live-streaming-665033760",
-    "https://streamed.pk/api/stream/golf/1930",
+    "https://streamed.pk/api/stream/golf/1945",
     "https://streamed.pk/api/stream/hotel/philadelphia-phillies-vs-atlanta-braves-mlb-1790877600"
    ],
    "scrapeError": null,
@@ -12886,10 +13055,10 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.ps/mlb/philadelphia-phillies-vs-atlanta-braves-9/",
+     "url": "https://www.streameast.cf/mlb/philadelphia-phillies-vs-atlanta-braves-9/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.ps",
+     "site": "streameast.cf",
      "topLevel": true
     },
     {
@@ -13065,6 +13234,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/15.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -13095,7 +13273,7 @@
      "name": "English",
      "quality": "",
      "lang": "EN",
-     "url": "https://embed.st/embed/golf/1930/1",
+     "url": "https://embed.st/embed/golf/1945/1",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -13104,7 +13282,7 @@
      "name": "English",
      "quality": "",
      "lang": "EN",
-     "url": "https://embed.st/embed/golf/1930/2",
+     "url": "https://embed.st/embed/golf/1945/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -13117,29 +13295,6 @@
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "buffstreams",
-   "league": "NFL",
-   "homeTeam": "Kansas City Chiefs",
-   "awayTeam": "Denver Broncos",
-   "startTime": "20:15",
-   "matchDate": "2026-10-01",
-   "status": "upcoming",
-   "matchUrl": "https://app.buffstreams.is/nfl-streams/kansas-city-chiefs-live-stream",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Lecteur direct · embedsports.me",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://embedsports.me/american-football/miami-dolphins-vs-kansas-city-chiefs-stream-1",
-     "icon": "▶️",
-     "source": "buffstreams",
-     "site": "embedsports.me"
     }
    ]
   },
@@ -13295,86 +13450,6 @@
    ]
   },
   {
-   "source": "footybite",
-   "league": "MLS",
-   "homeTeam": "Seattle Sounders FC",
-   "awayTeam": "Sporting Kansas City",
-   "startTime": "21:32",
-   "matchDate": "2026-10-01",
-   "status": "upcoming",
-   "matchUrl": "https://footybite.im/game/seattle-sounders-vs-sporting-kansas-city-1633415283",
-   "altUrls": [
-    "https://soccersurge.io/watch-65657-mls-seattle-sounders-fc-sporting-kansas-city/",
-    "https://streamed.pk/api/stream/admin/ppv-seattle-sounders-fc-vs-sporting-kansas-city"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Sportsurge · Resports",
-     "quality": "1080p",
-     "lang": "EN",
-     "url": "https://resports.cfd/16449/0/all%20matches/23",
-     "icon": "📺",
-     "source": "sportsurge",
-     "site": "resports.cfd"
-    },
-    {
-     "name": "Sportsurge · Dudestream1",
-     "quality": "1080p",
-     "lang": "EN",
-     "url": "https://dudestream1.com/nashgwgt4dt4htu6",
-     "icon": "📺",
-     "source": "sportsurge",
-     "site": "dudestream1.com"
-    },
-    {
-     "name": "English - Apple TV",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-seattle-sounders-fc-vs-sporting-kansas-city/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "verified": "none",
-     "verifiedAt": "2026-10-01T03:39:21.030Z"
-    },
-    {
-     "name": "English - Apple TV",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-seattle-sounders-fc-vs-sporting-kansas-city/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "footybite",
-   "league": "MotoGP",
-   "homeTeam": "Japan Free Practice 1",
-   "awayTeam": "",
-   "startTime": "21:47",
-   "matchDate": "2026-10-01",
-   "status": "upcoming",
-   "matchUrl": "https://footybite.im/game/japan-free-practice-1-8390613572",
-   "altUrls": [
-    "https://streamed.pk/api/stream/hotel/motegi-free-practice-1-moto3-1790899200"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "Main",
-     "quality": "",
-     "lang": "MULTI",
-     "url": "https://embed.st/embed/hotel/motegi-free-practice-1-moto3-1790899200/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
    "source": "buffstreams",
    "league": "MMA",
    "homeTeam": "Dustin Poirier",
@@ -13394,6 +13469,31 @@
      "icon": "▶️",
      "source": "buffstreams",
      "site": "embedsports.me"
+    }
+   ]
+  },
+  {
+   "source": "footybite",
+   "league": "MotoGP",
+   "homeTeam": "Japan Free Practice 1",
+   "awayTeam": "",
+   "startTime": "22:03",
+   "matchDate": "2026-10-01",
+   "status": "upcoming",
+   "matchUrl": "https://footybite.im/game/japan-free-practice-1-8390613572",
+   "altUrls": [
+    "https://streamed.pk/api/stream/hotel/motegi-free-practice-1-moto3-1790899200"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "Main",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://embed.st/embed/hotel/motegi-free-practice-1-moto3-1790899200/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
     }
    ]
   },
@@ -13463,6 +13563,15 @@
      "icon": "📺",
      "source": "sportsurge",
      "site": "powerstream.club"
+    },
+    {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/62.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
     }
    ]
   },
@@ -13565,6 +13674,15 @@
      "site": "wildgames.bz"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/49.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -13617,7 +13735,8 @@
    "status": "upcoming",
    "matchUrl": "https://streamed.pk/api/stream/hotel/rally-italia-sardegna-ss2-tula-erula-1-world-rally-championship-1790920860",
    "altUrls": [
-    "https://streamed.pk/api/stream/hotel/rally-italia-sardegna-ss3-su-filigosu-lerno-1-world-rally-championship-1790924460"
+    "https://streamed.pk/api/stream/hotel/rally-italia-sardegna-ss3-su-filigosu-lerno-1-world-rally-championship-1790924460",
+    "https://streamed.pk/api/stream/hotel/rally-italia-sardegna-ss4-monti-die-al-sa-conchedda-lerno-1-world-rally-championship-1790928480"
    ],
    "scrapeError": null,
    "streamLinks": [
@@ -13638,6 +13757,15 @@
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
+    },
+    {
+     "name": "Main",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://embed.st/embed/hotel/rally-italia-sardegna-ss4-monti-die-al-sa-conchedda-lerno-1-world-rally-championship-1790928480/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
     }
    ]
   },
@@ -13653,6 +13781,15 @@
    "altUrls": [],
    "scrapeError": null,
    "streamLinks": [
+    {
+     "name": "Lecteur · sportsupa.st",
+     "quality": "",
+     "lang": "MULTI",
+     "url": "https://sportsupa.st/event/?id=bahrain-in-malaysia-grand-prix-practice-1-2581146&amp;src=best&amp;sno=1",
+     "icon": "▶️",
+     "source": "sportsurge",
+     "site": "sportsupa.st"
+    },
     {
      "name": "Sportsurge · Resports",
      "quality": "1080p",
@@ -13706,6 +13843,24 @@
      "icon": "📺",
      "source": "sportsurge",
      "site": "wildgames.bz"
+    },
+    {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/49.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
+     "name": "Sportsurge · Sportsupa (Silver)",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://sportsupa.st/event/?id=bahrain-in-malaysia-grand-prix-practice-1-2581146&src=best&sno=1",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "sportsupa.st"
     }
    ]
   },
@@ -14287,78 +14442,6 @@
   {
    "source": "streamed",
    "league": "NCAA Football",
-   "homeTeam": "Alabama Crimson Tide at Mississippi State Bulldogs",
-   "awayTeam": "",
-   "startTime": "12:00",
-   "matchDate": "2026-10-03",
-   "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs",
-   "altUrls": [
-    "https://streamed.pk/api/stream/golf/1831"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "English - ABC",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "ABC"
-    },
-    {
-     "name": "English - ABC",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "ABC"
-    },
-    {
-     "name": "English - SkyCast",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/3",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English - SkyCast",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/4",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1831/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1831/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "streamed",
-   "league": "NCAA Football",
    "homeTeam": "Notre Dame Fighting Irish at North Carolina Tar Heels",
    "awayTeam": "",
    "startTime": "12:00",
@@ -14422,6 +14505,78 @@
      "quality": "",
      "lang": "EN",
      "url": "https://embed.st/embed/golf/1830/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    }
+   ]
+  },
+  {
+   "source": "streamed",
+   "league": "NCAA Football",
+   "homeTeam": "Alabama Crimson Tide at Mississippi State Bulldogs",
+   "awayTeam": "",
+   "startTime": "12:00",
+   "matchDate": "2026-10-03",
+   "status": "upcoming",
+   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs",
+   "altUrls": [
+    "https://streamed.pk/api/stream/golf/1831"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "English - ABC",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "ABC"
+    },
+    {
+     "name": "English - ABC",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "ABC"
+    },
+    {
+     "name": "English - SkyCast",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/3",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English - SkyCast",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-alabama-crimson-tide-at-mississippi-state-bulldogs/4",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1831/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1831/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -14580,38 +14735,6 @@
      "quality": "",
      "lang": "EN",
      "url": "https://embed.st/embed/golf/1841/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "streamed",
-   "league": "Baseball",
-   "homeTeam": "Cleveland Guardians",
-   "awayTeam": "Chicago White Sox",
-   "startTime": "13:00",
-   "matchDate": "2026-10-03",
-   "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/golf/1942",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1942/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1942/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -15025,38 +15148,6 @@
    "altUrls": [],
    "scrapeError": null,
    "streamLinks": []
-  },
-  {
-   "source": "streamed",
-   "league": "Baseball",
-   "homeTeam": "Los Angeles Dodgers",
-   "awayTeam": "Phillies/Braves",
-   "startTime": "16:00",
-   "matchDate": "2026-10-03",
-   "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/golf/1943",
-   "altUrls": [],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1943/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1943/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
   },
   {
    "source": "streamed",
@@ -15505,60 +15596,6 @@
   {
    "source": "streamed",
    "league": "NCAA Football",
-   "homeTeam": "Utah State Aggies at Boise State Broncos",
-   "awayTeam": "",
-   "startTime": "19:30",
-   "matchDate": "2026-10-03",
-   "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-utah-state-aggies-at-boise-state-broncos",
-   "altUrls": [
-    "https://streamed.pk/api/stream/golf/1896"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "English - CBSSN",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-utah-state-aggies-at-boise-state-broncos/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "CBS"
-    },
-    {
-     "name": "English - CBSSN",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-utah-state-aggies-at-boise-state-broncos/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "CBS"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1896/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1896/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "streamed",
-   "league": "NCAA Football",
    "homeTeam": "Miami Hurricanes at Clemson Tigers",
    "awayTeam": "",
    "startTime": "19:30",
@@ -15622,6 +15659,60 @@
      "quality": "",
      "lang": "EN",
      "url": "https://embed.st/embed/golf/1893/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    }
+   ]
+  },
+  {
+   "source": "streamed",
+   "league": "NCAA Football",
+   "homeTeam": "Utah State Aggies at Boise State Broncos",
+   "awayTeam": "",
+   "startTime": "19:30",
+   "matchDate": "2026-10-03",
+   "status": "upcoming",
+   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-utah-state-aggies-at-boise-state-broncos",
+   "altUrls": [
+    "https://streamed.pk/api/stream/golf/1896"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "English - CBSSN",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-utah-state-aggies-at-boise-state-broncos/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "CBS"
+    },
+    {
+     "name": "English - CBSSN",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-utah-state-aggies-at-boise-state-broncos/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "CBS"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1896/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1896/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -16241,112 +16332,6 @@
   {
    "source": "streamed",
    "league": "NFL",
-   "homeTeam": "Arizona Cardinals at New York Giants",
-   "awayTeam": "",
-   "startTime": "13:00",
-   "matchDate": "2026-10-04",
-   "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-arizona-cardinals-at-new-york-giants",
-   "altUrls": [
-    "https://streamed.pk/api/stream/golf/1881"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "English - CBS",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-arizona-cardinals-at-new-york-giants/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "CBS"
-    },
-    {
-     "name": "English - CBS",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-arizona-cardinals-at-new-york-giants/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "CBS"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1881/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1881/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "streamed",
-   "league": "NFL",
-   "homeTeam": "Los Angeles Rams at Philadelphia Eagles",
-   "awayTeam": "",
-   "startTime": "13:00",
-   "matchDate": "2026-10-04",
-   "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-los-angeles-rams-at-philadelphia-eagles",
-   "altUrls": [
-    "https://streamed.pk/api/stream/golf/1882"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "English - FOX",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-los-angeles-rams-at-philadelphia-eagles/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English - FOX",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-los-angeles-rams-at-philadelphia-eagles/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1882/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1882/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "streamed",
-   "league": "NFL",
    "homeTeam": "New England Patriots at Buffalo Bills",
    "awayTeam": "",
    "startTime": "13:00",
@@ -16453,6 +16438,58 @@
   {
    "source": "streamed",
    "league": "NFL",
+   "homeTeam": "Green Bay Packers at Tampa Bay Buccaneers",
+   "awayTeam": "",
+   "startTime": "13:00",
+   "matchDate": "2026-10-04",
+   "status": "upcoming",
+   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-green-bay-packers-at-tampa-bay-buccaneers",
+   "altUrls": [
+    "https://streamed.pk/api/stream/golf/1883"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "English - FOX",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-green-bay-packers-at-tampa-bay-buccaneers/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English - FOX",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-green-bay-packers-at-tampa-bay-buccaneers/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1883/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1883/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    }
+   ]
+  },
+  {
+   "source": "streamed",
+   "league": "NFL",
    "homeTeam": "Jacksonville Jaguars at Cincinnati Bengals",
    "awayTeam": "",
    "startTime": "13:00",
@@ -16507,14 +16544,68 @@
   {
    "source": "streamed",
    "league": "NFL",
-   "homeTeam": "Green Bay Packers at Tampa Bay Buccaneers",
+   "homeTeam": "Arizona Cardinals at New York Giants",
    "awayTeam": "",
    "startTime": "13:00",
    "matchDate": "2026-10-04",
    "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-green-bay-packers-at-tampa-bay-buccaneers",
+   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-arizona-cardinals-at-new-york-giants",
    "altUrls": [
-    "https://streamed.pk/api/stream/golf/1883"
+    "https://streamed.pk/api/stream/golf/1881"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "English - CBS",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-arizona-cardinals-at-new-york-giants/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "CBS"
+    },
+    {
+     "name": "English - CBS",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-arizona-cardinals-at-new-york-giants/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "CBS"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1881/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1881/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    }
+   ]
+  },
+  {
+   "source": "streamed",
+   "league": "NFL",
+   "homeTeam": "Los Angeles Rams at Philadelphia Eagles",
+   "awayTeam": "",
+   "startTime": "13:00",
+   "matchDate": "2026-10-04",
+   "status": "upcoming",
+   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-los-angeles-rams-at-philadelphia-eagles",
+   "altUrls": [
+    "https://streamed.pk/api/stream/golf/1882"
    ],
    "scrapeError": null,
    "streamLinks": [
@@ -16522,7 +16613,7 @@
      "name": "English - FOX",
      "quality": "",
      "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-green-bay-packers-at-tampa-bay-buccaneers/1",
+     "url": "https://embed.st/embed/admin/ppv-los-angeles-rams-at-philadelphia-eagles/1",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -16531,7 +16622,7 @@
      "name": "English - FOX",
      "quality": "",
      "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-green-bay-packers-at-tampa-bay-buccaneers/2",
+     "url": "https://embed.st/embed/admin/ppv-los-angeles-rams-at-philadelphia-eagles/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -16540,7 +16631,7 @@
      "name": "English",
      "quality": "",
      "lang": "EN",
-     "url": "https://embed.st/embed/golf/1883/1",
+     "url": "https://embed.st/embed/golf/1882/1",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -16549,7 +16640,7 @@
      "name": "English",
      "quality": "",
      "lang": "EN",
-     "url": "https://embed.st/embed/golf/1883/2",
+     "url": "https://embed.st/embed/golf/1882/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -16717,60 +16808,6 @@
   {
    "source": "streamed",
    "league": "NFL",
-   "homeTeam": "Kansas City Chiefs at Las Vegas Raiders",
-   "awayTeam": "",
-   "startTime": "16:25",
-   "matchDate": "2026-10-04",
-   "status": "upcoming",
-   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-kansas-city-chiefs-at-las-vegas-raiders",
-   "altUrls": [
-    "https://streamed.pk/api/stream/golf/1887"
-   ],
-   "scrapeError": null,
-   "streamLinks": [
-    {
-     "name": "English - CBS",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-kansas-city-chiefs-at-las-vegas-raiders/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "CBS"
-    },
-    {
-     "name": "English - CBS",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/admin/ppv-kansas-city-chiefs-at-las-vegas-raiders/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st",
-     "channel": "CBS"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1887/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1887/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    }
-   ]
-  },
-  {
-   "source": "streamed",
-   "league": "NFL",
    "homeTeam": "Denver Broncos at San Francisco 49ers",
    "awayTeam": "",
    "startTime": "16:25",
@@ -16816,6 +16853,60 @@
      "quality": "",
      "lang": "EN",
      "url": "https://embed.st/embed/golf/1888/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    }
+   ]
+  },
+  {
+   "source": "streamed",
+   "league": "NFL",
+   "homeTeam": "Kansas City Chiefs at Las Vegas Raiders",
+   "awayTeam": "",
+   "startTime": "16:25",
+   "matchDate": "2026-10-04",
+   "status": "upcoming",
+   "matchUrl": "https://streamed.pk/api/stream/admin/ppv-kansas-city-chiefs-at-las-vegas-raiders",
+   "altUrls": [
+    "https://streamed.pk/api/stream/golf/1887"
+   ],
+   "scrapeError": null,
+   "streamLinks": [
+    {
+     "name": "English - CBS",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-kansas-city-chiefs-at-las-vegas-raiders/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "CBS"
+    },
+    {
+     "name": "English - CBS",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/admin/ppv-kansas-city-chiefs-at-las-vegas-raiders/2",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st",
+     "channel": "CBS"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1887/1",
+     "icon": "▶️",
+     "source": "streamed",
+     "site": "embed.st"
+    },
+    {
+     "name": "English",
+     "quality": "",
+     "lang": "EN",
+     "url": "https://embed.st/embed/golf/1887/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
@@ -17252,7 +17343,7 @@
    "league": "MLB",
    "homeTeam": "San Diego Padres",
    "awayTeam": "Chicago Cubs",
-   "startTime": "04:07",
+   "startTime": "04:37",
    "matchDate": "2026-10-01",
    "status": "finished",
    "matchUrl": "https://footybite.im/game/san-diego-padres-vs-chicago-cubs-10010200",
@@ -17260,10 +17351,9 @@
     "https://mlbbite.plus/watch/live/chicago-cubs-at-san-diego-padres-24-free-live-stream",
     "https://mlbbite.plus/watch/live/chicago-cubs-at-san-diego-padres-23-free-live-stream",
     "https://v2.sportsurge.net/watch-65644-baseball-chicago-cubs-san-diego-padres-14/",
-    "https://www.streameast.is/mlb/chicago-cubs-vs-san-diego-padres-6/",
+    "https://www.streameast.ch/mlb/chicago-cubs-vs-san-diego-padres-6/",
     "https://streamed.pk/api/stream/admin/ppv-chicago-cubs-vs-san-diego-padres",
     "https://streamed.pk/api/stream/delta/live_mlb-playoffs_padres-cubs-live-streaming-665035056",
-    "https://streamed.pk/api/stream/golf/1933",
     "https://streamed.pk/api/stream/hotel/chicago-cubs-vs-san-diego-padres-mlb-1790906400"
    ],
    "scrapeError": null,
@@ -17272,10 +17362,10 @@
      "name": "Streameast - Flux",
      "quality": "",
      "lang": "MULTI",
-     "url": "https://www.streameast.is/mlb/chicago-cubs-vs-san-diego-padres-6/",
+     "url": "https://www.streameast.ch/mlb/chicago-cubs-vs-san-diego-padres-6/",
      "icon": "📺",
      "source": "streameast",
-     "site": "streameast.is",
+     "site": "streameast.ch",
      "topLevel": true
     },
     {
@@ -17663,6 +17753,15 @@
      "site": "powerstream.club"
     },
     {
+     "name": "Sportsurge · Bally-sports",
+     "quality": "1080p",
+     "lang": "EN",
+     "url": "https://bally-sports.lat/Cs/18.html",
+     "icon": "📺",
+     "source": "sportsurge",
+     "site": "bally-sports.lat"
+    },
+    {
      "name": "Sportsurge · Sportsupa (Silver)",
      "quality": "1080p",
      "lang": "EN",
@@ -17692,24 +17791,6 @@
      "channel": "Peacock"
     },
     {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1933/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1933/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
      "name": "Main",
      "quality": "",
      "lang": "MULTI",
@@ -17725,14 +17806,13 @@
    "league": "MLB",
    "homeTeam": "Houston Astros",
    "awayTeam": "Chicago White Sox",
-   "startTime": "16:07",
+   "startTime": "16:37",
    "matchDate": "2026-10-01",
    "status": "finished",
    "matchUrl": "https://mlbbite.plus/watch/live/chicago-white-sox-at-houston-astros-20-free-live-stream",
    "altUrls": [
     "https://mlbbite.plus/watch/live/chicago-white-sox-at-houston-astros-19-free-live-stream",
     "https://streamed.pk/api/stream/delta/live_mlb-playoffs_astros-white-sox-live-streaming-665034192",
-    "https://streamed.pk/api/stream/golf/1931",
     "https://streamed.pk/api/stream/hotel/chicago-white-sox-vs-houston-astros-mlb-1790888400"
    ],
    "scrapeError": null,
@@ -17828,24 +17908,6 @@
      "topLevel": true
     },
     {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1931/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1931/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
      "name": "Main",
      "quality": "",
      "lang": "MULTI",
@@ -17861,7 +17923,7 @@
    "league": "MLB",
    "homeTeam": "New York Yankees",
    "awayTeam": "Red Sox",
-   "startTime": "19:07",
+   "startTime": "19:37",
    "matchDate": "2026-10-01",
    "status": "finished",
    "matchUrl": "https://mlbbite.plus/watch/live/boston-red-sox-at-new-york-yankees-41-free-live-stream",
@@ -17869,7 +17931,6 @@
     "https://mlbbite.plus/watch/live/boston-red-sox-at-new-york-yankees-40-free-live-stream",
     "https://streamed.pk/api/stream/admin/ppv-boston-red-sox-vs-new-york-yankees",
     "https://streamed.pk/api/stream/delta/live_mlb-playoffs_yankees-red-sox-live-streaming-665034624",
-    "https://streamed.pk/api/stream/golf/1932",
     "https://streamed.pk/api/stream/hotel/boston-red-sox-vs-new-york-yankees-mlb-1790899200"
    ],
    "scrapeError": null,
@@ -17978,24 +18039,6 @@
      "quality": "",
      "lang": "EN",
      "url": "https://embed.st/embed/admin/ppv-boston-red-sox-vs-new-york-yankees/2",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1932/1",
-     "icon": "▶️",
-     "source": "streamed",
-     "site": "embed.st"
-    },
-    {
-     "name": "English",
-     "quality": "",
-     "lang": "EN",
-     "url": "https://embed.st/embed/golf/1932/2",
      "icon": "▶️",
      "source": "streamed",
      "site": "embed.st"
