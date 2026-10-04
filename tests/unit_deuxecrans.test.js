@@ -240,6 +240,43 @@ async function main() {
   assert.notStrictEqual(w.mvLayout, 'ecrans');
   ok('fenêtre étirée : l\'échange se fait sans recharger aucune vidéo');
 
+  /* « Au moins, fait que la fenêtre détachée soit trois streams un par-dessus l'autre et
+     que ça bugge pas lors du merge back. » La fenêtre détachée (PiP) devient le second
+     écran dès deux vidéos ; au retour, chaque vidéo repart comme un chargement neuf et la
+     grille est redessinée. */
+  mv.mvFlux.push({ url: 'https://flux.test/E', name: 'Match E' });
+  mv.updateMultivisionLayout();
+  assert.strictEqual(mv.mvFlux.length, 4);
+  const dom3 = new JSDOM('<!doctype html><html><head></head><body></body></html>', { url: 'https://exemple.test/app/', runScripts: 'dangerously' });
+  const pip = dom3.window;
+  let tailleDemandee = null;
+  w.documentPictureInPicture = { requestWindow: async (o) => { tailleDemandee = o; return pip; } };
+  await mv.toggleDocumentPiP();
+  const g2 = pip.document.getElementById('mv-grid-2');
+  assert.ok(g2 && mv.deuxEcransActif(), 'la fenêtre détachée porte le second écran');
+  assert.deepStrictEqual(tailleDemandee, { width: 480, height: 810 }, 'une fenêtre haute : trois 16:9 empilés');
+  assert.strictEqual(grille.querySelectorAll('.mv-cell').length, 1, 'la vidéo 1 reste dans la page');
+  assert.strictEqual(g2.querySelectorAll('.mv-cell').length, 3);
+  assert.strictEqual(g2.style.gridTemplateColumns, '1fr');
+  assert.deepStrictEqual([1, 2, 3].map(i => mv.celluleDeTuile(i).style.gridRow), ['1', '2', '3'], 'un par-dessus l\'autre');
+  assert.ok(!pip.document.getElementById('mv-ecran2-pe'), 'pas de bouton plein écran : la fenêtre détachée ne le permet pas');
+  assert.strictEqual(typeof pip.__mvRelais, 'function');
+  ok('fenêtre détachée : la vidéo 1 reste, les trois autres s\'empilent');
+
+  await new Promise(r => setTimeout(r, 30));
+  mv.mvFlux.forEach(s => { s._playing = true; });
+  const nomsAvantRetour = mv.mvFlux.map(s => s.name);
+  pip.document.getElementById('mv-ecran2-fermer').click();
+  assert.ok(!mv.deuxEcransActif());
+  assert.strictEqual(grille.querySelectorAll('.mv-cell').length, 4, 'toutes les vidéos reviennent');
+  assert.strictEqual(g2.querySelectorAll('.mv-cell').length, 0);
+  assert.deepStrictEqual(mv.mvFlux.map(s => s.name), nomsAvantRetour, 'dans le même ordre');
+  assert.strictEqual(mv.mvFlux[0]._playing, true, 'la vidéo restée dans la page n\'est pas touchée');
+  assert.ok(mv.mvFlux.slice(1).every(s => s._playing === false), 'les vidéos rapportées repartent comme un chargement neuf');
+  assert.strictEqual(grille.style.gridTemplateColumns.split(' ').length, 2, 'la grille est redessinée (2 × 2) : ' + grille.style.gridTemplateColumns);
+  assert.ok(mv.toutesLesCellules().every(c => c.ownerDocument === document && c.style.resize !== '' ), 'les cellules ont retrouvé le style de la page');
+  ok('retour de la fenêtre détachée : tout revient, en ordre, et repart seul');
+
   // Le mode câble n'a qu'une vidéo : pas de second écran.
   w.open = () => { throw new Error('ne doit pas ouvrir'); };
   mv.toggleModeCable();
