@@ -19,19 +19,31 @@ export function ecranDeTuile(idx) {
 }
 
 /* La grille du second écran pour `n` tuiles : modèle de colonnes, de lignes, et la place
-   de chacune. Trois tuiles : une grande à gauche, deux empilées à droite — un écran
-   16:9 coupé en 2×2 laisserait un quart noir. */
+   de chacune. Les tuiles sont EMPILÉES, une seule colonne (« les trois doivent être
+   verticales », 4 octobre 2026). */
 export function placementSecondEcran(n) {
     n = Math.max(0, n | 0);
-    if (n <= 1) return { colonnes: '1fr', lignes: '1fr', places: n ? [{ ligne: '1', colonne: '1' }] : [] };
-    if (n === 2) return { colonnes: '1fr 1fr', lignes: '1fr', places: [{ ligne: '1', colonne: '1' }, { ligne: '1', colonne: '2' }] };
-    if (n === 3) return {
-        colonnes: '2fr 1fr', lignes: '1fr 1fr',
-        places: [{ ligne: '1 / span 2', colonne: '1' }, { ligne: '1', colonne: '2' }, { ligne: '2', colonne: '2' }]
-    };
     var places = [];
-    for (var i = 0; i < n; i++) places.push({ ligne: String(Math.floor(i / 2) + 1), colonne: String(i % 2 + 1) });
-    return { colonnes: '1fr 1fr', lignes: 'repeat(' + Math.ceil(n / 2) + ', 1fr)', places: places };
+    for (var i = 0; i < n; i++) places.push({ ligne: String(i + 1), colonne: '1' });
+    return { colonnes: '1fr', lignes: 'repeat(' + Math.max(1, n) + ', 1fr)', places: places };
+}
+
+/* Fenêtre ÉTIRÉE sur les deux écrans (« faire comme si c'était la même fenêtre, pour
+   pas avoir à recharger », 4 octobre 2026) : une seule page, donc un échange ne déplace
+   aucune iframe et ne recharge rien. Reste à caler la colonne de la vidéo principale sur
+   le premier écran : rend la part de la grille (0 à 1) qui se trouve avant la frontière
+   entre les deux écrans.
+
+   `ecranGauche`/`ecranLargeur` décrivent `window.screen`, l'écran qui porte la plus grande
+   part de la fenêtre. Si la fenêtre commence avant lui, la frontière est son bord gauche ;
+   sinon, son bord droit. Une frontière introuvable ou collée à un bord (fenêtre pas encore
+   étirée) donne la moitié. */
+export function partPremierEcran(m) {
+    if (!m || !(m.grilleLargeur > 0)) return 0.5;
+    var frontiere = m.fenetreX < m.ecranGauche ? m.ecranGauche : m.ecranGauche + m.ecranLargeur;
+    var f = (frontiere - m.fenetreX - (m.grilleGauche || 0)) / m.grilleLargeur;
+    if (!isFinite(f) || f < 0.15 || f > 0.85) return 0.5;
+    return Math.round(f * 1000) / 1000;
 }
 
 /* Parmi les écrans que rend `getScreenDetails()`, celui où poser la fenêtre : un autre

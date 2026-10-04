@@ -2,6 +2,12 @@
 ## En cours
 
 ## Fait
+- 2026-10-04 - **« C'est possible de faire comme si c'était la même fenêtre, pour pas avoir à recharger ? »** Oui : une seule fenêtre étirée sur les deux moniteurs. Nouvelle disposition `ecrans` (`⋯ Plus → 🖥 Deux écrans : une fenêtre étirée`, et `⊞ Disposition`) : la vidéo 1 à gauche, calée sur le premier écran par `partPremierEcran` (`js/deuxecrans.js`), les autres empilées à droite. Un échange ne fait que réordonner les cellules : **aucune iframe ne change de document, rien ne recharge**. Vérifié dans Chromium avec une marque posée dans chaque page de lecteur : elles survivent toutes à l'échange par ⇄. Les deux fenêtres restent proposées (`🗗`), pour qui veut le plein écran sur chaque moniteur. Limite : le plein écran du navigateur ne couvre qu'un écran. Tests : `unit_deuxecrans` (18 cas). Fichiers : `js/deuxecrans.js`, `js/multiview.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`.
+
+- 2026-10-04 - **« Le switch est lent et clunky. »** Une tuile qui change de fenêtre recharge sa page (imposé par le navigateur), mais elle gardait `_playing` à vrai. Le signal « joue » de la page rechargée ne déclenchait donc rien : pas de son pour la vidéo arrivée devant, une pastille ● fausse, et aucune reprise si elle ne repartait pas. `reveillerApresDeplacement` (`js/multiview.js`) la traite comme un chargement neuf de la même source et relance la lecture (`mv_clean` + `mv_play`) dès le `load` de la page. Test : `unit_deuxecrans` (16 cas). Ce qui reste : les deux vidéos rechargent toujours.
+
+- 2026-10-04 - **« Les trois doivent être verticales. »** Le second écran empile ses tuiles en une seule colonne, une par ligne. Avant : une grande à gauche et deux empilées à droite, ou deux côte à côte. `placementSecondEcran` (`js/deuxecrans.js`) ; l'échange par ⇄ ou par glisser garde la place exacte, dans la colonne. Fichiers : `js/deuxecrans.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `sw.js` + `VERSION_APP` → `sports-guide-v37`.
+
 - 2026-10-04 - **« Mais genre, ça doit swap comme quand dans même fenêtre. »** Suite du mode deux écrans.
 
   - **Échange au lieu de décalage.** `mettreSurEcranPrincipal` mettait la tuile en tête (`unshift`) : la principale partait en position 2 et les autres glissaient d'une place. Elle **échange** maintenant les deux tuiles (`echangerTuiles`, la permutation du glisser-déposer) : la principale prend la place exacte de l'autre, rien d'autre ne bouge, et seules ces deux vidéos se rechargent. Bouton `⇄ Principal` dans l'en-tête des tuiles du second écran.
