@@ -1133,22 +1133,34 @@ export async function toggleDeuxEcrans() {
             fen.resizeTo(e.availWidth, e.availHeight);
         }).catch(function() {});
     }
+    /* Document neuf : une fenêtre du même nom restée ouverte garde sinon son contenu. */
     var doc = fen.document;
     doc.open();
-    doc.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Guide des Sports — 2e écran</title></head>'
-        + '<body style="margin:0;padding:0;background:#000;overflow:hidden;display:flex;flex-direction:column;width:100vw;height:100vh;">'
-        + '<div id="mv-ecran2-barre" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:6px;transition:opacity .15s;">'
-        + '<button type="button" id="mv-ecran2-pe" class="btn">⛶ Plein écran</button>'
+    doc.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"></head><body></body></html>');
+    doc.close();
+    preparerSecondEcran(fen, true);
+}
+
+/* Construit le second écran dans `fen` (fenêtre ordinaire ou fenêtre détachée PiP) et
+   y envoie les vidéos 2 à 4. `pleinEcran` : la fenêtre détachée ne peut pas passer en
+   plein écran, son bouton n'y est pas. */
+var secondEcranPiP = false;
+function preparerSecondEcran(fen, pleinEcran) {
+    secondEcranPiP = !pleinEcran;
+    var doc = fen.document;
+    doc.title = 'Guide des Sports — 2e écran';
+    doc.body.style.cssText = 'margin:0;padding:0;background:#000;overflow:hidden;display:flex;flex-direction:column;width:100vw;height:100vh;';
+    doc.body.innerHTML = '<div id="mv-ecran2-barre" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:6px;transition:opacity .15s;">'
+        + (pleinEcran ? '<button type="button" id="mv-ecran2-pe" class="btn">⛶ Plein écran</button>' : '')
         + '<button type="button" id="mv-ecran2-fermer" class="btn">⤺ Ramener les vidéos</button></div>'
         + '<div id="mv-ecran2-vide" style="display:none;margin:auto;color:#aaa;font:16px system-ui,sans-serif;text-align:center;padding:20px;">'
         + 'Deuxième écran prêt.<br>La vidéo 1 joue dans la page ; les vidéos 2 à 4 s\'affichent ici.</div>'
-        + '<div id="mv-grid-2" style="flex:1;display:grid;gap:2px;background:#000;"></div>'
-        + '</body></html>');
-    doc.close();
+        + '<div id="mv-grid-2" style="flex:1;display:grid;gap:2px;background:#000;"></div>';
     copierFeuillesDeStyle(doc);
     brancherFenetreDeTuiles(fen);
 
-    doc.getElementById('mv-ecran2-pe').addEventListener('click', function() {
+    var pe = doc.getElementById('mv-ecran2-pe');
+    if (pe) pe.addEventListener('click', function() {
         var racine = doc.documentElement;
         if (doc.fullscreenElement) { doc.exitFullscreen(); return; }
         try { var p = racine.requestFullscreen(); if (p && p.catch) p.catch(function() {}); } catch (e) {}
@@ -1217,11 +1229,25 @@ export function fermerDeuxEcrans() {
     fenetreEcran2 = null;
     fermerMenus();
     var grid = document.getElementById('mv-grid');
+    var aReposer = false;
     if (g2 && grid) {
-        Array.prototype.slice.call(g2.querySelectorAll('.mv-cell')).forEach(function(c) { grid.appendChild(c); });
+        /* Le retour recharge chaque vidéo rapportée, comme l'aller : elle repart comme un
+           chargement neuf (lecture relancée, son, pastille), et une vidéo directe est
+           reposée — sinon elle revenait muette, marquée ● sans jouer, et sans reprise. */
+        Array.prototype.slice.call(g2.querySelectorAll('.mv-cell')).forEach(function(c) {
+            grid.appendChild(c);
+            var s = mvFlux.find(function(x) { return x._internalId === c.getAttribute('data-internal-id'); });
+            if (!s) return;
+            if (s.mode === 'direct') { s._currentUrl = null; aReposer = true; }
+            else reveillerApresDeplacement(s, c);
+        });
     }
     try { if (fen && !fen.closed) fen.close(); } catch (e) {}
     updateMultivisionLayout();
+    if (aReposer) setTimeout(updateMultivisionLayout, 0);
+    applyMvFocusStyling();
+    applyMvAudioState();
+    if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
 }
 
 /* Échange deux tuiles de place, comme le glisser-déposer dans une même fenêtre : ni
@@ -2053,7 +2079,8 @@ function dispositionEffective(count) {
 }
 
 export function updateMultivisionLayout() {
-    var grid = document.getElementById('mv-grid');
+    /* La grille peut être dans la fenêtre détachée (une seule vidéo détachée entière). */
+    var grid = document.getElementById('mv-grid') || (docPiPWindow && docPiPWindow.document ? docPiPWindow.document.getElementById('mv-grid') : null);
     if(!grid) return;
 
     var count = mvFlux.length;
@@ -3500,9 +3527,9 @@ export function ouvrirMenuBarre(bouton, event) {
         { icon: '📊', label: 'Scores et statistiques', actif: mvGameModeActive, onSelect: function() { toggleMvGameMode(); } },
         { icon: '📺', label: 'Mode câble (une seule vidéo, zapping au doigt)', title: '↑↓ changer de match, ←→ changer de source ; un appui rend les clics à la page', actif: modeCable, onSelect: function() { toggleModeCable(); } },
         { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', title: 'La vidéo qu\'on regarde prend le son dès qu\'elle joue (le navigateur exige parfois un premier geste)', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
-        ('documentPictureInPicture' in window) ? { icon: '🖼', label: 'Fenêtre détachée', onSelect: function() { toggleDocumentPiP(); } } : null,
+        ('documentPictureInPicture' in window) ? { icon: '🖼', label: mvFlux.length >= 2 ? 'Fenêtre détachée (vidéo 1 ici, les autres empilées)' : 'Fenêtre détachée', actif: !!docPiPWindow || (deuxEcransActif() && secondEcranPiP), onSelect: function() { toggleDocumentPiP(); } } : null,
         !mobile ? { icon: '🖥', label: 'Deux écrans : une fenêtre étirée (échange sans recharger)', title: 'Étirez la fenêtre sur les deux écrans : la vidéo 1 se cale sur le premier, les autres s\'empilent sur le second', actif: mvLayout === 'ecrans', onSelect: function() { toggleEcransEtire(); } } : null,
-        !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres (recharge à l\'échange)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif(), onSelect: function() { toggleDeuxEcrans(); } } : null,
+        !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres (recharge à l\'échange)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif() && !secondEcranPiP, onSelect: function() { toggleDeuxEcrans(); } } : null,
         { sep: true },
         (!enPip && !mobile) ? { icon: '◫', label: 'Réduire dans un coin', onSelect: function() { toggleMultiviewPip(); } } : null,
         enPip ? { icon: '⤢', label: 'Agrandir', onSelect: function() { toggleMultiviewPip(); } } : null,
@@ -3702,7 +3729,23 @@ export async function toggleDocumentPiP() {
 
     if (!mvContainer) return;
 
-    if (deuxEcransActif()) { showToast('Fermez d\'abord le mode deux écrans.'); return; }
+    if (deuxEcransActif()) { fermerDeuxEcrans(); return; }
+    /* Deux vidéos ou plus : la fenêtre détachée devient le second écran — la vidéo 1
+       reste dans la page, les autres s'y empilent, une par-dessus l'autre (« au moins,
+       fait que la fenêtre détachée soit trois streams un par-dessus l'autre », 4 octobre
+       2026). Une seule vidéo : elle part entière, comme avant. */
+    if (!docPiPWindow && mvFlux.length >= 2 && !modeCable) {
+        fermerMenus();
+        quitterModeCinema();
+        try {
+            var fenPiP = await window.documentPictureInPicture.requestWindow({ width: 480, height: 270 * Math.min(3, mvFlux.length - 1) });
+            preparerSecondEcran(fenPiP, false);
+        } catch (e) {
+            console.error('Failed to open Document PiP window', e);
+            showToast('Erreur lors de l\'ouverture de la fenêtre détachée.');
+        }
+        return;
+    }
     if (docPiPWindow) {
         // If already in PiP, closing the window will trigger the pagehide event and restore the UI
         docPiPWindow.close();
@@ -3772,6 +3815,17 @@ export async function toggleDocumentPiP() {
 
             mvContainer.classList.remove('mv-doc-pip-active');
             docPiPWindow = null;
+            /* Les vidéos rapportées rechargent : elles repartent comme un chargement neuf,
+               et la grille est redessinée (des vidéos ont pu être ajoutées ou fermées
+               pendant le détachement). */
+            mvFlux.forEach(function(s, i) {
+                var c = celluleDeTuile(i);
+                if (!c) return;
+                if (s.mode === 'direct') s._currentUrl = null;
+                else reveillerApresDeplacement(s, c);
+            });
+            updateMultivisionLayout();
+            applyMvAudioState();
             // La grille est revenue dans la page : ses commandes redeviennent visibles.
             if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
         });
@@ -4493,7 +4547,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v37';
+export var VERSION_APP = 'sports-guide-v38';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

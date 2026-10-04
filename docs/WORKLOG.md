@@ -2,6 +2,18 @@
 ## En cours
 
 ## Fait
+- 2026-10-04 - **« Au moins, fait que la fenêtre détachée soit trois streams un par-dessus l'autre et que ça bugge pas lors du merge back. »**
+
+  - **Fenêtre détachée = second écran.** Dès deux vidéos, `🖼 Fenêtre détachée` garde la vidéo 1 dans la page et empile les autres dans la fenêtre PiP, haute de 270 px par vidéo et large de 480. La préparation est commune avec la fenêtre ordinaire (`preparerSecondEcran`, extraite de `toggleDeuxEcrans`). Avec une seule vidéo, elle part entière comme avant.
+
+  - **Retour.** Au retour, chaque vidéo rapportée rechargeait en gardant `_playing` à vrai : muette, marquée ● sans jouer, et sans reprise. Elle repart maintenant comme un chargement neuf (`reveillerApresDeplacement`), et le son et la grille sont réappliqués. L'ancienne fenêtre détachée (vidéo seule) ne redessinait pas la grille au retour ; pendant le détachement, `updateMultivisionLayout` ne trouvait même pas la grille. Les deux sont corrigés.
+
+  - **Vérifié dans Chromium** avec une page sonde. Après « ⤺ Ramener les vidéos », les trois vidéos rapportées reçoivent `mv_clean`/`mv_play` une fois rechargées, la vidéo restée dans la page n'est pas touchée, et la grille revient en 2 × 2.
+
+  - **Tests** : `unit_deuxecrans` (20 cas). `npm run test:unit` : 79 fichiers ; Playwright 44 sur 44.
+
+  - **Fichiers** : `js/multiview.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v38`.
+
 - 2026-10-04 - **« C'est possible de faire comme si c'était la même fenêtre, pour pas avoir à recharger ? »** Oui : une seule fenêtre étirée sur les deux moniteurs. Nouvelle disposition `ecrans` (`⋯ Plus → 🖥 Deux écrans : une fenêtre étirée`, et `⊞ Disposition`) : la vidéo 1 à gauche, calée sur le premier écran par `partPremierEcran` (`js/deuxecrans.js`), les autres empilées à droite. Un échange ne fait que réordonner les cellules : **aucune iframe ne change de document, rien ne recharge**. Vérifié dans Chromium avec une marque posée dans chaque page de lecteur : elles survivent toutes à l'échange par ⇄. Les deux fenêtres restent proposées (`🗗`), pour qui veut le plein écran sur chaque moniteur. Limite : le plein écran du navigateur ne couvre qu'un écran. Tests : `unit_deuxecrans` (18 cas). Fichiers : `js/deuxecrans.js`, `js/multiview.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`.
 
 - 2026-10-04 - **« Le switch est lent et clunky. »** Une tuile qui change de fenêtre recharge sa page (imposé par le navigateur), mais elle gardait `_playing` à vrai. Le signal « joue » de la page rechargée ne déclenchait donc rien : pas de son pour la vidéo arrivée devant, une pastille ● fausse, et aucune reprise si elle ne repartait pas. `reveillerApresDeplacement` (`js/multiview.js`) la traite comme un chargement neuf de la même source et relance la lecture (`mv_clean` + `mv_play`) dès le `load` de la page. Test : `unit_deuxecrans` (16 cas). Ce qui reste : les deux vidéos rechargent toujours.
