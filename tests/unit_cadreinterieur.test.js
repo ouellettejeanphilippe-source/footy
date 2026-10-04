@@ -14,7 +14,12 @@ assert.ok(/catch \(e\) \{ return; \}/.test(script), 'un cadre d\'une autre origi
 assert.ok(/texte\.length < 40/.test(script), 'une page vide ou about:blank ne déclenche pas la reprise');
 assert.ok(/cadresRepris >= 1/.test(script), 'une seule reprise par page');
 assert.ok(/iframe\.srcdoc = '<base href="'/.test(script), 'le HTML relu est posé dans le cadre, avec sa base');
-assert.ok(/@version\s+1\.10/.test(script) && /var VERSION = '1\.10'/.test(script), 'la version annoncée suit l\'en-tête');
+/* La reprise est arrivée avec la 1.10 ; une version plus récente la garde. Ce qui compte,
+   c'est que la version annoncée à l'application soit celle de l'en-tête. */
+const enTete = (script.match(/@version\s+(\d+)\.(\d+)/) || []).slice(1).map(Number);
+const annoncee = (script.match(/var VERSION = '(\d+)\.(\d+)'/) || []).slice(1).map(Number);
+assert.ok(enTete.length === 2 && enTete.join('.') === annoncee.join('.'), 'la version annoncée suit l\'en-tête');
+assert.ok(enTete[0] > 1 || (enTete[0] === 1 && enTete[1] >= 10), 'au moins la 1.10, qui sait reprendre un cadre');
 assert.ok(!/srcdoc/.test(mv), 'le Multivision ne reconstruit toujours pas la page de la tuile');
 
 console.log('unit_cadreinterieur: OK');

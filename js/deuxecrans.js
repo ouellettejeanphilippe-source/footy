@@ -1,0 +1,59 @@
+/* Mode deux écrans (js/multiview.js pour le DOM).
+
+   « Créer mode deux écrans où un flux joue sur un écran, avec les trois autres qui se
+   détachent pour mon deuxième écran » (3 octobre 2026). La tuile 1 reste dans la page ;
+   les suivantes partent dans une fenêtre ordinaire, posée sur l'autre écran quand le
+   navigateur sait les nommer (Window Management API), et qu'on peut passer en plein
+   écran. Pas le PiP de document : sa fenêtre reste au premier plan et ne passe jamais
+   en plein écran.
+
+   La tuile principale est la PREMIÈRE, pas la tuile active : déplacer une tuile d'une
+   fenêtre à l'autre recharge son iframe, et suivre la tuile active rechargerait deux
+   vidéos à chaque clic. On change de principale exprès (touches 1 à 4, ou le menu).
+
+   Ce module ne touche pas au DOM et n'importe rien. */
+
+/* Sur quel écran va la tuile d'index `idx` : 1 (la page) ou 2 (la fenêtre détachée). */
+export function ecranDeTuile(idx) {
+    return idx === 0 ? 1 : 2;
+}
+
+/* La grille du second écran pour `n` tuiles : modèle de colonnes, de lignes, et la place
+   de chacune. Trois tuiles : une grande à gauche, deux empilées à droite — un écran
+   16:9 coupé en 2×2 laisserait un quart noir. */
+export function placementSecondEcran(n) {
+    n = Math.max(0, n | 0);
+    if (n <= 1) return { colonnes: '1fr', lignes: '1fr', places: n ? [{ ligne: '1', colonne: '1' }] : [] };
+    if (n === 2) return { colonnes: '1fr 1fr', lignes: '1fr', places: [{ ligne: '1', colonne: '1' }, { ligne: '1', colonne: '2' }] };
+    if (n === 3) return {
+        colonnes: '2fr 1fr', lignes: '1fr 1fr',
+        places: [{ ligne: '1 / span 2', colonne: '1' }, { ligne: '1', colonne: '2' }, { ligne: '2', colonne: '2' }]
+    };
+    var places = [];
+    for (var i = 0; i < n; i++) places.push({ ligne: String(Math.floor(i / 2) + 1), colonne: String(i % 2 + 1) });
+    return { colonnes: '1fr 1fr', lignes: 'repeat(' + Math.ceil(n / 2) + ', 1fr)', places: places };
+}
+
+/* Parmi les écrans que rend `getScreenDetails()`, celui où poser la fenêtre : un autre
+   que celui de la page. Rend null quand il n'y en a qu'un (ou aucune liste). */
+export function ecranSecondaire(ecrans, courant) {
+    if (!ecrans || !ecrans.length) return null;
+    var memeEcran = function(a, b) {
+        return !!(a && b) && (a === b || (a.availLeft === b.availLeft && a.availTop === b.availTop
+            && a.availWidth === b.availWidth && a.availHeight === b.availHeight));
+    };
+    var autres = ecrans.filter(function(e) { return !memeEcran(e, courant); });
+    if (!autres.length) return null;
+    var nonPrincipal = autres.filter(function(e) { return !e.isPrimary; });
+    return (nonPrincipal.length ? nonPrincipal : autres)[0];
+}
+
+/* Les `features` de `window.open` : toute la surface de l'écran choisi, sinon une
+   fenêtre 16:9 qu'on glisse soi-même sur l'autre écran. `popup` évite l'onglet. */
+export function optionsFenetre(ecran) {
+    if (ecran && ecran.availWidth > 0 && ecran.availHeight > 0) {
+        return 'popup=yes,left=' + ecran.availLeft + ',top=' + ecran.availTop
+            + ',width=' + ecran.availWidth + ',height=' + ecran.availHeight;
+    }
+    return 'popup=yes,width=1280,height=720';
+}

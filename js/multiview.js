@@ -15,6 +15,7 @@ import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
 import { ouvrirMenu, fermerMenus } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
+import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre } from './deuxecrans.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -47,7 +48,7 @@ initEmbedBridge();
    fenêtre qui l'encadre, et « nettoyer » ne divulgue rien. */
 function demanderNettoyage(iframe) {
     var envoyer = function() {
-        try { if (iframe.contentWindow) iframe.contentWindow.postMessage('mv_clean', '*'); } catch (e) {}
+        posterATuile(iframe, 'mv_clean');
     };
     iframe.addEventListener('load', function() {
         envoyer();
@@ -976,6 +977,253 @@ export function grilleDetachee() {
     return !!(g && g.ownerDocument && g.ownerDocument !== document);
 }
 
+/* ══ MODE DEUX ÉCRANS (js/deuxecrans.js pour les règles) ═══════════════════════
+   La tuile 1 reste dans la page ; les suivantes vivent dans `#mv-grid-2`, la grille
+   d'une seconde fenêtre (`toggleDeuxEcrans`). Une tuile n'est donc plus forcément
+   dans `document` : ce qui cherche une tuile passe par `celluleDeTuile` /
+   `cadreDeTuile`, et ce qui lui parle par `posterATuile`. */
+var fenetreEcran2 = null;
+
+export function secondeGrille() {
+    if (!fenetreEcran2) return null;
+    try {
+        if (fenetreEcran2.closed) return null;
+        return fenetreEcran2.document.getElementById('mv-grid-2');
+    } catch (e) { return null; }
+}
+
+export function deuxEcransActif() {
+    return !!secondeGrille();
+}
+
+/* Les documents où une tuile peut se trouver : la page, la fenêtre détachée (PiP),
+   le second écran. */
+function documentsDuLecteur() {
+    var docs = [document];
+    [grilleDuLecteur(), secondeGrille()].forEach(function(g) {
+        if (g && g.ownerDocument && docs.indexOf(g.ownerDocument) < 0) docs.push(g.ownerDocument);
+    });
+    return docs;
+}
+
+export function cadreDeTuile(idx) {
+    var docs = documentsDuLecteur();
+    for (var i = 0; i < docs.length; i++) {
+        var el = docs[i].getElementById('mv-iframe-' + idx);
+        if (el) return el;
+    }
+    return null;
+}
+
+export function celluleDeTuile(idx) {
+    var docs = documentsDuLecteur();
+    for (var i = 0; i < docs.length; i++) {
+        var el = docs[i].querySelector('.mv-cell[data-index="' + idx + '"]');
+        if (el) return el;
+    }
+    return null;
+}
+
+export function toutesLesCellules() {
+    var out = [];
+    documentsDuLecteur().forEach(function(d) {
+        Array.prototype.forEach.call(d.querySelectorAll('.mv-cell'), function(c) { out.push(c); });
+    });
+    return out;
+}
+
+/* Parler à une tuile. Le script utilisateur n'obéit qu'à la fenêtre qui l'encadre
+   (`FENETRE_PARENTE`, multiview-cleaner.user.js) : pour une tuile posée dans une autre
+   fenêtre, l'ordre doit PARTIR de cette fenêtre. `__mvRelais` est une fonction définie
+   dans son propre script : `e.source` y vaut alors la fenêtre qui encadre la tuile. */
+export function posterATuile(el, message) {
+    if (!el || !el.contentWindow) return;
+    var vue = el.ownerDocument && el.ownerDocument.defaultView;
+    try {
+        if (vue && vue !== window && typeof vue.__mvRelais === 'function') vue.__mvRelais(el.contentWindow, message);
+        else el.contentWindow.postMessage(message, '*');
+    } catch (e) {}
+}
+
+/* Prépare une fenêtre qui va porter des tuiles : le relais des ordres (ci-dessus), le
+   renvoi vers la page des messages que les lecteurs adressent à `window.top` (qui est
+   CETTE fenêtre), et les fonctions globales qu'appellent les `onclick` des en-têtes —
+   un attribut `onclick` se résout dans la fenêtre qui porte le bouton. */
+export function brancherFenetreDeTuiles(fen) {
+    var doc = fen.document;
+    if (!fen.__mvRelais) {
+        var sc = doc.createElement('script');
+        sc.textContent = 'window.__mvRelais = function (cible, message) { try { cible.postMessage(message, "*"); } catch (e) {} };';
+        (doc.head || doc.documentElement).appendChild(sc);
+    }
+    fen.addEventListener('message', function(e) {
+        if (e.source === fen) return;
+        try { window.dispatchEvent(new MessageEvent('message', { data: e.data, origin: e.origin, source: e.source })); } catch (err) {}
+    });
+    Object.keys(window).forEach(function(k) {
+        try { if (typeof window[k] === 'function' && !(k in fen)) fen[k] = window[k]; } catch (e) {}
+    });
+}
+
+/* Copie les feuilles de style de la page dans une autre fenêtre (PiP, second écran). */
+function copierFeuillesDeStyle(doc) {
+    var styleSheets = document.styleSheets;
+    for (var i = 0; i < styleSheets.length; i++) {
+        var styleSheet = styleSheets[i];
+        try {
+            if (styleSheet.href) {
+                var newLinkEl = doc.createElement('link');
+                newLinkEl.rel = 'stylesheet';
+                newLinkEl.href = styleSheet.href;
+                doc.head.appendChild(newLinkEl);
+            } else if (styleSheet.ownerNode && styleSheet.ownerNode.textContent) {
+                var newStyleEl = doc.createElement('style');
+                newStyleEl.textContent = styleSheet.ownerNode.textContent;
+                doc.head.appendChild(newStyleEl);
+            }
+        } catch (e) {
+            console.warn('Failed to copy stylesheet', e);
+        }
+    }
+}
+
+/* Le repos vaut aussi pour le second écran : ses en-têtes de tuiles et sa barre. */
+function reposSecondEcran(cacher) {
+    var g2 = secondeGrille();
+    if (!g2) return;
+    appliquerRepos(g2, g2.ownerDocument.getElementById('mv-ecran2-barre'), cacher);
+}
+
+/* Ouvre ou ferme le second écran. La fenêtre est ordinaire (`window.open`) : on la
+   passe en plein écran sur le moniteur qu'on veut. Quand le navigateur sait nommer les
+   écrans (`getScreenDetails`, Chromium), elle s'ouvre directement sur l'autre. */
+export async function toggleDeuxEcrans() {
+    if (deuxEcransActif()) { fermerDeuxEcrans(); return; }
+    if (docPiPWindow) { showToast('Fermez d\'abord la fenêtre détachée.'); return; }
+    if (modeCable) { showToast('Le mode câble n\'a qu\'une vidéo : éteignez-le pour utiliser deux écrans.'); return; }
+    fermerMenus();
+    quitterModeCinema();
+
+    /* La liste des écrans demande une permission. Attendre la réponse avant
+       `window.open` userait l'activation du clic, et la fenêtre serait bloquée : on ne
+       s'en sert d'emblée que si elle est déjà accordée, sinon on la demande APRÈS
+       l'ouverture et on déplace la fenêtre. */
+    var ecran = null, permis = false;
+    var details = typeof window.getScreenDetails === 'function';
+    if (details) {
+        try {
+            var etat = navigator.permissions ? await navigator.permissions.query({ name: 'window-management' }) : null;
+            permis = !!(etat && etat.state === 'granted');
+        } catch (e) { permis = false; }
+        if (permis) {
+            try {
+                var d = await window.getScreenDetails();
+                ecran = ecranSecondaire(d.screens, d.currentScreen);
+            } catch (e) { ecran = null; }
+        }
+    }
+
+    var fen = window.open('', 'footy-ecran2', optionsFenetre(ecran));
+    if (!fen) { showToast('Fenêtre bloquée : autorisez les fenêtres surgissantes pour ce site.'); return; }
+    if (details && !permis) {
+        window.getScreenDetails().then(function(d) {
+            var e = ecranSecondaire(d.screens, d.currentScreen);
+            if (!e || fen.closed) return;
+            fen.moveTo(e.availLeft, e.availTop);
+            fen.resizeTo(e.availWidth, e.availHeight);
+        }).catch(function() {});
+    }
+    var doc = fen.document;
+    doc.open();
+    doc.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Guide des Sports — 2e écran</title></head>'
+        + '<body style="margin:0;padding:0;background:#000;overflow:hidden;display:flex;flex-direction:column;width:100vw;height:100vh;">'
+        + '<div id="mv-ecran2-barre" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:6px;transition:opacity .15s;">'
+        + '<button type="button" id="mv-ecran2-pe" class="btn">⛶ Plein écran</button>'
+        + '<button type="button" id="mv-ecran2-fermer" class="btn">⤺ Ramener les vidéos</button></div>'
+        + '<div id="mv-ecran2-vide" style="display:none;margin:auto;color:#aaa;font:16px system-ui,sans-serif;text-align:center;padding:20px;">'
+        + 'Deuxième écran prêt.<br>La vidéo 1 joue dans la page ; les vidéos 2 à 4 s\'affichent ici.</div>'
+        + '<div id="mv-grid-2" style="flex:1;display:grid;gap:2px;background:#000;"></div>'
+        + '</body></html>');
+    doc.close();
+    copierFeuillesDeStyle(doc);
+    brancherFenetreDeTuiles(fen);
+
+    doc.getElementById('mv-ecran2-pe').addEventListener('click', function() {
+        var racine = doc.documentElement;
+        if (doc.fullscreenElement) { doc.exitFullscreen(); return; }
+        try { var p = racine.requestFullscreen(); if (p && p.catch) p.catch(function() {}); } catch (e) {}
+    });
+    doc.getElementById('mv-ecran2-fermer').addEventListener('click', function() { fermerDeuxEcrans(); });
+    ['mousemove', 'click'].forEach(function(ev) { doc.addEventListener(ev, function() { window.resetMvIdleTimer && window.resetMvIdleTimer(); }); });
+    doc.addEventListener('touchstart', function() { window.resetMvIdleTimer && window.resetMvIdleTimer(); }, { passive: true });
+    /* Les raccourcis (1 à 4 : mettre cette vidéo sur l'écran principal) marchent aussi
+       quand c'est la seconde fenêtre qui a le clavier. */
+    doc.addEventListener('keydown', function(e) {
+        try { window.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, code: e.code, ctrlKey: e.ctrlKey, altKey: e.altKey, shiftKey: e.shiftKey, metaKey: e.metaKey })); } catch (err) {}
+    });
+    fen.addEventListener('pagehide', function() { if (fenetreEcran2 === fen) fermerDeuxEcrans(); });
+
+    fenetreEcran2 = fen;
+    updateMultivisionLayout();
+    if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
+}
+
+/* Ramène toutes les tuiles dans la page, puis ferme la seconde fenêtre. */
+export function fermerDeuxEcrans() {
+    var fen = fenetreEcran2;
+    var g2 = secondeGrille();
+    fenetreEcran2 = null;
+    fermerMenus();
+    var grid = document.getElementById('mv-grid');
+    if (g2 && grid) {
+        Array.prototype.slice.call(g2.querySelectorAll('.mv-cell')).forEach(function(c) { grid.appendChild(c); });
+    }
+    try { if (fen && !fen.closed) fen.close(); } catch (e) {}
+    updateMultivisionLayout();
+}
+
+/* Échange deux tuiles de place, comme le glisser-déposer dans une même fenêtre : ni
+   les autres tuiles ni le son ne bougent (le son suit la tuile qui l'avait). */
+export function echangerTuiles(a, b) {
+    if (a === b || a < 0 || b < 0 || a >= mvFlux.length || b >= mvFlux.length) return;
+    var temp = mvFlux[a];
+    mvFlux[a] = mvFlux[b];
+    mvFlux[b] = temp;
+    if (activeMvIdx === a) activeMvIdx = b;
+    else if (activeMvIdx === b) activeMvIdx = a;
+    saveMultivisionState();
+    updateMultivisionLayout();
+    applyMvFocusStyling();
+    applyMvAudioState();
+}
+
+/* La tuile `idx` du second écran ÉCHANGE sa place avec la vidéo principale : celle-ci
+   part à l'endroit exact que l'autre quitte. (`⇄` de l'en-tête, menu ⋮.) La vidéo qui
+   arrive devant prend le son. */
+export function mettreSurEcranPrincipal(idx) {
+    if (idx <= 0 || idx >= mvFlux.length) return;
+    echangerTuiles(idx, 0);
+    focusStream(0);
+}
+
+/* Les deux tuiles sont-elles dans la même fenêtre ? */
+function estMemeFenetre(idx, cell) {
+    var autre = celluleDeTuile(idx);
+    return !autre || autre.ownerDocument === cell.ownerDocument;
+}
+
+/* Pendant un glisser, les cadres ne doivent pas avaler les événements — dans toutes
+   les fenêtres du lecteur. */
+function pointeursDesCadres(valeur) {
+    documentsDuLecteur().forEach(function(d) {
+        Array.prototype.forEach.call(d.querySelectorAll('.mv-iframe'), function(fr) { fr.style.pointerEvents = valeur; });
+    });
+}
+
+window.addEventListener('pagehide', function() {
+    try { if (fenetreEcran2 && !fenetreEcran2.closed) fenetreEcran2.close(); } catch (e) {}
+});
+
 /* Efface (ou rétablit) les commandes du lecteur : la barre, et les en-têtes de tuiles
    DANS LA GRILLE, où qu'elle soit. `barre` vaut null quand la grille est détachée : la
    barre, elle, reste dans la page. Rend le nombre d'en-têtes touchés — c'est ce compte
@@ -1480,9 +1728,11 @@ window.resetMvIdleTimer = function() {
         var grille = grilleDuLecteur();
         if (!grilleDetachee()) mvContainer.style.cursor = 'default';
         appliquerRepos(grille, document.getElementById('mv-toolbar'), false);
+        reposSecondEcran(false);
 
         clearTimeout(window.mvIdleTimer);
         window.mvIdleTimer = setTimeout(function() {
+            reposSecondEcran(true);
             var g = grilleDuLecteur();
             if (!g) return;
             var horsPage = grilleDetachee();
@@ -1658,7 +1908,7 @@ export function focusStream(idx) {
 }
 
 export function applyMvFocusStyling() {
-    var cells = document.querySelectorAll('.mv-cell');
+    var cells = toutesLesCellules();
     cells.forEach(function(cell) {
         var idx = parseInt(cell.dataset.index);
         if (idx === activeMvIdx) {
@@ -1675,15 +1925,9 @@ export function applyMvAudioState() {
     var targetIdx = activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : (mvFlux.length > 0 ? 0 : null);
 
     mvFlux.forEach(function(s, idx) {
-        var iframe = document.getElementById('mv-iframe-' + idx);
+        var iframe = cadreDeTuile(idx);
         if (iframe && iframe.tagName === 'VIDEO') { iframe.muted = (idx !== targetIdx); return; }
-        if (iframe && iframe.contentWindow) {
-            if (idx === targetIdx) {
-                iframe.contentWindow.postMessage('mv_unmute', '*');
-            } else {
-                iframe.contentWindow.postMessage('mv_mute', '*');
-            }
-        }
+        if (iframe && iframe.contentWindow) posterATuile(iframe, idx === targetIdx ? 'mv_unmute' : 'mv_mute');
     });
 }
 
@@ -1772,6 +2016,13 @@ export function updateMultivisionLayout() {
 
     var count = mvFlux.length;
     var layout = dispositionEffective(count);
+    /* Deux écrans : la tuile 1 ici, les autres dans `#mv-grid-2` (js/deuxecrans.js). */
+    var grid2 = secondeGrille();
+    if (grid2) {
+        var vide2 = grid2.ownerDocument.getElementById('mv-ecran2-vide');
+        if (vide2) vide2.style.display = count <= 1 ? 'block' : 'none';
+        grid2.style.display = count <= 1 ? 'none' : 'grid';
+    }
 
     // Assign internal IDs to streams for tracking DOM elements
     mvFlux.forEach(function(s, idx) {
@@ -1789,6 +2040,7 @@ export function updateMultivisionLayout() {
                 + '</div>';
         } else {
             // keep it
+            if (grid2) Array.from(grid2.children).forEach(function(c) { c.remove(); });
             var children = Array.from(grid.children);
             children.forEach(function(child) {
                 if (child.id !== 'mv-empty-msg') {
@@ -1863,9 +2115,14 @@ export function updateMultivisionLayout() {
             }
         }
     }    // Existing cells
-    var existingCells = Array.from(grid.children).filter(function(child) {
+    var existingCells = Array.from(grid.children).concat(grid2 ? Array.from(grid2.children) : []).filter(function(child) {
         return child.hasAttribute('data-internal-id');
     });
+    var placement2 = grid2 ? placementSecondEcran(count - 1) : null;
+    if (grid2) {
+        grid2.style.gridTemplateColumns = placement2.colonnes;
+        grid2.style.gridTemplateRows = placement2.lignes;
+    }
 
     // Create or update cells
     mvFlux.forEach(function(s, idx) {
@@ -2123,17 +2380,13 @@ export function updateMultivisionLayout() {
             e.dataTransfer.setData('text/plain', idx.toString());
             window.draggedMvIdx = idx;
             cell.style.opacity = '0.5';
-            document.querySelectorAll('.mv-iframe').forEach(function(iframe) {
-                iframe.style.pointerEvents = 'none';
-            });
+            pointeursDesCadres('none');
         };
         cell.ondragend = function(e) {
             cell.style.opacity = '1';
             cell.draggable = false;
             window.draggedMvIdx = null;
-            document.querySelectorAll('.mv-iframe').forEach(function(iframe) {
-                iframe.style.pointerEvents = 'auto';
-            });
+            pointeursDesCadres('auto');
             saveMultivisionState();
             updateMultivisionLayout();
         };
@@ -2141,6 +2394,9 @@ export function updateMultivisionLayout() {
             e.preventDefault();
             var fromIdx = window.draggedMvIdx;
             var toIdx = idx;
+            /* D'un écran à l'autre, l'échange attend le dépôt : chaque passage au-dessus
+               d'une tuile la changerait de fenêtre, donc rechargerait sa vidéo. */
+            if (fromIdx !== null && fromIdx !== undefined && !estMemeFenetre(fromIdx, cell)) return;
             if (fromIdx !== null && fromIdx !== undefined && fromIdx !== toIdx && !isNaN(fromIdx)) {
                 var temp = mvFlux[fromIdx];
                 mvFlux[fromIdx] = mvFlux[toIdx];
@@ -2168,7 +2424,16 @@ export function updateMultivisionLayout() {
         };
         cell.ondrop = function(e) {
             e.preventDefault();
-            // Swapping already handled in dragenter
+            // Dans une même fenêtre, l'échange est déjà fait au survol (dragenter).
+            var fromIdx = window.draggedMvIdx;
+            if (fromIdx === null || fromIdx === undefined || isNaN(fromIdx) || estMemeFenetre(fromIdx, cell)) return;
+            /* D'un écran à l'autre : la tuile déposée et la tuile visée échangent leurs
+               places. La tuile glissée change de document, donc son `dragend` peut ne
+               jamais venir : on remet l'état du glisser ici. */
+            window.draggedMvIdx = null;
+            pointeursDesCadres('auto');
+            toutesLesCellules().forEach(function(c) { c.style.opacity = '1'; c.draggable = false; });
+            echangerTuiles(fromIdx, parseInt(cell.dataset.index, 10));
         };
 
         // Update header HTML
@@ -2209,7 +2474,11 @@ export function updateMultivisionLayout() {
         /* Trois boutons toujours visibles, nommés : « Site » (la page originale dans un
            nouvel onglet — le repli quand la vidéo ne joue pas ici), le menu, la croix.
            Le reste des actions vit dans le menu flottant (ouvrirMenuTuile). */
+        var boutonEchange = (idx > 0 && grid2)
+            ? '<button type="button" class="mv-hdr-btn mv-swap-btn" title="Échanger avec la vidéo principale" aria-label="Échanger avec la vidéo principale" onclick="mettreSurEcranPrincipal(' + idx + '); event.stopPropagation();">⇄ <span class="mv-hdr-lb">Principal</span></button>'
+            : '';
         var controlsHtml = '<div class="mv-hdr-right">'
+            + boutonEchange
             + boutonGestes
             + '<button type="button" class="mv-hdr-btn mv-site-btn" title="La vidéo ne joue pas ici ? Ouvrir la page du site dans un nouvel onglet" aria-label="Ouvrir sur le site" onclick="ouvrirPageOriginale(' + idx + '); event.stopPropagation();">↗ <span class="mv-hdr-lb">Site</span></button>'
             + '<button type="button" class="mv-hdr-btn mv-tile-menu-btn" title="Options de cette vidéo" aria-label="Options de cette vidéo" aria-haspopup="menu" aria-expanded="false" onclick="ouvrirMenuTuile(' + idx + ', this, event);">' + svgMenu + '</button>'
@@ -2240,6 +2509,8 @@ export function updateMultivisionLayout() {
         }
     });
 
+    if (grid2) poserSurDeuxEcrans(grid, grid2, placement2, count);
+
     // Remove cells that are no longer in mvFlux
     existingCells.forEach(function(cell) {
         var cellId = cell.getAttribute('data-internal-id');
@@ -2255,6 +2526,36 @@ export function updateMultivisionLayout() {
     majSurfacesCable();
     applyMvFocusStyling();
     applyMvAudioState();
+}
+
+/* Range chaque tuile sur son écran, après la disposition ordinaire qu'on écrase : la
+   page n'a plus qu'une tuile, la seconde grille a les autres. Une tuile ne change de
+   fenêtre que si elle n'y est pas déjà — le déplacement recharge son iframe — et une
+   vidéo directe y est reposée (`_currentUrl` effacé), son lecteur hls n'y survivant pas. */
+function poserSurDeuxEcrans(grid, grid2, placement2, count) {
+    grid.style.gridTemplateColumns = '1fr';
+    grid.style.gridTemplateRows = '1fr';
+    var aReposer = false;
+    mvFlux.forEach(function(s, idx) {
+        var cell = null;
+        [grid, grid2].forEach(function(g) {
+            Array.prototype.forEach.call(g.children, function(c) { if (c.getAttribute('data-internal-id') === s._internalId) cell = c; });
+        });
+        if (!cell) return;
+        var cible = ecranDeTuile(idx) === 1 ? grid : grid2;
+        if (cell.parentNode !== cible) {
+            cible.appendChild(cell);
+            if (s.mode === 'direct') { s._currentUrl = null; aReposer = true; }
+        }
+        var place = idx === 0 ? { ligne: '1', colonne: '1' } : (placement2.places[idx - 1] || { ligne: 'auto', colonne: 'auto' });
+        cell.style.gridRow = place.ligne;
+        cell.style.gridColumn = place.colonne;
+        cell.style.resize = 'none';
+        cell.style.paddingRight = '0';
+        cell.style.width = '100%';
+        cell.style.height = '100%';
+    });
+    if (aReposer) setTimeout(updateMultivisionLayout, 0);
 }
 
 /* Le lien tel que le match le connaît, retrouvé par son adresse.
@@ -2479,7 +2780,7 @@ export function armerRepriseTuile(s, signal) {
 /* Met à jour la pastille « source k/n · ● » d'une tuile sans re-rendre la cellule. */
 function rafraichirPastille(idx) {
     var s = mvFlux[idx];
-    var cell = document.querySelector('.mv-cell[data-index="' + idx + '"]');
+    var cell = celluleDeTuile(idx);
     var pill = cell && cell.querySelector('.mv-source-pill');
     if (!s || !pill) return;
     var pos = positionDuFlux(s);
@@ -2557,7 +2858,7 @@ function indexDeTuilePour(source) {
     var w = source;
     for (var k = 0; k < 8 && w; k++) {
         for (var i = 0; i < mvFlux.length; i++) {
-            var fr = document.getElementById('mv-iframe-' + i);
+            var fr = cadreDeTuile(i);
             if (fr && fr.contentWindow === w) return i;
         }
         var parent = null;
@@ -2759,7 +3060,7 @@ export function relancerLectureTuile(idx) {
     var s = mvFlux[idx];
     if (!s) return false;
     var envoyer = function() {
-        var el = document.getElementById('mv-iframe-' + idx);
+        var el = cadreDeTuile(idx);
         if (!el) return;
         if (el.tagName === 'VIDEO') {
             try {
@@ -2773,8 +3074,8 @@ export function relancerLectureTuile(idx) {
         }
         if (!el.contentWindow) return;
         try {
-            el.contentWindow.postMessage('mv_clean', '*');
-            el.contentWindow.postMessage('mv_play', '*');
+            posterATuile(el, 'mv_clean');
+            posterATuile(el, 'mv_play');
         } catch (e) {}
     };
     envoyer();
@@ -2852,7 +3153,7 @@ export function gesteCable(idx, direction) {
 var OSD_MS = 2500;
 export function annoncerCable(idx, note) {
     var s = mvFlux[idx];
-    var cell = document.querySelector('.mv-cell[data-index="' + idx + '"]');
+    var cell = celluleDeTuile(idx);
     if (!s || !cell) return null;
     var chaines = chainesDuCable();
     var pos = positionDuFlux(s);
@@ -3089,6 +3390,7 @@ export function ouvrirMenuTuile(idx, bouton, event) {
         { sep: true },
         { icon: fitInfo.icon, label: 'Image : ' + fitInfo.label + ' (changer)', onSelect: function() { cycleMvFit(idx); } },
         media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', onSelect: function() { toggleDirectMode(idx); } } : null,
+        (idx > 0 && deuxEcransActif()) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
         idx > 0 ? { icon: '◀', label: 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
         idx < mvFlux.length - 1 ? { icon: '▶', label: 'Déplacer à droite', onSelect: function() { moveMultiviewStream(idx, 'right'); } } : null,
         { sep: true },
@@ -3124,6 +3426,7 @@ export function ouvrirMenuBarre(bouton, event) {
         { icon: '📺', label: 'Mode câble (une seule vidéo, zapping au doigt)', title: '↑↓ changer de match, ←→ changer de source ; un appui rend les clics à la page', actif: modeCable, onSelect: function() { toggleModeCable(); } },
         { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', title: 'La vidéo qu\'on regarde prend le son dès qu\'elle joue (le navigateur exige parfois un premier geste)', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
         ('documentPictureInPicture' in window) ? { icon: '🖼', label: 'Fenêtre détachée', onSelect: function() { toggleDocumentPiP(); } } : null,
+        !mobile ? { icon: '🖥', label: 'Deux écrans (vidéo 1 ici, les autres sur l\'autre écran)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif(), onSelect: function() { toggleDeuxEcrans(); } } : null,
         { sep: true },
         (!enPip && !mobile) ? { icon: '◫', label: 'Réduire dans un coin', onSelect: function() { toggleMultiviewPip(); } } : null,
         enPip ? { icon: '⤢', label: 'Agrandir', onSelect: function() { toggleMultiviewPip(); } } : null,
@@ -3323,6 +3626,7 @@ export async function toggleDocumentPiP() {
 
     if (!mvContainer) return;
 
+    if (deuxEcransActif()) { showToast('Fermez d\'abord le mode deux écrans.'); return; }
     if (docPiPWindow) {
         // If already in PiP, closing the window will trigger the pagehide event and restore the UI
         docPiPWindow.close();
@@ -3339,25 +3643,10 @@ export async function toggleDocumentPiP() {
             height: 450
         });
 
-        // Copy styles to the new window
-        var styleSheets = document.styleSheets;
-        for (var i = 0; i < styleSheets.length; i++) {
-            var styleSheet = styleSheets[i];
-            try {
-                if (styleSheet.href) {
-                    var newLinkEl = document.createElement('link');
-                    newLinkEl.rel = 'stylesheet';
-                    newLinkEl.href = styleSheet.href;
-                    docPiPWindow.document.head.appendChild(newLinkEl);
-                } else if (styleSheet.ownerNode && styleSheet.ownerNode.innerText) {
-                    var newStyleEl = document.createElement('style');
-                    newStyleEl.textContent = styleSheet.ownerNode.innerText;
-                    docPiPWindow.document.head.appendChild(newStyleEl);
-                }
-            } catch (e) {
-                console.warn('Failed to copy stylesheet', e);
-            }
-        }
+        copierFeuillesDeStyle(docPiPWindow.document);
+        /* Les tuiles y ont pour parent la fenêtre détachée : leurs messages lui
+           arrivent, et le script n'obéit qu'à elle. */
+        brancherFenetreDeTuiles(docPiPWindow);
 
         // Add root styles to match main window
         docPiPWindow.document.body.style.cssText = 'margin: 0; padding: 0; background: #000; overflow: hidden; display: flex; flex-direction: column; width: 100vw; height: 100vh;';
@@ -4128,7 +4417,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v35';
+export var VERSION_APP = 'sports-guide-v36';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4752,6 +5041,8 @@ window.rechargerTuile = rechargerTuile;
 window.fermerToutesLesVideos = fermerToutesLesVideos;
 window.toggleMultiview = toggleMultiview;
 window.toggleDocumentPiP = toggleDocumentPiP;
+window.toggleDeuxEcrans = toggleDeuxEcrans;
+window.mettreSurEcranPrincipal = mettreSurEcranPrincipal;
 window.toggleTheaterMode = toggleTheaterMode;
 window.quitterModeCinema = quitterModeCinema;
 window.quitterPleinEcranLecteur = quitterPleinEcranLecteur;
