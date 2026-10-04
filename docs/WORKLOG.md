@@ -2,6 +2,18 @@
 ## En cours
 
 ## Fait
+- 2026-10-04 - **« Ça unmute avec plusieurs players mais pas un. »**
+
+  - **Cause.** L'iframe d'une tuile ne recevait son identifiant (`mv-iframe-N`) qu'au redessin SUIVANT de la grille. Elle est posée après `resolveStreamUrl`, donc après le redessin en cours. Avec plusieurs vidéos, chaque ajout redessine et les cadres finissent par l'avoir. Avec une seule ajoutée depuis le guide, rien ne venait après : `cadreDeTuile(0)` ne trouvait rien. Le signal « joue » du script n'était rattaché à aucune tuile, les clics non plus, et `mv_unmute` n'était jamais envoyé.
+
+  - **Correctif.** L'identifiant est posé à la création du cadre.
+
+  - **Vérifié dans Chromium.** Une vidéo ajoutée par `addToMultivision`, avec une page sonde qui annonce « joue » : sans le correctif, `id: ""` et aucun `mv_unmute` ; avec, la sonde reçoit `mv_unmute`.
+
+  - **Test** : `unit_sonseul` (nouveau ; il tombe sans le correctif). `npm run test:unit` : 80 fichiers.
+
+  - **Fichiers** : `js/multiview.js`, `tests/unit_sonseul.test.js`, `sw.js` + `VERSION_APP` → `sports-guide-v39`.
+
 - 2026-10-04 - **« Au moins, fait que la fenêtre détachée soit trois streams un par-dessus l'autre et que ça bugge pas lors du merge back. »**
 
   - **Fenêtre détachée = second écran.** Dès deux vidéos, `🖼 Fenêtre détachée` garde la vidéo 1 dans la page et empile les autres dans la fenêtre PiP, haute de 270 px par vidéo et large de 480. La préparation est commune avec la fenêtre ordinaire (`preparerSecondEcran`, extraite de `toggleDeuxEcrans`). Avec une seule vidéo, elle part entière comme avant.
