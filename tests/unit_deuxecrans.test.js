@@ -150,6 +150,27 @@ async function main() {
   assert.strictEqual(mv.activeMvIdx, 0, 'la vidéo qui arrive devant a le son');
   ok('⇄ échange la vidéo choisie avec la principale, sans déranger les autres');
 
+  /* « Le switch est lent et clunky » : les deux tuiles qui changent de fenêtre
+     rechargent leur page. Elles doivent repartir comme un chargement neuf (sinon le
+     signal « joue » de la page rechargée ne rend ni le son ni la pastille), et la lecture
+     est relancée dès que la page est chargée, sans attendre un clic. */
+  await new Promise(r => setTimeout(r, 30));  // les iframes sont posées après resolveStreamUrl
+  mv.mvFlux.forEach(s => { s._playing = true; });
+  const vus = [];
+  fen.__mvRelais = (cible, m) => vus.push(m);
+  const nomPrincipal = mv.mvFlux[0].name, nomQuiMonte = mv.mvFlux[1].name, nomQuiReste = mv.mvFlux[2].name;
+  mv.mettreSurEcranPrincipal(1);
+  const sDe = (nom) => mv.mvFlux.find(s => s.name === nom);
+  assert.strictEqual(sDe(nomPrincipal)._playing, false, 'la tuile partie sur le second écran repart à zéro');
+  assert.strictEqual(sDe(nomQuiMonte)._playing, false, 'la tuile arrivée devant aussi');
+  assert.strictEqual(sDe(nomQuiReste)._playing, true, 'une tuile qui ne bouge pas n\'est pas touchée');
+  const cadreParti = mv.cadreDeTuile(mv.mvFlux.findIndex(s => s.name === nomPrincipal));
+  assert.ok(cadreParti && cadreParti.ownerDocument === fen.document);
+  cadreParti.dispatchEvent(new fen.Event('load'));
+  assert.ok(vus.includes('mv_play') && vus.includes('mv_clean'), 'la lecture est relancée au chargement : ' + vus.join(','));
+  mv.mettreSurEcranPrincipal(1);   // remet l'ordre d'avant pour la suite
+  ok('après un échange, les deux vidéos déplacées repartent seules (lecture, son, pastille)');
+
   // Le bouton ⇄ est dans l'en-tête des tuiles du second écran, pas de la principale.
   assert.ok(mv.celluleDeTuile(1).querySelector('.mv-swap-btn'));
   assert.ok(!mv.celluleDeTuile(0).querySelector('.mv-swap-btn'));

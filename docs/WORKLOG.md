@@ -2,6 +2,8 @@
 ## En cours
 
 ## Fait
+- 2026-10-04 - **« Le switch est lent et clunky. »** Une tuile qui change de fenêtre recharge sa page (imposé par le navigateur), mais elle gardait `_playing` à vrai. Le signal « joue » de la page rechargée ne déclenchait donc rien : pas de son pour la vidéo arrivée devant, une pastille ● fausse, et aucune reprise si elle ne repartait pas. `reveillerApresDeplacement` (`js/multiview.js`) la traite comme un chargement neuf de la même source et relance la lecture (`mv_clean` + `mv_play`) dès le `load` de la page. Test : `unit_deuxecrans` (16 cas). Ce qui reste : les deux vidéos rechargent toujours.
+
 - 2026-10-04 - **« Les trois doivent être verticales. »** Le second écran empile ses tuiles en une seule colonne, une par ligne. Avant : une grande à gauche et deux empilées à droite, ou deux côte à côte. `placementSecondEcran` (`js/deuxecrans.js`) ; l'échange par ⇄ ou par glisser garde la place exacte, dans la colonne. Fichiers : `js/deuxecrans.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `sw.js` + `VERSION_APP` → `sports-guide-v37`.
 
 - 2026-10-04 - **« Mais genre, ça doit swap comme quand dans même fenêtre. »** Suite du mode deux écrans.

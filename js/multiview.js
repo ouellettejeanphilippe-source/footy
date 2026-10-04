@@ -2546,6 +2546,7 @@ function poserSurDeuxEcrans(grid, grid2, placement2, count) {
         if (cell.parentNode !== cible) {
             cible.appendChild(cell);
             if (s.mode === 'direct') { s._currentUrl = null; aReposer = true; }
+            else reveillerApresDeplacement(s, cell);
         }
         var place = idx === 0 ? { ligne: '1', colonne: '1' } : (placement2.places[idx - 1] || { ligne: 'auto', colonne: 'auto' });
         cell.style.gridRow = place.ligne;
@@ -2556,6 +2557,28 @@ function poserSurDeuxEcrans(grid, grid2, placement2, count) {
         cell.style.height = '100%';
     });
     if (aReposer) setTimeout(updateMultivisionLayout, 0);
+}
+
+/* Une tuile qui change de fenêtre RECHARGE sa page (le navigateur l'impose). « Le switch
+   est lent et clunky » (4 octobre 2026) : la tuile gardait `_playing` à vrai, si bien que
+   le signal « joue » de la page rechargée ne déclenchait rien — ni le son de la vidéo
+   qui arrive devant, ni la pastille, ni la reprise si elle ne repartait pas. On la traite
+   donc comme un chargement neuf de la MÊME source, et on relance la lecture dès que la
+   page est chargée (`mv_clean` + `mv_play`) au lieu d'attendre un clic. */
+function reveillerApresDeplacement(s, cell) {
+    s._playing = false;
+    couperMinuteur(s, 'reprise');
+    rafraichirPastille(mvFlux.indexOf(s));
+    var fr = cell.querySelector('iframe.mv-iframe');
+    if (!fr) return;
+    var url = s._currentUrl;
+    fr.addEventListener('load', function relance() {
+        fr.removeEventListener('load', relance);
+        var i = mvFlux.indexOf(s);
+        if (i >= 0 && s._currentUrl === url) relancerLectureTuile(i);
+    });
+    var idx = mvFlux.indexOf(s);
+    if (idx >= 0 && url) armerBasculeAuto(s, idx, url);
 }
 
 /* Le lien tel que le match le connaît, retrouvé par son adresse.
