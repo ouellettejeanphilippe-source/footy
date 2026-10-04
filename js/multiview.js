@@ -1137,7 +1137,7 @@ export async function toggleDeuxEcrans() {
     doc.open();
     doc.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Guide des Sports — 2e écran</title></head>'
         + '<body style="margin:0;padding:0;background:#000;overflow:hidden;display:flex;flex-direction:column;width:100vw;height:100vh;">'
-        + '<div id="mv-ecran2-barre" style="position:fixed;top:8px;right:8px;z-index:50;display:flex;gap:6px;transition:opacity .15s;">'
+        + '<div id="mv-ecran2-barre" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:6px;transition:opacity .15s;">'
         + '<button type="button" id="mv-ecran2-pe" class="btn">⛶ Plein écran</button>'
         + '<button type="button" id="mv-ecran2-fermer" class="btn">⤺ Ramener les vidéos</button></div>'
         + '<div id="mv-ecran2-vide" style="display:none;margin:auto;color:#aaa;font:16px system-ui,sans-serif;text-align:center;padding:20px;">'
@@ -1182,18 +1182,42 @@ export function fermerDeuxEcrans() {
     updateMultivisionLayout();
 }
 
-/* Met la tuile `idx` sur l'écran principal (première place), comme la touche du même
-   numéro. */
-export function mettreSurEcranPrincipal(idx) {
-    if (idx <= 0 || idx >= mvFlux.length) return;
-    var actif = activeMvIdx;
-    var item = mvFlux.splice(idx, 1)[0];
-    mvFlux.unshift(item);
-    if (actif === idx) activeMvIdx = 0;
-    else if (actif !== null && actif < idx) activeMvIdx = actif + 1;
+/* Échange deux tuiles de place, comme le glisser-déposer dans une même fenêtre : ni
+   les autres tuiles ni le son ne bougent (le son suit la tuile qui l'avait). */
+export function echangerTuiles(a, b) {
+    if (a === b || a < 0 || b < 0 || a >= mvFlux.length || b >= mvFlux.length) return;
+    var temp = mvFlux[a];
+    mvFlux[a] = mvFlux[b];
+    mvFlux[b] = temp;
+    if (activeMvIdx === a) activeMvIdx = b;
+    else if (activeMvIdx === b) activeMvIdx = a;
     saveMultivisionState();
     updateMultivisionLayout();
+    applyMvFocusStyling();
+    applyMvAudioState();
+}
+
+/* La tuile `idx` du second écran ÉCHANGE sa place avec la vidéo principale : celle-ci
+   part à l'endroit exact que l'autre quitte. (`⇄` de l'en-tête, menu ⋮.) La vidéo qui
+   arrive devant prend le son. */
+export function mettreSurEcranPrincipal(idx) {
+    if (idx <= 0 || idx >= mvFlux.length) return;
+    echangerTuiles(idx, 0);
     focusStream(0);
+}
+
+/* Les deux tuiles sont-elles dans la même fenêtre ? */
+function estMemeFenetre(idx, cell) {
+    var autre = celluleDeTuile(idx);
+    return !autre || autre.ownerDocument === cell.ownerDocument;
+}
+
+/* Pendant un glisser, les cadres ne doivent pas avaler les événements — dans toutes
+   les fenêtres du lecteur. */
+function pointeursDesCadres(valeur) {
+    documentsDuLecteur().forEach(function(d) {
+        Array.prototype.forEach.call(d.querySelectorAll('.mv-iframe'), function(fr) { fr.style.pointerEvents = valeur; });
+    });
 }
 
 window.addEventListener('pagehide', function() {
@@ -2356,17 +2380,13 @@ export function updateMultivisionLayout() {
             e.dataTransfer.setData('text/plain', idx.toString());
             window.draggedMvIdx = idx;
             cell.style.opacity = '0.5';
-            document.querySelectorAll('.mv-iframe').forEach(function(iframe) {
-                iframe.style.pointerEvents = 'none';
-            });
+            pointeursDesCadres('none');
         };
         cell.ondragend = function(e) {
             cell.style.opacity = '1';
             cell.draggable = false;
             window.draggedMvIdx = null;
-            document.querySelectorAll('.mv-iframe').forEach(function(iframe) {
-                iframe.style.pointerEvents = 'auto';
-            });
+            pointeursDesCadres('auto');
             saveMultivisionState();
             updateMultivisionLayout();
         };
@@ -2374,6 +2394,9 @@ export function updateMultivisionLayout() {
             e.preventDefault();
             var fromIdx = window.draggedMvIdx;
             var toIdx = idx;
+            /* D'un écran à l'autre, l'échange attend le dépôt : chaque passage au-dessus
+               d'une tuile la changerait de fenêtre, donc rechargerait sa vidéo. */
+            if (fromIdx !== null && fromIdx !== undefined && !estMemeFenetre(fromIdx, cell)) return;
             if (fromIdx !== null && fromIdx !== undefined && fromIdx !== toIdx && !isNaN(fromIdx)) {
                 var temp = mvFlux[fromIdx];
                 mvFlux[fromIdx] = mvFlux[toIdx];
@@ -2401,7 +2424,16 @@ export function updateMultivisionLayout() {
         };
         cell.ondrop = function(e) {
             e.preventDefault();
-            // Swapping already handled in dragenter
+            // Dans une même fenêtre, l'échange est déjà fait au survol (dragenter).
+            var fromIdx = window.draggedMvIdx;
+            if (fromIdx === null || fromIdx === undefined || isNaN(fromIdx) || estMemeFenetre(fromIdx, cell)) return;
+            /* D'un écran à l'autre : la tuile déposée et la tuile visée échangent leurs
+               places. La tuile glissée change de document, donc son `dragend` peut ne
+               jamais venir : on remet l'état du glisser ici. */
+            window.draggedMvIdx = null;
+            pointeursDesCadres('auto');
+            toutesLesCellules().forEach(function(c) { c.style.opacity = '1'; c.draggable = false; });
+            echangerTuiles(fromIdx, parseInt(cell.dataset.index, 10));
         };
 
         // Update header HTML
@@ -2442,7 +2474,11 @@ export function updateMultivisionLayout() {
         /* Trois boutons toujours visibles, nommés : « Site » (la page originale dans un
            nouvel onglet — le repli quand la vidéo ne joue pas ici), le menu, la croix.
            Le reste des actions vit dans le menu flottant (ouvrirMenuTuile). */
+        var boutonEchange = (idx > 0 && grid2)
+            ? '<button type="button" class="mv-hdr-btn mv-swap-btn" title="Échanger avec la vidéo principale" aria-label="Échanger avec la vidéo principale" onclick="mettreSurEcranPrincipal(' + idx + '); event.stopPropagation();">⇄ <span class="mv-hdr-lb">Principal</span></button>'
+            : '';
         var controlsHtml = '<div class="mv-hdr-right">'
+            + boutonEchange
             + boutonGestes
             + '<button type="button" class="mv-hdr-btn mv-site-btn" title="La vidéo ne joue pas ici ? Ouvrir la page du site dans un nouvel onglet" aria-label="Ouvrir sur le site" onclick="ouvrirPageOriginale(' + idx + '); event.stopPropagation();">↗ <span class="mv-hdr-lb">Site</span></button>'
             + '<button type="button" class="mv-hdr-btn mv-tile-menu-btn" title="Options de cette vidéo" aria-label="Options de cette vidéo" aria-haspopup="menu" aria-expanded="false" onclick="ouvrirMenuTuile(' + idx + ', this, event);">' + svgMenu + '</button>'
@@ -3354,7 +3390,7 @@ export function ouvrirMenuTuile(idx, bouton, event) {
         { sep: true },
         { icon: fitInfo.icon, label: 'Image : ' + fitInfo.label + ' (changer)', onSelect: function() { cycleMvFit(idx); } },
         media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', onSelect: function() { toggleDirectMode(idx); } } : null,
-        (idx > 0 && deuxEcransActif()) ? { icon: '🖥', label: 'Mettre sur l\'écran principal', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
+        (idx > 0 && deuxEcransActif()) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
         idx > 0 ? { icon: '◀', label: 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
         idx < mvFlux.length - 1 ? { icon: '▶', label: 'Déplacer à droite', onSelect: function() { moveMultiviewStream(idx, 'right'); } } : null,
         { sep: true },

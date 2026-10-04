@@ -133,14 +133,42 @@ async function main() {
   assert.ok(renvoye, 'un message adressé à la seconde fenêtre arrive à la page');
   ok('les messages des lecteurs du second écran reviennent à la page');
 
-  // Changer de vidéo principale : la tuile 3 vient ici, la 1 part là-bas.
-  const nomTroisieme = mv.mvFlux[2].name;
+  /* « Ça doit swap comme quand dans même fenêtre » : la vidéo choisie et la principale
+     ÉCHANGENT leurs places, les autres ne bougent pas. */
+  const noms = () => mv.mvFlux.map(s => s.name);
+  const celluleDe = (nom) => mv.toutesLesCellules().find(c => mv.mvFlux[+c.dataset.index].name === nom);
+  const avant = noms();                       // [A, B, C, D]
+  const celluleB = celluleDe(avant[1]);
   mv.mettreSurEcranPrincipal(2);
-  assert.strictEqual(mv.mvFlux[0].name, nomTroisieme);
+  assert.deepStrictEqual(noms(), [avant[2], avant[1], avant[0], avant[3]], 'C et A échangent, B et D restent');
   assert.deepStrictEqual(Array.from(grille.querySelectorAll('.mv-cell')).map(c => c.dataset.index), ['0']);
-  assert.strictEqual(grille2.querySelectorAll('.mv-cell').length, 3);
-  assert.strictEqual(mv.activeMvIdx, 0);
-  ok('« mettre sur l\'écran principal » échange les places');
+  assert.strictEqual(celluleDe(avant[0]).ownerDocument, fen.document, 'l\'ancienne principale part sur le second écran');
+  assert.strictEqual(celluleDe(avant[0]).style.gridRow, '1', 'à la place exacte de celle qui est venue');
+  assert.strictEqual(celluleDe(avant[0]).style.gridColumn, '2');
+  assert.strictEqual(celluleDe(avant[1]), celluleB, 'B n\'a pas été reconstruite');
+  assert.strictEqual(celluleB.style.gridRow, '1 / span 2', 'B garde sa place');
+  assert.strictEqual(mv.activeMvIdx, 0, 'la vidéo qui arrive devant a le son');
+  ok('⇄ échange la vidéo choisie avec la principale, sans déranger les autres');
+
+  // Le bouton ⇄ est dans l'en-tête des tuiles du second écran, pas de la principale.
+  assert.ok(mv.celluleDeTuile(1).querySelector('.mv-swap-btn'));
+  assert.ok(!mv.celluleDeTuile(0).querySelector('.mv-swap-btn'));
+  ok('le bouton ⇄ est sur les tuiles du second écran');
+
+  // Glisser-déposer d'un écran à l'autre : rien au survol, l'échange au dépôt.
+  const etat = noms();                        // [C, B, A, D]
+  const depuis = mv.celluleDeTuile(3);        // D, second écran
+  const vers = mv.celluleDeTuile(0);          // C, page
+  const dt = { setData() {}, getData() { return '3'; } };
+  const evt = (doc, type) => { const e = new doc.defaultView.Event(type, { bubbles: true, cancelable: true }); e.dataTransfer = dt; return e; };
+  depuis.ondragstart(evt(fen.document, 'dragstart'));
+  vers.ondragenter(evt(document, 'dragenter'));
+  assert.deepStrictEqual(noms(), etat, 'survoler une tuile de l\'autre écran ne la déplace pas');
+  vers.ondrop(evt(document, 'drop'));
+  assert.deepStrictEqual(noms(), [etat[3], etat[1], etat[2], etat[0]], 'D et C échangent au dépôt');
+  assert.strictEqual(w.draggedMvIdx, null, 'le glisser est terminé même sans dragend');
+  assert.strictEqual(celluleDe(etat[0]).ownerDocument, fen.document);
+  ok('glisser une vidéo d\'un écran à l\'autre l\'échange au dépôt');
 
   // Fermer une tuile : la disposition suit.
   mv.removeFromMultivision(3);
