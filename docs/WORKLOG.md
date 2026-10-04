@@ -2,6 +2,23 @@
 ## En cours
 
 ## Fait
+- 2026-10-03 - **« Créer mode deux écrans où un flux joue sur un écran, avec les trois autres qui se détachent pour mon deuxième écran. »**
+
+  - **Ce qui est ajouté.** `⋯ Plus → 🖥 Deux écrans`. La vidéo 1 reste dans la page ; les vidéos 2 à 4 partent dans une vraie fenêtre (`window.open`). Pas le PiP, qui reste toujours au premier plan et ne passe pas en plein écran. La fenêtre a `⛶ Plein écran` et `⤺ Ramener les vidéos`. Sur Chromium, une fois la permission « gestion des fenêtres » accordée, elle s'ouvre sur l'autre moniteur et le remplit. Pour changer de vidéo principale : touches 1 à 4 (relayées depuis la seconde fenêtre) ou `🖥 Mettre sur l'écran principal` dans le menu ⋮. Règles pures dans `js/deuxecrans.js` ; câblage dans `js/multiview.js` (§7.5 ter).
+
+  - **Ce qu'il fallait pour qu'une tuile vive ailleurs.** Une iframe déplacée a la seconde fenêtre pour parent. Ses messages (`video_state`, clics, son) allaient à cette fenêtre, et le script utilisateur n'obéissait qu'à elle. `brancherFenetreDeTuiles` renvoie maintenant ces messages à la page, et `posterATuile` envoie les ordres depuis la seconde fenêtre (`__mvRelais`). Les recherches de tuile par `document` passent par `cadreDeTuile` / `celluleDeTuile`. La fenêtre détachée (PiP) avait le même défaut sans que personne le voie ; elle passe par la même préparation.
+
+  - **Piège évité.** Attendre `getScreenDetails()` avant `window.open` laisse l'invite de permission user l'activation du clic, et la fenêtre est alors bloquée. Constaté dans Chromium, où l'appel ne rendait jamais la main. On l'attend seulement si la permission est déjà accordée ; sinon on la demande après l'ouverture et on déplace la fenêtre.
+
+  - **Vérifié dans Chromium** (script jetable, supprimé) : 1 tuile dans la page et 3 dans la fenêtre. Un ordre arrive à la tuile avec `e.source` égal à son parent. Un message du lecteur revient à la page avec la bonne tuile. Fermer la fenêtre ramène les 4 tuiles.
+
+  - **Test cassé sur la branche de base.** `unit_cadreinterieur` exigeait la version 1.10 du script, qui est passée à 1.11 le 30 septembre. Le test vérifie maintenant que la version annoncée égale celle de l'en-tête et vaut au moins 1.10.
+
+  - **Tests** : `unit_deuxecrans` (nouveau, 13 cas : répartition, placement, choix de l'écran, relais, renvoi des messages, fonctions des `onclick`, échange de principale, fermeture, refus en mode câble). `npm run test:unit` : 79 fichiers ; Playwright 44 sur 44 (lancé avec le Chromium préinstallé : le navigateur que demande la version épinglée de Playwright manque dans ce conteneur).
+
+  - **Fichiers** : `js/deuxecrans.js` (nouveau), `js/multiview.js`, `sw.js` (+ `APP_SHELL`) + `VERSION_APP` → `sports-guide-v36`, `tests/unit_deuxecrans.test.js`, `tests/unit_cadreinterieur.test.js`, `docs/ARCHITECTURE.md`, `FEATURES.md`.
+
+  - **Ce qui reste.** Les fenêtres modales (choix d'un match, d'une source) s'ouvrent toujours sur l'écran 1. Le glisser-déposer ne passe pas d'une fenêtre à l'autre. Le mode ne survit pas à un rechargement de la page : le navigateur exige un clic pour ouvrir une fenêtre. Rien de tout ça n'a été essayé sur un vrai deuxième moniteur.
 - 2026-09-30 - **Le son automatique n'arrivait pas jusqu'à la vidéo.**
 
   - **Constat.** `mv_unmute` s'arrêtait au cadre de la tuile. Le lecteur est souvent un cadre plus bas, donc le muet ne bougeait pas. Le clic, lui, remontait à `window.parent` et se perdait au même endroit. Et quand il arrivait, l'application renvoyait `mv_unmute` après le geste : Firefox avait déjà périmé l'activation et remettait le muet.

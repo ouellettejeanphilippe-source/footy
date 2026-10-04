@@ -69,6 +69,7 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 | `js/debit.js` | Débit et définition réellement mesurés pendant la lecture. |
 | `js/directmedia.js` | Lecture directe d'un manifeste `.m3u8` / `.mpd` remonté par le script utilisateur. |
 | `js/esports.js` | Transforme les liens LoL Esports en adresses de lecteur encadrables. |
+| `js/deuxecrans.js` | Mode deux écrans : quel écran pour quelle tuile (`ecranDeTuile`), grille du second écran (`placementSecondEcran`), choix de l'autre moniteur (`ecranSecondaire`) et `features` de la fenêtre (`optionsFenetre`) (§7.5 ter). Sans import. |
 | `js/mv-menu.js` | Le menu flottant unique du lecteur (position fixe, un seul ouvert, clavier). Il s'ouvre dans le **document de son bouton** : en fenêtre détachée, c'est celui de l'autre fenêtre (§7.5 bis). |
 | `js/tv-navigation.js` | Navigation aux flèches pour le mode TV. Ce n'est pas un module : il est injecté par `<script src>` quand le mode s'active. |
 | `js/sources/index.js` et `js/sources/*.js` | Registre des adaptateurs par domaine. Contrat d'un adaptateur : `hotes`, `extraireLiens(ctx)` et/ou `filtrerLiens(liens)`. Aucun n'importe le module central. |
@@ -318,6 +319,17 @@ Le lecteur pose des états **globaux** : le défilement de la page, une marge su
 | Menu flottant du lecteur | Fermé aux deux transitions de la fenêtre détachée : un menu appartient au document qu'on s'apprête à vider. |
 
 Deux règles valent aussi sur téléphone. Un `resize` n'y signifie pas un changement de mise en page voulu : replier la barre d'adresse en émet un, et l'ancienne règle en profitait pour poser `display: none` sur une fenêtre flottante — la vidéo disparaissait au premier défilement. Et c'est `applyPipModeStyles` qui décide de cacher le lecteur sur mobile, pour la colonne seule.
+
+### 7.5 ter Deux écrans (`js/deuxecrans.js`, `toggleDeuxEcrans`)
+
+« Créer mode deux écrans où un flux joue sur un écran, avec les trois autres qui se détachent pour mon deuxième écran » (3 octobre 2026). La tuile 1 reste dans `#mv-grid` ; les suivantes vont dans `#mv-grid-2`, la grille d'une fenêtre ouverte par `window.open` (`footy-ecran2`). Pas le PiP de document : sa fenêtre reste au premier plan et ne passe pas en plein écran.
+
+- **La principale est la première tuile, pas la tuile active.** Changer une tuile de document recharge son iframe : suivre le focus rechargerait deux vidéos à chaque clic. On change de principale exprès (touches 1 à 4, `mettreSurEcranPrincipal`).
+- **Disposition.** `updateMultivisionLayout` fait sa mise en page ordinaire, puis `poserSurDeuxEcrans` l'écrase : une cellule ne change de grille que si elle n'y est pas déjà ; une tuile en mode `direct` y est reposée (son lecteur hls ne survit pas au déplacement).
+- **Trouver une tuile.** Elle n'est plus forcément dans `document` : `cadreDeTuile`, `celluleDeTuile`, `toutesLesCellules` cherchent dans la page, la fenêtre détachée et le second écran. `indexDeTuilePour` passe par là.
+- **Parler à une tuile.** Le script utilisateur n'obéit qu'à `FENETRE_PARENTE`, et le parent d'une tuile du second écran est cette fenêtre-là. `posterATuile` appelle donc `__mvRelais`, défini par un `<script>` DE cette fenêtre : `e.source` y est la bonne. Dans l'autre sens, le script écrit à `window.top`, qui est la seconde fenêtre : `brancherFenetreDeTuiles` y renvoie chaque message à la page, `source` conservée. Elle y copie aussi les fonctions de `window` : les `onclick` des en-têtes se résolvent dans la fenêtre qui porte le bouton. La fenêtre détachée (PiP) passe par la même préparation ; auparavant, aucun signal de lecture n'en revenait et aucun ordre n'y était obéi.
+- **Le moniteur.** La permission `window-management` n'est attendue avant `window.open` que si elle est déjà accordée : attendre l'invite userait l'activation du clic, et la fenêtre serait bloquée. Sinon `getScreenDetails` est demandé après l'ouverture et la fenêtre est déplacée (`moveTo`/`resizeTo`).
+- **Fermeture.** `pagehide` de la seconde fenêtre (ou `⤺ Ramener les vidéos`) appelle `fermerDeuxEcrans`, qui ramène les cellules dans `#mv-grid`. Quitter la page ferme la seconde fenêtre. Refusé en mode câble et pendant la fenêtre détachée.
 
 ### 7.6 Sortie forcée
 

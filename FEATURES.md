@@ -118,7 +118,7 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 | **➕ Ajouter** | Réduit le lecteur et invite à choisir un match dans le guide. |
 | **⊞ Disposition** | `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`. En portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. |
 | **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
-| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
+| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent), `🖥 Deux écrans` (ordinateur), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
 | **➖ Réduire** / **⤢ Agrandir** | Visibles quand le lecteur est réduit. |
 
 Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois ; ils se ferment d'un clic ailleurs, par Échap, au défilement ou au redimensionnement ; les flèches ↑/↓ s'y déplacent.
@@ -137,13 +137,17 @@ Trois façons de garder le lecteur pendant qu'on navigue dans le guide, retenues
 
 Quitter le plein écran vers le guide réduit automatiquement le lecteur.
 
+### 5.3 bis Deux écrans
+
+`⋯ Plus → 🖥 Deux écrans` : la vidéo 1 reste dans la page, en grand ; les vidéos 2 à 4 partent dans une seconde fenêtre (deux : côte à côte ; trois : une grande à gauche, deux empilées). Sur Chrome ou Edge, la fenêtre s'ouvre directement sur l'autre écran une fois la permission « gestion des fenêtres » accordée ; sinon on la glisse soi-même. Elle porte `⛶ Plein écran` et `⤺ Ramener les vidéos`, qui s'effacent au repos comme les en-têtes. Pour changer de vidéo principale : la touche `1` à `4` (aussi depuis la seconde fenêtre) ou `🖥 Mettre sur l'écran principal` dans le menu ⋮ de la tuile ; la tuile qui change de fenêtre recharge sa page. Fermer la fenêtre (ou rouvrir l'entrée du menu) ramène toutes les vidéos dans la page. Indisponible en mode câble (une seule vidéo) et en même temps que la fenêtre détachée. Les fenêtres surgissantes doivent être autorisées pour le site.
+
 ### 5.4 La tuile
 
 En-tête : poignée de glissement, numéro (`Touche N`), pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré, bouton d'ajustement, puis **`↗ Site`**, le menu **`⋮`** et **`✕`**.
 
 - **Au repos** : trois secondes sans un geste et la barre comme les en-têtes de tuiles s'effacent, pour laisser la vidéo seule. Un mouvement les rappelle. En mode réduit dans la page, ils restent : le lecteur est déjà petit. En fenêtre détachée, ils s'effacent comme en plein écran.
 - **Ajustement** (bouton de tuile, ou `⤢` de la barre pour toutes) : *étiré* (le cadre prend toute la tuile), *ajusté* (16:9 entier, centré), *rempli* (16:9 couvrant la tuile). Retenu par tuile.
-- **Menu ⋮** : ouvrir sur le site, source suivante, choisir une autre source, changer de match, recharger la vidéo, infos et statistiques ; l'ajustement ; lire le flux direct ou revenir à la page ; déplacer à gauche ou à droite ; préférer ou éviter ce site ; fermer cette vidéo.
+- **Menu ⋮** : ouvrir sur le site, source suivante, choisir une autre source, changer de match, recharger la vidéo, infos et statistiques ; l'ajustement ; lire le flux direct ou revenir à la page ; mettre sur l'écran principal (en mode deux écrans) ; déplacer à gauche ou à droite ; préférer ou éviter ce site ; fermer cette vidéo.
 - **Réordonner** : glisser-déposer entre tuiles (poignée masquée sur écran tactile), ou le menu.
 - **Son** : une seule tuile a le son, celle qui a le focus, sinon la première. On donne le focus en cliquant dans la tuile ; un liseré le signale.
 - **Clavier** (hors champ de saisie) : `1` à `4` amènent la tuile en tête et lui donnent le son ; `5` à `8` l'amènent en tête sans toucher au son ; Échap ferme un menu.
