@@ -53,6 +53,19 @@ async function main() {
   assert.strictEqual(D.optionsFenetre(null), 'popup=yes,width=1280,height=720');
   ok('la fenêtre prend toute la surface de l\'autre écran, sinon une 16:9 à glisser');
 
+  // Fenêtre étirée : où tombe la frontière entre les deux écrans.
+  // Deux écrans de 1920 côte à côte, fenêtre de x=0 à 3840 : window.screen est l'un ou l'autre.
+  assert.strictEqual(D.partPremierEcran({ fenetreX: 0, grilleGauche: 0, grilleLargeur: 3840, ecranGauche: 0, ecranLargeur: 1920 }), 0.5);
+  assert.strictEqual(D.partPremierEcran({ fenetreX: 0, grilleGauche: 0, grilleLargeur: 3840, ecranGauche: 1920, ecranLargeur: 1920 }), 0.5);
+  // Écran 1 de 2560, écran 2 de 1920, fenêtre étirée de 0 à 4480.
+  assert.strictEqual(D.partPremierEcran({ fenetreX: 0, grilleGauche: 0, grilleLargeur: 4480, ecranGauche: 0, ecranLargeur: 2560 }), 0.571);
+  // Fenêtre qui commence à x=200 sur l'écran 1 (1920), étirée jusqu'au bout de l'écran 2.
+  assert.strictEqual(D.partPremierEcran({ fenetreX: 200, grilleGauche: 0, grilleLargeur: 3640, ecranGauche: 1920, ecranLargeur: 1920 }), 0.473);
+  // Pas encore étirée (un seul écran) : la frontière est au bord, on prend la moitié.
+  assert.strictEqual(D.partPremierEcran({ fenetreX: 0, grilleGauche: 0, grilleLargeur: 1920, ecranGauche: 0, ecranLargeur: 1920 }), 0.5);
+  assert.strictEqual(D.partPremierEcran({ grilleLargeur: 0 }), 0.5);
+  ok('fenêtre étirée : la vidéo principale se cale sur le premier écran');
+
   // ══ B. Le câblage dans le lecteur ══════════════════════════════════════════
   const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://exemple.test/app/' });
   const w = dom.window;
@@ -203,6 +216,29 @@ async function main() {
   assert.strictEqual(grille.querySelectorAll('.mv-cell').length, 3);
   assert.strictEqual(grille2.querySelectorAll('.mv-cell').length, 0);
   ok('fermer le second écran ramène toutes les vidéos dans la page');
+
+  /* « Faire comme si c'était la même fenêtre, pour pas avoir à recharger » : la
+     disposition étirée garde tout dans la page. Un échange ne déplace aucune iframe. */
+  mv.toggleEcransEtire();
+  assert.strictEqual(w.mvLayout, 'ecrans');
+  const nbCol = grille.style.gridTemplateColumns.split(' ').length;
+  assert.strictEqual(nbCol, 2, 'deux colonnes : ' + grille.style.gridTemplateColumns);
+  assert.strictEqual(mv.celluleDeTuile(0).style.gridRow, 'span ' + (mv.mvFlux.length - 1), 'la principale occupe toute la hauteur du premier écran');
+  assert.ok(mv.celluleDeTuile(1).querySelector('.mv-swap-btn'), 'le bouton ⇄ est là aussi');
+  await new Promise(r => setTimeout(r, 30));
+  mv.mvFlux.forEach(s => { s._playing = true; });
+  const cadres = mv.mvFlux.map((s, i) => mv.cadreDeTuile(i));
+  assert.ok(cadres.every(Boolean), 'chaque tuile a son cadre');
+  const nomDeux = mv.mvFlux[2].name;
+  mv.mettreSurEcranPrincipal(2);
+  assert.strictEqual(mv.mvFlux[0].name, nomDeux);
+  assert.ok(cadres.every(c => c.isConnected && c.ownerDocument === document), 'aucun cadre n\'a quitté la page');
+  assert.strictEqual(mv.cadreDeTuile(0), cadres[2], 'la vidéo arrivée devant est le MÊME cadre : rien n\'a rechargé');
+  assert.ok(mv.mvFlux.every(s => s._playing), 'aucune vidéo ne repart à zéro');
+  assert.strictEqual(mv.celluleDeTuile(0).style.gridRow, 'span ' + (mv.mvFlux.length - 1));
+  mv.toggleEcransEtire();
+  assert.notStrictEqual(w.mvLayout, 'ecrans');
+  ok('fenêtre étirée : l\'échange se fait sans recharger aucune vidéo');
 
   // Le mode câble n'a qu'une vidéo : pas de second écran.
   w.open = () => { throw new Error('ne doit pas ouvrir'); };

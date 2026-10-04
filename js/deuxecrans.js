@@ -28,6 +28,24 @@ export function placementSecondEcran(n) {
     return { colonnes: '1fr', lignes: 'repeat(' + Math.max(1, n) + ', 1fr)', places: places };
 }
 
+/* Fenêtre ÉTIRÉE sur les deux écrans (« faire comme si c'était la même fenêtre, pour
+   pas avoir à recharger », 4 octobre 2026) : une seule page, donc un échange ne déplace
+   aucune iframe et ne recharge rien. Reste à caler la colonne de la vidéo principale sur
+   le premier écran : rend la part de la grille (0 à 1) qui se trouve avant la frontière
+   entre les deux écrans.
+
+   `ecranGauche`/`ecranLargeur` décrivent `window.screen`, l'écran qui porte la plus grande
+   part de la fenêtre. Si la fenêtre commence avant lui, la frontière est son bord gauche ;
+   sinon, son bord droit. Une frontière introuvable ou collée à un bord (fenêtre pas encore
+   étirée) donne la moitié. */
+export function partPremierEcran(m) {
+    if (!m || !(m.grilleLargeur > 0)) return 0.5;
+    var frontiere = m.fenetreX < m.ecranGauche ? m.ecranGauche : m.ecranGauche + m.ecranLargeur;
+    var f = (frontiere - m.fenetreX - (m.grilleGauche || 0)) / m.grilleLargeur;
+    if (!isFinite(f) || f < 0.15 || f > 0.85) return 0.5;
+    return Math.round(f * 1000) / 1000;
+}
+
 /* Parmi les écrans que rend `getScreenDetails()`, celui où poser la fenêtre : un autre
    que celui de la page. Rend null quand il n'y en a qu'un (ou aucune liste). */
 export function ecranSecondaire(ecrans, courant) {

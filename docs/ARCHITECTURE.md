@@ -331,6 +331,8 @@ Deux règles valent aussi sur téléphone. Un `resize` n'y signifie pas un chang
 - **Le moniteur.** La permission `window-management` n'est attendue avant `window.open` que si elle est déjà accordée : attendre l'invite userait l'activation du clic, et la fenêtre serait bloquée. Sinon `getScreenDetails` est demandé après l'ouverture et la fenêtre est déplacée (`moveTo`/`resizeTo`).
 - **Fermeture.** `pagehide` de la seconde fenêtre (ou `⤺ Ramener les vidéos`) appelle `fermerDeuxEcrans`, qui ramène les cellules dans `#mv-grid`. Quitter la page ferme la seconde fenêtre. Refusé en mode câble et pendant la fenêtre détachée.
 
+**La fenêtre étirée** (`mvLayout === 'ecrans'`, `toggleEcransEtire`), demandée le 4 octobre 2026 (« faire comme si c'était la même fenêtre, pour pas avoir à recharger ») : une seule page couvre les deux moniteurs, donc un échange ne déplace aucune iframe. C'est la disposition `focus` dont la première colonne vaut `partPremierEcran` (`js/deuxecrans.js`) : la frontière se calcule à partir de `window.screenX` et de `window.screen` (l'écran qui porte la plus grande part de la fenêtre) ; introuvable, elle vaut la moitié. Déplacer une fenêtre n'émet pas `resize` : `surveillerFenetreEtiree` relit la position toutes les 1,5 s tant que la disposition est active. Le plein écran du navigateur ne couvre qu'un écran : c'est la limite de ce mode.
+
 ### 7.6 Sortie forcée
 
 Si la fenêtre est quittée dans les 15 s qui suivent la pose d'une tuile, les adresses posées sont notées (`mv_sortie_forcee`, dix minutes). Au retour, la tuile le dit et propose d'ouvrir le site ou de charger quand même.

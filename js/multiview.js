@@ -15,7 +15,7 @@ import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
 import { ouvrirMenu, fermerMenus } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
-import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre } from './deuxecrans.js';
+import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -1168,6 +1168,48 @@ export async function toggleDeuxEcrans() {
     if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
 }
 
+/* ── Deux écrans, une seule fenêtre étirée ─────────────────────────────────────
+   Disposition `ecrans` : la page entière couvre les deux moniteurs. La vidéo 1 occupe
+   la part de la grille posée sur le premier écran, les autres s'empilent sur le second.
+   Un échange ne fait que réordonner des cellules de la même page : aucune iframe ne
+   change de document, rien ne recharge. */
+export function fractionDeuxEcrans(grid) {
+    var sc = window.screen || {};
+    var r = grid.getBoundingClientRect ? grid.getBoundingClientRect() : { left: 0, width: 0 };
+    return partPremierEcran({
+        fenetreX: window.screenX || 0, grilleGauche: r.left, grilleLargeur: r.width,
+        ecranGauche: sc.availLeft || 0, ecranLargeur: sc.availWidth || sc.width || 0
+    });
+}
+
+var dispositionAvantEcrans = 'auto';
+export function toggleEcransEtire() {
+    if (mvLayout === 'ecrans') {
+        setMvLayout(dispositionAvantEcrans === 'ecrans' ? 'auto' : dispositionAvantEcrans);
+    } else {
+        if (deuxEcransActif()) fermerDeuxEcrans();
+        dispositionAvantEcrans = mvLayout;
+        setMvLayout('ecrans');
+        showToast('Étirez la fenêtre sur les deux écrans : la vidéo 1 se cale sur le premier, les autres sur le second.');
+    }
+    saveMultivisionState();
+    updateMultivisionLayout();
+}
+
+/* Déplacer une fenêtre n'émet pas `resize` : on relit sa position tant que la
+   disposition est active, et on recale la frontière quand elle a bougé. */
+var veilleEtiree = null, derniereMesureEtiree = '';
+function surveillerFenetreEtiree() {
+    if (veilleEtiree) return;
+    veilleEtiree = setInterval(function() {
+        if (mvLayout !== 'ecrans') { clearInterval(veilleEtiree); veilleEtiree = null; return; }
+        var sc = window.screen || {};
+        var mesure = [window.screenX, sc.availLeft, sc.availWidth, window.innerWidth].join(',');
+        if (mesure !== derniereMesureEtiree) { derniereMesureEtiree = mesure; updateMultivisionLayout(); }
+    }, 1500);
+    if (veilleEtiree && veilleEtiree.unref) veilleEtiree.unref();
+}
+
 /* Ramène toutes les tuiles dans la page, puis ferme la seconde fenêtre. */
 export function fermerDeuxEcrans() {
     var fen = fenetreEcran2;
@@ -2023,6 +2065,12 @@ export function updateMultivisionLayout() {
         if (vide2) vide2.style.display = count <= 1 ? 'block' : 'none';
         grid2.style.display = count <= 1 ? 'none' : 'grid';
     }
+    /* Deux écrans, fenêtre étirée : la disposition « une grande, les autres à côté », la
+       grande calée sur le premier écran. Tout reste dans la page : rien ne recharge. */
+    var etire = layout === 'ecrans' && count >= 2 && !grid2;
+    var fractionEtire = etire ? fractionDeuxEcrans(grid) : null;
+    if (layout === 'ecrans') layout = 'focus';
+    if (etire) surveillerFenetreEtiree();
 
     // Assign internal IDs to streams for tracking DOM elements
     mvFlux.forEach(function(s, idx) {
@@ -2074,6 +2122,7 @@ export function updateMultivisionLayout() {
             if (layout === 'focus' && count >= 2) {
                 var col1 = grid._customCols[0] ? grid._customCols[0] + 'fr' : '3fr';
                 var col2 = grid._customCols[0] ? (1 - grid._customCols[0]).toFixed(3) + 'fr' : '1fr';
+                if (fractionEtire) { col1 = fractionEtire + 'fr'; col2 = (1 - fractionEtire).toFixed(3) + 'fr'; }
                 grid.style.gridTemplateColumns = col1 + ' ' + col2;
                 grid.style.gridTemplateRows = 'repeat(' + (count - 1) + ', 1fr)';
             } else if (layout === 'vertical') {
@@ -2474,7 +2523,7 @@ export function updateMultivisionLayout() {
         /* Trois boutons toujours visibles, nommés : « Site » (la page originale dans un
            nouvel onglet — le repli quand la vidéo ne joue pas ici), le menu, la croix.
            Le reste des actions vit dans le menu flottant (ouvrirMenuTuile). */
-        var boutonEchange = (idx > 0 && grid2)
+        var boutonEchange = (idx > 0 && (grid2 || etire))
             ? '<button type="button" class="mv-hdr-btn mv-swap-btn" title="Échanger avec la vidéo principale" aria-label="Échanger avec la vidéo principale" onclick="mettreSurEcranPrincipal(' + idx + '); event.stopPropagation();">⇄ <span class="mv-hdr-lb">Principal</span></button>'
             : '';
         var controlsHtml = '<div class="mv-hdr-right">'
@@ -2510,6 +2559,8 @@ export function updateMultivisionLayout() {
     });
 
     if (grid2) poserSurDeuxEcrans(grid, grid2, placement2, count);
+    // La frontière est celle des écrans : pas de poignée pour la déplacer.
+    if (etire) Array.prototype.forEach.call(grid.children, function(c) { if (c.classList.contains('mv-cell')) { c.style.resize = 'none'; c.style.paddingRight = '0'; } });
 
     // Remove cells that are no longer in mvFlux
     existingCells.forEach(function(cell) {
@@ -3413,7 +3464,7 @@ export function ouvrirMenuTuile(idx, bouton, event) {
         { sep: true },
         { icon: fitInfo.icon, label: 'Image : ' + fitInfo.label + ' (changer)', onSelect: function() { cycleMvFit(idx); } },
         media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', onSelect: function() { toggleDirectMode(idx); } } : null,
-        (idx > 0 && deuxEcransActif()) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
+        (idx > 0 && (deuxEcransActif() || mvLayout === 'ecrans')) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
         idx > 0 ? { icon: '◀', label: 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
         idx < mvFlux.length - 1 ? { icon: '▶', label: 'Déplacer à droite', onSelect: function() { moveMultiviewStream(idx, 'right'); } } : null,
         { sep: true },
@@ -3432,7 +3483,8 @@ export function ouvrirMenuDisposition(bouton, event) {
         { icon: '⊞', label: 'Automatique', actif: mvLayout === 'auto', onSelect: choisir('auto') },
         { icon: '⭐', label: 'Une grande, les autres à côté', actif: mvLayout === 'focus', onSelect: choisir('focus') },
         { icon: '⊟', label: 'Les unes sous les autres', actif: mvLayout === 'vertical', onSelect: choisir('vertical') },
-        { icon: '⊟', label: 'Côte à côte', actif: mvLayout === 'horizontal', onSelect: choisir('horizontal') }
+        { icon: '⊟', label: 'Côte à côte', actif: mvLayout === 'horizontal', onSelect: choisir('horizontal') },
+        { icon: '🖥', label: 'Deux écrans (fenêtre étirée)', actif: mvLayout === 'ecrans', onSelect: choisir('ecrans') }
     ], { label: 'Disposition' });
 }
 
@@ -3449,7 +3501,8 @@ export function ouvrirMenuBarre(bouton, event) {
         { icon: '📺', label: 'Mode câble (une seule vidéo, zapping au doigt)', title: '↑↓ changer de match, ←→ changer de source ; un appui rend les clics à la page', actif: modeCable, onSelect: function() { toggleModeCable(); } },
         { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', title: 'La vidéo qu\'on regarde prend le son dès qu\'elle joue (le navigateur exige parfois un premier geste)', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
         ('documentPictureInPicture' in window) ? { icon: '🖼', label: 'Fenêtre détachée', onSelect: function() { toggleDocumentPiP(); } } : null,
-        !mobile ? { icon: '🖥', label: 'Deux écrans (vidéo 1 ici, les autres sur l\'autre écran)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif(), onSelect: function() { toggleDeuxEcrans(); } } : null,
+        !mobile ? { icon: '🖥', label: 'Deux écrans : une fenêtre étirée (échange sans recharger)', title: 'Étirez la fenêtre sur les deux écrans : la vidéo 1 se cale sur le premier, les autres s\'empilent sur le second', actif: mvLayout === 'ecrans', onSelect: function() { toggleEcransEtire(); } } : null,
+        !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres (recharge à l\'échange)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif(), onSelect: function() { toggleDeuxEcrans(); } } : null,
         { sep: true },
         (!enPip && !mobile) ? { icon: '◫', label: 'Réduire dans un coin', onSelect: function() { toggleMultiviewPip(); } } : null,
         enPip ? { icon: '⤢', label: 'Agrandir', onSelect: function() { toggleMultiviewPip(); } } : null,
@@ -5065,6 +5118,7 @@ window.fermerToutesLesVideos = fermerToutesLesVideos;
 window.toggleMultiview = toggleMultiview;
 window.toggleDocumentPiP = toggleDocumentPiP;
 window.toggleDeuxEcrans = toggleDeuxEcrans;
+window.toggleEcransEtire = toggleEcransEtire;
 window.mettreSurEcranPrincipal = mettreSurEcranPrincipal;
 window.toggleTheaterMode = toggleTheaterMode;
 window.quitterModeCinema = quitterModeCinema;
