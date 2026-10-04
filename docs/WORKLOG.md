@@ -2,6 +2,20 @@
 ## En cours
 
 ## Fait
+- 2026-10-04 - **« Mais genre, ça doit swap comme quand dans même fenêtre. »** Suite du mode deux écrans.
+
+  - **Échange au lieu de décalage.** `mettreSurEcranPrincipal` mettait la tuile en tête (`unshift`) : la principale partait en position 2 et les autres glissaient d'une place. Elle **échange** maintenant les deux tuiles (`echangerTuiles`, la permutation du glisser-déposer) : la principale prend la place exacte de l'autre, rien d'autre ne bouge, et seules ces deux vidéos se rechargent. Bouton `⇄ Principal` dans l'en-tête des tuiles du second écran.
+
+  - **Glisser d'un écran à l'autre.** L'échange se fait au dépôt (`ondrop`). Au survol (`ondragenter`, comme dans une seule fenêtre), il rechargerait chaque tuile traversée. Le dépôt remet lui-même l'état du glisser. Les iframes des deux fenêtres lâchent le pointeur pendant le glisser (`pointeursDesCadres`).
+
+  - **Bouton masqué.** Constaté dans Chromium : la barre de la seconde fenêtre (en haut à droite) couvrait les boutons de la tuile du haut à droite, et le clic sur ⇄ tombait sur « Ramener les vidéos ». La barre est passée en bas au centre. Après la correction, le clic sur ⇄ dans la seconde fenêtre fait bien l'échange.
+
+  - **Tests** : `unit_deuxecrans` passe à 15 cas (échange sans déranger les autres, bouton présent seulement sur le second écran, glisser entre fenêtres : rien au survol, échange au dépôt). `npm run test:unit` : 79 fichiers ; Playwright 44 sur 44.
+
+  - **Fichiers** : `js/multiview.js`, `tests/unit_deuxecrans.test.js`, `docs/ARCHITECTURE.md`, `FEATURES.md`.
+
+  - **Ce qui reste.** Les deux vidéos échangées rechargent leur page. Aucun moyen de l'éviter : une iframe qui change de document est rechargée par le navigateur.
+
 - 2026-10-03 - **« Créer mode deux écrans où un flux joue sur un écran, avec les trois autres qui se détachent pour mon deuxième écran. »**
 
   - **Ce qui est ajouté.** `⋯ Plus → 🖥 Deux écrans`. La vidéo 1 reste dans la page ; les vidéos 2 à 4 partent dans une vraie fenêtre (`window.open`). Pas le PiP, qui reste toujours au premier plan et ne passe pas en plein écran. La fenêtre a `⛶ Plein écran` et `⤺ Ramener les vidéos`. Sur Chromium, une fois la permission « gestion des fenêtres » accordée, elle s'ouvre sur l'autre moniteur et le remplit. Pour changer de vidéo principale : touches 1 à 4 (relayées depuis la seconde fenêtre) ou `🖥 Mettre sur l'écran principal` dans le menu ⋮. Règles pures dans `js/deuxecrans.js` ; câblage dans `js/multiview.js` (§7.5 ter).
