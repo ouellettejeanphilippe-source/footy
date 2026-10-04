@@ -30,13 +30,13 @@ async function main() {
   ok('la tuile 1 reste sur l\'écran de la page, les autres partent');
 
   assert.deepStrictEqual(D.placementSecondEcran(0).places, []);
-  assert.deepStrictEqual(D.placementSecondEcran(1), { colonnes: '1fr', lignes: '1fr', places: [{ ligne: '1', colonne: '1' }] });
-  assert.strictEqual(D.placementSecondEcran(2).colonnes, '1fr 1fr');
+  assert.deepStrictEqual(D.placementSecondEcran(1), { colonnes: '1fr', lignes: 'repeat(1, 1fr)', places: [{ ligne: '1', colonne: '1' }] });
+  assert.strictEqual(D.placementSecondEcran(2).lignes, 'repeat(2, 1fr)');
   const p3 = D.placementSecondEcran(3);
-  assert.strictEqual(p3.colonnes, '2fr 1fr');
-  assert.deepStrictEqual(p3.places.map(p => p.ligne + '|' + p.colonne), ['1 / span 2|1', '1|2', '2|2']);
-  assert.strictEqual(D.placementSecondEcran(5).places.length, 5);
-  ok('trois tuiles : une grande à gauche, deux empilées — pas de quart noir');
+  assert.strictEqual(p3.colonnes, '1fr');
+  assert.strictEqual(p3.lignes, 'repeat(3, 1fr)');
+  assert.deepStrictEqual(p3.places.map(p => p.ligne + '|' + p.colonne), ['1|1', '2|1', '3|1']);
+  ok('« les trois doivent être verticales » : une seule colonne, une tuile par ligne');
 
   const gauche = { availLeft: 0, availTop: 0, availWidth: 1920, availHeight: 1040, isPrimary: true };
   const droite = { availLeft: 1920, availTop: 0, availWidth: 2560, availHeight: 1400, isPrimary: false };
@@ -98,8 +98,9 @@ async function main() {
   const labas = Array.from(grille2.querySelectorAll('.mv-cell')).map(c => c.dataset.index).sort();
   assert.deepStrictEqual(ici, ['0']);
   assert.deepStrictEqual(labas, ['1', '2', '3']);
-  assert.strictEqual(grille2.style.gridTemplateColumns, '2fr 1fr');
-  assert.strictEqual(mv.celluleDeTuile(1).style.gridRow, '1 / span 2');
+  assert.strictEqual(grille2.style.gridTemplateColumns, '1fr');
+  assert.strictEqual(grille2.style.gridTemplateRows, 'repeat(3, 1fr)');
+  assert.deepStrictEqual([1, 2, 3].map(i => mv.celluleDeTuile(i).style.gridRow), ['1', '2', '3']);
   assert.strictEqual(grille.style.gridTemplateColumns, '1fr', 'la page n\'a plus qu\'une tuile, en grand');
   ok('la vidéo 1 reste dans la page, les trois autres partent sur le second écran');
 
@@ -143,10 +144,9 @@ async function main() {
   assert.deepStrictEqual(noms(), [avant[2], avant[1], avant[0], avant[3]], 'C et A échangent, B et D restent');
   assert.deepStrictEqual(Array.from(grille.querySelectorAll('.mv-cell')).map(c => c.dataset.index), ['0']);
   assert.strictEqual(celluleDe(avant[0]).ownerDocument, fen.document, 'l\'ancienne principale part sur le second écran');
-  assert.strictEqual(celluleDe(avant[0]).style.gridRow, '1', 'à la place exacte de celle qui est venue');
-  assert.strictEqual(celluleDe(avant[0]).style.gridColumn, '2');
+  assert.strictEqual(celluleDe(avant[0]).style.gridRow, '2', 'à la place exacte de celle qui est venue');
   assert.strictEqual(celluleDe(avant[1]), celluleB, 'B n\'a pas été reconstruite');
-  assert.strictEqual(celluleB.style.gridRow, '1 / span 2', 'B garde sa place');
+  assert.strictEqual(celluleB.style.gridRow, '1', 'B garde sa place');
   assert.strictEqual(mv.activeMvIdx, 0, 'la vidéo qui arrive devant a le son');
   ok('⇄ échange la vidéo choisie avec la principale, sans déranger les autres');
 
@@ -173,7 +173,7 @@ async function main() {
   // Fermer une tuile : la disposition suit.
   mv.removeFromMultivision(3);
   assert.strictEqual(grille2.querySelectorAll('.mv-cell').length, 2);
-  assert.strictEqual(grille2.style.gridTemplateColumns, '1fr 1fr');
+  assert.strictEqual(grille2.style.gridTemplateRows, 'repeat(2, 1fr)');
   ok('fermer une vidéo du second écran redispose les autres');
 
   // Fermer la seconde fenêtre ramène toutes les tuiles.

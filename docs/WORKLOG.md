@@ -2,6 +2,8 @@
 ## En cours
 
 ## Fait
+- 2026-10-04 - **« Les trois doivent être verticales. »** Le second écran empile ses tuiles en une seule colonne, une par ligne. Avant : une grande à gauche et deux empilées à droite, ou deux côte à côte. `placementSecondEcran` (`js/deuxecrans.js`) ; l'échange par ⇄ ou par glisser garde la place exacte, dans la colonne. Fichiers : `js/deuxecrans.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `sw.js` + `VERSION_APP` → `sports-guide-v37`.
+
 - 2026-10-04 - **« Mais genre, ça doit swap comme quand dans même fenêtre. »** Suite du mode deux écrans.
 
   - **Échange au lieu de décalage.** `mettreSurEcranPrincipal` mettait la tuile en tête (`unshift`) : la principale partait en position 2 et les autres glissaient d'une place. Elle **échange** maintenant les deux tuiles (`echangerTuiles`, la permutation du glisser-déposer) : la principale prend la place exacte de l'autre, rien d'autre ne bouge, et seules ces deux vidéos se rechargent. Bouton `⇄ Principal` dans l'en-tête des tuiles du second écran.

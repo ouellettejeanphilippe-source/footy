@@ -19,19 +19,13 @@ export function ecranDeTuile(idx) {
 }
 
 /* La grille du second écran pour `n` tuiles : modèle de colonnes, de lignes, et la place
-   de chacune. Trois tuiles : une grande à gauche, deux empilées à droite — un écran
-   16:9 coupé en 2×2 laisserait un quart noir. */
+   de chacune. Les tuiles sont EMPILÉES, une seule colonne (« les trois doivent être
+   verticales », 4 octobre 2026). */
 export function placementSecondEcran(n) {
     n = Math.max(0, n | 0);
-    if (n <= 1) return { colonnes: '1fr', lignes: '1fr', places: n ? [{ ligne: '1', colonne: '1' }] : [] };
-    if (n === 2) return { colonnes: '1fr 1fr', lignes: '1fr', places: [{ ligne: '1', colonne: '1' }, { ligne: '1', colonne: '2' }] };
-    if (n === 3) return {
-        colonnes: '2fr 1fr', lignes: '1fr 1fr',
-        places: [{ ligne: '1 / span 2', colonne: '1' }, { ligne: '1', colonne: '2' }, { ligne: '2', colonne: '2' }]
-    };
     var places = [];
-    for (var i = 0; i < n; i++) places.push({ ligne: String(Math.floor(i / 2) + 1), colonne: String(i % 2 + 1) });
-    return { colonnes: '1fr 1fr', lignes: 'repeat(' + Math.ceil(n / 2) + ', 1fr)', places: places };
+    for (var i = 0; i < n; i++) places.push({ ligne: String(i + 1), colonne: '1' });
+    return { colonnes: '1fr', lignes: 'repeat(' + Math.max(1, n) + ', 1fr)', places: places };
 }
 
 /* Parmi les écrans que rend `getScreenDetails()`, celui où poser la fenêtre : un autre
