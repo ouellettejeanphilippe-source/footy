@@ -2278,6 +2278,12 @@ export function updateMultivisionLayout() {
 
                 var iframe = document.createElement('iframe');
                 iframe.className = 'mv-media mv-iframe';
+                /* L'identifiant dès la création (4 octobre 2026, « ça unmute avec plusieurs
+                   players mais pas un ») : il n'était posé qu'au redessin SUIVANT de la grille.
+                   Avec plusieurs vidéos, chaque ajout redessine ; avec une seule, rien ne venait
+                   après, et `cadreDeTuile` ne trouvait pas le cadre — ni ordre de son envoyé,
+                   ni « joue », ni clic reconnus pour cette tuile. */
+                iframe.id = 'mv-iframe-' + parseInt(cell.dataset.index, 10);
                 /* Fond noir et `color-scheme: dark` sur le cadre lui-même (8 septembre 2026,
                    « background toujours blanc ») : tant que la page du site n'a rien peint —
                    chargement, page vide, lecteur qui n'occupe pas toute la hauteur — le
@@ -4547,7 +4553,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v38';
+export var VERSION_APP = 'sports-guide-v39';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
