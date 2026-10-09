@@ -31,7 +31,9 @@ export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
 export var STREAMEAST_URL = 'https://v2.gostreameast.is/'; // v2.streameast.ga renvoie 429 depuis sept. 2026
 export var ONHOCKEY_URL = 'https://onhockey.tv/';
 export var VIPLEAGUE_URL = 'https://vipleague.me/watch-now'; // .vg/.io/.cc redirigent vers vipleague.me (6 septembre 2026) ; la grille est sur /watch-now, /live-now-streaming répond 404
-export var METHSTREAMS_URL = 'https://methstreams.gs/';
+/* methstreams.gs répond 403 au serveur depuis début octobre 2026 ; methstreams.st/home porte
+   toute la grille dans un bloc JSON (parseMethstreamsIndex, js/scrapers.js). */
+export var METHSTREAMS_URL = 'https://methstreams.st/home';
 /* Seule source à exposer une API JSON plutôt que des pages HTML à deviner. */
 export var STREAMED_URL = 'https://streamed.pk/';
 /* Toutes les ligues sur une seule page (dont le football universitaire, absent ou
@@ -42,6 +44,22 @@ export var FLEXFITNESS_URL = 'https://flexfitness.fit/';
    vipleague.me : demandé le 7 septembre 2026 pour la Coupe du monde féminine FIBA, que
    ce site liste en entier (« qui a les matchs de la FIBA Women actuellement en cours »). */
 export var LIVELEAGUES_URL = 'https://www.liveleagues.me/';
+/* Ajoutées le 9 octobre 2026, relevées avec scripts/sonder_domaine.mjs (voir parsePpv,
+   parseDaddylive, parseWatchsports, parseIsportsurge, js/scrapers.js). */
+export var PPV_URL = 'https://api.ppv.st/api/streams';        // API JSON de ppv.st (aussi lue par cosectv.com, sportsbite.org)
+export var DADDYLIVE_URL = 'https://dlive.sx/';               // dlhd.pk et daddylive.* y mènent
+export var WATCHSPORTS_URL = 'https://watchsports.su/';
+export var ISPORTSURGE_URL = 'https://isportsurge.ws/index8';  // sportsurge.ir y redirige
+export var CRICHD_URL = 'https://crichd.at/';
+export var CDNLIVETV_URL = 'https://api.cdnlivetv.is/api/v1/events/sports/?user=cdnlivetv&plan=free';   // l'API derrière streamsports99.su
+export var OLYMPICWEB_URL = 'https://olympicweb.me/home';
+export var FBSTREAM_URL = 'https://fbstream.is/';
+export var TOTALSPORTEK_URL = 'https://total-sportekk.st/daily';   // totalsportek.es y mène
+export var WATCHFOOTY_URL = 'https://api.watchfooty.st/';            // l'API que lit sportsbite.org
+export var MYBUFFSTREAMS_URL = 'https://mybuffstreams.plus/home6';  // buffstreams.ir y mène
+export var FREESTREAMS_URL = 'https://freestreams-live1i.pk/football-streamz5/';   // freestreams-live1h.pk y mène
+export var ROXIESTREAMS_URL = 'https://roxiestreams.su/';
+export var BINTV_URL = 'https://bintvjson.lovable.app/api/public/bintvjson';                             // l'API de bintv.cc
 
 
 /* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
@@ -61,10 +79,30 @@ export var SOURCE_MIRRORS = {
     streameast: ['https://v2.gostreameast.is/', 'https://v2.streameast.ga/'],
     onhockey: ['https://onhockey.tv/'],
     vipleague: ['https://vipleague.me/watch-now', 'https://vipleague.vg/watch-now', 'https://vipleague.io/watch-now', 'https://vipleague.cc/watch-now'],
-    methstreams: ['https://methstreams.gs/'],
-    streamed: ['https://streamed.pk/', 'https://streamed.su/'],
+    methstreams: ['https://methstreams.st/home', 'https://methstreams.gs/'],
+    streamed: ['https://streamed.pk/', 'https://streamed.su/', 'https://streamed.st/',   // .st ajouté le 9 octobre 2026 (sonder_domaine : 256 matchs, se déclare sur .pk)
+        // Même moteur, même API (/api/matches/<sport>, lecteurs embed.st) : reedstreams et ntv.cx (serveur kobra) le servent aussi.
+        'https://api.reedstreams.link/'],
     flexfitness: ['https://flexfitness.fit/'],
-    liveleagues: ['https://www.liveleagues.me/']
+    liveleagues: ['https://www.liveleagues.me/'],
+    /* Les sept domaines de ppv servent la même API (liste : api.mirrors.st/api/ping, relevé le
+       9 octobre 2026) ; api.ppv.cx ne répond plus. */
+    ppv: ['https://api.ppv.st/api/streams', 'https://api.ppv.tj/api/streams', 'https://api.ppvs.pk/api/streams', 'https://api.ppv.rw/api/streams',
+        'https://api.ppv.ms/api/streams', 'https://api.ppv.bi/api/streams'],
+    daddylive: ['https://dlive.sx/', 'https://dlhd.pk/', 'https://daddylive.mov/'],
+    watchsports: ['https://watchsports.su/', 'https://watch-sports.st/', 'https://watchsports-live.st/'],
+    isportsurge: ['https://isportsurge.ws/index8', 'https://sportsurge.ir/'],
+    crichd: ['https://crichd.at/'],
+    cdnlivetv: ['https://api.cdnlivetv.is/api/v1/events/sports/?user=cdnlivetv&plan=free'],
+    bintv: ['https://bintvjson.lovable.app/api/public/bintvjson'],
+    olympicweb: ['https://olympicweb.me/home'],
+    fbstream: ['https://fbstream.is/'],
+    // ww1.sportsurge.st n'est pas Sportsurge : c'est le gabarit de TotalSportek, sous /all.
+    totalsportek: ['https://total-sportekk.st/daily', 'https://totalsportek.es/', 'https://ww1.sportsurge.st/all'],
+    watchfooty: ['https://api.watchfooty.st/'],
+    mybuffstreams: ['https://mybuffstreams.plus/home6'],
+    freestreams: ['https://freestreams-live1i.pk/football-streamz5/', 'https://freestreams-live1h.pk/football-streamz5/'],
+    roxiestreams: ['https://roxiestreams.su/', 'https://roxiestreams.biz/']   // .cc : certificat expiré
 };
 
 /* Clé de domains.json portant l'URL de chaque source. Exportée pour que le script
@@ -75,7 +113,10 @@ export var SOURCE_VAR_NAMES = {
     footybite: 'SITE', mlbbite: 'MLBBITE_PLUS_URL', sportsurge: 'SPORTSURGE_URL',
     buffstreams: 'BUFFSTREAMS_URL', streameast: 'STREAMEAST_URL', onhockey: 'ONHOCKEY_URL', vipleague: 'VIPLEAGUE_URL',
     methstreams: 'METHSTREAMS_URL', streamed: 'STREAMED_URL', flexfitness: 'FLEXFITNESS_URL',
-    liveleagues: 'LIVELEAGUES_URL'
+    liveleagues: 'LIVELEAGUES_URL', ppv: 'PPV_URL', daddylive: 'DADDYLIVE_URL', watchsports: 'WATCHSPORTS_URL',
+    isportsurge: 'ISPORTSURGE_URL', crichd: 'CRICHD_URL', cdnlivetv: 'CDNLIVETV_URL', bintv: 'BINTV_URL',
+    olympicweb: 'OLYMPICWEB_URL', fbstream: 'FBSTREAM_URL', totalsportek: 'TOTALSPORTEK_URL',
+    watchfooty: 'WATCHFOOTY_URL', mybuffstreams: 'MYBUFFSTREAMS_URL', freestreams: 'FREESTREAMS_URL', roxiestreams: 'ROXIESTREAMS_URL'
 };
 
 /* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
@@ -112,6 +153,20 @@ export function applySourceUrl(id, url) {
         case 'streamed': STREAMED_URL = url; break;
         case 'flexfitness': FLEXFITNESS_URL = url; break;
         case 'liveleagues': LIVELEAGUES_URL = url; break;
+        case 'ppv': PPV_URL = url; break;
+        case 'daddylive': DADDYLIVE_URL = url; break;
+        case 'watchsports': WATCHSPORTS_URL = url; break;
+        case 'isportsurge': ISPORTSURGE_URL = url; break;
+        case 'crichd': CRICHD_URL = url; break;
+        case 'cdnlivetv': CDNLIVETV_URL = url; break;
+        case 'bintv': BINTV_URL = url; break;
+        case 'olympicweb': OLYMPICWEB_URL = url; break;
+        case 'fbstream': FBSTREAM_URL = url; break;
+        case 'totalsportek': TOTALSPORTEK_URL = url; break;
+        case 'watchfooty': WATCHFOOTY_URL = url; break;
+        case 'mybuffstreams': MYBUFFSTREAMS_URL = url; break;
+        case 'freestreams': FREESTREAMS_URL = url; break;
+        case 'roxiestreams': ROXIESTREAMS_URL = url; break;
         default: return;
     }
     if (typeof window !== 'undefined') window[SOURCE_VAR_NAMES[id]] = url;
@@ -275,6 +330,48 @@ export function conserverSourcesMuettes(frais, publies, rapports, depuisJour) {
     return { matches: out, conserves: conserves };
 }
 
+/* Les liens d'un match dont la page n'a PAS été relue ce passage-ci reviennent du fichier
+   déjà publié (9 octobre 2026, « la mise à jour des liens est vraiment longue »).
+
+   Un passage rapide (`--horizon`, scripts/scrape_streams.mjs) ne relit que les pages des
+   matchs en direct ou imminents : ce sont les seules dont les liens changent d'heure en
+   heure. Sans ce report, un match de ce soir perdrait à chaque passage rapide les
+   lecteurs que le dernier passage complet avait trouvés sur sa page, pour ne garder que
+   ce que la grille de la source donne. Le même trou existait déjà, sans bruit, pour les
+   matchs au-delà de la borne `--limit`.
+
+   Apparié par `matchUrl` (l'adresse de la page, stable d'un passage à l'autre) ; un lien
+   déjà présent n'est pas dupliqué. `relus` : les `matchUrl` dont la page a été lue — eux
+   font foi, rien n'y est reporté. Une adresse PARTAGÉE par plusieurs matchs n'est pas une
+   page de match : c'est la grille d'OnHockey, l'API de ppv, le programme de daddylive, dont
+   tous les événements pointent au même endroit. Reporter par elle verserait les liens de
+   tous ces événements sur chacun : elle est ignorée. Rend le nombre de liens reportés. */
+export function reporterLiensNonRelus(matches, publies, relus) {
+    if (!publies || !Array.isArray(publies.matches)) return 0;
+    var lus = relus || {};
+    var avant = {}, vues = {};
+    publies.matches.forEach(function (p) {
+        if (!p || !p.matchUrl) return;
+        vues[p.matchUrl] = (vues[p.matchUrl] | 0) + 1;
+        if (Array.isArray(p.streamLinks) && p.streamLinks.length) avant[p.matchUrl] = p.streamLinks;
+    });
+    Object.keys(vues).forEach(function (u) { if (vues[u] > 1) delete avant[u]; });
+    var n = 0;
+    (matches || []).forEach(function (m) {
+        if (!m || !m.matchUrl || lus[m.matchUrl] || !avant[m.matchUrl]) return;
+        m.streamLinks = Array.isArray(m.streamLinks) ? m.streamLinks : [];
+        var deja = {};
+        m.streamLinks.forEach(function (l) { if (l && l.url) deja[l.url] = true; });
+        avant[m.matchUrl].forEach(function (l) {
+            if (!l || !l.url || deja[l.url]) return;
+            deja[l.url] = true;
+            m.streamLinks.push(l);
+            n++;
+        });
+    });
+    return n;
+}
+
 /* Nouvel ordre d'essai d'une source après une exécution, du plus prometteur au moins.
 
    L'adresse qui a répondu passe en tête. Celles qui ont ÉCHOUÉ cette fois-ci vont en
@@ -323,10 +420,9 @@ export async function fetchRemoteConfig() {
         var res = await fetch(remoteConfigUrl, ctrl ? { cache: 'no-cache', signal: ctrl.signal } : { cache: 'no-cache' });
         if (res.ok) {
             var data = await res.json();
-            var keyToId = { SITE: 'footybite', MLBBITE_PLUS_URL: 'mlbbite', SPORTSURGE_URL: 'sportsurge',
-                BUFFSTREAMS_URL: 'buffstreams', STREAMEAST_URL: 'streameast', ONHOCKEY_URL: 'onhockey', VIPLEAGUE_URL: 'vipleague',
-                METHSTREAMS_URL: 'methstreams', STREAMED_URL: 'streamed', FLEXFITNESS_URL: 'flexfitness',
-                LIVELEAGUES_URL: 'liveleagues' };
+            // L'inverse de SOURCE_VAR_NAMES : une seule liste à tenir quand une source s'ajoute.
+            var keyToId = {};
+            Object.keys(SOURCE_VAR_NAMES).forEach(function(id) { keyToId[SOURCE_VAR_NAMES[id]] = id; });
             Object.keys(keyToId).forEach(function(k) { if (data[k]) applySourceUrl(keyToId[k], data[k]); });
             if (data.MIRRORS && typeof data.MIRRORS === 'object') {
                 Object.keys(data.MIRRORS).forEach(function(id) {
@@ -412,13 +508,10 @@ export const SCRAPERS_CONFIG = [
         { path: 'api/matches/billiards', sports: ['other'] },
         { path: 'api/matches/other', sports: ['other'] }
     ] },
-    { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams', homepageHasMatches: false, pages: [
-        { path: 'league/soccerstreams', sports: ['soccer'] }, { path: 'league/nflstreams', sports: ['nfl'] }, { path: 'league/nbastreams', sports: ['nba'] },
-        // league/nhlstreams et league/cfbstreams redirigent vers crackstreams.mx qui répond 404 : retirées.
-        { path: 'league/mlbstreams', sports: ['mlb'] }, { path: 'league/mmastreams', sports: ['mma'] },
-        { path: 'league/boxingstreams', sports: ['boxing'] }, { path: 'league/f1streams', sports: ['f1'] },
-        { path: 'league/wnbastreams', sports: ['wnba'] }, { path: 'league/wwestreams', sports: ['wwe'] }, { path: 'league/aew', sports: ['wwe'] }, { path: 'league/ncaab', sports: ['ncaab'] }
-    ] },
+    /* Une seule page depuis le 9 octobre 2026 : l'accueil de methstreams.st porte trois jours
+       de tous les sports dans son index de recherche. Les anciennes pages /league/… (gabarit
+       de methstreams.gs) répondent 404 sur le nouveau domaine. */
+    { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams' },
     /* Une seule page pour tous les sports (foot, CFB, NFL, NBA, NHL, MLB, MLS, USL,
        motorsport, combat) : demandé le 5 septembre 2026 pour combler le football
        universitaire, faible chez les autres sources. Chaque page de match liste déjà
@@ -442,6 +535,59 @@ export const SCRAPERS_CONFIG = [
         { path: 'handball-sports-stream', sports: ['other'] }, { path: 'horse-racing-sports-stream', sports: ['other'] },
         { path: 'snooker-sports-stream', sports: ['other'] }, { path: 'volleyball-sports-stream', sports: ['other'] },
         { path: 'others-sports-stream', sports: ['other'] }
+    ] },
+    /* 9 octobre 2026. ppv et daddylive livrent les lecteurs dès la grille (leurs matchs
+       pointent vers l'adresse de la source, qui n'est pas relue page par page) et ne sont
+       lues que par le script serveur (SOURCES_SERVEUR_SEULEMENT, js/scrapers.js). */
+    { name: 'PPV', url: PPV_URL, id: 'ppv' },
+    { name: 'DaddyLive', url: DADDYLIVE_URL, id: 'daddylive' },
+    { name: 'WatchSports', url: WATCHSPORTS_URL, id: 'watchsports' },
+    { name: 'iSportsurge', url: ISPORTSURGE_URL, id: 'isportsurge' },
+    // Cricket seulement ; pas de parseur dédié, le repli générique lit sa grille (parseCrichd).
+    { name: 'CricHD', url: CRICHD_URL, id: 'crichd' },
+    /* API JSON, lecteurs fournis avec la grille, comme ppv : cdnlivetv (derrière
+       streamsports99.su) et bintv (bintv.cc, sans heure de coup d'envoi). */
+    { name: 'CDN Live TV', url: CDNLIVETV_URL, id: 'cdnlivetv' },
+    { name: 'BINTV', url: BINTV_URL, id: 'bintv' },
+    /* Même moteur que VIPLeague, une page par sport, heure de Londres (parseOlympicweb) ;
+       leurs pages de match portent les flux en boutons data-uri (js/sources/olympicweb.js). */
+    { name: 'OlympicStreams', url: OLYMPICWEB_URL, id: 'olympicweb', homepageHasMatches: false, pages: [
+        { path: '/live/soccer-stream', sports: ['soccer'] }, { path: '/live/football-stream', sports: ['nfl', 'cfb'] },
+        { path: '/live/basketball-stream', sports: ['nba', 'wnba', 'ncaab'] }, { path: '/live/hockey-stream', sports: ['nhl'] },
+        { path: '/live/baseball-stream', sports: ['mlb'] }, { path: '/live/fighting-stream', sports: ['mma', 'boxing'] },
+        { path: '/live/tennis-stream', sports: ['tennis'] }, { path: '/live/rugby-stream', sports: ['rugby'] },
+        { path: '/live/motor-sports-stream', sports: ['f1', 'motor'] }, { path: '/live/golf-stream', sports: ['golf'] }
+    ] },
+    { name: 'FBStream', url: FBSTREAM_URL, id: 'fbstream', homepageHasMatches: false, pages: [
+        { path: '/stream/football', sports: ['soccer'] }, { path: '/stream/nfl', sports: ['nfl'] }, { path: '/stream/college-football', sports: ['cfb'] },
+        { path: '/stream/basketball', sports: ['nba', 'wnba'] }, { path: '/stream/college-basketball', sports: ['ncaab'] },
+        { path: '/stream/hockey', sports: ['nhl'] }, { path: '/stream/baseball', sports: ['mlb'] }, { path: '/stream/ufc', sports: ['mma'] },
+        { path: '/stream/boxing', sports: ['boxing'] }, { path: '/stream/tennis', sports: ['tennis'] }, { path: '/stream/cricket', sports: ['cricket'] },
+        { path: '/stream/rugby', sports: ['rugby'] }, { path: '/stream/motorsports', sports: ['f1', 'motor'] }
+    ] },
+    // La grille /daily couvre tous les sports (le football est renvoyé vers un autre site).
+    { name: 'TotalSportek', url: TOTALSPORTEK_URL, id: 'totalsportek' },
+    // API JSON par sport, lecteurs (sportsembed.su) fournis avec la grille à l'approche du match.
+    { name: 'WatchFooty', url: WATCHFOOTY_URL, id: 'watchfooty', homepageHasMatches: false, pages: [
+        { path: 'api/v1/matches/football', sports: ['soccer'] }, { path: 'api/v1/matches/american-football', sports: ['nfl', 'cfb', 'cfl'] },
+        { path: 'api/v1/matches/basketball', sports: ['nba', 'wnba', 'ncaab'] }, { path: 'api/v1/matches/hockey', sports: ['nhl'] },
+        { path: 'api/v1/matches/baseball', sports: ['mlb'] }, { path: 'api/v1/matches/fighting', sports: ['mma', 'boxing', 'wwe'] },
+        { path: 'api/v1/matches/racing', sports: ['f1', 'motor'] }, { path: 'api/v1/matches/tennis', sports: ['tennis'] },
+        { path: 'api/v1/matches/rugby', sports: ['rugby'] }, { path: 'api/v1/matches/cricket', sports: ['cricket'] },
+        { path: 'api/v1/matches/golf', sports: ['golf'] }, { path: 'api/v1/matches/darts', sports: ['other'] }
+    ] },
+    { name: 'MyBuffstreams', url: MYBUFFSTREAMS_URL, id: 'mybuffstreams', pages: [
+        { path: 'nflstreams2', sports: ['nfl'] }, { path: 'cfbstreams2', sports: ['cfb'] }, { path: 'nbastreams2', sports: ['nba'] },
+        { path: 'nhlstreams2', sports: ['nhl'] }, { path: 'mlb-live-streams', sports: ['mlb'] }, { path: 'soccer-live-streams', sports: ['soccer'] },
+        { path: 'mmastreams2', sports: ['mma'] }, { path: 'boxingstreams2', sports: ['boxing'] }, { path: 'wnbastreams', sports: ['wnba'] },
+        { path: 'ncaastreams', sports: ['ncaab'] }, { path: 'wwestreams', sports: ['wwe'] }
+    ] },
+    // Football seulement : la page par chaînes, lue en entier (parseFreestreams).
+    { name: 'FreeStreams', url: FREESTREAMS_URL, id: 'freestreams' },
+    // Une page par sport ; flux HLS nus reconstruits depuis la page (js/sources/roxiestreams.js).
+    { name: 'Roxiestreams', url: ROXIESTREAMS_URL, id: 'roxiestreams', homepageHasMatches: false, pages: [
+        { path: 'soccer', sports: ['soccer'] }, { path: 'nba', sports: ['nba'] }, { path: 'nfl', sports: ['nfl'] }, { path: 'nhl', sports: ['nhl'] },
+        { path: 'mlb', sports: ['mlb'] }, { path: 'fighting', sports: ['mma', 'boxing'] }, { path: 'motorsports', sports: ['f1', 'motor'] }
     ] }
 ];
 
@@ -1507,6 +1653,20 @@ window.ONHOCKEY_URL = ONHOCKEY_URL;
 window.VIPLEAGUE_URL = VIPLEAGUE_URL;
 window.METHSTREAMS_URL = METHSTREAMS_URL;
 window.LIVELEAGUES_URL = LIVELEAGUES_URL;
+window.PPV_URL = PPV_URL;
+window.DADDYLIVE_URL = DADDYLIVE_URL;
+window.WATCHSPORTS_URL = WATCHSPORTS_URL;
+window.ISPORTSURGE_URL = ISPORTSURGE_URL;
+window.CRICHD_URL = CRICHD_URL;
+window.CDNLIVETV_URL = CDNLIVETV_URL;
+window.BINTV_URL = BINTV_URL;
+window.OLYMPICWEB_URL = OLYMPICWEB_URL;
+window.FBSTREAM_URL = FBSTREAM_URL;
+window.TOTALSPORTEK_URL = TOTALSPORTEK_URL;
+window.WATCHFOOTY_URL = WATCHFOOTY_URL;
+window.MYBUFFSTREAMS_URL = MYBUFFSTREAMS_URL;
+window.FREESTREAMS_URL = FREESTREAMS_URL;
+window.ROXIESTREAMS_URL = ROXIESTREAMS_URL;
 window.PROXIES = PROXIES;
 window.toggleGlobalStats = toggleGlobalStats;
 window.openGlobalStatsFromMatch = openGlobalStatsFromMatch;

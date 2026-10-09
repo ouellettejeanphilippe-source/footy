@@ -414,3 +414,80 @@ export function nextLinkAfter(links, currentUrl) {
     for (var k = 0; k < L.length; k++) { if (L[k].url === currentUrl) { i = k; break; } }
     return L[(i + 1) % L.length];
 }
+
+/* LES LIENS MORTS NE SONT PAS PUBLIÉS (9 octobre 2026).
+
+   « Si on a plus de domaines qui feedent, si on peut juste ne pas ramasser les mauvais
+   liens, pas nécessairement les gérer à même l'app. » Le classement (`sortFluxLinks`) et
+   la bascule de la tuile savent déjà passer un lien qui ne joue pas ; mais chaque source
+   ajoutée apporte son lot de lecteurs qui ne jouent JAMAIS, et la liste s'allonge d'autant.
+   Relevé ce jour-là sur le cache : 52 hôtes à zéro lecture sur au moins trois essais, et
+   483 liens « Follow the guide » vers une page de VPN (imgcdnngx.com, 403, 0 sur 31).
+
+   On écarte donc, au moment d'écrire data/streams.json, le lien dont l'hôte a été chargé
+   `SEUIL_HOTE_MORT` fois dans un vrai navigateur sans qu'aucune vidéo n'arrive. Ce qui
+   n'est PAS écarté :
+
+   - un lien vu lui-même en train de jouer (`verified === 'plays'`) ;
+   - un hôte de SOURCE (`estSource`) : c'est une page de match, la porte de secours vers
+     les lecteurs, pas un lecteur ;
+   - un lien `topLevel` (ouvert dans un onglet) dont l'hôte répond : la vérification le
+     charge dans un cadre, qu'il refuse — elle ne dit donc rien de ce qu'il fait dans un
+     onglet. Il n'est écarté que si la page elle-même répond en erreur ou est injoignable
+     (`politique[hote].status >= 400`, ou `embeddable === null`).
+
+   Un hôte écarté peut revenir : il est rendu avec UN lien témoin (`hotes[h].echantillon`),
+   que `verify_players.mjs` continue d'éprouver (`ciblesDeRehabilitation`). Une seule lecture
+   observée, et `plays` cesse d'être nul : ses liens reviennent au passage suivant. */
+export var SEUIL_HOTE_MORT = 8;
+
+export function hoteMort(entree, seuil) {
+    var s = seuil || SEUIL_HOTE_MORT;
+    return !!entree && (entree.tested | 0) >= s && (entree.plays | 0) === 0;
+}
+
+export function ecarterLiensMorts(matches, ledger, opts) {
+    var o = opts || {};
+    var politique = o.politique || {};
+    var hotes = {};
+    var retires = 0;
+    (matches || []).forEach(function (m) {
+        if (!m || !Array.isArray(m.streamLinks)) return;
+        m.streamLinks = m.streamLinks.filter(function (l) {
+            if (!l || !l.url) return true;
+            if (l.verified === 'plays') return true;
+            var h = hostOfUrl(tileTarget(l));
+            if (!h) return true;
+            if (typeof o.estSource === 'function' && o.estSource(h)) return true;
+            var e = ledger && ledger[h];
+            if (!hoteMort(e, o.seuil)) return true;
+            if (l.topLevel) {
+                var p = politique[h] || politique[h.replace(/^v2\./, '')];
+                var pageMorte = !!p && (p.embeddable === null || (p.status | 0) >= 400);
+                if (!pageMorte) return true;
+            }
+            var r = hotes[h] || (hotes[h] = { liens: 0, echantillon: l.url, tested: e.tested | 0, plays: 0 });
+            r.liens++;
+            retires++;
+            return false;
+        });
+    });
+    return { retires: retires, hotes: hotes };
+}
+
+/* Témoins des hôtes écartés à éprouver pendant un passage : au plus `max`, le moins
+   récemment essayé d'abord (jamais essayé en tête), puis par nom pour que deux passages
+   rendent le même ordre. Sans cela, un hôte écarté ne serait plus jamais chargé, et ne
+   pourrait plus jamais revenir. */
+export function ciblesDeRehabilitation(ecartes, max) {
+    var n = max == null ? 6 : max;
+    return Object.keys(ecartes || {})
+        .filter(function (h) { return ecartes[h] && ecartes[h].echantillon; })
+        .sort(function (a, b) {
+            var ta = Date.parse(ecartes[a].essaiAt || '') || 0, tb = Date.parse(ecartes[b].essaiAt || '') || 0;
+            if (ta !== tb) return ta - tb;
+            return a < b ? -1 : (a > b ? 1 : 0);
+        })
+        .slice(0, n)
+        .map(function (h) { return { host: h, target: ecartes[h].echantillon, ecarte: true }; });
+}

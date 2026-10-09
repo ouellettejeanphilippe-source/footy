@@ -6,6 +6,9 @@
    Contrat d'un adaptateur :
      hotes           : [fragment d'hôte]  — ce que cet adaptateur reconnaît
      extraireLiens   : (ctx) -> [liens]   — les flux de UNE page de match
+     filtrerLiens    : (liens) -> [liens] — facultatif : ce que le domaine garde de la récolte
+     seulementSesLiens : true             — facultatif : quand l'adaptateur a trouvé des liens,
+                                            ceux du moteur générique sont écartés
 
    Le contexte est fourni par l'appelant, jamais importé par l'adaptateur (un import du
    module central rendrait le graphe circulaire) :
@@ -33,8 +36,12 @@ import * as onhockey from './onhockey.js';
 import * as streameast from './streameast.js';
 import * as vipleague from './vipleague.js';
 import * as liveleagues from './liveleagues.js';
+import * as olympicweb from './olympicweb.js';
+import * as totalsportek from './totalsportek.js';
+import * as aapmains from './aapmains.js';
+import * as roxiestreams from './roxiestreams.js';
 
-export var ADAPTATEURS = [footybite, onhockey, streameast, vipleague, liveleagues];
+export var ADAPTATEURS = [footybite, onhockey, streameast, vipleague, liveleagues, olympicweb, totalsportek, aapmains, roxiestreams];
 
 /* L'adaptateur qui reconnaît cet hôte, ou null. */
 export function adaptateurPour(hote) {

@@ -3,11 +3,13 @@
     "test": "npm run test:unit && npx playwright test tests/test_app_boot.spec.js tests/test_cleaner.spec.js tests/test_rattrapage.spec.js",
     "test:unit": "node --test tests/*.test.js",
     "scrape:streams": "node --max-old-space-size=8192 scripts/scrape_streams.mjs",
+    "liens": "node scripts/maj_liens.mjs",
+    "sonder": "node scripts/sonder_domaine.mjs",
     "test:domains": "npx playwright test tests/test_domains.spec.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "jsdom": "^29.1.1",
+    "jsdom": "26.1.0",
     "playwright": "^1.62.1"
   },
   "name": "app",

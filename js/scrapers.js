@@ -1,7 +1,7 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry } from './extractors.js';
 import { getBridgeStatus } from './embed-bridge.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague, playLedger } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, PPV_URL, DADDYLIVE_URL, WATCHSPORTS_URL, ISPORTSURGE_URL, CRICHD_URL, CDNLIVETV_URL, BINTV_URL, OLYMPICWEB_URL, FBSTREAM_URL, TOTALSPORTEK_URL, WATCHFOOTY_URL, MYBUFFSTREAMS_URL, FREESTREAMS_URL, ROXIESTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague, playLedger } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
@@ -1118,7 +1118,57 @@ export function parseLiveleagues(html, pageUrl) {
 }
 
 /* ══ PARSE METHSTREAMS ════════════════ */
+/* methstreams.st (9 octobre 2026) : la grille n'est plus dans le HTML. L'accueil
+   (/home) ne montre que six matchs en clair ; tout le reste — trois jours, tous les
+   sports, 198 lignes ce jour-là — voyage dans un bloc JSON destiné à sa recherche :
+     <script type="application/json" id="searchIndex">
+       [{"t":"Galatasaray vs Kasimpasa","u":"/event/m-galatasaray-vs-kasimpasa-1009",
+         "g":"Süper Lig","w":1791565200000,"l":0,"e":0}, …]
+   `t` titre, `u` page de match, `g` ligue, `w` coup d'envoi (ms depuis l'époque, donc un
+   INSTANT : le fuseau est connu), `l` en direct, `e` terminé. Les « 24/7 Channels » sont
+   des chaînes permanentes, sans coup d'envoi (`w` nul ou négatif) : écartées. La page de
+   match liste ses flux en ancres `a.sl-row`, que l'extracteur générique lit déjà. */
+export function parseMethstreamsIndex(html, pageUrl) {
+    var m = /<script[^>]+id=["']searchIndex["'][^>]*>([\s\S]*?)<\/script>/i.exec(String(html || ''));
+    if (!m) return [];
+    var rows;
+    try { rows = JSON.parse(m[1]); } catch (e) { return []; }
+    if (!Array.isArray(rows)) return [];
+    var base = pageUrl || METHSTREAMS_URL;
+    var out = [];
+    rows.forEach(function(r) {
+        if (!r || typeof r.t !== 'string' || typeof r.u !== 'string') return;
+        if (/24\/7/.test(r.g || '') || !(Number(r.w) > 0)) return;
+        var teams = r.t.split(/\s+vs\.?\s+|\s+v\s+|\s+@\s+/i);
+        var home = (teams[0] || '').trim(), away = teams.length > 1 ? teams.slice(1).join(' ').trim() : '';
+        if (home.length < 2) return;
+        var matchUrl = resolveUrl(r.u, base);
+        if (!/^https?:\/\//.test(matchUrl) || out.some(function(x) { return x.matchUrl === matchUrl; })) return;
+        var quand = new Date(Number(r.w));
+        var league = r.g || leagueOfTeamName(home) || 'Sports';
+        out.push({
+            id: 'meth_' + out.length,
+            league: formatLeagueName(league),
+            flag: lgFlag(league),
+            color: lgColor(league),
+            homeTeam: officialTeamNameForLeague(home, league),
+            awayTeam: away ? officialTeamNameForLeague(away, league) : '',
+            matchUrl: matchUrl,
+            startTime: getEstTimeStrFromDate(quand),
+            matchDate: getEstDateStrFromDate(quand),
+            durationMinutes: getLeagueDuration(league),
+            status: r.l ? 'live' : (r.e ? 'finished' : 'upcoming'),
+            streamLinks: [],
+            streamsLoaded: false,
+            source: 'methstreams'
+        });
+    });
+    return out;
+}
+
 export function parseMethstreams(html, pageUrl) {
+    var parIndex = parseMethstreamsIndex(html, pageUrl);
+    if (parIndex.length) return parIndex;
     // methstreams.gs (2026) : pages par ligue (/league/mlbstreams...), une carte par match :
     //   <a class="card" href="/stream/a-vs-b"><div class="card-title">A vs B</div>
     //                                          <div class="card-subtitle">Start time: 12:40 PM ET</div></a>
@@ -1173,6 +1223,463 @@ export function parseMethstreams(html, pageUrl) {
         });
     });
     return matches;
+}
+
+/* ══ SOURCES AJOUTÉES LE 9 OCTOBRE 2026 ═══════════════════════════════════
+   Relevées avec scripts/sonder_domaine.mjs dans la liste de domaines fournie ce jour-là.
+   Deux d'entre elles (ppv, daddylive) donnent les LECTEURS dès la grille : le match
+   sort du parseur avec ses `streamLinks`, et son `matchUrl` est l'adresse de la source
+   elle-même — comme OnHockey, que le script serveur ne relit pas page par page.
+   Ces liens portent `programme: true` : c'est la source qui les rattache à l'événement
+   qu'elle nomme. Une chaîne de télé (Sky Sports Main Event) sert le cricket ET le golf ;
+   la règle du décor (adressesNonSpecifiques, js/match.js) ne doit pas l'écarter pour ça. */
+
+/* Affiche « A vs B », « A v B », ou « Visiteur at Local » / « Visiteur @ Local » (forme
+   américaine : les camps s'inversent). Rend null si le titre n'oppose pas deux camps. */
+export function separerAffiche(titre) {
+    var t = String(titre || '').replace(/\s+/g, ' ').trim();
+    var m = /^(.+?)\s+(?:vs\.?|v)\s+(.+)$/i.exec(t);
+    if (m) return { home: m[1].trim(), away: m[2].trim() };
+    m = /^(.+?)\s+(?:at|@)\s+(.+)$/i.exec(t);
+    if (m) return { home: m[2].trim(), away: m[1].trim() };
+    return null;
+}
+
+function matchDeSource(source, league, affiche, quand, statut, matchUrl, liens, id) {
+    return {
+        id: id,
+        league: formatLeagueName(league),
+        flag: lgFlag(league),
+        color: lgColor(league),
+        homeTeam: officialTeamNameForLeague(affiche.home, league),
+        awayTeam: affiche.away ? officialTeamNameForLeague(affiche.away, league) : '',
+        matchUrl: matchUrl,
+        startTime: quand ? getEstTimeStrFromDate(quand) : '00:00',
+        matchDate: quand ? getEstDateStrFromDate(quand) : undefined,
+        durationMinutes: getLeagueDuration(league),
+        status: statut,
+        streamLinks: liens || [],
+        streamsLoaded: false,
+        source: source
+    };
+}
+
+/* ── ppv (api.ppv.st) ──────────────────────────────────────────────────────
+   API JSON publique, que lisent aussi cosectv.com et sportsbite.org :
+     { streams: [ { category, streams: [ { name, tag, source_tag, starts_at, ends_at,
+         always_live, iframe, substreams: [ { source_tag, iframe } ] } ] } ] }
+   `starts_at`/`ends_at` en secondes Unix : un instant. `iframe` est le lecteur lui-même
+   (taifood-blog.asia/embed/…), `substreams` les flux de secours. Les chaînes permanentes
+   (`always_live`) n'ont pas de match : écartées. Lue par le script serveur seulement
+   (API d'un autre domaine, sans en-tête CORS). */
+export function parsePpv(json, pageUrl) {
+    var data;
+    try { data = JSON.parse(json); } catch (e) { return []; }
+    var cats = data && Array.isArray(data.streams) ? data.streams : [];
+    var maintenant = Date.now() / 1000;
+    var out = [];
+    cats.forEach(function(c) {
+        (c && Array.isArray(c.streams) ? c.streams : []).forEach(function(ev) {
+            if (!ev || ev.always_live || !(ev.starts_at > 0) || !ev.iframe) return;
+            var affiche = separerAffiche(ev.name) || { home: String(ev.name || '').trim(), away: '' };
+            if (affiche.home.length < 2) return;
+            var league = ev.tag || ev.category_name || c.category || 'Sports';
+            var liens = [{ name: ev.source_tag || 'ppv', url: ev.iframe, source: 'ppv', programme: true }];
+            (Array.isArray(ev.substreams) ? ev.substreams : []).forEach(function(s) {
+                if (s && s.iframe && !liens.some(function(l) { return l.url === s.iframe; })) liens.push({ name: s.source_tag || 'ppv', url: s.iframe, source: 'ppv', programme: true });
+            });
+            var statut = ev.ends_at > 0 && ev.ends_at < maintenant ? 'finished' : (ev.starts_at <= maintenant ? 'live' : 'upcoming');
+            out.push(matchDeSource('ppv', league, affiche, new Date(ev.starts_at * 1000), statut, pageUrl || PPV_URL, liens, 'ppv_' + out.length));
+        });
+    });
+    return out;
+}
+
+/* ── daddylive (dlive.sx) ──────────────────────────────────────────────────
+   Un programme par jour, en catégories, chaque événement avec ses CHAÎNES :
+     <div class="schedule__day"><div class="schedule__dayTitle">Friday 09th Oct 2026 - Schedule Time UK GMT</div>
+       <div class="schedule__event"> <span class="schedule__time">18:45</span>
+         <span class="schedule__eventTitle">⚽ Ireland Republic - FAI Cup : Bohemians 🇮🇪 vs Waterford United 🇮🇪</span>
+         <div class="schedule__channels"><a href="/watch.php?id=365">RTE 2 Ireland</a>…
+   L'heure est en UTC (« UK GMT » : Bohemians–Waterford à 18:45 est un 19:45 irlandais).
+   Une catégorie est rangée par heure, et ce qui suit minuit appartient au lendemain : une
+   heure plus petite que la précédente fait passer au jour suivant (SmackDown, vendredi
+   20 h à New York, est listé « 00:00 » sous vendredi). Les chaînes `id=00` (« Channel
+   Not Listed ») ne mènent nulle part. Le lien est la page `watch.php` du site, celle que
+   la tuile sait nettoyer. */
+var MOIS_EN = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+export function parseDaddylive(html, pageUrl) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || DADDYLIVE_URL;
+    var out = [];
+    [].forEach.call(doc.querySelectorAll('.schedule__day'), function(day) {
+        var titre = (day.querySelector('.schedule__dayTitle') || {}).textContent || '';
+        var dm = /(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3})[a-z]*\s+(\d{4})/.exec(titre);
+        if (!dm || MOIS_EN[dm[2].toLowerCase()] === undefined) return;
+        var y = +dm[3], mo = MOIS_EN[dm[2].toLowerCase()], d0 = +dm[1];
+        [].forEach.call(day.querySelectorAll('.schedule__category'), function(cat) {
+            /* « Upcoming Events » annonce des événements d'AUTRES jours (Fury–Joshua de
+               décembre, rangé sous le 9 octobre) ; « TV Shows » n'est pas du sport. */
+            var nomCat = ((cat.querySelector('.card__meta') || {}).textContent || '').trim();
+            if (/^(upcoming events|tv shows)/i.test(nomCat)) return;
+            var decalage = 0, avant = -1;
+            [].forEach.call(cat.querySelectorAll('.schedule__event'), function(ev) {
+                var hm = /(\d{1,2}):(\d{2})/.exec(((ev.querySelector('.schedule__time') || {}).textContent) || '');
+                if (!hm) return;
+                var minutes = (+hm[1]) * 60 + (+hm[2]);
+                if (minutes < avant) decalage = 1;
+                avant = minutes;
+                var brut = ((ev.querySelector('.schedule__eventTitle') || {}).textContent || '').replace(/\s+/g, ' ').trim();
+                var sansEmoji = brut.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{E0000}-\u{E007F}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+                var sep = sansEmoji.lastIndexOf(' : ');
+                var league = sep > 0 ? sansEmoji.slice(0, sep).trim() : '';
+                var affiche = separerAffiche(sep > 0 ? sansEmoji.slice(sep + 3) : sansEmoji);
+                if (!affiche || affiche.home.length < 2 || affiche.away.length < 2) return;   // pas un match : émission, séance d'essais
+                var liens = [];
+                [].forEach.call(ev.querySelectorAll('.schedule__channels a[href]'), function(a) {
+                    var href = a.getAttribute('href') || '';
+                    if (/[?&]id=0*(?:&|$)/.test(href)) return;
+                    var url = resolveUrl(href, base);
+                    if (/^https?:\/\//.test(url) && !liens.some(function(l) { return l.url === url; })) liens.push({ name: (a.textContent || '').trim(), url: url, source: 'daddylive', programme: true });
+                });
+                if (!liens.length) return;
+                var quand = new Date(Date.UTC(y, mo, d0 + decalage, +hm[1], +hm[2]));
+                out.push(matchDeSource('daddylive', league || leagueOfTeamName(affiche.home) || 'Sports', affiche, quand, 'upcoming', base, liens, 'dl_' + out.length));
+            });
+        });
+    });
+    return out;
+}
+
+/* ── cdnlivetv (api.cdnlivetv.is, derrière streamsports99) ───────────────────
+   { "cdn-live-tv": { Soccer: [ { event, homeTeam, awayTeam, tournament, status,
+       start: "2026-10-10 02:00", channels: [ { channel_name, url } ] } ], NFL: […], … } }
+   `start` est en UTC (vérifié sur des coups d'envoi connus : NFL à Londres 13:30, un
+   match de 13 h à New York listé 17:00). Le catalogue court sur des mois et la plupart
+   des événements n'ont encore aucune chaîne : on garde ceux qui en ont, dans la fenêtre
+   [-6 h, +48 h] autour de `maintenant`, hors annulés (CANC). Les chaînes sont des pages
+   de lecteur HLS autonomes, encadrables. */
+export function parseCdnlivetv(json, pageUrl, maintenant) {
+    var data;
+    try { data = JSON.parse(json); } catch (e) { return []; }
+    var racine = data && data['cdn-live-tv'];
+    if (!racine || typeof racine !== 'object') return [];
+    var now = maintenant || Date.now();
+    var out = [];
+    Object.keys(racine).forEach(function(sport) {
+        if (!Array.isArray(racine[sport])) return;
+        racine[sport].forEach(function(ev) {
+            if (!ev || /^(CANC|PST|ABD)$/i.test(ev.status || '') || !Array.isArray(ev.channels) || !ev.channels.length) return;
+            var dm = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(ev.start || '');
+            if (!dm) return;
+            var quand = new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3], +dm[4], +dm[5]));
+            var ecart = quand.getTime() - now;
+            if (ecart < -6 * 3600000 || ecart > 48 * 3600000) return;
+            var affiche = (ev.homeTeam && ev.awayTeam) ? { home: ev.homeTeam, away: ev.awayTeam } : separerAffiche(ev.event);
+            if (!affiche || String(affiche.home).length < 2) return;
+            var liens = [];
+            ev.channels.forEach(function(c) {
+                if (c && c.url && /^https?:\/\//.test(c.url) && !liens.some(function(l) { return l.url === c.url; })) liens.push({ name: c.channel_name || 'cdnlivetv', url: c.url, source: 'cdnlivetv', programme: true });
+            });
+            if (!liens.length) return;
+            var statut = ecart <= 0 ? 'live' : 'upcoming';
+            out.push(matchDeSource('cdnlivetv', ev.tournament || sport, affiche, quand, statut, pageUrl || CDNLIVETV_URL, liens, 'cdn_' + out.length));
+        });
+    });
+    return out;
+}
+
+/* ── bintv (bintvjson.lovable.app, l'API de bintv.cc) ─────────────────────────
+   { "Live Events": [ … ], "Upcoming Events": [ { name, category, status,
+       streams: [ { name, url } ] } ], "24/7 Channels": [ … ] }
+   AUCUNE heure : le match se rattache au calendrier par les noms seulement. Le statut
+   « live » y est posé trop tôt (Lens–Lyon « live » deux heures avant le coup d'envoi) :
+   il n'est pas repris, pour ne pas marquer en direct un match qui ne l'est pas encore. Le
+   titre est parfois long (« Afghanistan vs Bangladesh in UAE 2026 - One-off Test -
+   Afghanistan vs Bangladesh ») : le dernier segment qui oppose deux camps l'emporte. Le
+   texte peut être échappé plusieurs fois (&amp;amp;). Les lecteurs sont des pages
+   relais (bintv-sources.pages.dev) : le vrai lecteur refuse qui ne vient pas d'elles. */
+function desechapper(t) {
+    var s = String(t || ''), avant;
+    do { avant = s; s = s.replace(/&amp;/g, '&'); } while (s !== avant);
+    return s.replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+}
+export function parseBintv(json, pageUrl) {
+    var data;
+    try { data = JSON.parse(json); } catch (e) { return []; }
+    if (!data || typeof data !== 'object') return [];
+    var out = [];
+    ['Live Events', 'Upcoming Events'].forEach(function(cle) {
+        (Array.isArray(data[cle]) ? data[cle] : []).forEach(function(ev) {
+            if (!ev || !Array.isArray(ev.streams) || !ev.streams.length) return;
+            var segments = desechapper(ev.name).split(' - ');
+            var affiche = null;
+            for (var i = segments.length - 1; i >= 0 && !affiche; i--) affiche = separerAffiche(segments[i]);
+            if (!affiche || affiche.home.length < 2) return;
+            var liens = [];
+            ev.streams.forEach(function(s) {
+                if (s && s.url && /^https?:\/\//.test(s.url) && !liens.some(function(l) { return l.url === s.url; })) liens.push({ name: desechapper(s.name) || 'bintv', url: s.url, source: 'bintv', programme: true });
+            });
+            if (!liens.length) return;
+            out.push(matchDeSource('bintv', ev.category || 'Sports', affiche, null, 'upcoming', pageUrl || BINTV_URL, liens, 'bin_' + out.length));
+        });
+    });
+    return out;
+}
+
+/* ── olympicweb.me et fbstream.is (même moteur que VIPLeague, autre gabarit) ──
+   Une page par sport (/live/soccer-stream, /stream/nhl), une ancre repliable par match :
+     <a data-bs-toggle="collapse" href="/live-al-fateh-vs-al-ahli-stream" title="Al Fateh v Al Ahli">
+       <span content="2026-10-09T15:55">15:55</span> Al Fateh v Al Ahli</a>
+   (fbstream : href="/live/stream/<slug>", titre « Home - Away »). L'heure est celle de
+   Londres, comme chez VIPLeague. Sans `span[content]`, c'est une chaîne permanente :
+   écartée. Le sport vient de l'adresse de la page. La page de match porte ses flux en
+   boutons `data-uri` (js/sources/olympicweb.js). */
+var SPORT_DE_PAGE = { soccer: 'Soccer', football: 'Soccer', 'american-football': 'NFL', nfl: 'NFL', 'college-football': 'College Football',
+    basketball: 'Basketball', nba: 'NBA', 'college-basketball': 'NCAAB', hockey: 'NHL', nhl: 'NHL', baseball: 'MLB', mlb: 'MLB',
+    fighting: 'UFC', ufc: 'UFC', mma: 'UFC', boxing: 'Boxing', tennis: 'Tennis', golf: 'Golf', rugby: 'Rugby', cricket: 'Cricket',
+    afl: 'AFL', darts: 'Darts', 'motor-sports': 'Motorsport', motorsports: 'Motorsport', f1: 'Formula 1' };
+export function parseOlympicweb(html, pageUrl) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || OLYMPICWEB_URL;
+    var cle = ((/\/live\/([a-z0-9-]+)-stream/i.exec(base) || /\/stream\/([a-z0-9-]+)/i.exec(base) || [])[1] || '').toLowerCase();
+    var sport = SPORT_DE_PAGE[cle] || 'Sports';
+    var out = [];
+    [].forEach.call(doc.querySelectorAll('a[data-bs-toggle="collapse"][href][title]'), function(a) {
+        var span = a.querySelector('span[content]');
+        var iso = span ? span.getAttribute('content') : '';
+        if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso || '')) return;
+        var titre = (a.getAttribute('title') || '').replace(/\s+/g, ' ').trim();
+        var affiche = separerAffiche(titre);
+        if (!affiche) {
+            var parts = titre.split(/\s+-\s+/);
+            if (parts.length === 2) affiche = { home: parts[0].trim(), away: parts[1].trim() };
+        }
+        if (!affiche || affiche.home.length < 2) return;
+        var naive = new Date(iso.slice(0, 16) + ':00Z');
+        var quand = new Date(naive.getTime() - zoneOffsetMinutes(naive, 'Europe/London') * 60000);
+        var matchUrl = resolveUrl(a.getAttribute('href'), base);
+        if (!/^https?:\/\//.test(matchUrl) || out.some(function(x) { return x.matchUrl === matchUrl; })) return;
+        var source = /fbstream/i.test(base) ? 'fbstream' : 'olympicweb';
+        out.push(matchDeSource(source, sport, affiche, quand, 'upcoming', matchUrl, [], (source === 'fbstream' ? 'fbs_' : 'oly_') + out.length));
+    });
+    return out;
+}
+
+/* ── totalsportek (total-sportekk.st ; totalsportek.es y mène) ─────────────────
+   Le repli générique lit déjà sa grille /daily (instants ISO en UTC, ligue en tête de
+   carte) ; la page de match liste ses flux, enveloppés dans hitcast.st/totview.php?src=…,
+   que l'adaptateur js/sources/totalsportek.js déballe. Les liens n'apparaissent qu'une
+   heure avant le coup d'envoi. */
+export function parseTotalsportek(html, pageUrl) { return parseGenerique(html, pageUrl, 'totalsportek'); }
+
+/* ── watchfooty (api.watchfooty.st, l'API que lit sportsbite.org) ─────────────
+   GET /api/v1/matches/<sport> → [ { title, teams: { home: { name }, away: { name } },
+     timestamp (ms, UTC), league, status: pre|in|post|postponed,
+     streams: [ { url, source, quality, language, nsfw } ] } ]
+   Les lecteurs (sportsembed.su/embed/…) n'apparaissent qu'à l'approche du coup d'envoi :
+   on ne garde que les matchs qui en ont, hors terminés et reportés. */
+export function parseWatchfooty(json, pageUrl) {
+    var data;
+    try { data = JSON.parse(json); } catch (e) { return []; }
+    var liste = Array.isArray(data) ? data : [];
+    var out = [];
+    liste.forEach(function(ev) {
+        if (!ev || /^(post|postponed|canceled|cancelled)$/i.test(ev.status || '') || !Array.isArray(ev.streams)) return;
+        var liens = [];
+        ev.streams.forEach(function(s) {
+            if (!s || !s.url || s.nsfw || !/^https?:\/\//.test(s.url) || liens.some(function(l) { return l.url === s.url; })) return;
+            liens.push({ name: [s.source, s.language].filter(Boolean).join(' · ') || 'watchfooty', quality: s.quality || '', url: s.url, source: 'watchfooty', programme: true });
+        });
+        if (!liens.length) return;
+        var t = ev.teams || {};
+        var affiche = (t.home && t.home.name && t.away && t.away.name) ? { home: t.home.name, away: t.away.name } : separerAffiche(ev.title);
+        if (!affiche || String(affiche.home).length < 2) return;
+        var ms = Number(ev.timestamp) || Date.parse(ev.date || '');
+        var quand = ms > 0 ? new Date(ms) : null;
+        out.push(matchDeSource('watchfooty', ev.league || ev.sport || 'Sports', affiche, quand, ev.status === 'in' ? 'live' : 'upcoming',
+            pageUrl || WATCHFOOTY_URL, liens, 'wf_' + out.length));
+    });
+    return out;
+}
+
+/* ── mybuffstreams.plus (où mène buffstreams.ir ; pas le moteur d'app.buffstreams.is) ──
+   Une ligne par match :
+     <a class="competition" title="Buffstreams A vs B" href="https://mybuffstreams.plus/cfb/a-b/1536732">
+       <span class="competition-cell-side1"><span class="name"> A </span></span>
+       <time datetime="2026-10-10 00:00:00">…</time> ou <span class="… live-color">1st quarter</span>
+       <span class="competition-cell-side2"><span class="name"> B </span></span></a>
+   L'heure est en UTC (Capitals–Rangers, 19 h à New York, y est écrit 23:00). La ligue vient
+   du titre de la section (`h2.league-name`, « Upcoming NFL Streams Links »). La page de
+   match porte ses flux en boutons changeStream(<id>) : js/sources/aapmains.js. */
+export function parseMybuffstreams(html, pageUrl) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || MYBUFFSTREAMS_URL;
+    var out = [];
+    [].forEach.call(doc.querySelectorAll('a.competition[href]'), function(a) {
+        var nom = function(sel) { var n = a.querySelector(sel); return n ? n.textContent.replace(/\s+/g, ' ').trim() : ''; };
+        var affiche = { home: nom('.competition-cell-side1 .name'), away: nom('.competition-cell-side2 .name') };
+        /* Combat (/title-game/…) : pas de colonnes, une ligne « A vs B - 11:00 AM ET » et
+           une date seulement relative (« 22 hours from now ») : l'heure est gardée sans date. */
+        var heureET = '';
+        if (!affiche.home || !affiche.away) {
+            var ligne = nom('div') || (a.getAttribute('title') || '').replace(/^Buffstreams\s+/i, '');
+            var hm = /\s+-\s+(\d{1,2}):(\d{2})\s*(AM|PM)\s*ET\s*$/i.exec(ligne);
+            if (hm) {
+                var hh = (+hm[1]) % 12 + (/pm/i.test(hm[3]) ? 12 : 0);
+                heureET = (hh < 10 ? '0' : '') + hh + ':' + hm[2];
+                ligne = ligne.slice(0, hm.index);
+            }
+            affiche = separerAffiche(ligne);
+        }
+        if (!affiche || affiche.home.length < 2) return;
+        var t = a.querySelector('time[datetime]');
+        var dm = t ? /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(t.getAttribute('datetime')) : null;
+        var quand = dm ? new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3], +dm[4], +dm[5])) : null;
+        var bloc = a.closest ? a.closest('.top-tournament') : null;
+        var h2 = bloc ? bloc.querySelector('h2.league-name') : null;
+        var league = h2 ? h2.textContent.replace(/^\s*(upcoming|live)\s+/i, '').replace(/\s*streams?\s*links?\s*$/i, '').trim() : '';
+        if (!league) league = ((/^https?:\/\/[^/]+\/([a-z0-9-]+)\//i.exec(a.href || '') || [])[1] || 'Sports');
+        var matchUrl = resolveUrl(a.getAttribute('href'), base);
+        if (!/^https?:\/\//.test(matchUrl) || out.some(function(x) { return x.matchUrl === matchUrl; })) return;
+        var live = !!a.querySelector('.live-color');
+        var mm = matchDeSource('mybuffstreams', league, affiche, quand, live ? 'live' : 'upcoming', matchUrl, [], 'mbs_' + out.length);
+        if (!quand && heureET) mm.startTime = heureET;
+        out.push(mm);
+    });
+    return out;
+}
+
+/* ── freestreams (freestreams-live1i.pk, page football) ───────────────────────
+   Un tableau WordPress, une ligne par match, tout dans la ligne :
+     <tr data-timestamp="1791556200000"> … <span class="leaguename">Second League</span>
+       <td class="event-title"><span>Yantra vs Vihren Sandanski</span></td>
+       <div class="buttoncontainer"><a href="https://freestreams-live1h.pk/diemasport/">Diema Sport (BG)</a>
+   L'instant est en millisecondes UTC. Les boutons mènent aux pages de CHAÎNE du site,
+   qui encadrent le lecteur (et refusent d'être ouvertes hors d'un cadre) : elles sont
+   gardées telles quelles, en liens de programme — y compris sur l'ancien domaine (live1h),
+   qui redirige : les réécrire sur celui de la page les envoyait, le jour où la page se
+   déclarait ailleurs, vers un domaine au certificat invalide. Les autres
+   sports du site sont du texte libre, souvent périmé : non lus. */
+export function parseFreestreams(html, pageUrl) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || FREESTREAMS_URL;
+    var out = [];
+    [].forEach.call(doc.querySelectorAll('tr[data-timestamp]'), function(tr) {
+        var ms = Number(tr.getAttribute('data-timestamp'));
+        if (!(ms > 0)) return;
+        var titre = tr.querySelector('td.event-title span');
+        var affiche = separerAffiche(titre ? titre.textContent : '');
+        if (!affiche) return;
+        var ligue = tr.querySelector('.leaguename');
+        var liens = [];
+        // Toutes les ancres de la ligne : son HTML est mal imbriqué (</td></div>), et une fois
+        // analysé, la plupart des boutons ne sont plus DANS .buttoncontainer.
+        [].forEach.call(tr.querySelectorAll('a[href]'), function(a) {
+            if (/^(#|javascript:)/i.test(a.getAttribute('href') || '')) return;
+            var url = a.getAttribute('href') || '';
+            try { url = new URL(url, base).href; } catch (e) { return; }
+            if (/^https?:\/\//.test(url) && !liens.some(function(l) { return l.url === url; })) liens.push({ name: (a.textContent || '').replace(/\s+/g, ' ').trim() || 'Chaîne', url: url, source: 'freestreams', programme: true });
+        });
+        if (!liens.length) return;
+        out.push(matchDeSource('freestreams', ligue ? ligue.textContent.trim() : 'Soccer', affiche, new Date(ms), 'upcoming', base, liens, 'fs_' + out.length));
+    });
+    return out;
+}
+
+/* ── roxiestreams (roxiestreams.su) ────────────────────────────────────────────
+   Une page par sport, un tableau :
+     <tr><td><a href="/soccer-streams-15">Al Kholood vs Al Quadisiya</a></td>
+         <td class="event-start-time">October 9, 2026 6:50 AM</td></tr>
+   L'heure est celle du Pacifique (le script du site la lit en UTC−7 ; Al Fateh–Al Ahli,
+   14:55 UTC, y est écrit 7:55 AM). Les pages « soccer-streams-15 » sont des emplacements
+   réutilisés d'un jour à l'autre, pas des pages de match : chacune joue une CHAÎNE (voir
+   js/sources/roxiestreams.js). */
+var MOIS_LONGS = { january: 0, february: 1, march: 2, april: 3, may: 4, june: 5, july: 6, august: 7, september: 8, october: 9, november: 10, december: 11 };
+var SPORT_ROXIE = { soccer: 'Soccer', nba: 'NBA', nfl: 'NFL', nhl: 'NHL', mlb: 'MLB', fighting: 'UFC', motorsports: 'Motorsport' };
+export function parseRoxiestreams(html, pageUrl) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || ROXIESTREAMS_URL;
+    var cle = ((/^https?:\/\/[^/]+\/([a-z]+)\/?$/i.exec(base) || [])[1] || '').toLowerCase();
+    var out = [];
+    [].forEach.call(doc.querySelectorAll('tbody tr'), function(tr) {
+        var a = tr.querySelector('td a[href]');
+        var t = tr.querySelector('td.event-start-time');
+        if (!a || !t) return;
+        var affiche = separerAffiche(a.textContent);
+        if (!affiche) return;
+        var dm = /([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(t.textContent || '');
+        var quand = null;
+        if (dm && MOIS_LONGS[dm[1].toLowerCase()] !== undefined) {
+            var hh = (+dm[4]) % 12 + (/pm/i.test(dm[6]) ? 12 : 0);
+            var naive = new Date(Date.UTC(+dm[3], MOIS_LONGS[dm[1].toLowerCase()], +dm[2], hh, +dm[5]));
+            quand = new Date(naive.getTime() - zoneOffsetMinutes(naive, 'America/Los_Angeles') * 60000);
+        }
+        var sport = SPORT_ROXIE[cle] || SPORT_ROXIE[((/\/([a-z]+)-streams/i.exec(a.getAttribute('href')) || [])[1] || '').toLowerCase()] || 'Sports';
+        var matchUrl = resolveUrl(a.getAttribute('href'), base);
+        if (!/^https?:\/\//.test(matchUrl)) return;
+        out.push(matchDeSource('roxiestreams', sport, affiche, quand, 'upcoming', matchUrl, [], 'rox_' + out.length));
+    });
+    return out;
+}
+
+/* ── watchsports.su ────────────────────────────────────────────────────────
+   Une ligne par match, tout est dans l'ancre :
+     <a href="/football/tur.1/401888280" class="game-row matchup is-live"
+        aria-label="Galatasaray vs Kasimpasa - 10/09 01:00 PM - 9 streams - Turkish Super Lig">
+       <time datetime="2026-10-09T13:00:00-04:00">…
+   L'heure ISO porte son décalage : un instant. La ligue d'un match de football est la
+   compétition (dernier segment du libellé) ; ailleurs, c'est le sport de l'adresse. La page
+   de match liste ses flux en ancres `a.stream-link`, que l'extracteur générique lit. */
+var LIGUE_WATCHSPORTS = { cfb: 'College Football', nfl: 'NFL', nba: 'NBA', wnba: 'WNBA', nhl: 'NHL', mlb: 'MLB', ncaab: 'NCAAB',
+    tennis: 'Tennis', cricket: 'Cricket', rugby: 'Rugby', golf: 'Golf', nascar: 'NASCAR', f1: 'Formula 1', mma: 'UFC', ufc: 'UFC', boxing: 'Boxing' };
+export function parseWatchsports(html, pageUrl) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || WATCHSPORTS_URL;
+    var out = [];
+    [].forEach.call(doc.querySelectorAll('a.game-row[href]'), function(a) {
+        var label = a.getAttribute('aria-label') || '';
+        var parts = label.split(' - ');
+        var affiche = separerAffiche(parts[0]);
+        if (!affiche) return;
+        var href = a.getAttribute('href') || '';
+        var sport = (/^\/([a-z0-9]+)\//i.exec(href) || [])[1] || '';
+        var league = sport === 'football' ? (parts.length > 1 ? parts[parts.length - 1].trim() : 'Soccer') : (LIGUE_WATCHSPORTS[sport] || parts[parts.length - 1] || 'Sports');
+        var t = a.querySelector('time[datetime]');
+        var quand = t ? new Date(t.getAttribute('datetime')) : null;
+        if (quand && isNaN(quand.getTime())) quand = null;
+        var matchUrl = resolveUrl(href, base);
+        if (out.some(function(x) { return x.matchUrl === matchUrl; })) return;
+        var statut = /\bis-live\b/.test(a.className) ? 'live' : (/\bis-(?:final|ended|post)\b/.test(a.className) ? 'finished' : 'upcoming');
+        out.push(matchDeSource('watchsports', league, affiche, quand, statut, matchUrl, [], 'ws_' + out.length));
+    });
+    return out;
+}
+
+/* ── isportsurge.ws ────────────────────────────────────────────────────────
+   Pas un miroir de Sportsurge malgré le nom : un autre gabarit. Une ligne par match,
+   l'affiche n'est écrite que dans le texte de l'image de la flèche :
+     <a class="row MaclariListele" href="https://isportsurge.ws/watch/nhl/pittsburgh-penguins-columbus-blue-jackets/442015584">
+       … <img alt="Watch NHL: Columbus Blue Jackets vs Pittsburgh Penguins" …>
+   L'heure n'est donnée qu'en relatif (« 7 hours from now ») : pas d'heure, la date se
+   referme alors sur le calendrier (isMatchPair). */
+export function parseIsportsurge(html, pageUrl) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var base = pageUrl || ISPORTSURGE_URL;
+    var out = [];
+    [].forEach.call(doc.querySelectorAll('a[href*="/watch/"]'), function(a) {
+        var img = a.querySelector('img[alt^="Watch "]');
+        if (!img) return;
+        var m = /^Watch\s+([^:]+):\s*(.+)$/.exec(img.getAttribute('alt') || '');
+        if (!m) return;
+        var affiche = separerAffiche(m[2]);
+        if (!affiche) return;
+        var matchUrl = resolveUrl(a.getAttribute('href'), base);
+        if (!/^https?:\/\//.test(matchUrl) || out.some(function(x) { return x.matchUrl === matchUrl; })) return;
+        var live = /\blive\b/i.test(a.textContent || '') && !/from now/i.test(a.textContent || '');
+        out.push(matchDeSource('isportsurge', m[1].trim(), affiche, null, live ? 'live' : 'upcoming', matchUrl, [], 'isp_' + out.length));
+    });
+    return out;
 }
 
 /* ══ PARSE FLEXFITNESS ════════════════
@@ -2326,12 +2833,18 @@ function isJunkStreamLabel(name) {
    Vérifié avant d'écrire la règle, sur les 2 479 adresses distinctes de trois relevés du
    cache : elle reconnaît exactement les cinq zones de régie observées, et AUCUN vrai
    lecteur — il n'existe dans ces données aucun lecteur à chemin purement numérique. */
-var ZONE_DE_REGIE = /^\/\d{1,2}\/\d{5,}\/*$/;
+/* Même famille, identifiant en hexadécimal (9 octobre 2026) : budgetezy.org/4/192e…11c8
+   sur olympicweb et VIPLeague, knowacaliforniafarmer.com/4/277c…b568 sur TotalSportek,
+   présentés comme « BE1 NFA v Dainava Alytus » ou « Dragons vs Ospreys FULL ». */
+var ZONE_DE_REGIE = /^\/\d{1,2}\/(\d{5,}|[0-9a-f]{24,})\/*$/i;
 
 /* Une page légale ou institutionnelle, ou une zone de régie, reconnue à son chemin. */
 export function isJunkStreamPath(url) {
     var path = '';
     try { path = new URL(url).pathname; } catch (e) { return false; }
+    /* L'iframe VIDE du moteur de mybuffstreams/isportsurge (…/new-stream-embed/ sans
+       identifiant) : un lecteur sans flux, que le moteur générique ramasse. */
+    if (/\/new-stream-embed\/?$/i.test(path)) return true;
     return JUNK_PATH_LEGAL.test(path) || ZONE_DE_REGIE.test(path);
 }
 
@@ -2404,6 +2917,13 @@ export function finalizeStreamLinks(links) {
             if (deballe && deballe !== u) u = deballe;
         }
 
+        /* Relais de TotalSportek : hitcast.st/totview.php?src=<lecteur> ne fait qu'encadrer
+           le lecteur désigné. Déballé ici pour la même raison que les enveloppes OnHockey :
+           le moteur générique ramasse l'ancre brute après l'adaptateur. */
+        if (/\/totview\.php\?/i.test(u)) {
+            try { var srcRelais = new URL(u).searchParams.get('src'); if (srcRelais && /^https?:\/\//i.test(srcRelais)) u = srcRelais; } catch (e) {}
+        }
+
         /* `standings_lr.php` est la page de CLASSEMENT d'OnHockey : jamais un flux. Elle
            représentait à elle seule 231 des 396 liens onhockey du cache. */
         if (/onhockey\.tv\/standings_lr\.php/i.test(u)) return;
@@ -2469,7 +2989,7 @@ export function extractStreamLinks(html, m) {
                     memeMatch: isMatchPair, parseListe: PARSEURS_DE_LISTE[adaptateur.hotes[0]]
                 }
             }) || [];
-            for (var iA = 0; iA < trouves.length; iA++) links.push(trouves[iA]);
+            for (var iA = 0; iA < trouves.length; iA++) { if (trouves[iA]) trouves[iA].parAdaptateur = true; links.push(trouves[iA]); }
         } catch (e) { lg('Adaptateur en échec ' + pageHost, e && e.message); }
     }
     /* Combien de liens l'adaptateur a rendus. Sur un domaine dont la « page de match »
@@ -2753,7 +3273,7 @@ export function extractStreamLinks(html, m) {
     var selfOrigin = '';
     try { selfOrigin = new URL(m.matchUrl).origin; } catch(e) {}
     var seenNormalized = {};
-    var partnerHosts = ['footybite', 'nbabite', 'nflbite', 'mlbbite', 'totalsportek', 'sportsurge', 'buffstreams', 'streameast', 'methstreams', 'vipleague', 'hesgoal', 'flexfitness'];
+    var partnerHosts = ['footybite', 'nbabite', 'nflbite', 'mlbbite', 'totalsportek', 'sportsurge', 'buffstreams', 'streameast', 'methstreams', 'vipleague', 'hesgoal', 'flexfitness', 'total-sportekk', 'olympicweb', 'fbstream', 'watchsports'];
     links = links.filter(function(l) {
         if (!l || !l.url || typeof l.url !== 'string') return false;
         var u = l.url.trim();
@@ -2838,6 +3358,12 @@ export function extractStreamLinks(html, m) {
        AJOUTÉ. Et si l'adaptateur n'a rien retenu, il reste zéro lien — le repli en bas
        de cette fonction proposera alors la page du match, qui est la réponse honnête. */
     if (adaptateur && adaptateur.pageEstUneGrille) links = links.slice(0, nAdaptateur);
+    /* Un domaine dont l'adaptateur connaît TOUTES les diffusions (olympicweb, fbstream :
+       des boutons data-uri) : ce que le moteur générique trouve en plus n'est que la
+       navigation du site et sa publicité (« Live Football », une régie /4/…). */
+    if (adaptateur && adaptateur.seulementSesLiens && links.some(function(l) { return l && l.parAdaptateur; })) {
+        links = links.filter(function(l) { return l && l.parAdaptateur; });
+    }
 
     links = finalizeStreamLinks(links); // dédoublonnage, faux liens, provenance
 
@@ -3216,3 +3742,37 @@ window.fetchSubPages = fetchSubPages;
 window.scrapeMatchFlux = scrapeMatchFlux;
 window.updateMatchUiAfterScrape = updateMatchUiAfterScrape;
 window.getEmbedRegistry = getEmbedRegistry;
+
+/* Quel parseur lit quelle source : la SEULE table. Elle était recopiée dans js/main.js,
+   scripts/scrape_streams.mjs et scripts/sonder_domaine.mjs, et une source ajoutée à l'une
+   manquait aux autres. `SOURCES_SERVEUR_SEULEMENT` : celles que le navigateur ne lit pas
+   (API d'un autre domaine sans en-tête CORS, ou page trop lourde pour un proxy public). */
+export function parseCrichd(html, pageUrl) { return parseGenerique(html, pageUrl, 'crichd'); }
+export var PARSEURS = {
+    footybite: parseFootybite,
+    mlbbite: parseMlbbite,
+    sportsurge: parseSportsurge,
+    buffstreams: parseBuffstreams,
+    streameast: parseStreameast,
+    onhockey: parseOnHockey,
+    vipleague: parseVipleague,
+    methstreams: parseMethstreams,
+    streamed: parseStreamed,
+    flexfitness: parseFlexfitness,
+    liveleagues: parseLiveleagues,
+    ppv: parsePpv,
+    daddylive: parseDaddylive,
+    watchsports: parseWatchsports,
+    isportsurge: parseIsportsurge,
+    crichd: parseCrichd,
+    cdnlivetv: parseCdnlivetv,
+    bintv: parseBintv,
+    olympicweb: parseOlympicweb,
+    fbstream: parseOlympicweb,
+    totalsportek: parseTotalsportek,
+    watchfooty: parseWatchfooty,
+    mybuffstreams: parseMybuffstreams,
+    freestreams: parseFreestreams,
+    roxiestreams: parseRoxiestreams
+};
+export var SOURCES_SERVEUR_SEULEMENT = ['streamed', 'ppv', 'daddylive', 'cdnlivetv', 'watchfooty'];
