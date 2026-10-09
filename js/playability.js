@@ -491,3 +491,64 @@ export function ciblesDeRehabilitation(ecartes, max) {
         .slice(0, n)
         .map(function (h) { return { host: h, target: ecartes[h].echantillon, ecarte: true }; });
 }
+
+/* RÉPUTATION CONTINUE (9 octobre 2026, « tu peux utiliser la réputation des sites pour
+   classer l'ordre d'apparition des streams ? »).
+
+   `playabilityScore` range les liens en cinq paliers. Le palier 1 mélangeait ce qu'on
+   savait et ce qu'on ignorait : un hôte jamais éprouvé, un hôte qui joue une fois sur
+   quatre, un hôte à 9 sur 32 — tous au même rang, départagés ensuite par la seule
+   qualité ANNONCÉE. Cette fonction rend un taux de lecture estimé, de 0 à 1, qui sert à
+   ordonner À L'INTÉRIEUR d'un palier :
+
+   - l'hôte d'abord, si on l'a éprouvé : (lectures + 4·p) / (essais + 4), p = 1/3 — un
+     a priori d'une lecture sur trois qui pèse comme quatre essais, et empêche un 1 sur 1
+     chanceux (0,47) de passer devant un 17 sur 34 éprouvé (0,48) ;
+   - sinon la SOURCE qui a fourni le lien (l'agrégateur : ppv, daddylive, fbstream…),
+     même formule sur ce que ses liens ont donné : une source dont les lecteurs jouent
+     souvent fait passer ses hôtes inconnus devant ceux d'une source qui ne livre que des
+     pages mortes ;
+   - sinon l'a priori seul, 1/3.
+
+   Un lien vu jouer vaut 1. Pure : registres reçus en arguments. */
+export var REPUTATION_A_PRIORI = 1 / 3;
+var POIDS_A_PRIORI = 4;
+
+function tauxLisse(e) {
+    if (!e || (e.tested | 0) <= 0) return null;
+    return ((e.plays | 0) + POIDS_A_PRIORI * REPUTATION_A_PRIORI) / ((e.tested | 0) + POIDS_A_PRIORI);
+}
+
+export function reputationLien(link, ledger, sources) {
+    if (!link) return 0;
+    if (link.verified === 'plays') return 1;
+    var hote = tauxLisse(ledger && ledger[hostOfUrl(tileTarget(link))]);
+    if (hote !== null) return hote;
+    var source = tauxLisse(sources && link.source ? sources[link.source] : null);
+    if (source !== null) return source;
+    return REPUTATION_A_PRIORI;
+}
+
+/* La réputation de chaque SOURCE déduite du registre des hôtes, quand le registre par
+   source n'existe pas encore (premiers passages) : pour chaque source, la somme des
+   essais et des lectures des hôtes DISTINCTS vers lesquels pointent ses liens. Un hôte
+   compte une fois par source, quel que soit le nombre de ses liens — sinon une source
+   qui pose cinquante liens sur le même hôte mort pèserait cinquante fois son verdict. */
+export function reputationParSource(matches, ledger) {
+    var vus = {}, out = {};
+    (matches || []).forEach(function (m) {
+        ((m && m.streamLinks) || []).forEach(function (l) {
+            if (!l || !l.source) return;
+            var h = hostOfUrl(tileTarget(l));
+            var e = h && ledger && ledger[h];
+            if (!e || (e.tested | 0) <= 0) return;
+            var cle = l.source + '|' + h;
+            if (vus[cle]) return;
+            vus[cle] = true;
+            var t = out[l.source] || (out[l.source] = { tested: 0, plays: 0 });
+            t.tested += e.tested | 0;
+            t.plays += e.plays | 0;
+        });
+    });
+    return out;
+}

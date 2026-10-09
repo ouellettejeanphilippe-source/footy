@@ -7,6 +7,7 @@ import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES,
 import { PARSEURS, SOURCES_SERVEUR_SEULEMENT, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry, scrapeMatchFlux } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { retenirMediaDirect } from './directmedia.js';
+import { reputationParSource } from './playability.js';
 import { mergeMatches } from './match.js';
 import { appartientALaFenetre, jourDepasse, DUREE_LARGE_MIN } from './nuit.js';
 import { etatCacheServeur, rattrapageNecessaire, ciblesDeRattrapage, CIBLES_AVEC_PONT, CIBLES_SANS_PONT, INTERVALLE_RATTRAPAGE_MS } from './rattrapage.js';
@@ -395,6 +396,10 @@ function appliquerCacheServeur(data) {
     window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {}, verifiedAt: data.verifiedAt || null };
     // Jouabilité observée par le serveur (scripts/verify_players.mjs) : lue par sortFluxLinks.
     window.hostPlayLedger = (data.hostPlay && typeof data.hostPlay === 'object') ? data.hostPlay : {};
+    // Le registre par source : départage, dans un palier, les hôtes jamais éprouvés (reputationLien).
+    window.sourcePlayLedger = (data.sourcePlay && typeof data.sourcePlay === 'object' && Object.keys(data.sourcePlay).length)
+        ? data.sourcePlay
+        : reputationParSource(data.matches, window.hostPlayLedger);   // pas encore de registre par source : déduit des hôtes
     semerLesDirectsDuServeur(list);
     window.prefetchedStreamsLoadedAt = Date.now();
     /* Le bandeau dit l'âge du cache dès qu'on le connaît (js/ui.js, majBandeauCache) :

@@ -182,6 +182,12 @@ if (critereStocke !== play.CRITERE_VERDICT) {
 } else {
     ledger = play.mergeLedgers(data.hostPlay || {}, {});
 }
+/* Le même registre, par SOURCE (l'agrégateur qui a fourni le lien) : il classe les liens
+   dont l'hôte n'a jamais été éprouvé (reputationLien, js/playability.js). Remis à zéro
+   avec l'autre quand la règle du verdict change. */
+let ledgerSources = critereStocke !== play.CRITERE_VERDICT ? {} : play.mergeLedgers(data.sourcePlay || {}, {});
+// Premier passage : amorcé sur ce que le registre des hôtes dit déjà des liens de chaque source.
+if (!Object.keys(ledgerSources).length) ledgerSources = play.reputationParSource(data.matches, ledger);
 const parHote = {};
 
 async function worker() {
@@ -197,6 +203,7 @@ async function worker() {
             data.hotesEcartes[t.host].verdict = verdict;
         } else {
             const link = data.matches[t.matchIndex].streamLinks[t.linkIndex];
+            if (link.source) play.recordObservation(ledgerSources, String(link.source), verdict);
             link.verified = verdict;
             link.verifiedAt = new Date().toISOString();
             /* L'adresse du flux, quand on l'a vue arriver : elle permet au mode direct
@@ -229,6 +236,7 @@ try { await browser.close(); } catch (e) {}
 
 // ── Écriture ──────────────────────────────────────────────────────────────────
 data.hostPlay = ledger;
+data.sourcePlay = ledgerSources;
 // La règle sous laquelle CE registre a été gagné. Un passage qui lira une autre
 // valeur repartira de zéro plutôt que de faire confiance à des compteurs anciens.
 data.hostPlayCritere = play.CRITERE_VERDICT;

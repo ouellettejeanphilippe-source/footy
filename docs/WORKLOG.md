@@ -19,6 +19,23 @@
   - **Fichiers** : `js/multiview.js`, `js/mv-menu.js`, `styles.css`, `tests/unit_lecteurfluide.test.js`, `tests/unit_lecteurinteractions.test.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `README.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v41`.
 
   - **Ce qui reste.** Une page encadrée garde ses mouvements de souris pour elle : en survolant longtemps une vidéo sans en sortir, les commandes s'effacent au bout de 3 s. Un geste au-dessus de la barre ou une nouvelle entrée dans la tuile les rappelle. Le son des vidéos continue lecteur masqué : à revoir si l'utilisateur préfère le couper.
+- 2026-10-09 - **« Tu peux utiliser la réputation des sites pour classer l'ordre d'apparition des streams ? »**
+
+  - **Avant.** Les liens étaient rangés en cinq paliers d'observation, puis par qualité annoncée. Dans le palier « inconnu », un hôte jamais testé, un hôte à une lecture sur quatre et un lien d'un agrégateur qui ne joue jamais étaient à égalité.
+
+  - **Maintenant.** `reputationLien` (`js/playability.js`) départage, à l'intérieur d'un palier et avant la qualité annoncée :
+    - d'abord le taux de lecture lissé de l'hôte ;
+    - à défaut, celui de la source qui a fourni le lien ;
+    - à défaut, un tiers.
+
+  - **Registre par source.** `sourcePlay` est tenu par la vérification, reporté par le scrape, et amorcé depuis le registre des hôtes (`reputationParSource`). Le navigateur ajoute ses propres observations dans `play_ledger_sources`.
+
+  - **Sur les données du jour.** En tête : daddylive 20/20, bintv 19/20, cdnlivetv 9/10, freestreams 16/23, footybite 541/995. En queue : methstreams 0/40, mlbbite 0/29, vipleague 0/24, streameast 0/23.
+
+  - **Tests** : `unit_playability`, groupes 8 et 9.
+
+  - **Fichiers** : `js/playability.js`, `js/config.js`, `js/main.js`, `scripts/verify_players.mjs`, `scripts/scrape_streams.mjs`, `tests/unit_playability.test.js`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v41`.
+
 - 2026-10-09 - **« Le but de cette discussion, c'est intégrer toutes les sources de façon fonctionnelle. » — « Si c'est possible de faire que la mise à jour des liens se fasse plus rapidement… et de pouvoir le faire manuellement si GitHub chie. »**
 
   - **Enquête par site.** Cinq agents ont relevé, pour chaque domaine restant de la liste, où vit la grille et comment s'obtiennent les lecteurs. Le détail est dans `docs/ARCHITECTURE.md` §6.2.
