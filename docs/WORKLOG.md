@@ -2,6 +2,20 @@
 ## En cours
 
 ## Fait
+- 2026-10-09 - **« La mise à jour des liens semble se faire difficilement. »**
+
+  - **Constat.** `data/streams.json` datait du 6 octobre à 19:21 UTC : plus aucun passage depuis. Le passage 887 a réussi son scrape, mais son job `relais` a reçu un HTTP 500 de l'API GitHub sur la relance (19:49:06). Un seul essai : la chaîne s'est arrêtée. Le cron, censé la rétablir, ne tournait plus : aucune exécution `schedule` d'aucun workflow du dépôt depuis le 20-21 septembre (ni ce workflow, ni le calendrier quotidien, ni la surveillance des domaines). Les workflows sont pourtant marqués « active ».
+
+  - **Correctif.** La relance du relais est réessayée six fois (30 s, 60 s, … 180 s d'écart). Avant chaque essai, on vérifie qu'aucun passage n'est en route, parce qu'une erreur de l'API n'empêche pas forcément sa création. Après six échecs, le job sort en erreur avec un message explicite. Passage relancé à la main le 9 octobre pour repartir.
+
+  - **Vérifié** : boucle simulée avec un faux `gh` qui échoue deux fois, puis réussit au troisième essai.
+
+  - **Test** : `unit_workflowliens`, groupe 6 (nouveau ; il tombe sur l'ancien workflow).
+
+  - **Fichiers** : `.github/workflows/scrape_streams.yml`, `tests/unit_workflowliens.test.js`, `docs/ARCHITECTURE.md`.
+
+  - **Ce qui reste.** Le cron ne tourne plus du tout. Cause côté GitHub, inconnue. Ce changement de `scrape_streams.yml` réenregistre peut-être son cron à la fusion. Sinon, pour chaque workflow planifié : Actions → workflow → « ⋯ » → Disable, puis Enable. Tant que le cron est mort, si le runner du relais est perdu, il faut relancer à la main.
+
 - 2026-10-04 - **« Ça unmute avec plusieurs players mais pas un. »**
 
   - **Cause.** L'iframe d'une tuile ne recevait son identifiant (`mv-iframe-N`) qu'au redessin SUIVANT de la grille. Elle est posée après `resolveStreamUrl`, donc après le redessin en cours. Avec plusieurs vidéos, chaque ajout redessine et les cadres finissent par l'avoir. Avec une seule ajoutée depuis le guide, rien ne venait après : `cadreDeTuile(0)` ne trouvait rien. Le signal « joue » du script n'était rattaché à aucune tuile, les clics non plus, et `mv_unmute` n'était jamais envoyé.

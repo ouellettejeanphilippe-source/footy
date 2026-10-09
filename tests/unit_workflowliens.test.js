@@ -102,6 +102,26 @@ function main() {
         'le second ne touche qu\'au cache, seul fichier que la vérification écrit');
     ok('chaque commit emporte exactement ce que son étape a produit');
 
+    // ── 6. Le relais réessaie sa relance ─────────────────────────────────────
+    /* Le 6 octobre 2026, `gh workflow run` a reçu un HTTP 500 : un seul essai, la chaîne
+       s'est arrêtée, et le cron ne tournait plus depuis le 20 septembre. Les liens sont
+       restés figés deux jours et demi. La relance doit être dans une boucle d'essais, et
+       chaque essai doit d'abord vérifier qu'un passage n'existe pas déjà (une erreur de
+       l'API n'empêche pas forcément la création du passage). */
+    const relais = source.slice(source.indexOf('\n  relais:'));
+    assert.ok(relais.length > 20, 'le job relais existe');
+    const boucle = /for essai in ([\d ]+); do([\s\S]*?)\n\s*done/.exec(relais);
+    assert.ok(boucle, 'la relance est dans une boucle d\'essais');
+    assert.ok(boucle[1].trim().split(/\s+/).length >= 3, 'au moins trois essais');
+    const corps = boucle[2];
+    assert.ok(/gh workflow run scrape_streams\.yml/.test(corps), 'la relance est dans la boucle');
+    assert.ok(corps.indexOf('autres') < corps.indexOf('gh workflow run'),
+        'chaque essai vérifie d\'abord qu\'aucun passage n\'est déjà en route');
+    assert.ok(/sleep/.test(corps), 'les essais sont espacés');
+    assert.strictEqual((relais.match(/gh workflow run/g) || []).length, 1,
+        'aucune relance hors de la boucle');
+    ok('le relais réessaie sa relance au lieu de casser la chaîne');
+
     console.log(`unit_workflowliens: ${n} groupes de tests OK`);
 }
 
