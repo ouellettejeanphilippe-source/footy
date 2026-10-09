@@ -140,6 +140,48 @@ async function main() {
   assert.strictEqual(im[0].league, 'NHL');
   ok('isportsurge : l\'affiche est lue dans le texte de l\'image');
 
+  // ── cdnlivetv ────────────────────────────────────────────────────────────
+  {
+    const maintenant = Date.UTC(2026, 9, 9, 16, 0);
+    const api = JSON.stringify({ 'cdn-live-tv': {
+      NFL: [
+        { event: 'BC Lions vs Ottawa Redblacks', homeTeam: 'BC Lions', awayTeam: 'Ottawa Redblacks', tournament: 'CFL', status: 'NS', start: '2026-10-10 02:00',
+          channels: [{ channel_name: 'TSN 1 FHD CA', url: 'https://cdnlivetv.test/player/?name=TSN%201' }, { channel_name: 'TSN 1 FHD CA', url: 'https://cdnlivetv.test/player/?name=TSN%201' }] },
+        { event: 'Sans chaîne', homeTeam: 'A', awayTeam: 'B', status: 'NS', start: '2026-10-10 02:00', channels: [] },
+        { event: 'Annulé', homeTeam: 'Aa', awayTeam: 'Bb', status: 'CANC', start: '2026-10-10 02:00', channels: [{ url: 'https://x.test/' }] },
+        { event: 'En février', homeTeam: 'Aa', awayTeam: 'Bb', status: 'NS', start: '2027-02-07 23:30', channels: [{ url: 'https://x.test/' }] },
+      ],
+      total_events: 4, cached: true,
+    } });
+    const cd = S.parseCdnlivetv(api, 'https://api.cdnlivetv.test/', maintenant);
+    assert.strictEqual(cd.length, 1, 'sans chaîne, annulé, hors fenêtre de 48 h : écartés');
+    assert.strictEqual(cd[0].startTime, '22:00', '02:00 UTC = 22:00 la veille à New York');
+    assert.strictEqual(cd[0].matchDate, '2026-10-09');
+    assert.deepStrictEqual(cd[0].streamLinks.map((l) => l.name), ['TSN 1 FHD CA']);
+    assert.ok(cd[0].streamLinks[0].programme);
+    ok('cdnlivetv : événements avec chaînes, heure UTC, fenêtre de 48 h');
+  }
+
+  // ── bintv ────────────────────────────────────────────────────────────────
+  {
+    const api = JSON.stringify({
+      'Live Events': [{ name: 'Lens vs Olympique Lyonnais', category: 'Soccer', status: 'live', streams: [{ name: 'beIN SPORTS CONNECT', url: 'https://relais.test/?id=1' }] }],
+      'Upcoming Events': [
+        { name: 'Afghanistan vs Bangladesh in UAE 2026 - One-off Test - Afghanistan vs Bangladesh', category: 'Cricket', status: 'upcoming', streams: [{ name: 'Willow HD', url: 'https://relais.test/?id=2' }] },
+        { name: 'Werder Bremen @ Borussia Dortmund', category: 'Soccer', status: 'upcoming', streams: [{ name: 'DAZN', url: 'https://relais.test/?id=3' }] },
+        { name: 'Brighton &amp;amp; Hove Albion vs Fulham', category: 'Soccer', status: 'upcoming', streams: [] },
+      ],
+      '24/7 Channels': [{ name: 'Sky Sports', streams: [{ url: 'https://relais.test/?id=4' }] }],
+    });
+    const bt = S.parseBintv(api, 'https://bintvjson.test/');
+    assert.strictEqual(bt.length, 3, 'chaînes permanentes et événement sans flux écartés');
+    assert.strictEqual(bt[0].status, 'upcoming', 'le « live » de bintv, posé trop tôt, n\'est pas repris');
+    assert.ok(/afghanistan/i.test(bt[1].homeTeam) && /bangladesh/i.test(bt[1].awayTeam), 'le dernier segment qui oppose deux camps');
+    assert.ok(/dortmund/i.test(bt[2].homeTeam), '« visiteur @ local »');
+    assert.strictEqual(bt[0].startTime, '00:00', 'pas d\'heure : rattachement par les noms');
+    ok('bintv : événements à venir et en cours, sans heure, chaînes permanentes écartées');
+  }
+
   // ── crichd : le repli générique ──────────────────────────────────────────
   const cr = `<a href="/events/south-africa-vs-australia">South Africa vs Australia</a><a href="/events/india-vs-england">India vs England</a>`;
   assert.strictEqual(S.parseCrichd(cr, 'https://crichd.at/').length, 2);

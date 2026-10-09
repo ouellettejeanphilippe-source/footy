@@ -51,6 +51,8 @@ export var DADDYLIVE_URL = 'https://dlive.sx/';               // dlhd.pk et dadd
 export var WATCHSPORTS_URL = 'https://watchsports.su/';
 export var ISPORTSURGE_URL = 'https://isportsurge.ws/index8';  // sportsurge.ir y redirige
 export var CRICHD_URL = 'https://crichd.at/';
+export var CDNLIVETV_URL = 'https://api.cdnlivetv.is/api/v1/events/sports/?user=cdnlivetv&plan=free';   // l'API derrière streamsports99.su
+export var BINTV_URL = 'https://bintvjson.lovable.app/api/public/bintvjson';                             // l'API de bintv.cc
 
 
 /* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
@@ -78,7 +80,9 @@ export var SOURCE_MIRRORS = {
     daddylive: ['https://dlive.sx/', 'https://dlhd.pk/', 'https://daddylive.mov/'],
     watchsports: ['https://watchsports.su/', 'https://watch-sports.st/', 'https://watchsports-live.st/'],
     isportsurge: ['https://isportsurge.ws/index8', 'https://sportsurge.ir/'],
-    crichd: ['https://crichd.at/']
+    crichd: ['https://crichd.at/'],
+    cdnlivetv: ['https://api.cdnlivetv.is/api/v1/events/sports/?user=cdnlivetv&plan=free'],
+    bintv: ['https://bintvjson.lovable.app/api/public/bintvjson']
 };
 
 /* Clé de domains.json portant l'URL de chaque source. Exportée pour que le script
@@ -90,7 +94,7 @@ export var SOURCE_VAR_NAMES = {
     buffstreams: 'BUFFSTREAMS_URL', streameast: 'STREAMEAST_URL', onhockey: 'ONHOCKEY_URL', vipleague: 'VIPLEAGUE_URL',
     methstreams: 'METHSTREAMS_URL', streamed: 'STREAMED_URL', flexfitness: 'FLEXFITNESS_URL',
     liveleagues: 'LIVELEAGUES_URL', ppv: 'PPV_URL', daddylive: 'DADDYLIVE_URL', watchsports: 'WATCHSPORTS_URL',
-    isportsurge: 'ISPORTSURGE_URL', crichd: 'CRICHD_URL'
+    isportsurge: 'ISPORTSURGE_URL', crichd: 'CRICHD_URL', cdnlivetv: 'CDNLIVETV_URL', bintv: 'BINTV_URL'
 };
 
 /* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
@@ -132,6 +136,8 @@ export function applySourceUrl(id, url) {
         case 'watchsports': WATCHSPORTS_URL = url; break;
         case 'isportsurge': ISPORTSURGE_URL = url; break;
         case 'crichd': CRICHD_URL = url; break;
+        case 'cdnlivetv': CDNLIVETV_URL = url; break;
+        case 'bintv': BINTV_URL = url; break;
         default: return;
     }
     if (typeof window !== 'undefined') window[SOURCE_VAR_NAMES[id]] = url;
@@ -293,6 +299,48 @@ export function conserverSourcesMuettes(frais, publies, rapports, depuisJour) {
         conserves++;
     });
     return { matches: out, conserves: conserves };
+}
+
+/* Les liens d'un match dont la page n'a PAS été relue ce passage-ci reviennent du fichier
+   déjà publié (9 octobre 2026, « la mise à jour des liens est vraiment longue »).
+
+   Un passage rapide (`--horizon`, scripts/scrape_streams.mjs) ne relit que les pages des
+   matchs en direct ou imminents : ce sont les seules dont les liens changent d'heure en
+   heure. Sans ce report, un match de ce soir perdrait à chaque passage rapide les
+   lecteurs que le dernier passage complet avait trouvés sur sa page, pour ne garder que
+   ce que la grille de la source donne. Le même trou existait déjà, sans bruit, pour les
+   matchs au-delà de la borne `--limit`.
+
+   Apparié par `matchUrl` (l'adresse de la page, stable d'un passage à l'autre) ; un lien
+   déjà présent n'est pas dupliqué. `relus` : les `matchUrl` dont la page a été lue — eux
+   font foi, rien n'y est reporté. Une adresse PARTAGÉE par plusieurs matchs n'est pas une
+   page de match : c'est la grille d'OnHockey, l'API de ppv, le programme de daddylive, dont
+   tous les événements pointent au même endroit. Reporter par elle verserait les liens de
+   tous ces événements sur chacun : elle est ignorée. Rend le nombre de liens reportés. */
+export function reporterLiensNonRelus(matches, publies, relus) {
+    if (!publies || !Array.isArray(publies.matches)) return 0;
+    var lus = relus || {};
+    var avant = {}, vues = {};
+    publies.matches.forEach(function (p) {
+        if (!p || !p.matchUrl) return;
+        vues[p.matchUrl] = (vues[p.matchUrl] | 0) + 1;
+        if (Array.isArray(p.streamLinks) && p.streamLinks.length) avant[p.matchUrl] = p.streamLinks;
+    });
+    Object.keys(vues).forEach(function (u) { if (vues[u] > 1) delete avant[u]; });
+    var n = 0;
+    (matches || []).forEach(function (m) {
+        if (!m || !m.matchUrl || lus[m.matchUrl] || !avant[m.matchUrl]) return;
+        m.streamLinks = Array.isArray(m.streamLinks) ? m.streamLinks : [];
+        var deja = {};
+        m.streamLinks.forEach(function (l) { if (l && l.url) deja[l.url] = true; });
+        avant[m.matchUrl].forEach(function (l) {
+            if (!l || !l.url || deja[l.url]) return;
+            deja[l.url] = true;
+            m.streamLinks.push(l);
+            n++;
+        });
+    });
+    return n;
 }
 
 /* Nouvel ordre d'essai d'une source après une exécution, du plus prometteur au moins.
@@ -467,7 +515,11 @@ export const SCRAPERS_CONFIG = [
     { name: 'WatchSports', url: WATCHSPORTS_URL, id: 'watchsports' },
     { name: 'iSportsurge', url: ISPORTSURGE_URL, id: 'isportsurge' },
     // Cricket seulement ; pas de parseur dédié, le repli générique lit sa grille (parseCrichd).
-    { name: 'CricHD', url: CRICHD_URL, id: 'crichd' }
+    { name: 'CricHD', url: CRICHD_URL, id: 'crichd' },
+    /* API JSON, lecteurs fournis avec la grille, comme ppv : cdnlivetv (derrière
+       streamsports99.su) et bintv (bintv.cc, sans heure de coup d'envoi). */
+    { name: 'CDN Live TV', url: CDNLIVETV_URL, id: 'cdnlivetv' },
+    { name: 'BINTV', url: BINTV_URL, id: 'bintv' }
 ];
 
 /* Hôtes dont les pages de match ne répondent jamais depuis un serveur ou un proxy CORS :
@@ -1537,6 +1589,8 @@ window.DADDYLIVE_URL = DADDYLIVE_URL;
 window.WATCHSPORTS_URL = WATCHSPORTS_URL;
 window.ISPORTSURGE_URL = ISPORTSURGE_URL;
 window.CRICHD_URL = CRICHD_URL;
+window.CDNLIVETV_URL = CDNLIVETV_URL;
+window.BINTV_URL = BINTV_URL;
 window.PROXIES = PROXIES;
 window.toggleGlobalStats = toggleGlobalStats;
 window.openGlobalStatsFromMatch = openGlobalStatsFromMatch;

@@ -1,7 +1,7 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry } from './extractors.js';
 import { getBridgeStatus } from './embed-bridge.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, PPV_URL, DADDYLIVE_URL, WATCHSPORTS_URL, ISPORTSURGE_URL, CRICHD_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague, playLedger } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, PPV_URL, DADDYLIVE_URL, WATCHSPORTS_URL, ISPORTSURGE_URL, CRICHD_URL, CDNLIVETV_URL, BINTV_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague, playLedger } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
@@ -1346,6 +1346,82 @@ export function parseDaddylive(html, pageUrl) {
                 var quand = new Date(Date.UTC(y, mo, d0 + decalage, +hm[1], +hm[2]));
                 out.push(matchDeSource('daddylive', league || leagueOfTeamName(affiche.home) || 'Sports', affiche, quand, 'upcoming', base, liens, 'dl_' + out.length));
             });
+        });
+    });
+    return out;
+}
+
+/* ── cdnlivetv (api.cdnlivetv.is, derrière streamsports99) ───────────────────
+   { "cdn-live-tv": { Soccer: [ { event, homeTeam, awayTeam, tournament, status,
+       start: "2026-10-10 02:00", channels: [ { channel_name, url } ] } ], NFL: […], … } }
+   `start` est en UTC (vérifié sur des coups d'envoi connus : NFL à Londres 13:30, un
+   match de 13 h à New York listé 17:00). Le catalogue court sur des mois et la plupart
+   des événements n'ont encore aucune chaîne : on garde ceux qui en ont, dans la fenêtre
+   [-6 h, +48 h] autour de `maintenant`, hors annulés (CANC). Les chaînes sont des pages
+   de lecteur HLS autonomes, encadrables. */
+export function parseCdnlivetv(json, pageUrl, maintenant) {
+    var data;
+    try { data = JSON.parse(json); } catch (e) { return []; }
+    var racine = data && data['cdn-live-tv'];
+    if (!racine || typeof racine !== 'object') return [];
+    var now = maintenant || Date.now();
+    var out = [];
+    Object.keys(racine).forEach(function(sport) {
+        if (!Array.isArray(racine[sport])) return;
+        racine[sport].forEach(function(ev) {
+            if (!ev || /^(CANC|PST|ABD)$/i.test(ev.status || '') || !Array.isArray(ev.channels) || !ev.channels.length) return;
+            var dm = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(ev.start || '');
+            if (!dm) return;
+            var quand = new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3], +dm[4], +dm[5]));
+            var ecart = quand.getTime() - now;
+            if (ecart < -6 * 3600000 || ecart > 48 * 3600000) return;
+            var affiche = (ev.homeTeam && ev.awayTeam) ? { home: ev.homeTeam, away: ev.awayTeam } : separerAffiche(ev.event);
+            if (!affiche || String(affiche.home).length < 2) return;
+            var liens = [];
+            ev.channels.forEach(function(c) {
+                if (c && c.url && /^https?:\/\//.test(c.url) && !liens.some(function(l) { return l.url === c.url; })) liens.push({ name: c.channel_name || 'cdnlivetv', url: c.url, source: 'cdnlivetv', programme: true });
+            });
+            if (!liens.length) return;
+            var statut = ecart <= 0 ? 'live' : 'upcoming';
+            out.push(matchDeSource('cdnlivetv', ev.tournament || sport, affiche, quand, statut, pageUrl || CDNLIVETV_URL, liens, 'cdn_' + out.length));
+        });
+    });
+    return out;
+}
+
+/* ── bintv (bintvjson.lovable.app, l'API de bintv.cc) ─────────────────────────
+   { "Live Events": [ … ], "Upcoming Events": [ { name, category, status,
+       streams: [ { name, url } ] } ], "24/7 Channels": [ … ] }
+   AUCUNE heure : le match se rattache au calendrier par les noms seulement. Le statut
+   « live » y est posé trop tôt (Lens–Lyon « live » deux heures avant le coup d'envoi) :
+   il n'est pas repris, pour ne pas marquer en direct un match qui ne l'est pas encore. Le
+   titre est parfois long (« Afghanistan vs Bangladesh in UAE 2026 - One-off Test -
+   Afghanistan vs Bangladesh ») : le dernier segment qui oppose deux camps l'emporte. Le
+   texte peut être échappé plusieurs fois (&amp;amp;). Les lecteurs sont des pages
+   relais (bintv-sources.pages.dev) : le vrai lecteur refuse qui ne vient pas d'elles. */
+function desechapper(t) {
+    var s = String(t || ''), avant;
+    do { avant = s; s = s.replace(/&amp;/g, '&'); } while (s !== avant);
+    return s.replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+}
+export function parseBintv(json, pageUrl) {
+    var data;
+    try { data = JSON.parse(json); } catch (e) { return []; }
+    if (!data || typeof data !== 'object') return [];
+    var out = [];
+    ['Live Events', 'Upcoming Events'].forEach(function(cle) {
+        (Array.isArray(data[cle]) ? data[cle] : []).forEach(function(ev) {
+            if (!ev || !Array.isArray(ev.streams) || !ev.streams.length) return;
+            var segments = desechapper(ev.name).split(' - ');
+            var affiche = null;
+            for (var i = segments.length - 1; i >= 0 && !affiche; i--) affiche = separerAffiche(segments[i]);
+            if (!affiche || affiche.home.length < 2) return;
+            var liens = [];
+            ev.streams.forEach(function(s) {
+                if (s && s.url && /^https?:\/\//.test(s.url) && !liens.some(function(l) { return l.url === s.url; })) liens.push({ name: desechapper(s.name) || 'bintv', url: s.url, source: 'bintv', programme: true });
+            });
+            if (!liens.length) return;
+            out.push(matchDeSource('bintv', ev.category || 'Sports', affiche, null, 'upcoming', pageUrl || BINTV_URL, liens, 'bin_' + out.length));
         });
     });
     return out;
@@ -3473,6 +3549,8 @@ export var PARSEURS = {
     daddylive: parseDaddylive,
     watchsports: parseWatchsports,
     isportsurge: parseIsportsurge,
-    crichd: parseCrichd
+    crichd: parseCrichd,
+    cdnlivetv: parseCdnlivetv,
+    bintv: parseBintv
 };
-export var SOURCES_SERVEUR_SEULEMENT = ['streamed', 'ppv', 'daddylive'];
+export var SOURCES_SERVEUR_SEULEMENT = ['streamed', 'ppv', 'daddylive', 'cdnlivetv'];

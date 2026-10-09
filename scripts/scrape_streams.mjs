@@ -25,6 +25,11 @@ const NO_SUBPAGES = args.includes('--no-subpages');
    636 matchs scrapés dont 621 en direct ou à venir dépassaient déjà 400, et une source
    peut légitimement en livrer plusieurs centaines un jour chargé. */
 const LIMIT = (() => { const i = args.indexOf('--limit'); return i >= 0 ? parseInt(args[i + 1], 10) : 900; })();
+/* Passage RAPIDE (9 octobre 2026) : `--horizon N` ne relit que les pages des matchs en
+   cours ou qui commencent dans les N minutes — les seuls dont les liens bougent d'heure en
+   heure. Les autres gardent les liens du passage précédent (reporterLiensNonRelus,
+   js/config.js). Sans l'option, toutes les pages sont lues, comme avant. */
+const HORIZON = (() => { const i = args.indexOf('--horizon'); return i >= 0 ? parseInt(args[i + 1], 10) : null; })();
 
 // ── DOM simulé pour pouvoir importer les modules du client ─────────────────
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://ouellettejeanphilippe-source.github.io/footy/' });
@@ -203,6 +208,11 @@ const parsers = scrapers.PARSEURS;
 
 function hostOf(u) { try { return new URL(u).hostname.replace(/^(www|v2)\./, ''); } catch (e) { return String(u || ''); } }
 
+/* Chronométrage par phase : « c'est vraiment long » (9 octobre 2026) se mesure avant
+   de s'optimiser, et l'application de bureau lit ce journal. */
+const T0 = Date.now();
+const chrono = (etape) => console.log(`⏱ ${etape} : ${((Date.now() - T0) / 1000).toFixed(1)} s`);
+
 const today = getEstDateStrFromDate(new Date());
 const sourcesReport = [];
 let all = [];
@@ -310,8 +320,16 @@ async function readSourceAt(sc, home) {
 }
 
 // ── 1. Pages d'accueil + sous-pages par sport : découverte des matchs ──────
-for (const sc of sourcesActives()) {
+/* EN PARALLÈLE (9 octobre 2026, « la mise à jour des liens est vraiment longue »). Les
+   sources étaient lues l'une après l'autre : seize sites, dont certains avec quinze
+   sous-pages, attendaient chacun la fin du précédent. Elles sont indépendantes — chacune
+   ses hôtes, ses miroirs, son adresse — et la politesse envers chaque site est déjà tenue
+   par la régulation PAR HÔTE de `fetch` (deux requêtes en vol, écart minimal). Les
+   résultats sont fusionnés ensuite dans l'ordre de la configuration, pour que deux
+   passages identiques rendent la même grille. */
+async function lireUneSource(sc) {
     const t0 = Date.now();
+    let list = [];
     const rep = { id: sc.id, url: sc.url, ok: false, matches: 0, streams: 0, pages: 0, generiques: 0, error: null, ms: 0 };
     try {
         /* On juge une adresse sur les MATCHS qu'elle livre, pas sur son code HTTP. Un
@@ -336,7 +354,7 @@ for (const sc of sourcesActives()) {
         // des matchs (voir gagnantApresLecture, js/config.js).
         if (mirrorFindings[sc.id]) mirrorFindings[sc.id].winner = gagnantApresLecture(mirrorFindings[sc.id], read.list.length, home.url);
         rep.url = (mirrorFindings[sc.id] && mirrorFindings[sc.id].winner) || home.url;
-        const list = read.list;
+        list = read.list;
         list.forEach((m) => { m.source = m.source || sc.id; if (!m.matchDate) m.matchDate = today; });
         rep.ok = read.pages > 0;
         rep.pages = read.pages;
@@ -344,13 +362,16 @@ for (const sc of sourcesActives()) {
         /* Combien de pages ont dû passer par le repli générique : une source qui vit
            dessus a un parseur à réécrire, sans urgence puisqu'elle livre encore. */
         rep.generiques = read.generiques || 0;
-        all = match.mergeMatches(all, list);
-        console.log(`[${sc.id}] ${home.url} (${read.pages} pages) -> ${list.length} matchs`);
+        console.log(`[${sc.id}] ${home.url} (${read.pages} pages) -> ${list.length} matchs en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     } catch (e) {
         rep.error = String(e && e.message ? e.message : e).slice(0, 300);
         console.log(`[${sc.id}] ECHEC ${rep.error}`);
     }
     rep.ms = Date.now() - t0;
+    return { rep, list };
+}
+for (const { rep, list } of await Promise.all(sourcesActives().map(lireUneSource))) {
+    all = match.mergeMatches(all, list);
     sourcesReport.push(rep);
 }
 
@@ -358,12 +379,15 @@ for (const sc of sourcesActives()) {
    écrire quand même publierait un fichier VIDE pour tous les appareils jusqu'au passage
    suivant, à la place d'un fichier de liens encore bons. Même règle que le calendrier
    (scripts/scrape_schedule.mjs) : on ne touche à rien. */
+chrono('sources lues');
 if (!sourcesReport.some((s) => s.ok)) {
     console.log(`\nAucune des ${sourcesReport.length} sources n'a répondu : data/streams.json est laissé intact.`);
     process.exit(0);
 }
 
 // ── 2. Pages de match : extraction des flux (concurrence limitée) ──────────
+// Les pages relues ce passage-ci : leurs liens font foi (voir reporterLiensNonRelus).
+const pagesRelues = {};
 all = all.filter((m) => m && m.matchUrl && (m.homeTeam || m.awayTeam));
 /* Une date antérieure à la veille est une erreur de lecture (un « 2016-12-01 » traînait
    dans le fichier) : elle n'a rien à faire dans les liens du jour. */
@@ -400,9 +424,21 @@ if (!NO_SUBPAGES) {
         if (ra === 1) return enMinutes(a) - enMinutes(b);   // le plus proche du coup d'envoi d'abord
         return 0;
     });
-    const queue = all.slice(0, LIMIT);
+    const dansHorizon = (m) => {
+        if (HORIZON === null || m.status === 'live') return true;
+        if (m.status === 'finished') return false;
+        const mn = enMinutes(m);
+        return mn !== null && mn <= HORIZON && mn > -config.LIVE_MAX_DURATION_MIN;
+    };
+    const queue = all.filter(dansHorizon).slice(0, LIMIT);
+    queue.forEach((m) => { pagesRelues[m.matchUrl] = true; (m.altUrls || []).forEach((u) => { pagesRelues[u] = true; }); });
+    if (HORIZON !== null) console.log(`Passage rapide : ${queue.length} pages de match relues (en cours ou dans les ${HORIZON} min) sur ${all.length} matchs`);
 
-    const CONCURRENCY = 6;
+    /* 24 pages en vol (6 jusqu'au 9 octobre 2026) : la limite qui protège les sites est
+       celle PAR HÔTE (REGULATION.parHote), pas celle-ci. À 6, une file de 900 pages
+       réparties sur seize sites n'en lisait jamais plus de six à la fois, même quand
+       chaque site n'en avait qu'une ou deux en cours. */
+    const CONCURRENCY = 24;
     let idx = 0, done = 0;
 
     /* Plusieurs matchs peuvent partager la même page de match : c'est le cas
@@ -490,6 +526,7 @@ if (!NO_SUBPAGES) {
    pas le flux d'un match (voir adressesNonSpecifiques, js/match.js). Retiré ICI, une fois
    toutes les sources fusionnées : la règle a besoin de voir l'ensemble des matchs pour
    décider, ce qu'aucune page ne permet seule. */
+chrono('pages de match lues');
 const decor = match.adressesNonSpecifiques(all);
 const nDecor = match.retirerLiensDeDecor(all, decor);
 if (nDecor) {
@@ -648,6 +685,10 @@ out.hostPlay = (precedent && precedent.hostPlay) || {};
 // `verify_players.mjs` le croirait à jour et garderait des compteurs faux.
 out.hostPlayCritere = (precedent && precedent.hostPlayCritere) || 0;
 out.verifiedAt = (precedent && precedent.verifiedAt) || null;
+/* Les matchs dont la page n'a pas été relue (passage rapide, ou au-delà de --limit)
+   gardent les liens que le passage précédent y avait trouvés. */
+const reportes = config.reporterLiensNonRelus(out.matches, precedent, pagesRelues);
+if (reportes) console.log(`Liens reportés du passage précédent (pages non relues) : ${reportes}`);
 const reprises = play.reporterVerifications(out.matches, precedent);
 console.log(`Vérifications reportées : ${Object.keys(out.hostPlay).length} hôtes au registre, ${reprises} lien(s) gardent leur verdict.`);
 
@@ -739,5 +780,6 @@ function updateDomainsFile() {
     else console.log('domains.json mis a jour (miroirs reordonnes)');
 }
 updateDomainsFile();
+chrono('fin');
 
 process.exit(0);
