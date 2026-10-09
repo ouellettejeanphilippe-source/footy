@@ -666,17 +666,13 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
    sienne. C'est cette barre-la qu'on voyait chevaucher l'heure. */
 #mv-container.mv-full { position: fixed; top: calc(var(--hdr-height) + var(--safe-top)); left: 0; right: 0; bottom: 0; background: #000; z-index: 90; display: flex; flex-direction: column; }
 #mv-toolbar { position: relative; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; direction: ltr; transition: opacity var(--t-fast); }
-.mv-title { font-weight: 800; font-size: 15px; color: var(--text); cursor: move; padding: 0 4px; white-space: nowrap; }
+.mv-title { font-weight: 800; font-size: 15px; color: var(--text); padding: 0 4px; white-space: nowrap; }
 .mv-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .mv-tb-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border2); background: rgba(255,255,255,0.06); color: var(--text); font-weight: 600; font-size: 14px; white-space: nowrap; transition: background var(--t-fast), filter var(--t-fast); }
 .mv-tb-btn:hover { background: rgba(255,255,255,0.12); }
 .mv-tb-btn.primary { background: var(--accent); border-color: transparent; color: #06131c; }
 .mv-tb-btn.primary:hover { filter: brightness(1.1); }
 .mv-tb-btn .mv-tb-ic { font-size: 16px; line-height: 1; }
-.mv-pip .hide-pip { display: none !important; }
-.mv-pip #mv-toolbar { min-height: 44px; padding: 4px 8px; gap: 4px; }
-.mv-pip .mv-tb-btn { min-height: 34px; padding: 6px 9px; font-size: 13px; }
-.mv-pip .mv-tb-btn .mv-tb-lb { display: none; }
 .mv-cell { border-bottom-right-radius: 8px; container-type: inline-size; }
 
 /* En-tête d'une tuile, en surimpression. À gauche : numéro, source, ajustement ;
@@ -689,6 +685,10 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .mv-hdr-right { flex-shrink: 0; background: rgba(0,0,0,0.35); padding: 3px; border-radius: 10px; }
 .mv-drag-handle { cursor: grab; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); }
 .mv-stream-number { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.2); font-weight: 800; font-size: 14px; }
+/* Nom du match au-dessus de sa source (9 octobre 2026). */
+.mv-tile-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 46cqw; }
+.mv-tile-name { font-size: 13px; font-weight: 800; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
+.mv-tile-id .mv-source-pill { height: 20px; padding: 0 7px; font-size: 11px; max-width: 100%; align-self: flex-start; }
 .mv-source-pill { height: 28px; display: inline-flex; align-items: center; padding: 0 9px; max-width: 46cqw; overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .mv-source-pill.joue { color: #7CFC9A; border-color: rgba(124,252,154,0.45); }
 .mv-hdr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 36px; height: 36px; padding: 0 10px; border: none; border-radius: 8px; background: rgba(255,255,255,0.16); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background var(--t-fast); }
@@ -697,12 +697,18 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .mv-direct-btn.on { background: rgba(124,252,154,0.25); }
 .mv-site-btn { background: rgba(56,189,248,0.3); }
 .mv-site-btn:hover { background: rgba(56,189,248,0.5); }
-.mv-close-btn { background: rgba(220,53,69,0.55); }
+/* La croix se tient à l'écart du menu : un clic qui vise ⋮ ne ferme pas la vidéo. */
+.mv-close-btn { background: rgba(220,53,69,0.55); margin-left: 6px; }
 .mv-close-btn:hover { background: rgba(220,53,69,0.85); }
 /* Tuile étroite (grille 2×2 sur portable, panneau latéral) : l'essentiel reste —
    numéro, source, Site, menu, croix. */
 @container (max-width: 520px) { .mv-hdr-lb, .mv-drag-handle { display: none; } .mv-hdr-btn { padding: 0 8px; } }
-@container (max-width: 360px) { .mv-fit-btn, .mv-stream-number { display: none; } }
+@container (max-width: 360px) { .mv-fit-btn, .mv-stream-number { display: none; } .mv-tile-id { max-width: 40cqw; } }
+
+/* Chargement d'une tuile : une pastille au centre, qui ne prend aucun clic et laisse
+   voir la page autour (js/multiview.js, poserChargement). */
+.mv-chargement { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; pointer-events: none; display: inline-flex; align-items: center; gap: 10px; max-width: 80%; padding: 10px 16px; border-radius: 999px; background: rgba(0,0,0,0.72); border: 1px solid rgba(255,255,255,0.14); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-chargement-roue { flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff; animation: spin 0.8s linear infinite; }
 /* Tactile : ni poignée de redimensionnement (elle gênait le pouce), ni poignée de glisser. */
 @media (hover: none) and (pointer: coarse) { .mv-cell { resize: none !important; padding-right: 0 !important; } .mv-drag-handle { display: none; } }
 
@@ -968,6 +974,8 @@ body[data-icon-pack="rounded"] .ic-close {
 .fab-actualiser .fab-ic { font-size: 16px; line-height: 1; display: inline-block; }
 .fab-actualiser.tourne .fab-ic { animation: spin 0.8s linear infinite; }
 body.view-page .fab-actualiser { display: none; }
+/* Ni devant le lecteur : il se posait sur la vidéo du bas à droite. */
+body[data-view="player"] .fab-actualiser { display: none; }
 @media (max-width: 900px) {
   /* Au-dessus de la barre d'onglets du bas, et réduit à son icône. */
   .fab-actualiser { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 14px); right: 14px; padding: 12px; }

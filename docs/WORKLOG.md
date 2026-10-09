@@ -2,6 +2,23 @@
 ## En cours
 
 ## Fait
+- 2026-10-09 - **« Le multiview est vraiment cool, mais les emplacements des boutons, le fait que ça cache les menus et les lags de chargement font que c'est pas toujours évident. Corriger et améliorer sans perdre les fonctionnalités »**, puis **« le multiview dans l'écran des matchs live et guide, je veux plus ça »**.
+
+  - **Constaté dans Chromium** (captures à 1440 et 390 px, avant/après). La fenêtre flottante, sur téléphone, faisait 400 px de large pour un écran de 390 et couvrait la barre d'onglets du bas (Live / Guide / Lecteur / Plus). Sa barre restait vide : le repos l'avait effacée juste avant, et rien ne la rendait au changement de mode. Aucune tuile ne disait quel match elle montrait (seulement « localhost » ou « source 1/3 »). Le bouton « Actualiser » se posait sur la vidéo en bas à droite. Au démarrage, la séance restaurée chargeait jusqu'à quatre pages de diffusion 500 ms après l'ouverture, lecteur fermé, derrière le guide.
+
+  - **Plus de lecteur réduit.** Quitter l'onglet Lecteur le masque (`toggleMultiviewPip`). Les tuiles restent chargées et le son continue ; l'onglet Lecteur, souligné, les rend sans rechargement. Retirés : colonne, fenêtre flottante, barre dans un coin, leurs boutons (➖, ⤢ Agrandir), leurs entrées du menu ⋯, leur glisser, leurs observateurs, et leurs clés `multiviewPipMode`, `multiviewPipPrevMode`, `multiviewFloatingRect`, `multiviewMinimizedRect` (laissées en place, désormais ignorées). La fenêtre détachée reste pour regarder ailleurs.
+
+  - **Commandes.** Le repos ne les efface plus sous un menu ouvert (`menuEstOuvert`, `js/mv-menu.js`) ni sous le pointeur posé sur la barre. Elles reviennent quand le lecteur repasse au premier plan (`reveillerCommandes`) et quand le pointeur entre dans une tuile. En-tête de tuile : nom du match, avec la source dessous ; ajustement réduit à son icône ; croix écartée du menu ⋮. « Actualiser » masqué dans le lecteur.
+
+  - **Chargement.** Aucune tuile n'est posée tant que le lecteur n'a jamais été montré (`lecteurJamaisMontre`). Les tuiles créées ensemble partent à 450 ms d'écart (`ECART_CHARGEMENT_MS`). Chacune affiche « Chargement de … » au centre, sans prendre les clics, jusqu'au `load` du cadre, au premier signal « joue » ou au bout de 15 s.
+
+  - **Vérifié dans Chromium** : avec une séance de trois tuiles enregistrée, aucune iframe ni requête vers les lecteurs avant l'ouverture. Après l'ouverture : 1 cadre à 300 ms, 3 à 1,8 s, et plus aucun indicateur une fois les pages chargées.
+
+  - **Tests** : `unit_lecteurfluide` (nouveau, 5 groupes ; il tombe sur l'ancien code au premier groupe). `unit_lecteurinteractions`, groupe 2 réécrit : quitter masque, un redimensionnement ne fait rien revenir, le menu ⋯ ne propose plus de réduire. `unit_deuxecrans` attend la dernière tuile échelonnée. `npm run test:unit` : 82 fichiers. Playwright : 43 réussis, 1 ignoré, lancés avec le Chromium préinstallé (`executablePath`).
+
+  - **Fichiers** : `js/multiview.js`, `js/mv-menu.js`, `styles.css`, `tests/unit_lecteurfluide.test.js`, `tests/unit_lecteurinteractions.test.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `README.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v41`.
+
+  - **Ce qui reste.** Une page encadrée garde ses mouvements de souris pour elle : en survolant longtemps une vidéo sans en sortir, les commandes s'effacent au bout de 3 s. Un geste au-dessus de la barre ou une nouvelle entrée dans la tuile les rappelle. Le son des vidéos continue lecteur masqué : à revoir si l'utilisateur préfère le couper.
 - 2026-10-09 - **« Tu peux utiliser la réputation des sites pour classer l'ordre d'apparition des streams ? »**
 
   - **Avant.** Les liens étaient rangés en cinq paliers d'observation, puis par qualité annoncée. Dans le palier « inconnu », un hôte jamais testé, un hôte à une lecture sur quatre et un lien d'un agrégateur qui ne joue jamais étaient à égalité.

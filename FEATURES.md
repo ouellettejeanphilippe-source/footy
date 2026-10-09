@@ -115,11 +115,10 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 
 | Bouton | Effet |
 |---|---|
-| **➕ Ajouter** | Réduit le lecteur et invite à choisir un match dans le guide. |
+| **➕ Ajouter** | Passe au Live et invite à choisir un match ; le lecteur revient avec la nouvelle vidéo. |
 | **⊞ Disposition** | `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`. En portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. |
 | **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
-| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent ; dès deux vidéos, la vidéo 1 reste dans la page et les autres s'y empilent, une par-dessus l'autre), `🖥 Deux écrans : une fenêtre étirée` et `🗗 Deux écrans : deux fenêtres` (ordinateur), `◫ Réduire dans un coin` / `⤢ Agrandir`, `◫ Panneau latéral`, `🗗 Fenêtre flottante`, `✕ Fermer toutes les vidéos`. |
-| **➖ Réduire** / **⤢ Agrandir** | Visibles quand le lecteur est réduit. |
+| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent ; dès deux vidéos, la vidéo 1 reste dans la page et les autres s'y empilent, une par-dessus l'autre), `🖥 Deux écrans : une fenêtre étirée` et `🗗 Deux écrans : deux fenêtres` (ordinateur), `✕ Fermer toutes les vidéos`. |
 
 Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois ; ils se ferment d'un clic ailleurs, par Échap, au défilement ou au redimensionnement ; les flèches ↑/↓ s'y déplacent.
 
@@ -127,15 +126,11 @@ Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois ; ils se 
 
 Une vidéo : plein cadre. Deux : deux colonnes. Trois : une grande à gauche, deux à droite. Quatre : 2 × 2. Les colonnes se redimensionnent à la souris. Quatre vidéos au maximum (« Maximum 4 streams en Multivision »).
 
-### 5.3 Modes réduits
+### 5.3 En arrière-plan
 
-Trois façons de garder le lecteur pendant qu'on navigue dans le guide, retenues d'une fois à l'autre :
+Le lecteur ne se pose plus sur le Live ni le Guide (9 octobre 2026). Passer à un autre onglet le **masque** : ses vidéos restent chargées (le son continue), et l'onglet **Lecteur**, souligné tant qu'une vidéo tourne, les rend telles quelles, sans rechargement. Les anciens modes réduits (panneau latéral, fenêtre flottante, barre dans un coin) sont retirés ; pour garder un œil sur un match ailleurs, il reste `🖼 Fenêtre détachée`.
 
-- **Panneau latéral** : colonne de 350 px à droite, redimensionnable ; le guide se décale. Indisponible sous 768 px.
-- **Fenêtre flottante** : position et taille mémorisées.
-- **Réduit dans un coin** : une barre de 44 px.
-
-Quitter le plein écran vers le guide réduit automatiquement le lecteur.
+Au démarrage de l'application, les vidéos de la séance précédente ne se chargent qu'à la première ouverture du lecteur, pas derrière le guide.
 
 ### 5.3 bis Deux écrans
 
@@ -149,9 +144,11 @@ Deux façons, dans `⋯ Plus` :
 
 ### 5.4 La tuile
 
-En-tête : poignée de glissement, numéro (`Touche N`), pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré, bouton d'ajustement, puis **`↗ Site`**, le menu **`⋮`** et **`✕`**.
+En-tête : poignée de glissement, numéro (`Touche N`), **nom du match** et, dessous, la pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré, bouton d'ajustement (icône seule), puis **`↗ Site`**, le menu **`⋮`** et, un peu à l'écart, **`✕`**.
 
-- **Au repos** : trois secondes sans un geste et la barre comme les en-têtes de tuiles s'effacent, pour laisser la vidéo seule. Un mouvement les rappelle. En mode réduit dans la page, ils restent : le lecteur est déjà petit. En fenêtre détachée, ils s'effacent comme en plein écran.
+- **Chargement** : tant que la page n'est pas chargée (ou qu'aucune vidéo n'est signalée), une pastille « Chargement de … » s'affiche au centre, sans prendre les clics. Des tuiles posées ensemble partent l'une après l'autre (450 ms d'écart) plutôt que toutes à la fois.
+
+- **Au repos** : trois secondes sans un geste et la barre comme les en-têtes de tuiles s'effacent, pour laisser la vidéo seule. Un mouvement les rappelle, de même que l'entrée du pointeur dans une tuile. Elles restent tant qu'un menu du lecteur est ouvert ou que le pointeur est sur la barre, et reviennent quand on rouvre le lecteur. En fenêtre détachée, elles s'effacent comme en plein écran.
 - **Ajustement** (bouton de tuile, ou `⤢` de la barre pour toutes) : *étiré* (le cadre prend toute la tuile), *ajusté* (16:9 entier, centré), *rempli* (16:9 couvrant la tuile). Retenu par tuile.
 - **Menu ⋮** : ouvrir sur le site, source suivante, choisir une autre source, changer de match, recharger la vidéo, infos et statistiques ; l'ajustement ; lire le flux direct ou revenir à la page ; échanger avec la vidéo principale (en mode deux écrans) ; déplacer à gauche ou à droite ; préférer ou éviter ce site ; fermer cette vidéo.
 - **Réordonner** : glisser-déposer entre tuiles (poignée masquée sur écran tactile), ou le menu.

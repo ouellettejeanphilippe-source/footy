@@ -167,7 +167,9 @@ async function main() {
      rechargent leur page. Elles doivent repartir comme un chargement neuf (sinon le
      signal « joue » de la page rechargée ne rend ni le son ni la pastille), et la lecture
      est relancée dès que la page est chargée, sans attendre un clic. */
-  await new Promise(r => setTimeout(r, 30));  // les iframes sont posées après resolveStreamUrl
+  /* Les iframes sont posées après resolveStreamUrl, et les tuiles posées ensemble partent
+     l'une après l'autre (ECART_CHARGEMENT_MS) : on attend la dernière. */
+  await new Promise(r => setTimeout(r, 3 * mv.ECART_CHARGEMENT_MS + 50));
   mv.mvFlux.forEach(s => { s._playing = true; });
   const vus = [];
   fen.__mvRelais = (cible, m) => vus.push(m);

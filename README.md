@@ -9,7 +9,7 @@ Toutes les heures sont celles de New York (heure de l'Est).
 - **Live** : les matchs en cours et ceux qui commencent dans l'heure, en cartes avec le score, la minute et le nombre de flux.
 - **Guide** : le programme complet du jour sur une grille de 24 h, par ligue, avec la ligne de l'heure courante. Un match commencé la veille qui joue encore après minuit reste affiché.
 - **Fiche de match** : buteurs, classement, statistiques de saison (matchs ESPN), et la liste des flux avec leurs actions.
-- **Lecteur** : jusqu'à quatre vidéos, dispositions automatiques, mode réduit pour continuer à naviguer, bascule automatique de source quand une vidéo ne démarre pas (avec le script utilisateur).
+- **Lecteur** : jusqu'à quatre vidéos, dispositions automatiques, vidéos gardées en arrière-plan pendant qu'on navigue, bascule automatique de source quand une vidéo ne démarre pas (avec le script utilisateur).
 - **Mode câble** (facultatif, `⋯ Plus → 📺`) : le lecteur se zappe au doigt — glisser ↑↓ change le match qui joue, ←→ change la source du match en cours, avec l'incrustation du décodeur.
 - **Favoris, ligues, apparence** : équipes et ligues favorites, niveaux de ligue (principale, secondaire, ignorée), palettes et formes de cartes.
 
