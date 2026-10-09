@@ -2,6 +2,19 @@
 ## En cours
 
 ## Fait
+- 2026-10-09 - **« Je vois que l'app se fait maintenant plus facilement redirect vers l'un des sites, ce que je veux vraiment pas » — « olympics streamsme la fait entre autres, sur firefox ».**
+
+  - **Cause.** Les tuiles n'ont pas de `sandbox` (exigence de l'utilisateur). Toute page encadrée peut donc faire `top.location = …`, et Firefox n'a pas l'intervention de Chrome qui exige un geste dans le cadre. Les sources ajoutées ce jour (olympicweb, fbstream, totalsportek…) chargent des pages complètes de sites, pleines de régies. Seul le script utilisateur retenait l'onglet, et la sortie forcée n'agit qu'après coup.
+
+  - **Essayé dans Chromium**, avec un vrai clic dans le faux lecteur hostile d'une autre origine. Sans rien, l'onglet part. Avec l'API Navigation (`navigate`), l'événement ne vient même pas. Avec `beforeunload`, le dialogue « Quitter le site ? » s'affiche, et le refuser garde l'app, même si le seul geste était le clic dans le cadre.
+
+  - **Correctif.** Une garde `beforeunload` (`gardeSortieArmee`, `js/multiview.js`). Elle est armée dès qu'une vidéo est chargée et levée 5 s pour les navigations voulues par l'app (`autoriserSortie` : mise à jour, installation du script). Réglage `garde_sortie`, allumé par défaut : `⋯ Plus → 🛡 Bloquer les redirections des sites`.
+
+  - **Tests** : `test_app_boot` « un lecteur qui tente de détourner l'onglet… », en différentiel : garde armée, dialogue et l'app reste ; garde coupée, l'onglet est emporté. Répété 3 fois. `unit_lecteurfluide`, groupe 6.
+
+  - **Fichiers** : `js/multiview.js`, `tests/test_app_boot.spec.js`, `tests/unit_lecteurfluide.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`.
+
+  - **Ce qui reste.** Pas de Firefox dans ce conteneur : la garde n'y a pas été essayée. Firefox exige un geste préalable dans la page avant de montrer le dialogue ; ouvrir le lecteur en est un. Quitter ou recharger l'onglet soi-même, vidéos chargées, demande désormais une confirmation.
 - 2026-10-09 - **« Le multiview est vraiment cool, mais les emplacements des boutons, le fait que ça cache les menus et les lags de chargement font que c'est pas toujours évident. Corriger et améliorer sans perdre les fonctionnalités »**, puis **« le multiview dans l'écran des matchs live et guide, je veux plus ça »**.
 
   - **Constaté dans Chromium** (captures à 1440 et 390 px, avant/après). La fenêtre flottante, sur téléphone, faisait 400 px de large pour un écran de 390 et couvrait la barre d'onglets du bas (Live / Guide / Lecteur / Plus). Sa barre restait vide : le repos l'avait effacée juste avant, et rien ne la rendait au changement de mode. Aucune tuile ne disait quel match elle montrait (seulement « localhost » ou « source 1/3 »). Le bouton « Actualiser » se posait sur la vidéo en bas à droite. Au démarrage, la séance restaurée chargeait jusqu'à quatre pages de diffusion 500 ms après l'ouverture, lecteur fermé, derrière le guide.

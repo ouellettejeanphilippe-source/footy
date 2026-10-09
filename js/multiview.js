@@ -628,6 +628,52 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     });
 }
 
+/* ══ GARDE CONTRE LES REDIRECTIONS ══════════════════════════════════════════════════
+   « L'app se fait maintenant plus facilement redirect vers l'un des sites, ce que je
+   veux vraiment pas » (9 octobre 2026). Sans `sandbox`, un clic dans une page de
+   lecteur suffit à son script pour faire `top.location = …` : l'onglet entier part sur
+   le site, ou sur sa régie. Le script utilisateur l'empêche quand il est là, mais pas
+   sur téléphone, et la sortie forcée ci-dessus ne joue qu'APRÈS coup.
+
+   Mesuré dans Chromium, avec un vrai clic dans un lecteur hostile d'une autre origine :
+   l'API Navigation (`navigate`) ne voit même pas cette navigation ; `beforeunload`, si.
+   Le navigateur demande alors « Quitter le site ? », et refuser garde l'application en
+   place, vidéos comprises. C'est le seul verrou possible sans bac à sable.
+
+   Armé seulement quand des vidéos sont chargées : sans tuile, aucune page tierce ne
+   peut détourner l'onglet. Les navigations voulues par l'application (mise à jour,
+   installation du script) passent par `autoriserSortie`. Prix : quitter ou recharger
+   l'onglet soi-même, vidéos chargées, demande une confirmation. Réglage `garde_sortie`,
+   allumé par défaut, dans le menu ⋯ du lecteur. */
+var sortieAutoriseeJusqua = 0;
+export var gardeSortie = true;
+try { gardeSortie = (localStorage.getItem('garde_sortie') !== '0'); } catch (e) { gardeSortie = true; }
+
+export function autoriserSortie() { sortieAutoriseeJusqua = Date.now() + 5000; }
+
+export function gardeSortieArmee(now) {
+    return gardeSortie && mvFlux.length > 0 && (now === undefined ? Date.now() : now) > sortieAutoriseeJusqua;
+}
+
+export function toggleGardeSortie() {
+    fermerMenus();
+    gardeSortie = !gardeSortie;
+    try { localStorage.setItem('garde_sortie', gardeSortie ? '1' : '0'); } catch (e) {}
+    showToast(gardeSortie
+        ? '🛡 Redirections bloquées : un site qui tente d\'emmener l\'onglet ailleurs déclenche « Quitter le site ? » — répondre non.'
+        : '⚠ Redirections permises : un clic dans une vidéo peut faire quitter l\'application.');
+    return gardeSortie;
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('beforeunload', function(e) {
+        if (!gardeSortieArmee()) return;
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    });
+}
+
 /* « Charger quand même » : la tuile est reposée par le chemin normal. */
 export function chargerQuandMeme(idx) {
     var s = mvFlux[idx];
@@ -3342,6 +3388,7 @@ export function ouvrirMenuBarre(bouton, event) {
         ('documentPictureInPicture' in window) ? { icon: '🖼', label: mvFlux.length >= 2 ? 'Fenêtre détachée (vidéo 1 ici, les autres empilées)' : 'Fenêtre détachée', actif: !!docPiPWindow || (deuxEcransActif() && secondEcranPiP), onSelect: function() { toggleDocumentPiP(); } } : null,
         !mobile ? { icon: '🖥', label: 'Deux écrans : une fenêtre étirée (échange sans recharger)', title: 'Étirez la fenêtre sur les deux écrans : la vidéo 1 se cale sur le premier, les autres s\'empilent sur le second', actif: mvLayout === 'ecrans', onSelect: function() { toggleEcransEtire(); } } : null,
         !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres (recharge à l\'échange)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif() && !secondEcranPiP, onSelect: function() { toggleDeuxEcrans(); } } : null,
+        { icon: '🛡', label: 'Bloquer les redirections des sites', title: 'Si une vidéo tente d\'emmener l\'onglet sur son site, le navigateur demande d\'abord « Quitter le site ? »', actif: gardeSortie, onSelect: function() { toggleGardeSortie(); } },
         mvFlux.length ? { sep: true } : null,
         mvFlux.length ? { icon: '✕', label: 'Fermer toutes les vidéos', danger: true, onSelect: fermerToutesLesVideos } : null
     ], { label: 'Plus d\'options' });
@@ -4344,6 +4391,7 @@ export function mettreAJourApplication() {
         lg('Mise à jour', bilan.serviceWorkers + ' service worker(s) retiré(s), ' + bilan.caches + ' cache(s) vidé(s)');
         /* Adresse neuve : sans cela le cache HTTP peut resservir la même page et le bouton
            semblerait ne rien faire. `replace` pour ne pas empiler d'historique. */
+        autoriserSortie();
         try {
             var base = String(location.pathname || '/').replace(/[?#].*$/, '');
             location.replace(base + '?maj=' + Date.now());
@@ -4740,6 +4788,7 @@ export function installTampermonkey() {
     btn.style.cssText = 'padding:12px;font-size:16px;font-weight:bold;justify-content:center;margin-top:8px;';
     btn.innerHTML = 'Installer le Script Multivision';
     btn.onclick = function() {
+        autoriserSortie();
         window.location.href = './multiview-cleaner.user.js';
     };
     modal.appendChild(btn);
@@ -4962,6 +5011,9 @@ window.lienDuMatchPourFlux = lienDuMatchPourFlux;
 window.nextFluxForTile = nextFluxForTile;
 window.toggleModeCable = toggleModeCable;
 window.toggleSonAuto = toggleSonAuto;
+window.toggleGardeSortie = toggleGardeSortie;
+window.gardeSortieArmee = gardeSortieArmee;
+window.autoriserSortie = autoriserSortie;
 window.basculerGestesTuile = basculerGestesTuile;
 window.zapperChaine = zapperChaine;
 window.changerSourceTuile = changerSourceTuile;

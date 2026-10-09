@@ -605,6 +605,47 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* « L'app se fait maintenant plus facilement redirect vers l'un des sites, ce que je veux
+   vraiment pas » (9 octobre 2026). Sans `sandbox`, un clic dans une page de lecteur
+   d'une autre origine suffit à son script pour faire `top.location = …`. Le seul verrou
+   possible est `beforeunload` (js/multiview.js, garde contre les redirections) : le
+   navigateur demande « Quitter le site ? », et refuser garde l'application.
+
+   Différentiel, avec un VRAI clic (sans activation, Chrome bloque déjà la navigation et
+   le test ne prouverait rien) : garde coupée, l'onglet part ; garde armée, il reste. */
+test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le site ? »', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const autreOrigine = origin.replace('127.0.0.1', 'localhost');
+  const hostile = autreOrigine + '/__faux-lecteur?redir';
+  /* bootOffline refuse toute autre origine : on laisse passer ce seul lecteur. */
+  await page.route(autreOrigine + '/**', (route) => route.continue());
+  const dialogues = [];
+  page.on('dialog', (d) => { dialogues.push(d.type()); d.dismiss().catch(() => {}); });
+
+  await page.evaluate((u) => window.addToMultivision(u, 'Match hostile', 'mH'), hostile);
+  await expect(page.locator('.mv-cell')).toHaveCount(1);
+  const cadre = page.frameLocator('.mv-cell iframe.mv-iframe');
+  await expect(cadre.locator('#b')).toBeVisible();
+  expect(await page.evaluate(() => window.gardeSortieArmee()), 'une vidéo chargée arme la garde').toBe(true);
+
+  await cadre.locator('#b').click();
+  await page.waitForTimeout(800);
+  expect(dialogues, 'le navigateur demande « Quitter le site ? »').toContain('beforeunload');
+  expect(page.url(), 'refuser garde l\'application').toContain(origin);
+  await expect(page.locator('.mv-cell'), 'et ses vidéos').toHaveCount(1);
+  expect(pageErrors).toEqual([]);
+
+  /* Le témoin : sans la garde, le même clic emporte l'onglet. */
+  await page.evaluate(() => window.toggleGardeSortie());
+  expect(await page.evaluate(() => window.gardeSortieArmee())).toBe(false);
+  const avant = dialogues.length;
+  const depart = page.waitForEvent('framenavigated', { predicate: (f) => f === page.mainFrame(), timeout: 5000 }).catch(() => null);
+  await cadre.locator('#b').click();
+  const nav = await depart;
+  expect(nav && !nav.url().startsWith(origin), 'garde coupée, l\'onglet est emporté : le test a un sens').toBeTruthy();
+  expect(dialogues.length, 'et rien ne l\'a retenu').toBe(avant);
+});
+
 /* Deux croix se superposaient dans la fiche : `document.querySelector('.mhd')` attrapait
    l'en-tête de l'Investigator (première `.mhd` du document), jamais celui de la fiche, et
    openMod injectait une seconde croix par-dessus la colonne des flux. */
