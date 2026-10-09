@@ -70,7 +70,7 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 | `js/directmedia.js` | Lecture directe d'un manifeste `.m3u8` / `.mpd` remonté par le script utilisateur. |
 | `js/esports.js` | Transforme les liens LoL Esports en adresses de lecteur encadrables. |
 | `js/deuxecrans.js` | Mode deux écrans : quel écran pour quelle tuile (`ecranDeTuile`), grille du second écran (`placementSecondEcran`), choix de l'autre moniteur (`ecranSecondaire`) et `features` de la fenêtre (`optionsFenetre`) (§7.5 ter). Sans import. |
-| `js/mv-menu.js` | Le menu flottant unique du lecteur (position fixe, un seul ouvert, clavier). Il s'ouvre dans le **document de son bouton** : en fenêtre détachée, c'est celui de l'autre fenêtre (§7.5 bis). |
+| `js/mv-menu.js` | Le menu flottant unique du lecteur (position fixe, un seul ouvert, clavier). Il s'ouvre dans le **document de son bouton** : en fenêtre détachée, c'est celui de l'autre fenêtre (§7.5 bis). `menuEstOuvert()` dit au repos du lecteur qu'un menu est ouvert (§7.5). |
 | `js/tv-navigation.js` | Navigation aux flèches pour le mode TV. Ce n'est pas un module : il est injecté par `<script src>` quand le mode s'active. |
 | `js/sources/index.js` et `js/sources/*.js` | Registre des adaptateurs par domaine. Contrat d'un adaptateur : `hotes`, `extraireLiens(ctx)` et/ou `filtrerLiens(liens)`. Aucun n'importe le module central. |
 
@@ -303,7 +303,7 @@ Le script utilisateur, quand il est installé, répond dans la fenêtre principa
 
 ### 7.5 Le repos des commandes
 
-Trois secondes sans un geste, et la barre du lecteur comme les en-têtes de tuiles s'effacent pour ne pas rester posés sur la vidéo (`window.resetMvIdleTimer`, `appliquerRepos`). Deux exceptions : en mode réduit dans la page (colonne, fenêtre flottante, barre), tout reste, parce que le lecteur est déjà petit.
+Trois secondes sans un geste, et la barre du lecteur comme les en-têtes de tuiles s'effacent pour ne pas rester posés sur la vidéo (`window.resetMvIdleTimer`, `appliquerRepos`). Le repos est repoussé tant qu'un menu du lecteur est ouvert (`menuEstOuvert`, `js/mv-menu.js`) ou que le pointeur est sur la barre ; l'entrée du pointeur dans une iframe (`mouseover` sur l'élément, seul signal visible d'ici) rappelle les commandes ; `reveillerCommandes` les rend quand le lecteur revient au premier plan.
 
 Le point délicat est la **fenêtre détachée** : `toggleDocumentPiP` déplace `#mv-grid-wrapper`, donc toutes les tuiles, dans le document d'une autre fenêtre. Tout ce qui raisonnait sur `#mv-container` cessait alors d'opérer : aucun geste fait là-bas n'y parvenait, et `mvContainer.querySelectorAll('.mv-hdr')` n'y trouvait plus rien. On agit donc sur la grille là où elle se trouve (`grilleDuLecteur`, `grilleDetachee`), et `toggleDocumentPiP` fait écouter la fenêtre qui la porte.
 
@@ -313,12 +313,14 @@ Le lecteur pose des états **globaux** : le défilement de la page, une marge su
 
 | État posé | Qui le rend, désormais |
 |---|---|
-| `body { overflow: hidden }` du mode Cinéma | `quitterModeCinema()` — appelé par le bouton, par le passage en mode réduit, par la fenêtre détachée, et par `applyFilter` à chaque changement de vue. Il rend le défilement **même** si la classe a disparu par un autre chemin : si la page ne défile plus, c'est nous. |
-| Marge droite du guide (`#epg { padding-right }`) | Seule la **colonne** réserve de la place. La fenêtre flottante et la barre passent par-dessus : leur marge est zéro, à l'application du mode comme au redimensionnement. |
+| `body { overflow: hidden }` du mode Cinéma | `quitterModeCinema()` — appelé par le bouton, par la mise en arrière-plan du lecteur, par la fenêtre détachée, et par `applyFilter` à chaque changement de vue. Il rend le défilement **même** si la classe a disparu par un autre chemin : si la page ne défile plus, c'est nous. |
+| Marge droite du guide (`#epg { padding-right }`) | Remise à zéro quand le lecteur passe en arrière-plan ; plus aucun mode ne la pose. |
 | Classe `.mv-fullscreen` et bouton de sortie | `quitterPleinEcranLecteur()`, sur `fullscreenchange` **et** `webkitfullscreenchange`, appliqué à `#mv-grid-wrapper` comme à `#mv-grid` — c'est le *wrapper* que la barre passe en plein écran, et l'ancien nettoyage ne visait que la grille. |
 | Menu flottant du lecteur | Fermé aux deux transitions de la fenêtre détachée : un menu appartient au document qu'on s'apprête à vider. |
 
-Deux règles valent aussi sur téléphone. Un `resize` n'y signifie pas un changement de mise en page voulu : replier la barre d'adresse en émet un, et l'ancienne règle en profitait pour poser `display: none` sur une fenêtre flottante — la vidéo disparaissait au premier défilement. Et c'est `applyPipModeStyles` qui décide de cacher le lecteur sur mobile, pour la colonne seule.
+**Arrière-plan, pas de mode réduit** (9 octobre 2026, « le multiview dans l'écran des matchs live et guide, je veux plus ça »). Quitter le lecteur (`toggleMultiviewPip`, appelé par `applyFilter` et `showMatchSelector`) le **masque** : `display: none`, classe `mv-pip` (qui veut dire désormais « pas au premier plan »), tuiles intactes. `openMultiviewTab` le rend tel quel. La colonne, la fenêtre flottante et la barre sont retirées, avec leurs clés (`multiviewPipMode`, `multiviewPipPrevMode`, `multiviewFloatingRect`, `multiviewMinimizedRect`, désormais ignorées) : sur téléphone, la fenêtre flottante couvrait la barre d'onglets et débordait de l'écran. Un `resize` ne fait jamais réapparaître le lecteur.
+
+**Chargement** (même jour, « les lags de chargement »). `updateMultivisionLayout` ne pose aucune tuile tant que le lecteur n'a jamais été montré (`lecteurJamaisMontre`) : la séance restaurée au démarrage ne charge plus quatre pages de diffusion derrière le guide. Les tuiles créées dans un même passage partent à `ECART_CHARGEMENT_MS` (450 ms) d'intervalle, la première tout de suite. Chacune porte une pastille `.mv-chargement` (`poserChargement`), retirée au `load` du cadre, au premier `video_state` qui joue (`retirerChargement`) ou après `DUREE_CHARGEMENT_MS` (15 s).
 
 ### 7.5 ter Deux écrans (`js/deuxecrans.js`, `toggleDeuxEcrans`)
 
@@ -405,7 +407,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 | `fav_teams`, `league_tiers`, `custom_lg_order`, `lg_order_migrated_v2` | Favoris, niveaux et ordre des ligues. |
 | `user_prefs` | Apparence et options. |
 | `mode_cable` | Mode câble du lecteur allumé ou éteint (§7.8). |
-| `mv_state`, `mv_sortie_forcee`, `multiviewPipMode`, `multiviewPipPrevMode`, `multiviewFloatingRect`, `multiviewMinimizedRect`, `gmPinnedMatches` | État du lecteur. |
+| `mv_state`, `mv_sortie_forcee`, `gmPinnedMatches` | État du lecteur. (`multiviewPipMode`, `multiviewPipPrevMode`, `multiviewFloatingRect`, `multiviewMinimizedRect` : modes réduits retirés le 9 octobre 2026, ignorées.) |
 | `custom_scraper_rules` | Règles de l'Investigator. |
 | `custom_proxy_url`, `cors_sh_api_key`, `corsproxy_io_api_key` | Réglages réseau. |
 | `pref-tv-mode`, `hasSeenScriptModal` | Mode TV, fenêtre du script déjà montrée. |

@@ -9,10 +9,8 @@
    1. Mode Cinéma : il pose `body { overflow: hidden }` et seul son bouton « Quitter »
       le rendait. Sortir par l'onglet Live, le Guide ou Options laissait la PAGE non
       défilante, définitivement, sans que rien ne dise pourquoi.
-   2. Redimensionnement en mode réduit : les trois modes étaient traités comme la
-      colonne. En fenêtre flottante, le guide recevait une marge droite de 400 px pour
-      rien ; sur téléphone, replier la barre d'adresse (donc un `resize`) faisait
-      DISPARAÎTRE la fenêtre flottante.
+   2. Les modes réduits (colonne, fenêtre flottante, barre) débordaient sur le guide.
+      Ils sont retirés le 9 octobre 2026 : quitter le lecteur le masque.
    3. Sortie du plein écran par Échap : le nettoyage ne visait que `#mv-grid`, alors que
       la barre demande le plein écran sur `#mv-grid-WRAPPER`. La grille restait étalée
       par-dessus le guide, avec un bouton rouge collé en haut de page.
@@ -61,50 +59,48 @@ async function main() {
     assert.strictEqual(document.body.style.overflow, '', 'un défilement bloqué est rendu même sans classe à retirer');
     ok('le mode Cinéma ne peut plus laisser la page non défilante');
 
-    // ── 2. Redimensionnement : chaque mode réduit garde sa géométrie ─────────
-    mvc.classList.add('mv-pip');
-    mvc.style.display = 'flex';
-    /* jsdom ne met rien en page : sans cette largeur, l'ancienne règle et la nouvelle
-       posaient toutes deux « 0px » et le test n'aurait rien vu. */
-    Object.defineProperty(mvc, 'offsetWidth', { value: 400, configurable: true });
+    // ── 2. Quitter le lecteur le MASQUE : plus de lecteur réduit sur Live ni Guide ──
+    /* « Le multiview dans l'écran des matchs live et guide, je veux plus ça »
+       (9 octobre 2026). Il se réduisait en colonne, en fenêtre flottante ou en barre ;
+       sur téléphone, la fenêtre flottante couvrait la barre d'onglets du bas. */
     const redimensionner = (largeur) => {
         Object.defineProperty(w, 'innerWidth', { value: largeur, configurable: true });
         w.dispatchEvent(new w.Event('resize'));
     };
+    mvc.classList.remove('mv-pip');
+    mvc.style.display = 'none';
+    mv.toggleMultiview();
+    assert.strictEqual(mvc.style.display, 'flex', 'l\'onglet Lecteur l\'ouvre en plein cadre');
+    assert.ok(mvc.classList.contains('mv-full'));
 
+    /* Les anciens réglages des modes réduits ne doivent plus rien faire revenir. */
     localStorage.setItem('multiviewPipMode', 'floating');
-    epg.style.paddingRight = '400px';
-    redimensionner(1280);
-    assert.strictEqual(epg.style.paddingRight, '0px',
-        'la fenêtre flottante passe PAR-DESSUS : elle ne réserve pas 400 px dans le guide');
-
-    /* Sur téléphone, replier la barre d'adresse émet un `resize` : la fenêtre flottante
-       ne doit pas disparaître pour autant. */
+    mv.toggleMultiviewPip();   // le chemin de applyFilter('live') et de showMatchSelector
+    assert.strictEqual(mvc.style.display, 'none', 'quitter le lecteur le masque, il ne se réduit plus');
+    assert.ok(!mvc.classList.contains('mv-full'));
+    assert.strictEqual(epg.style.display, 'flex', 'le guide reprend tout l\'écran');
+    assert.strictEqual(epg.style.paddingRight, '0px', 'sans colonne réservée');
     redimensionner(390);
-    assert.notStrictEqual(mvc.style.display, 'none',
-        'un redimensionnement sur téléphone ne fait pas disparaître la fenêtre flottante');
-
-    localStorage.setItem('multiviewPipMode', 'minimized');
-    epg.style.paddingRight = '300px';
     redimensionner(1280);
-    assert.strictEqual(epg.style.paddingRight, '0px', 'la barre réduite non plus');
-    redimensionner(390);
-    assert.notStrictEqual(mvc.style.display, 'none');
-
-    /* La colonne, elle, réserve bien sa place, et se retire sur téléphone : c'est le seul
-       mode dont ces deux règles sont vraies, et elles le restent. */
-    localStorage.setItem('multiviewPipMode', 'sidebar');
-    redimensionner(1280);
-    assert.strictEqual(epg.style.paddingRight, '400px', 'la colonne pousse le guide de sa largeur');
-    redimensionner(390);
-    assert.strictEqual(mvc.style.display, 'none', 'et s\'efface sur téléphone, où elle n\'a pas la place');
+    assert.strictEqual(mvc.style.display, 'none', 'un redimensionnement ne le fait pas réapparaître');
     assert.strictEqual(epg.style.paddingRight, '0px');
 
+    mv.toggleMultiviewPip();   // le chemin de openMultiviewTab
+    assert.strictEqual(mvc.style.display, 'flex', 'et l\'onglet Lecteur le rend tel quel');
+    assert.ok(mvc.classList.contains('mv-full') && !mvc.classList.contains('mv-pip'));
     localStorage.removeItem('multiviewPipMode');
-    mvc.classList.remove('mv-pip');
-    mvc.style.display = 'flex';
-    redimensionner(1024);
-    ok('un redimensionnement n\'applique plus la règle de la colonne aux modes flottants');
+
+    /* Le menu ⋯ ne propose plus de réduire. */
+    const ancreBarre = document.createElement('button');
+    document.body.appendChild(ancreBarre);
+    mv.ouvrirMenuBarre(ancreBarre);
+    const libelles = Array.from(document.querySelectorAll('.mv-menu .mv-menu-lb')).map((e) => e.textContent);
+    menu.fermerMenus();
+    assert.ok(libelles.length > 3, 'le menu s\'ouvre');
+    for (const retire of ['Réduire dans un coin', 'Panneau latéral', 'Fenêtre flottante', 'Agrandir']) {
+        assert.ok(!libelles.includes(retire), 'plus d\'entrée « ' + retire + ' »');
+    }
+    ok('quitter le lecteur le masque : plus de lecteur réduit par-dessus Live et Guide');
 
     // ── 3. Sortie du plein écran : la classe est nettoyée où qu'elle soit ────
     grille.classList.add('mv-fullscreen');

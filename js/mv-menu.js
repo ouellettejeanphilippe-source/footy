@@ -46,6 +46,12 @@ export function fermerMenus() {
     if (ancreOuverte) { try { ancreOuverte.setAttribute('aria-expanded', 'false'); } catch (e) {} ancreOuverte = null; }
 }
 
+/* Un menu est-il ouvert ? Le repos du lecteur (js/multiview.js) ne cache pas la barre
+   sous un menu qu'on est en train de lire : le menu resterait seul, sans son bouton. */
+export function menuEstOuvert() {
+    return !!(menuOuvert && menuOuvert.isConnected);
+}
+
 /* Ramène le menu dans la fenêtre : sous le bouton par défaut, au-dessus s'il n'y a
    pas la place, et jamais hors des bords. */
 function positionner(menu, ancre) {

@@ -12,7 +12,7 @@ import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
-import { ouvrirMenu, fermerMenus } from './mv-menu.js';
+import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
@@ -868,6 +868,13 @@ export function showMatchSelector(event, replaceIdx) {
 }
 
 
+/* Le lecteur revient au premier plan : ses commandes avec lui. Le repos les avait peut-être
+   effacées juste avant qu'on le quitte, et rien ne les rendait avant le prochain geste
+   au-dessus de la barre — on arrivait devant une barre vide. */
+function reveillerCommandes() {
+    if (typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
+}
+
 export function toggleMultiviewPip() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
@@ -889,59 +896,35 @@ export function toggleMultiviewPip() {
         if (scriptPage) scriptPage.style.display = 'none';
 
         updateMultivisionLayout();
+        reveillerCommandes();
     } else {
-        // Switch to PIP mode
+        /* Le lecteur passe en ARRIÈRE-PLAN : masqué, pas réduit.
+
+           « Le multiview dans l'écran des matchs live et guide, je veux plus ça »
+           (9 octobre 2026). Il se réduisait en colonne, en fenêtre flottante ou en barre
+           par-dessus le Live et le Guide ; sur téléphone, la fenêtre flottante (400 px de
+           large) débordait de l'écran et couvrait la barre d'onglets du bas. Il est
+           maintenant simplement caché : les tuiles restent chargées (le son continue,
+           rien ne recharge au retour), et l'onglet Lecteur, souligné tant qu'une vidéo
+           tourne (`has-streams`), les rend en un geste. La classe `mv-pip` garde son sens
+           pour le reste du code : « le lecteur n'est pas au premier plan ». */
         fermerMenus();
-        /* Le lecteur rapetisse : ni le mode Cinéma ni le plein écran n'ont plus de sens,
-           et tous deux laissent derrière eux quelque chose qui déborde sur la page (le
-           défilement bloqué, une grille étalée par-dessus le guide). */
         quitterModeCinema();
         quitterPleinEcranLecteur();
+        mvc.classList.remove('mv-full');
         mvc.classList.add('mv-pip');
+        mvc.style.display = 'none';
         epg.style.display = 'flex';
+        epg.style.paddingRight = '0';
         syncNavState(S.filter || 'live');
-
-        var mode = localStorage.getItem('multiviewPipMode') || 'sidebar';
-        applyPipModeStyles(mode);
     }
 }
 
-/* Redimensionnement de la fenêtre pendant que le lecteur est en mode réduit.
-
-   Cette branche traitait les TROIS modes réduits comme la colonne : sous 768 px elle
-   cachait le lecteur, au-dessus elle poussait le guide de la largeur du lecteur. Deux
-   défauts mesurables en découlaient, tous deux visibles depuis le guide :
-
-   1. En fenêtre flottante ou en barre, le guide recevait une marge droite de la largeur
-      de la fenêtre flottante (400 px par défaut) — une colonne vide à droite, sans
-      raison, alors que ces deux modes flottent PAR-DESSUS la page et ne lui prennent
-      rien. Seule la colonne (`sidebar`) réserve de la place.
-   2. Sur téléphone, la fenêtre flottante disparaissait au premier défilement : replier
-      la barre d'adresse change la hauteur de la fenêtre, donc émet `resize`, donc
-      passait ici avec `innerWidth <= 768` et posait `display:none`. La vidéo s'arrêtait
-      d'être visible sans que personne n'ait rien demandé, et rien ne la rétablissait.
-      `applyPipModeStyles` ne cache le lecteur sur mobile que pour la COLONNE, qui n'y a
-      pas la place ; c'est cette règle-là qui fait foi.
-
-   On délègue donc au mode, au lieu de le contredire. */
+/* Redimensionnement de la fenêtre. Le lecteur n'a plus de mode réduit (9 octobre 2026) :
+   en arrière-plan il est caché, et rien ici ne doit le faire réapparaître ni pousser le
+   guide. Un `resize` sur téléphone (barre d'adresse repliée) ne veut rien dire de plus. */
 window.addEventListener('resize', function() {
     var mvc = document.getElementById('mv-container');
-    var epg = document.getElementById('epg');
-    if(mvc && mvc.classList.contains('mv-pip')) {
-        var mode = localStorage.getItem('multiviewPipMode') || 'sidebar';
-        if (mode === 'sidebar') {
-            if(window.innerWidth <= 768) {
-                mvc.style.display = 'none';
-                if(epg) epg.style.paddingRight = '0';
-            } else {
-                mvc.style.display = 'flex';
-                if(epg) epg.style.paddingRight = mvc.offsetWidth + 'px';
-            }
-        } else if(epg) {
-            /* Flottante et barre : elles passent par-dessus, le guide garde toute sa largeur. */
-            epg.style.paddingRight = '0';
-        }
-    }
 
     /* Un écran en portrait empile les tuiles (voir dispositionEffective) : le rendu suit
        l'orientation, sans toucher au choix de l'utilisateur. */
@@ -1321,15 +1304,6 @@ export function setupMultivisionUI() {
 
     // Create Multivision Container
 
-    var pipStyles = document.createElement('style');
-    pipStyles.textContent = `
-      #mv-container:not(.mv-pip) .only-pip { display: none !important; }
-      #mv-container.mv-pip .hide-pip { display: none !important; }
-      #mv-container.mv-pip #mv-toolbar { cursor: move; }
-      #mv-container.mv-pip #mv-drag-handle { cursor: move; }
-    `;
-    document.head.appendChild(pipStyles);
-
     var mvContainer = document.createElement('div');
 
     mvContainer.id = 'mv-container';
@@ -1339,236 +1313,20 @@ export function setupMultivisionUI() {
     var mvToolbar = document.createElement('div');
     mvToolbar.id = 'mv-toolbar';
 
-  window.applyPipModeStyles = function(mode) {
-      var mvc = document.getElementById('mv-container');
-      var epg = document.getElementById('epg');
-      var btnMin = document.getElementById('mv-minimize-btn');
-      if(!mvc || !epg) return;
-
-      var isMobile = window.innerWidth <= 768;
-      mvc.classList.remove('mv-full');
-      fermerMenus();
-
-      // Reset common styles first
-      mvc.style.resize = 'none';
-      mvc.style.boxShadow = 'none';
-      mvc.style.borderRadius = '0';
-      mvc.style.direction = 'ltr';
-      mvc.style.minHeight = '0';
-      mvc.style.minWidth = '0';
-
-      if(btnMin) btnMin.innerHTML = '➖';
-
-      if (mode === 'sidebar') {
-          if(isMobile) {
-              mvc.style.cssText = 'display:none;';
-              epg.style.paddingRight = '0';
-          } else {
-              mvc.style.cssText = 'position:fixed;right:0;top:var(--hdr-height, 70px);bottom:0;width:350px;background:var(--bg, rgba(10,10,12,0.95));backdrop-filter:blur(10px);z-index:999;display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.1);box-shadow:-5px 0 30px rgba(0,0,0,0.5);overflow:hidden;resize:horizontal;direction:rtl;min-width:250px;max-width:60vw;';
-              // epg padding is handled by resize observer, but we set it here as fallback
-              epg.style.paddingRight = mvc.offsetWidth + 'px';
-          }
-      } else if (mode === 'floating') {
-          var rectStr = localStorage.getItem('multiviewFloatingRect');
-          var rect = rectStr ? JSON.parse(rectStr) : {width: 400, height: 300, right: 20, bottom: 20};
-
-          mvc.style.cssText = 'position:fixed;background:var(--bg, rgba(10,10,12,0.95));backdrop-filter:blur(10px);z-index:9999;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5);overflow:hidden;resize:both;direction:ltr;border-radius:8px;min-width:250px;min-height:150px;';
-
-          if(rect.top !== undefined && rect.left !== undefined) {
-              mvc.style.top = rect.top + 'px';
-              mvc.style.left = rect.left + 'px';
-              mvc.style.right = 'auto';
-              mvc.style.bottom = 'auto';
-          } else {
-              mvc.style.right = (rect.right || 20) + 'px';
-              mvc.style.bottom = (rect.bottom || 20) + 'px';
-              mvc.style.top = 'auto';
-              mvc.style.left = 'auto';
-          }
-
-          mvc.style.width = (rect.width || 400) + 'px';
-          mvc.style.height = (rect.height || 300) + 'px';
-
-          epg.style.paddingRight = '0';
-      } else if (mode === 'minimized') {
-          var rectStr = localStorage.getItem('multiviewMinimizedRect');
-          var rect = rectStr ? JSON.parse(rectStr) : {width: 300, right: 20, bottom: 20};
-
-          mvc.style.cssText = 'position:fixed;background:var(--bg2, rgba(20,20,24,0.95));backdrop-filter:blur(10px);z-index:9999;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.2);box-shadow:0 4px 12px rgba(0,0,0,0.5);overflow:hidden;resize:none;direction:ltr;border-radius:8px;';
-
-          if(rect.top !== undefined && rect.left !== undefined) {
-              mvc.style.top = rect.top + 'px';
-              mvc.style.left = rect.left + 'px';
-              mvc.style.right = 'auto';
-              mvc.style.bottom = 'auto';
-          } else {
-              mvc.style.right = (rect.right || 20) + 'px';
-              mvc.style.bottom = (rect.bottom || 20) + 'px';
-              mvc.style.top = 'auto';
-              mvc.style.left = 'auto';
-          }
-
-          mvc.style.width = (rect.width || 300) + 'px';
-          mvc.style.height = '44px'; // Height of toolbar
-
-          epg.style.paddingRight = '0';
-          if(btnMin) btnMin.innerHTML = '🗖';
-      }
-
-      updateMultivisionLayout();
-  };
-
-  window.setMvPipMode = function(mode) {
-      if (!document.getElementById('mv-container').classList.contains('mv-pip')) {
-          toggleMultiviewPip();
-      }
-      localStorage.setItem('multiviewPipMode', mode);
-      applyPipModeStyles(mode);
-  };
-
-  window.toggleMinimizePip = function(e) {
-      if(e) { e.stopPropagation(); e.preventDefault(); }
-      var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
-      if(currentMode === 'minimized') {
-          // Restore to previous non-minimized mode
-          var prevMode = localStorage.getItem('multiviewPipPrevMode') || 'sidebar';
-          setMvPipMode(prevMode);
-      } else {
-          localStorage.setItem('multiviewPipPrevMode', currentMode);
-          setMvPipMode('minimized');
-      }
-  };
-
   /* Barre du lecteur : quatre gestes, nommés en clair, et tout le reste sous « Plus ».
      Les anciens menus déroulants posés dans la barre (disposition, modes PiP) passaient
      sous les tuiles ; ils s'ouvrent désormais par-dessus tout (js/mv-menu.js). */
-  var mvToolbarHtml = '<span class="mv-title" id="mv-drag-handle">Lecteur</span>'
+  var mvToolbarHtml = '<span class="mv-title">Lecteur</span>'
       + '<div class="sp"></div>'
       + '<div id="mv-actions-menu" class="mv-actions">'
       + '<button type="button" class="mv-tb-btn primary" onclick="showMatchSelector(event)" title="Choisir un match à ajouter"><span class="mv-tb-ic" aria-hidden="true">➕</span><span class="mv-tb-lb">Ajouter</span></button>'
-      + '<button type="button" class="mv-tb-btn hide-pip" id="mv-layout-toggle-btn" onclick="ouvrirMenuDisposition(this, event)" aria-haspopup="menu" aria-expanded="false" title="Disposition des vidéos"><span class="mv-tb-ic" aria-hidden="true">⊞</span><span class="mv-tb-lb">Disposition</span></button>'
-      + '<button type="button" class="mv-tb-btn hide-pip" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" title="Plein écran"><span class="mv-tb-ic" aria-hidden="true">⛶</span><span class="mv-tb-lb">Plein écran</span></button>'
-      + '<button type="button" class="mv-tb-btn only-pip" onclick="toggleMultiviewPip()" title="Agrandir le lecteur"><span class="mv-tb-ic" aria-hidden="true">⤢</span><span class="mv-tb-lb">Agrandir</span></button>'
+      + '<button type="button" class="mv-tb-btn" id="mv-layout-toggle-btn" onclick="ouvrirMenuDisposition(this, event)" aria-haspopup="menu" aria-expanded="false" title="Disposition des vidéos"><span class="mv-tb-ic" aria-hidden="true">⊞</span><span class="mv-tb-lb">Disposition</span></button>'
+      + '<button type="button" class="mv-tb-btn" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" title="Plein écran"><span class="mv-tb-ic" aria-hidden="true">⛶</span><span class="mv-tb-lb">Plein écran</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-more-btn" onclick="ouvrirMenuBarre(this, event)" aria-haspopup="menu" aria-expanded="false" title="Plus d\'options"><span class="mv-tb-ic" aria-hidden="true">⋯</span><span class="mv-tb-lb">Plus</span></button>'
-      + '<button type="button" class="mv-tb-btn only-pip" id="mv-minimize-btn" onclick="toggleMinimizePip(event)" aria-label="Réduire" title="Réduire">➖</button>'
       + '</div>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
 
-
-    // Make toolbar draggable for floating/minimized modes
-    var isDragging = false;
-    var dragStartX, dragStartY;
-    var initialLeft, initialTop;
-
-    function startDrag(e) {
-        if(e.target.closest('button') || e.target.closest('.mv-actions')) return; // Don't drag on buttons
-
-        var mvc = document.getElementById('mv-container');
-        if(!mvc || !mvc.classList.contains('mv-pip')) return;
-
-        var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
-        if(currentMode === 'sidebar') return; // Cannot drag sidebar
-
-        isDragging = true;
-
-        // Support both mouse and touch events
-        var clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-        var clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-
-        dragStartX = clientX;
-        dragStartY = clientY;
-
-        var rect = mvc.getBoundingClientRect();
-        initialLeft = rect.left;
-        initialTop = rect.top;
-
-        // Convert right/bottom positioning to top/left for smooth dragging
-        mvc.style.right = 'auto';
-        mvc.style.bottom = 'auto';
-        mvc.style.left = initialLeft + 'px';
-        mvc.style.top = initialTop + 'px';
-
-        if (e.type.includes('mouse')) {
-            e.preventDefault(); // Prevent text selection only for mouse (breaks touch scrolling if not careful, though here we want to drag the whole pip window)
-        }
-    }
-
-    function doDrag(e) {
-        if(!isDragging) return;
-
-        var clientX = e.type.includes('mouse') ? e.clientX : (e.touches ? e.touches[0].clientX : dragStartX);
-        var clientY = e.type.includes('mouse') ? e.clientY : (e.touches ? e.touches[0].clientY : dragStartY);
-
-        var mvc = document.getElementById('mv-container');
-        var dx = clientX - dragStartX;
-        var dy = clientY - dragStartY;
-
-        var newLeft = initialLeft + dx;
-        var newTop = initialTop + dy;
-
-        // Keep within window bounds
-        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - mvc.offsetWidth));
-        newTop = Math.max(0, Math.min(newTop, window.innerHeight - mvc.offsetHeight));
-
-        mvc.style.left = newLeft + 'px';
-        mvc.style.top = newTop + 'px';
-
-        // Prevent default to avoid scrolling while dragging
-        if (e.cancelable) e.preventDefault();
-    }
-
-    function endDrag() {
-        if(isDragging) {
-            isDragging = false;
-            var mvc = document.getElementById('mv-container');
-            if(!mvc) return;
-            var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
-            var rect = mvc.getBoundingClientRect();
-
-            var saveObj = {
-                top: rect.top,
-                left: rect.left,
-                width: rect.width,
-                height: rect.height
-            };
-
-            if(currentMode === 'floating') {
-                localStorage.setItem('multiviewFloatingRect', JSON.stringify(saveObj));
-            } else if(currentMode === 'minimized') {
-                localStorage.setItem('multiviewMinimizedRect', JSON.stringify(saveObj));
-            }
-        }
-    }
-
-    mvToolbar.addEventListener('mousedown', startDrag);
-    mvToolbar.addEventListener('touchstart', startDrag, { passive: false });
-
-    document.addEventListener('mousemove', doDrag);
-    document.addEventListener('touchmove', doDrag, { passive: false });
-
-    document.addEventListener('mouseup', endDrag);
-    document.addEventListener('touchend', endDrag);
-
-    // Add resize observer for floating mode to save size
-    const mvResizeObserver = new ResizeObserver(entries => {
-        for (let entry of entries) {
-            var mvc = document.getElementById('mv-container');
-            if(!mvc || !mvc.classList.contains('mv-pip')) continue;
-
-            var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
-            if(currentMode === 'floating') {
-                var rect = mvc.getBoundingClientRect();
-                var saveObj = {
-                    top: rect.top,
-                    left: rect.left,
-                    width: rect.width,
-                    height: rect.height
-                };
-                localStorage.setItem('multiviewFloatingRect', JSON.stringify(saveObj));
-            }
-        }
-    });
 
     var mvGridWrapper = document.createElement('div');
 
@@ -1656,6 +1414,7 @@ export function setupMultivisionUI() {
                    on recharge. On ne change de source qu'une fois ces essais épuisés
                    (actionSansVideo). */
                 s._aJoueUrl = s._currentUrl || s.url;
+                retirerChargement(celluleDeTuile(idx));
                 if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
                 /* Son automatique : la vidéo existe et joue, c'est maintenant que le son
                    peut lui être rendu — avant, le navigateur refusait et le script
@@ -1701,25 +1460,6 @@ export function setupMultivisionUI() {
     mvContainer.appendChild(mvGridWrapper);
     mvContainer.appendChild(exitTheaterBtn);
     document.body.appendChild(mvContainer);
-    mvResizeObserver.observe(mvContainer);
-
-    // Dynamically adjust epg padding when PiP sidebar is resized
-    if (window.ResizeObserver) {
-        new ResizeObserver(function(entries) {
-            var mvc = document.getElementById('mv-container');
-            if (mvc && mvc.classList.contains('mv-pip') && mvc.style.display !== 'none' && window.innerWidth > 768) {
-                var currentMode = localStorage.getItem('multiviewPipMode') || 'sidebar';
-                var epg = document.getElementById('epg');
-                if (epg) {
-                    if (currentMode === 'sidebar') {
-                        epg.style.paddingRight = mvc.offsetWidth + 'px';
-                    } else {
-                        epg.style.paddingRight = '0px';
-                    }
-                }
-            }
-        }).observe(mvContainer);
-    }
  restoreMultivisionState();
 
 
@@ -1782,6 +1522,10 @@ export function setupMultivisionUI() {
 
 
 window.mvIdleTimer = null;
+function reposRetenu() {
+    var barre = document.getElementById('mv-toolbar');
+    return !!(barre && barre._survolee);
+}
 /* Le repos du lecteur : trois secondes sans un geste, et la barre comme les en-têtes de
    tuiles s'effacent pour ne pas rester posés sur la vidéo.
 
@@ -1805,17 +1549,25 @@ window.resetMvIdleTimer = function() {
             if (!g) return;
             var horsPage = grilleDetachee();
             var mvc = document.getElementById('mv-container');
-            /* Réduit dans la page (colonne latérale, fenêtre flottante, barre) : le
-               lecteur est déjà petit, ses commandes doivent rester atteignables.
-               Détaché, la grille remplit sa fenêtre : on efface, comme en plein écran. */
-            if (!horsPage && mvc && mvc.classList.contains('mv-pip')) return;
+            /* « Ça cache les menus » (9 octobre 2026). Deux cas où effacer ne rend
+               service à personne : un menu du lecteur est ouvert (on le lit, la souris
+               immobile — la barre disparaissait sous lui), ou le pointeur est posé sur
+               la barre elle-même. On repousse le repos d'autant. */
+            if (menuEstOuvert() || (!horsPage && reposRetenu())) { window.resetMvIdleTimer(); return; }
             if (!horsPage && mvc) mvc.style.cursor = 'none';
             appliquerRepos(g, horsPage ? null : document.getElementById('mv-toolbar'), true);
         }, 3000);
     }
 
     mvContainer.addEventListener('mousemove', window.resetMvIdleTimer);
+    /* Le pointeur qui ENTRE dans une tuile : l'iframe garde ensuite ses mouvements pour
+       elle (origine croisée), mais son entrée, elle, se voit d'ici (`mouseover` sur
+       l'élément iframe). Les commandes de la tuile visée réapparaissent donc dès qu'on
+       y arrive, pas seulement en frôlant ses bords. */
+    mvContainer.addEventListener('mouseover', window.resetMvIdleTimer);
     mvContainer.addEventListener('click', window.resetMvIdleTimer);
+    mvToolbar.addEventListener('mouseenter', function() { mvToolbar._survolee = true; });
+    mvToolbar.addEventListener('mouseleave', function() { mvToolbar._survolee = false; });
     mvContainer.addEventListener('touchstart', window.resetMvIdleTimer, {passive: true});
 
 }
@@ -2073,6 +1825,37 @@ export function noterSonBloque(idx) {
 /* Disposition réellement rendue. En portrait (téléphone, tablette debout), deux tuiles
    côte à côte font deux bandes de la largeur d'un pouce : on les empile, quel que soit le
    choix retenu — qui reste intact et reprend en paysage. */
+function lecteurJamaisMontre(mvc, grid, grid2) {
+    if (!mvc || mvc.style.display !== 'none') return false;
+    if (grid2 || grid.ownerDocument !== document) return false;
+    return !grid.querySelector('.mv-cell');
+}
+
+/* Les tuiles posées dans un même passage partent l'une après l'autre, pas ensemble :
+   quatre pages lourdes demandées à la même milliseconde se partagent le réseau et le
+   processeur, et aucune n'apparaît vite. La première part tout de suite. */
+export var ECART_CHARGEMENT_MS = 450;
+
+/* Indicateur de chargement d'une tuile : une pastille au centre, qui ne prend aucun clic
+   et ne couvre pas la page (une page qui peint vite reste visible autour). Retirée au
+   `load` du cadre, au premier signal « joue », ou au bout de DUREE_CHARGEMENT_MS. */
+export var DUREE_CHARGEMENT_MS = 15000;
+function poserChargement(container, libelle) {
+    var doc = container.ownerDocument || document;
+    var el = doc.createElement('div');
+    el.className = 'mv-chargement';
+    el.setAttribute('role', 'status');
+    el.innerHTML = '<span class="mv-chargement-roue" aria-hidden="true"></span><span class="mv-chargement-lb"></span>';
+    el.querySelector('.mv-chargement-lb').textContent = libelle;
+    container.appendChild(el);
+    setTimeout(function() { el.remove(); }, DUREE_CHARGEMENT_MS);
+    return el;
+}
+export function retirerChargement(cell) {
+    if (!cell) return;
+    Array.prototype.forEach.call(cell.querySelectorAll('.mv-chargement'), function(el) { el.remove(); });
+}
+
 function dispositionEffective(count) {
     if (count >= 2 && window.innerHeight > window.innerWidth) return 'vertical';
     return mvLayout;
@@ -2129,6 +1912,14 @@ export function updateMultivisionLayout() {
     }
 
     var mvc = document.getElementById('mv-container');
+    /* « Les lags de chargement » (9 octobre 2026). Au démarrage, les tuiles de la séance
+       précédente (`mv_state`) étaient posées 500 ms après l'ouverture de l'application,
+       lecteur fermé : jusqu'à quatre pages de diffusion, chargées de régies, se
+       chargeaient en même temps que le calendrier et les liens, derrière le guide qu'on
+       était en train de regarder. Tant que le lecteur n'a jamais été montré, on ne pose
+       rien : son ouverture (`toggleMultiview`) redessine, et c'est là qu'elles partent.
+       Un lecteur déjà peuplé puis mis en arrière-plan garde ses tuiles. */
+    if (lecteurJamaisMontre(mvc, grid, grid2)) return;
 
     // Ensure we track custom column widths
     if (!grid._customCols) grid._customCols = {};
@@ -2201,6 +1992,7 @@ export function updateMultivisionLayout() {
     }
 
     // Create or update cells
+    var nouvellesTuiles = 0;
     mvFlux.forEach(function(s, idx) {
         var cellId = s._internalId;
         var cellClass = 'mv-cell';
@@ -2243,7 +2035,17 @@ export function updateMultivisionLayout() {
                 window.resetMvIdleTimer();
             }, {passive: true});
 
-            fallbackToIframe(s.url, videoContainer, cell, s);
+            var retard = (nouvellesTuiles++) * ECART_CHARGEMENT_MS;
+            if (!retard) fallbackToIframe(s.url, videoContainer, cell, s);
+            else {
+                var urlPrevue = s.url;
+                s._currentUrl = urlPrevue;
+                poserChargement(videoContainer, 'En attente…');
+                setTimeout(function() {
+                    if (!cell.isConnected || s.url !== urlPrevue || s._currentUrl !== urlPrevue) return;
+                    fallbackToIframe(urlPrevue, videoContainer, cell, s);
+                }, retard);
+            }
         }
 
         /* Pose un flux dans la cellule : la PAGE du match, telle que le site la sert.
@@ -2272,6 +2074,7 @@ export function updateMultivisionLayout() {
                 if (nextFluxForTile(parseInt(cell.dataset.index, 10), 'auto')) return;
                 poserAvertissementSortie(container, cell, s); return;
             }
+            poserChargement(container, 'Chargement de la vidéo…');
             resolveStreamUrl(url).then(function(finalUrl) {
                 if (s._currentUrl !== url) return;
                 container.innerHTML = '';
@@ -2306,6 +2109,8 @@ export function updateMultivisionLayout() {
                 if (estMediaDirecte(finalUrl)) {
                     iframe = versVideoSiDirect(iframe, finalUrl, container);
                 } else {
+                    poserChargement(container, 'Chargement de ' + (getDomain(finalUrl) || 'la vidéo') + '…');
+                    iframe.addEventListener('load', function() { retirerChargement(cell); }, { once: true });
                     iframe.src = finalUrl;
                 }
 
@@ -2527,8 +2332,8 @@ export function updateMultivisionLayout() {
            clic. C'est ce qui remplace la devinette d'avant : on essaie, on voit, on passe. */
         var pos = positionDuFlux(s);
         var libellePastille = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : domain);
-        var pastilleSource = '<div class="mv-source-pill' + (s._playing ? ' joue' : '') + '" title="' + (s._playing ? 'Vidéo en lecture' : 'Aucune vidéo confirmée pour l\'instant') + '">' + esc(libellePastille) + '</div>'
-            + (pos ? '<button type="button" class="mv-hdr-btn mv-next-source" title="Essayer la source suivante" aria-label="Source suivante" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '')
+        var pastilleSource = '<div class="mv-source-pill' + (s._playing ? ' joue' : '') + '" title="' + (s._playing ? 'Vidéo en lecture' : 'Aucune vidéo confirmée pour l\'instant') + '">' + esc(libellePastille) + '</div>';
+        var boutonsSource = (pos ? '<button type="button" class="mv-hdr-btn mv-next-source" title="Essayer la source suivante" aria-label="Source suivante" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '')
             /* « ▶ direct » / « 🖼 page » : la deuxième façon d'utiliser le lien, dès que le
                script a vu passer le manifeste vidéo de la page (rafraichirPastille l'affiche). */
             + '<button type="button" class="mv-hdr-btn mv-direct-btn' + (s.mode === 'direct' ? ' on' : '') + '" title="Basculer entre la page du site et le flux direct" aria-label="Mode direct" style="display:' + ((s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none') + ';" onclick="toggleDirectMode(' + idx + '); event.stopPropagation();">' + (s.mode === 'direct' ? '🖼 page' : '▶ direct') + '</button>';
@@ -2538,12 +2343,16 @@ export function updateMultivisionLayout() {
 
         var fitMode = s.fit || 'stretch';
         var fitInfo = MV_FIT_MODES[fitMode] || MV_FIT_MODES.stretch;
-        var boutonFit = '<button type="button" class="mv-hdr-btn mv-fit-btn' + (fitMode === 'stretch' ? '' : ' on') + '" title="Ajustement de l\'image : ' + fitInfo.label + ' — cliquer pour changer" aria-label="Ajustement : ' + fitInfo.label + '" onclick="cycleMvFit(' + idx + ');event.stopPropagation();">' + fitInfo.icon + ' <span class="mv-hdr-lb">' + fitInfo.label + '</span></button>';
+        var boutonFit = '<button type="button" class="mv-hdr-btn mv-fit-btn' + (fitMode === 'stretch' ? '' : ' on') + '" title="Ajustement de l\'image : ' + fitInfo.label + ' — cliquer pour changer" aria-label="Ajustement : ' + fitInfo.label + '" onclick="cycleMvFit(' + idx + ');event.stopPropagation();">' + fitInfo.icon + '</button>';
 
         var hdrHtml = '<div class="mv-hdr-left">'
             + '<div class="mv-drag-handle" role="button" tabindex="0" aria-label="Déplacer" title="Glisser pour déplacer" onmousedown="this.closest(\'.mv-cell\').draggable=true;">' + svgDrag + '</div>'
             + '<div class="mv-stream-number" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>'
-            + pastilleSource + boutonFit
+            /* Le nom du match, au-dessus de sa source (9 octobre 2026) : avec quatre
+               tuiles, rien ne disait laquelle montrait quel match — la pastille ne
+               portait que « source 1/3 » ou le nom du site. */
+            + '<div class="mv-tile-id"><div class="mv-tile-name" title="' + esc(s.name || domain) + '">' + esc(s.name || domain) + '</div>' + pastilleSource + '</div>'
+            + boutonsSource + boutonFit
             + '</div>';
 
         /* En mode câble, l'échappatoire est à portée de pouce : suspendre les gestes de
@@ -3523,9 +3332,6 @@ export function ouvrirMenuDisposition(bouton, event) {
 
 export function ouvrirMenuBarre(bouton, event) {
     if (event) { event.stopPropagation(); event.preventDefault(); }
-    var mvc = document.getElementById('mv-container');
-    var enPip = !!(mvc && mvc.classList.contains('mv-pip'));
-    var modePip = localStorage.getItem('multiviewPipMode') || 'sidebar';
     var mobile = window.innerWidth <= 768;
     ouvrirMenu(bouton, [
         { icon: '⤢', label: 'Ajuster toutes les images', title: 'étiré → ajusté → rempli', onSelect: function() { cycleMvFitAll(); } },
@@ -3536,11 +3342,6 @@ export function ouvrirMenuBarre(bouton, event) {
         ('documentPictureInPicture' in window) ? { icon: '🖼', label: mvFlux.length >= 2 ? 'Fenêtre détachée (vidéo 1 ici, les autres empilées)' : 'Fenêtre détachée', actif: !!docPiPWindow || (deuxEcransActif() && secondEcranPiP), onSelect: function() { toggleDocumentPiP(); } } : null,
         !mobile ? { icon: '🖥', label: 'Deux écrans : une fenêtre étirée (échange sans recharger)', title: 'Étirez la fenêtre sur les deux écrans : la vidéo 1 se cale sur le premier, les autres s\'empilent sur le second', actif: mvLayout === 'ecrans', onSelect: function() { toggleEcransEtire(); } } : null,
         !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres (recharge à l\'échange)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif() && !secondEcranPiP, onSelect: function() { toggleDeuxEcrans(); } } : null,
-        { sep: true },
-        (!enPip && !mobile) ? { icon: '◫', label: 'Réduire dans un coin', onSelect: function() { toggleMultiviewPip(); } } : null,
-        enPip ? { icon: '⤢', label: 'Agrandir', onSelect: function() { toggleMultiviewPip(); } } : null,
-        enPip ? { icon: '◫', label: 'Panneau latéral', actif: modePip === 'sidebar', onSelect: function() { window.setMvPipMode('sidebar'); } } : null,
-        enPip ? { icon: '🗗', label: 'Fenêtre flottante', actif: modePip === 'floating', onSelect: function() { window.setMvPipMode('floating'); } } : null,
         mvFlux.length ? { sep: true } : null,
         mvFlux.length ? { icon: '✕', label: 'Fermer toutes les vidéos', danger: true, onSelect: fermerToutesLesVideos } : null
     ], { label: 'Plus d\'options' });
@@ -3588,6 +3389,7 @@ export function toggleMultiview() {
         if (scriptPage) scriptPage.style.display = 'none';
 
         updateMultivisionLayout();
+        reveillerCommandes();
     } else if (!mvc.classList.contains('mv-pip')) {
         // Full screen -> Switch to PiP
         toggleMultiviewPip();
@@ -4553,7 +4355,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v39';
+export var VERSION_APP = 'sports-guide-v40';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
