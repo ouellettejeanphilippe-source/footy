@@ -109,6 +109,25 @@ async function main() {
   assert.ok(cellules().every((c) => c.querySelector('.mv-hdr').style.opacity === '1'), 'les en-têtes de tuiles aussi');
   ok('rouvrir le lecteur rend ses commandes, et ses vidéos n\'ont pas rechargé');
 
+  // ── 6. La garde contre les redirections ────────────────────────────────────
+  /* Armée seulement quand des vidéos sont chargées, levée pour les navigations voulues
+     par l'application, et désactivable. Le comportement réel (dialogue du navigateur,
+     clic dans un lecteur hostile) est vérifié dans tests/test_app_boot.spec.js. */
+  const quitter = () => { const e = new w.Event('beforeunload', { cancelable: true }); w.dispatchEvent(e); return e.defaultPrevented; };
+  assert.strictEqual(mv.gardeSortieArmee(), true, 'des vidéos chargées : armée');
+  assert.strictEqual(quitter(), true, 'quitter la page est retenu');
+  mv.autoriserSortie();
+  assert.strictEqual(quitter(), false, 'une navigation voulue par l\'application passe');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000), true, 'pour quelques secondes seulement');
+  const flux = mv.mvFlux.splice(0);
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000), false, 'sans vidéo, rien à garder');
+  mv.mvFlux.push(...flux);
+  mv.toggleGardeSortie();
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000), false, 'le réglage la coupe');
+  assert.strictEqual(localStorage.getItem('garde_sortie'), '0', 'et il est retenu');
+  mv.toggleGardeSortie();
+  ok('la garde contre les redirections est armée quand il le faut, et seulement alors');
+
   console.log(`unit_lecteurfluide: ${n} groupes de tests OK`);
   process.exit(0);
 }

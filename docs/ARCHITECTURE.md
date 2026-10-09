@@ -372,6 +372,8 @@ Le lecteur pose des états **globaux** : le défilement de la page, une marge su
 
 Si la fenêtre est quittée dans les 15 s qui suivent la pose d'une tuile, les adresses posées sont notées (`mv_sortie_forcee`, dix minutes). Au retour, la tuile le dit et propose d'ouvrir le site ou de charger quand même.
 
+**Garde contre les redirections** (9 octobre 2026, « l'app se fait maintenant plus facilement redirect vers l'un des sites », Olympic Streams sur Firefox). La sortie forcée ne joue qu'après coup. Avant, sans `sandbox`, rien n'empêchait une page encadrée de faire `top.location = …`. Mesuré dans Chromium avec un vrai clic dans un lecteur hostile d'une autre origine : l'API Navigation (`navigate`) ne voit pas cette navigation, alors que `beforeunload` la retient. Le navigateur demande « Quitter le site ? », et refuser garde l'application. `gardeSortieArmee()` : réglage `garde_sortie` (allumé par défaut, `⋯ Plus → 🛡 Bloquer les redirections des sites`), au moins une tuile, et pas de navigation voulue par l'application dans les 5 dernières secondes (`autoriserSortie`, appelé par `mettreAJourApplication` et l'installation du script). Le prix : quitter ou recharger l'onglet soi-même, vidéos chargées, demande une confirmation. Firefox ne montre ce dialogue qu'à une page qui a déjà reçu un geste ; ouvrir le lecteur en est un, puisque ses tuiles ne se chargent qu'à ce moment-là (§7.5 bis).
+
 ### 7.7 Signaux du script utilisateur
 
 Dans une page de lecteur, le script remonte à la fenêtre principale `video_state` (une vidéo joue : allume la pastille, et son arrêt déclenche le rechargement de la source — §7.2), `video_stats` (débit et définition, `js/debit.js`) et `media_url` (manifeste vu passer, `js/directmedia.js`). Il obéit à `mv_mute` et `mv_unmute` (une seule tuile a le son) et à `mv_clean`.
@@ -438,6 +440,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 | `direct_media`, `debits` | Manifestes directs et mesures de débit, 3 h. |
 | `fav_teams`, `league_tiers`, `custom_lg_order`, `lg_order_migrated_v2` | Favoris, niveaux et ordre des ligues. |
 | `user_prefs` | Apparence et options. |
+| `garde_sortie` | Garde contre les redirections des lecteurs (`'0'` = coupée ; §7.6). |
 | `mode_cable` | Mode câble du lecteur allumé ou éteint (§7.8). |
 | `mv_state`, `mv_sortie_forcee`, `gmPinnedMatches` | État du lecteur. (`multiviewPipMode`, `multiviewPipPrevMode`, `multiviewFloatingRect`, `multiviewMinimizedRect` : modes réduits retirés le 9 octobre 2026, ignorées.) |
 | `custom_scraper_rules` | Règles de l'Investigator. |
