@@ -12,7 +12,7 @@
 
   - **Tests** : `test_app_boot` « un lecteur qui tente de détourner l'onglet… », en différentiel : garde armée, dialogue et l'app reste ; garde coupée, l'onglet est emporté. Répété 3 fois. `unit_lecteurfluide`, groupe 6.
 
-  - **Fichiers** : `js/multiview.js`, `tests/test_app_boot.spec.js`, `tests/unit_lecteurfluide.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`.
+  - **Fichiers** : `js/multiview.js`, `tests/test_app_boot.spec.js`, `tests/unit_lecteurfluide.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v42`.
 
   - **Ce qui reste.** Pas de Firefox dans ce conteneur : la garde n'y a pas été essayée. Firefox exige un geste préalable dans la page avant de montrer le dialogue ; ouvrir le lecteur en est un. Quitter ou recharger l'onglet soi-même, vidéos chargées, demande désormais une confirmation.
 - 2026-10-09 - **« Le multiview est vraiment cool, mais les emplacements des boutons, le fait que ça cache les menus et les lags de chargement font que c'est pas toujours évident. Corriger et améliorer sans perdre les fonctionnalités »**, puis **« le multiview dans l'écran des matchs live et guide, je veux plus ça »**.
