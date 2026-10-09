@@ -198,7 +198,21 @@ Produit toutes les 30 min par `scripts/scrape_streams.mjs` (§12, relais). Clés
 
 ### 6.2 Sources (`SCRAPERS_CONFIG`, `js/config.js`)
 
-Onze sources : footybite, mlbbite, sportsurge, buffstreams, streameast, onhockey, vipleague, streamed (API JSON), methstreams, flexfitness, liveleagues. Chaque entrée dit si l'accueil porte des matchs, quelles sous-pages lire par sport (`getSourcePages`, restreint aux sports du jour par `sportOfLeague`), et quel parseur de `js/scrapers.js` s'applique. `MATCH_PAGE_BLOCKED_HOSTS` liste les hôtes dont les pages de match sont refusées côté serveur.
+Seize sources : footybite, mlbbite, sportsurge, buffstreams, streameast, onhockey, vipleague, streamed (API JSON), methstreams, flexfitness, liveleagues, et depuis le 9 octobre 2026 ppv (API JSON), daddylive, watchsports, isportsurge, crichd. Chaque entrée dit si l'accueil porte des matchs, quelles sous-pages lire par sport (`getSourcePages`, restreint aux sports du jour par `sportOfLeague`), et quel parseur de `js/scrapers.js` s'applique. `MATCH_PAGE_BLOCKED_HOSTS` liste les hôtes dont les pages de match sont refusées côté serveur.
+
+**Une seule table des parseurs** : `PARSEURS` (`js/scrapers.js`) dit quel parseur lit quelle source, pour le navigateur (`js/main.js`, moins `SOURCES_SERVEUR_SEULEMENT`), le script serveur et l'outil de sondage. Elle était recopiée à trois endroits. `fetchRemoteConfig` lit les clés de `domains.json` par l'inverse de `SOURCE_VAR_NAMES`. Ajouter une source demande donc : l'adresse et `applySourceUrl`, `SOURCE_VAR_NAMES`, `SOURCE_MIRRORS`, l'entrée de `SCRAPERS_CONFIG`, le parseur dans `PARSEURS`, et les clés dans `domains.json`. `tests/unit_nouvellessources.test.js` vérifie qu'aucune ne manque.
+
+**Sources ajoutées le 9 octobre 2026** (relevées avec `npm run sonder`, §6.3) :
+- `methstreams` change de gabarit : methstreams.gs répond 403 au serveur, methstreams.st/home porte trois jours de tous les sports dans un bloc JSON (`<script id="searchIndex">`, `parseMethstreamsIndex`), à l'instant près. L'ancien parseur reste en repli.
+- `ppv` : l'API JSON `api.ppv.st/api/streams` (aussi lue par cosectv.com et sportsbite.org). Chaque événement porte son lecteur et ses flux de secours.
+- `daddylive` (dlive.sx ; dlhd.pk et daddylive.* y mènent) : un programme par jour en UTC, chaque événement avec ses chaînes (`watch.php?id=N`). « Upcoming Events » (d'autres jours) et « TV Shows » sont écartés ; une heure plus petite que la précédente dans une catégorie passe au lendemain.
+- `watchsports` (watchsports.su) : une ancre `a.game-row` par match, heure ISO avec décalage ; la page de match liste ses flux en `a.stream-link`.
+- `isportsurge` (isportsurge.ws, où mène sportsurge.ir) : un autre gabarit que Sportsurge, l'affiche est dans le texte de l'image de la ligne.
+- `crichd` (crichd.at, cricket) : pas de parseur dédié, le repli générique (`parseCrichd`).
+
+ppv et daddylive donnent les lecteurs **dès la grille** : leurs matchs portent leurs `streamLinks`, et leur `matchUrl` est l'adresse de la source, que le script serveur ne relit pas (comme OnHockey). Ces liens portent `programme: true` : une chaîne de télé sert plusieurs sports, et la règle du décor (`adressesNonSpecifiques`, `js/match.js`) les épargne. Ce sont deux des trois `SOURCES_SERVEUR_SEULEMENT` (API sans CORS, page de 800 Ko). Passage réduit du 9 octobre (20 pages de match) : ppv 189 liens, daddylive 664, watchsports 137, methstreams 26, crichd 3, isportsurge 2.
+
+Relevés sans suite pour l'instant : olympicweb.me et fbstream.is (gabarit VIPLeague rendu en JavaScript), bintv (API `bintvjson.lovable.app`), streamsports99 (API `api.cdnlivetv.is`), total-sportekk, ntv.cx, reedstreams, streamcorner, strumyk/strims24, sportontv, roxiestreams (applications JavaScript sans grille dans le HTML).
 
 ### 6.3 Adresses, miroirs et promotion — et la surcharge vivante
 
@@ -242,7 +256,7 @@ La découverte des **lecteurs** est déjà sans branche par site (§6.5) : une s
 
 Deux propriétés le rendent sûr. Il ne s'exécute **jamais** tant qu'un parseur dédié fonctionne : une source en bonne santé ne le paie pas et ne peut pas être salie par lui. Et son pire échec est bénin — `mergeFluxToApi` n'attache les liens qu'aux matchs que le **calendrier** connaît, un match inventé ne crée donc pas de carte (§6.6).
 
-Portée : la forme reconnue est « une ancre par match », celle de neuf des onze sources. OnHockey (un tableau dont les liens *sont* les flux) et Streamed (une API JSON) ont une autre forme ; leur repli reste leur parseur. Le recours au repli est compté : `scraper_stats[id].generique` et le message « OK (repli générique sur N pages) » dans Logs côté navigateur, `sources[].generiques` dans `data/streams.json` côté serveur. Une source qui vit sur son repli a un parseur à réécrire — sans urgence, puisqu'elle livre encore.
+Portée : la forme reconnue est « une ancre par match », celle de la plupart des sources. OnHockey (un tableau dont les liens *sont* les flux) et Streamed (une API JSON) ont une autre forme ; leur repli reste leur parseur. Le recours au repli est compté : `scraper_stats[id].generique` et le message « OK (repli générique sur N pages) » dans Logs côté navigateur, `sources[].generiques` dans `data/streams.json` côté serveur. Une source qui vit sur son repli a un parseur à réécrire — sans urgence, puisqu'elle livre encore.
 
 ### 6.6 Fusion dans le calendrier (`mergeFluxToApi`, `js/api.js`)
 

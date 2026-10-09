@@ -2,6 +2,33 @@
 ## En cours
 
 ## Fait
+- 2026-10-09 - **« T'as ajouté les nouvelles sources et trouvé comment extraire de ceux qui répondent sans matchs ? Methstreams a beaucoup de liens. » — « Fais tout ce que tu peux. »**
+
+  - **Methstreams revit.** En production, methstreams.gs répondait 403 au serveur : la source ne livrait plus rien. methstreams.st/home n'affiche que six matchs en clair, mais sa grille complète (trois jours, tous les sports) est dans le bloc JSON de sa recherche (`searchIndex`). Le nouveau parseur `parseMethstreamsIndex` la lit, avec les heures exactes. L'adresse passe à `https://methstreams.st/home` et les anciennes pages `/league/…` sont retirées. Résultat : 184 matchs ; la page de match donne son flux (fxtrend.st).
+
+  - **Cinq sources nouvelles**, toutes vérifiées par un passage réel du script serveur :
+    - `ppv` : API `api.ppv.st`, 158 matchs avec leurs lecteurs ;
+    - `daddylive` (dlive.sx) : programme UTC par chaînes, 266 matchs ;
+    - `watchsports` (watchsports.su) : 49 matchs, une dizaine de flux par page ;
+    - `isportsurge` (isportsurge.ws) : 13 matchs ;
+    - `crichd` (crichd.at, cricket) : lu par le repli générique.
+
+  - **Une seule table des parseurs** (`PARSEURS`, `js/scrapers.js`). Elle était recopiée dans `js/main.js`, `scrape_streams.mjs` et `sonder_domaine.mjs`. `fetchRemoteConfig` dérive ses clés de `SOURCE_VAR_NAMES`.
+
+  - **Décor.** Au premier passage réduit, la règle du décor retirait 147 liens, dont les chaînes daddylive : Sky Sports Main Event sert au cricket comme au golf. Les liens attachés par un programme (ppv, daddylive) portent maintenant `programme: true`, et la règle les épargne. Il ne reste que trois vraies adresses de publicité écartées.
+
+  - **Outil de sondage.** Pour une source dont les matchs pointent vers la grille, il affiche les lecteurs portés par le match au lieu de rouvrir la grille.
+
+  - **Vérifié** : passage réduit de `scrape_streams.mjs` (`--limit 20`), puis données restaurées. Liens par source : daddylive 664, ppv 189, watchsports 137, methstreams 26, crichd 3, isportsurge 2.
+
+  - **Tests** : `unit_nouvellessources` (10 groupes, dont la cohérence des tables de déclaration). `npm run test:unit` : 83 fichiers ; Playwright : 43 passés, 1 sauté.
+
+  - **Fichiers** : `js/scrapers.js`, `js/config.js`, `js/main.js`, `js/match.js`, `scripts/scrape_streams.mjs`, `scripts/sonder_domaine.mjs`, `domains.json`, `tests/unit_nouvellessources.test.js`, `docs/ARCHITECTURE.md`, `README.md`.
+
+  - **Ce qui reste.**
+    - Relever les sites rendus en JavaScript : olympicweb et fbstream (gabarit VIPLeague), bintv et streamsports99 (des API existent), totalsportek, ntv, reedstreams, streamcorner, strims24, sportontv, roxiestreams.
+    - Voir ce que la vérification des lecteurs dit des lecteurs ppv (taifood-blog.asia) et des pages daddylive.
+
 - 2026-10-09 - **Liste de domaines fournie ; « un outil qui permet de trouver facilement les liens quand on a un nouveau domaine » ; « ne pas ramasser les mauvais liens », en amont et pas dans l'app.**
 
   - **Outil : `npm run sonder -- <domaine>…`** (`scripts/sonder_domaine.mjs`, décisions dans `js/sondage.js`). Pour chaque domaine : statut, redirection, adresse canonique ; la source à laquelle il ressemble, d'après son nom ou `--source <id>`, lue comme le fait le serveur ; quelques pages de match et leurs lecteurs, avec ce que le registre de jouabilité en sait. `--ajouter` l'inscrit en dernier dans les miroirs de sa source. Ne comptent que les matchs hébergés sur le domaine sondé : le parseur d'OnHockey fabriquait sur ntv.cx des « matchs » pointant vers onhockey.tv. Un site sans nom de source est lu à l'aveugle et signalé comme nouvelle source, jamais comme miroir.

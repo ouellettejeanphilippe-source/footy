@@ -198,19 +198,8 @@ const { fetchPage } = utils;
    passage de liens (10 septembre 16:28 UTC au 12 septembre). On le prend là où il est. */
 const { appliquerHotesDistants } = extractors;
 
-const parsers = {
-    footybite: scrapers.parseFootybite,
-    mlbbite: scrapers.parseMlbbite,
-    sportsurge: scrapers.parseSportsurge,
-    buffstreams: scrapers.parseBuffstreams,
-    streameast: scrapers.parseStreameast,
-    onhockey: scrapers.parseOnHockey,
-    vipleague: scrapers.parseVipleague,
-    methstreams: scrapers.parseMethstreams,
-    streamed: scrapers.parseStreamed,
-    flexfitness: scrapers.parseFlexfitness,
-    liveleagues: scrapers.parseLiveleagues
-};
+// La table unique des parseurs (js/scrapers.js) : le serveur lit toutes les sources.
+const parsers = scrapers.PARSEURS;
 
 function hostOf(u) { try { return new URL(u).hostname.replace(/^(www|v2)\./, ''); } catch (e) { return String(u || ''); } }
 
@@ -626,6 +615,7 @@ const out = {
         scrapeError: m.scrapeError || null,
         streamLinks: (m.streamLinks || []).map((l) => Object.assign({ name: l.name, quality: l.quality, lang: l.lang, url: l.url, icon: l.icon, source: l.source || m.source },
             l.site ? { site: l.site } : {}, l.channel ? { channel: l.channel } : {}, l.topLevel ? { topLevel: true } : {},
+            l.programme ? { programme: true } : {},
             l.verified ? { verified: l.verified, verifiedAt: l.verifiedAt } : {},
             // L'adresse du flux observée par la vérification : sans cette ligne elle
             // serait jetée à chaque passage, comme `hostPlay` l'était avant.

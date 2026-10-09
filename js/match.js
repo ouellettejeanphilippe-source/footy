@@ -701,6 +701,10 @@ export function adressesNonSpecifiques(matches) {
     var fam = sportFamily(sportOfLeague(m.league || ''));
     (m.streamLinks || []).forEach(function(l) {
       if (!l || !l.url || l.topLevel) return; // un lien « Page du match » est déjà marqué comme tel
+      /* Une chaîne rattachée à l'événement par le PROGRAMME de la source (ppv, daddylive) :
+         Sky Sports Main Event passe du cricket le matin et du golf l'après-midi. Le
+         partage entre sports y est la nature d'une chaîne, pas la marque d'un décor. */
+      if (l.programme) return;
       if (!familles[l.url]) familles[l.url] = {};
       familles[l.url][fam] = true;
     });

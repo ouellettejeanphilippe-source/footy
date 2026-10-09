@@ -31,7 +31,9 @@ export var BUFFSTREAMS_URL = 'https://app.buffstreams.is/indexcracked29';
 export var STREAMEAST_URL = 'https://v2.gostreameast.is/'; // v2.streameast.ga renvoie 429 depuis sept. 2026
 export var ONHOCKEY_URL = 'https://onhockey.tv/';
 export var VIPLEAGUE_URL = 'https://vipleague.me/watch-now'; // .vg/.io/.cc redirigent vers vipleague.me (6 septembre 2026) ; la grille est sur /watch-now, /live-now-streaming répond 404
-export var METHSTREAMS_URL = 'https://methstreams.gs/';
+/* methstreams.gs répond 403 au serveur depuis début octobre 2026 ; methstreams.st/home porte
+   toute la grille dans un bloc JSON (parseMethstreamsIndex, js/scrapers.js). */
+export var METHSTREAMS_URL = 'https://methstreams.st/home';
 /* Seule source à exposer une API JSON plutôt que des pages HTML à deviner. */
 export var STREAMED_URL = 'https://streamed.pk/';
 /* Toutes les ligues sur une seule page (dont le football universitaire, absent ou
@@ -42,6 +44,13 @@ export var FLEXFITNESS_URL = 'https://flexfitness.fit/';
    vipleague.me : demandé le 7 septembre 2026 pour la Coupe du monde féminine FIBA, que
    ce site liste en entier (« qui a les matchs de la FIBA Women actuellement en cours »). */
 export var LIVELEAGUES_URL = 'https://www.liveleagues.me/';
+/* Ajoutées le 9 octobre 2026, relevées avec scripts/sonder_domaine.mjs (voir parsePpv,
+   parseDaddylive, parseWatchsports, parseIsportsurge, js/scrapers.js). */
+export var PPV_URL = 'https://api.ppv.st/api/streams';        // API JSON de ppv.st (aussi lue par cosectv.com, sportsbite.org)
+export var DADDYLIVE_URL = 'https://dlive.sx/';               // dlhd.pk et daddylive.* y mènent
+export var WATCHSPORTS_URL = 'https://watchsports.su/';
+export var ISPORTSURGE_URL = 'https://isportsurge.ws/index8';  // sportsurge.ir y redirige
+export var CRICHD_URL = 'https://crichd.at/';
 
 
 /* Miroirs connus par source : essayés dans l'ordre si l'URL principale échoue.
@@ -61,10 +70,15 @@ export var SOURCE_MIRRORS = {
     streameast: ['https://v2.gostreameast.is/', 'https://v2.streameast.ga/'],
     onhockey: ['https://onhockey.tv/'],
     vipleague: ['https://vipleague.me/watch-now', 'https://vipleague.vg/watch-now', 'https://vipleague.io/watch-now', 'https://vipleague.cc/watch-now'],
-    methstreams: ['https://methstreams.gs/'],
+    methstreams: ['https://methstreams.st/home', 'https://methstreams.gs/'],
     streamed: ['https://streamed.pk/', 'https://streamed.su/', 'https://streamed.st/'],   // .st ajouté le 9 octobre 2026 (sonder_domaine : 256 matchs, se déclare sur .pk)
     flexfitness: ['https://flexfitness.fit/'],
-    liveleagues: ['https://www.liveleagues.me/']
+    liveleagues: ['https://www.liveleagues.me/'],
+    ppv: ['https://api.ppv.st/api/streams', 'https://api.ppv.cx/api/streams'],
+    daddylive: ['https://dlive.sx/', 'https://dlhd.pk/', 'https://daddylive.mov/'],
+    watchsports: ['https://watchsports.su/', 'https://watch-sports.st/', 'https://watchsports-live.st/'],
+    isportsurge: ['https://isportsurge.ws/index8', 'https://sportsurge.ir/'],
+    crichd: ['https://crichd.at/']
 };
 
 /* Clé de domains.json portant l'URL de chaque source. Exportée pour que le script
@@ -75,7 +89,8 @@ export var SOURCE_VAR_NAMES = {
     footybite: 'SITE', mlbbite: 'MLBBITE_PLUS_URL', sportsurge: 'SPORTSURGE_URL',
     buffstreams: 'BUFFSTREAMS_URL', streameast: 'STREAMEAST_URL', onhockey: 'ONHOCKEY_URL', vipleague: 'VIPLEAGUE_URL',
     methstreams: 'METHSTREAMS_URL', streamed: 'STREAMED_URL', flexfitness: 'FLEXFITNESS_URL',
-    liveleagues: 'LIVELEAGUES_URL'
+    liveleagues: 'LIVELEAGUES_URL', ppv: 'PPV_URL', daddylive: 'DADDYLIVE_URL', watchsports: 'WATCHSPORTS_URL',
+    isportsurge: 'ISPORTSURGE_URL', crichd: 'CRICHD_URL'
 };
 
 /* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
@@ -112,6 +127,11 @@ export function applySourceUrl(id, url) {
         case 'streamed': STREAMED_URL = url; break;
         case 'flexfitness': FLEXFITNESS_URL = url; break;
         case 'liveleagues': LIVELEAGUES_URL = url; break;
+        case 'ppv': PPV_URL = url; break;
+        case 'daddylive': DADDYLIVE_URL = url; break;
+        case 'watchsports': WATCHSPORTS_URL = url; break;
+        case 'isportsurge': ISPORTSURGE_URL = url; break;
+        case 'crichd': CRICHD_URL = url; break;
         default: return;
     }
     if (typeof window !== 'undefined') window[SOURCE_VAR_NAMES[id]] = url;
@@ -323,10 +343,9 @@ export async function fetchRemoteConfig() {
         var res = await fetch(remoteConfigUrl, ctrl ? { cache: 'no-cache', signal: ctrl.signal } : { cache: 'no-cache' });
         if (res.ok) {
             var data = await res.json();
-            var keyToId = { SITE: 'footybite', MLBBITE_PLUS_URL: 'mlbbite', SPORTSURGE_URL: 'sportsurge',
-                BUFFSTREAMS_URL: 'buffstreams', STREAMEAST_URL: 'streameast', ONHOCKEY_URL: 'onhockey', VIPLEAGUE_URL: 'vipleague',
-                METHSTREAMS_URL: 'methstreams', STREAMED_URL: 'streamed', FLEXFITNESS_URL: 'flexfitness',
-                LIVELEAGUES_URL: 'liveleagues' };
+            // L'inverse de SOURCE_VAR_NAMES : une seule liste à tenir quand une source s'ajoute.
+            var keyToId = {};
+            Object.keys(SOURCE_VAR_NAMES).forEach(function(id) { keyToId[SOURCE_VAR_NAMES[id]] = id; });
             Object.keys(keyToId).forEach(function(k) { if (data[k]) applySourceUrl(keyToId[k], data[k]); });
             if (data.MIRRORS && typeof data.MIRRORS === 'object') {
                 Object.keys(data.MIRRORS).forEach(function(id) {
@@ -412,13 +431,10 @@ export const SCRAPERS_CONFIG = [
         { path: 'api/matches/billiards', sports: ['other'] },
         { path: 'api/matches/other', sports: ['other'] }
     ] },
-    { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams', homepageHasMatches: false, pages: [
-        { path: 'league/soccerstreams', sports: ['soccer'] }, { path: 'league/nflstreams', sports: ['nfl'] }, { path: 'league/nbastreams', sports: ['nba'] },
-        // league/nhlstreams et league/cfbstreams redirigent vers crackstreams.mx qui répond 404 : retirées.
-        { path: 'league/mlbstreams', sports: ['mlb'] }, { path: 'league/mmastreams', sports: ['mma'] },
-        { path: 'league/boxingstreams', sports: ['boxing'] }, { path: 'league/f1streams', sports: ['f1'] },
-        { path: 'league/wnbastreams', sports: ['wnba'] }, { path: 'league/wwestreams', sports: ['wwe'] }, { path: 'league/aew', sports: ['wwe'] }, { path: 'league/ncaab', sports: ['ncaab'] }
-    ] },
+    /* Une seule page depuis le 9 octobre 2026 : l'accueil de methstreams.st porte trois jours
+       de tous les sports dans son index de recherche. Les anciennes pages /league/… (gabarit
+       de methstreams.gs) répondent 404 sur le nouveau domaine. */
+    { name: 'Methstreams', url: METHSTREAMS_URL, id: 'methstreams' },
     /* Une seule page pour tous les sports (foot, CFB, NFL, NBA, NHL, MLB, MLS, USL,
        motorsport, combat) : demandé le 5 septembre 2026 pour combler le football
        universitaire, faible chez les autres sources. Chaque page de match liste déjà
@@ -442,7 +458,16 @@ export const SCRAPERS_CONFIG = [
         { path: 'handball-sports-stream', sports: ['other'] }, { path: 'horse-racing-sports-stream', sports: ['other'] },
         { path: 'snooker-sports-stream', sports: ['other'] }, { path: 'volleyball-sports-stream', sports: ['other'] },
         { path: 'others-sports-stream', sports: ['other'] }
-    ] }
+    ] },
+    /* 9 octobre 2026. ppv et daddylive livrent les lecteurs dès la grille (leurs matchs
+       pointent vers l'adresse de la source, qui n'est pas relue page par page) et ne sont
+       lues que par le script serveur (SOURCES_SERVEUR_SEULEMENT, js/scrapers.js). */
+    { name: 'PPV', url: PPV_URL, id: 'ppv' },
+    { name: 'DaddyLive', url: DADDYLIVE_URL, id: 'daddylive' },
+    { name: 'WatchSports', url: WATCHSPORTS_URL, id: 'watchsports' },
+    { name: 'iSportsurge', url: ISPORTSURGE_URL, id: 'isportsurge' },
+    // Cricket seulement ; pas de parseur dédié, le repli générique lit sa grille (parseCrichd).
+    { name: 'CricHD', url: CRICHD_URL, id: 'crichd' }
 ];
 
 /* Hôtes dont les pages de match ne répondent jamais depuis un serveur ou un proxy CORS :
@@ -1507,6 +1532,11 @@ window.ONHOCKEY_URL = ONHOCKEY_URL;
 window.VIPLEAGUE_URL = VIPLEAGUE_URL;
 window.METHSTREAMS_URL = METHSTREAMS_URL;
 window.LIVELEAGUES_URL = LIVELEAGUES_URL;
+window.PPV_URL = PPV_URL;
+window.DADDYLIVE_URL = DADDYLIVE_URL;
+window.WATCHSPORTS_URL = WATCHSPORTS_URL;
+window.ISPORTSURGE_URL = ISPORTSURGE_URL;
+window.CRICHD_URL = CRICHD_URL;
 window.PROXIES = PROXIES;
 window.toggleGlobalStats = toggleGlobalStats;
 window.openGlobalStatsFromMatch = openGlobalStatsFromMatch;

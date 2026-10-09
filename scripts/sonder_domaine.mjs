@@ -64,12 +64,7 @@ const match = await import('../js/match.js');
 const sondage = await import('../js/sondage.js');
 const { inspectPageContent } = await import('../js/fetcher.js');
 
-const parsers = {
-    footybite: scrapers.parseFootybite, mlbbite: scrapers.parseMlbbite, sportsurge: scrapers.parseSportsurge,
-    buffstreams: scrapers.parseBuffstreams, streameast: scrapers.parseStreameast, onhockey: scrapers.parseOnHockey,
-    vipleague: scrapers.parseVipleague, methstreams: scrapers.parseMethstreams, streamed: scrapers.parseStreamed,
-    flexfitness: scrapers.parseFlexfitness, liveleagues: scrapers.parseLiveleagues
-};
+const parsers = scrapers.PARSEURS;
 const IDS = config.SCRAPERS_CONFIG.map((sc) => sc.id);
 
 let ledger = {};
@@ -106,10 +101,14 @@ async function lireCommeSource(id, adresse, accueil) {
     return { id, adresse, matchs: liste.length, liste, generique, pages: htmls.length, echecs: echecs.length };
 }
 
-async function liensDuMatch(m, id) {
+async function liensDuMatch(m, id, adresseSource) {
+    /* ppv, daddylive : les lecteurs viennent avec la grille, et le match pointe vers
+       l'adresse de la source, que le script serveur ne relit pas page par page. */
+    const deja = scrapers.finalizeStreamLinks(m.streamLinks || []);
+    if (m.matchUrl === adresseSource) return deja;
     const html = await utils.fetchPage(m.matchUrl, { force: true });
     const ctx = Object.assign({}, m, { source: id, streamLinks: [] });
-    return scrapers.finalizeStreamLinks(scrapers.extractStreamLinks(html, ctx) || []);
+    return scrapers.finalizeStreamLinks(deja.concat(scrapers.extractStreamLinks(html, ctx) || []));
 }
 
 const bilan = [];
@@ -172,7 +171,7 @@ for (const brut of adresses) {
     let tous = [];
     for (const m of choisis) {
         try {
-            const liens = await liensDuMatch(m, meilleure.id);
+            const liens = await liensDuMatch(m, meilleure.id, meilleure.adresse);
             tous = tous.concat(liens);
             console.log(`   · ${m.homeTeam} vs ${m.awayTeam} (${m.status || '?'}) — ${liens.length} lien(s)  ${m.matchUrl}`);
             liens.slice(0, 8).forEach((l) => console.log(`       ${l.topLevel ? 'onglet' : 'cadre '}  ${(l.name || '').slice(0, 24).padEnd(24)} ${l.url.slice(0, 110)}`));
