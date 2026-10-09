@@ -41,12 +41,37 @@ async function main() {
   assert.strictEqual(C.reporterLiensNonRelus(null, publies, {}), 0);
   ok('reporterLiensNonRelus : les pages non relues gardent leurs liens, les grilles partagées jamais');
 
+  {
+    const M = await import('../js/match.js');
+    const mk = (o) => Object.assign({ league: 'Premier League', matchDate: '2026-10-09', startTime: '15:00', streamLinks: [] }, o);
+    // Beaucoup de matchs portant « Live » : ils ne doivent plus être tous comparés.
+    let all = [];
+    for (let i = 0; i < 50; i++) all.push(mk({ homeTeam: 'Equipe' + i + ' Live', awayTeam: 'Rival' + i + ' Live' }));
+    all = M.mergeMatches(all, [mk({ homeTeam: 'Manchester United', awayTeam: 'Liverpool', streamLinks: [{ url: 'https://a.test/1' }] })]);
+    all = M.mergeMatches(all, [mk({ homeTeam: 'Manchester United', awayTeam: 'Liverpool', streamLinks: [{ url: 'https://b.test/2' }] })]);
+    const mu = all.filter((m) => /manchester/i.test(m.homeTeam));
+    assert.strictEqual(mu.length, 1, 'le même match venu de deux sources est fusionné');
+    assert.deepStrictEqual(mu[0].streamLinks.map((l) => l.url), ['https://a.test/1', 'https://b.test/2']);
+    ok('mergeMatches indexé : fusion intacte, mots sans équipe hors de l\'index');
+  }
+
   const scrape = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'scrape_streams.mjs'), 'utf8');
   assert.ok(/Promise\.all\(sourcesActives\(\)\.map\(lireUneSource\)\)/.test(scrape), 'les sources sont lues en parallèle');
   assert.ok(/--horizon/.test(scrape) && /reporterLiensNonRelus\(out\.matches, precedent, pagesRelues\)/.test(scrape), 'mode rapide branché');
   assert.ok(/const CONCURRENCY = (\d+)/.exec(scrape)[1] >= 12, 'plus de six pages de match en vol');
   assert.ok(/parHote: 2/.test(scrape), 'la politesse par hôte reste en place');
   ok('scrape_streams : sources en parallèle, mode --horizon, régulation par hôte intacte');
+
+  {
+    /* jsdom 27 à 29 RETIENT chaque document analysé (~6 Mo pour une page de 700 Ko, même
+       après ramasse-miettes) ; mesuré le 9 octobre 2026 : 377 Mo pour 60 pages en 29.1.1,
+       3 Mo en 26.1.0. Le passage serveur lit ~900 pages : il saturait son tas de 8 Go et
+       se figeait. Ne pas monter de version sans refaire la mesure. */
+    const p = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+    const majeure = parseInt(String(p.devDependencies.jsdom).replace(/^[^0-9]*/, ''), 10);
+    assert.ok(majeure <= 26, 'jsdom ' + p.devDependencies.jsdom + ' : les versions 27 à 29 fuient (voir le commentaire)');
+    ok('jsdom reste sur une version qui libère ses documents');
+  }
 
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
   assert.strictEqual(pkg.scripts.liens, 'node scripts/maj_liens.mjs');

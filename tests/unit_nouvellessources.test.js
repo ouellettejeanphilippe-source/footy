@@ -182,6 +182,125 @@ async function main() {
     ok('bintv : événements à venir et en cours, sans heure, chaînes permanentes écartées');
   }
 
+  // ── olympicweb / fbstream ────────────────────────────────────────────────
+  {
+    const grille = `<a data-bs-toggle="collapse" data-bs-target="#1" href="/live-sky-sports-news-stream" title="Sky Sports News">Sky Sports News</a>
+      <a data-bs-toggle="collapse" data-bs-target="#2" href="/live-al-fateh-vs-al-ahli-stream" title="Al Fateh v Al Ahli"><span content="2026-10-09T15:55">15:55</span> Al Fateh v Al Ahli</a>`;
+    const ol = S.parseOlympicweb(grille, 'https://olympicweb.me/live/soccer-stream');
+    assert.strictEqual(ol.length, 1, 'chaîne permanente (sans heure) écartée');
+    assert.strictEqual(ol[0].startTime, '10:55', '15:55 à Londres (BST) = 10:55 à New York');
+    assert.strictEqual(ol[0].matchUrl, 'https://olympicweb.me/live-al-fateh-vs-al-ahli-stream');
+    assert.strictEqual(ol[0].source, 'olympicweb');
+    const fb = S.parseOlympicweb('<a data-bs-toggle="collapse" href="/live/stream/detroit-red-wings-vs-seattle-kraken" title="Detroit Red Wings - Seattle Kraken"><span content="2026-10-10T00:00">00:00</span></a>', 'https://fbstream.is/stream/nhl');
+    assert.strictEqual(fb.length, 1);
+    assert.ok(/detroit/i.test(fb[0].homeTeam) && /seattle/i.test(fb[0].awayTeam), 'titre « Home - Away »');
+    assert.strictEqual(fb[0].source, 'fbstream');
+    assert.strictEqual(fb[0].league, 'NHL');
+
+    const page = `<nav><a href="/stream/football">Live Football</a></nav>
+      <a href="https://budgetezy.org/4/192e375ae107ee49a678d22a4b0111c8">Al Fateh v Al Ahli</a>
+      <button data-uri="/al-fateh-vs-al-ahli-live-stream/1/">Live Stream 1</button>
+      <button data-uri="/al-fateh-vs-al-ahli-live-stream/2/">Live Stream 2</button>
+      <a class="dropdown-item" data-uri="/al-fateh-vs-al-ahli-live-stream/1/">Live Stream 1</a>`;
+    const liens = S.extractStreamLinks(page, { matchUrl: 'https://olympicweb.me/live-al-fateh-vs-al-ahli-stream', source: 'olympicweb', homeTeam: 'Al Fateh', awayTeam: 'Al Ahli', streamLinks: [] });
+    assert.deepStrictEqual(liens.map((l) => l.url).sort(), ['https://olympicweb.me/al-fateh-vs-al-ahli-live-stream/1/', 'https://olympicweb.me/al-fateh-vs-al-ahli-live-stream/2/'],
+      'les boutons data-uri seulement : ni la navigation, ni la régie (seulementSesLiens)');
+    ok('olympicweb / fbstream : grille à l\'heure de Londres, diffusions en boutons data-uri');
+  }
+
+  // ── totalsportek, relais et régies ───────────────────────────────────────
+  {
+    const page = `<table><tr class="custom-stream-row"><td>NBA League Pass</td>
+      <td><a href="https://hitcast.st/totview.php?src=https://vertex.st/ch?id=3">Watch</a></td></tr>
+      <tr><td><a href="https://knowacaliforniafarmer.com/4/277c0c6540f884f7bc917ebc7fa8b568">Dragons vs Ospreys FULL</a></td></tr></table>`;
+    const liens = S.finalizeStreamLinks(S.extractStreamLinks(page, { matchUrl: 'https://total-sportekk.st/events/a-vs-b', source: 'totalsportek', homeTeam: 'A', awayTeam: 'B', streamLinks: [] }));
+    assert.ok(liens.some((l) => l.url === 'https://vertex.st/ch?id=3'), 'le relais totview est déballé');
+    assert.ok(!liens.some((l) => /totview|knowacaliforniafarmer/.test(l.url)), 'ni relais ni régie /4/<hex>');
+    assert.strictEqual(S.isJunkStreamPath('https://hai8g.com/4/8553101'), true);
+    assert.strictEqual(S.isJunkStreamPath('https://budgetezy.org/4/192e375ae107ee49a678d22a4b0111c8'), true);
+    assert.strictEqual(S.isJunkStreamPath('https://embed.st/embed/admin/ppv-a-vs-b/1'), false);
+    assert.strictEqual(S.isJunkStreamPath('https://dlive.sx/stream/stream-46.php'), false);
+    ok('totalsportek : relais déballé, régie à identifiant hexadécimal écartée');
+  }
+
+  // ── watchfooty ───────────────────────────────────────────────────────────
+  {
+    const api = JSON.stringify([
+      { title: 'Al Fateh vs Al Ahli', teams: { home: { name: 'Al Fateh' }, away: { name: 'Al Ahli' } }, status: 'in', timestamp: 1791565200000, league: 'Saudi Pro League',
+        streams: [{ url: 'https://sportsembed.test/embed/1/a/deluxe/1', source: 'deluxe', language: 'English', quality: 'HD' }, { url: 'https://nsfw.test/', nsfw: true }] },
+      { title: 'Sans flux', teams: { home: { name: 'Aa' }, away: { name: 'Bb' } }, status: 'pre', timestamp: 1791565200000, streams: [] },
+      { title: 'Fini', teams: { home: { name: 'Aa' }, away: { name: 'Bb' } }, status: 'post', timestamp: 1791565200000, streams: [{ url: 'https://x.test/1' }] },
+    ]);
+    const wf = S.parseWatchfooty(api, 'https://api.watchfooty.test/api/v1/matches/football');
+    assert.strictEqual(wf.length, 1, 'sans flux, terminé : écartés');
+    assert.strictEqual(wf[0].status, 'live');
+    assert.strictEqual(wf[0].startTime, '13:00');
+    assert.deepStrictEqual(wf[0].streamLinks.map((l) => l.name), ['deluxe · English'], 'le flux « nsfw » est écarté');
+    ok('watchfooty : matchs avec lecteurs, statut in/pre, instant en millisecondes');
+  }
+
+  // ── mybuffstreams et le moteur new-stream-embed ──────────────────────────
+  {
+    const grille = `<div class="top-tournament"><h2 class="league-name">Upcoming NHL Streams Links</h2><ul class="competitions">
+        <li><a class="competition" title="Buffstreams Washington Capitals vs New York Rangers" href="https://mybuffstreams.test/nhl/caps-rangers/1">
+          <span class="competition-cell-side1"><span class="name"> Washington Capitals </span></span>
+          <time datetime="2026-10-09 23:00:00">7:00 PM</time>
+          <span class="competition-cell-side2"><span class="name"> New York Rangers </span></span></a></li></ul></div>
+      <div class="top-tournament"><h2 class="league-name">Upcoming Boxing Streams Links</h2><ul class="competitions">
+        <li><a class="d-block competition" href="https://mybuffstreams.test/title-game/boxing/a-vs-b-live-streams-links">
+          <div> Zaur Abdullaev vs Khariton Agrba - 11:00 AM ET </div><small>22 hours from now</small></a></li></ul></div>`;
+    const mb = S.parseMybuffstreams(grille, 'https://mybuffstreams.test/home6');
+    assert.strictEqual(mb.length, 2);
+    assert.strictEqual(mb[0].startTime, '19:00', '23:00 UTC = 19:00 à New York');
+    assert.strictEqual(mb[0].league, 'NHL', 'la ligue vient du titre de la section');
+    assert.ok(/agrba/i.test(mb[1].awayTeam) && !/from now|ET/.test(mb[1].awayTeam), 'combat : « A vs B - 11:00 AM ET », sans la date relative');
+    assert.strictEqual(mb[1].startTime, '11:00');
+
+    const page = `<iframe id="cx-iframe" src="https://gooz.test/new-stream-embed/"></iframe>
+      <button id="stream-btn-48213" onclick="changeStream(48213)">HD English</button>
+      <button id="stream-btn-48214" onclick="changeStream(48214)">SD</button>
+      <script>window.changeStream = function (streamId){ document.getElementById('cx-iframe').src='https://gooz.test/new-stream-embed/' + streamId }</script>`;
+    const liens = S.finalizeStreamLinks(S.extractStreamLinks(page, { matchUrl: 'https://mybuffstreams.test/nhl/caps-rangers/1', source: 'mybuffstreams', homeTeam: 'Washington Capitals', awayTeam: 'New York Rangers', streamLinks: [] }));
+    assert.deepStrictEqual(liens.map((l) => l.url).sort(), ['https://gooz.test/new-stream-embed/48213', 'https://gooz.test/new-stream-embed/48214'],
+      'un lecteur par bouton, jamais l\'iframe vide');
+    ok('mybuffstreams : grille par section, combats ; lecteurs reconstruits depuis changeStream');
+  }
+
+  // ── freestreams ──────────────────────────────────────────────────────────
+  {
+    // HTML mal imbriqué comme celui du site : </td></div> fait sortir les boutons du conteneur.
+    const page = `<table><tbody id="myTable">
+      <tr data-timestamp="1791556200000"><td class="matchtime"></td><td><div><span class="leaguename">Second League</span></td></div>
+        <td class="event-title"><div><span>Yantra vs Vihren Sandanski</span></div></td>
+        <td><div class="buttoncontainer"><a href="https://freestreams-live1h.pk/diemasport/">Diema Sport (BG)</a></div></td></tr>
+      <tr data-timestamp="1791601200000"><td></td><td><span class="leaguename">Liga MX</span></td>
+        <td class="event-title"><span>Tigres UANL vs Toluca</span></td><td><div class="buttoncontainer"></div></td></tr>
+    </tbody></table>`;
+    const fr = S.parseFreestreams(page, 'https://freestreams-live1i.pk/football-streamz5/');
+    assert.strictEqual(fr.length, 1, 'un match sans chaîne (pas encore publiée) est écarté');
+    assert.strictEqual(fr[0].startTime, '10:30', '14:30 UTC = 10:30 à New York');
+    assert.deepStrictEqual(fr[0].streamLinks.map((l) => l.url), ['https://freestreams-live1h.pk/diemasport/'], 'gardé tel quel : l\'ancien domaine redirige');
+    ok('freestreams : une ligne par match, chaînes du site en liens de programme');
+  }
+
+  // ── roxiestreams ─────────────────────────────────────────────────────────
+  {
+    const grille = `<table><tbody>
+      <tr><td><a href="/soccer-streams-16">Al Fateh vs Al-Ahli</a></td><td class="event-start-time">October 9, 2026 7:55 AM</td></tr>
+      <tr><td><a href="/soccer-streams-17">Sans heure vs Personne</a></td><td>—</td></tr>
+    </tbody></table>`;
+    const rx = S.parseRoxiestreams(grille, 'https://roxiestreams.su/soccer');
+    assert.strictEqual(rx.length, 1);
+    assert.strictEqual(rx[0].startTime, '10:55', '7:55 AM à Los Angeles (PDT) = 10:55 à New York');
+    assert.strictEqual(rx[0].league, 'Soccer');
+    const page = `<button onclick="showPlayer('clappr', getRandomStream('fs2.m3u8', 'tedesco'))">Stream 1</button>
+      <script>setTimeout(() => showPlayer('clappr', getRandomStream('fs2.m3u8')), 500);</script>`;
+    const liens = S.extractStreamLinks(page, { matchUrl: 'https://roxiestreams.su/soccer-streams-16', source: 'roxiestreams', homeTeam: 'Al Fateh', awayTeam: 'Al Ahli', streamLinks: [] });
+    assert.ok(liens.some((l) => l.url === 'https://tedesco.formaturamaxi.com.br/fs2.m3u8'), 'le manifeste HLS est reconstruit');
+    assert.strictEqual(liens.filter((l) => /\.m3u8$/.test(l.url)).length, 1, 'une fois, malgré les deux appels');
+    ok('roxiestreams : grille à l\'heure du Pacifique, flux HLS reconstruit depuis la page');
+  }
+
   // ── crichd : le repli générique ──────────────────────────────────────────
   const cr = `<a href="/events/south-africa-vs-australia">South Africa vs Australia</a><a href="/events/india-vs-england">India vs England</a>`;
   assert.strictEqual(S.parseCrichd(cr, 'https://crichd.at/').length, 2);

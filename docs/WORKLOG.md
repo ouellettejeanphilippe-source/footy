@@ -2,6 +2,52 @@
 ## En cours
 
 ## Fait
+- 2026-10-09 - **« Le but de cette discussion, c'est intégrer toutes les sources de façon fonctionnelle. » — « Si c'est possible de faire que la mise à jour des liens se fasse plus rapidement… et de pouvoir le faire manuellement si GitHub chie. »**
+
+  - **Enquête par site.** Cinq agents ont relevé, pour chaque domaine restant de la liste, où vit la grille et comment s'obtiennent les lecteurs. Le détail est dans `docs/ARCHITECTURE.md` §6.2.
+
+  - **Onze sources de plus**, vingt-six en tout. Chacune a été vérifiée avec `npm run sonder` puis par un passage complet du script serveur.
+    - cdnlivetv (l'API derrière streamsports99) ;
+    - bintv (son API, sans heure) ;
+    - watchfooty (l'API de sportsbite) ;
+    - olympicweb et fbstream (moteur VIPLeague, boutons `data-uri`) ;
+    - totalsportek (relais `totview` déballé ; `ww1.sportsurge.st` en est un miroir) ;
+    - mybuffstreams (où mène buffstreams.ir) ;
+    - freestreams (football) ;
+    - roxiestreams (flux HLS nus).
+    - Le moteur `new-stream-embed` est partagé par mybuffstreams et isportsurge.
+
+  - **Nouveaux miroirs.** ppv passe à six domaines d'API, `api.ppv.cx` étant mort. reedstreams devient un miroir de streamed.
+
+  - **Régies et adaptateurs.** Les régies à identifiant hexadécimal (`/4/192e…`) sont écartées. Un adaptateur peut maintenant déclarer `seulementSesLiens`.
+
+  - **Écartés, avec la raison** : sportontv et cosectv (ils relisent ppv), ntv (il redistribue ppv, daddylive, cdnlivetv et Streamed), streamcorner (réponses chiffrées), strumyk/strims24 (flux Flashscore et une requête par match), livetv.sx (chaîne de certificats incomplète), v5.gostreameast (miroirs bloqués). Les autres sont morts.
+
+  - **Vitesse du passage : de 310 s pour onze sources à 139 s pour vingt-six**, avec 3 026 flux au lieu de 1 680.
+    - Les sources sont lues en parallèle, et 24 pages de match sont en vol à la fois.
+    - Le `fetch` du script ne demande qu'une fois chaque adresse et retient les échecs. `fetchPage` rejouait chaque échec par chaque « proxy », qui revient à la même requête directe ; et son délai de 5 s courait pendant l'attente dans la file de l'hôte (1 623 « erreurs réseau » à 24 en vol avant ce correctif).
+    - `mergeMatches` est indexé : 0,2 s au lieu de 13, pour un résultat identique. Le mot « live » figurait dans 404 noms d'équipe.
+    - **jsdom est fixé en 26.1.0.** Les versions 27 à 29 retiennent chaque document analysé : le tas atteignait 6,8 Go et le passage se figeait vers la 875ᵉ page.
+    - La phase des pages a un budget de 360 s.
+
+  - **Sans GitHub.**
+    - `npm run liens` (`scripts/maj_liens.mjs`, multiplateforme) enchaîne le calendrier, les liens, la vérification, et sur demande la publication (`--publier`).
+    - `--rapide` (`--horizon 180`) ne relit que les pages des matchs en cours ou imminents. Les autres gardent leurs liens (`reporterLiensNonRelus`, jamais par une adresse partagée).
+
+  - **Corrigé au passage.** Une adresse canonique n'est adoptée que si elle répond. freestreams se déclarait sur `fsl-streams.click`, au certificat invalide, qui serait devenu l'adresse de la source.
+
+  - **Tests** :
+    - `unit_nouvellessources` (18 groupes, dont la cohérence des tables de déclaration) ;
+    - `unit_majrapide` (5, dont un verrou sur la version de jsdom) ;
+    - `npm run test:unit` : 84 fichiers ; Playwright : 43 passés, 1 sauté.
+
+  - **Fichiers** : `js/scrapers.js`, `js/config.js`, `js/match.js`, `js/extractors.js`, `js/sources/{index,olympicweb,totalsportek,aapmains,roxiestreams}.js`, `scripts/scrape_streams.mjs`, `scripts/maj_liens.mjs`, `scripts/sonder_domaine.mjs`, `domains.json`, `package.json`, `package-lock.json`, `desktop/deps/package{,-lock}.json`, `sw.js`, tests, `docs/ARCHITECTURE.md`, `README.md`.
+
+  - **Ce qui reste.**
+    - Le domaine des flux de roxiestreams est écrit dans son adaptateur : s'il change, il faut le mettre à jour.
+    - mybuffstreams et isportsurge n'exposent leurs lecteurs qu'à l'approche du match.
+    - livetv.sx serait lisible en fournissant le certificat intermédiaire manquant (`NODE_EXTRA_CA_CERTS`).
+
 - 2026-10-09 - **« T'as ajouté les nouvelles sources et trouvé comment extraire de ceux qui répondent sans matchs ? Methstreams a beaucoup de liens. » — « Fais tout ce que tu peux. »**
 
   - **Methstreams revit.** En production, methstreams.gs répondait 403 au serveur : la source ne livrait plus rien. methstreams.st/home n'affiche que six matchs en clair, mais sa grille complète (trois jours, tous les sports) est dans le bloc JSON de sa recherche (`searchIndex`). Le nouveau parseur `parseMethstreamsIndex` la lit, avec les heures exactes. L'adresse passe à `https://methstreams.st/home` et les anciennes pages `/league/…` sont retirées. Résultat : 184 matchs ; la page de match donne son flux (fxtrend.st).

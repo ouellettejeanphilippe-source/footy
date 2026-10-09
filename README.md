@@ -38,7 +38,7 @@ Sur téléphone, les navigateurs ne prennent pas d'extensions : l'application fo
 ### D'où viennent les données
 
 - **Calendrier et scores** : l'API publique d'ESPN (48 compétitions), complétée par quelques calendriers (PWHL, F1, IndyCar, sports de combat, WWE, LoL Esports). Un calendrier du jour est régénéré chaque matin sur le serveur (`data/schedule.json`) ; le navigateur relit les scores toutes les cinq minutes.
-- **Liens de diffusion** : seize sites agrégateurs, relus sur le serveur toutes les 30 minutes (`data/streams.json`), puis relus par le navigateur quand il le peut. Les adresses courantes des sites, qui changent souvent, sont dans `domains.json`, mis à jour automatiquement.
+- **Liens de diffusion** : vingt-six sites agrégateurs, relus sur le serveur toutes les 30 minutes (`data/streams.json`), puis relus par le navigateur quand il le peut. Les adresses courantes des sites, qui changent souvent, sont dans `domains.json`, mis à jour automatiquement.
 
 Ces sites changent sans prévenir, et l'application est faite pour l'encaisser sans qu'on écrive du code à chaque fois. Un site qui déménage est suivi tout seul (miroirs et adresse canonique). Un site qui refait son HTML garde ses matchs : quand son analyseur dédié ne rend plus rien, un repli générique les retrouve à leur *forme* — un lien par rencontre, « A vs B », une heure à côté. Et quand une correction est nécessaire, elle se fait dans `domains.json` : sous-pages, coupure d'une source en panne, hôtes à écarter. Le fichier est relu à chaque démarrage, donc la réparation est effective au chargement suivant, sans publier de version. Le détail est dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (§6.3 et §6.5 bis).
 
@@ -78,6 +78,18 @@ Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins)
 Il n'y a **pas de tâche planifiée**. Tant que l'application de bureau est ouverte, elle refait les trois étapes elle-même toutes les 30 minutes — le calendrier, les liens, puis la vérification des lecteurs (`desktop/main.js`, `passeComplete`). Fermez la fenêtre et plus rien ne tourne : ces données ne valent que pour aujourd'hui et ne servent qu'à qui regarde. `⋯ Tout mettre à jour maintenant` (Ctrl+Maj+U) force une passe.
 
 Cela demande que l'application travaille **dans le dépôt** (menu → « Travailler dans un dépôt… ») : la vérification charge les lecteurs dans le Chromium de Playwright, qui n'est pas embarqué dans l'exécutable. Sans dépôt, seul le calendrier est rafraîchi.
+
+### `npm run liens` — la mise à jour à la main, partout
+
+Si GitHub Actions ne tourne pas (ou pour ne pas attendre), une seule commande fait tout, sous Windows, macOS ou Linux :
+
+```bash
+npm run liens                         # calendrier si besoin, liens, vérification des lecteurs
+npm run liens -- --rapide             # seulement les pages des matchs en cours ou dans les 3 h
+npm run liens -- --rapide --publier   # … puis commit et push des données
+```
+
+`--rapide` relit les pages des matchs imminents et garde, pour les autres, les liens du passage précédent : c'est la mise à jour à faire juste avant de regarder. `--sans-verification` saute la vérification (Chromium de Playwright requis). Sans `--publier`, rien ne quitte la machine : l'application de bureau et un serveur local lisent `data/` directement.
 
 ### `local/pipeline.ps1` — le rattrapage à la main
 

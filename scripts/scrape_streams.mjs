@@ -29,6 +29,8 @@ const LIMIT = (() => { const i = args.indexOf('--limit'); return i >= 0 ? parseI
    cours ou qui commencent dans les N minutes — les seuls dont les liens bougent d'heure en
    heure. Les autres gardent les liens du passage précédent (reporterLiensNonRelus,
    js/config.js). Sans l'option, toutes les pages sont lues, comme avant. */
+/* Budget de la phase des pages de match, en secondes (`--budget-pages`, 360 par défaut). */
+const BUDGET_PAGES_MS = (() => { const i = args.indexOf('--budget-pages'); return (i >= 0 ? parseInt(args[i + 1], 10) : 360) * 1000; })();
 const HORIZON = (() => { const i = args.indexOf('--horizon'); return i >= 0 ? parseInt(args[i + 1], 10) : null; })();
 
 // ── DOM simulé pour pouvoir importer les modules du client ─────────────────
@@ -141,22 +143,36 @@ function attenteApres429(reponse, essai) {
     return Math.min(1000 * Math.pow(2, essai - 1) + Math.random() * 500, REGULATION.attenteMax);
 }
 
-const fetchStats = { ok: 0, fail: 0, byStatus: {}, repris429: 0 };
+const fetchStats = { ok: 0, fail: 0, byStatus: {}, repris429: 0, evitees: 0 };
 
-globalThis.fetch = async (u, init) => {
-    const target = unwrapProxyUrl(String(u));
-    let hote;
-    try { hote = new URL(target).hostname; } catch (e) { hote = '(adresse illisible)'; }
+/* UNE ADRESSE, UNE REQUÊTE (9 octobre 2026, « la mise à jour des liens est vraiment
+   longue »). `fetchPage` est écrit pour le navigateur : quand un transport échoue, il
+   passe au suivant (accès direct, Jina, cors.sh, allorigins…), et il lance même le
+   suivant en parallèle si le premier tarde. Ici, chaque « proxy » est déballé vers la
+   MÊME requête directe (unwrapProxyUrl) : une page refusée en 403 était donc redemandée
+   une demi-douzaine de fois, et la régulation par hôte mettait ces doublons en file
+   devant les vraies pages. Mesuré ce jour-là : sportsurge, 56 sous-pages presque toutes
+   en 403, occupait 51 s à lui seul.
 
-    const headers = Object.assign({ 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9', 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8' }, (init && init.headers) || {});
-    const ref = refererFor(target);
-    if (ref && !headers.Referer) headers.Referer = ref;
+   Deux règles : une requête EN VOL vers une adresse est partagée par tous ceux qui la
+   demandent (le corps est lu une fois, chacun reçoit sa copie) ; un ÉCHEC — refus 4xx,
+   panne 5xx, délai dépassé, erreur réseau — est retenu pour le reste du passage et rendu
+   sans réseau. Retenir aussi les pannes et les délais n'est pas un excès de prudence :
+   le « transport suivant » de fetchPage est la MÊME requête, et une page qui vient
+   d'expirer au bout de 20 s n'aboutira pas au coup d'après — le passage du 9 octobre
+   restait bloqué sur ses dernières pages, chacune rejouée six fois à 20 s. Le 429 a ses
+   propres reprises, plus bas. Le délai du demandeur n'annule pas la requête partagée —
+   elle a le sien, 20 s. */
+const estEchecRetenu = (status) => status >= 400 && status !== 429;
+const enVolParCible = new Map();
+const refusRetenus = new Map();
 
+async function demanderUneFois(target, init, hote, headers) {
     for (let essai = 1; ; essai++) {
         await prendreLeTour(hote);
         let r;
         try {
-            r = await realFetch(target, Object.assign({}, init, { headers, redirect: 'follow' }));
+            r = await realFetch(target, Object.assign({}, init, { headers, redirect: 'follow', signal: AbortSignal.timeout(20000) }));
         } catch (e) {
             rendreLeTour(hote);
             fetchStats.fail++;
@@ -180,8 +196,44 @@ globalThis.fetch = async (u, init) => {
 
         if (r.ok) fetchStats.ok++;
         else { fetchStats.fail++; fetchStats.byStatus[r.status] = (fetchStats.byStatus[r.status] || 0) + 1; }
-        return r;
+        return { status: r.status, statusText: r.statusText, headers: [...r.headers], corps: await r.arrayBuffer() };
     }
+}
+
+globalThis.fetch = async (u, init) => {
+    const target = unwrapProxyUrl(String(u));
+    let hote;
+    try { hote = new URL(target).hostname; } catch (e) { hote = '(adresse illisible)'; }
+
+    const headers = Object.assign({ 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9', 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8' }, (init && init.headers) || {});
+    const ref = refererFor(target);
+    if (ref && !headers.Referer) headers.Referer = ref;
+    const lecture = !init || !init.method || /^GET$/i.test(init.method);
+    const sansSignal = Object.assign({}, init);
+    delete sansSignal.signal;
+
+    if (!lecture) {
+        const snap = await demanderUneFois(target, sansSignal, hote, headers);
+        return new Response(snap.corps, { status: snap.status, statusText: snap.statusText, headers: snap.headers });
+    }
+    const refus = refusRetenus.get(target);
+    if (refus) {
+        fetchStats.evitees++;
+        if (refus.erreur) throw refus.erreur;
+        return new Response(null, refus);
+    }
+    let p = enVolParCible.get(target);
+    if (p) fetchStats.evitees++;
+    else {
+        p = demanderUneFois(target, sansSignal, hote, headers).finally(() => enVolParCible.delete(target));
+        enVolParCible.set(target, p);
+    }
+    let snap;
+    try { snap = await p; }
+    catch (e) { refusRetenus.set(target, { erreur: e }); throw e; }
+    if (estEchecRetenu(snap.status)) refusRetenus.set(target, { status: snap.status, statusText: snap.statusText });
+    const sansCorps = snap.status === 204 || snap.status === 304;
+    return new Response(sansCorps ? null : snap.corps.slice(0), { status: snap.status, statusText: snap.statusText, headers: snap.headers });
 };
 
 // scrapers.js en premier : il fixe un ordre d'évaluation des modules (circulaires) qui
@@ -279,24 +331,34 @@ async function fetchWithMirrors(id, skip) {
    la retient comme gagnante pour domains.json. C'est la seule adresse que le script
    accepte sans qu'elle soit déjà déclarée : elle vient du site lui-même, pas d'une
    découverte. Voir canonicalOrigin (js/config.js). */
-function adopterOrigineCanonique(sc, home) {
+/* ÉPROUVÉE avant d'être adoptée (9 octobre 2026) : freestreams-live1i.pk se déclare sur
+   fsl-streams.click, dont le certificat est invalide — aucun navigateur ne l'ouvre. Adoptée
+   sur parole, elle devenait l'adresse de la source dans domains.json, et ses liens
+   pointaient vers un domaine mort. On ne l'adopte que si elle répond. */
+async function adopterOrigineCanonique(sc, home) {
     const canon = canonicalOrigin(home.html);
     if (!canon) return home;
     let actuelle;
     try { actuelle = new URL(home.url); } catch (e) { return home; }
     if (canon === actuelle.origin) return home;
     const nouvelle = canon + actuelle.pathname + actuelle.search;
+    let html;
+    try { html = await fetchPage(nouvelle, { force: true, soft404: true }); }
+    catch (e) {
+        console.log(`  [${sc.id}] ${actuelle.origin} se declare sur ${canon}, qui ne repond pas : on garde ${actuelle.origin}`);
+        return home;
+    }
     console.log(`  [${sc.id}] ${actuelle.origin} se declare sur ${canon} : adresse adoptee`);
     applySourceUrl(sc.id, nouvelle);
     if (mirrorFindings[sc.id]) {
         mirrorFindings[sc.id].winner = nouvelle;
         if (!mirrorFindings[sc.id].candidates.includes(nouvelle)) mirrorFindings[sc.id].candidates.unshift(nouvelle);
     }
-    return { url: nouvelle, html: home.html };
+    return { url: nouvelle, html: html || home.html };
 }
 
 async function readSourceAt(sc, home) {
-    home = adopterOrigineCanonique(sc, home);
+    home = await adopterOrigineCanonique(sc, home);
     const pages = getSourcePages(sc, null, home.html).filter((pg) => pg.url !== home.url);
     const htmls = sc.homepageHasMatches === false ? [] : [home];
     for (const pg of pages) {
@@ -431,7 +493,6 @@ if (!NO_SUBPAGES) {
         return mn !== null && mn <= HORIZON && mn > -config.LIVE_MAX_DURATION_MIN;
     };
     const queue = all.filter(dansHorizon).slice(0, LIMIT);
-    queue.forEach((m) => { pagesRelues[m.matchUrl] = true; (m.altUrls || []).forEach((u) => { pagesRelues[u] = true; }); });
     if (HORIZON !== null) console.log(`Passage rapide : ${queue.length} pages de match relues (en cours ou dans les ${HORIZON} min) sur ${all.length} matchs`);
 
     /* 24 pages en vol (6 jusqu'au 9 octobre 2026) : la limite qui protège les sites est
@@ -454,9 +515,18 @@ if (!NO_SUBPAGES) {
         return pageHtmlCache.get(u);
     }
 
+    /* Un budget de temps pour cette phase (9 octobre 2026) : la file est triée par urgence,
+       en direct d'abord ; au-delà du budget, on n'en lance plus, et les matchs non lus
+       gardent les liens du passage précédent (reporterLiensNonRelus). Une page n'est donc
+       « relue » qu'une fois réellement partie, pas en entrant dans la file. */
+    const debutPages = Date.now();
+    let horsBudget = 0;
     async function worker() {
         while (idx < queue.length) {
+            if (Date.now() - debutPages > BUDGET_PAGES_MS) { horsBudget += queue.length - idx; idx = queue.length; break; }
             const m = queue[idx++];
+            pagesRelues[m.matchUrl] = true;
+            (m.altUrls || []).forEach((u) => { pagesRelues[u] = true; });
             const urls = [m.matchUrl].concat(Array.isArray(m.altUrls) ? m.altUrls : [])
                 .filter((u) => u && !SCRAPERS_CONFIG.some((sc) => sc.url === u)) // pages d'accueil (ex. OnHockey) déjà traitées
                 .filter((u) => {
@@ -509,10 +579,11 @@ if (!NO_SUBPAGES) {
                 m.streamLinks = (m.streamLinks || []).filter((l) => { if (!isFallback(l)) return true; const h = hostOf(l.url); if (seenHosts[h]) return false; seenHosts[h] = true; return true; });
             }
             done++;
-            if (done % 25 === 0) console.log(`  ... ${done}/${queue.length} pages de match`);
+            if (done % 25 === 0) console.log(`  ... ${done}/${queue.length} pages de match (${Math.round((Date.now() - debutPages) / 1000)} s, tas ${Math.round(process.memoryUsage().heapUsed / 1048576)} Mo)`);
         }
     }
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+    if (horsBudget) console.log(`Budget des pages de match épuisé (${Math.round(BUDGET_PAGES_MS / 1000)} s) : ${horsBudget} pages non lues, leurs liens précédents sont gardés`);
 }
 
 /* Compter par `m.source` (la source qui a DÉCOUVERT le match) donnait 0 pour
