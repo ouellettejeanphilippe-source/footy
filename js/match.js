@@ -3,12 +3,67 @@ import { TEAM_DATA } from './teams.js';
 import { memeMatchATraversLaNuit } from './nuit.js';
 
 /* ══ MATCH MERGING LOGIC ══════════════ */
+/* INDEX DES CANDIDATS (9 octobre 2026). Comparer chaque match entrant à TOUS les matchs
+   déjà connus coûtait, avec vingt-six sources et ~2 700 matchs, 44 secondes du passage
+   serveur à la seule fusion — `isMatchPair` est cher, et la liste grossit à chaque
+   source. Même remède que `mergeFluxToApi` (js/api.js) : un index par nom normalisé et
+   par mot significatif (4 lettres ou plus), et `isMatchPair` seulement sur les candidats
+   qui partagent une clé avec l'un des deux camps, DANS L'ORDRE de la liste — le premier
+   qui s'apparie gagne, comme avant. Le balayage complet reste pour ce que l'index ne
+   peut pas voir : une ÉPREUVE (séance de qualifications, gala) qui ne partage aucun mot
+   avec son double (« F1 » contre « Formula 1 Singapore GP »), et que `isMatchPair`
+   apparie sur le nom combiné. */
+/* Mots qui ne désignent aucune équipe et ramenaient des centaines de candidats : « live »
+   figurait dans 404 noms du cache du 9 octobre 2026 (« … Live Stream »), « state » dans 59.
+   Ils restent comparés par `isMatchPair` ; ils ne servent seulement plus à trouver qui
+   comparer. */
+var MOTS_SANS_EQUIPE = ['live', 'stream', 'streams', 'free', 'watch', 'online', 'state', 'women', 'woman', 'united', 'city',
+    'north', 'south', 'east', 'west', 'central', 'real', 'race', 'qualifying', 'practice', 'team', 'club', 'sport', 'sports',
+    'football', 'soccer', 'university', 'college', 'saint', 'today', 'match', 'game'];
+function clesDeFusion(nom, cache) {
+  if (!nom) return [];
+  if (cache[nom]) return cache[nom];
+  var cles = [];
+  var n = normName(nom);
+  if (n) cles.push('n:' + n);
+  String(nom).toLowerCase().split(/[^a-z0-9]+/).forEach(function(mot) {
+    if (mot.length >= 4 && MOTS_SANS_EQUIPE.indexOf(mot) < 0 && cles.indexOf('m:' + mot) < 0) cles.push('m:' + mot);
+  });
+  cache[nom] = cles;
+  return cles;
+}
+
+function estEpreuve(m) {
+  var l = String(m.league || '').toUpperCase();
+  if (/^(F1|FORMULA 1|INDYCAR|WWE|AEW|MOTOGP|NASCAR|MOTORSPORTS?|RACING)$/.test(l)) return true;
+  var t = (String(m.homeTeam || '') + ' ' + String(m.awayTeam || '')).toLowerCase();
+  return /grand prix|formula 1|\bf1\b|\bindy|\bwwe\b|\baew\b|esports|\braw\b|smackdown|\bnxt\b|qualifying|practice|\bgp\b|\bufc\b/.test(t);
+}
+
 export function mergeMatches(mainList, newList) {
+  var index = {}, cache = {};
+  function indexer(m, i) {
+    [m.homeTeam, m.awayTeam].forEach(function(nom) {
+      clesDeFusion(nom, cache).forEach(function(c) { (index[c] = index[c] || []).push(i); });
+    });
+  }
+  for (var ix = 0; ix < mainList.length; ix++) indexer(mainList[ix], ix);
+
   for(var k=0; k<newList.length; k++) {
     var nm = newList[k];
     var merged = false;
 
-    for (var i = 0; i < mainList.length; i++) {
+    var vus = {};
+    [nm.homeTeam, nm.awayTeam].forEach(function(nom) {
+      clesDeFusion(nom, cache).forEach(function(c) { (index[c] || []).forEach(function(i) { vus[i] = true; }); });
+    });
+    var aExaminer = Object.keys(vus).map(Number).sort(function(x, y) { return x - y; });
+    // Une épreuve sans candidat (« F1 » contre « Formula 1 Singapore GP ») : balayage complet.
+    if (!aExaminer.length && (!nm.homeTeam || !nm.awayTeam) && estEpreuve(nm)) aExaminer = null;
+    var nbExaminer = aExaminer ? aExaminer.length : mainList.length;
+
+    for (var ii = 0; ii < nbExaminer; ii++) {
+      var i = aExaminer ? aExaminer[ii] : ii;
       var mm = mainList[i];
 
       if (isMatchPair(mm, nm)) {
@@ -55,6 +110,7 @@ export function mergeMatches(mainList, newList) {
       // Generate a new ID based on the array length to avoid conflicts
       nm.id = mainList.length;
       mainList.push(nm);
+      indexer(nm, mainList.length - 1);
     }
   }
 
@@ -701,6 +757,10 @@ export function adressesNonSpecifiques(matches) {
     var fam = sportFamily(sportOfLeague(m.league || ''));
     (m.streamLinks || []).forEach(function(l) {
       if (!l || !l.url || l.topLevel) return; // un lien « Page du match » est déjà marqué comme tel
+      /* Une chaîne rattachée à l'événement par le PROGRAMME de la source (ppv, daddylive) :
+         Sky Sports Main Event passe du cricket le matin et du golf l'après-midi. Le
+         partage entre sports y est la nature d'une chaîne, pas la marque d'un décor. */
+      if (l.programme) return;
       if (!familles[l.url]) familles[l.url] = {};
       familles[l.url][fam] = true;
     });

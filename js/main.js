@@ -4,7 +4,7 @@ import { setupMultivisionUI, installTampermonkey } from './multiview.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
 import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee, isLiveNow, startsWithin, minutesUntilStart, isMatchPageBlocked, LIVE_WINDOW_MIN } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
-import { parseFootybite, parseSportsurge, parseBuffstreams, parseStreameast, parseOnHockey, parseMlbbite, parseVipleague, parseMethstreams, parseFlexfitness, parseLiveleagues, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry, scrapeMatchFlux } from './scrapers.js';
+import { PARSEURS, SOURCES_SERVEUR_SEULEMENT, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry, scrapeMatchFlux } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { retenirMediaDirect } from './directmedia.js';
 import { mergeMatches } from './match.js';
@@ -740,18 +740,10 @@ async function loadAllRun(isBackground, forceScrape){
                téléchargeait pourtant ses douze points d'API à chaque passe — par proxy
                CORS — pour jeter le résultat. On la remonte pour ne demander que les pages
                qu'on sait lire. */
-            var scraperFunctions = {
-                'footybite': parseFootybite,
-                'mlbbite': parseMlbbite,
-                'sportsurge': parseSportsurge,
-                'buffstreams': parseBuffstreams,
-                'streameast': parseStreameast,
-                'onhockey': parseOnHockey,
-                'vipleague': parseVipleague,
-                'methstreams': parseMethstreams,
-                'flexfitness': parseFlexfitness,
-                'liveleagues': parseLiveleagues
-            };
+            var scraperFunctions = {};
+            Object.keys(PARSEURS).forEach(function(id) {
+                if (SOURCES_SERVEUR_SEULEMENT.indexOf(id) < 0) scraperFunctions[id] = PARSEURS[id];
+            });
 
             /* Les sources que la configuration distante n'a pas coupées (`enabled: false`
                dans `domains.json` retire une source en panne sans publier de version), et

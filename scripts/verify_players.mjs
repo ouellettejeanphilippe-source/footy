@@ -27,6 +27,7 @@ const BUDGET_MS = arg('--budget-ms', 5 * 60 * 1000);
 const TOTAL = arg('--total', 150);
 const PER_MATCH = 3, PER_HOST = 4, CONCURRENCY = 4, WATCH_MS = 12000, NAV_TIMEOUT_MS = 20000;
 const IMMINENT_MIN = 120;
+const REHAB_MAX = 6;   // témoins d'hôtes écartés éprouvés par passage
 
 // ── DOM simulé : nécessaire pour importer js/config.js (heure de l'Est) ───────
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://ouellettejeanphilippe-source.github.io/footy/' });
@@ -66,7 +67,12 @@ for (const m of data.matches) {
 const targets = play.pickTargets(data.matches, { perMatch: PER_MATCH, perHost: PER_HOST, total: TOTAL })
     .filter((t) => data.matches[t.matchIndex].rank <= 1);
 for (const m of data.matches) delete m.rank;
-log(`verify_players : ${targets.length} cibles (matchs en direct ou a moins de ${IMMINENT_MIN} min), budget ${Math.round(BUDGET_MS / 60000)} min`);
+/* Les hôtes écartés du fichier (ecarterLiensMorts, js/playability.js) ne sont plus dans
+   aucun match : sans ces cibles, ils ne seraient plus jamais chargés et ne pourraient
+   jamais revenir. Un témoin par hôte, quelques-uns par passage, à tour de rôle. */
+const rehab = data.hostPlayCritere === play.CRITERE_VERDICT ? play.ciblesDeRehabilitation(data.hotesEcartes, REHAB_MAX) : [];
+targets.push(...rehab);
+log(`verify_players : ${targets.length} cibles (matchs en direct ou a moins de ${IMMINENT_MIN} min${rehab.length ? `, dont ${rehab.length} temoins d'hotes ecartes` : ''}), budget ${Math.round(BUDGET_MS / 60000)} min`);
 if (!targets.length) process.exit(0);
 
 // ── Observation ───────────────────────────────────────────────────────────────
@@ -185,17 +191,23 @@ async function worker() {
         const obs = await observe(t.target);
         const verdict = play.verdictFromObservation(obs);
         compte[verdict]++;
-        const link = data.matches[t.matchIndex].streamLinks[t.linkIndex];
-        link.verified = verdict;
-        link.verifiedAt = new Date().toISOString();
-        /* L'adresse du flux, quand on l'a vue arriver : elle permet au mode direct
-           (js/directmedia.js) d'être disponible dès la PREMIÈRE ouverture, au lieu
-           d'attendre que l'utilisateur ait déjà regardé la page pour l'apprendre. */
-        if (verdict === 'plays' && obs.media) {
-            link.media = obs.media;
-            link.mediaAt = link.verifiedAt;
+        if (t.ecarte) {
+            // Témoin d'un hôte écarté : aucun lien publié à marquer, seulement le registre.
+            data.hotesEcartes[t.host].essaiAt = new Date().toISOString();
+            data.hotesEcartes[t.host].verdict = verdict;
         } else {
-            delete link.media; delete link.mediaAt;
+            const link = data.matches[t.matchIndex].streamLinks[t.linkIndex];
+            link.verified = verdict;
+            link.verifiedAt = new Date().toISOString();
+            /* L'adresse du flux, quand on l'a vue arriver : elle permet au mode direct
+               (js/directmedia.js) d'être disponible dès la PREMIÈRE ouverture, au lieu
+               d'attendre que l'utilisateur ait déjà regardé la page pour l'apprendre. */
+            if (verdict === 'plays' && obs.media) {
+                link.media = obs.media;
+                link.mediaAt = link.verifiedAt;
+            } else {
+                delete link.media; delete link.mediaAt;
+            }
         }
         play.recordObservation(ledger, t.host, verdict);
         parHote[t.host] = parHote[t.host] || { plays: 0, tested: 0 };

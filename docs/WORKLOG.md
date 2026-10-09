@@ -16,9 +16,96 @@
 
   - **Tests** : `unit_lecteurfluide` (nouveau, 5 groupes ; il tombe sur l'ancien code au premier groupe). `unit_lecteurinteractions`, groupe 2 réécrit : quitter masque, un redimensionnement ne fait rien revenir, le menu ⋯ ne propose plus de réduire. `unit_deuxecrans` attend la dernière tuile échelonnée. `npm run test:unit` : 82 fichiers. Playwright : 43 réussis, 1 ignoré, lancés avec le Chromium préinstallé (`executablePath`).
 
-  - **Fichiers** : `js/multiview.js`, `js/mv-menu.js`, `styles.css`, `tests/unit_lecteurfluide.test.js`, `tests/unit_lecteurinteractions.test.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `README.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v40`.
+  - **Fichiers** : `js/multiview.js`, `js/mv-menu.js`, `styles.css`, `tests/unit_lecteurfluide.test.js`, `tests/unit_lecteurinteractions.test.js`, `tests/unit_deuxecrans.test.js`, `FEATURES.md`, `README.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v41`.
 
   - **Ce qui reste.** Une page encadrée garde ses mouvements de souris pour elle : en survolant longtemps une vidéo sans en sortir, les commandes s'effacent au bout de 3 s. Un geste au-dessus de la barre ou une nouvelle entrée dans la tuile les rappelle. Le son des vidéos continue lecteur masqué : à revoir si l'utilisateur préfère le couper.
+- 2026-10-09 - **« Le but de cette discussion, c'est intégrer toutes les sources de façon fonctionnelle. » — « Si c'est possible de faire que la mise à jour des liens se fasse plus rapidement… et de pouvoir le faire manuellement si GitHub chie. »**
+
+  - **Enquête par site.** Cinq agents ont relevé, pour chaque domaine restant de la liste, où vit la grille et comment s'obtiennent les lecteurs. Le détail est dans `docs/ARCHITECTURE.md` §6.2.
+
+  - **Onze sources de plus**, vingt-six en tout. Chacune a été vérifiée avec `npm run sonder` puis par un passage complet du script serveur.
+    - cdnlivetv (l'API derrière streamsports99) ;
+    - bintv (son API, sans heure) ;
+    - watchfooty (l'API de sportsbite) ;
+    - olympicweb et fbstream (moteur VIPLeague, boutons `data-uri`) ;
+    - totalsportek (relais `totview` déballé ; `ww1.sportsurge.st` en est un miroir) ;
+    - mybuffstreams (où mène buffstreams.ir) ;
+    - freestreams (football) ;
+    - roxiestreams (flux HLS nus).
+    - Le moteur `new-stream-embed` est partagé par mybuffstreams et isportsurge.
+
+  - **Nouveaux miroirs.** ppv passe à six domaines d'API, `api.ppv.cx` étant mort. reedstreams devient un miroir de streamed.
+
+  - **Régies et adaptateurs.** Les régies à identifiant hexadécimal (`/4/192e…`) sont écartées. Un adaptateur peut maintenant déclarer `seulementSesLiens`.
+
+  - **Écartés, avec la raison** : sportontv et cosectv (ils relisent ppv), ntv (il redistribue ppv, daddylive, cdnlivetv et Streamed), streamcorner (réponses chiffrées), strumyk/strims24 (flux Flashscore et une requête par match), livetv.sx (chaîne de certificats incomplète), v5.gostreameast (miroirs bloqués). Les autres sont morts.
+
+  - **Vitesse du passage : de 310 s pour onze sources à 139 s pour vingt-six**, avec 3 026 flux au lieu de 1 680.
+    - Les sources sont lues en parallèle, et 24 pages de match sont en vol à la fois.
+    - Le `fetch` du script ne demande qu'une fois chaque adresse et retient les échecs. `fetchPage` rejouait chaque échec par chaque « proxy », qui revient à la même requête directe ; et son délai de 5 s courait pendant l'attente dans la file de l'hôte (1 623 « erreurs réseau » à 24 en vol avant ce correctif).
+    - `mergeMatches` est indexé : 0,2 s au lieu de 13, pour un résultat identique. Le mot « live » figurait dans 404 noms d'équipe.
+    - **jsdom est fixé en 26.1.0.** Les versions 27 à 29 retiennent chaque document analysé : le tas atteignait 6,8 Go et le passage se figeait vers la 875ᵉ page.
+    - La phase des pages a un budget de 360 s.
+
+  - **Sans GitHub.**
+    - `npm run liens` (`scripts/maj_liens.mjs`, multiplateforme) enchaîne le calendrier, les liens, la vérification, et sur demande la publication (`--publier`).
+    - `--rapide` (`--horizon 180`) ne relit que les pages des matchs en cours ou imminents. Les autres gardent leurs liens (`reporterLiensNonRelus`, jamais par une adresse partagée).
+
+  - **Corrigé au passage.** Une adresse canonique n'est adoptée que si elle répond. freestreams se déclarait sur `fsl-streams.click`, au certificat invalide, qui serait devenu l'adresse de la source.
+
+  - **Tests** :
+    - `unit_nouvellessources` (18 groupes, dont la cohérence des tables de déclaration) ;
+    - `unit_majrapide` (5, dont un verrou sur la version de jsdom) ;
+    - `npm run test:unit` : 84 fichiers ; Playwright : 43 passés, 1 sauté.
+
+  - **Fichiers** : `js/scrapers.js`, `js/config.js`, `js/match.js`, `js/extractors.js`, `js/sources/{index,olympicweb,totalsportek,aapmains,roxiestreams}.js`, `scripts/scrape_streams.mjs`, `scripts/maj_liens.mjs`, `scripts/sonder_domaine.mjs`, `domains.json`, `package.json`, `package-lock.json`, `desktop/deps/package{,-lock}.json`, `sw.js`, tests, `docs/ARCHITECTURE.md`, `README.md`.
+
+  - **Ce qui reste.**
+    - Le domaine des flux de roxiestreams est écrit dans son adaptateur : s'il change, il faut le mettre à jour.
+    - mybuffstreams et isportsurge n'exposent leurs lecteurs qu'à l'approche du match.
+    - livetv.sx serait lisible en fournissant le certificat intermédiaire manquant (`NODE_EXTRA_CA_CERTS`).
+
+- 2026-10-09 - **« T'as ajouté les nouvelles sources et trouvé comment extraire de ceux qui répondent sans matchs ? Methstreams a beaucoup de liens. » — « Fais tout ce que tu peux. »**
+
+  - **Methstreams revit.** En production, methstreams.gs répondait 403 au serveur : la source ne livrait plus rien. methstreams.st/home n'affiche que six matchs en clair, mais sa grille complète (trois jours, tous les sports) est dans le bloc JSON de sa recherche (`searchIndex`). Le nouveau parseur `parseMethstreamsIndex` la lit, avec les heures exactes. L'adresse passe à `https://methstreams.st/home` et les anciennes pages `/league/…` sont retirées. Résultat : 184 matchs ; la page de match donne son flux (fxtrend.st).
+
+  - **Cinq sources nouvelles**, toutes vérifiées par un passage réel du script serveur :
+    - `ppv` : API `api.ppv.st`, 158 matchs avec leurs lecteurs ;
+    - `daddylive` (dlive.sx) : programme UTC par chaînes, 266 matchs ;
+    - `watchsports` (watchsports.su) : 49 matchs, une dizaine de flux par page ;
+    - `isportsurge` (isportsurge.ws) : 13 matchs ;
+    - `crichd` (crichd.at, cricket) : lu par le repli générique.
+
+  - **Une seule table des parseurs** (`PARSEURS`, `js/scrapers.js`). Elle était recopiée dans `js/main.js`, `scrape_streams.mjs` et `sonder_domaine.mjs`. `fetchRemoteConfig` dérive ses clés de `SOURCE_VAR_NAMES`.
+
+  - **Décor.** Au premier passage réduit, la règle du décor retirait 147 liens, dont les chaînes daddylive : Sky Sports Main Event sert au cricket comme au golf. Les liens attachés par un programme (ppv, daddylive) portent maintenant `programme: true`, et la règle les épargne. Il ne reste que trois vraies adresses de publicité écartées.
+
+  - **Outil de sondage.** Pour une source dont les matchs pointent vers la grille, il affiche les lecteurs portés par le match au lieu de rouvrir la grille.
+
+  - **Vérifié** : passage réduit de `scrape_streams.mjs` (`--limit 20`), puis données restaurées. Liens par source : daddylive 664, ppv 189, watchsports 137, methstreams 26, crichd 3, isportsurge 2.
+
+  - **Tests** : `unit_nouvellessources` (10 groupes, dont la cohérence des tables de déclaration). `npm run test:unit` : 83 fichiers ; Playwright : 43 passés, 1 sauté.
+
+  - **Fichiers** : `js/scrapers.js`, `js/config.js`, `js/main.js`, `js/match.js`, `scripts/scrape_streams.mjs`, `scripts/sonder_domaine.mjs`, `domains.json`, `tests/unit_nouvellessources.test.js`, `docs/ARCHITECTURE.md`, `README.md`.
+
+  - **Ce qui reste.**
+    - Relever les sites rendus en JavaScript : olympicweb et fbstream (gabarit VIPLeague), bintv et streamsports99 (des API existent), totalsportek, ntv, reedstreams, streamcorner, strims24, sportontv, roxiestreams.
+    - Voir ce que la vérification des lecteurs dit des lecteurs ppv (taifood-blog.asia) et des pages daddylive.
+
+- 2026-10-09 - **Liste de domaines fournie ; « un outil qui permet de trouver facilement les liens quand on a un nouveau domaine » ; « ne pas ramasser les mauvais liens », en amont et pas dans l'app.**
+
+  - **Outil : `npm run sonder -- <domaine>…`** (`scripts/sonder_domaine.mjs`, décisions dans `js/sondage.js`). Pour chaque domaine : statut, redirection, adresse canonique ; la source à laquelle il ressemble, d'après son nom ou `--source <id>`, lue comme le fait le serveur ; quelques pages de match et leurs lecteurs, avec ce que le registre de jouabilité en sait. `--ajouter` l'inscrit en dernier dans les miroirs de sa source. Ne comptent que les matchs hébergés sur le domaine sondé : le parseur d'OnHockey fabriquait sur ntv.cx des « matchs » pointant vers onhockey.tv. Un site sans nom de source est lu à l'aveugle et signalé comme nouvelle source, jamais comme miroir.
+
+  - **La liste passée à l'outil** (66 domaines, depuis le conteneur). Seul **streamed.st** est un miroir neuf qui livre (255 matchs) : il est ajouté à `streamed`. Déjà connus : streamed.pk, v2.sportsurge.net, vipleague.me. Ils répondent sans livrer : methstreams.st (pages de ligue vides), ww1.sportsurge.st, v5.gostreameast.link (page de liste de miroirs), buffstreams.ir (→ mybuffstreams.plus). Les streameast.* sont injoignables. footybite.ir et livetv.sx répondent 503. Les autres sont des sites que les parseurs actuels ne lisent pas : daddylive, ppv, ntv, totalsportek, streamcorner, reedstreams, etc. **crichd.at** se lit par le repli générique (cricket, 6 lecteurs par match) : c'est un candidat de nouvelle source.
+
+  - **Liens morts écartés en amont** (`ecarterLiensMorts`, `js/playability.js`, appelé par `scrape_streams.mjs`). Un lien n'est plus publié si son hôte a été chargé au moins 8 fois sans une lecture. Il reste publié s'il a été vu jouer, si son hôte est une source (une page de match), ou si c'est un onglet dont la page répond. Sur le cache du jour : 1902 → 1311 liens, dont 483 « Follow the guide » vers une page de VPN (imgcdnngx.com). C'était le seul lien de 448 matchs, qui passent « sans lien ». Chaque hôte écarté garde un témoin, et `verify_players.mjs` en éprouve six par passage (`ciblesDeRehabilitation`) : une lecture suffit à le faire revenir. Rien ne change dans l'application.
+
+  - **Tests** : `unit_sondage` (7 groupes), `unit_liensmorts` (6). `npm run test:unit` : 82 fichiers ; Playwright : 43 passés, 1 sauté (lancé avec le Chromium du conteneur, la version attendue n'y étant pas).
+
+  - **Fichiers** : `js/sondage.js` (nouveau), `scripts/sonder_domaine.mjs` (nouveau), `js/playability.js`, `scripts/scrape_streams.mjs`, `scripts/verify_players.mjs`, `js/config.js` et `domains.json` (streamed.st), `package.json` (`npm run sonder`), `sw.js` + `VERSION_APP` → `sports-guide-v40` (`js/sondage.js` dans `APP_SHELL`), `docs/ARCHITECTURE.md`, `README.md`, tests.
+
+  - **Ce qui reste.** Écrire les nouvelles sources : crichd.at en premier. daddylive et ppv sont des sites par chaînes ou par API, à relever. methstreams.st et ww1.sportsurge.st sont à relire à la main pour voir où sont passées leurs grilles.
+
 - 2026-10-09 - **« La mise à jour des liens semble se faire difficilement. »**
 
   - **Constat.** `data/streams.json` datait du 6 octobre à 19:21 UTC : plus aucun passage depuis. Le passage 887 a réussi son scrape, mais son job `relais` a reçu un HTTP 500 de l'API GitHub sur la relance (19:49:06). Un seul essai : la chaîne s'est arrêtée. Le cron, censé la rétablir, ne tournait plus : aucune exécution `schedule` d'aucun workflow du dépôt depuis le 20-21 septembre (ni ce workflow, ni le calendrier quotidien, ni la surveillance des domaines). Les workflows sont pourtant marqués « active ».
