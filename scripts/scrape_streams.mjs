@@ -752,6 +752,7 @@ if (sourcesReport.some((s) => !s.ok)) {
    `playabilityScore` — qui exige `tested >= 3` — ne rétrogradait presque aucun hôte. Un
    CDN mort gardait la tête du classement passage après passage. */
 out.hostPlay = (precedent && precedent.hostPlay) || {};
+out.sourcePlay = (precedent && precedent.sourcePlay) || {};   // par source, même raison
 // La règle sous laquelle ce registre a été gagné doit voyager AVEC lui : sans elle,
 // `verify_players.mjs` le croirait à jour et garderait des compteurs faux.
 out.hostPlayCritere = (precedent && precedent.hostPlayCritere) || 0;

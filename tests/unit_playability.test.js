@@ -174,6 +174,40 @@ async function main() {
     assert.strictEqual(tri2[0].name, 'Inconnu', 'un hôte vu jouer passe devant un hôte mort, quelle que soit la qualité annoncée');
     ok('sortFluxLinks : l\'observation prime sur la qualité annoncée');
 
+    // ── 8. Réputation continue : hôte, puis source, puis a priori ───────────
+    {
+        const ledger = { 'eprouve.test': { tested: 34, plays: 17 }, 'chanceux.test': { tested: 1, plays: 1 }, 'rare.test': { tested: 4, plays: 1 } };
+        const sources = { bonne: { tested: 20, plays: 19 }, mauvaise: { tested: 40, plays: 0 } };
+        const r = (l) => P.reputationLien(l, ledger, sources);
+        assert.strictEqual(r({ url: 'https://x.test/', verified: 'plays' }), 1);
+        assert.ok(r({ url: 'https://eprouve.test/1' }) > r({ url: 'https://chanceux.test/1' }), '17 sur 34 éprouvé bat un 1 sur 1 chanceux');
+        assert.ok(r({ url: 'https://rare.test/1' }) < P.REPUTATION_A_PRIORI, 'un sur quatre passe sous l\'inconnu');
+        assert.ok(r({ url: 'https://neuf.test/1', source: 'bonne' }) > r({ url: 'https://neuf.test/2' }), 'hôte inconnu d\'une bonne source : devant l\'inconnu sans source');
+        assert.ok(r({ url: 'https://neuf.test/1', source: 'mauvaise' }) < r({ url: 'https://neuf.test/2' }), '… et celui d\'une source qui ne joue jamais, derrière');
+        assert.strictEqual(r({ url: 'https://eprouve.test/1', source: 'mauvaise' }), r({ url: 'https://eprouve.test/1' }), 'l\'hôte éprouvé l\'emporte sur la source');
+
+        const parSource = P.reputationParSource([
+            { streamLinks: [{ url: 'https://eprouve.test/1', source: 'a' }, { url: 'https://eprouve.test/2', source: 'a' }, { url: 'https://rare.test/1', source: 'a' }] },
+            { streamLinks: [{ url: 'https://eprouve.test/3', source: 'b' }, { url: 'https://inconnu.test/1', source: 'b' }, { url: 'https://x.test/', source: '' }] },
+        ], ledger);
+        assert.deepStrictEqual(parSource, { a: { tested: 38, plays: 18 }, b: { tested: 34, plays: 17 } }, 'un hôte compte une fois par source');
+        ok('reputationLien : hôte lissé, puis source, puis a priori ; reputationParSource sans double compte');
+
+        globalThis.window.hostPlayLedger = {};
+        globalThis.window.sourcePlayLedger = { daddylive: { tested: 20, plays: 20 }, methstreams: { tested: 40, plays: 0 } };
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
+        const tri3 = C.sortFluxLinks([
+            { name: 'Meth 1080p', url: 'https://fxtrend.test/1', quality: '1080p', source: 'methstreams' },
+            { name: 'Daddy', url: 'https://dlive.test/1', source: 'daddylive' },
+            { name: 'Sans source', url: 'https://autre.test/1' },
+        ]);
+        assert.deepStrictEqual(tri3.map((l) => l.name), ['Daddy', 'Sans source', 'Meth 1080p'],
+            'dans un même palier, la réputation de la source passe avant la qualité annoncée (obtenu : ' + tri3.map((l) => l.name).join(' > ') + ')');
+        C.notePlayability({ url: 'https://neuf.test/1', source: 'nouvelle' }, 'plays');
+        assert.deepStrictEqual(C.sourcePlayLedger().nouvelle, { tested: 1, plays: 1 }, 'le navigateur note aussi la source');
+        ok('sortFluxLinks : réputation de l\'hôte ou de la source dans le palier, avant la qualité');
+    }
+
     console.log(`unit_playability: ${n} groupes de tests OK`);
     process.exit(0);
 }
