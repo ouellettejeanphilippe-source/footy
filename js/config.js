@@ -6,7 +6,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStanding
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS, sportOfLeague } from './db.js';
 import { buildProxyList } from './fetcher.js';
-import { playabilityScore, hostOfUrl, tileTarget } from './playability.js';
+import { playabilityScore, hostOfUrl, tileTarget, reputationLien } from './playability.js';
 import { finPresumee as finPresumeeBrute, raisonFinPresumee as raisonFinPresumeeBrute } from './finpresumee.js';
 import { getLeagueDuration } from './utils.js';
 import { appliquerHotesDistants } from './extractors.js';
@@ -1564,33 +1564,64 @@ export function playLedger() {
   return out;
 }
 
-/* Note, dans le registre local, ce que le navigateur de l'utilisateur a vu pour l'hôte
-   d'un lien : `plays` quand la vidéo joue, `none` quand rien n'est venu. */
-export function notePlayability(link, verdict) {
-  var host = hostOfUrl(tileTarget(link));
-  if (!host) return;
-  var l = safeStorageGetJSON('play_ledger', {}) || {};
-  var e = l[host] || { tested: 0, plays: 0 };
+/* Le registre par SOURCE (l'agrégateur qui a fourni le lien : ppv, daddylive…), même
+   forme et même réunion serveur + navigateur que `playLedger`. Voir reputationLien
+   (js/playability.js). */
+export function sourcePlayLedger() {
+  var serveur = (window.sourcePlayLedger && typeof window.sourcePlayLedger === 'object') ? window.sourcePlayLedger : {};
+  var local = safeStorageGetJSON('play_ledger_sources', {}) || {};
+  var out = {};
+  [serveur, local].forEach(function(l) {
+    Object.keys(l).forEach(function(k) {
+      var e = l[k] || {}; var t = out[k] || { tested: 0, plays: 0 };
+      t.tested += e.tested | 0; t.plays += e.plays | 0; out[k] = t;
+    });
+  });
+  return out;
+}
+
+function noterDans(cle, nom, verdict) {
+  var l = safeStorageGetJSON(cle, {}) || {};
+  var e = l[nom] || { tested: 0, plays: 0 };
   e.tested += 1;
   if (verdict === 'plays') e.plays += 1;
   if (e.tested > 40) { e.tested = Math.round(e.tested / 2); e.plays = Math.round(e.plays / 2); }
-  l[host] = e;
-  safeStorageSetJSON('play_ledger', l);
+  l[nom] = e;
+  safeStorageSetJSON(cle, l);
+}
+
+/* Note, dans le registre local, ce que le navigateur de l'utilisateur a vu pour l'hôte
+   d'un lien : `plays` quand la vidéo joue, `none` quand rien n'est venu — et, depuis le
+   9 octobre 2026, pour la source qui l'a fourni. */
+export function notePlayability(link, verdict) {
+  var host = hostOfUrl(tileTarget(link));
+  if (!host) return;
+  noterDans('play_ledger', host, verdict);
+  if (link && link.source) noterDans('play_ledger_sources', String(link.source), verdict);
 }
 
 export function sortFluxLinks(links) {
   /* Ordre : le choix explicite de l'utilisateur (⭐ / 👎 sur un domaine), puis ce qui a
-     été OBSERVÉ en train de jouer (js/playability.js), puis seulement la forme du lien
+     été OBSERVÉ en train de jouer (js/playability.js) — palier, puis réputation de l'hôte
+     ou de la source dans le palier —, puis seulement la forme du lien
      (qualité annoncée, site). Mettre tout lien non `topLevel` devant a été essayé le
      30 septembre 2026 et retiré le jour même : embed.st et ses pareils ne sont pas
      `topLevel`, ils passaient en tête, et ils font sortir la fenêtre. */
   var ledger = playLedger();
+  var sources = sourcePlayLedger();
   return links.slice().sort(function(a, b) {
     var prefA0 = domainPrefs[getDomain(a.url)] || 0;
     var prefB0 = domainPrefs[getDomain(b.url)] || 0;
     if (prefA0 !== prefB0) return prefB0 - prefA0;
     var jouA = playabilityScore(a, ledger), jouB = playabilityScore(b, ledger);
     if (jouA !== jouB) return jouB - jouA;
+    /* Dans un même palier, la réputation : le taux de lecture estimé de l'hôte, ou à
+       défaut de la source qui a fourni le lien (reputationLien, js/playability.js). Elle
+       passe AVANT la qualité annoncée : « 1080p » ne veut rien dire d'un lien qui ne joue
+       pas. Écart minimal de 0,02 : deux réputations voisines ne se départagent pas sur du
+       bruit, la qualité décide alors. */
+    var repA = reputationLien(a, ledger, sources), repB = reputationLien(b, ledger, sources);
+    if (Math.abs(repA - repB) >= 0.02) return repB - repA;
 
     var nameA = (a.name || '').toLowerCase();
     var nameB = (b.name || '').toLowerCase();
