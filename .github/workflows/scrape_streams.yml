@@ -151,8 +151,11 @@ jobs:
   # (30 min après le début du passage), vérifie qu'aucun autre passage n'est déjà en
   # route ou en attente (le cron en amorce un de temps en temps : il reprend alors le
   # relais), et relance le workflow. Il tourne même si le scrape a échoué (`always()`),
-  # sinon un seul échec casserait la chaîne ; si le runner est perdu, le cron suivant la
-  # rétablit dans les cinq heures. Le dépôt est public : les minutes du runner en attente
+  # sinon un seul échec casserait la chaîne. La relance elle-même est réessayée six fois
+  # (une erreur 500 de l'API l'a cassée le 6 octobre 2026). Si le runner est perdu, seul
+  # le cron peut rétablir la chaîne, et GitHub ne l'a plus honoré du tout entre le 20
+  # septembre et le 9 octobre 2026 : dans ce cas, relancer à la main (Actions → « Run
+  # workflow »). Le dépôt est public : les minutes du runner en attente
   # ne coûtent rien. Pour arrêter le relais sans commit : Settings → Secrets and
   # variables → Actions → variable SCRAPE_RELAIS = off.
   relais:
@@ -177,11 +180,27 @@ jobs:
           attente=$(( cible - $(date -u +%s) ))
           echo "Passage commencé à $debut ; prochain créneau dans ${attente}s"
           if [ "$attente" -gt 0 ]; then sleep "$attente"; fi
-          autres=$(gh run list --workflow scrape_streams.yml --limit 20 --json databaseId,status \
-            -q "[.[] | select(.databaseId != $GITHUB_RUN_ID) | select(.status == \"in_progress\" or .status == \"queued\" or .status == \"waiting\" or .status == \"requested\" or .status == \"pending\")] | length")
-          if [ "${autres:-0}" -gt 0 ]; then
-            echo "Un autre passage est déjà en route ou en attente ($autres) : il reprend le relais."
-            exit 0
-          fi
-          gh workflow run scrape_streams.yml --ref main
-          echo "Passage suivant demandé."
+          autres() {
+            gh run list --workflow scrape_streams.yml --limit 20 --json databaseId,status \
+              -q "[.[] | select(.databaseId != $GITHUB_RUN_ID) | select(.status == \"in_progress\" or .status == \"queued\" or .status == \"waiting\" or .status == \"requested\" or .status == \"pending\")] | length" \
+              2>/dev/null || echo 0
+          }
+          # Le 6 octobre 2026 à 19:49, la relance a reçu un HTTP 500 de GitHub. Un
+          # seul essai : la chaîne s'est arrêtée là, et le cron censé la rétablir ne tournait
+          # plus depuis le 20 septembre. Liens figés deux jours et demi. On réessaie donc,
+          # en vérifiant avant chaque essai qu'un passage n'a pas été créé malgré l'erreur.
+          for essai in 1 2 3 4 5 6; do
+            n=$(autres)
+            if [ "${n:-0}" -gt 0 ]; then
+              echo "Un autre passage est déjà en route ou en attente ($n) : il reprend le relais."
+              exit 0
+            fi
+            if gh workflow run scrape_streams.yml --ref main; then
+              echo "Passage suivant demandé (essai $essai)."
+              exit 0
+            fi
+            echo "Échec de la relance (essai $essai) ; nouvel essai dans $((essai * 30))s."
+            sleep $((essai * 30))
+          done
+          echo "::error::Relance impossible après six essais : la chaîne des liens est arrêtée."
+          exit 1
