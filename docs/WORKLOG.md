@@ -2,6 +2,20 @@
 ## En cours
 
 ## Fait
+- 2026-10-09 - **Liste de domaines fournie ; « un outil qui permet de trouver facilement les liens quand on a un nouveau domaine » ; « ne pas ramasser les mauvais liens », en amont et pas dans l'app.**
+
+  - **Outil : `npm run sonder -- <domaine>…`** (`scripts/sonder_domaine.mjs`, décisions dans `js/sondage.js`). Pour chaque domaine : statut, redirection, adresse canonique ; la source à laquelle il ressemble, d'après son nom ou `--source <id>`, lue comme le fait le serveur ; quelques pages de match et leurs lecteurs, avec ce que le registre de jouabilité en sait. `--ajouter` l'inscrit en dernier dans les miroirs de sa source. Ne comptent que les matchs hébergés sur le domaine sondé : le parseur d'OnHockey fabriquait sur ntv.cx des « matchs » pointant vers onhockey.tv. Un site sans nom de source est lu à l'aveugle et signalé comme nouvelle source, jamais comme miroir.
+
+  - **La liste passée à l'outil** (66 domaines, depuis le conteneur). Seul **streamed.st** est un miroir neuf qui livre (255 matchs) : il est ajouté à `streamed`. Déjà connus : streamed.pk, v2.sportsurge.net, vipleague.me. Ils répondent sans livrer : methstreams.st (pages de ligue vides), ww1.sportsurge.st, v5.gostreameast.link (page de liste de miroirs), buffstreams.ir (→ mybuffstreams.plus). Les streameast.* sont injoignables. footybite.ir et livetv.sx répondent 503. Les autres sont des sites que les parseurs actuels ne lisent pas : daddylive, ppv, ntv, totalsportek, streamcorner, reedstreams, etc. **crichd.at** se lit par le repli générique (cricket, 6 lecteurs par match) : c'est un candidat de nouvelle source.
+
+  - **Liens morts écartés en amont** (`ecarterLiensMorts`, `js/playability.js`, appelé par `scrape_streams.mjs`). Un lien n'est plus publié si son hôte a été chargé au moins 8 fois sans une lecture. Il reste publié s'il a été vu jouer, si son hôte est une source (une page de match), ou si c'est un onglet dont la page répond. Sur le cache du jour : 1902 → 1311 liens, dont 483 « Follow the guide » vers une page de VPN (imgcdnngx.com). C'était le seul lien de 448 matchs, qui passent « sans lien ». Chaque hôte écarté garde un témoin, et `verify_players.mjs` en éprouve six par passage (`ciblesDeRehabilitation`) : une lecture suffit à le faire revenir. Rien ne change dans l'application.
+
+  - **Tests** : `unit_sondage` (7 groupes), `unit_liensmorts` (6). `npm run test:unit` : 82 fichiers ; Playwright : 43 passés, 1 sauté (lancé avec le Chromium du conteneur, la version attendue n'y étant pas).
+
+  - **Fichiers** : `js/sondage.js` (nouveau), `scripts/sonder_domaine.mjs` (nouveau), `js/playability.js`, `scripts/scrape_streams.mjs`, `scripts/verify_players.mjs`, `js/config.js` et `domains.json` (streamed.st), `package.json` (`npm run sonder`), `sw.js` + `VERSION_APP` → `sports-guide-v40` (`js/sondage.js` dans `APP_SHELL`), `docs/ARCHITECTURE.md`, `README.md`, tests.
+
+  - **Ce qui reste.** Écrire les nouvelles sources : crichd.at en premier. daddylive et ppv sont des sites par chaînes ou par API, à relever. methstreams.st et ww1.sportsurge.st sont à relire à la main pour voir où sont passées leurs grilles.
+
 - 2026-10-09 - **« La mise à jour des liens semble se faire difficilement. »**
 
   - **Constat.** `data/streams.json` datait du 6 octobre à 19:21 UTC : plus aucun passage depuis. Le passage 887 a réussi son scrape, mais son job `relais` a reçu un HTTP 500 de l'API GitHub sur la relance (19:49:06). Un seul essai : la chaîne s'est arrêtée. Le cron, censé la rétablir, ne tournait plus : aucune exécution `schedule` d'aucun workflow du dépôt depuis le 20-21 septembre (ni ce workflow, ni le calendrier quotidien, ni la surveillance des domaines). Les workflows sont pourtant marqués « active ».

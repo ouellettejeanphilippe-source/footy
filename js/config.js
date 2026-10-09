@@ -62,7 +62,7 @@ export var SOURCE_MIRRORS = {
     onhockey: ['https://onhockey.tv/'],
     vipleague: ['https://vipleague.me/watch-now', 'https://vipleague.vg/watch-now', 'https://vipleague.io/watch-now', 'https://vipleague.cc/watch-now'],
     methstreams: ['https://methstreams.gs/'],
-    streamed: ['https://streamed.pk/', 'https://streamed.su/'],
+    streamed: ['https://streamed.pk/', 'https://streamed.su/', 'https://streamed.st/'],   // .st ajouté le 9 octobre 2026 (sonder_domaine : 256 matchs, se déclare sur .pk)
     flexfitness: ['https://flexfitness.fit/'],
     liveleagues: ['https://www.liveleagues.me/']
 };

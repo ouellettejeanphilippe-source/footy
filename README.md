@@ -117,6 +117,8 @@ python3 -m http.server 8080
 
 Les scripts serveur se lancent aussi à la main : `node scripts/scrape_schedule.mjs` (calendrier), `npm run scrape:streams` (liens ; le script a besoin de beaucoup de mémoire, l'alias passe l'option qu'il faut), `node scripts/verify_players.mjs` (jouabilité, Chromium requis).
 
+Un nouveau domaine à essayer ? `npm run sonder -- streamed.st autre-site.xyz` dit à quelle source il ressemble, combien de matchs il liste et quels lecteurs portent ses pages de match ; `--ajouter` l'inscrit dans les miroirs de sa source (`domains.json`).
+
 ### Où est quoi
 
 | | |

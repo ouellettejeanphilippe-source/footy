@@ -660,6 +660,32 @@ out.hostPlayCritere = (precedent && precedent.hostPlayCritere) || 0;
 out.verifiedAt = (precedent && precedent.verifiedAt) || null;
 const reprises = play.reporterVerifications(out.matches, precedent);
 console.log(`Vérifications reportées : ${Object.keys(out.hostPlay).length} hôtes au registre, ${reprises} lien(s) gardent leur verdict.`);
+
+/* Les liens des hôtes qui n'ont jamais joué ne sont pas publiés (voir ecarterLiensMorts,
+   js/playability.js). Seulement sous le critère de verdict en vigueur : un registre gagné
+   sous une règle périmée va être remis à zéro par verify_players.mjs, il ne juge rien.
+   Chaque hôte écarté garde un lien témoin, et la date de son dernier essai voyage d'un
+   passage à l'autre pour que la réhabilitation fasse tourner les témoins. */
+out.hotesEcartes = {};
+if ((out.hostPlayCritere | 0) === play.CRITERE_VERDICT) {
+    const ecart = play.ecarterLiensMorts(out.matches, out.hostPlay, {
+        politique: hostPolicy,
+        estSource: (h) => !!sourceIdPourHote(h),
+    });
+    const avant = (precedent && precedent.hotesEcartes) || {};
+    for (const [h, r] of Object.entries(ecart.hotes)) {
+        out.hotesEcartes[h] = Object.assign(r, avant[h] && avant[h].essaiAt ? { essaiAt: avant[h].essaiAt } : {});
+    }
+    /* Un hôte écarté au passage précédent dont plus aucun match ne porte de lien n'a plus
+       de témoin dans ce fichier : on garde l'ancien, sinon il ne pourrait plus revenir. */
+    for (const [h, r] of Object.entries(avant)) {
+        if (!out.hotesEcartes[h] && play.hoteMort(out.hostPlay[h]) && r && r.echantillon) out.hotesEcartes[h] = Object.assign({}, r, { liens: 0 });
+    }
+    if (ecart.retires) {
+        console.log(`Liens morts écartés : ${ecart.retires} sur ${Object.keys(ecart.hotes).length} hôtes à zéro lecture en ${play.SEUIL_HOTE_MORT} essais ou plus (`
+            + Object.entries(ecart.hotes).sort((a, b) => b[1].liens - a[1].liens).slice(0, 8).map(([h, r]) => `${h} ${r.liens}`).join(', ') + ')');
+    }
+}
 fs.mkdirSync('data', { recursive: true });
 fs.writeFileSync('data/streams.json', JSON.stringify(out, null, 1));
 const totalStreams = out.matches.reduce((n, m) => n + m.streamLinks.filter((l) => !l.topLevel).length, 0);
