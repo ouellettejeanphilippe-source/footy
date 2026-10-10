@@ -61,6 +61,7 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 | `js/nuit.js` | La nuit appartient à la veille, et la fenêtre affichée fait 48 h — aujourd'hui plus le lendemain (§5.4). Lu aussi par le script serveur. |
 | `js/finpresumee.js` | Fin présumée d'un match quand ESPN se tait (§5.6). |
 | `js/playability.js` | Jouabilité observée d'un lien ou d'un hôte, partagée entre le navigateur et `scripts/verify_players.mjs` (§7.3). |
+| `js/tvliste.js` | La liste de l'appli Android TV (`tv/`) : `listeTv(data)` ne garde de `data/streams.json` que les matchs non terminés qui ont un manifeste HLS jouable (`media`, encore frais d'après `dureeDeVie`), avec le `Referer` observé (`mediaReferer`). Écrite dans `data/tv.json` par `scripts/verify_players.mjs` (§12.1). N'importe que `js/directmedia.js`. Pré-caché mais lu seulement par le script. |
 | `js/sondage.js` | Décisions de l'outil de sondage d'un domaine (`scripts/sonder_domaine.mjs`) : source devinée d'après le nom (`devinerSources`), matchs hébergés sur le domaine sondé (`matchsDuDomaine`), meilleure lecture, inscription d'un miroir (`ajouterMiroir`). Pré-caché mais lu seulement par le script. |
 | `js/fetcher.js` | Aides pures de `fetchPage` : liste et ordre des proxys, relégation, statut acceptable, détection des pages d'erreur servies en 200. Importable en Node. |
 | `js/extractors.js` | Moteur générique de découverte de lecteurs dans une page, sans branche par site (§6.5). Porte aussi les listes d'hôtes surchargeables à distance (§6.3). |
@@ -449,7 +450,7 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 
 ## 11. Service worker et version
 
-`sw.js` : `CACHE_NAME = 'sports-guide-v31'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
+`sw.js` : `CACHE_NAME = 'sports-guide-v44'`. Stratégie réseau d'abord, cache en repli, sur les seules requêtes GET de même origine ; la clé de cache ignore la chaîne de requête (sinon `data/*.json?t=…` créait une entrée par chargement) ; seules les réponses `ok` et `basic` sont rangées. `APP_SHELL` précache la coquille complète (HTML, CSS, manifeste, tous les modules `js/`, les icônes), fichier par fichier pour qu'une ressource absente ne fasse pas échouer l'installation. Les deux fichiers de données n'en font plus partie depuis le 9 septembre 2026 : périmés en trente minutes, ils coûtaient 1,2 Mo par nouvelle version ; le gestionnaire `fetch` les range dès leur première lecture, ce qui suffit au repli hors ligne. `index.html` et `legacy.html` annoncent les huit modules les plus lourds en `modulepreload`, pour qu'ils soient téléchargés en parallèle plutôt que découverts en cascade depuis `js/main.js`.
 
 **Règle** : toute modification de `sw.js` ou d'un fichier précaché s'accompagne d'une nouvelle valeur de `CACHE_NAME`, recopiée dans `VERSION_APP` (`js/multiview.js`), qui est ce que Logs → Cet appareil affiche. Trois tests (`unit_diagnosticappareil`, `unit_favicon`, `unit_majapp`) vérifient que les deux chaînes sont identiques. Un nouveau module `js/` doit être ajouté à `APP_SHELL`.
 
@@ -475,6 +476,10 @@ Tout passe par `safeStorage*` (`js/utils.js`), qui compte les écritures refusé
 - `scripts/sonder_domaine.mjs` (`npm run sonder -- <domaine>…`) n'est lancé par aucun workflow : c'est l'outil pour éprouver un domaine signalé (§6.3).
 
 Les commits automatiques ne déclenchent pas `tests.yml`.
+
+### 12.1 L'appli Android TV (`tv/`)
+
+Un projet Gradle séparé de `mobile/` : Java pur, une activité, ExoPlayer (media3, HLS), **sans WebView**. Elle s'ouvre en mode câble (une vidéo joue d'emblée, `Liste.matchDeDepart`), l'onglet Live se pose par-dessus, et la même APK se pilote au doigt sur un téléphone. Elle lit `data/tv.json` sur `main` (raw.githubusercontent.com), joue le manifeste avec l'agent de la vérification et, pour chaque lien, essaie dans l'ordre le `Referer` observé (le cadre imbriqué du lecteur, que `verify_players.mjs` relève sur la requête du manifeste), aucun, puis la page du lien. Mesuré le 10 octobre 2026 sur instreams.pro : 200, 200, 403. Le `Referer` voyage comme `media` : `reporterVerifications` le reporte, `scrape_streams.mjs` le garde. Le format est versionné (`VERSION_LISTE_TV` / `Liste.VERSION`, verrouillés ensemble par `unit_tvliste`). Détails, touches et installation : `tv/README.md`.
 
 ## 13. Tests
 

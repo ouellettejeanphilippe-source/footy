@@ -2,6 +2,25 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« Mon rêve, c'est une version qui peut marcher sur Chromecast, sans les pubs, en prenant le moins de ressources possible. »** Appareil : Chromecast avec Google TV. Pas de relais Cloudflare (« j'ai pas de compte et j'en veux pas »).
+
+  - **Constaté.** Le serveur connaissait déjà le manifeste nu de 110 liens (41 matchs en cours). Sans le bon `Referer`, la plupart des CDN répondent 403 (dlive.sx : 403 sans, 200 avec). Le bon `Referer` est le cadre IMBRIQUÉ du lecteur : sur instreams.pro, 200 avec xstream.st, 200 sans rien, 403 avec la page du lien. Un Chromecast « casté » ne peut pas poser cet en-tête ; une appli native, si.
+
+  - **Fait.**
+    - `verify_players.mjs` relève le `Referer` de la requête du manifeste (`mediaReferer`), reporté d'un passage à l'autre (`reporterVerifications`, `scrape_streams.mjs`). Il écrit `data/tv.json` (`js/tvliste.js`) : 54 matchs, 36 Ko, au lieu des 2,6 Mo de `streams.json`. Ce fichier est publié par le workflow et par `npm run liens`.
+    - **`tv/`, l'appli Android TV** : Java, une activité, ExoPlayer, sans WebView ni AppCompat. APK de 511 Ko. Passage automatique au flux suivant après 15 s ou une erreur, lecteur détruit en arrière-plan, tampons courts.
+    - **Mode câble** (« même Vivaldi est hyper lent sur Chromecast — ça pourrait être un mode câble avec onglet live en supplément ? », version 1.1). À l'ouverture, une vidéo joue déjà : le dernier match regardé (`Liste.matchDeDepart`), sinon le premier en direct. L'onglet Live se pose sur la moitié gauche et la vidéo continue. Un match muet fait zapper au suivant. Le match regardé garde sa place quand la liste est relue (`Liste.cle`).
+    - **Téléphone** (« faire version téléphone Android que je teste sans le Chromecast ») : la même APK, avec des gestes (glisser ↔ flux, ↕ match, toucher : bandeau et bouton « ☰ Live »), en paysage selon le capteur.
+
+  - **Tests** : `unit_tvliste` (5 groupes), tests JVM `tv/app/src/test` (6). `npm run test:unit` : 86 fichiers. Playwright : 45 réussis, 1 ignoré.
+
+  - **Fichiers** : `js/tvliste.js`, `js/playability.js`, `scripts/verify_players.mjs`, `scripts/scrape_streams.mjs`, `scripts/maj_liens.mjs`, `.github/workflows/scrape_streams.yml`, `data/tv.json` (produit par `listeTv`), `tv/`, `tests/unit_tvliste.test.js`, `.gitignore`, `docs/ARCHITECTURE.md`, `README.md`, `sw.js` + `VERSION_APP` → `sports-guide-v44`.
+
+  - **Ce qui reste.**
+    - Pas essayé sur un vrai Chromecast ni sur un vrai téléphone : pas d'émulateur dans ce conteneur (pas de KVM).
+    - Le `Referer` n'apparaîtra dans `tv.json` qu'après le premier passage de vérification sur `main`. D'ici là, l'appli essaie sans Referer, puis avec la page.
+    - Un jeton lié à l'IP du serveur ne passera pas à la maison.
+    - L'APK est signé avec une clé de débogage : une version fabriquée ailleurs demande de désinstaller la précédente.
 - 2026-10-10 - **« J'aime, mais les menus, surtout sur mobile, c'est pas super affordant et efficace. »**
 
   - **Constaté** (captures à 390 px, tactile).

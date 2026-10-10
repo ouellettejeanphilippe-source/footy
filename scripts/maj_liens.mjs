@@ -76,7 +76,8 @@ if (!PUBLIER) etape('4/4', 'publication : non demandée (--publier pour commiter
 else {
     etape('4/4', 'publication (git)');
     const git = (...g) => spawnSync('git', g, { stdio: 'inherit' }).status;
-    const fichiers = ['data/streams.json', 'data/schedule.json', 'domains.json'];
+    // `git add` d'un fichier absent n'ajoute RIEN : data/tv.json n'existe qu'après une vérification.
+    const fichiers = ['data/streams.json', 'data/schedule.json', 'data/tv.json', 'domains.json'].filter((f) => fs.existsSync(f));
     git('add', ...fichiers);
     if (spawnSync('git', ['diff', '--cached', '--quiet']).status === 0) console.log('  rien de nouveau à publier');
     else if (git('commit', '-m', 'chore: update stream links (manual)') !== 0) console.log('  commit impossible');

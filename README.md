@@ -73,6 +73,10 @@ powershell -ExecutionPolicy Bypass -File mobile\fabriquer-apk.ps1   # mobile\Gui
 
 Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins). L'APK n'embarque qu'un **instantané** des données : quand `data/schedule.json` n'est pas du jour, le client interroge ESPN lui-même (`js/api.js`, `apiOuCacheLocal`), donc il n'a besoin d'aucun serveur. Lancez le pipeline avant de fabriquer, sinon l'APK part avec des liens non vérifiés.
 
+### `tv/` — l'application Android TV (Chromecast avec Google TV)
+
+Une appli native de 500 Ko, sans WebView ni pub, qui joue les flux directs avec le lecteur d'Android. Installation, télécommande et fabrication : [tv/README.md](tv/README.md).
+
 ### Les données : l'application s'en charge
 
 Il n'y a **pas de tâche planifiée**. Tant que l'application de bureau est ouverte, elle refait les trois étapes elle-même toutes les 30 minutes — le calendrier, les liens, puis la vérification des lecteurs (`desktop/main.js`, `passeComplete`). Fermez la fenêtre et plus rien ne tourne : ces données ne valent que pour aujourd'hui et ne servent qu'à qui regarde. `⋯ Tout mettre à jour maintenant` (Ctrl+Maj+U) force une passe.

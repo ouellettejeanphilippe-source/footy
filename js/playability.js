@@ -146,7 +146,7 @@ export function reporterVerifications(matches, precedent, maintenant, validiteMs
             if (!l || !l.url || !l.verified) return;
             var at = l.verifiedAt ? Date.parse(l.verifiedAt) : NaN;
             if (isNaN(at) || now - at > validite || now - at < 0) return;
-            vus[l.url] = { verified: l.verified, verifiedAt: l.verifiedAt, media: l.media, mediaAt: l.mediaAt };
+            vus[l.url] = { verified: l.verified, verifiedAt: l.verifiedAt, media: l.media, mediaAt: l.mediaAt, mediaReferer: l.mediaReferer };
         });
     });
     var n = 0;
@@ -160,7 +160,7 @@ export function reporterVerifications(matches, precedent, maintenant, validiteMs
             /* L'adresse du flux voyage avec son verdict : elle a été observée au même
                instant, et le mode direct a sa propre péremption (MEDIA_DIRECT_TTL_MS,
                js/directmedia.js) qui la jettera plus tôt si elle était signée. */
-            if (v.media) { l.media = v.media; l.mediaAt = v.mediaAt; }
+            if (v.media) { l.media = v.media; l.mediaAt = v.mediaAt; if (v.mediaReferer) l.mediaReferer = v.mediaReferer; }
             n++;
         });
     });

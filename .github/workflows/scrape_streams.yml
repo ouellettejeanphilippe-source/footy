@@ -132,15 +132,16 @@ jobs:
       # — verification sautee ou sans nouvelle observation — l'action ne commite rien.
       - name: Rebase again before committing the verification
         run: |
-          git stash push --include-untracked -- data/streams.json || true
+          git stash push --include-untracked -- data/streams.json data/tv.json || true
           git pull --rebase origin main
-          git stash pop || { git checkout --theirs -- data/streams.json; git add data/streams.json; git stash drop; }
+          git stash pop || { git checkout --theirs -- data/streams.json data/tv.json; git add data/streams.json data/tv.json; git stash drop; }
 
       - name: Commit the player verification
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: note which players actually play"
-          file_pattern: "data/streams.json"
+          # data/tv.json : la liste de l'appli Android TV (tv/), écrite par la vérification.
+          file_pattern: "data/streams.json data/tv.json"
 
   # ══ RELAIS : deux passages par heure, malgré le cron ═══════════════════════════
   # GitHub retarde ou saute les crons fréquents (cinq à six exécutions par jour au lieu
