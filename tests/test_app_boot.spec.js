@@ -1774,6 +1774,7 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
     window.Capacitor = { Plugins: { LecteurNatif: {
       jouer: (opts) => { appels.push(['jouer', opts]); return Promise.resolve(); },
       fermer: () => { appels.push(['fermer']); return Promise.resolve(); },
+      diagnostic: () => Promise.resolve({ etats: { webview: 'webview 140', script: 'posé dans tous les cadres (60 Ko)', bloqueur: '99113 hôtes' }, requetesBloquees: 7, navigationsRefusees: 1, hotesBloques: [{ hote: 'regie.example', n: 7 }], lignes: ['15:00:00  lecteur natif : joue'] }),
       addListener: (nom, f) => { if (nom === 'evenement') ecouteurs.push(f); return Promise.resolve({ remove() {} }); }
     } } };
     try {
@@ -1817,6 +1818,11 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
   expect(await page.evaluate(() => window.retourTele()), 'depuis le lecteur, Retour ramène au Live').toBe(true);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
   expect(await page.evaluate(() => window.retourTele()), 'sur le Live, Retour laisse quitter').toBe(false);
+
+  // Plus → Logs : le journal de l'APK est lisible sur l'appareil même.
+  await page.evaluate(() => window.applyFilter('logs'));
+  await expect(page.locator('.diag-android')).toContainText('posé dans tous les cadres');
+  await expect(page.locator('.diag-android')).toContainText('regie.example (7)');
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

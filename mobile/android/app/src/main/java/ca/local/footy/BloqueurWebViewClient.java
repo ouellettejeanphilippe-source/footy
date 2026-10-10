@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.util.Log;
 import android.net.Uri;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -83,6 +84,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
             try (InputStream flux = contexte.getAssets().open(FICHIER)) {
                 ListeDeBlocage l = ListeDeBlocage.depuis(flux);
                 liste = l;
+                Journal.etat("bloqueur", l.taille() + " hôtes");
                 Log.i(TAG, l.taille() + " hôtes chargés en "
                         + (System.currentTimeMillis() - debut) + " ms");
             } catch (IOException e) {
@@ -90,6 +92,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
                 // C'est le bon comportement — un bloqueur en panne ne doit pas empêcher
                 // de regarder un match.
                 liste = new ListeDeBlocage(Collections.unmodifiableSet(new HashSet<>()));
+                Journal.etat("bloqueur", "liste introuvable : rien n'est bloqué");
                 Log.w(TAG, "liste introuvable (" + FICHIER + ") : rien ne sera bloqué", e);
             }
         }, "chargement-blocage").start();
@@ -104,6 +107,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
             ListeDeBlocage l = liste;
             if (l != null && hote != null && l.estBloque(hote)) {
                 bloquees++;
+                Journal.requeteBloquee(hote);
                 // Toutes les cent, pour pouvoir constater que ça travaille sans noyer
                 // le journal : adb logcat -s Bloqueur
                 if (bloquees % 100 == 0) Log.i(TAG, bloquees + " requêtes bloquées");
@@ -133,6 +137,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
             String url = requete.getUrl().toString();
             if (GardeNavigation.decider(url, requete.isForMainFrame(), hoteAppli) == GardeNavigation.Decision.BLOQUER) {
                 navigationsBloquees++;
+                Journal.navigationRefusee(url, requete.isForMainFrame());
                 Log.i(TAG, "navigation refusée (" + (requete.isForMainFrame() ? "fenêtre" : "cadre") + ", "
                         + navigationsBloquees + " en tout) : " + url);
                 return true;
@@ -142,6 +147,46 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
             if (!requete.isForMainFrame()) return false;
         }
         return super.shouldOverrideUrlLoading(vue, requete);
+    }
+
+    /**
+     * Ce qui échoue dans un lecteur, au journal (Journal → Plus → Logs) : la page d'un
+     * cadre ou un flux vidéo qui ne vient pas. Le reste — une image, une régie bloquée —
+     * noierait ce qui compte.
+     */
+    @Override
+    public void onReceivedError(WebView vue, WebResourceRequest requete, WebResourceError erreur) {
+        super.onReceivedError(vue, requete, erreur);
+        if (requete != null && compte(requete) && erreur != null) {
+            Journal.noter("échec " + quoi(requete) + " : " + erreur.getDescription() + " · " + Journal.court(requete.getUrl().toString()));
+        }
+    }
+
+    @Override
+    public void onReceivedHttpError(WebView vue, WebResourceRequest requete, WebResourceResponse reponse) {
+        super.onReceivedHttpError(vue, requete, reponse);
+        if (requete != null && compte(requete) && reponse != null) {
+            Journal.noter("HTTP " + reponse.getStatusCode() + " " + quoi(requete) + " · " + Journal.court(requete.getUrl().toString()));
+        }
+    }
+
+    private static boolean estVideo(String url) {
+        String u = url.toLowerCase();
+        int q = u.indexOf('?');
+        if (q >= 0) u = u.substring(0, q);
+        return u.endsWith(".m3u8") || u.endsWith(".mpd") || u.endsWith(".ts") || u.endsWith(".m4s") || u.endsWith(".mp4");
+    }
+
+    private static boolean compte(WebResourceRequest r) {
+        if (r.getUrl() == null) return false;
+        if (estVideo(r.getUrl().toString())) return true;
+        String accepte = r.getRequestHeaders() == null ? null : r.getRequestHeaders().get("Accept");
+        // La page d'un cadre (un lecteur) ; la fenêtre principale est l'application.
+        return !r.isForMainFrame() && accepte != null && accepte.contains("text/html");
+    }
+
+    private static String quoi(WebResourceRequest r) {
+        return estVideo(r.getUrl().toString()) ? "vidéo" : "page de lecteur";
     }
 
     @Override
@@ -203,6 +248,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
         final String jsPage = pourJs(page);
         final String jsUrl = pourJs(url);
         Log.i(TAG, "manifeste vu pour " + page);
+        Journal.noter("manifeste vu : " + Journal.court(url) + " (page " + Journal.court(page) + ")");
         // evaluateJavascript exige le fil de l'interface ; on est ici sur un fil réseau.
         vue.post(() -> {
             try {

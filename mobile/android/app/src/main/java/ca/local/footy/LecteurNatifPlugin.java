@@ -52,6 +52,16 @@ public class LecteurNatifPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Le journal de l'appareil (Journal), pour Plus → Logs. */
+    @PluginMethod
+    public void diagnostic(PluginCall call) {
+        try {
+            call.resolve(new JSObject(Journal.instantane().toString()));
+        } catch (org.json.JSONException e) {
+            call.reject("journal illisible");
+        }
+    }
+
     @PluginMethod
     public void fermer(PluginCall call) {
         LecteurActivity.fermerSiOuvert();

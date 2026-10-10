@@ -70,3 +70,34 @@ export function referersPour(media, lienUrl) {
     });
     return liste;
 }
+
+/* Le bloc « Android » de Plus → Logs, à partir du journal de l'APK
+   (LecteurNatif.diagnostic, Journal.java). « Aucune vidéo ne semble partir » (10 octobre
+   2026) : sans ordinateur branché à l'appareil, c'est ce qui dit si le bloqueur a coupé
+   un lecteur, si le script s'est posé, et ce que le lecteur natif a reçu. `esc` vient de
+   l'appelant, pour que le module reste sans import. */
+export function diagnosticAndroidHtml(d, esc) {
+    var e = esc || function (s) { return String(s); };
+    var j = d || {};
+    var etats = j.etats || {};
+    var ligne = function (nom, val) {
+        return '<div style="display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">'
+            + '<b>' + e(nom) + '</b><span style="font-size:12px; text-align:right;">' + e(val) + '</span></div>';
+    };
+    var html = '<div class="diag-android" style="margin:10px 0;"><div style="font-weight:700; margin-bottom:4px;">Android</div>';
+    html += ligne('WebView', etats.webview || '?');
+    html += ligne('Script des lecteurs', etats.script || 'pas encore posé');
+    html += ligne('Bloqueur', (etats.bloqueur || '?') + ' · ' + (j.requetesBloquees | 0) + ' requêtes bloquées');
+    html += ligne('Navigations refusées', String(j.navigationsRefusees | 0));
+    var hotes = Array.isArray(j.hotesBloques) ? j.hotesBloques : [];
+    if (hotes.length) {
+        html += '<div style="font-size:12px; margin-top:6px; opacity:0.85;">Les plus bloqués : '
+            + hotes.map(function (h) { return e(h.hote) + ' (' + (h.n | 0) + ')'; }).join(', ') + '</div>';
+    }
+    var lignes = Array.isArray(j.lignes) ? j.lignes.slice(-25).reverse() : [];
+    if (lignes.length) {
+        html += '<div style="font-family:monospace; font-size:11px; white-space:pre-wrap; margin-top:6px; max-height:240px; overflow:auto;">'
+            + lignes.map(function (l) { return e(l); }).join('\n') + '</div>';
+    }
+    return html + '</div>';
+}
