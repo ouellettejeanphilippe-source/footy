@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le fond d'une ligne de la liste : le focus de la télécommande doit se voir de loin. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true"><shape><solid android:color="#FF2563EB" /><corners android:radius="8dp" /></shape></item>
+    <item android:state_selected="true"><shape><solid android:color="#FF2563EB" /><corners android:radius="8dp" /></shape></item>
+    <item android:state_pressed="true"><shape><solid android:color="#FF1D4ED8" /><corners android:radius="8dp" /></shape></item>
+    <item><shape><solid android:color="#00000000" /></shape></item>
+</selector>

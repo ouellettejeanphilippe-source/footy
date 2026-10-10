@@ -727,7 +727,7 @@ const out = {
             l.verified ? { verified: l.verified, verifiedAt: l.verifiedAt } : {},
             // L'adresse du flux observée par la vérification : sans cette ligne elle
             // serait jetée à chaque passage, comme `hostPlay` l'était avant.
-            l.media ? { media: l.media, mediaAt: l.mediaAt } : {}))
+            l.media ? Object.assign({ media: l.media, mediaAt: l.mediaAt }, l.mediaReferer ? { mediaReferer: l.mediaReferer } : {}) : {}))
     }))
 };
 /* Le fichier déjà publié, lu UNE fois : il sert à deux choses très différentes — garder

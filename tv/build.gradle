@@ -1,0 +1,5 @@
+// L'appli Android TV (voir README.md). Projet séparé de mobile/android : pas de Capacitor,
+// pas de WebView, pas d'AppCompat. Un seul module, une seule activité, ExoPlayer.
+plugins {
+    id 'com.android.application' version '8.13.0' apply false
+}

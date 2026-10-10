@@ -43,6 +43,8 @@ await import('../js/scrapers.js');   // fixe l'ordre d'évaluation des modules c
 const config = await import('../js/config.js');
 const play = await import('../js/playability.js');
 const media = await import('../js/directmedia.js');   // estManifeste : un manifeste, pas un segment
+const tv = await import('../js/tvliste.js');           // data/tv.json, la liste de l'appli Android TV
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36';
 
 function log(s) { console.log(s); }
 
@@ -88,7 +90,7 @@ try {
 
 const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36',
+    userAgent: USER_AGENT,
     locale: 'en-US'
 });
 await context.route(PROBE_ORIGIN + '/**', (route) => {
@@ -108,6 +110,7 @@ async function observe(target) {
         status: 0,
         sample: '',
         media: '',          // l'adresse du manifeste, ENTIÈRE : le mode direct s'en sert
+        mediaReferer: '',   // la page qui l'a demandé : l'appli TV le renvoie (tv/README.md)
     };
     page.on('request', (r) => {
         const u = r.url();
@@ -131,7 +134,14 @@ async function observe(target) {
            l'apprenait jusqu'ici qu'une fois l'utilisateur déjà en train de
            regarder. Mesuré sur un passage : 29 des 36 adresses observées n'ont ni
            jeton ni expiration, donc restent jouables le temps de l'événement. */
-        if (!obs.media && media.estManifeste(u)) obs.media = u;
+        if (!obs.media && media.estManifeste(u)) {
+            obs.media = u;
+            /* Le `Referer` de la requête, c'est-à-dire le cadre IMBRIQUÉ du lecteur, rarement
+               la page du lien. La plupart des CDN refusent le manifeste sans lui (dlive.sx :
+               403 sans, 200 avec, 10 octobre 2026). Un navigateur ne peut pas le poser ;
+               l'appli Android TV, si (tv/README.md). */
+            try { obs.mediaReferer = r.request().headers()['referer'] || ''; } catch (e) {}
+        }
     });
     try {
         await page.goto(PROBE_ORIGIN + '/probe.html?u=' + encodeURIComponent(target), { waitUntil: 'load', timeout: NAV_TIMEOUT_MS });
@@ -176,7 +186,7 @@ if (critereStocke !== play.CRITERE_VERDICT) {
     // Les verdicts déjà posés sur les liens ont été gagnés sous l'ancienne règle.
     for (const m of data.matches) {
         for (const l of (m.streamLinks || [])) {
-            delete l.verified; delete l.verifiedAt; delete l.media; delete l.mediaAt;
+            delete l.verified; delete l.verifiedAt; delete l.media; delete l.mediaAt; delete l.mediaReferer;
         }
     }
 } else {
@@ -212,8 +222,9 @@ async function worker() {
             if (verdict === 'plays' && obs.media) {
                 link.media = obs.media;
                 link.mediaAt = link.verifiedAt;
+                if (obs.mediaReferer) link.mediaReferer = obs.mediaReferer; else delete link.mediaReferer;
             } else {
-                delete link.media; delete link.mediaAt;
+                delete link.media; delete link.mediaAt; delete link.mediaReferer;
             }
         }
         play.recordObservation(ledger, t.host, verdict);
@@ -242,6 +253,9 @@ data.sourcePlay = ledgerSources;
 data.hostPlayCritere = play.CRITERE_VERDICT;
 data.verifiedAt = new Date().toISOString();
 fs.writeFileSync('data/streams.json', JSON.stringify(data, null, 1));
+const listeTv = tv.listeTv(data, { agent: USER_AGENT });
+fs.writeFileSync('data/tv.json', JSON.stringify(listeTv));
+log(`verify_players : data/tv.json, ${listeTv.matchs.length} matchs jouables sur la télé`);
 
 const resume = Object.entries(parHote).sort((a, b) => b[1].tested - a[1].tested).slice(0, 15)
     .map(([h, c]) => `${h} ${c.plays}/${c.tested}`).join(', ');
