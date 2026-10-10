@@ -2,6 +2,13 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« Je veux plus des données de ESPN, genre les alignements »**, puis **« à tout le moins, des lignes avec les noms, depth chart pour hockey, etc. »**
+
+  - **Constaté.** La fiche recevait déjà le `summary` ESPN complet et n'en tirait que les buteurs et le classement. Il porte, selon le sport : `rosters[]` (football : formation, titulaires, remplaçants, buts/cartons/changements par joueur ; MLB : ordre des frappeurs) et `boxscore.players[]` (LNH, NFL, MLB, basket : feuille par groupe). Avant le match, ni l'un ni l'autre. **ESPN n'a pas les trios ni les paires du hockey** : `/teams/{id}/depthcharts` est vide pour la LNH (rempli pour la NFL), l'API core n'a que le roster du match sans ligne, et la feuille range les attaquants par ordre alphabétique.
+  - **Fait.** `js/alignements.js` (sans import) : `extraireAlignements` (composition, sinon feuille), `extraireEffectifs` (les `/roster` que la fiche lisait déjà pour les stats de saison, rangés par position, blessés marqués), `alignementsHtml` (un onglet par équipe). `afficherAlignements` (`js/ui.js`) les pose dans la fiche, garde l'onglet au rafraîchissement, et l'effectif ne remplace jamais un alignement. Aucune requête ESPN de plus.
+  - **Tests** : `unit_alignements` (7 groupes, formes reprises de vrais résumés EPL, LNH, MLB du 4 au 10 octobre). Rendu vérifié dans l'appli (bureau et 390 px). `npm test` : unitaires et Playwright verts (Playwright lancé avec le Chromium du conteneur, la version attendue par le dépôt n'y étant pas installée).
+  - **Fichiers** : `js/alignements.js`, `js/ui.js`, `styles.css`, `tests/unit_alignements.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`, `sw.js` (+ `APP_SHELL`) et `VERSION_APP` → `sports-guide-v49`.
+  - **Ce qui reste.** Les vrais trios et paires du hockey demanderaient une autre source que ESPN (DailyFaceoff, par exemple) : à décider. Le tableau de profondeur NFL (`/depthcharts`) existe et pourrait s'ajouter. La fiche n'est relue qu'en direct : ouverte avant la publication des compositions, elle garde l'effectif jusqu'à sa réouverture.
 - 2026-10-10 - **« J'ai testé et aucune vidéo ne semble partir, mais au moins pas de pub ni de redirections. »**
 
   - **Cherché.**
