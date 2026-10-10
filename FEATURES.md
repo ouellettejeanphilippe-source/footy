@@ -228,7 +228,8 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 | **Forme des boutons** | Arrondis, Doux, Rectangulaires. |
 | **Forme des cartes** | Automatique (affiche sous 900 px), Affiche verticale (2:3), Carte large (2,4:1). |
 | **Couleur des cartes** | Dégradé extérieur → domicile, Dégradé diagonal, Deux couleurs pleines, Couleur de l'équipe à domicile, Couleur de la ligue, Foncé. |
-| **Mode TV / tablette** | Zoom 1,3×, contour de focus très visible, navigation aux flèches et Entrée (télécommande). |
+| **Mode TV / tablette** | Zoom 1,3×, contour de focus très visible, navigation aux flèches et Entrée (télécommande). Dans l'APK sur une télé (Chromecast avec Google TV), il s'allume tout seul à la première ouverture, avec le mode câble ; un réglage déjà fait n'est jamais repris. |
+| **Télé Android : Retour et lecteur natif** | La touche Retour ferme un menu, la fiche, le menu Plus, puis revient au Live ; depuis le Live, elle quitte. Dans l'APK (télé ou téléphone), un flux direct est joué en plein écran par le lecteur d'Android plutôt que dans la page : ▲▼ zappe, ◀▶ change de source, OK montre ce qui joue, Retour rend l'application, dont la tuile porte « ▶ Reprendre en plein écran ». Si le flux refuse, la tuile revient à la page du site. |
 
 ### 7.2 Réseau & proxys (replié, avancé)
 

@@ -64,7 +64,9 @@ Elle fait deux choses que la version hébergée ne pouvait pas faire :
 
 **Sur la machine qui porte le dépôt, pointez-la sur le dépôt** : menu → « Travailler dans un dépôt… ». Sans cela elle travaille sur une copie dans `%APPDATA%`, qui ne reçoit pas ce que le pipeline produit — et c'est justement le pipeline qui fait la vérification des lecteurs.
 
-### `mobile/` — l'application Android
+### `mobile/` — l'application Android (téléphone et Chromecast avec Google TV)
+
+Le même APK s'installe sur un téléphone et sur un Chromecast avec Google TV, où il apparaît dans le lanceur. Sur la télé, le mode TV et le mode câble s'allument d'eux-mêmes ; partout, un flux direct est joué par le lecteur natif d'Android (`docs/ARCHITECTURE.md` §12.2).
 
 ```bash
 cd mobile && npm install

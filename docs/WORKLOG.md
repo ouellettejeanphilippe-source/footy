@@ -2,6 +2,21 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« Garder le concept actuel de l'app, juste adapter à CCGTV »** (l'app = Guide des Sports), après « même un navigateur comme Vivaldi est hyper lent sur Chromecast ».
+
+  - **Fait** (APK de `mobile/`, donc la même application) :
+    - lanceur Google TV : `LEANBACK_LAUNCHER`, bannière, écran tactile facultatif ;
+    - télé signalée à l'application (`onPageFinished`). Les modes TV et câble s'allument à la première ouverture, jamais par-dessus un choix (`js/tele.js`, `activerTeleAndroid`) ;
+    - touche Retour : menu, fiche, menu Plus, Live, puis quitter (`retourTele`, `MainActivity`) ;
+    - **lecteur natif** pour les flux directs (`LecteurNatifPlugin`, `LecteurActivity`, ExoPlayer) à la place de hls.js dans la WebView, avec les `Referer` dans l'ordre mesuré. L'application garde la main : ▲▼ zappe, ◀▶ change de source, un échec ramène la tuile à la page.
+  - **Corrigé au passage** : en mode câble, la première vidéo ignorait le flux direct connu (elle ne passait pas par `poserLienSurTuile`).
+  - **Tests** : `unit_tele` (6 groupes) ; `test_app_boot` « sur la télé Android… », avec un faux plugin Capacitor, répété 3 fois. `npm run test:unit` : 87 fichiers ; Playwright : 46 réussis, 1 ignoré. APK fabriqué (8,5 Mo), signé, et vu par `aapt2` comme lançable sur Google TV.
+  - **Fichiers** : `js/tele.js`, `js/main.js`, `js/multiview.js`, `js/directmedia.js`, `styles.css`, `mobile/android/app/{build.gradle,src/main/AndroidManifest.xml}`, `mobile/android/app/src/main/java/ca/local/footy/{MainActivity,BloqueurWebViewClient,LecteurNatifPlugin,LecteurActivity}.java`, `res/drawable/banniere_tele.xml`, `res/values/styles.xml`, `tests/unit_tele.test.js`, `tests/test_app_boot.spec.js`, `FEATURES.md`, `README.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v45`.
+  - **Ce qui reste.**
+    - Pas essayé sur un vrai Chromecast ni sur un vrai téléphone (pas d'émulateur ici).
+    - Les tuiles en mode page restent des pages web : lourdes sur le Chromecast. Le mode câble n'en garde qu'une.
+    - L'APK envoyé est signé avec une clé de débogage : désinstaller la version signée par `fabriquer-apk.ps1` avant de l'installer (favoris et réglages perdus), ou le refabriquer avec ce script.
+    - `tv/` (Footy TV) reste dans le dépôt, sans usage décidé.
 - 2026-10-10 - **« Mon rêve, c'est une version qui peut marcher sur Chromecast, sans les pubs, en prenant le moins de ressources possible. »** Appareil : Chromecast avec Google TV. Pas de relais Cloudflare (« j'ai pas de compte et j'en veux pas »).
 
   - **Constaté.** Le serveur connaissait déjà le manifeste nu de 110 liens (41 matchs en cours). Sans le bon `Referer`, la plupart des CDN répondent 403 (dlive.sx : 403 sans, 200 avec). Le bon `Referer` est le cadre IMBRIQUÉ du lecteur : sur instreams.pro, 200 avec xstream.st, 200 sans rien, 403 avec la page du lien. Un Chromecast « casté » ne peut pas poser cet en-tête ; une appli native, si.

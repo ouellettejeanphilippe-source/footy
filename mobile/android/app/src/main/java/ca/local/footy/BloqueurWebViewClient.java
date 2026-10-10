@@ -1,6 +1,8 @@
 package ca.local.footy;
 
+import android.app.UiModeManager;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.util.Log;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -48,6 +50,9 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
 
     private int bloquees = 0;
 
+    /** Une télé (Chromecast avec Google TV) : décidé une fois, par le système. */
+    private final boolean tele;
+
     /**
      * Les pages dont le manifeste a déjà été signalé. Synchronisé : les requêtes
      * arrivent sur plusieurs fils réseau à la fois.
@@ -57,6 +62,8 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
 
     public BloqueurWebViewClient(Bridge bridge, Context contexte) {
         super(bridge);
+        UiModeManager ui = (UiModeManager) contexte.getSystemService(Context.UI_MODE_SERVICE);
+        tele = ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
         charger(contexte.getApplicationContext());
     }
 
@@ -96,6 +103,20 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
             signalerSiManifeste(vue, url, requete);
         }
         return super.shouldInterceptRequest(vue, requete);
+    }
+
+    /**
+     * Sur une télé, l'application s'adapte d'elle-même (js/tele.js) : mode TV et mode
+     * câble à la première ouverture, touche Retour, lecteur natif. Elle ne peut pas
+     * savoir seule qu'elle est sur une télé ; on le lui dit à chaque chargement de page.
+     */
+    @Override
+    public void onPageFinished(WebView vue, String url) {
+        super.onPageFinished(vue, url);
+        if (!tele || vue == null) return;
+        vue.evaluateJavascript(
+                "window.__ANDROID_TV__ = true; window.activerTeleAndroid && window.activerTeleAndroid();",
+                null);
     }
 
     /**

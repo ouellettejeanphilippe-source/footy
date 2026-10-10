@@ -61,6 +61,7 @@ docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
 | `js/nuit.js` | La nuit appartient à la veille, et la fenêtre affichée fait 48 h — aujourd'hui plus le lendemain (§5.4). Lu aussi par le script serveur. |
 | `js/finpresumee.js` | Fin présumée d'un match quand ESPN se tait (§5.6). |
 | `js/playability.js` | Jouabilité observée d'un lien ou d'un hôte, partagée entre le navigateur et `scripts/verify_players.mjs` (§7.3). |
+| `js/tele.js` | L'application sur une télé Android, dans l'APK de `mobile/` (§12.2) : `reglagesDeDepart` (modes TV et câble à la première ouverture, jamais par-dessus un choix), `actionRetour` (ce que ferme la touche Retour), `referersPour` (ordre des `Referer` du lecteur natif), `pluginNatif`, `surTeleAndroid`. Sans import. |
 | `js/tvliste.js` | La liste de l'appli Android TV (`tv/`) : `listeTv(data)` ne garde de `data/streams.json` que les matchs non terminés qui ont un manifeste HLS jouable (`media`, encore frais d'après `dureeDeVie`), avec le `Referer` observé (`mediaReferer`). Écrite dans `data/tv.json` par `scripts/verify_players.mjs` (§12.1). N'importe que `js/directmedia.js`. Pré-caché mais lu seulement par le script. |
 | `js/sondage.js` | Décisions de l'outil de sondage d'un domaine (`scripts/sonder_domaine.mjs`) : source devinée d'après le nom (`devinerSources`), matchs hébergés sur le domaine sondé (`matchsDuDomaine`), meilleure lecture, inscription d'un miroir (`ajouterMiroir`). Pré-caché mais lu seulement par le script. |
 | `js/fetcher.js` | Aides pures de `fetchPage` : liste et ordre des proxys, relégation, statut acceptable, détection des pages d'erreur servies en 200. Importable en Node. |
@@ -480,6 +481,14 @@ Les commits automatiques ne déclenchent pas `tests.yml`.
 ### 12.1 L'appli Android TV (`tv/`)
 
 Un projet Gradle séparé de `mobile/` : Java pur, une activité, ExoPlayer (media3, HLS), **sans WebView**. Elle s'ouvre en mode câble (une vidéo joue d'emblée, `Liste.matchDeDepart`), l'onglet Live se pose par-dessus, et la même APK se pilote au doigt sur un téléphone. Elle lit `data/tv.json` sur `main` (raw.githubusercontent.com), joue le manifeste avec l'agent de la vérification et, pour chaque lien, essaie dans l'ordre le `Referer` observé (le cadre imbriqué du lecteur, que `verify_players.mjs` relève sur la requête du manifeste), aucun, puis la page du lien. Mesuré le 10 octobre 2026 sur instreams.pro : 200, 200, 403. Le `Referer` voyage comme `media` : `reporterVerifications` le reporte, `scrape_streams.mjs` le garde. Le format est versionné (`VERSION_LISTE_TV` / `Liste.VERSION`, verrouillés ensemble par `unit_tvliste`). Détails, touches et installation : `tv/README.md`.
+
+### 12.2 L'APK sur une télé (`mobile/`, `js/tele.js`)
+
+« Garder le concept actuel de l'app, juste adapter à CCGTV » (10 octobre 2026). C'est la même application. L'APK se déclare au lanceur Google TV (`LEANBACK_LAUNCHER`, bannière `banniere_tele`, écran tactile facultatif) et ajoute trois choses :
+
+- **La télé est signalée à l'application.** `BloqueurWebViewClient.onPageFinished` pose `window.__ANDROID_TV__` quand `UiModeManager` dit « télévision », puis appelle `window.activerTeleAndroid` (`js/main.js`). Celle-ci allume le mode TV (`toggleTvMode`) et le mode câble (`setModeCable`) si l'utilisateur n'y a jamais touché (`reglagesDeDepart`).
+- **La touche Retour.** `MainActivity` demande d'abord `window.retourTele()`, qui ferme selon `actionRetour` un menu du lecteur, la fiche, le menu Plus, ou revient au Live. L'application ne se quitte que quand la réponse est `false`.
+- **Le lecteur natif.** Dans l'APK, `poserDirect` (`js/multiview.js`) ne crée pas de `<video>` hls.js : il appelle `LecteurNatif.jouer` (`LecteurNatifPlugin`, enregistré avant `super.onCreate`). Il lui passe le manifeste et les `Referer` de `referersPour` : le cadre observé par la vérification (`mediaReferer`, désormais gardé dans `direct_media`), la page vue par la WebView, aucun, puis la page du lien. `LecteurActivity` (ExoPlayer, tampons courts, détruit en arrière-plan) essaie chaque `Referer` 12 s et renvoie l'événement `evenement` : `joue`, `echec` (la tuile revient à la page, comme hls.js), `chaine` / `source` (▲▼ / ◀▶, traités par `zapperChaine` / `changerSourceTuile`, mêmes sens que `actionDuGeste`), `ferme`. Une tuile qui repart sur une page referme le lecteur natif (`fermerNatif`). En mode câble, la première vidéo passe maintenant elle aussi par `poserLienSurTuile` : elle ignorait le flux direct connu.
 
 ## 13. Tests
 
