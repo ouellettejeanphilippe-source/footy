@@ -92,6 +92,13 @@ async function main() {
     assert.match(java, /raw\.githubusercontent\.com\/ouellettejeanphilippe-source\/footy\/main\/data\/tv\.json/);
     assert.match(lire('tv/app/src/main/java/ca/local/footytv/Liste.java'), new RegExp('VERSION = ' + tv.VERSION_LISTE_TV + ';'));
     ok('appli TV : lanceur Google TV, sans WebView, même fichier et même version');
+
+    // Mode câble : une vidéo démarre seule à l'ouverture, le Live se pose par-dessus,
+    // et le téléphone a ses gestes (« faire version téléphone que je teste sans le Chromecast »).
+    assert.match(java, /if \(!demarrerSiPossible\(\)\) ouvrirLive\(\);/);
+    assert.match(java, /GestureDetector/);
+    assert.match(manifeste, /android\.hardware\.touchscreen" android:required="false"/);
+    ok('mode câble à l\'ouverture, Live par-dessus, gestes pour le téléphone');
   }
 
   console.log(`unit_tvliste : ${n} groupes réussis`);

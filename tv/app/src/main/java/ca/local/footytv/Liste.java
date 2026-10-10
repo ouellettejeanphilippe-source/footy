@@ -106,6 +106,28 @@ final class Liste {
         }
     }
 
+    /** Ce qui désigne un match d'une liste à la suivante (les index, eux, bougent). */
+    static String cle(Match m) {
+        return m.ligue + "|" + m.domicile + "|" + m.exterieur + "|" + m.date;
+    }
+
+    static int indexDe(Liste l, String cle) {
+        for (int i = 0; l != null && cle != null && i < l.matchs.size(); i++) {
+            if (cle(l.matchs.get(i)).equals(cle)) return i;
+        }
+        return -1;
+    }
+
+    /**
+     * Le match lancé à l'ouverture, en mode câble : le dernier regardé s'il est encore
+     * dans la liste, sinon le premier, qui est en direct quand il y en a un (js/tvliste.js
+     * range les matchs en direct en tête).
+     */
+    static int matchDeDepart(Liste l, String dernier) {
+        int i = indexDe(l, dernier);
+        return i >= 0 ? i : 0;
+    }
+
     /** L'heure de début dans le fuseau de la télé ("" si le fichier n'en dit rien). */
     static String heureLocale(Match m, ZoneId ici) {
         try {

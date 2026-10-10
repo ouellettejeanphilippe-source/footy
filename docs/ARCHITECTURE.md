@@ -479,7 +479,7 @@ Les commits automatiques ne déclenchent pas `tests.yml`.
 
 ### 12.1 L'appli Android TV (`tv/`)
 
-Un projet Gradle séparé de `mobile/` : Java pur, une activité, ExoPlayer (media3, HLS), **sans WebView**. Elle lit `data/tv.json` sur `main` (raw.githubusercontent.com), joue le manifeste avec l'agent de la vérification et, pour chaque lien, essaie dans l'ordre le `Referer` observé (le cadre imbriqué du lecteur, que `verify_players.mjs` relève sur la requête du manifeste), aucun, puis la page du lien. Mesuré le 10 octobre 2026 sur instreams.pro : 200, 200, 403. Le `Referer` voyage comme `media` : `reporterVerifications` le reporte, `scrape_streams.mjs` le garde. Le format est versionné (`VERSION_LISTE_TV` / `Liste.VERSION`, verrouillés ensemble par `unit_tvliste`). Détails, touches et installation : `tv/README.md`.
+Un projet Gradle séparé de `mobile/` : Java pur, une activité, ExoPlayer (media3, HLS), **sans WebView**. Elle s'ouvre en mode câble (une vidéo joue d'emblée, `Liste.matchDeDepart`), l'onglet Live se pose par-dessus, et la même APK se pilote au doigt sur un téléphone. Elle lit `data/tv.json` sur `main` (raw.githubusercontent.com), joue le manifeste avec l'agent de la vérification et, pour chaque lien, essaie dans l'ordre le `Referer` observé (le cadre imbriqué du lecteur, que `verify_players.mjs` relève sur la requête du manifeste), aucun, puis la page du lien. Mesuré le 10 octobre 2026 sur instreams.pro : 200, 200, 403. Le `Referer` voyage comme `media` : `reporterVerifications` le reporte, `scrape_streams.mjs` le garde. Le format est versionné (`VERSION_LISTE_TV` / `Liste.VERSION`, verrouillés ensemble par `unit_tvliste`). Détails, touches et installation : `tv/README.md`.
 
 ## 13. Tests
 

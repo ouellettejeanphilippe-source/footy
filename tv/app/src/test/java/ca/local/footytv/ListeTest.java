@@ -48,4 +48,15 @@ public class ListeTest {
         assertEquals("10:00", Liste.heureLocale(m, ZoneId.of("America/Toronto")));
         assertEquals("16:00", Liste.heureLocale(m, ZoneId.of("Europe/Paris")));
     }
+
+    @Test public void leModeCableRepartDuDernierMatchRegarde() throws Exception {
+        String deux = JSON.replace("{\"ligue\":\"NHL\",\"domicile\":\"X\",\"exterieur\":\"Y\",\"liens\":[]}",
+                "{\"ligue\":\"NHL\",\"domicile\":\"X\",\"exterieur\":\"Y\",\"date\":\"2026-10-10\",\"liens\":[{\"media\":\"https://cdn/x.m3u8\"}]}");
+        Liste l = Liste.lire(deux);
+        assertEquals(2, l.matchs.size());
+        assertEquals(1, Liste.matchDeDepart(l, Liste.cle(l.matchs.get(1))));
+        assertEquals(0, Liste.matchDeDepart(l, "match fini depuis"));
+        assertEquals(0, Liste.matchDeDepart(l, ""));
+        assertEquals(-1, Liste.indexDe(l, "inconnu"));
+    }
 }
