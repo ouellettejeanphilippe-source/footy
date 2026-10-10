@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La bannière du lanceur Google TV (320 × 180 dp) : l'icône de l'application sur fond
+     sombre. L'icône est fabriquée par @capacitor/assets (mipmap, hors dépôt). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="320dp" android:height="180dp" />
+            <solid android:color="#FF0F172A" />
+        </shape>
+    </item>
+    <item android:gravity="center" android:width="120dp" android:height="120dp" android:drawable="@mipmap/ic_launcher" />
+</layer-list>

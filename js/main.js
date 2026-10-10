@@ -1,6 +1,9 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
-import { setupMultivisionUI, installTampermonkey } from './multiview.js';
+import { setupMultivisionUI, installTampermonkey, setModeCable } from './multiview.js';
+import { surTeleAndroid, reglagesDeDepart, actionRetour } from './tele.js';
+import { menuEstOuvert, fermerMenus } from './mv-menu.js';
+import { closeMod } from './ui.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
 import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee, isLiveNow, startsWithin, minutesUntilStart, isMatchPageBlocked, LIVE_WINDOW_MIN } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
@@ -360,7 +363,7 @@ function semerLesDirectsDuServeur(matchs) {
                 if (isNaN(at)) return;
                 var deja = registre[l.url];
                 if (deja && typeof deja.at === 'number' && deja.at >= at) return;
-                registre = retenirMediaDirect(registre, l.url, { url: l.media, pageUrl: l.url }, at);
+                registre = retenirMediaDirect(registre, l.url, { url: l.media, pageUrl: l.url, referer: l.mediaReferer || '' }, at);
                 n++;
             });
         });
@@ -1781,6 +1784,42 @@ window.toggleTvMode = function(enabled) {
         const script = document.getElementById('tv-nav-script');
         if (script) script.remove();
     }
+};
+
+/* ── La télé Android (js/tele.js) ──────────────────────────────────────────────
+   Appelée par l'APK (BloqueurWebViewClient.onPageFinished) après avoir posé
+   `window.__ANDROID_TV__`. Allume le mode TV et le mode câble la première fois
+   seulement : un réglage déjà fait par l'utilisateur reste le sien. */
+window.activerTeleAndroid = function() {
+    if (!surTeleAndroid()) return false;
+    document.body.classList.add('android-tv');
+    var depart = reglagesDeDepart(function(k) { return safeStorageGet(k, null); });
+    if (depart.modeTv) {
+        window.toggleTvMode(true);
+        var cb = document.getElementById('pref-tv-mode');
+        if (cb) cb.checked = true;
+    }
+    if (depart.modeCable) setModeCable(true);
+    return true;
+};
+
+/* La touche Retour de la télécommande (MainActivity, Android) : vrai si elle a fermé
+   quelque chose, faux s'il n'y a plus rien à fermer et que l'application peut se
+   quitter. */
+window.retourTele = function() {
+    var mbg = document.getElementById('mbg');
+    var menu = document.getElementById('main-menu');
+    var action = actionRetour({
+        menuLecteur: menuEstOuvert(),
+        fiche: !!(mbg && mbg.classList.contains('open')),
+        menuPlus: !!(menu && menu.classList.contains('open')),
+        vue: S.filter === 'live' && document.body.getAttribute('data-view') !== 'player' ? 'live' : 'autre'
+    });
+    if (action === 'menu') fermerMenus();
+    else if (action === 'fiche') closeMod();
+    else if (action === 'plus') { if (typeof window.toggleMenu === 'function') window.toggleMenu(); }
+    else if (action === 'live') window.applyFilter('live');
+    return action !== 'quitter';
 };
 
 // Auto-init at boot

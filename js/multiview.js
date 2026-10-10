@@ -8,6 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
+import { pluginNatif, referersPour } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
@@ -165,6 +166,8 @@ function poserDirect(media, url, container, cell, s) {
         saveMultivisionState();
         updateMultivisionLayout();
     };
+    var natif = pluginNatif();
+    if (natif) { poserDirectNatif(natif, media, url, container, s, idx, revenir); return; }
     var video = creerLecteurVideo(media.url, revenir);
     video.id = 'mv-iframe-' + idx;
     video.style.transform = s.cropped ? 'scale(1.15)' : 'scale(1)';
@@ -176,6 +179,58 @@ function poserDirect(media, url, container, cell, s) {
     });
     container.appendChild(video);
     setTimeout(function() { if (!s._playing) revenir('rien en ' + Math.round(DELAI_DIRECT_MS / 1000) + ' s'); }, DELAI_DIRECT_MS);
+}
+
+/* ─── Le lecteur natif d'Android (APK de mobile/, js/tele.js) ───
+   Dans l'APK, le flux direct n'est pas joué par hls.js dans la WebView mais par le
+   lecteur d'Android (LecteurNatifPlugin → LecteurActivity, ExoPlayer), en plein écran
+   par-dessus l'application. Il essaie les `Referer` de `referersPour`, qu'aucun
+   navigateur ne peut poser. La tuile garde sa place et montre de quoi le relancer.
+   La télécommande, dans le lecteur natif, revient ici : ▲▼ zappe (`zapperChaine`),
+   ◀▶ change de source (`changerSourceTuile`), comme les flèches du mode câble ; c'est
+   l'application qui choisit, le lecteur natif ne fait que jouer. Quand plus aucun
+   `Referer` ne passe, il le dit (`echec`) et la tuile revient à la page, comme hls.js. */
+var natifCourant = null;    // { s, url, idx, revenir } : la tuile que joue le lecteur natif
+var natifEcoute = false;
+function ecouterNatif(natif) {
+    if (natifEcoute || typeof natif.addListener !== 'function') return;
+    natifEcoute = true;
+    natif.addListener('evenement', function(ev) {
+        var c = natifCourant;
+        if (!c || !ev || mvFlux[c.idx] !== c.s || c.s._currentUrl !== c.url) return;
+        if (ev.type === 'joue') { c.s._playing = true; rafraichirPastille(c.idx); }
+        else if (ev.type === 'echec') { natifCourant = null; c.revenir(ev.raison || 'lecteur natif'); }
+        else if (ev.type === 'chaine') zapperChaine(c.idx, ev.sens < 0 ? -1 : 1);
+        else if (ev.type === 'source') changerSourceTuile(c.idx, ev.sens < 0 ? -1 : 1);
+    });
+}
+function poserDirectNatif(natif, media, url, container, s, idx, revenir) {
+    ecouterNatif(natif);
+    natifCourant = { s: s, url: url, idx: idx, revenir: revenir };
+    var lancer = function() {
+        try {
+            natif.jouer({
+                media: media.url,
+                referers: referersPour(media, url),
+                titre: s.name || getDomain(url),
+                source: getDomain(url)
+            });
+        } catch (e) { revenir('lecteur natif indisponible'); }
+    };
+    var bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'mv-natif';
+    bouton.textContent = '▶ Reprendre en plein écran';
+    bouton.addEventListener('click', function(e) { e.stopPropagation(); natifCourant = { s: s, url: url, idx: idx, revenir: revenir }; lancer(); });
+    container.appendChild(bouton);
+    lancer();
+}
+/* Une tuile qui repart sur une PAGE : le lecteur natif, posé par-dessus, la cacherait. */
+function fermerNatif() {
+    if (!natifCourant) return;
+    natifCourant = null;
+    var natif = pluginNatif();
+    if (natif && typeof natif.fermer === 'function') { try { natif.fermer(); } catch (e) {} }
 }
 
 /* Bascule une tuile entre « page » (la page du site, nettoyée par le script) et
@@ -2115,6 +2170,7 @@ export function updateMultivisionLayout() {
                 if (mediaDirect) { poserDirect(mediaDirect, url, container, cell, s); return; }
                 s.mode = 'page';
             }
+            if (natifCourant && natifCourant.s === s) fermerNatif();
             container.innerHTML = '';
             s._currentUrl = url;
             if (s._sortieForcee) {
@@ -2909,6 +2965,10 @@ export function addToMultivision(url, name, mid) {
         return;
     }
     mvFlux.push({url: url, name: name, mid: mid, cropped: false, _autoTried: 0});
+    /* La première vidéo du mode câble prend, elle aussi, le flux direct connu : elle
+       passait à côté de `poserLienSurTuile`, et seul le premier zapping le trouvait.
+       Sur la télé, c'est ce qui l'envoie au lecteur natif (js/tele.js). */
+    if (modeCable) poserLienSurTuile(mvFlux[mvFlux.length - 1], url);
 
     // Make the newly added stream the active one (unmuted and focused)
     activeMvIdx = mvFlux.length - 1;
@@ -4421,7 +4481,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v45';
+export var VERSION_APP = 'sports-guide-v46';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
