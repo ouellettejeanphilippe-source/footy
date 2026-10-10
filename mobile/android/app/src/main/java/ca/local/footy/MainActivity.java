@@ -1,8 +1,12 @@
 package ca.local.footy;
 
+import android.content.pm.PackageInfo;
 import android.os.Bundle;
+import android.webkit.CookieManager;
+import android.webkit.WebView;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.webkit.WebViewCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -38,9 +42,20 @@ public class MainActivity extends BridgeActivity {
         BloqueurWebViewClient client = new BloqueurWebViewClient(getBridge(), this);
         getBridge().setWebViewClient(client);
 
+        WebView vue = getBridge().getWebView();
+        /* Les cookies TIERS : chaque lecteur est un site tiers pour l'application, et la
+           WebView les refuse par défaut, là où Chrome les accepte. Beaucoup de lecteurs
+           posent un cookie de session avant de servir leur flux ; sans lui, la page
+           s'affiche et la vidéo ne part pas. */
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(vue, true);
+        PackageInfo webview = WebViewCompat.getCurrentWebViewPackage(this);
+        Journal.etat("webview", webview == null ? "inconnue" : webview.packageName + " " + webview.versionName);
+        Journal.etat("cookiesTiers", "acceptés");
+
         // Le script utilisateur dans chaque lecteur, sans Tampermonkey (NettoyeurLecteurs).
         String nettoyeur = NettoyeurLecteurs.assembler(this);
-        NettoyeurLecteurs.installer(getBridge().getWebView(), nettoyeur);
+        NettoyeurLecteurs.installer(vue, nettoyeur);
         client.setNettoyeur(nettoyeur);
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {

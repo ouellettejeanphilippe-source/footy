@@ -48,6 +48,7 @@ final class NettoyeurLecteurs {
             return assembler(gabarit, script);
         } catch (IOException e) {
             Log.w(TAG, "script de nettoyage introuvable : les lecteurs ne seront pas nettoyés", e);
+            Journal.etat("script", "introuvable dans l'APK");
             return null;
         }
     }
@@ -63,11 +64,13 @@ final class NettoyeurLecteurs {
         if (vue == null || complet == null) return false;
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             Log.w(TAG, "WebView trop ancienne (pas de DOCUMENT_START_SCRIPT) : lecteurs non nettoyés");
+            Journal.etat("script", "non posé : WebView trop ancienne");
             return false;
         }
         // "*" : toutes les origines. Les lecteurs viennent de centaines de domaines.
         WebViewCompat.addDocumentStartJavaScript(vue, complet, Collections.singleton("*"));
         Log.i(TAG, "script de nettoyage posé dans tous les cadres");
+        Journal.etat("script", "posé dans tous les cadres (" + complet.length() / 1024 + " Ko)");
         return true;
     }
 

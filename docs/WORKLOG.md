@@ -2,6 +2,17 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« J'ai testé et aucune vidéo ne semble partir, mais au moins pas de pub ni de redirections. »**
+
+  - **Cherché.**
+    - Simulation de l'APK dans Chromium sur 12 lecteurs vérifiés « joue » : même liste de blocage, script posé dans tous les cadres, origine `https://localhost`, agent mobile.
+    - Résultat : 3 sur 12, **exactement les mêmes** que sans bloqueur ni script, et avec l'agent de bureau. Le bloqueur et le script ne cassent donc rien ; le conteneur passe mal la vidéo et ne reproduit pas l'appareil.
+    - La liste ne contient aucun des 25 hôtes de lecteur ni des 17 CDN qui jouent.
+  - **Corrigé** : ce que la WebView refuse et que Chrome permet. Cookies tiers acceptés (chaque lecteur est un site tiers pour l'application) et contenu mixte permis.
+  - **Ajouté** : un journal de l'appareil, en tête de Plus → Logs (`Journal`, `diagnostic`, `diagnosticAndroidHtml`). Il donne la WebView, le script, le bloqueur, les hôtes bloqués, les navigations refusées, les pages et flux en erreur, et les essais du lecteur natif.
+  - **Tests** : `unit_tele` groupes 7 et 8 ; `test_app_boot` « télé Android » lit le bloc Android de la page Logs (répété 3 fois) ; JVM `JournalTest` (2).
+  - **Fichiers** : `mobile/capacitor.config.json`, `mobile/android/app/build.gradle`, `mobile/android/app/src/main/java/ca/local/footy/{Journal,MainActivity,BloqueurWebViewClient,NettoyeurLecteurs,LecteurActivity,LecteurNatifPlugin}.java`, `mobile/android/app/src/test/java/ca/local/footy/JournalTest.java`, `js/tele.js`, `js/multiview.js`, tests, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v46`.
+  - **Ce qui reste** : la cause sur l'appareil n'est pas établie. Le journal de Plus → Logs doit la montrer.
 - 2026-10-10 - **« Mode chromecast, intégrer le script tampermonkey (ses fonctionnalités) dans l'APK ainsi que façon de bloquer les pubs. »**
 
   - **Constaté.**

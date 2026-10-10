@@ -69,6 +69,28 @@ async function main() {
   assert.match(lire('mobile/android/app/src/main/java/ca/local/footy/LecteurNatifPlugin.java'), /@CapacitorPlugin\(name = "LecteurNatif"\)/);
   ok('APK : lanceur Google TV, bannière, lecteur natif, Retour et télé signalés à l\'application');
 
+  // 7. Le diagnostic Android de la page Logs : lisible, échappé, les lignes récentes d'abord.
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = tele.diagnosticAndroidHtml({
+    etats: { webview: 'com.google.android.webview 140.0', script: 'posé dans tous les cadres (60 Ko)', bloqueur: '99113 hôtes' },
+    requetesBloquees: 412, navigationsRefusees: 3,
+    hotesBloques: [{ hote: 'regie.example', n: 300 }, { hote: '<img src=x>', n: 2 }],
+    lignes: ['15:00:01  premier', '15:00:02  lecteur natif : ERROR_CODE_IO_BAD_HTTP_STATUS']
+  }, esc);
+  assert.match(html, /com\.google\.android\.webview 140\.0/);
+  assert.match(html, /posé dans tous les cadres/);
+  assert.match(html, /412 requêtes bloquées/);
+  assert.match(html, /regie\.example \(300\)/);
+  assert.ok(!html.includes('<img src=x>'), 'un nom d\'hôte n\'injecte rien');
+  assert.ok(html.indexOf('ERROR_CODE_IO_BAD_HTTP_STATUS') < html.indexOf('premier'), 'le plus récent en haut');
+  assert.match(tele.diagnosticAndroidHtml(null, esc), /pas encore posé/);
+  ok('diagnostic Android : WebView, script, bloqueur, hôtes bloqués, journal récent d\'abord');
+
+  // 8. Les deux écarts de la WebView avec Chrome, corrigés dans l'APK.
+  assert.match(lire('mobile/android/app/src/main/java/ca/local/footy/MainActivity.java'), /setAcceptThirdPartyCookies\(vue, true\)/);
+  assert.strictEqual(JSON.parse(lire('mobile/capacitor.config.json')).android.allowMixedContent, true);
+  ok('APK : cookies tiers acceptés et contenu mixte permis, comme dans Chrome');
+
   console.log(`unit_tele : ${n} groupes réussis`);
 }
 

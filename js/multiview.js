@@ -8,7 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
-import { pluginNatif, referersPour } from './tele.js';
+import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
@@ -4481,7 +4481,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v45';
+export var VERSION_APP = 'sports-guide-v46';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4555,11 +4555,27 @@ export function diagnosticAppareilHtml() {
     return html + '</div>';
 }
 
+/* Dans l'APK : le journal de l'appareil (js/tele.js, Journal.java), demandé au natif à
+   chaque affichage de la page Logs et posé en tête. Ailleurs, rien. */
+function remplirDiagnosticAndroid(container) {
+    var natif = pluginNatif();
+    if (!natif || typeof natif.diagnostic !== 'function' || !container) return;
+    var place = document.createElement('div');
+    place.className = 'diag-android-place';
+    container.insertBefore(place, container.firstChild);
+    Promise.resolve(natif.diagnostic()).then(function(d) {
+        place.innerHTML = diagnosticAndroidHtml(d, esc);
+    }).catch(function(e) {
+        place.textContent = 'Journal Android illisible : ' + (e && e.message || e);
+    });
+}
+
 export function renderSourcesStatus() {
     var container = document.getElementById('sources-status-container');
     if (!container) return;
     if (sourcesStatus.length === 0) {
         container.innerHTML = diagnosticAppareilHtml() + '<div style="color: var(--muted2); text-align: center;">Aucune donnée (Scraping en attente...)</div>';
+        remplirDiagnosticAndroid(container);
         return;
     }
 
@@ -4582,6 +4598,7 @@ export function renderSourcesStatus() {
                 '</div>';
     });
     container.innerHTML = html;
+    remplirDiagnosticAndroid(container);
 }
 
 export function exportDebugLogs() {

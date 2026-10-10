@@ -74,7 +74,7 @@ async function main() {
   assert.match(assembleur, /FICHIERS_MOBILE = \['blocage-hotes\.txt', 'injection-userscript\.js'\]/);
   assert.match(assembleur, /'multiview-cleaner\.user\.js',/);
   const main = lire('mobile/android/app/src/main/java/ca/local/footy/MainActivity.java');
-  assert.match(main, /NettoyeurLecteurs\.installer\(getBridge\(\)\.getWebView\(\), nettoyeur\)/);
+  assert.match(main, /NettoyeurLecteurs\.installer\(vue, nettoyeur\)/);
   assert.match(lire('mobile/android/app/src/main/java/ca/local/footy/NettoyeurLecteurs.java'), /addDocumentStartJavaScript\(vue, complet, Collections\.singleton\("\*"\)\)/);
   assert.match(lire('mobile/android/app/src/main/java/ca/local/footy/BloqueurWebViewClient.java'), /GardeNavigation\.decider\(url, requete\.isForMainFrame\(\), hoteAppli\)/);
   ok('APK : gabarit et script emportés, posés dans tous les cadres, verrou de navigation');

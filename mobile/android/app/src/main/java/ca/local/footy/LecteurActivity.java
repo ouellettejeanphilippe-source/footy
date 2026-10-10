@@ -193,6 +193,7 @@ public class LecteurActivity extends Activity {
             @Override public void onPlaybackStateChanged(int etat) {
                 if (etat == Player.STATE_READY && !aJoue) {
                     aJoue = true;
+                    Journal.noter("lecteur natif : joue");
                     attente.setVisibility(View.GONE);
                     h.removeCallbacks(chienDeGarde);
                     LecteurNatifPlugin.signaler("joue", null, null);
@@ -205,6 +206,7 @@ public class LecteurActivity extends Activity {
                     return;
                 }
                 // Un flux qui jouait et qui coupe mérite une relance avant d'être abandonné.
+                Journal.noter("lecteur natif : " + e.getErrorCodeName() + (e.getCause() != null ? " · " + Journal.court(String.valueOf(e.getCause().getMessage())) : ""));
                 if (aJoue && !relance) { relance = true; essayer(); return; }
                 suivant(e.getErrorCodeName());
             }
@@ -238,6 +240,8 @@ public class LecteurActivity extends Activity {
     private void essayer() {
         if (lecteur == null || media.isEmpty()) return;
         String ref = referers.get(iRef);
+        Journal.noter("lecteur natif : essai " + (iRef + 1) + "/" + referers.size() + " " + Journal.court(media)
+                + " · Referer " + (ref.isEmpty() ? "aucun" : Journal.court(ref)));
         Map<String, String> entetes = new HashMap<>();
         if (!ref.isEmpty()) {
             entetes.put("Referer", ref);
