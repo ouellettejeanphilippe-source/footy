@@ -2,6 +2,7 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« Juste lcs, lec, lpl, lck, msi et worlds genre. »** Suite de l'entrée LoL ci-dessous : `LIGUES_LOL` (`js/esports.js`) réduite à ces six slugs ; CBLOL, LCP, LTA, First Stand, VCS, PCS, LJL, LLA et EWC retirés. Le test `unit_esports` (groupe 6) fige la liste exacte. Fichiers : `js/esports.js`, `tests/unit_esports.test.js`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v47`. Ce qui reste : rien ; la finale du CBLOL de ce soir ne sera donc plus affichée, les Mondiaux le seront dès le 15 octobre.
 - 2026-10-10 - **« C'est moi ou League of Legends est présentement brisé dans footy ? »** Oui.
 
   - **Constaté.** L'API (`getSchedule`, `getLive`) répondait normalement : 200, et ce jour-là la finale du CBLOL (FURIA – LOS), l'EMEA Masters, la promotion LCS, la Demacia Cup, puis les Mondiaux à partir du 15 octobre. Mais aucun match `lol_` dans `data/schedule.json` ni dans l'appli. Cause : la liste de ligues suivies, recopiée dans `js/api.js` et `scripts/scrape_schedule.mjs`, portait des slugs qui n'existent pas dans `getLeagues` : `world_championship` (vrai : `worlds`), `cblol` (`cblol-brazil`), `ljl` (`ljl-japan`). Et la LCP, First Stand et les LTA n'y étaient pas. En pleine intersaison des ligues régulières, il ne restait donc rien, et les Mondiaux auraient été écartés aussi.
