@@ -120,7 +120,12 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 | **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
 | **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent ; dès deux vidéos, la vidéo 1 reste dans la page et les autres s'y empilent, une par-dessus l'autre), `🖥 Deux écrans : une fenêtre étirée` et `🗗 Deux écrans : deux fenêtres` (ordinateur), `🛡 Bloquer les redirections des sites` (allumé par défaut : si une vidéo tente d'emmener l'onglet sur son site, le navigateur demande « Quitter le site ? » ; répondre non. Contrepartie : quitter ou recharger l'onglet soi-même, vidéos chargées, demande aussi confirmation), `✕ Fermer toutes les vidéos`. |
 
-Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois ; ils se ferment d'un clic ailleurs, par Échap, au défilement ou au redimensionnement ; les flèches ↑/↓ s'y déplacent.
+Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois. Ils sont rangés en sections (⋯ : Affichage, Lecture, Autres fenêtres ; ⋮ : Si la vidéo ne joue pas, Cette tuile, Le site), et chaque entrée dit en petit ce qu'elle fait.
+
+- **Sur ordinateur**, un menu déroulant sous son bouton. Il se ferme d'un clic ailleurs, par Échap, au défilement de la page ou au redimensionnement ; les flèches ↑/↓ s'y déplacent.
+- **Sur téléphone**, une feuille qui monte du bas, pleine largeur, avec un voile, une poignée, un titre et une croix. Les cibles font 54 px. On ferme en touchant le voile ou la croix, et la liste défile sans se refermer.
+
+Sur téléphone, la barre affiche un libellé court sous chaque icône (Ajouter, Disposition, Plein écran, Plus). Elle ne s'efface plus au repos : elle a sa propre bande, au-dessus des vidéos.
 
 ### 5.2 Dispositions automatiques
 
@@ -148,7 +153,7 @@ En-tête : poignée de glissement, numéro (`Touche N`), **nom du match** et, de
 
 - **Chargement** : tant que la page n'est pas chargée (ou qu'aucune vidéo n'est signalée), une pastille « Chargement de … » s'affiche au centre, sans prendre les clics. Des tuiles posées ensemble partent l'une après l'autre (450 ms d'écart) plutôt que toutes à la fois.
 
-- **Au repos** : trois secondes sans un geste et la barre comme les en-têtes de tuiles s'effacent, pour laisser la vidéo seule. Un mouvement les rappelle, de même que l'entrée du pointeur dans une tuile. Elles restent tant qu'un menu du lecteur est ouvert ou que le pointeur est sur la barre, et reviennent quand on rouvre le lecteur. En fenêtre détachée, elles s'effacent comme en plein écran.
+- **Au repos** : trois secondes sans un geste et les en-têtes de tuiles s'effacent, pour laisser la vidéo seule (la barre, elle, reste). Un mouvement les rappelle, de même que l'entrée du pointeur dans une tuile. Elles restent tant qu'un menu du lecteur est ouvert ou que le pointeur est sur la barre, et reviennent quand on rouvre le lecteur. En fenêtre détachée, elles s'effacent comme en plein écran.
 - **Ajustement** (bouton de tuile, ou `⤢` de la barre pour toutes) : *étiré* (le cadre prend toute la tuile), *ajusté* (16:9 entier, centré), *rempli* (16:9 couvrant la tuile). Retenu par tuile.
 - **Menu ⋮** : ouvrir sur le site, source suivante, choisir une autre source, changer de match, recharger la vidéo, infos et statistiques ; l'ajustement ; lire le flux direct ou revenir à la page ; échanger avec la vidéo principale (en mode deux écrans) ; déplacer à gauche ou à droite ; préférer ou éviter ce site ; fermer cette vidéo.
 - **Réordonner** : glisser-déposer entre tuiles (poignée masquée sur écran tactile), ou le menu.

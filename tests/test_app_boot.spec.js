@@ -646,6 +646,68 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   expect(dialogues.length, 'et rien ne l\'a retenu').toBe(avant);
 });
 
+/* « Les menus, surtout sur mobile, c'est pas super affordant et efficace » (10 octobre
+   2026). Sur téléphone, le menu est une feuille qui monte du bas (js/mv-menu.js,
+   enFeuille). Ce qui la faisait échouer avant : défiler dans la liste la refermait
+   (l'écouteur `scroll` ne distinguait pas), et la barre du lecteur s'effaçait au repos,
+   si bien que le premier appui sur « Plus » ne faisait que la réveiller. */
+test('sur téléphone, les menus du lecteur sont une feuille qu\'on peut parcourir', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => {
+    window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA');
+    window.addToMultivision(o + '/__faux-lecteur?b', 'Match B', 'mB');
+  }, origin);
+  await expect(page.locator('.mv-cell')).toHaveCount(2);
+
+  /* Le repos ne touche plus la barre : elle a sa propre bande, l'effacer ne rendait rien. */
+  await page.waitForTimeout(3300);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('mv-toolbar')).opacity), 'la barre reste visible au repos').toBe('1');
+
+  await page.locator('#mv-more-btn').click();
+  const feuille = page.locator('.mv-menu.feuille');
+  await expect(feuille, 'le menu ⋯ s\'ouvre en feuille').toHaveCount(1);
+  await expect(page.locator('.mv-menu-voile')).toHaveCount(1);
+  await page.waitForTimeout(350);   // fin de l'animation d'entrée (0,2 s)
+  const geo = await page.evaluate(() => {
+    const r = document.querySelector('.mv-menu.feuille').getBoundingClientRect();
+    return { gauche: r.left, droite: r.right, bas: r.bottom, vw: innerWidth, vh: innerHeight };
+  });
+  expect(geo.gauche, 'pleine largeur').toBeLessThanOrEqual(1);
+  expect(geo.droite).toBeGreaterThanOrEqual(geo.vw - 1);
+  expect(Math.abs(geo.bas - geo.vh), 'collée au bas de l\'écran').toBeLessThanOrEqual(1);
+  await expect(page.locator('.mv-menu.feuille .mv-menu-title', { hasText: 'Lecture' })).toBeVisible();
+  await expect(page.locator('.mv-menu.feuille .mv-menu-detail').first(), 'chaque entrée dit ce qu\'elle fait').toBeVisible();
+
+  /* Défiler dans la feuille ne la ferme pas. */
+  await page.locator('.mv-menu-corps').evaluate((c) => { c.scrollTop = 120; c.dispatchEvent(new Event('scroll')); });
+  await page.waitForTimeout(150);
+  await expect(feuille, 'défiler dans la liste ne referme pas le menu').toHaveCount(1);
+
+  /* Le voile ferme, et rien d'autre ne reçoit l'appui. */
+  await page.mouse.click(195, 30);
+  await expect(feuille, 'toucher le voile ferme la feuille').toHaveCount(0);
+  await expect(page.locator('.mv-menu-voile')).toHaveCount(0);
+  await expect(page.locator('.mv-cell'), 'sans rien fermer derrière').toHaveCount(2);
+
+  /* Le menu d'une tuile, et une entrée qui agit. */
+  await page.locator('.mv-cell[data-index="0"]').hover();
+  await page.evaluate(() => window.resetMvIdleTimer());
+  await page.locator('.mv-cell[data-index="0"] .mv-tile-menu-btn').click();
+  await expect(feuille).toHaveCount(1);
+  await expect(page.locator('.mv-menu.feuille .mv-menu-tete-lb')).toHaveText('Match A');
+  await page.locator('.mv-menu.feuille .mv-menu-item', { hasText: 'Fermer cette vidéo' }).click();
+  await expect(feuille).toHaveCount(0);
+  await expect(page.locator('.mv-cell'), 'l\'entrée a agi').toHaveCount(1);
+
+  /* La croix de la feuille. */
+  await page.locator('#mv-layout-toggle-btn').click();
+  await expect(feuille).toHaveCount(1);
+  await page.locator('.mv-menu-fermer').click();
+  await expect(feuille).toHaveCount(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 /* Deux croix se superposaient dans la fiche : `document.querySelector('.mhd')` attrapait
    l'en-tête de l'Investigator (première `.mhd` du document), jamais celui de la fiche, et
    openMod injectait une seconde croix par-dessus la colonne des flux. */

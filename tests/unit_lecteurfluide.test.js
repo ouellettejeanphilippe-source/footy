@@ -90,12 +90,16 @@ async function main() {
   menu.ouvrirMenu(document.getElementById('mv-more-btn'), [{ label: 'Mode cinéma', onSelect() {} }]);
   const premier = repos; repos = null;
   premier();
+  const enTetes = () => cellules().map((c) => c.querySelector('.mv-hdr').style.opacity);
   assert.strictEqual(barre.style.opacity, '1', 'menu ouvert : la barre reste');
+  assert.ok(enTetes().every((o) => o === '1'), 'et les en-têtes de tuiles aussi');
   assert.ok(repos, 'et le repos est simplement repoussé');
   menu.fermerMenus();
   const second = repos;
   second();
-  assert.strictEqual(barre.style.opacity, '0', 'menu fermé : le repos reprend');
+  assert.ok(enTetes().every((o) => o === '0'), 'menu fermé : le repos efface les en-têtes, posés sur la vidéo');
+  assert.strictEqual(barre.style.opacity, '1', 'mais jamais la barre, qui a sa propre bande : l\'effacer ne rendait aucune place');
+  w.resetMvIdleTimer();
   globalThis.setTimeout = vraiSet;
   ok('le repos n\'efface pas la barre sous un menu ouvert');
 
