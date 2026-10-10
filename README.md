@@ -33,7 +33,7 @@ Les pages des lecteurs vidéo sont chargées telles quelles dans le lecteur. San
 
 Ce que le script apporte : blocage des fenêtres surgissantes dès le premier octet de la page, nettoyage autour du lecteur, lecture automatique, une seule vidéo avec le son, bascule automatique de source, mesure du débit, et le **pont** qui lit les pages des sources depuis votre adresse quand les proxys sont refusés. Options → Réseau & proxys indique s'il est actif. Firefox demande quelques réglages en plus, expliqués sur la page 🧩 Script.
 
-Sur téléphone, les navigateurs ne prennent pas d'extensions : l'application fonctionne, mais sans nettoyage des lecteurs.
+Sur téléphone, les navigateurs ne prennent pas d'extensions : l'application fonctionne, mais sans nettoyage des lecteurs. **L'APK Android** (`mobile/`, téléphone et Chromecast avec Google TV) l'embarque : le script est posé dans chaque lecteur sans Tampermonkey, et rien à installer.
 
 ### D'où viennent les données
 

@@ -2,6 +2,20 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« Mode chromecast, intégrer le script tampermonkey (ses fonctionnalités) dans l'APK ainsi que façon de bloquer les pubs. »**
+
+  - **Constaté.**
+    - Sur Android, rien ne tournait dans les lecteurs, faute de Tampermonkey : ni blocage des fenêtres surgissantes, ni lecture sans clic, ni son par tuile, ni pont.
+    - Pire, Capacitor ouvrait dans le navigateur du système toute adresse étrangère vers laquelle un lecteur emmenait la fenêtre (`Bridge.launchIntent`). Sur un Chromecast, l'application disparaissait derrière la pub.
+  - **Fait.**
+    - `NettoyeurLecteurs` assemble `mobile/injection-userscript.js` (gabarit + `GM_xmlhttpRequest`) et `multiview-cleaner.user.js`. Le tout est posé par `addDocumentStartJavaScript` dans tous les cadres, avant leurs scripts, et dans la fenêtre principale à `onPageFinished` pour le premier document ; une seule exécution par document.
+    - `GardeNavigation` : la fenêtre principale ne quitte plus l'application, un cadre ne lance plus d'autre application. La liste de ≈ 99 000 hôtes reste.
+  - **Tests** : `unit_injectionapk` (4 groupes : assemblage valide, pont qui s'annonce et lit une page par le gabarit, une seule exécution — il tombe sans la garde —, fichiers emportés) ; JVM `GardeNavigationTest` (3). APK refabriqué : il contient le gabarit, le script et la liste.
+  - **Fichiers** : `mobile/injection-userscript.js`, `mobile/assembler-www.mjs`, `mobile/android/app/build.gradle` (`androidx.webkit`), `mobile/android/app/src/main/java/ca/local/footy/{NettoyeurLecteurs,GardeNavigation,BloqueurWebViewClient,MainActivity}.java`, `mobile/android/app/src/test/java/ca/local/footy/GardeNavigationTest.java`, `tests/unit_injectionapk.test.js`, `README.md`, `docs/ARCHITECTURE.md`.
+  - **Ce qui reste.**
+    - Pas essayé sur un vrai appareil.
+    - « Ouvrir sur le site » ne peut plus quitter l'application dans l'APK : le verrou ne distingue pas un geste de l'utilisateur d'une régie.
+    - Dans les iframes, `GM_xmlhttpRequest` n'est qu'un `fetch` soumis à l'origine croisée : seul le pont de la fenêtre principale lit sans restriction.
 - 2026-10-10 - **« Garder le concept actuel de l'app, juste adapter à CCGTV »** (l'app = Guide des Sports), après « même un navigateur comme Vivaldi est hyper lent sur Chromecast ».
 
   - **Fait** (APK de `mobile/`, donc la même application) :

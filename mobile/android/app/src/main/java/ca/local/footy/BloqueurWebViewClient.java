@@ -4,6 +4,7 @@ import android.app.UiModeManager;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.util.Log;
+import android.net.Uri;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -53,6 +54,14 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
     /** Une télé (Chromecast avec Google TV) : décidé une fois, par le système. */
     private final boolean tele;
 
+    private final Bridge pont;
+    private int navigationsBloquees = 0;
+
+    /** Le script de nettoyage complet (NettoyeurLecteurs), pour la fenêtre principale. */
+    private volatile String nettoyeur = null;
+
+    void setNettoyeur(String script) { nettoyeur = script; }
+
     /**
      * Les pages dont le manifeste a déjà été signalé. Synchronisé : les requêtes
      * arrivent sur plusieurs fils réseau à la fois.
@@ -62,6 +71,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
 
     public BloqueurWebViewClient(Bridge bridge, Context contexte) {
         super(bridge);
+        pont = bridge;
         UiModeManager ui = (UiModeManager) contexte.getSystemService(Context.UI_MODE_SERVICE);
         tele = ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
         charger(contexte.getApplicationContext());
@@ -110,10 +120,41 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
      * câble à la première ouverture, touche Retour, lecteur natif. Elle ne peut pas
      * savoir seule qu'elle est sur une télé ; on le lui dit à chaque chargement de page.
      */
+    /**
+     * Le verrou de navigation (GardeNavigation) : un lecteur ne peut plus emmener
+     * l'application vers une régie, ni lancer une autre application. Ce qui passe
+     * redescend à Capacitor.
+     */
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView vue, WebResourceRequest requete) {
+        if (requete != null && requete.getUrl() != null) {
+            String hoteAppli = null;
+            try { hoteAppli = Uri.parse(pont.getAppUrl()).getHost(); } catch (Exception e) {}
+            String url = requete.getUrl().toString();
+            if (GardeNavigation.decider(url, requete.isForMainFrame(), hoteAppli) == GardeNavigation.Decision.BLOQUER) {
+                navigationsBloquees++;
+                Log.i(TAG, "navigation refusée (" + (requete.isForMainFrame() ? "fenêtre" : "cadre") + ", "
+                        + navigationsBloquees + " en tout) : " + url);
+                return true;
+            }
+            // Un cadre qui navigue en web reste dans son cadre : surtout pas launchIntent,
+            // qui l'ouvrirait dans le navigateur du système.
+            if (!requete.isForMainFrame()) return false;
+        }
+        return super.shouldOverrideUrlLoading(vue, requete);
+    }
+
     @Override
     public void onPageFinished(WebView vue, String url) {
         super.onPageFinished(vue, url);
-        if (!tele || vue == null) return;
+        if (vue == null) return;
+        /* Le premier document de la fenêtre principale a pu partir avant la pose du
+           script (Capacitor charge l'application dans super.onCreate) : il le reçoit ici.
+           Les lecteurs, créés plus tard, l'ont dès leur premier octet. Le gabarit
+           n'exécute le script qu'une fois par document. */
+        String n = nettoyeur;
+        if (n != null) vue.evaluateJavascript(n, null);
+        if (!tele) return;
         vue.evaluateJavascript(
                 "window.__ANDROID_TV__ = true; window.activerTeleAndroid && window.activerTeleAndroid();",
                 null);
