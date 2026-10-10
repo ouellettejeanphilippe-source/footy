@@ -2,6 +2,17 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« C'est moi ou League of Legends est présentement brisé dans footy ? »** Oui.
+
+  - **Constaté.** L'API (`getSchedule`, `getLive`) répondait normalement : 200, et ce jour-là la finale du CBLOL (FURIA – LOS), l'EMEA Masters, la promotion LCS, la Demacia Cup, puis les Mondiaux à partir du 15 octobre. Mais aucun match `lol_` dans `data/schedule.json` ni dans l'appli. Cause : la liste de ligues suivies, recopiée dans `js/api.js` et `scripts/scrape_schedule.mjs`, portait des slugs qui n'existent pas dans `getLeagues` : `world_championship` (vrai : `worlds`), `cblol` (`cblol-brazil`), `ljl` (`ljl-japan`). Et la LCP, First Stand et les LTA n'y étaient pas. En pleine intersaison des ligues régulières, il ne restait donc rien, et les Mondiaux auraient été écartés aussi.
+
+  - **Fait.** Une seule liste, `LIGUES_LOL` + `estLigueLolSuivie` dans `js/esports.js` (module sans import), utilisée par l'appli et le script serveur. Sur les données du jour : 25 matchs à venir retenus (CBLOL, VCS, Mondiaux).
+
+  - **Tests** : `unit_esports`, groupe 6 (slugs réels acceptés, anciens refusés). `npm test` : 86 fichiers unitaires, Playwright 45 réussis, 1 ignoré.
+
+  - **Fichiers** : `js/esports.js`, `js/api.js`, `scripts/scrape_schedule.mjs`, `tests/unit_esports.test.js`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v46`.
+
+  - **Ce qui reste.** `data/schedule.json` ne contiendra les matchs LoL qu'au prochain passage du workflow quotidien (l'appli, elle, interroge l'API directement). L'EMEA Masters, les promotions LCS/CBLOL et la Demacia Cup restent hors liste : à ajouter si voulu (leur nom n'a pas non plus de drapeau 🎮 dans `lgFlag`).
 - 2026-10-10 - **« Mode chromecast, intégrer le script tampermonkey (ses fonctionnalités) dans l'APK ainsi que façon de bloquer les pubs. »**
 
   - **Constaté.**
