@@ -86,14 +86,12 @@ export function liensDunEvenementEsports(streams, hote) {
        world_championship  → worlds         (les Mondiaux : début des Play-Ins le 15 octobre)
        cblol               → cblol-brazil   (la finale du CBLOL ce même jour était écartée)
        ljl                 → ljl-japan
-   Et la LCP (Pacifique), First Stand et les LTA manquaient. Une seule liste, ici, pour
-   que l'appli (js/api.js) et le serveur (scripts/scrape_schedule.mjs) ne divergent plus. */
-export var LIGUES_LOL = [
-    'worlds', 'msi', 'first_stand', 'ewc_lol',
-    'lcs', 'lec', 'lck', 'lpl', 'lcp', 'cblol-brazil',
-    'lta_n', 'lta_s', 'lta_cross', 'americas_cup',
-    'pcs', 'vcs', 'ljl-japan', 'lla'
-];
+   Une seule liste, ici, pour que l'appli (js/api.js) et le serveur
+   (scripts/scrape_schedule.mjs) ne divergent plus.
+
+   Le même jour : « juste lcs, lec, lpl, lck, msi et worlds ». Les quatre grandes ligues et
+   les deux tournois internationaux, rien d'autre (ni CBLOL, ni LCP, ni ligues régionales). */
+export var LIGUES_LOL = ['lcs', 'lec', 'lck', 'lpl', 'msi', 'worlds'];
 
 export function estLigueLolSuivie(slug) {
     return LIGUES_LOL.indexOf(String(slug || '').toLowerCase()) > -1;
