@@ -36,6 +36,11 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Le lecteur natif (LecteurActivity) : ExoPlayer et son module HLS, rien d'autre.
+    // addDocumentStartJavaScript : le script utilisateur dans chaque cadre (NettoyeurLecteurs).
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    implementation "androidx.media3:media3-exoplayer:1.8.0"
+    implementation "androidx.media3:media3-exoplayer-hls:1.8.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

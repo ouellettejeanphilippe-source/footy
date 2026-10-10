@@ -16,6 +16,11 @@
     </style>
 
 
+    <!-- Le lecteur natif : noir, plein écran, sans barre. -->
+    <style name="AppTheme.Lecteur" parent="android:Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
     </style>

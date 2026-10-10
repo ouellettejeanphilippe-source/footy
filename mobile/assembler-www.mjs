@@ -46,7 +46,9 @@ const DOSSIERS = ['js', 'data', 'icons'];
    dépose dans les ressources de l'APK, où le code Java la lit
    (`assets/public/blocage-hotes.txt`, voir BloqueurWebViewClient).
    Fabriquée par `node mobile/construire-blocage.mjs`. */
-const FICHIERS_MOBILE = ['blocage-hotes.txt'];
+/* `injection-userscript.js` : le gabarit qui enveloppe multiview-cleaner.user.js pour
+   l'injecter dans les lecteurs sans Tampermonkey (NettoyeurLecteurs.java). */
+const FICHIERS_MOBILE = ['blocage-hotes.txt', 'injection-userscript.js'];
 
 await fs.rm(WWW, { recursive: true, force: true });
 await fs.mkdir(WWW, { recursive: true });
@@ -88,7 +90,7 @@ async function peser(dossier) {
 const { n, octets } = await peser(WWW);
 console.log(`www/ : ${n} fichiers, ${(octets / 1024 / 1024).toFixed(1)} Mo`);
 
-for (const attendu of ['index.html', 'js/main.js', 'data/schedule.json', 'domains.json']) {
+for (const attendu of ['index.html', 'js/main.js', 'data/schedule.json', 'domains.json', 'multiview-cleaner.user.js', 'injection-userscript.js']) {
   try {
     await fs.access(path.join(WWW, attendu));
   } catch {

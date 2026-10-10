@@ -80,6 +80,9 @@ export function retenirMediaDirect(registre, lienUrl, media, now) {
     });
     if (lienUrl && media && estManifeste(media.url)) {
         r[lienUrl] = { url: media.url, pageUrl: media.pageUrl || '', at: t, echecs: (r[lienUrl] && r[lienUrl].url === media.url) ? (r[lienUrl].echecs | 0) : 0 };
+        /* Le cadre qui a demandé le manifeste, vu par la vérification du serveur
+           (`mediaReferer`) : le lecteur natif d'Android le renvoie (js/tele.js). */
+        if (media.referer) r[lienUrl].referer = String(media.referer);
     }
     return r;
 }

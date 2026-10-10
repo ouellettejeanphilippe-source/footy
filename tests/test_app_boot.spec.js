@@ -1760,3 +1760,63 @@ test('les scores des matchs en cours se rafraîchissent chaque minute, sans rede
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
   await ctx.close();
 });
+
+/* « Garder le concept actuel de l'app, juste adapter à CCGTV » (10 octobre 2026). Dans
+   l'APK, sur une télé, l'application allume d'elle-même le mode TV et le mode câble la
+   première fois, la touche Retour ferme ce qui est ouvert, et un flux direct part au
+   lecteur NATIF d'Android (js/tele.js) — ici un faux plugin Capacitor qui note ce qu'on
+   lui demande. */
+test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, flux direct au lecteur natif', async ({ page }) => {
+  await page.addInitScript((o) => {
+    const appels = [];
+    const ecouteurs = [];
+    window.__natif = { appels, emettre: (ev) => ecouteurs.forEach((f) => f(ev)) };
+    window.Capacitor = { Plugins: { LecteurNatif: {
+      jouer: (opts) => { appels.push(['jouer', opts]); return Promise.resolve(); },
+      fermer: () => { appels.push(['fermer']); return Promise.resolve(); },
+      addListener: (nom, f) => { if (nom === 'evenement') ecouteurs.push(f); return Promise.resolve({ remove() {} }); }
+    } } };
+    try {
+      localStorage.setItem('direct_media', JSON.stringify({
+        [o + '/__faux-lecteur?a']: { url: 'https://cdn.test/a/index.m3u8', pageUrl: o + '/__faux-lecteur?a', referer: 'https://cadre.test/', at: Date.now(), echecs: 0 }
+      }));
+    } catch (e) {}
+  }, origin);
+  const pageErrors = await bootOffline(page);
+
+  // Le côté natif signale la télé (BloqueurWebViewClient.onPageFinished).
+  const avant = await page.evaluate(() => ({ tv: localStorage.getItem('pref-tv-mode'), cable: localStorage.getItem('mode_cable') }));
+  expect(avant, 'aucun réglage fait : la télé peut choisir').toEqual({ tv: null, cable: null });
+  expect(await page.evaluate(() => { window.__ANDROID_TV__ = true; return window.activerTeleAndroid(); })).toBe(true);
+  await expect(page.locator('body')).toHaveClass(/tv-mode/);
+  expect(await page.evaluate(() => localStorage.getItem('mode_cable')), 'le mode câble, une seule vidéo').toBe('1');
+
+  // Un réglage fait par l'utilisateur reste le sien : le deuxième appel ne reprend rien.
+  await page.evaluate(() => { window.toggleTvMode(false); window.activerTeleAndroid(); });
+  await expect(page.locator('body')).not.toHaveClass(/tv-mode/);
+
+  // Un flux direct connu part au lecteur natif, avec les Referer dans l'ordre, sans <video>.
+  await page.evaluate((o) => window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA'), origin);
+  await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(1);
+  const jouer = await page.evaluate(() => window.__natif.appels.find((a) => a[0] === 'jouer')[1]);
+  expect(jouer.media).toBe('https://cdn.test/a/index.m3u8');
+  expect(jouer.referers).toEqual(['https://cadre.test/', origin + '/__faux-lecteur?a', '']);
+  await expect(page.locator('.mv-cell[data-index="0"] .mv-natif')).toBeVisible();
+  await expect(page.locator('.mv-cell video, .mv-cell iframe')).toHaveCount(0);
+
+  // Le lecteur natif a vu jouer : la pastille le dit.
+  await page.evaluate(() => window.__natif.emettre({ type: 'joue' }));
+  expect(await page.evaluate(() => window.mvFlux[0]._playing)).toBe(true);
+
+  // Plus aucun Referer ne passe : la tuile revient à la page, comme avec hls.js.
+  await page.evaluate(() => window.__natif.emettre({ type: 'echec', raison: 'ERROR_CODE_IO_BAD_HTTP_STATUS' }));
+  await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
+  expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('page');
+
+  // Retour : le lecteur revient au Live ; sur le Live, il n'y a plus rien à fermer.
+  expect(await page.evaluate(() => window.retourTele()), 'depuis le lecteur, Retour ramène au Live').toBe(true);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+  expect(await page.evaluate(() => window.retourTele()), 'sur le Live, Retour laisse quitter').toBe(false);
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
