@@ -11,8 +11,20 @@
   - **Corrigé** : ce que la WebView refuse et que Chrome permet. Cookies tiers acceptés (chaque lecteur est un site tiers pour l'application) et contenu mixte permis.
   - **Ajouté** : un journal de l'appareil, en tête de Plus → Logs (`Journal`, `diagnostic`, `diagnosticAndroidHtml`). Il donne la WebView, le script, le bloqueur, les hôtes bloqués, les navigations refusées, les pages et flux en erreur, et les essais du lecteur natif.
   - **Tests** : `unit_tele` groupes 7 et 8 ; `test_app_boot` « télé Android » lit le bloc Android de la page Logs (répété 3 fois) ; JVM `JournalTest` (2).
-  - **Fichiers** : `mobile/capacitor.config.json`, `mobile/android/app/build.gradle`, `mobile/android/app/src/main/java/ca/local/footy/{Journal,MainActivity,BloqueurWebViewClient,NettoyeurLecteurs,LecteurActivity,LecteurNatifPlugin}.java`, `mobile/android/app/src/test/java/ca/local/footy/JournalTest.java`, `js/tele.js`, `js/multiview.js`, tests, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v46`.
+  - **Fichiers** : `mobile/capacitor.config.json`, `mobile/android/app/build.gradle`, `mobile/android/app/src/main/java/ca/local/footy/{Journal,MainActivity,BloqueurWebViewClient,NettoyeurLecteurs,LecteurActivity,LecteurNatifPlugin}.java`, `mobile/android/app/src/test/java/ca/local/footy/JournalTest.java`, `js/tele.js`, `js/multiview.js`, tests, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v48` (v47 était pris par la PR LoL, fusionnée entre-temps).
   - **Ce qui reste** : la cause sur l'appareil n'est pas établie. Le journal de Plus → Logs doit la montrer.
+- 2026-10-10 - **« Juste lcs, lec, lpl, lck, msi et worlds genre. »** Suite de l'entrée LoL ci-dessous : `LIGUES_LOL` (`js/esports.js`) réduite à ces six slugs ; CBLOL, LCP, LTA, First Stand, VCS, PCS, LJL, LLA et EWC retirés. Le test `unit_esports` (groupe 6) fige la liste exacte. Fichiers : `js/esports.js`, `tests/unit_esports.test.js`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v47`. Ce qui reste : rien ; la finale du CBLOL de ce soir ne sera donc plus affichée, les Mondiaux le seront dès le 15 octobre.
+- 2026-10-10 - **« C'est moi ou League of Legends est présentement brisé dans footy ? »** Oui.
+
+  - **Constaté.** L'API (`getSchedule`, `getLive`) répondait normalement : 200, et ce jour-là la finale du CBLOL (FURIA – LOS), l'EMEA Masters, la promotion LCS, la Demacia Cup, puis les Mondiaux à partir du 15 octobre. Mais aucun match `lol_` dans `data/schedule.json` ni dans l'appli. Cause : la liste de ligues suivies, recopiée dans `js/api.js` et `scripts/scrape_schedule.mjs`, portait des slugs qui n'existent pas dans `getLeagues` : `world_championship` (vrai : `worlds`), `cblol` (`cblol-brazil`), `ljl` (`ljl-japan`). Et la LCP, First Stand et les LTA n'y étaient pas. En pleine intersaison des ligues régulières, il ne restait donc rien, et les Mondiaux auraient été écartés aussi.
+
+  - **Fait.** Une seule liste, `LIGUES_LOL` + `estLigueLolSuivie` dans `js/esports.js` (module sans import), utilisée par l'appli et le script serveur. Sur les données du jour : 25 matchs à venir retenus (CBLOL, VCS, Mondiaux).
+
+  - **Tests** : `unit_esports`, groupe 6 (slugs réels acceptés, anciens refusés). `npm test` : 86 fichiers unitaires, Playwright 45 réussis, 1 ignoré.
+
+  - **Fichiers** : `js/esports.js`, `js/api.js`, `scripts/scrape_schedule.mjs`, `tests/unit_esports.test.js`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v46`.
+
+  - **Ce qui reste.** `data/schedule.json` ne contiendra les matchs LoL qu'au prochain passage du workflow quotidien (l'appli, elle, interroge l'API directement). L'EMEA Masters, les promotions LCS/CBLOL et la Demacia Cup restent hors liste : à ajouter si voulu (leur nom n'a pas non plus de drapeau 🎮 dans `lgFlag`).
 - 2026-10-10 - **« Mode chromecast, intégrer le script tampermonkey (ses fonctionnalités) dans l'APK ainsi que façon de bloquer les pubs. »**
 
   - **Constaté.**

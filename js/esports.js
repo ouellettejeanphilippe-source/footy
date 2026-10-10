@@ -77,3 +77,22 @@ export function liensDunEvenementEsports(streams, hote) {
     });
     return out;
 }
+
+/* Ligues suivies, par leur `slug` dans l'API de LoL Esports.
+
+   « C'est moi ou League of Legends est présentement brisé ? » (10 octobre 2026). Oui :
+   l'appli et le script serveur filtraient chacun sur leur propre liste, et trois des onze
+   slugs n'existaient pas (ou plus) dans l'API — relevé ce jour-là avec `getLeagues` :
+       world_championship  → worlds         (les Mondiaux : début des Play-Ins le 15 octobre)
+       cblol               → cblol-brazil   (la finale du CBLOL ce même jour était écartée)
+       ljl                 → ljl-japan
+   Une seule liste, ici, pour que l'appli (js/api.js) et le serveur
+   (scripts/scrape_schedule.mjs) ne divergent plus.
+
+   Le même jour : « juste lcs, lec, lpl, lck, msi et worlds ». Les quatre grandes ligues et
+   les deux tournois internationaux, rien d'autre (ni CBLOL, ni LCP, ni ligues régionales). */
+export var LIGUES_LOL = ['lcs', 'lec', 'lck', 'lpl', 'msi', 'worlds'];
+
+export function estLigueLolSuivie(slug) {
+    return LIGUES_LOL.indexOf(String(slug || '').toLowerCase()) > -1;
+}

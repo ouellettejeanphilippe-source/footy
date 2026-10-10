@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { JSDOM } from 'jsdom';
 import { appartientAuJour, nuitEnCours, veille, lendemain } from '../js/nuit.js';
+import { estLigueLolSuivie } from '../js/esports.js';
 
 // We emulate some DOM/window globals required by `scrapers.js` regex parsing if needed
 const dom = new JSDOM();
@@ -589,12 +590,11 @@ async function run() {
     });
 
     // LoL Esports
-    const targetLeagues = ['lcs', 'lec', 'lck', 'lpl', 'pcs', 'vcs', 'ljl', 'lla', 'cblol', 'world_championship', 'msi'];
     const lolData = await fetchLolEsportsSchedule();
     if(lolData && lolData.data && lolData.data.schedule && lolData.data.schedule.events) {
         lolData.data.schedule.events.forEach(ev => {
             if(ev.type !== 'match' || !ev.match || !ev.match.teams || ev.match.teams.length < 2 || !ev.league || !ev.league.slug) return;
-            if(!targetLeagues.includes(ev.league.slug.toLowerCase())) return;
+            if(!estLigueLolSuivie(ev.league.slug)) return;
             const dateObj = new Date(ev.startTime);
             const mDate = getEstDateStrFromDate(dateObj);
             if(mDate !== targetDateStr) return;

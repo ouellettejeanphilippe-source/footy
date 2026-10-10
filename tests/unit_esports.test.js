@@ -72,6 +72,21 @@ async function main() {
     assert.deepStrictEqual(E.liensDunEvenementEsports(null, HOTE), [], 'aucun flux : aucune erreur');
     ok('la liste d\'un événement devient des liens jouables, sans doublon');
 
+    // ── 6. Les ligues suivies portent les slugs RÉELS de l'API ───────────────
+    /* 10 octobre 2026 : « world_championship », « cblol » et « ljl » n'existaient pas dans
+       getLeagues — les Mondiaux et la finale du CBLOL étaient écartés en silence. Slugs
+       relevés ce jour-là ; l'appli et le serveur filtrent avec la même fonction. */
+    ["worlds", "msi", "lcs", "lec", "lck", "lpl"].forEach((s) => {
+        assert.ok(E.estLigueLolSuivie(s), "ligue suivie : " + s);
+    });
+    assert.ok(E.estLigueLolSuivie("Worlds"), "la casse ne compte pas");
+    /* « juste lcs, lec, lpl, lck, msi et worlds » : le reste est écarté. */
+    assert.deepStrictEqual(E.LIGUES_LOL.slice().sort(), ["lck", "lcs", "lec", "lpl", "msi", "worlds"]);
+    ["world_championship", "cblol", "ljl", "", null, "tft_esports", "cblol-brazil", "lcp", "emea_masters", "first_stand"].forEach((s) => {
+        assert.ok(!E.estLigueLolSuivie(s), "pas une ligue suivie : " + s);
+    });
+    ok("les ligues suivies sont celles que l'API nomme vraiment");
+
     console.log(`unit_esports: ${n} groupes de tests OK`);
     process.exit(0);
 }
