@@ -5,7 +5,7 @@ import { isMatch, isMatchPair, mergeAltUrls, spectacleDeCatch } from './match.js
 import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
 import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
-import { liensDunEvenementEsports } from './esports.js';
+import { liensDunEvenementEsports, estLigueLolSuivie } from './esports.js';
 import { appartientAuJour, nuitEnCours, veille, lendemain } from './nuit.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
@@ -913,7 +913,6 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
       }).catch(function(e) { console.error('Error fetching WWE events schedule', e); lg('Error fetching WWE events schedule', e); })
   );
 
-  var targetLeagues = ['lcs', 'lec', 'lck', 'lpl', 'pcs', 'vcs', 'ljl', 'lla', 'cblol', 'world_championship', 'msi'];
 
   promises.push(
       fetchLolEsportsSchedule(targetDateObj).then(function(data) {
@@ -923,8 +922,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
               if (!ev.match || !ev.match.teams || ev.match.teams.length < 2) return;
               if (!ev.league || !ev.league.slug) return;
 
-              var leagueSlug = ev.league.slug.toLowerCase();
-              if (targetLeagues.indexOf(leagueSlug) === -1) return;
+              if (!estLigueLolSuivie(ev.league.slug)) return;
 
               var dateObj = new Date(ev.startTime);
               var mDate = getEstDateStrFromDate(dateObj);
@@ -992,7 +990,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
                   } else {
                        // Live match not found in today's schedule (might have started yesterday or API date mismatch)
                        // Add it manually to today's base matches if it's in target leagues
-                       if (liveEv.league && liveEv.league.slug && targetLeagues.indexOf(liveEv.league.slug.toLowerCase()) > -1) {
+                       if (liveEv.league && liveEv.league.slug && estLigueLolSuivie(liveEv.league.slug)) {
                            if (!liveEv.match || !liveEv.match.teams || liveEv.match.teams.length < 2) return;
                            var lt1 = liveEv.match.teams[0];
                            var lt2 = liveEv.match.teams[1];
