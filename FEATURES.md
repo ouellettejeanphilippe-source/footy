@@ -92,7 +92,7 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 
 - buteurs par équipe (`⚽ Joueur 45' (passeur)`),
 - classement et forme récente (`#rang`, série),
-- **`👥 Alignements`** (football ; environ une heure avant le coup d'envoi) : un onglet par équipe, la formation (`4-2-3-1`), les titulaires dans l'ordre de la formation avec numéro et poste, puis les remplaçants, ceux qui sont entrés en premier. À côté du nom : `⚽ 62'`, `🅰️`, `🟨`, `🟥`, `🔻 63'` (sorti), `🔺 63'` (entré),
+- **`👥 Alignements`** (football ; environ une heure avant le coup d'envoi) : un onglet par équipe, la formation (`4-2-3-1`) et **les titulaires sur un terrain** (attaque en haut, gardien en bas, chacun à son côté), une pastille par joueur : numéro, nom, `⚽` (`⚽×2`), `🅰️`, `🟨` ou `🟥`, `🔻 63'` s'il est sorti ; le survol donne le nom complet, le poste et les minutes. Puis la liste des remplaçants, ceux qui sont entrés en premier, avec `🔺 63'` et leurs buts. Si la formation ne correspond pas aux titulaires, la liste remplace le terrain,
 - **`👥 Feuille de match`** (hockey, football américain, baseball, basket) : un onglet par équipe, un tableau par groupe (attaquants, défenseurs, gardiens ; passes, courses, réceptions… ; frappeurs, lanceurs) avec les six colonnes les plus parlantes d'ESPN (`G`, `A`, `TOI`, `SV%`, `IP`, `ERA`…),
 - **`👥 Effectif`**, à défaut des deux précédents (avant le match) : les joueurs de chaque équipe par position (centres, ailiers gauches et droits, défenseurs, gardiens au hockey ; attaque, défense, unités spéciales en NFL ; gardiens, défenseurs, milieux, attaquants au football), avec `🚑` sur un blessé. ESPN ne publie pas les trios et paires du hockey,
 - `📰 Stats complètes sur ESPN`,

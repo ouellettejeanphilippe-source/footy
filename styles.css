@@ -535,6 +535,16 @@ body.view-timeline .zoom-controls { display: flex; }
 .al-acts { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .al-act { font-size: 10px; white-space: nowrap; color: var(--muted); }
 .al-banc .al-nom { font-weight: 500; }
+.al-terrain { position: relative; display: flex; flex-direction: column; justify-content: space-around; gap: 6px; min-height: 330px; padding: 14px 4px; margin: 6px 0 4px; border-radius: 10px; overflow: hidden;
+  background: repeating-linear-gradient(180deg, #1f6b3a 0 36px, #1b6034 36px 72px); border: 2px solid rgba(255,255,255,0.35); }
+.al-terrain::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px solid rgba(255,255,255,0.3); }
+.al-terrain::after { content: ''; position: absolute; left: 50%; top: 50%; width: 70px; height: 70px; margin: -35px 0 0 -35px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; }
+.al-rangee { position: relative; z-index: 1; display: flex; justify-content: space-evenly; align-items: flex-start; }
+.al-p { flex: 1 1 0; min-width: 0; max-width: 84px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.al-rond { width: 28px; height: 28px; border-radius: 50%; background: #fff; color: #111; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.4); font-variant-numeric: tabular-nums; }
+.al-pnom { max-width: 100%; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-marques { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; font-size: 9px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.al-p.al-sorti .al-rond { opacity: 0.75; }
 .al-table-wrap { overflow-x: auto; }
 .al-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .al-table th { font-size: 10px; color: var(--muted); font-weight: 700; text-align: right; padding: 3px 4px; white-space: nowrap; }

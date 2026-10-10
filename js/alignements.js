@@ -77,6 +77,7 @@ function depuisRosters(rosters) {
       return {
         num: p.jersey || (p.athlete && p.athlete.jersey) || '',
         nom: nomJoueur(p.athlete),
+        court: (p.athlete && (p.athlete.lastName || p.athlete.shortName)) || nomJoueur(p.athlete),
         poste: poste(p),
         titulaire: !!p.starter,
         ordre: parseInt(p.formationPlace || p.batOrder, 10) || 99,
@@ -258,6 +259,81 @@ function actionsHtml(actions, esc) {
   }).join('');
 }
 
+/* Le terrain. ESPN ne donne pas de coordonnées, mais assez pour les retrouver : la
+   formation (« 3-4-2-1 ») dit combien de joueurs par rangée, et le poste de chacun dit
+   sa profondeur (défenseur, milieu, meneur, attaquant) et son côté. Relevé sur Leeds le
+   10 octobre 2026 : CD, CD-L, CD-R ; CM-L, CM-R, LM, RM ; CF-L, CF-R ; F. Les joueurs
+   triés par profondeur sont découpés selon la formation, puis rangés de gauche à droite.
+   `formationPlace` ne sert qu'à départager : sa numérotation change d'une formation à
+   l'autre. */
+function profondeur(pos) {
+  var p = String(pos || '').toUpperCase();
+  if (p === 'G' || p === 'GK') return 0;
+  if (/^(CD|CB|SW|D|LB|RB)(-[LR])?$/.test(p)) return 1;
+  if (/WB/.test(p)) return 1.5;
+  if (/^(DM|CDM)(-[LR])?$/.test(p)) return 2;
+  if (/^AM|^LW$|^RW$/.test(p)) return 3.5;
+  if (/^(CF-[LR]|[LR]CF)$/.test(p)) return 4;
+  if (/^(F|CF|ST|S|LF|RF)(-[LR])?$/.test(p)) return 4.5;
+  return 2.5; // M, CM, LM, RM et ce qu'on ne connaît pas : au milieu
+}
+
+function cote(pos) {
+  var p = String(pos || '').toUpperCase();
+  if (/-L$/.test(p)) return -1;
+  if (/-R$/.test(p)) return 1;
+  if (/^L/.test(p)) return -2;
+  if (/^R/.test(p)) return 2;
+  return 0;
+}
+
+/* Rangées du gardien à l'attaque, chacune de gauche à droite ; null si la formation ne
+   correspond pas aux titulaires (alors la liste reste). */
+export function rangeesTerrain(titulaires, formation) {
+  if (!titulaires || !titulaires.length) return null;
+  var tailles = String(formation || '').split('-').map(function(n) { return parseInt(n, 10); });
+  if (!tailles.length || tailles.some(function(n) { return !(n > 0); })) return null;
+  tailles.unshift(1);
+  var total = tailles.reduce(function(a, b) { return a + b; }, 0);
+  if (total !== titulaires.length) return null;
+  var tries = titulaires.slice().sort(function(a, b) {
+    return (profondeur(a.poste) - profondeur(b.poste)) || (a.ordre - b.ordre);
+  });
+  var rangees = [], i = 0;
+  tailles.forEach(function(n) {
+    rangees.push(tries.slice(i, i + n).sort(function(a, b) {
+      return (cote(a.poste) - cote(b.poste)) || (a.ordre - b.ordre);
+    }));
+    i += n;
+  });
+  return rangees;
+}
+
+function pastille(j, esc) {
+  var buts = j.actions.filter(function(a) { return a.type === 'but' || a.type === 'csc'; }).length;
+  var marques = '';
+  if (buts) marques += '<span class="al-m">⚽' + (buts > 1 ? '×' + buts : '') + '</span>';
+  if (j.actions.some(function(a) { return a.type === 'passe'; })) marques += '<span class="al-m">🅰️</span>';
+  if (j.actions.some(function(a) { return a.type === 'rouge'; })) marques += '<span class="al-m">🟥</span>';
+  else if (j.actions.some(function(a) { return a.type === 'jaune'; })) marques += '<span class="al-m">🟨</span>';
+  var sortie = j.actions.filter(function(a) { return a.type === 'sortie'; })[0];
+  if (sortie) marques += '<span class="al-m">🔻' + esc(sortie.min) + '</span>';
+  var titre = j.nom + (j.poste ? ' · ' + j.poste : '') + j.actions.map(function(a) { return ' · ' + ICONES[a.type] + (a.min ? ' ' + a.min : ''); }).join('');
+  return '<div class="al-p' + (j.sorti ? ' al-sorti' : '') + '" title="' + esc(titre) + '">'
+    + '<span class="al-rond">' + esc(j.num) + '</span>'
+    + '<span class="al-pnom">' + esc(j.court || j.nom) + '</span>'
+    + (marques ? '<span class="al-marques">' + marques + '</span>' : '')
+    + '</div>';
+}
+
+function terrainHtml(rangees, esc) {
+  // L'attaque en haut, le gardien en bas.
+  return '<div class="al-terrain" role="img" aria-label="Composition sur le terrain">'
+    + rangees.slice().reverse().map(function(r) {
+      return '<div class="al-rangee">' + r.map(function(j) { return pastille(j, esc); }).join('') + '</div>';
+    }).join('') + '</div>';
+}
+
 function ligneCompo(j, esc) {
   return '<li class="al-j' + (j.sorti ? ' al-sorti' : '') + '">'
     + '<span class="al-num">' + esc(j.num) + '</span>'
@@ -270,7 +346,9 @@ function ligneCompo(j, esc) {
 function equipeCompoHtml(e, esc) {
   var h = '';
   if (e.formation) h += '<div class="al-formation">' + esc(e.formation) + '</div>';
-  h += '<div class="al-sous">Titulaires</div><ol class="al-liste">' + e.titulaires.map(function(j) { return ligneCompo(j, esc); }).join('') + '</ol>';
+  var rangees = rangeesTerrain(e.titulaires, e.formation);
+  if (rangees) h += terrainHtml(rangees, esc);
+  else h += '<div class="al-sous">Titulaires</div><ol class="al-liste">' + e.titulaires.map(function(j) { return ligneCompo(j, esc); }).join('') + '</ol>';
   if (e.remplacants.length) {
     h += '<div class="al-sous">Remplaçants</div><ol class="al-liste al-banc">' + e.remplacants.map(function(j) { return ligneCompo(j, esc); }).join('') + '</ol>';
   }

@@ -176,6 +176,30 @@ async function main() {
     assert.strictEqual(A.extraireEffectifs(null, { athletes: [] }), null);
     ok('effectif : noms par position (hockey groupé, football à plat), blessés marqués');
 
+    // ── 7. Le terrain : rangées tirées de la formation et des postes ─────────
+    // « go pour le terrain, remplace titulaires ». Postes tels qu'ESPN les donne pour les
+    // formations relevées le 10 octobre 2026 (formationPlace dans un ordre quelconque).
+    const XI = (postes) => postes.map((pos, i) => ({ num: String(i + 1), nom: pos, court: pos, poste: pos, ordre: (i * 7) % 11 + 1, actions: [] }));
+    const lignes = (form, postes) => A.rangeesTerrain(XI(postes), form).map((r) => r.map((j) => j.poste).join(' '));
+    assert.deepStrictEqual(lignes('4-2-3-1', ['F', 'AM-R', 'RM', 'CD-L', 'G', 'AM', 'LB', 'RB', 'LM', 'CD-R', 'AM-L']),
+        ['G', 'LB CD-L CD-R RB', 'LM RM', 'AM-L AM AM-R', 'F']);
+    assert.deepStrictEqual(lignes('3-4-2-1', ['CF-R', 'CD', 'RM', 'G', 'CM-L', 'F', 'CD-R', 'LM', 'CF-L', 'CM-R', 'CD-L']),
+        ['G', 'CD-L CD CD-R', 'LM CM-L CM-R RM', 'CF-L CF-R', 'F']);
+    assert.deepStrictEqual(lignes('4-3-3', ['RF', 'CM', 'G', 'LB', 'F', 'CD-R', 'RM', 'LF', 'CD-L', 'LM', 'RB']),
+        ['G', 'LB CD-L CD-R RB', 'LM CM RM', 'LF F RF']);
+    assert.deepStrictEqual(lignes('3-5-1-1', ['RCF', 'CD', 'AM', 'G', 'CM-L', 'F', 'CD-R', 'LM', 'RM', 'CM-R', 'CD-L']),
+        ['G', 'CD-L CD CD-R', 'LM CM-L AM CM-R RM', 'RCF', 'F']);
+    assert.strictEqual(A.rangeesTerrain(XI(['G', 'F']), '4-4-2'), null, 'formation qui ne colle pas aux titulaires : la liste reste');
+    assert.strictEqual(A.rangeesTerrain(XI(['G']), ''), null);
+    const onze = { type: 'compo', equipes: [{ cote: 'home', equipe: 'X', formation: '4-3-3', remplacants: [],
+        titulaires: XI(['RF', 'CM', 'G', 'LB', 'F', 'CD-R', 'RM', 'LF', 'CD-L', 'LM', 'RB']).map((j, i) => i === 0 ? Object.assign(j, { actions: [{ type: 'but', min: "12'" }, { type: 'but', min: "80'" }] }) : j) }] };
+    const htmlT = A.alignementsHtml(onze, esc);
+    assert.ok(htmlT.includes('class="al-terrain"') && !htmlT.includes('Titulaires'), 'le terrain remplace la liste des titulaires');
+    assert.strictEqual((htmlT.match(/class="al-rangee"/g) || []).length, 4);
+    assert.ok(htmlT.indexOf('>RF<') < htmlT.indexOf('>G<'), 'l\'attaque en haut, le gardien en bas');
+    assert.ok(htmlT.includes('⚽×2'), 'deux buts sur la pastille');
+    ok('terrain : 4-2-3-1, 3-4-2-1, 4-3-3, 3-5-1-1 placés comme sur ESPN ; repli sur la liste');
+
     console.log(`unit_alignements : ${n} groupes réussis`);
 }
 
