@@ -18,6 +18,7 @@
 
 var menuOuvert = null;
 var ancreOuverte = null;
+var voileOuvert = null;
 var docsEcoutes = [];
 
 /* Le document où vit le bouton qui ouvre le menu.
@@ -41,8 +42,25 @@ function hoteDuMenu(ancre) {
     return d.fullscreenElement || d.webkitFullscreenElement || d.body || document.body;
 }
 
+/* Sur téléphone (ou écran tactile étroit), le menu est une FEUILLE qui monte du bas.
+
+   « Les menus, surtout sur mobile, c'est pas super affordant et efficace » (10 octobre
+   2026). Le menu déroulant y était posé sur les vidéos, à la taille d'un menu de bureau ;
+   il se refermait dès qu'on faisait défiler sa propre liste (l'écouteur `scroll` ne
+   distinguait pas) et dès que la barre d'adresse se repliait (`resize`). Une feuille
+   pleine largeur, au-dessus de la barre d'onglets, avec un voile qu'on touche pour
+   fermer, une croix, de grandes cibles et sa propre zone de défilement : le geste que
+   chaque application de téléphone a appris à son utilisateur. */
+export function enFeuille(doc) {
+    var vue = (doc && doc.defaultView) || window;
+    try {
+        return !!(vue.matchMedia && vue.matchMedia('(max-width: 768px), (hover: none) and (pointer: coarse)').matches);
+    } catch (e) { return false; }
+}
+
 export function fermerMenus() {
     if (menuOuvert) { menuOuvert.remove(); menuOuvert = null; }
+    if (voileOuvert) { voileOuvert.remove(); voileOuvert = null; }
     if (ancreOuverte) { try { ancreOuverte.setAttribute('aria-expanded', 'false'); } catch (e) {} ancreOuverte = null; }
 }
 
@@ -89,6 +107,9 @@ function poserEcouteurs(doc) {
     doc.addEventListener('pointerdown', function (e) {
         if (!menuOuvert) return;
         if (menuOuvert.contains(e.target)) return;
+        /* Le voile se ferme à son propre clic : fermer au pointerdown le retirerait sous
+           le doigt, et le clic qui suit tomberait sur la vidéo ou le bouton d'en dessous. */
+        if (voileOuvert && voileOuvert.contains(e.target)) return;
         if (ancreOuverte && ancreOuverte.contains && ancreOuverte.contains(e.target)) return;
         fermerMenus();
     }, true);
@@ -96,21 +117,29 @@ function poserEcouteurs(doc) {
         if (!menuOuvert) return;
         if (e.key === 'Escape') { fermerMenus(); return; }
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-        var boutons = Array.prototype.slice.call(menuOuvert.querySelectorAll('button:not([disabled])'));
+        var boutons = Array.prototype.slice.call(menuOuvert.querySelectorAll('.mv-menu-item:not([disabled])'));
         if (!boutons.length) return;
         var i = boutons.indexOf(document.activeElement);
         var suivant = e.key === 'ArrowDown' ? (i + 1) % boutons.length : (i - 1 + boutons.length) % boutons.length;
         boutons[suivant].focus();
         e.preventDefault();
     });
-    vue.addEventListener('resize', fermerMenus);
-    vue.addEventListener('scroll', fermerMenus, true);
+    /* Une feuille ne dépend d'aucune ancre : la barre d'adresse qui se replie (`resize`)
+       ne la déplace pas. Et faire défiler le menu lui-même ne le ferme jamais. */
+    vue.addEventListener('resize', function () { if (menuOuvert && !menuOuvert.classList.contains('feuille')) fermerMenus(); });
+    vue.addEventListener('scroll', function (e) {
+        if (!menuOuvert) return;
+        if (e.target && e.target.nodeType === 1 && menuOuvert.contains(e.target)) return;
+        if (menuOuvert.classList.contains('feuille')) return;
+        fermerMenus();
+    }, true);
     vue.addEventListener('blur', fermerMenus);
     doc.addEventListener('fullscreenchange', fermerMenus);
 }
 
 /* Ouvre un menu sous `ancre`. Un second appel sur la même ancre le referme (bascule).
-   `elements` : liste de { label, icon, onSelect, actif, disabled, danger, sep, titre }.
+   `elements` : liste de { label, detail, icon, onSelect, actif, disabled, danger, sep, titre }.
+   `detail` : une ligne d'explication, plus discrète, sous le libellé.
    Rend l'élément du menu, ou null s'il vient d'être refermé. */
 export function ouvrirMenu(ancre, elements, options) {
     options = options || {};
@@ -118,15 +147,27 @@ export function ouvrirMenu(ancre, elements, options) {
     fermerMenus();
 
     var doc = docDe(ancre);
+    var feuille = enFeuille(doc);
     var menu = doc.createElement('div');
-    menu.className = 'mv-menu' + (options.classe ? ' ' + options.classe : '');
+    menu.className = 'mv-menu' + (feuille ? ' feuille' : '') + (options.classe ? ' ' + options.classe : '');
     menu.setAttribute('role', 'menu');
     if (options.label) menu.setAttribute('aria-label', options.label);
 
+    if (feuille) {
+        var tete = doc.createElement('div');
+        tete.className = 'mv-menu-tete';
+        tete.innerHTML = '<span class="mv-menu-poignee" aria-hidden="true"></span><span class="mv-menu-tete-lb"></span><button type="button" class="mv-menu-fermer" aria-label="Fermer le menu">✕</button>';
+        tete.querySelector('.mv-menu-tete-lb').textContent = options.label || '';
+        tete.querySelector('.mv-menu-fermer').addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); fermerMenus(); });
+        menu.appendChild(tete);
+    }
+    var corps = feuille ? doc.createElement('div') : menu;
+    if (feuille) { corps.className = 'mv-menu-corps'; menu.appendChild(corps); }
+
     (elements || []).forEach(function (el) {
         if (!el) return;
-        if (el.sep) { var sep = doc.createElement('div'); sep.className = 'mv-menu-sep'; menu.appendChild(sep); return; }
-        if (el.titre) { var t = doc.createElement('div'); t.className = 'mv-menu-title'; t.textContent = el.titre; menu.appendChild(t); return; }
+        if (el.sep) { var sep = doc.createElement('div'); sep.className = 'mv-menu-sep'; corps.appendChild(sep); return; }
+        if (el.titre) { var t = doc.createElement('div'); t.className = 'mv-menu-title'; t.textContent = el.titre; corps.appendChild(t); return; }
         var b = doc.createElement('button');
         b.type = 'button';
         b.setAttribute('role', 'menuitem');
@@ -135,6 +176,7 @@ export function ouvrirMenu(ancre, elements, options) {
         if (el.title) b.title = el.title;
         var ic = doc.createElement('span'); ic.className = 'mv-menu-ic'; ic.textContent = el.icon || ''; ic.setAttribute('aria-hidden', 'true');
         var lb = doc.createElement('span'); lb.className = 'mv-menu-lb'; lb.textContent = el.label || '';
+        if (el.detail) { var dt = doc.createElement('span'); dt.className = 'mv-menu-detail'; dt.textContent = el.detail; lb.appendChild(dt); }
         b.appendChild(ic); b.appendChild(lb);
         if (el.actif) { var coche = doc.createElement('span'); coche.className = 'mv-menu-check'; coche.textContent = '✓'; coche.setAttribute('aria-hidden', 'true'); b.appendChild(coche); }
         b.addEventListener('click', function (e) {
@@ -143,20 +185,28 @@ export function ouvrirMenu(ancre, elements, options) {
             fermerMenus();
             try { if (typeof el.onSelect === 'function') el.onSelect(e); } catch (err) { console.error('[mv-menu]', err); }
         });
-        menu.appendChild(b);
+        corps.appendChild(b);
     });
 
+    if (feuille) {
+        var voile = doc.createElement('div');
+        voile.className = 'mv-menu-voile';
+        voile.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); });
+        voile.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); fermerMenus(); });
+        hoteDuMenu(ancre).appendChild(voile);
+        voileOuvert = voile;
+    }
     hoteDuMenu(ancre).appendChild(menu);
     menuOuvert = menu;
     ancreOuverte = ancre || null;
     if (ancre && ancre.setAttribute) ancre.setAttribute('aria-expanded', 'true');
-    positionner(menu, ancre);
+    if (!feuille) positionner(menu, ancre);
     poserEcouteurs(doc);
     /* La fenêtre principale garde ses écouteurs : c'est elle qui perd le focus quand on
        clique dans une iframe, et c'est ce signal-là qui referme le menu. */
     poserEcouteurs(document);
 
-    var premier = menu.querySelector('button:not([disabled])');
+    var premier = corps.querySelector('button:not([disabled])');
     if (premier && options.focus !== false && !('ontouchstart' in window)) premier.focus({ preventScroll: true });
     return menu;
 }

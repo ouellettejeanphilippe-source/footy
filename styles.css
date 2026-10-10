@@ -702,7 +702,9 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .mv-close-btn:hover { background: rgba(220,53,69,0.85); }
 /* Tuile étroite (grille 2×2 sur portable, panneau latéral) : l'essentiel reste —
    numéro, source, Site, menu, croix. */
-@container (max-width: 520px) { .mv-hdr-lb, .mv-drag-handle { display: none; } .mv-hdr-btn { padding: 0 8px; } }
+/* Sous 520 px, l'en-tête tient sur UNE rangée : sur deux, il couvrait le haut de la
+   vidéo. Le cadrage reste dans le menu ⋮ (« Cadrage de l'image »). */
+@container (max-width: 520px) { .mv-hdr-lb, .mv-drag-handle, .mv-fit-btn { display: none; } .mv-hdr-btn { padding: 0 8px; } .mv-hdr { flex-wrap: nowrap; } .mv-hdr-left { flex-wrap: nowrap; overflow: hidden; } .mv-tile-id { max-width: none; flex: 1; } }
 @container (max-width: 360px) { .mv-fit-btn, .mv-stream-number { display: none; } .mv-tile-id { max-width: 40cqw; } }
 
 /* Chargement d'une tuile : une pastille au centre, qui ne prend aucun clic et laisse
@@ -716,7 +718,7 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
    en position fixe, à l'index maximal : toujours par-dessus les tuiles et leurs iframes,
    là où les anciens menus, posés dans la tuile, étaient rognés et recouverts. */
 .mv-menu { position: fixed; z-index: 2147483000; min-width: 240px; max-width: min(340px, calc(100vw - 16px)); padding: 6px; background: var(--bg-elev); border: 1px solid var(--border2); border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,0.75); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; color: var(--text); font-size: 15px; }
-.mv-menu-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-menu-title { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mv-menu-sep { height: 1px; background: var(--border2); margin: 4px; flex-shrink: 0; }
 .mv-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: none; border-radius: 9px; background: transparent; color: var(--text); font-size: 15px; font-weight: 500; text-align: left; cursor: pointer; flex-shrink: 0; }
 .mv-menu-item:hover, .mv-menu-item:focus-visible { background: rgba(255,255,255,0.1); outline: none; }
@@ -726,6 +728,27 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .mv-menu-item.actif { background: rgba(56,189,248,0.12); }
 .mv-menu-item.danger { color: #ff8a8a; }
 .mv-menu-item[disabled] { opacity: 0.45; cursor: default; }
+/* Ligne d'explication sous le libellé (élément `detail`) : ce que fait l'entrée, en
+   petit, au lieu d'une parenthèse qui allongeait le libellé. */
+.mv-menu-detail { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 400; line-height: 1.3; color: var(--muted2, #a1a1aa); }
+.mv-menu-item.danger .mv-menu-detail { color: rgba(255,138,138,0.8); }
+
+/* Sur téléphone : une feuille qui monte du bas (js/mv-menu.js, enFeuille). Voile
+   qu'on touche pour fermer, poignée, titre et croix ; la liste défile seule. */
+.mv-menu-voile { position: fixed; inset: 0; z-index: 2147482999; background: rgba(0,0,0,0.55); animation: mv-voile-in 0.16s ease-out; touch-action: none; }
+.mv-menu.feuille { left: 0; right: 0; bottom: 0; top: auto; width: 100%; max-width: none; min-width: 0; max-height: min(78vh, calc(100dvh - 48px)); padding: 0 0 calc(10px + var(--safe-bottom, 0px)); border-radius: 18px 18px 0 0; border-bottom: none; gap: 0; overflow: hidden; animation: mv-feuille-in 0.2s ease-out; }
+.mv-menu.feuille .mv-menu-tete { position: relative; display: flex; align-items: center; gap: 10px; padding: 18px 12px 8px 20px; flex-shrink: 0; border-bottom: 1px solid var(--border2); }
+.mv-menu-poignee { position: absolute; top: 7px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(255,255,255,0.25); }
+.mv-menu-tete-lb { flex: 1; min-width: 0; font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-menu-fermer { flex-shrink: 0; width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255,255,255,0.1); color: var(--text); font-size: 17px; cursor: pointer; }
+.mv-menu.feuille .mv-menu-corps { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 4px 8px; display: flex; flex-direction: column; gap: 2px; }
+.mv-menu.feuille .mv-menu-item { min-height: 54px; padding: 10px 12px; font-size: 16px; gap: 14px; }
+.mv-menu.feuille .mv-menu-item .mv-menu-ic { width: 28px; font-size: 20px; }
+.mv-menu.feuille .mv-menu-title { padding: 14px 12px 4px; flex-shrink: 0; }
+.mv-menu.feuille .mv-menu-sep { margin: 6px 4px; }
+@keyframes mv-feuille-in { from { transform: translateY(24px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@keyframes mv-voile-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mv-menu.feuille, .mv-menu-voile { animation: none; } }
 .mv-cell::-webkit-resizer { background: rgba(255,255,255,0.2); border-left: 10px solid transparent; border-top: 10px solid transparent; box-shadow: inset -4px -4px 0 rgba(255,255,255,0.8); }
 .mv-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; height: 100%; color: var(--muted); text-align: center; padding: 24px; }
 .mv-empty .mv-empty-ic { font-size: 40px; opacity: 0.7; }
@@ -918,16 +941,20 @@ body[data-icon-pack="rounded"] .ic-close {
 
   .side-panel { width: 100%; border-radius: 0; }
 
-  /* Lecteur : tout l'écran, au-dessus de la barre du bas ; icônes seules, sauf
-     « Ajouter », le geste principal */
+  /* Lecteur : tout l'écran, au-dessus de la barre du bas. Chaque bouton de la barre
+     garde un libellé court SOUS son icône (10 octobre 2026) : des icônes seules (⊞ ⛶ ⋯)
+     ne disaient pas ce qu'elles faisaient. */
   #mv-container.mv-full { top: 0; bottom: calc(var(--bottom-nav) + var(--safe-bottom)); }
-  #mv-toolbar { padding: 6px 8px; gap: 6px; }
-  .mv-tb-btn { padding: 8px 11px; }
-  .mv-tb-btn .mv-tb-lb { display: none; }
-  .mv-tb-btn.primary .mv-tb-lb { display: inline; }
+  #mv-toolbar { padding: 4px 6px; gap: 4px; min-height: 0; }
+  #mv-toolbar .sp { display: none; }
+  .mv-actions { flex-wrap: nowrap; gap: 4px; flex: 1; justify-content: space-between; }
+  .mv-tb-btn { flex: 1; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 4px 6px; font-size: 11px; line-height: 1.1; }
+  .mv-tb-btn .mv-tb-ic { font-size: 18px; }
+  .mv-tb-btn .mv-tb-lb { display: inline; }
+  .mv-tb-btn .mv-tb-lb-long { display: none; }
   .mv-hdr { padding: 6px 8px; }
 }
-@media (max-width: 480px) { .mv-title { display: none; } }
+@media (max-width: 768px) { .mv-title { display: none; } }
 @keyframes sheetup { from { opacity: 0; transform: translateY(40px) } to { opacity: 1; transform: none } }
 
 /* ── 12. Accessibilité, mouvement réduit ──────────────────────────────────── */

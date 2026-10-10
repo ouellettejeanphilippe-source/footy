@@ -2,6 +2,26 @@
 ## En cours
 
 ## Fait
+- 2026-10-10 - **« J'aime, mais les menus, surtout sur mobile, c'est pas super affordant et efficace. »**
+
+  - **Constaté** (captures à 390 px, tactile).
+    - Le menu ⋯ était un menu déroulant de bureau posé sur les vidéos : 11 entrées, des libellés sur deux lignes (« Mode câble (une seule vidéo, zapping au doigt) »), aucun regroupement.
+    - Il se refermait dès qu'on faisait défiler sa liste : l'écouteur `scroll`, en capture, ne distinguait pas le menu lui-même. Il se refermait aussi quand la barre d'adresse se repliait (`resize`).
+    - La barre du lecteur n'avait que des icônes (⊞ ⛶ ⋯).
+    - La barre s'effaçait au repos. Le premier appui sur « Plus » ne faisait que la réveiller (vu dans Playwright : le conteneur interceptait l'appui), alors qu'elle a sa propre bande et que l'effacer ne rendait aucune place.
+    - L'en-tête des tuiles passait sur deux rangées et couvrait davantage la vidéo.
+
+  - **Correctifs.**
+    - **Feuille sur téléphone** (`enFeuille`, `js/mv-menu.js`) : pleine largeur, collée au bas, avec voile, poignée, titre et croix, et des cibles de 54 px. Le voile se ferme à son `click` (au `pointerdown`, l'appui retombait sur la vidéo d'en dessous). Le défilement interne et le `resize` ne ferment plus rien. Sur ordinateur, un défilement DANS le menu ne le ferme plus non plus.
+    - **Contenu des menus** (`ouvrirMenuBarre`, `ouvrirMenuTuile`, `ouvrirMenuDisposition`) : sections, libellés courts et ligne `detail` qui dit ce que fait l'entrée. En portrait, « Monter / Descendre » au lieu de « gauche / droite ». Le menu Disposition dit que les vidéos s'empilent en portrait.
+    - **Barre** : un libellé court sous chaque icône sur téléphone, et elle n'est plus effacée au repos.
+    - **En-tête de tuile** : une seule rangée sous 520 px. Le bouton de cadrage passe dans le menu ⋮ (« Cadrage de l'image »).
+
+  - **Tests** : `test_app_boot` « sur téléphone, les menus du lecteur sont une feuille… », répété 3 fois. Il vérifie la géométrie, les sections et les explications, que défiler ne ferme pas, que le voile ferme sans rien toucher derrière, qu'une entrée agit, la croix, et la barre visible au repos. `unit_lecteurfluide`, groupe 4 : le repos efface les en-têtes, jamais la barre.
+
+  - **Fichiers** : `js/mv-menu.js`, `js/multiview.js`, `styles.css`, `tests/test_app_boot.spec.js`, `tests/unit_lecteurfluide.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v43`.
+
+  - **Ce qui reste.** Pas essayé sur un vrai téléphone : les captures viennent de Chromium en mode mobile.
 - 2026-10-09 - **« Je vois que l'app se fait maintenant plus facilement redirect vers l'un des sites, ce que je veux vraiment pas » — « olympics streamsme la fait entre autres, sur firefox ».**
 
   - **Cause.** Les tuiles n'ont pas de `sandbox` (exigence de l'utilisateur). Toute page encadrée peut donc faire `top.location = …`, et Firefox n'a pas l'intervention de Chrome qui exige un geste dans le cadre. Les sources ajoutées ce jour (olympicweb, fbstream, totalsportek…) chargent des pages complètes de sites, pleines de régies. Seul le script utilisateur retenait l'onglet, et la sortie forcée n'agit qu'après coup.

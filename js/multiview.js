@@ -1601,7 +1601,12 @@ window.resetMvIdleTimer = function() {
                la barre elle-même. On repousse le repos d'autant. */
             if (menuEstOuvert() || (!horsPage && reposRetenu())) { window.resetMvIdleTimer(); return; }
             if (!horsPage && mvc) mvc.style.cursor = 'none';
-            appliquerRepos(g, horsPage ? null : document.getElementById('mv-toolbar'), true);
+            /* La barre du lecteur n'est PAS posée sur la vidéo : elle a sa propre bande,
+               au-dessus de la grille. L'effacer ne rendait aucune place, laissait une
+               bande noire, et sur téléphone le premier appui sur « Plus » ne faisait que
+               la réveiller (10 octobre 2026). Seuls les en-têtes de tuiles, eux par-dessus
+               l'image, s'effacent. */
+            appliquerRepos(g, null, true);
         }, 3000);
     }
 
@@ -3341,57 +3346,70 @@ export function ouvrirMenuTuile(idx, bouton, event) {
     var fitInfo = MV_FIT_MODES[s.fit || 'stretch'] || MV_FIT_MODES.stretch;
     var media = s._media || mediaDirectPour(registreDirect(), s.url);
     var midTexte = (s.mid !== undefined && s.mid !== null) ? String(s.mid) : '';
+    /* Menus regroupés en sections, libellés courts, et ce que fait l'entrée en
+       `detail` sous le libellé (10 octobre 2026, « les menus, surtout sur mobile, c'est
+       pas super affordant et efficace ») : les parenthèses allongeaient les libellés
+       jusqu'à deux lignes, et rien ne séparait réparer, arranger et régler. */
+    var empile = window.innerHeight > window.innerWidth;
     ouvrirMenu(bouton, [
-        { titre: s.name || dom },
-        { icon: '↗', label: 'Ouvrir sur le site (nouvel onglet)', title: 'Si la vidéo ne joue pas ici, le lecteur du site, lui, joue', onSelect: function() { ouvrirPageOriginale(idx); } },
-        pos ? { icon: '⏭', label: 'Source suivante (' + pos.k + '/' + pos.n + ')', onSelect: function() { nextFluxForTile(idx); } } : null,
-        s.mid ? { icon: '🔁', label: 'Choisir une autre source', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
-        { icon: '🏟', label: 'Changer de match', onSelect: function() { showMatchSelector(null, idx); } },
+        { titre: 'Si la vidéo ne joue pas' },
+        pos ? { icon: '⏭', label: 'Source suivante', detail: 'Source ' + pos.k + ' sur ' + pos.n + ' pour ce match', onSelect: function() { nextFluxForTile(idx); } } : null,
+        s.mid ? { icon: '🔁', label: 'Choisir une autre source', detail: 'La liste des liens du match', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
         { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
+        { icon: '↗', label: 'Ouvrir sur le site', detail: 'Dans un nouvel onglet : le lecteur du site, lui, joue', onSelect: function() { ouvrirPageOriginale(idx); } },
+        media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', detail: s.mode === 'direct' ? 'La page complète, comme le site la sert' : 'La vidéo seule, sans la page du site', onSelect: function() { toggleDirectMode(idx); } } : null,
+        { titre: 'Cette tuile' },
+        { icon: '🏟', label: 'Changer de match', onSelect: function() { showMatchSelector(null, idx); } },
         s.mid ? { icon: '📊', label: 'Infos et statistiques', onSelect: function() { openGlobalStatsFromMatch(s.mid); } } : null,
-        { sep: true },
-        { icon: fitInfo.icon, label: 'Image : ' + fitInfo.label + ' (changer)', onSelect: function() { cycleMvFit(idx); } },
-        media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', onSelect: function() { toggleDirectMode(idx); } } : null,
+        { icon: fitInfo.icon, label: 'Cadrage de l\'image', detail: 'Actuellement : ' + fitInfo.label + ' (étiré → ajusté → rempli)', onSelect: function() { cycleMvFit(idx); } },
         (idx > 0 && (deuxEcransActif() || mvLayout === 'ecrans')) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
-        idx > 0 ? { icon: '◀', label: 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
-        idx < mvFlux.length - 1 ? { icon: '▶', label: 'Déplacer à droite', onSelect: function() { moveMultiviewStream(idx, 'right'); } } : null,
-        { sep: true },
-        { icon: '⭐', label: 'Préférer ce site (' + dom + ')', actif: pref === 1, onSelect: function() { toggleDomainPref(dom, 'fav', midTexte); updateMultivisionLayout(); } },
-        { icon: '👎', label: 'Éviter ce site', actif: pref === -1, onSelect: function() { toggleDomainPref(dom, 'dep', midTexte); updateMultivisionLayout(); } },
+        idx > 0 ? { icon: empile ? '▲' : '◀', label: empile ? 'Monter' : 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
+        idx < mvFlux.length - 1 ? { icon: empile ? '▼' : '▶', label: empile ? 'Descendre' : 'Déplacer à droite', onSelect: function() { moveMultiviewStream(idx, 'right'); } } : null,
+        { titre: 'Le site ' + dom },
+        { icon: '⭐', label: 'Préférer ce site', detail: 'Ses liens passent en tête pour tous les matchs', actif: pref === 1, onSelect: function() { toggleDomainPref(dom, 'fav', midTexte); updateMultivisionLayout(); } },
+        { icon: '👎', label: 'Éviter ce site', detail: 'Ses liens passent en dernier', actif: pref === -1, onSelect: function() { toggleDomainPref(dom, 'dep', midTexte); updateMultivisionLayout(); } },
         { sep: true },
         { icon: '✕', label: 'Fermer cette vidéo', danger: true, onSelect: function() { removeFromMultivision(idx); } }
-    ], { label: 'Options de la vidéo ' + (idx + 1) });
+    ], { label: s.name || ('Vidéo ' + (idx + 1)) });
 }
 
 export function ouvrirMenuDisposition(bouton, event) {
     if (event) { event.stopPropagation(); event.preventDefault(); }
     var choisir = function(l) { return function() { setMvLayout(l); saveMultivisionState(); updateMultivisionLayout(); }; };
+    /* En portrait, deux vidéos ou plus s'empilent quoi qu'on choisisse (dispositionEffective) :
+       on le dit au lieu de laisser croire que le choix n'a rien fait. */
+    var portrait = window.innerHeight > window.innerWidth && mvFlux.length >= 2;
+    var mobile = window.innerWidth <= 768;
     ouvrirMenu(bouton, [
-        { titre: 'Disposition des vidéos' },
-        { icon: '⊞', label: 'Automatique', actif: mvLayout === 'auto', onSelect: choisir('auto') },
-        { icon: '⭐', label: 'Une grande, les autres à côté', actif: mvLayout === 'focus', onSelect: choisir('focus') },
-        { icon: '⊟', label: 'Les unes sous les autres', actif: mvLayout === 'vertical', onSelect: choisir('vertical') },
-        { icon: '⊟', label: 'Côte à côte', actif: mvLayout === 'horizontal', onSelect: choisir('horizontal') },
-        { icon: '🖥', label: 'Deux écrans (fenêtre étirée)', actif: mvLayout === 'ecrans', onSelect: choisir('ecrans') }
-    ], { label: 'Disposition' });
+        portrait ? { titre: 'En portrait, les vidéos s\'empilent ; le choix vaut à l\'horizontale' } : null,
+        { icon: '⊞', label: 'Automatique', detail: 'Selon le nombre de vidéos', actif: mvLayout === 'auto', onSelect: choisir('auto') },
+        { icon: '⭐', label: 'Une grande, les autres à côté', detail: 'La vidéo 1 en grand', actif: mvLayout === 'focus', onSelect: choisir('focus') },
+        { icon: '☰', label: 'Les unes sous les autres', actif: mvLayout === 'vertical', onSelect: choisir('vertical') },
+        { icon: '⫴', label: 'Côte à côte', actif: mvLayout === 'horizontal', onSelect: choisir('horizontal') },
+        !mobile ? { icon: '🖥', label: 'Deux écrans', detail: 'Une fenêtre étirée sur deux moniteurs', actif: mvLayout === 'ecrans', onSelect: choisir('ecrans') } : null
+    ], { label: 'Disposition des vidéos' });
 }
 
 export function ouvrirMenuBarre(bouton, event) {
     if (event) { event.stopPropagation(); event.preventDefault(); }
     var mobile = window.innerWidth <= 768;
+    var pip = ('documentPictureInPicture' in window);
     ouvrirMenu(bouton, [
-        { icon: '⤢', label: 'Ajuster toutes les images', title: 'étiré → ajusté → rempli', onSelect: function() { cycleMvFitAll(); } },
-        { icon: '🎬', label: 'Mode cinéma', onSelect: function() { toggleTheaterMode(document.getElementById('mv-grid-wrapper')); } },
-        { icon: '📊', label: 'Scores et statistiques', actif: mvGameModeActive, onSelect: function() { toggleMvGameMode(); } },
-        { icon: '📺', label: 'Mode câble (une seule vidéo, zapping au doigt)', title: '↑↓ changer de match, ←→ changer de source ; un appui rend les clics à la page', actif: modeCable, onSelect: function() { toggleModeCable(); } },
-        { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', title: 'La vidéo qu\'on regarde prend le son dès qu\'elle joue (le navigateur exige parfois un premier geste)', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
-        ('documentPictureInPicture' in window) ? { icon: '🖼', label: mvFlux.length >= 2 ? 'Fenêtre détachée (vidéo 1 ici, les autres empilées)' : 'Fenêtre détachée', actif: !!docPiPWindow || (deuxEcransActif() && secondEcranPiP), onSelect: function() { toggleDocumentPiP(); } } : null,
-        !mobile ? { icon: '🖥', label: 'Deux écrans : une fenêtre étirée (échange sans recharger)', title: 'Étirez la fenêtre sur les deux écrans : la vidéo 1 se cale sur le premier, les autres s\'empilent sur le second', actif: mvLayout === 'ecrans', onSelect: function() { toggleEcransEtire(); } } : null,
-        !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres (recharge à l\'échange)', title: 'Les vidéos 2 à 4 partent dans une fenêtre à poser sur le deuxième écran, en plein écran', actif: deuxEcransActif() && !secondEcranPiP, onSelect: function() { toggleDeuxEcrans(); } } : null,
-        { icon: '🛡', label: 'Bloquer les redirections des sites', title: 'Si une vidéo tente d\'emmener l\'onglet sur son site, le navigateur demande d\'abord « Quitter le site ? »', actif: gardeSortie, onSelect: function() { toggleGardeSortie(); } },
+        { titre: 'Affichage' },
+        { icon: '⤢', label: 'Cadrage de toutes les images', detail: 'étiré → ajusté → rempli', onSelect: function() { cycleMvFitAll(); } },
+        { icon: '🎬', label: 'Mode cinéma', detail: 'Le lecteur seul, sans la navigation', onSelect: function() { toggleTheaterMode(document.getElementById('mv-grid-wrapper')); } },
+        { icon: '📊', label: 'Scores et statistiques', detail: 'Un panneau des matchs en cours', actif: mvGameModeActive, onSelect: function() { toggleMvGameMode(); } },
+        { titre: 'Lecture' },
+        { icon: '📺', label: 'Mode câble', detail: 'Une seule vidéo ; glisser ↑↓ change de match, ←→ de source', actif: modeCable, onSelect: function() { toggleModeCable(); } },
+        { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', detail: 'La vidéo regardée prend le son dès qu\'elle joue', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
+        { icon: '🛡', label: 'Bloquer les redirections', detail: 'Demande « Quitter le site ? » si une vidéo tente d\'emmener l\'onglet', actif: gardeSortie, onSelect: function() { toggleGardeSortie(); } },
+        (pip || !mobile) ? { titre: 'Autres fenêtres' } : null,
+        pip ? { icon: '🖼', label: 'Fenêtre détachée', detail: mvFlux.length >= 2 ? 'La vidéo 1 reste ici, les autres s\'empilent dans une petite fenêtre' : 'La vidéo dans une petite fenêtre, par-dessus le reste', actif: !!docPiPWindow || (deuxEcransActif() && secondEcranPiP), onSelect: function() { toggleDocumentPiP(); } } : null,
+        !mobile ? { icon: '🖥', label: 'Deux écrans : une fenêtre étirée', detail: 'Échange instantané, sans recharger', title: 'Étirez la fenêtre sur les deux écrans : la vidéo 1 se cale sur le premier, les autres s\'empilent sur le second', actif: mvLayout === 'ecrans', onSelect: function() { toggleEcransEtire(); } } : null,
+        !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres', detail: 'Plein écran sur chacun ; un échange recharge les deux vidéos', actif: deuxEcransActif() && !secondEcranPiP, onSelect: function() { toggleDeuxEcrans(); } } : null,
         mvFlux.length ? { sep: true } : null,
         mvFlux.length ? { icon: '✕', label: 'Fermer toutes les vidéos', danger: true, onSelect: fermerToutesLesVideos } : null
-    ], { label: 'Plus d\'options' });
+    ], { label: 'Options du lecteur' });
 }
 
 export function removeFromMultivision(idx) {
@@ -4403,7 +4421,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v42';
+export var VERSION_APP = 'sports-guide-v43';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
