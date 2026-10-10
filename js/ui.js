@@ -13,6 +13,7 @@ import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
 import { mesurePour, formaterMesure } from './debit.js';
+import { extraireAlignements, extraireEffectifs, alignementsHtml } from './alignements.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 
@@ -1445,6 +1446,36 @@ function armerRafraichissementFiche(m, col) {
     }, INTERVALLE_FICHE_MS);
 }
 
+/* Alignements ou feuille de match (js/alignements.js) dans la fiche. Redessinés à chaque
+   relecture du résumé ESPN (toutes les 5 minutes pendant un direct) sans perdre l'équipe
+   affichée : l'onglet choisi est relu avant de remplacer le contenu. Sans alignement
+   (avant le match), `effectifs` (les `/roster` des deux équipes) donne au moins les noms ;
+   il ne remplace jamais un alignement déjà affiché. */
+export function afficherAlignements(cont, data, effectifs) {
+  if (!cont) return;
+  var al = data ? extraireAlignements(data) : null;
+  if (!al && effectifs) {
+      if (cont.dataset.alSource === 'match') return;
+      al = extraireEffectifs(effectifs[0], effectifs[1], effectifs[2]);
+  }
+  if (!al) return;
+  cont.dataset.alSource = al.type === 'effectif' ? 'effectif' : 'match';
+  var onglet = cont.querySelector('.al-onglet.actif');
+  cont.innerHTML = alignementsHtml(al, esc, onglet ? onglet.getAttribute('data-al-cote') : null);
+  cont.style.display = 'block';
+  cont.onclick = function(ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('.al-onglet') : null;
+    if (!b) return;
+    var cote = b.getAttribute('data-al-cote');
+    cont.querySelectorAll('.al-onglet').forEach(function(x) {
+      var oui = x.getAttribute('data-al-cote') === cote;
+      x.classList.toggle('actif', oui);
+      x.setAttribute('aria-selected', String(oui));
+    });
+    cont.querySelectorAll('.al-equipe').forEach(function(x) { x.hidden = x.getAttribute('data-al-cote') !== cote; });
+  };
+}
+
 export function openMod(m,col){
   document.getElementById('mdot').style.background=col||'#888';
 
@@ -1494,6 +1525,8 @@ export function openMod(m,col){
                       recordsContainer.style.display = 'block';
                   }
               }
+
+              afficherAlignements(document.getElementById('alignements-container'), res.data);
 
               if (res.scorers && res.scorers.length > 0) {
                   var hScorers = [], aScorers = [];
@@ -1549,6 +1582,8 @@ export function openMod(m,col){
                       fetchTeamInfo(m.league, mHomeId),
                       fetchTeamInfo(m.league, mAwayId)
                   ]).then(function(teamResults) {
+                      afficherAlignements(document.getElementById('alignements-container'), null,
+                          [teamResults[0].roster, teamResults[1].roster, [m.homeTeam, m.awayTeam]]);
                       var hTeam = teamResults[0].team && teamResults[0].team.team ? teamResults[0].team.team : teamResults[0].team;
                       var aTeam = teamResults[1].team && teamResults[1].team.team ? teamResults[1].team.team : teamResults[1].team;
 
@@ -1734,6 +1769,7 @@ export function openMod(m,col){
                       '<div id="away-scorers-modal" style="flex:1; font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
                   '</div>' +
                   '<div id="records-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
+                  '<div id="alignements-container" class="alignements" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="goal-stats-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="global-stats-toggle-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="espn-btn-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
