@@ -88,7 +88,12 @@ function instantDesDonnees() {
   const cal = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'schedule.json'), 'utf8'));
   const jour = String(cal.fetchDate || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(jour)) throw new Error('data/schedule.json sans fetchDate exploitable');
-  const matchs = (cal.matches || []).filter((m) => /^\d{1,2}:\d{2}$/.test(m.startTime || ''));
+  /* Un match que le calendrier dit terminé n'est pas dans le Live : le compter tirait
+     l'instant vers l'après-midi. Le calendrier régénéré le soir du 12 octobre 2026 portait
+     onze matchs finis entre 12 h 30 et 16 h (dont cinq de la LHJMQ) : l'instant tombait
+     à 15 h, le Live n'avait plus qu'une section, et deux tests qui en exigent plusieurs
+     échouaient sans que l'application ait changé. */
+  const matchs = (cal.matches || []).filter((m) => m.status !== 'finished' && /^\d{1,2}:\d{2}$/.test(m.startTime || ''));
 
   // Minuit UTC de ce jour précède toujours son minuit à New York : on balaie 30 h de là
   // par pas de 15 minutes, en ne retenant que les instants qui tombent CE jour-là.
@@ -98,7 +103,7 @@ function instantDesDonnees() {
     const t = base + pas * 15 * 60 * 1000;
     const { jour: j, minutes } = estParts(new Date(t));
     if (j !== jour) continue;
-    let n = 0;
+    let n = 0, auBord = false;
     for (const m of matchs) {
       const [h, mn] = m.startTime.split(':').map(Number);
       let diff = h * 60 + mn - minutes;
@@ -106,7 +111,15 @@ function instantDesDonnees() {
         diff += Math.round((Date.parse(m.matchDate + 'T00:00:00Z') - Date.parse(jour + 'T00:00:00Z')) / 60000);
       }
       if (diff > -180 && diff <= 60) n++;   // en cours ou dans l'heure
+      /* Un match que le calendrier dit en cours devient « Fin ? » passé sa durée plus
+         45 min (js/finpresumee.js). À moins d'une demi-heure de ce seuil, une suite qui
+         avance l'horloge (« momentanément injoignable » : 11 min) le voit quitter la
+         page en cours de test. Relevé le 12 octobre 2026 : Portland – London Lions, en
+         cours depuis 16 h, atteignait le seuil à 19 h 15, l'instant retenu. */
+      const seuil = (m.durationMinutes || 150) + 45;
+      if (m.status === 'live' && Math.abs(-diff - seuil) <= 30) auBord = true;
     }
+    if (auBord) continue;
     if (n > score) { score = n; meilleur = t; }
   }
   if (meilleur === null) throw new Error('aucun instant du ' + jour + ' trouvé');
