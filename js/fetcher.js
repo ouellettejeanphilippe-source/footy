@@ -6,7 +6,10 @@
      - inspectPageContent(text)  : détection des pages d'erreur renvoyées avec un HTTP 200
      - orderProxies(...)         : tri des transports selon leur santé récente
      - recordProxyResult(...)    : mise à jour de la santé d'un transport
+   Sa seule dépendance, js/relais.js, est elle aussi sans import.
 */
+
+import { relaisPour } from './relais.js';
 
 export var PROXY_COOLDOWN_MS = 3 * 60 * 1000;   // un transport en échec est relégué 3 min
 export var DEFAULT_PROXY_TIMEOUT = 8000;
@@ -49,6 +52,14 @@ export function parseJinaBody(t) {
     return s;
 }
 
+/* La forme particulière d'une requête Jina pour `url`, ou null. Rend le transport
+   entier (adresse, en-têtes, lecture), à substituer à celui de la liste. */
+export function adapterJina(url) {
+    var r = relaisPour(url);
+    if (!r) return null;
+    return { url: r.url, headers: r.headers, parse: r.convertir };
+}
+
 export function buildProxyList(opts) {
     opts = opts || {};
     var list = [];
@@ -84,7 +95,10 @@ export function buildProxyList(opts) {
         headers: { 'X-Return-Format': 'html' },
         timeout: JINA_TIMEOUT,
         build: function(u) { return 'https://r.jina.ai/' + u; },
-        parse: parseJinaBody
+        parse: parseJinaBody,
+        /* Pour un hôte qui exige son Referer (OnHockey), la requête change : Markdown,
+           `X-Referer`, et une conversion vers la page attendue (js/relais.js). */
+        adapter: adapterJina
     });
 
     list.push({

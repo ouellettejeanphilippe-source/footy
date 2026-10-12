@@ -7,6 +7,7 @@ import { addScrapeLog, S } from './state.js';
 import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { liensDunEvenementEsports, estLigueLolSuivie } from './esports.js';
 import { appartientAuJour, nuitEnCours, veille, lendemain } from './nuit.js';
+import { urlScorebarLhjmq, lireScorebarLhjmq } from './lhjmq.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 /* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
@@ -749,6 +750,36 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
               });
           }
       }).catch(function(e) { console.error('Error fetching PWHL API schedule', e); lg('Error fetching PWHL API schedule', e); })
+  );
+
+  /* LHJMQ : absente d'ESPN, lue sur HockeyTech (js/lhjmq.js). Le flux n'autorise que
+     chl.ca : `fetchPage` passe par le pont ou par Jina, dont l'enveloppe est déballée. */
+  promises.push(
+      fetchPage(urlScorebarLhjmq(1, 2)).then(function(texte) {
+          var jours = [targetDateStr];
+          if (lendemainStr) jours.push(lendemainStr);
+          lireScorebarLhjmq(texte, jours).forEach(function(m) {
+              m.homeTeam = nomOfficielDansLigue(m.homeTeam, 'LHJMQ');
+              m.awayTeam = nomOfficielDansLigue(m.awayTeam, 'LHJMQ');
+              m.league = formatLeagueName('LHJMQ');
+              m.flag = lgFlag('LHJMQ');
+              m.color = lgColor('LHJMQ');
+              m.streamsLoaded = false;
+              var existant = baseMatchesById[m.id] || baseMatches.find(function(x) { return x.id === m.id; });
+              if (existant) {
+                  existant.status = m.status;
+                  existant.score = m.score;
+                  existant.minute = m.minute;
+                  existant.period = m.period;
+                  existant.detail = m.detail;
+                  existant.startTime = m.startTime;
+                  existant.matchDate = m.matchDate;
+              } else {
+                  baseMatches.push(m);
+                  baseMatchesById[m.id] = m;
+              }
+          });
+      }).catch(function(e) { lg('LHJMQ : calendrier HockeyTech illisible', e && e.message ? e.message : e); })
   );
 
   /* Combat (WWE, AEW, boxe, UFC, ONE...) : ESPN n'expose aucun de ces sports — son

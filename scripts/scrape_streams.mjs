@@ -16,6 +16,7 @@
 */
 import fs from 'fs';
 import { JSDOM } from 'jsdom';
+import { relaisPour } from '../js/relais.js';
 
 const args = process.argv.slice(2);
 const NO_SUBPAGES = args.includes('--no-subpages');
@@ -143,7 +144,7 @@ function attenteApres429(reponse, essai) {
     return Math.min(1000 * Math.pow(2, essai - 1) + Math.random() * 500, REGULATION.attenteMax);
 }
 
-const fetchStats = { ok: 0, fail: 0, byStatus: {}, repris429: 0, evitees: 0 };
+const fetchStats = { ok: 0, fail: 0, byStatus: {}, repris429: 0, evitees: 0, relais: 0 };
 
 /* UNE ADRESSE, UNE REQUÊTE (9 octobre 2026, « la mise à jour des liens est vraiment
    longue »). `fetchPage` est écrit pour le navigateur : quand un transport échoue, il
@@ -200,6 +201,25 @@ async function demanderUneFois(target, init, hote, headers) {
     }
 }
 
+/* Un 403 d'un hôte qui refuse les machines de GitHub (OnHockey, derrière Cloudflare) :
+   on redemande la page par le lecteur de Jina, qui sort par ses propres adresses, avec
+   le Referer du site, et on la remet dans sa forme d'origine (js/relais.js). Un relais
+   qui échoue rend le refus d'origine, inchangé. */
+async function parRelais(target, refus) {
+    const r = relaisPour(target);
+    if (!r) return refus;
+    let snap;
+    try { snap = await demanderUneFois(r.url, {}, 'r.jina.ai', Object.assign({ 'User-Agent': UA }, r.headers)); }
+    catch (e) { console.log(`  relais KO ${target} : ${e && e.message ? e.message : e}`); return refus; }
+    if (snap.status < 200 || snap.status >= 300) { console.log(`  relais KO ${target} : HTTP ${snap.status}`); return refus; }
+    let html;
+    try { html = r.convertir(new TextDecoder().decode(snap.corps)); }
+    catch (e) { console.log(`  relais KO ${target} : ${e.message}`); return refus; }
+    fetchStats.relais++;
+    console.log(`  relais Jina : ${target} (HTTP ${refus.status} en direct)`);
+    return { status: 200, statusText: 'OK (relais)', headers: [['content-type', 'text/html; charset=utf-8']], corps: new TextEncoder().encode(html).buffer };
+}
+
 globalThis.fetch = async (u, init) => {
     const target = unwrapProxyUrl(String(u));
     let hote;
@@ -225,7 +245,9 @@ globalThis.fetch = async (u, init) => {
     let p = enVolParCible.get(target);
     if (p) fetchStats.evitees++;
     else {
-        p = demanderUneFois(target, sansSignal, hote, headers).finally(() => enVolParCible.delete(target));
+        p = demanderUneFois(target, sansSignal, hote, headers)
+            .then((snap) => (snap.status === 403 ? parRelais(target, snap) : snap))
+            .finally(() => enVolParCible.delete(target));
         enVolParCible.set(target, p);
     }
     let snap;

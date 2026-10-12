@@ -357,7 +357,14 @@ export function fetchPage(url, opts){
         }
         var proxy = order[launched++];
         var pu;
-        try { pu = proxy.build(url); } catch(e) { errs.push(proxy.id + ': ' + e.message); launchNext(); return; }
+        /* Un transport peut changer de forme selon la page (js/relais.js) : adresse,
+           en-têtes et lecture viennent alors de l'adaptation, la santé reste la sienne. */
+        var forme = proxy;
+        try {
+            var adapte = proxy.adapter ? proxy.adapter(url) : null;
+            if (adapte) forme = { headers: adapte.headers, parse: adapte.parse };
+            pu = adapte ? adapte.url : proxy.build(url);
+        } catch(e) { errs.push(proxy.id + ': ' + e.message); launchNext(); return; }
         pending++;
         lg('Essai ' + proxy.id, pu.slice(0, 70) + '…');
 
@@ -365,7 +372,7 @@ export function fetchPage(url, opts){
         controllers.push(ctrl);
         var timeout = setTimeout(function() { ctrl.abort(); }, proxy.timeout || DEFAULT_PROXY_TIMEOUT);
         var headers = { 'Accept': 'text/html,*/*' };
-        if (proxy.headers) { for (var h in proxy.headers) headers[h] = proxy.headers[h]; }
+        if (forme.headers) { for (var h in forme.headers) headers[h] = forme.headers[h]; }
 
         var status = 0;
         fetch(pu, { signal: ctrl.signal, headers: headers, credentials: 'omit' })
@@ -380,7 +387,7 @@ export function fetchPage(url, opts){
           .then(function(t) {
               clearTimeout(timeout);
               if (done) return;
-              if (proxy.parse) { try { t = proxy.parse(t); } catch(e) { throw new Error('réponse illisible'); } }
+              if (forme.parse) { try { t = forme.parse(t); } catch(e) { throw new Error('réponse illisible'); } }
               var bad = inspectPageContent(t);
               if (bad) { fail(proxy, bad.reason, bad.proxyFault); return; }
               finish(t, proxy);

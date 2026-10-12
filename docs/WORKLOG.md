@@ -2,6 +2,34 @@
 ## En cours
 
 ## Fait
+- 2026-10-12 - **« Réparer onhockey.tv et mettre LHJMQ dans le guide »**
+
+  - **Constaté, OnHockey.**
+    - Chaque passage du cache porte « https://onhockey.tv/ -> direct: HTTP 403 » et zéro match, du plus ancien relu (9 septembre) au dernier.
+    - Ce n'est ni l'agent ni le Referer : la même requête Node, mêmes en-têtes, rend 200 depuis ce conteneur. C'est Cloudflare qui refuse les machines de GitHub Actions.
+    - Dans le navigateur, l'accès direct est fermé par CORS. Jina sans Referer ne reçoit de `schedule_table.php` que « You are not allowed to access this page directly ».
+    - Jina accepte `X-Referer` (permis au pré-vol CORS). En HTML il ne rend que le premier `<script>` du fragment (948 octets sur 15 Ko), mais en Markdown la grille est entière.
+  - **Fait, OnHockey.**
+    - `js/relais.js` : `relaisPour` (Markdown, `X-Referer` du site) et `grilleOnHockeyDepuisMarkdown`, qui remet la grille dans la forme que lit `parseOnHockey`.
+    - Branché dans `fetchPage` : le transport Jina s'adapte à la page (`adapterJina`, js/fetcher.js).
+    - Branché dans le `fetch` de `scripts/scrape_streams.mjs`, seulement après un 403 direct (`parRelais`, compté dans `fetch.relais`).
+  - **Constaté, LHJMQ.**
+    - ESPN ne l'a pas. HockeyTech publie le tableau des matchs (`view=scorebar`, clé publique de chl.ca) avec pointage et période en direct ; CORS limité à chl.ca.
+    - Deux équipes manquaient à la base (Val-d'Or, Newfoundland Regiment) et « Saint John » n'était pas un alias des Sea Dogs.
+    - `sportOfTeamName` ne rangeait pas la ligue `lhjmq` au hockey : le garde-fou de sport refusait donc toute équipe de la LHJMQ lue par OnHockey (« Drummondville » restait « Drummondville »).
+  - **Fait, LHJMQ.**
+    - `js/lhjmq.js` (sans import) : `urlScorebarLhjmq`, `lireScorebarLhjmq`. Lu par `js/api.js` (via `fetchPage`, donc le pont ou Jina) et par `scripts/scrape_schedule.mjs` (direct).
+    - Ajoutés à la base : Val-d'Or, Newfoundland et l'alias « Saint John » (`js/teams.js`). `lhjmq|qmjhl` est rangé au hockey dans `sportOfTeamName` (`js/db.js`).
+  - **Vérifié.**
+    - Scraper complet avec onhockey.tv forcé en 403 : la source passe par Jina, 24 matchs, `ok: true`.
+    - Grille par Jina et grille directe : mêmes 24 matchs, mêmes lecteurs.
+    - `scrape_schedule.mjs` : 6 matchs LHJMQ, dont 5 en direct avec leur pointage. Les 5 lignes LHJMQ d'OnHockey s'apparient chacune au bon match. Les fichiers de données régénérés pour ces essais ont été remis.
+  - **Tests** : `unit_relais` (4 groupes, extrait réel du Markdown de Jina et de la page) ; `unit_lhjmq` (4 groupes, extrait réel du flux). `npm run test:unit` : 91 fichiers ; Playwright 46 réussis, 1 ignoré (avec le Chromium du conteneur).
+  - **Fichiers** : `js/relais.js`, `js/lhjmq.js`, `js/fetcher.js`, `js/utils.js`, `js/api.js`, `js/db.js`, `js/teams.js`, `scripts/scrape_streams.mjs`, `scripts/scrape_schedule.mjs`, `tests/unit_relais.test.js`, `tests/unit_lhjmq.test.js`, `docs/ARCHITECTURE.md`, `sw.js` (+ `APP_SHELL`) et `VERSION_APP` → `sports-guide-v50`.
+  - **Ce qui reste.**
+    - Le relais n'a pas tourné depuis un runner GitHub : le prochain passage du workflow le dira (« relais Jina » dans le journal, `fetch.relais` dans `data/streams.json`). Jina se limite à 20 requêtes par minute sans clé ; le passage en fait deux ou trois.
+    - Les scores LHJMQ se rafraîchissent à chaque passe complète du guide, pas chaque minute comme ESPN (`rafraichirScoresEnDirect` ne relit que les chemins ESPN).
+    - Pas de fiche ESPN (alignements, stats) pour ces matchs.
 - 2026-10-10 - **« Garder l'image avec positions de ESPN ? »** puis **« go pour le terrain, du moins qqchose de similaire, remplace titulaires oui »**. ESPN n'envoie pas d'image : son terrain est dessiné à partir de la formation, de `formationPlace` et du poste. `formationPlace` change de sens d'une formation à l'autre (4-2-3-1 d'Arsenal : 4 et 8 au milieu défensif ; 3-4-2-1 de Leeds : 2 et 3 sur les côtés) ; on place donc par le poste (profondeur et côté), découpé selon la formation. Vérifié sur les 28 compositions des matchs du jour (EPL, Liga, Serie A, Bundesliga, Ligue 1, MLS : 4-2-3-1, 3-4-2-1, 4-3-3, 3-5-2, 3-5-1-1) : toutes placées comme sur ESPN après avoir rangé `RCF` avec les attaquants. Fichiers : `js/alignements.js` (`rangeesTerrain`, terrain dans `alignementsHtml`), `styles.css`, `tests/unit_alignements.test.js` (groupe 7), `FEATURES.md`, `docs/ARCHITECTURE.md`. Même PR (#600), `sports-guide-v49` pas encore publié. Ce qui reste : un poste qu'ESPN n'a pas encore employé tombe au milieu par défaut.
 - 2026-10-10 - **« Je veux plus des données de ESPN, genre les alignements »**, puis **« à tout le moins, des lignes avec les noms, depth chart pour hockey, etc. »**
 
