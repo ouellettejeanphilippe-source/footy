@@ -651,7 +651,7 @@ export function sportOfTeamName(name) {
     var lig = leagueOfTeamName(name);
     if (!lig) return '';
     var l = String(lig).toLowerCase();
-    if (/nhl|hockey|khl|shl|liiga|ahl|pwhl/.test(l)) return 'hockey';
+    if (/nhl|hockey|khl|shl|liiga|ahl|pwhl|lhjmq|qmjhl/.test(l)) return 'hockey';
     if (/nba|wnba|basket/.test(l)) return 'basket';
     if (/mlb|baseball/.test(l)) return 'baseball';
     if (/nfl|cfl|football americain|american football/.test(l)) return 'football-us';

@@ -2,6 +2,7 @@ import fs from 'fs';
 import { JSDOM } from 'jsdom';
 import { appartientAuJour, nuitEnCours, veille, lendemain } from '../js/nuit.js';
 import { estLigueLolSuivie } from '../js/esports.js';
+import { urlScorebarLhjmq, lireScorebarLhjmq } from '../js/lhjmq.js';
 
 // We emulate some DOM/window globals required by `scrapers.js` regex parsing if needed
 const dom = new JSDOM();
@@ -242,7 +243,7 @@ function getOfficialTeamName(t) {
     return STATIC_TEAM_MAP[n] || t.trim();
 }
 
-const LEAGUE_FLAGS = { 'premier league': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'nba': '🏀', 'nhl': '🏒', 'mlb': '⚾', 'nfl': '🏈', 'f1': '🏎️', 'wwe': '🤼‍♂️' };
+const LEAGUE_FLAGS = { 'premier league': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'nba': '🏀', 'nhl': '🏒', 'mlb': '⚾', 'nfl': '🏈', 'f1': '🏎️', 'wwe': '🤼‍♂️', 'lhjmq': '🏒' };
 function lgFlag(l) { return LEAGUE_FLAGS[l ? l.toLowerCase() : ''] || '🏆'; }
 
 const LEAGUE_COLORS = { 'premier league': '#3d195b', 'nba': '#c9082a', 'nhl': '#000000', 'mlb': '#002D72', 'nfl': '#013369', 'f1': '#e10600', 'wwe': '#e10600' };
@@ -573,6 +574,19 @@ async function run() {
             if(!baseMatches.find(x => x.id === m.id)) baseMatches.push(m);
         });
     });
+
+    // LHJMQ : absente d'ESPN, lue sur HockeyTech (js/lhjmq.js).
+    const lhjmq = await fetchPage(urlScorebarLhjmq(1, 2));
+    if (lhjmq) {
+        const jours = [targetDateStr, lendemainStr].filter(Boolean);
+        const lus = lireScorebarLhjmq(lhjmq, jours);
+        lus.forEach(m => {
+            m.homeTeam = getOfficialTeamName(m.homeTeam); m.awayTeam = getOfficialTeamName(m.awayTeam);
+            m.flag = lgFlag('LHJMQ'); m.color = lgColor('LHJMQ');
+            if(!baseMatches.find(x => x.id === m.id)) baseMatches.push(m);
+        });
+        console.log(`LHJMQ : ${lus.length} matchs.`);
+    } else console.log('LHJMQ : calendrier HockeyTech injoignable.');
 
     // WWE Weekly
     const dateObjTarget = new Date(targetDateStr + "T12:00:00Z");
