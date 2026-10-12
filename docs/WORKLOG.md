@@ -2,6 +2,23 @@
 ## En cours
 
 ## Fait
+- 2026-10-12 - **« Faire que les sites genre pandastream marchent à nouveau (liens) » / « le vidéo charge pas » « sur ces domaines ».**
+
+  - **Constaté.**
+    - Les liens Pandastream sont toujours ramassés : 3 ce soir, 49 samedi le 10 ; leur nombre suit le programme. La vérification les dit jouables (21 sur 26).
+    - La chaîne : page pandastreamz.xyz → `pandastreams.shop/player/stream-NN.php` → `daddyliveplayer.st` (canal DaddyLive) → manifeste `edge.cowedd4855ws.sbs/premiumNN/index.m3u8`. Le manifeste répond 200, avec ou sans Referer.
+    - Ses segments sont des PNG du CDN de TikTok. La vidéo est dans les pixels : `TIKTIKPX` + longueur + gzip d'un MPEG-TS (H.264 854 × 480 + AAC, vérifié avec ffprobe).
+    - Sur les flux directs du cache : 15 des 31 manifestes joignables (tous chez `edge.cowedd4855ws.sbs`) servent ces images, les autres du TS ordinaire.
+    - Le lecteur natif (ExoPlayer, APK et appli TV) reçoit une image et ne démarre jamais.
+    - Dans un navigateur, le manifeste refuse toute origine sauf `daddyliveplayer.st` (403) : là, la tuile joue la page. Le correctif côté hls.js a été écrit puis retiré : il ne servait à rien pour ces domaines.
+    - Aucun hôte de la chaîne n'est dans la liste de blocage de l'APK (99 113 hôtes, reconstruite pour vérifier).
+  - **Fait.**
+    - `SegmentImage` (Java pur : PNG, zlib, filtres de ligne, `TIKTIKPX`, gzip).
+    - `DataSourceDeballante` : reconnaît un PNG à ses huit premiers octets, le reste passe tel quel. Branché dans `LecteurActivity` (APK) et `MainActivity` (`tv/`).
+  - **Vérifié.** Sur un vrai segment, le déballage Java donne exactement le flux du décodage de référence (2 000 320 octets, 53 ms).
+  - **Tests** : `SegmentImageTest` (JVM, 4 tests, dans les deux projets) ; `unit_segmentimage` (copies identiques, branchement).
+  - **Fichiers** : `mobile/android/app/src/main/java/ca/local/footy/{SegmentImage,DataSourceDeballante,LecteurActivity}.java`, `tv/app/src/main/java/ca/local/footytv/{SegmentImage,DataSourceDeballante,MainActivity}.java`, les deux `SegmentImageTest.java`, `tests/unit_segmentimage.test.js`, `docs/ARCHITECTURE.md`.
+  - **Ce qui reste.** Pas essayé sur un vrai appareil : il faut refabriquer et réinstaller l'APK (et l'appli TV). Aucun fichier du web n'a changé : la version de l'appli reste `sports-guide-v51`.
 - 2026-10-12 - **« D'autres sites à corriger ? »** Relevé sur le passage de 21 h 16 : quatre sources en échec — onhockey (corrigé ci-dessous), flexfitness, fbstream, watchfooty.
 
   - **flexfitness** : « HTTP 451 », en échec sur tous les passages relus depuis le 9 octobre. Le site répond « Unavailable For Legal Reasons » à tout le monde, Jina compris (Cloudflare « error code: 1026 » en direct). Coupé : `domains.json` → `SOURCES.flexfitness.enabled = false`.

@@ -254,7 +254,9 @@ public class LecteurActivity extends Activity {
                 .setConnectTimeoutMs(8_000)
                 .setReadTimeoutMs(8_000)
                 .setDefaultRequestProperties(entetes);
-        lecteur.setMediaSource(new HlsMediaSource.Factory(http)
+        /* DaddyLive / Pandastream servent leurs segments déguisés en PNG : déballés
+           avant l'extracteur (SegmentImage). Le reste passe tel quel. */
+        lecteur.setMediaSource(new HlsMediaSource.Factory(new DataSourceDeballante.Factory(http))
                 .setAllowChunklessPreparation(true)
                 .createMediaSource(MediaItem.fromUri(media)));
         lecteur.prepare();
