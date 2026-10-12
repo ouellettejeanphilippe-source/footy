@@ -1,4 +1,4 @@
-/* Relais pour les sites qui refusent les centres de données.
+/* Relais pour les sites qui refusent les centres de données (OnHockey, fbstream).
 
    OnHockey répond 403 à tout le script serveur depuis le 9 septembre 2026 au moins :
    chaque passage du cache porte « https://onhockey.tv/ -> direct: HTTP 403 », zéro
@@ -110,19 +110,41 @@ export function grilleOnHockeyDepuisMarkdown(texte) {
     return html + '</table>';
 }
 
-/* Hôte → conversion du Markdown. Un hôte n'y entre que s'il refuse le serveur ET que
-   sa page passe par Jina avec le Referer de son propre site. */
+/* Une page HTML rendue telle quelle par Jina (`X-Return-Format: html`). Une erreur de
+   Jina est du JSON : refusée, comme pour le Markdown. */
+export function pageHtmlJina(texte) {
+    var d = String(texte || '').trim();
+    if (d.charAt(0) === '{' && /"(code|status)"\s*:\s*\d/.test(d.slice(0, 200))) throw new Error('jina : ' + d.slice(0, 80));
+    return String(texte || '');
+}
+
+/* Les hôtes relayés.
+
+   - `onhockey.tv` : refuse le serveur (403), et `schedule_table.php` exige son Referer ;
+     Jina ne rend alors la grille entière qu'en Markdown (`markdown: true`), convertie.
+   - `fbstream.is` : un passage sur deux, le serveur n'obtient de lui qu'un « fetch
+     failed » en moins d'une seconde, sur l'accueil comme sur les treize pages par sport,
+     et la source tombe entière (relevé du 12 octobre 2026 : 14 h 15, 15 h 46, 17 h 46,
+     19 h 16, 20 h 47…). Jina le lit sans peine, en HTML : 64 matchs sur
+     /stream/football et 43 sur /stream/hockey, comme l'accès direct, et les mêmes trois
+     lecteurs sur une page de match. Le navigateur, lui, passe déjà par Jina : rien n'y
+     change (`adapterJina` ne s'occupe que du Markdown). */
 var HOTES_RELAYES = {
-    'onhockey.tv': grilleOnHockeyDepuisMarkdown
+    'onhockey.tv': { markdown: true, convertir: grilleOnHockeyDepuisMarkdown },
+    'fbstream.is': { markdown: false, convertir: pageHtmlJina }
 };
 
-/* La requête de relais pour `url`, ou null si son hôte n'en a pas. */
+/* La requête de relais pour `url`, ou null si son hôte n'en a pas. `markdown` dit si
+   elle diffère de la requête Jina ordinaire. */
 export function relaisPour(url) {
-    var convertir = HOTES_RELAYES[hoteDe(url)];
-    if (!convertir) return null;
+    var r = HOTES_RELAYES[hoteDe(url)];
+    if (!r) return null;
     return {
         url: JINA + url,
-        headers: { 'X-Return-Format': 'markdown', 'X-Referer': origineDe(url) + '/' },
-        convertir: convertir
+        headers: r.markdown
+            ? { 'X-Return-Format': 'markdown', 'X-Referer': origineDe(url) + '/' }
+            : { 'X-Return-Format': 'html' },
+        markdown: r.markdown,
+        convertir: r.convertir
     };
 }

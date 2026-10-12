@@ -140,7 +140,21 @@ async function main() {
         assert.strictEqual(R.relaisPour('https://footybite.im/'), null);
         assert.strictEqual(R.relaisPour('https://faux-onhockey.tv.exemple.com/'), null);
         assert.strictEqual(F.adapterJina('https://footybite.im/'), null, 'les autres pages gardent le HTML de Jina');
-        ok('relaisPour : OnHockey seulement, Markdown et X-Referer');
+        ok('relaisPour : OnHockey en Markdown avec X-Referer, les autres hôtes intacts');
+    }
+
+    // ── 3 bis. fbstream : relayé en HTML, le navigateur n'y change rien ──────
+    {
+        const r = R.relaisPour('https://fbstream.is/stream/hockey');
+        assert.strictEqual(r.url, 'https://r.jina.ai/https://fbstream.is/stream/hockey');
+        assert.deepStrictEqual(r.headers, { 'X-Return-Format': 'html' }, 'HTML, sans Referer imposé');
+        assert.strictEqual(r.markdown, false);
+        const page = '<html><body>' + 'x'.repeat(300) + '</body></html>';
+        assert.strictEqual(r.convertir(page), page, 'la page passe telle quelle');
+        assert.throws(() => r.convertir('{"code":422,"name":"AssertionFailureError","message":"x"}'), /jina/);
+        assert.strictEqual(F.adapterJina('https://fbstream.is/stream/hockey'), null,
+            'dans le navigateur, la requête Jina ordinaire suffit déjà');
+        ok('fbstream : relais HTML côté serveur, navigateur inchangé');
     }
 
     // ── 4. fetchPage dans le navigateur : direct fermé, Jina adapté ─────────

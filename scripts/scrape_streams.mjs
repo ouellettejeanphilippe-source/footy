@@ -103,8 +103,12 @@ const REGULATION = {
 };
 
 const hotes = new Map();
+/* Jina sans clé : 20 requêtes par minute. Le relais (js/relais.js) peut lui confier
+   une soixantaine de pages de fbstream dans un passage ; on les espace d'emblée plutôt
+   que de collectionner des 429. */
+const ESPACEMENT_PAR_HOTE = { 'r.jina.ai': 3100 };
 function etatHote(h) {
-    if (!hotes.has(h)) hotes.set(h, { enVol: 0, file: [], espacement: REGULATION.espacementMin, prochain: 0 });
+    if (!hotes.has(h)) hotes.set(h, { enVol: 0, file: [], espacement: ESPACEMENT_PAR_HOTE[h] || REGULATION.espacementMin, prochain: 0 });
     return hotes.get(h);
 }
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -178,6 +182,13 @@ async function demanderUneFois(target, init, hote, headers) {
             rendreLeTour(hote);
             fetchStats.fail++;
             fetchStats.byStatus.network = (fetchStats.byStatus.network || 0) + 1;
+            /* « fetch failed » seul ne dit rien : la cause (ECONNRESET, délai de
+               connexion, DNS…) est dans `e.cause`. On la porte dans le message, que
+               le journal et `sources[].error` reprennent. */
+            const cause = e && e.cause && (e.cause.code || e.cause.message);
+            if (cause && e.message && e.message.indexOf(String(cause)) < 0) {
+                try { e.message = e.message + ' (' + cause + ')'; } catch (x) {}
+            }
             throw e;
         }
         rendreLeTour(hote);
@@ -201,22 +212,26 @@ async function demanderUneFois(target, init, hote, headers) {
     }
 }
 
-/* Un 403 d'un hôte qui refuse les machines de GitHub (OnHockey, derrière Cloudflare) :
+/* Un 403 ou une erreur réseau d'un hôte qui refuse les machines de GitHub (OnHockey
+   derrière Cloudflare, fbstream qui coupe la connexion un passage sur deux) :
    on redemande la page par le lecteur de Jina, qui sort par ses propres adresses, avec
    le Referer du site, et on la remet dans sa forme d'origine (js/relais.js). Un relais
    qui échoue rend le refus d'origine, inchangé. */
+/* `refus` : la réponse refusée, ou l'erreur réseau. Un relais qui échoue rend l'un ou
+   l'autre, inchangé. */
 async function parRelais(target, refus) {
     const r = relaisPour(target);
-    if (!r) return refus;
+    const rendre = () => { if (refus instanceof Error) throw refus; return refus; };
+    if (!r) return rendre();
     let snap;
     try { snap = await demanderUneFois(r.url, {}, 'r.jina.ai', Object.assign({ 'User-Agent': UA }, r.headers)); }
-    catch (e) { console.log(`  relais KO ${target} : ${e && e.message ? e.message : e}`); return refus; }
-    if (snap.status < 200 || snap.status >= 300) { console.log(`  relais KO ${target} : HTTP ${snap.status}`); return refus; }
+    catch (e) { console.log(`  relais KO ${target} : ${e && e.message ? e.message : e}`); return rendre(); }
+    if (snap.status < 200 || snap.status >= 300) { console.log(`  relais KO ${target} : HTTP ${snap.status}`); return rendre(); }
     let html;
     try { html = r.convertir(new TextDecoder().decode(snap.corps)); }
-    catch (e) { console.log(`  relais KO ${target} : ${e.message}`); return refus; }
+    catch (e) { console.log(`  relais KO ${target} : ${e.message}`); return rendre(); }
     fetchStats.relais++;
-    console.log(`  relais Jina : ${target} (HTTP ${refus.status} en direct)`);
+    console.log(`  relais Jina : ${target} (${refus instanceof Error ? refus.message : 'HTTP ' + refus.status} en direct)`);
     return { status: 200, statusText: 'OK (relais)', headers: [['content-type', 'text/html; charset=utf-8']], corps: new TextEncoder().encode(html).buffer };
 }
 
@@ -246,7 +261,8 @@ globalThis.fetch = async (u, init) => {
     if (p) fetchStats.evitees++;
     else {
         p = demanderUneFois(target, sansSignal, hote, headers)
-            .then((snap) => (snap.status === 403 ? parRelais(target, snap) : snap))
+            .then((snap) => (snap.status === 403 ? parRelais(target, snap) : snap),
+                  (e) => parRelais(target, e))
             .finally(() => enVolParCible.delete(target));
         enVolParCible.set(target, p);
     }
