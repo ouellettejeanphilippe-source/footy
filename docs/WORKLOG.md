@@ -2,6 +2,14 @@
 ## En cours
 
 ## Fait
+- 2026-10-12 - **« D'autres sites à corriger ? »** Relevé sur le passage de 21 h 16 : quatre sources en échec — onhockey (corrigé ci-dessous), flexfitness, fbstream, watchfooty.
+
+  - **flexfitness** : « HTTP 451 », en échec sur tous les passages relus depuis le 9 octobre. Le site répond « Unavailable For Legal Reasons » à tout le monde, Jina compris (Cloudflare « error code: 1026 » en direct). Coupé : `domains.json` → `SOURCES.flexfitness.enabled = false`.
+  - **watchfooty** : « fetch failed » depuis le 11 octobre. Aucun domaine du réseau ne se résout plus (api.watchfooty.st, watchfooty.st, watchfty.st, wfty.link — vérifié aussi par Jina). sportsbite.org, qui lisait son API, lit désormais `api.ppv.st`, déjà la source `ppv`. Coupé : `SOURCES.watchfooty.enabled = false`.
+  - **fbstream** : un passage sur deux, « fetch failed » en moins d'une seconde dès l'accueil, et la source tombe (ses matchs sont seulement conservés du passage précédent). 13 pages par sport + 44 pages de match sur un bon passage. Jina le lit en HTML : mêmes 64 matchs (/stream/football), 43 (/stream/hockey), mêmes 3 lecteurs sur une page de match. Ajouté au relais (`js/relais.js`, HTML) ; `parRelais` (`scripts/scrape_streams.mjs`) relaie aussi les erreurs réseau ; `r.jina.ai` espacé de 3,1 s (20 requêtes/min sans clé) ; la cause d'une erreur réseau figure dans le message.
+  - **Tests** : `unit_relais` groupe 3 bis ; scraper complet avec fbstream coupé (ECONNRESET) et OnHockey en 403 : 41 pages relayées, aucun échec, fbstream 176 matchs, OnHockey 17, en 175 s. `npm run test:unit` : 91/91.
+  - **Version** : `sports-guide-v51`.
+  - **Ce qui reste** : la cause exacte des coupures de fbstream (le prochain journal la dira). mlbbite (2 matchs) et crichd (2) livrent peu mais livrent : hors saison plutôt que panne.
 - 2026-10-12 - **« Réparer onhockey.tv et mettre LHJMQ dans le guide »**
 
   - **Constaté, OnHockey.**

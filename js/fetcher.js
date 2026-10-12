@@ -56,7 +56,7 @@ export function parseJinaBody(t) {
    entier (adresse, en-têtes, lecture), à substituer à celui de la liste. */
 export function adapterJina(url) {
     var r = relaisPour(url);
-    if (!r) return null;
+    if (!r || !r.markdown) return null;
     return { url: r.url, headers: r.headers, parse: r.convertir };
 }
 
