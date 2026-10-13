@@ -46,16 +46,16 @@ export function dispositionValide(v) {
    chaîne choisie. Gardé ici (et non dans S) parce qu'il ne sert qu'au rendu. */
 export const etatDisposition = { filtre: 'tout', ligue: 'toutes', termines: false, choix: null };
 
-/* Couleur d'une fiche selon « Couleur des cartes » (userPrefs.cardColor). « home » est le
-   « Uni » des maquettes, « dark » le « Neutre ». Le dégradé garde une zone de mélange
-   courte au centre (« moins de couleur mitoyenne »). */
-export function fondEquipes(f, mode, angle) {
-  var a = angle || 135;
+/* Couleur d'une fiche selon « Couleur des cartes » (userPrefs.cardColor) : EXACTEMENT la
+   règle de la carte par défaut (js/ui.js, renderMatches), pour que toutes les dispositions
+   gardent son look (« garder le look des cartes par défaut […] même style »). */
+export function fondEquipes(f, mode) {
   if (mode === 'home') return f.cDom;
-  if (mode === 'dark') return 'var(--dsp-neutre)';
   if (mode === 'league') return f.cLigue || f.cDom;
-  if (mode === 'split') return 'linear-gradient(' + a + 'deg, ' + f.cDom + ' 50%, ' + f.cExt + ' 50%)';
-  return 'linear-gradient(' + a + 'deg, ' + f.cDom + ' 0%, ' + f.cDom + ' 36%, ' + f.cExt + ' 64%, ' + f.cExt + ' 100%)';
+  if (mode === 'dark') return 'rgba(255,255,255,0.05)';
+  if (mode === 'split') return 'linear-gradient(135deg, ' + f.cDom + ' 50%, ' + f.cExt + ' 50%)';
+  if (mode === 'gradient') return 'linear-gradient(90deg, ' + f.cDom + ' 0%, ' + f.cExt + ' 100%)';
+  return 'linear-gradient(135deg, ' + f.cDom + ' 0%, ' + f.cExt + ' 100%)';
 }
 
 /* Le Guide d'une disposition : en cours, puis à venir par heure, puis terminés. Jamais un
@@ -150,6 +150,37 @@ function boutonTermines(n) {
     + (etatDisposition.termines ? '▾' : '▸') + ' Terminés · ' + n + '</button>';
 }
 
+/* La carte par défaut (« Actuelle ») : mêmes classes `.match-card` / `.prime-*`, donc le
+   même rendu par styles.css — bandeau d'état, vignette aux couleurs des équipes et blasons
+   ronds, ligue, équipes et score, sport en pied. Les dispositions la posent dans leur
+   propre agencement ; `cls` n'ajuste que la taille (dsp-une, dsp-horiz, dsp-mini-carte). */
+function logoCarte(l, nom) {
+  if (l && l.url) return '<img src="' + esc(l.url) + '" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="' + esc(nom) + '">';
+  return '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(l && l.emoji ? l.emoji : '🛡️') + '</div>';
+}
+function carte(f, o, cls) {
+  var live = f.etat === 'live', fini = f.etat === 'fin' || f.etat === 'fin?';
+  var fond = esc(fondEquipes(f, o.couleurs));
+  var etat = live ? '<div class="live-indicator status-text"><span class="mb-ld"></span><span class="status-minute">Direct</span></div>'
+    : f.etat === 'fin?' ? '<div class="status-text presume"><span class="status-minute">Fin ?</span></div>'
+    : '<div class="status-text"><span class="status-minute">' + esc(f.etat === 'fin' ? (f.sDom != null ? 'Fin' : f.heure) : f.heure) + '</span></div>';
+  var flux = '<div class="card-streams">' + (f.flux ? '▶ ' + f.flux : I_FIND) + '</div>';
+  var logos = f.seul
+    ? '<div class="prime-logo-wrapper home" style="width:100%;display:flex;justify-content:center;">' + logoCarte(f.logoDom, f.dom) + '</div>'
+    : '<div class="prime-logo-wrapper home">' + logoCarte(f.logoDom, f.dom) + '</div><div class="prime-logo-wrapper away">' + logoCarte(f.logoExt, f.ext) + '</div>';
+  var nom = function (n) { return '<div class="prime-team-name" title="' + esc(n) + '">' + esc(n) + '</div>'; };
+  var equipes = f.seul ? nom(f.dom) : nom(f.dom) + nom(f.ext);
+  var scores = f.seul ? '<div class="prime-score"></div>' : '<div class="prime-score">' + score(f, 'd') + '</div><div class="prime-score">' + score(f, 'e') + '</div>';
+  var pied = live && f.chrono && f.chrono !== 'Direct' ? '<span class="prime-minute">' + esc(f.chrono) + '</span>'
+    : f.etat === 'bientot' ? '<span class="prime-minute">' + esc(etiquetteEtat(f, o.maintenant)) + '</span>' : '';
+  return '<div class="match-card dsp-carte' + (live ? ' live' : '') + (fini ? ' finished' : '') + (cls ? ' ' + cls : '') + '" style="--card-grad:' + fond + '" ' + attrs(f) + '>'
+    + '<div class="prime-head">' + (f.jour ? '<span class="prime-day">' + esc(f.jour) + '</span>' : '') + etat + flux + '</div>'
+    + '<div class="prime-thumbnail" style="background:' + fond + ';"><div class="prime-logos">' + logos + '</div></div>'
+    + '<div class="prime-title"><div class="prime-league-badge"><span class="plb-ic">' + esc(f.drapeau || '') + '</span><span class="plb-name">' + esc(f.ligue) + '</span></div></div>'
+    + '<div class="prime-info"><div class="prime-col-teams">' + equipes + '</div><div class="prime-col-scores">' + scores + '</div></div>'
+    + '<div class="prime-foot"><span class="prime-sport">' + esc(f.sport || '') + '</span>' + pied + '</div></div>';
+}
+
 /* Sections du Live, dans l'ordre de l'application : Favoris, En direct, Dans l'heure. */
 function sectionsLive(fiches) {
   var fav = fiches.filter(function (f) { return f.fav; });
@@ -214,32 +245,13 @@ function guideTableau(fiches, o) {
 function liveMaintenant(fiches, o) {
   var lives = fiches.filter(function (f) { return f.etat === 'live'; });
   var une = lives.filter(function (f) { return f.fav; })[0] || lives.slice().sort(function (a, b) { return b.flux - a.flux; })[0];
-  var autres = fiches.filter(function (f) { return f !== une && f.etat === 'live'; });
-  var aCote = autres.filter(function (f) { return f.fav; }).concat(autres.filter(function (f) { return !f.fav; }).sort(function (a, b) { return b.flux - a.flux; })).slice(0, 3);
-  var reste = autres.filter(function (f) { return aCote.indexOf(f) < 0; }).sort(function (a, b) { return b.flux - a.flux; });
+  var autres = lives.filter(function (f) { return f !== une; });
+  var reste = autres.filter(function (f) { return f.fav; }).concat(autres.filter(function (f) { return !f.fav; }).sort(function (a, b) { return b.flux - a.flux; }));
   var bientot = fiches.filter(function (f) { return f.etat !== 'live'; }).sort(function (a, b) { return a.debut - b.debut; });
-  var mini = function (f) {
-    return '<div class="dsp-mini" style="' + couleurs(f) + ';--fond:' + fondEquipes(f, o.couleurs, 180) + '" ' + attrs(f) + '><span class="dsp-barre"></span><div>'
-      + '<div class="dsp-meta">' + (f.etat === 'live' ? '<span class="dsp-live">● ' + esc(etiquetteEtat(f)) + '</span>' : '<span>' + esc(etiquetteEtat(f, o.maintenant)) + '</span>') + '<span>' + esc(f.ligue) + '</span>' + (f.fav ? '<span>★</span>' : '') + '</div>'
-      + '<div class="dsp-ln">' + logo(f.logoDom, f.dom) + '<span>' + esc(f.dom) + '</span><b>' + score(f, 'd') + '</b></div>'
-      + (f.seul ? '' : '<div class="dsp-ln">' + logo(f.logoExt, f.ext) + '<span>' + esc(f.ext) + '</span><b>' + score(f, 'e') + '</b></div>')
-      + '</div><div class="dsp-nflux">' + (f.flux ? I_PLAY + ' ' + f.flux : I_FIND) + '</div></div>';
-  };
   var html = '';
-  if (une) {
-    html += '<h2 class="dsp-h2">En ce moment</h2><div class="dsp-top"><div class="dsp-hero" style="--fond:' + fondEquipes(une, o.couleurs, 110) + '" ' + attrs(une) + '>'
-      + '<div class="dsp-side">' + logo(une.logoDom, une.dom) + '</div>' + (une.seul ? '' : '<div class="dsp-side">' + logo(une.logoExt, une.ext) + '</div>')
-      + '<div class="dsp-ov"><div class="dsp-who"><span class="dsp-chip"><i></i>' + esc(etiquetteEtat(une)) + '</span><b>' + esc(une.dom) + (une.seul ? '' : '<br>' + esc(une.ext)) + '</b></div>'
-      + (une.sDom != null ? '<div class="dsp-sc">' + score(une, 'd') + '–' + score(une, 'e') + '</div>' : '') + regarder(une, true) + '</div></div>'
-      + '<div class="dsp-cote">' + aCote.map(mini).join('') + '</div></div>';
-  }
-  if (reste.length) html += '<h2 class="dsp-h2">En direct</h2><div class="dsp-strip">' + reste.map(mini).join('') + '</div>';
-  if (bientot.length) html += '<h2 class="dsp-h2">Commence bientôt</h2><div class="dsp-soon">' + bientot.map(function (f) {
-    var dans = Math.max(0, Math.round(f.debut - o.maintenant));
-    return '<div class="dsp-cd" ' + attrs(f) + '><div class="dsp-in">' + dans + '<small>min</small></div>'
-      + '<div class="dsp-tt">' + logo(f.logoDom, f.dom) + esc(f.dom) + '</div>' + (f.seul ? '' : '<div class="dsp-tt">' + logo(f.logoExt, f.ext) + esc(f.ext) + '</div>')
-      + '<div class="dsp-tt dsp-mute">' + esc(f.heure) + ' · ' + esc(f.ligue) + ' · ' + (f.flux ? f.flux + ' flux' : 'pas encore de lien') + '</div></div>';
-  }).join('') + '</div>';
+  if (une) html += '<h2 class="dsp-h2">En ce moment</h2><div class="dsp-une-hote">' + carte(une, o, 'dsp-une') + '</div>';
+  if (reste.length) html += '<h2 class="dsp-h2">En direct</h2><div class="dsp-cartes">' + reste.map(function (f) { return carte(f, o); }).join('') + '</div>';
+  if (bientot.length) html += '<h2 class="dsp-h2">Commence bientôt</h2><div class="dsp-rail">' + bientot.map(function (f) { return carte(f, o); }).join('') + '</div>';
   return html;
 }
 
@@ -264,38 +276,19 @@ function guideMaintenant(fiches, o) {
 function liveAffiches(fiches, o) {
   var lives = fiches.filter(function (f) { return f.etat === 'live'; }).sort(function (a, b) { return (b.fav - a.fav) || (b.flux - a.flux); });
   var bientot = fiches.filter(function (f) { return f.etat !== 'live'; }).sort(function (a, b) { return a.debut - b.debut; });
-  var tuile = function (f, grande) {
-    return '<div class="dsp-t' + (grande ? ' dsp-big' : '') + '" style="--fond:' + fondEquipes(f, o.couleurs) + '" ' + attrs(f) + '>'
-      + '<div class="dsp-tl"><span class="dsp-pill dsp-pill-live">● ' + esc(etiquetteEtat(f)) + '</span><span class="dsp-pill">' + esc(f.ligue) + '</span></div>'
-      + '<div class="dsp-logos">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '</div>'
-      + '<div class="dsp-bot">' + (f.sDom != null ? '<span class="dsp-sc">' + score(f, 'd') + '–' + score(f, 'e') + '</span>' : '')
-      + '<span class="dsp-nm">' + (grande ? titre(f) : esc(f.abDom) + (f.seul ? '' : ' – ' + esc(f.abExt))) + '</span>'
-      + '<span class="dsp-fx">' + (f.flux ? I_PLAY + ' ' + f.flux : I_FIND) + '</span></div></div>';
-  };
-  var petite = function (f) {
-    return '<div class="dsp-t dsp-petite" ' + attrs(f) + '><span class="dsp-paire">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '</span>'
-      + '<div class="dsp-tx"><b>' + esc(etiquetteEtat(f, o.maintenant)) + '</b><span class="dsp-ab">' + esc(f.abDom) + (f.seul ? '' : ' – ' + esc(f.abExt)) + '</span>'
-      + '<span class="dsp-lgp">' + esc(f.ligue) + '</span></div></div>';
-  };
   var html = '';
-  if (lives.length) html += '<h2 class="dsp-h2">En direct <small>' + lives.length + '</small></h2><div class="dsp-wall">' + lives.map(function (f, i) { return tuile(f, f.fav || i < 3); }).join('') + '</div>';
-  if (bientot.length) html += '<h2 class="dsp-h2">Dans l\'heure <small>' + bientot.length + '</small></h2><div class="dsp-wall">' + bientot.map(petite).join('') + '</div>';
+  if (lives.length) html += '<h2 class="dsp-h2">En direct <small>' + lives.length + '</small></h2><div class="dsp-wall">' + lives.map(function (f, i) { return carte(f, o, f.fav || i < 3 ? 'dsp-big' : ''); }).join('') + '</div>';
+  if (bientot.length) html += '<h2 class="dsp-h2">Dans l\'heure <small>' + bientot.length + '</small></h2><div class="dsp-wall">' + bientot.map(function (f) { return carte(f, o); }).join('') + '</div>';
   return html;
 }
 
 function guideAffiches(fiches, o) {
   var c = classerPourGuide(fiches);
-  var tuile = function (f) {
-    return '<div class="dsp-gt' + (f.etat === 'fin' || f.etat === 'fin?' ? ' dsp-fini' : '') + '" style="--fond:' + fondEquipes(f, o.couleurs, 180) + '" ' + attrs(f) + '><span class="dsp-stp"></span>'
-      + '<div class="dsp-in"><div class="dsp-top2">' + (f.etat === 'live' ? '<span class="dsp-live">● ' + esc(etiquetteEtat(f)) + '</span>' : '<span>' + esc(etiquetteEtat(f, o.maintenant)) + '</span>') + '<span>' + esc(f.ligue) + '</span></div>'
-      + '<div class="dsp-ln">' + logo(f.logoDom, f.dom) + '<span>' + esc(f.dom) + '</span><b>' + score(f, 'd') + '</b></div>'
-      + (f.seul ? '' : '<div class="dsp-ln">' + logo(f.logoExt, f.ext) + '<span>' + esc(f.ext) + '</span><b>' + score(f, 'e') + '</b></div>') + '</div>'
-      + '<span class="dsp-fx">' + (f.flux && f.etat !== 'fin' && f.etat !== 'fin?' ? I_PLAY + ' ' + f.flux : '') + '</span></div>';
-  };
+  var col = function (cls, titre, liste) { return '<div class="dsp-hc' + cls + '"><b>' + esc(titre) + '</b>' + liste.map(function (f) { return carte(f, o, 'dsp-mini-carte'); }).join('') + '</div>'; };
   var cols = '';
-  if (c.enCours.length) cols += '<div class="dsp-hc dsp-nowh"><b>En cours</b>' + c.enCours.map(tuile).join('') + '</div>';
-  c.heures.forEach(function (h) { cols += '<div class="dsp-hc"><b>' + esc(h.libelle) + '</b>' + h.fiches.map(tuile).join('') + '</div>'; });
-  if (c.termines.length) cols += '<div class="dsp-hc dsp-past"><b>Terminés</b>' + c.termines.map(tuile).join('') + '</div>';
+  if (c.enCours.length) cols += col(' dsp-nowh', 'En cours', c.enCours);
+  c.heures.forEach(function (h) { cols += col('', h.libelle, h.fiches); });
+  if (c.termines.length) cols += col(' dsp-past', 'Terminés', c.termines);
   return '<div class="dsp-hcols">' + cols + '</div>';
 }
 
@@ -305,12 +298,9 @@ function ordreChaines(fiches) {
   return lives.filter(function (f) { return f.fav; }).concat(lives.filter(function (f) { return !f.fav; }).sort(function (a, b) { return b.flux - a.flux; }))
     .concat(fiches.filter(function (f) { return f.etat !== 'live'; }).sort(function (a, b) { return a.debut - b.debut; }));
 }
-function apercu(f, o) {
+function apercu(f, o, horizontal) {
   if (!f) return '';
-  return '<aside class="dsp-pv"><div class="dsp-art" style="--fond:' + fondEquipes(f, o.couleurs) + '">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '</div>'
-    + '<div class="dsp-bd"><div class="dsp-mute">' + esc(f.ligue) + ' · ' + esc(f.etat === 'live' ? etiquetteEtat(f) + ' · depuis ' + f.heure : etiquetteEtat(f, o.maintenant)) + '</div>'
-    + '<h3>' + esc(f.dom) + (f.seul ? '' : '<br>' + esc(f.ext)) + '</h3>' + (f.sDom != null ? '<div class="dsp-big">' + score(f, 'd') + ' – ' + score(f, 'e') + '</div>' : '')
-    + regarder(f, true) + '</div></aside>';
+  return '<aside class="dsp-pv' + (horizontal ? ' dsp-pv-h' : '') + '">' + carte(f, o, horizontal ? 'dsp-horiz' : 'dsp-une') + '</aside>';
 }
 function choisi(liste) {
   var id = etatDisposition.choix;
@@ -369,7 +359,7 @@ function guideChaines(fiches, o) {
       + '<span class="dsp-lbl">' + (f.sDom != null ? '<b>' + score(f, 'd') + '–' + score(f, 'e') + '</b> · ' : '') + esc(f.etat === 'live' ? etiquetteEtat(f) : f.heure)
       + ' · <span class="dsp-long">' + titre(f) + '</span><span class="dsp-court">' + esc(f.abDom) + (f.seul ? '' : '–' + esc(f.abExt)) + '</span></span></div></div></div>';
   });
-  return apercu(sel, o)
+  return apercu(sel, o, true)
     + '<div class="dsp-epg" style="--larg:' + largeur + '"><div class="dsp-epg-in"><div class="dsp-ruler"><div class="dsp-corner"></div>' + regle + '</div>' + lignes
     + '<div class="dsp-nowv" style="--a:' + (o.maintenant - debut) + '"></div></div></div>'
     + (termines.length ? '<div class="dsp-dlist">' + boutonTermines(termines.length) + (etatDisposition.termines ? '<div class="dsp-dl">' + termines.map(function (f) {

@@ -2,6 +2,15 @@
 ## En cours
 
 ## Fait
+- 2026-10-13 - **« Enlever choix de look en haut car maintenant en bas. Aussi, pour toute carte, garder le look des cartes par défaut, mais adaptées aux autres layouts, même style » ; « le look des cartes dans Actuelle, avec les dégradés, arrondis, etc, ça devrait être la base de tous les éléments ui ».**
+
+  - **Fait.**
+    - Rangée `.dsp-switch` retirée (code, CSS, tests) : le menu Look la remplace.
+    - `carte()` dans `js/dispositions.js` : le balisage de la carte par défaut, utilisé par Maintenant (la une, En direct, Commence bientôt), Affiches (mur du Live, colonnes du Guide) et l'aperçu des Chaînes. `fondEquipes` reprend exactement la règle de « Couleur des cartes ».
+    - Rangées en liste à la palette de la carte ; CSS mort des anciennes tuiles retiré.
+    - `styles.css` §13 : les jetons de la carte habillent boutons flottants, menus (Look, Plus), bandeau, filtres, messages, zoom, panneaux des pages, fiche.
+  - **Tests** : `unit_dispositions` (règle des couleurs, balisage des cartes) ; `test_app_boot` « rien ne sort de son cadre, et les cartes des dispositions sont les cartes par défaut » ; « le haut de page… » mesure désormais le bord bas du bandeau (devenu carte, avec une marge). `npm test` : 119 unitaires, 51 Playwright (1 ignoré, comme avant).
+  - **Version** : `sports-guide-v55`.
 - 2026-10-13 - **« Ajouter bouton pour changer look, proche de actualiser, ainsi qu'ajouter à cet endroit le mettre à jour l'app » ; « c'est weird » (capture : une seule colonne à gauche sur grand écran) ; « manque logos » ; « séparer guide et live pour pouvoir mix and match et mieux uniformiser les looks des 8 options ».**
 
   - **Fait.**
