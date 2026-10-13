@@ -62,12 +62,19 @@ test.afterAll(async () => { await new Promise((r) => serveur.close(r)); });
 
 async function lancer(avecExtension) {
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'footy-ext-'));
+  const profilChrome = path.join(profil, 'profil');
   const args = ['--headless=new'];
-  if (avecExtension) args.push(`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`);
+  /* Une copie : Chrome écrit son index des règles (`_metadata/`) dans le dossier qu'il
+     charge, et ce dossier-là ne doit pas être celui du dépôt. */
+  const copie = path.join(profil, 'extension');
+  if (avecExtension) {
+    fs.cpSync(EXTENSION, copie, { recursive: true, filter: (f) => !f.includes('_metadata') });
+    args.push(`--disable-extensions-except=${copie}`, `--load-extension=${copie}`);
+  }
   /* Le Chromium d'une configuration locale (§13 d'ARCHITECTURE) vaut aussi ici : un
      contexte persistant ne lit pas `use.launchOptions` de lui-même. */
   const lo = (test.info().project.use || {}).launchOptions || {};
-  const contexte = await chromium.launchPersistentContext(profil, {
+  const contexte = await chromium.launchPersistentContext(profilChrome, {
     channel: 'chromium', headless: false, args, executablePath: lo.executablePath
   });
   /* Aucun réseau extérieur : tout ce qui ne vise pas notre serveur échoue. Le blocage de
