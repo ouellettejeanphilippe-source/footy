@@ -1002,8 +1002,10 @@ body[data-icon-pack="rounded"] .ic-close {
    grandissent ensemble. Seuls les seuils @media restent en px. Couleurs : les jetons
    de l'application ; la couleur des équipes vient de « Couleur des cartes » (--fond). */
 body.dsp-on .zoom-controls { display: none !important; }
+/* L'unité est posée sur la racine : le sélecteur et la coquille (en-tête, bandeau, bouton
+   Actualiser) l'utilisent aussi quand une disposition est active. */
+:root { --u: calc(clamp(14px, calc(9px + 0.6vw), 36px) / 16); }
 .dsp {
-  --u: calc(clamp(14px, calc(9px + 0.6vw), 36px) / 16);
   --dsp-card: var(--bg2); --dsp-raise: var(--bg3); --dsp-line: var(--border2);
   --dsp-live: var(--red); --dsp-go: var(--accent); --dsp-neutre: #2a2d36; --dsp-jaune: #ffc928;
   --dsp-px: calc(var(--u) * 4);
@@ -1016,7 +1018,7 @@ body.dsp-on .zoom-controls { display: none !important; }
 .dsp [role="button"]:focus-visible, .dsp button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dsp-ic { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; display: inline-block; }
 .dsp-logo { width: calc(var(--u) * 22); height: calc(var(--u) * 22); object-fit: contain; flex: none; display: block; }
-.dsp-ph, .dsp-emoji { display: grid; place-items: center; border-radius: 50%; background: var(--dsp-raise); color: var(--text); font-size: calc(var(--u) * 9); font-weight: 700; }
+.dsp-ph, .dsp-emoji { display: grid; place-items: center; border-radius: 50%; background: var(--dsp-raise); color: var(--text); font-size: calc(var(--u) * 7.5); font-weight: 700; letter-spacing: -0.03em; overflow: hidden; white-space: nowrap; }
 .dsp-emoji { background: none; font-size: calc(var(--u) * 16); }
 .dsp-live { color: var(--dsp-live); }
 .dsp-point { display: inline-block; width: calc(var(--u) * 8); height: calc(var(--u) * 8); border-radius: 50%; background: var(--dsp-live); margin-right: calc(var(--u) * 6); vertical-align: 0.05em; }
@@ -1040,7 +1042,7 @@ body.dsp-on .zoom-controls { display: none !important; }
 
 /* A · Tableau */
 .dsp-cols { columns: 3 calc(var(--u) * 430); column-gap: calc(var(--u) * 16); margin-top: calc(var(--u) * 16); }
-.dsp-grp { break-inside: avoid; background: var(--dsp-card); border: 1px solid var(--dsp-line); border-radius: calc(var(--u) * 12); margin-bottom: calc(var(--u) * 16); overflow: hidden; }
+.dsp-grp { container-type: inline-size; break-inside: avoid; background: var(--dsp-card); border: 1px solid var(--dsp-line); border-radius: calc(var(--u) * 12); margin-bottom: calc(var(--u) * 16); overflow: hidden; }
 .dsp-gh { display: flex; align-items: center; gap: calc(var(--u) * 8); padding: calc(var(--u) * 10) calc(var(--u) * 14); font-size: calc(var(--u) * 14); font-weight: 600; border-bottom: 1px solid var(--dsp-line); }
 .dsp-gh span { margin-left: auto; color: var(--muted); font-weight: 500; }
 .dsp-gh-fav { color: var(--accent); }
@@ -1055,22 +1057,34 @@ body.dsp-on .zoom-controls { display: none !important; }
 .dsp-prog { max-width: calc(var(--u) * 1100); margin: calc(var(--u) * 14) auto 0; }
 .dsp-hr { position: sticky; top: 0; z-index: 2; background: var(--bg); font-size: calc(var(--u) * 14); font-weight: 600; color: var(--muted); padding: calc(var(--u) * 16) calc(var(--u) * 4) calc(var(--u) * 8); }
 .dsp-hr.dsp-live { color: var(--dsp-live); }
+.dsp-prog { container-type: inline-size; }
 .dsp-gr { display: grid; grid-template-columns: calc(var(--u) * 64) minmax(0, 1fr) calc(var(--u) * 150) calc(var(--u) * 130) auto; gap: calc(var(--u) * 14); align-items: center; padding: calc(var(--u) * 10) calc(var(--u) * 14); background: var(--dsp-card); border: 1px solid var(--dsp-line); border-top: 0; }
 .dsp-hr + .dsp-gr { border-top: 1px solid var(--dsp-line); border-radius: calc(var(--u) * 10) calc(var(--u) * 10) 0 0; }
 .dsp-t { font-weight: 600; }
 .dsp-mm { display: flex; align-items: center; gap: calc(var(--u) * 8); min-width: 0; font-weight: 500; }
-.dsp-mm > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dsp-mm > span:not(.dsp-fav) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dsp-mm > .dsp-fav { flex: none; }
 .dsp-lg { color: var(--muted); font-size: calc(var(--u) * 13); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dsp-stt { font-size: calc(var(--u) * 13); font-weight: 500; }
 .dsp-stt b { font-size: calc(var(--u) * 16); font-weight: 600; color: var(--text); margin-right: calc(var(--u) * 4); }
 .dsp-gr .dsp-go { padding: calc(var(--u) * 6) calc(var(--u) * 12); }
-@media (max-width: 760px) {
-  .dsp { padding-inline: 12px; }
+@media (max-width: 760px) { .dsp { padding-inline: 12px; } }
+
+
+/* Chaque composant s'adapte à sa PROPRE largeur (container queries) : la même colonne de
+   Tableau est étroite sur une tablette en deux colonnes et large sur un téléphone en une. */
+@container (max-width: 400px) {
+  .dsp-row .dsp-mot { display: none; }
+  .dsp-row { grid-template-columns: calc(var(--u) * 64) minmax(0, 1fr) auto; gap: calc(var(--u) * 10); }
+}
+@container (max-width: 640px) {
   .dsp-gr { grid-template-columns: calc(var(--u) * 52) minmax(0, 1fr) auto; grid-template-areas: "t mm go" "t st go"; row-gap: calc(var(--u) * 2); }
   .dsp-gr .dsp-t { grid-area: t; } .dsp-gr .dsp-mm { grid-area: mm; } .dsp-gr .dsp-stt { grid-area: st; } .dsp-gr .dsp-lg { display: none; } .dsp-gr > :last-child { grid-area: go; }
   .dsp-gr .dsp-mm .dsp-logo + .dsp-logo { display: none; }
-  .dsp-row .dsp-mot { display: none; }
 }
+.dsp-pg { container-type: inline-size; }
+.dsp-court { display: none; }
+@container (max-width: 24em) { .dsp-pg .dsp-long { display: none; } .dsp-pg .dsp-court { display: inline; } }
 
 /* B · Maintenant */
 .dsp-top { display: grid; grid-template-columns: 1.7fr 1fr; gap: calc(var(--u) * 16); }
@@ -1120,24 +1134,25 @@ body.dsp-on .zoom-controls { display: none !important; }
   .dsp-hour { grid-template-columns: 1fr; gap: calc(var(--u) * 8); }
 }
 
-/* C · Affiches */
+/* C · Affiches. La tuile est une colonne (bandeau, blasons, pied) et non plus des couches
+   absolues : son contenu ne peut plus en sortir. Ses tailles suivent SA largeur (unités
+   cqi) : une petite tuile de tablette réduit son texte au lieu de le chevaucher. */
 .dsp-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 150), 1fr)); grid-auto-flow: dense; gap: calc(var(--u) * 10); }
-.dsp-affiches .dsp-t { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: calc(var(--u) * 8); overflow: hidden; color: #fff; background: var(--fond); font-weight: 400; }
+.dsp-affiches .dsp-t { container-type: inline-size; position: relative; display: flex; flex-direction: column; aspect-ratio: 1; min-width: 0; max-width: 100%; border-radius: calc(var(--u) * 8); color: #fff; background: var(--fond); font-weight: 400; }
 .dsp-affiches .dsp-big { grid-column: span 2; grid-row: span 2; }
-.dsp-tl { position: absolute; top: calc(var(--u) * 8); left: calc(var(--u) * 8); right: calc(var(--u) * 8); display: flex; justify-content: space-between; align-items: center; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 11); font-weight: 600; }
-.dsp-pill { background: rgba(0,0,0,0.55); padding: calc(var(--u) * 4) calc(var(--u) * 6); border-radius: calc(var(--u) * 4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dsp-pill-live { background: var(--dsp-live); }
-.dsp-logos { position: absolute; inset: 22% 10% 30%; display: flex; justify-content: space-around; align-items: center; }
-.dsp-logos .dsp-logo { width: 40%; height: auto; aspect-ratio: 1; background: rgba(255,255,255,0.95); border-radius: 50%; padding: 8%; }
-.dsp-logos .dsp-ph { color: #222; font-size: calc(var(--u) * 18); }
-.dsp-bot { position: absolute; left: 0; right: 0; bottom: 0; padding: calc(var(--u) * 8) calc(var(--u) * 10); background: rgba(0,0,0,0.72); display: flex; align-items: center; gap: calc(var(--u) * 8); }
-.dsp-bot .dsp-sc { font-size: calc(var(--u) * 20); font-weight: 600; }
-.dsp-nm { flex: 1; min-width: 0; font-size: calc(var(--u) * 13); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dsp-fx { font-size: calc(var(--u) * 12); font-weight: 600; white-space: nowrap; }
-.dsp-big .dsp-bot { padding: calc(var(--u) * 12) calc(var(--u) * 14); }
-.dsp-big .dsp-bot .dsp-sc { font-size: calc(var(--u) * 32); }
-.dsp-big .dsp-nm { font-size: calc(var(--u) * 15); white-space: normal; }
-.dsp-affiches .dsp-petite { aspect-ratio: auto; height: calc(var(--u) * 74); background: var(--dsp-card); color: var(--text); border: 1px solid var(--dsp-line); display: flex; align-items: center; gap: calc(var(--u) * 10); padding: 0 calc(var(--u) * 12); }
+.dsp-tl { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 7px; padding: 5cqi; font-size: 11px; font-size: clamp(9px, 6.5cqi, 15px); font-weight: 600; min-width: 0; }
+.dsp-pill { background: rgba(0,0,0,0.55); padding: 0.3em 0.5em; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dsp-pill-live { background: var(--dsp-live); flex: none; max-width: 60%; }
+.dsp-logos { flex: 1; min-height: 0; display: flex; justify-content: space-around; align-items: center; padding: 0 8%; }
+.dsp-logos .dsp-logo { width: 38%; height: auto; aspect-ratio: 1; background: rgba(255,255,255,0.95); border-radius: 50%; padding: 7%; }
+.dsp-logos .dsp-ph { color: #222; font-size: 14px; font-size: 9cqi; }
+.dsp-bot { display: flex; align-items: center; gap: 0.5em; padding: 0.55em 0.7em; background: rgba(0,0,0,0.72); border-radius: 0 0 calc(var(--u) * 8) calc(var(--u) * 8); font-size: 13px; font-size: clamp(10px, 7.5cqi, 18px); min-width: 0; }
+.dsp-bot .dsp-sc { font-size: 1.5em; font-weight: 600; flex: none; }
+.dsp-nm { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dsp-fx { font-weight: 600; white-space: nowrap; flex: none; }
+.dsp-big .dsp-bot .dsp-sc { font-size: 1.9em; }
+.dsp-big .dsp-nm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dsp-affiches .dsp-petite { aspect-ratio: auto; min-height: calc(var(--u) * 74); background: var(--dsp-card); color: var(--text); border: 1px solid var(--dsp-line); flex-direction: row; align-items: center; gap: calc(var(--u) * 10); padding: calc(var(--u) * 8) calc(var(--u) * 12); }
 .dsp-petite .dsp-logo { width: calc(var(--u) * 26); height: calc(var(--u) * 26); }
 .dsp-petite .dsp-tx { font-size: calc(var(--u) * 13); font-weight: 500; }
 .dsp-petite .dsp-tx b { font-size: calc(var(--u) * 16); font-weight: 600; }
@@ -1213,6 +1228,40 @@ body.dsp-on .zoom-controls { display: none !important; }
   .dsp-vue-guide.dsp-chaines .dsp-art { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .dsp-chip i { animation: none; } }
+
+
+/* Sélecteur de disposition, en tête du Live et du Guide (toutes dispositions, « Actuelle »
+   comprise). Collé au bord gauche dans la grille horaire, qui défile en largeur. Sur une
+   barre étroite, seul le choix courant garde son nom ; les autres gardent leur icône. */
+.dsp-switch { container-type: inline-size; position: sticky; left: 0; z-index: 50; box-sizing: border-box; width: 100%; max-width: min(100%, 100vw); display: flex; gap: calc(var(--u) * 6); overflow-x: auto; scrollbar-width: none; padding: calc(var(--u) * 14) calc(var(--u) * 20) calc(var(--u) * 4); }
+.dsp-switch::-webkit-scrollbar { display: none; }
+.dsp-switch button { flex: none; display: inline-flex; align-items: center; gap: calc(var(--u) * 7); min-height: 44px; padding: 0 calc(var(--u) * 14); border-radius: 999px; border: 1px solid var(--border2); background: var(--bg2); color: var(--muted2); font: inherit; font-size: calc(var(--u) * 14); font-weight: 600; cursor: pointer; }
+.dsp-switch button svg { width: calc(var(--u) * 18); height: calc(var(--u) * 18); flex: none; }
+.dsp-switch button[aria-checked="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.dsp-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) { .dsp-switch button:hover { color: var(--text); border-color: var(--muted); } .dsp-switch button[aria-checked="true"]:hover { color: var(--bg); } }
+@container (max-width: 620px) { .dsp-switch button:not([aria-checked="true"]) span { display: none; } .dsp-switch button:not([aria-checked="true"]) { padding: 0 calc(var(--u) * 12); } }
+.dsp-switch + .dsp { padding-top: calc(var(--u) * 12); }
+@media (max-width: 760px) { .dsp-switch { padding-inline: 12px; } }
+
+/* La coquille suit les dispositions (« le reste de l'interface suit pas ») : mêmes pilules,
+   même échelle, mêmes rayons. « Actuelle » garde son apparence d'avant. */
+body.dsp-on .nav-btn { border-radius: 999px; font-size: calc(var(--u) * 15); font-weight: 600; min-height: 44px; }
+body.dsp-on .nav-btn.active-toggle { background: var(--text) !important; color: var(--bg) !important; }
+body.dsp-on .nav-btn.active-toggle::after { display: none; }
+body.dsp-on .nav-btn .nav-ic, body.dsp-on .nav-btn .nav-ic svg { width: calc(var(--u) * 20); height: calc(var(--u) * 20); }
+body.dsp-on .app-header { height: auto; min-height: var(--hdr-height); padding-block: calc(var(--u) * 8); }
+body.dsp-on .bandeau-cache { margin: calc(var(--u) * 10) calc(var(--u) * 20) 0; border: 1px solid rgba(250, 204, 21, 0.28); border-radius: calc(var(--u) * 12); padding: calc(var(--u) * 8) calc(var(--u) * 12); font-size: calc(var(--u) * 13); }
+body.dsp-on .bandeau-cache.vieux { border-color: rgba(148, 163, 184, 0.22); }
+body.dsp-on .bandeau-cache .bc-btn { border-radius: 999px; min-height: 36px; padding: 0 calc(var(--u) * 12); font-size: calc(var(--u) * 12); }
+body.dsp-on .fab-actualiser { border-radius: 999px; background: var(--bg3); border: 1px solid var(--border2); font-size: calc(var(--u) * 14); font-weight: 600; min-height: 44px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+body.dsp-on .toast { border-radius: calc(var(--u) * 12); font-size: calc(var(--u) * 14); }
+@media (max-width: 768px) {
+  body.dsp-on .app-header { padding-block: 0; }
+  body.dsp-on .nav-btn { font-size: 11px; min-height: 0; border-radius: 14px; }
+  body.dsp-on .nav-btn .nav-ic, body.dsp-on .nav-btn .nav-ic svg { width: 20px; height: 20px; }
+  body.dsp-on .bandeau-cache { margin: 8px 12px 0; }
+}
 
 /* ── 12. Accessibilité, mouvement réduit ──────────────────────────────────── */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

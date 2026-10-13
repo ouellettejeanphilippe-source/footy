@@ -986,6 +986,51 @@ test('sur téléphone, aucune disposition ne fait déborder la page', async ({ p
   expect(pageErrors).toEqual([]);
 });
 
+/* « Possible de changer à même la page live ? » (13 octobre 2026) : le sélecteur en tête
+   du Live et du Guide change la disposition, l'enregistre, tient Options à jour, et ramène
+   à « Actuelle ». Et le contenu des tuiles et des lignes ne déborde plus de son cadre,
+   sur tablette comme sur téléphone (« t'as des tuiles que le contenu dépasse »). */
+test('le sélecteur de la page change la disposition, et rien ne sort de son cadre', async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  const pageErrors = await bootOffline(page);
+  await expect(page.locator('#marea .dsp-switch [data-disposition]')).toHaveCount(5);
+  await expect(page.locator('#marea .dsp-switch [aria-checked="true"]')).toHaveAttribute('data-disposition', 'actuelle');
+
+  for (const vue of ['live', 'all']) {
+    await page.evaluate((v) => applyFilter(v), vue);
+    for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
+      await page.locator('#marea .dsp-switch [data-disposition="' + nom + '"]').click();
+      await page.waitForSelector('#marea .dsp-' + nom);
+      await expect(page.locator('#marea .dsp-switch [aria-checked="true"]')).toHaveAttribute('data-disposition', nom);
+      const sorties = await page.evaluate(() => {
+        const out = [];
+        for (const c of document.querySelectorAll('#marea .dsp [data-mid], #marea .dsp [data-dsp="choix"]')) {
+          const R = c.getBoundingClientRect();
+          if (!R.width) continue;
+          for (const k of c.querySelectorAll('*')) {
+            const q = k.getBoundingClientRect();
+            if (!q.width || !q.height || k.closest('.dsp-pg')) continue;
+            if (q.right > R.right + 2 || q.bottom > R.bottom + 2 || q.left < R.left - 2) { out.push(c.className + ' > ' + k.className); break; }
+          }
+        }
+        return out;
+      });
+      expect(sorties, nom + ' / ' + vue + ' : contenu hors de son cadre').toEqual([]);
+    }
+  }
+  const enregistre = await page.evaluate(() => ({
+    prefs: JSON.parse(localStorage.getItem('user_prefs') || '{}').disposition,
+    options: document.getElementById('pref-disposition').value
+  }));
+  expect(enregistre).toEqual({ prefs: 'chaines', options: 'chaines' });
+
+  await page.locator('#marea .dsp-switch [data-disposition="actuelle"]').click();
+  await page.waitForSelector('#marea .mb, #marea .match-card');
+  await expect(page.locator('#marea .dsp')).toHaveCount(0);
+  await expect(page.locator('#marea .dsp-switch')).toHaveCount(1);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche monte du bas', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
