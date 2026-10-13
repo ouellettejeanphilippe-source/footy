@@ -540,17 +540,21 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
        publie plus. Il est haut de zéro quand tout va bien, et l'âge du cache du dépôt
        n'est pas connu d'avance : on mesure donc ce qui est AU-DESSUS de la grille, pas
        une constante. */
+    /* Le bandeau est une carte (13 octobre 2026, « le look des cartes […] la base de tous
+       les éléments ui ») : il a une marge au-dessus. On mesure donc son BORD BAS, pas sa
+       hauteur : la grille doit commencer là, sans rien d'autre entre les deux. */
     const bc = document.getElementById('bandeau-cache');
+    const visible = bc && bc.getBoundingClientRect().height > 0;
     return {
       enfants: Array.from(h.children).map((c) => c.id), hauteur: r.height,
-      bandeau: bc ? bc.getBoundingClientRect().height : 0,
+      basDuHaut: visible ? bc.getBoundingClientRect().bottom : r.bottom,
       debutGrille: epg.top
     };
   });
   expect(entete.enfants, 'l\'en-tête ne contient que la navigation').toEqual(['nav-links']);
   expect(entete.hauteur, 'un en-tête d\'une seule rangée').toBeLessThanOrEqual(64);
   expect(entete.debutGrille, 'la grille commence juste sous les onglets, et sous le seul bandeau qui ait le droit de s\'y glisser')
-    .toBeLessThanOrEqual(entete.hauteur + entete.bandeau + 1);
+    .toBeLessThanOrEqual(entete.basDuHaut + 1);
 
   await page.evaluate(() => window.applyFilter('all'));
   await page.waitForTimeout(400);
@@ -943,7 +947,7 @@ test('les quatre dispositions rendent le Live et le Guide, et un match ouvre sa 
           cliquables: racine.querySelectorAll('[data-mid], [data-dsp="choix"]').length,
           vide: !!racine.querySelector('.dsp-vide'),
           titre: /Guide des Sports/.test(racine.innerText),
-          cartesHistoriques: document.querySelectorAll('#marea .match-card, #marea .mb').length
+          cartesHistoriques: document.querySelectorAll('#marea .match-card:not(.dsp-carte), #marea .mb').length
         };
       });
       expect(etat.titre, nom + ' / ' + vue + ' : pas de titre').toBe(false);
@@ -987,23 +991,20 @@ test('sur téléphone, aucune disposition ne fait déborder la page', async ({ p
   expect(pageErrors).toEqual([]);
 });
 
-/* « Possible de changer à même la page live ? » (13 octobre 2026) : le sélecteur en tête
-   du Live et du Guide change la disposition, l'enregistre, tient Options à jour, et ramène
-   à « Actuelle ». Et le contenu des tuiles et des lignes ne déborde plus de son cadre,
-   sur tablette comme sur téléphone (« t'as des tuiles que le contenu dépasse »). */
-test('le sélecteur de la page change la disposition, et rien ne sort de son cadre', async ({ page }) => {
+/* Le contenu des cartes et des lignes ne déborde pas de son cadre, sur tablette (« t'as
+   des tuiles que le contenu dépasse »), dans les huit vues ; et les cartes des dispositions
+   sont les cartes par défaut (« garder le look des cartes par défaut […] même style »).
+   La rangée de choix en tête de page est retirée : le bouton Look la remplace. */
+test('rien ne sort de son cadre, et les cartes des dispositions sont les cartes par défaut', async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   const pageErrors = await bootOffline(page);
-  await expect(page.locator('#marea .dsp-switch [data-disposition]')).toHaveCount(5);
-  await expect(page.locator('#marea .dsp-switch [aria-checked="true"]')).toHaveAttribute('data-disposition', 'actuelle');
+  await expect(page.locator('.dsp-switch')).toHaveCount(0);
 
   for (const vue of ['live', 'all']) {
-    await page.evaluate((v) => applyFilter(v), vue);
     for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
-      await page.locator('#marea .dsp-switch [data-disposition="' + nom + '"]').click();
+      await page.evaluate(([n, v]) => { applyFilter(v); choisirDisposition(n); }, [nom, vue]);
       await page.waitForSelector('#marea .dsp-' + nom);
-      await expect(page.locator('#marea .dsp-switch [aria-checked="true"]')).toHaveAttribute('data-disposition', nom);
-      const sorties = await page.evaluate(() => {
+      const etat = await page.evaluate(() => {
         const out = [];
         for (const c of document.querySelectorAll('#marea .dsp [data-mid], #marea .dsp [data-dsp="choix"]')) {
           const R = c.getBoundingClientRect();
@@ -1014,22 +1015,14 @@ test('le sélecteur de la page change la disposition, et rien ne sort de son cad
             if (q.right > R.right + 2 || q.bottom > R.bottom + 2 || q.left < R.left - 2) { out.push(c.className + ' > ' + k.className); break; }
           }
         }
-        return out;
+        const cartes = [...document.querySelectorAll('#marea .dsp .dsp-carte')];
+        return { sorties: out, cartes: cartes.length, conformes: cartes.every((c) => c.matches('.match-card') && c.querySelector('.prime-head') && c.querySelector('.prime-thumbnail .prime-logo')) };
       });
-      expect(sorties, nom + ' / ' + vue + ' : contenu hors de son cadre').toEqual([]);
+      expect(etat.sorties, nom + ' / ' + vue + ' : contenu hors de son cadre').toEqual([]);
+      expect(etat.conformes, nom + ' / ' + vue + ' : cartes par défaut').toBe(true);
+      if (nom === 'affiches' || (nom === 'maintenant' && vue === 'live')) expect(etat.cartes, nom + ' / ' + vue + ' : des cartes').toBeGreaterThan(0);
     }
   }
-  const enregistre = await page.evaluate(() => {
-    const p = JSON.parse(localStorage.getItem('user_prefs') || '{}');
-    return { live: p.dispositionLive, guide: p.dispositionGuide,
-      options: [document.getElementById('pref-disposition-live').value, document.getElementById('pref-disposition-guide').value] };
-  });
-  expect(enregistre).toEqual({ live: 'chaines', guide: 'chaines', options: ['chaines', 'chaines'] });
-
-  await page.locator('#marea .dsp-switch [data-disposition="actuelle"]').click();
-  await page.waitForSelector('#marea .mb, #marea .match-card');
-  await expect(page.locator('#marea .dsp')).toHaveCount(0);
-  await expect(page.locator('#marea .dsp-switch')).toHaveCount(1);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 

@@ -78,11 +78,21 @@ test('Chaînes : la grille commence à l\'heure actuelle, aucun bloc dans le pas
   assert.match(html, /dsp-suite/, 'le match en cours entre par le bord gauche');
 });
 
-test('La couleur suit « Couleur des cartes » : uni, neutre, dégradé à mélange court', () => {
+test('La couleur suit « Couleur des cartes », avec la règle exacte de la carte par défaut', () => {
   const f = fiche('x', 'live', 0);
   assert.strictEqual(D.fondEquipes(f, 'home'), '#af1e2d');
-  assert.strictEqual(D.fondEquipes(f, 'dark'), 'var(--dsp-neutre)');
-  assert.match(D.fondEquipes(f, 'gradient-45'), /#af1e2d 36%, #003087 64%/);
+  assert.strictEqual(D.fondEquipes(f, 'dark'), 'rgba(255,255,255,0.05)');
+  assert.strictEqual(D.fondEquipes(f, 'split'), 'linear-gradient(135deg, #af1e2d 50%, #003087 50%)');
+  assert.strictEqual(D.fondEquipes(f, 'gradient'), 'linear-gradient(90deg, #af1e2d 0%, #003087 100%)');
+  assert.strictEqual(D.fondEquipes(f, 'gradient-45'), 'linear-gradient(135deg, #af1e2d 0%, #003087 100%)');
+});
+
+test('Les cartes des dispositions sont les cartes par défaut (.match-card, .prime-*)', () => {
+  for (const [nom, vue] of [['maintenant', 'live'], ['affiches', 'live'], ['affiches', 'guide'], ['chaines', 'live'], ['chaines', 'guide']]) {
+    const html = D.rendreDisposition(nom, vue, jeu(), { maintenant: MAINTENANT, couleurs: 'gradient-45' });
+    assert.match(html, /class="match-card dsp-carte/, nom + '/' + vue);
+    for (const c of ['prime-head', 'prime-thumbnail', 'prime-logo', 'prime-title', 'prime-info', 'prime-foot', 'card-streams']) assert.ok(html.includes(c), nom + '/' + vue + ' : ' + c);
+  }
 });
 
 test('Étiquettes et abréviations', () => {

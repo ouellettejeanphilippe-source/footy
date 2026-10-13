@@ -1095,33 +1095,6 @@ body.dsp-on .zoom-controls { display: none !important; }
 @container (max-width: 24em) { .dsp-pg .dsp-long { display: none; } .dsp-pg .dsp-court { display: inline; } }
 
 /* B · Maintenant */
-.dsp-top { display: grid; grid-template-columns: 1.7fr 1fr; gap: calc(var(--u) * 16); }
-.dsp-hero { position: relative; border-radius: calc(var(--u) * 22); overflow: hidden; min-height: calc(var(--u) * 330); display: flex; align-items: flex-start; justify-content: space-around; padding-top: calc(var(--u) * 40); background: var(--fond); isolation: isolate; }
-.dsp-side .dsp-logo { width: calc(var(--u) * 130); height: calc(var(--u) * 130); background: rgba(255,255,255,0.94); border-radius: 50%; padding: calc(var(--u) * 16); }
-.dsp-ov { position: absolute; inset: auto 0 0 0; padding: calc(var(--u) * 70) calc(var(--u) * 24) calc(var(--u) * 22); background: linear-gradient(transparent, rgba(0,0,0,0.8)); display: flex; align-items: flex-end; gap: calc(var(--u) * 16); flex-wrap: wrap; color: #fff; }
-.dsp-who { flex: 1; min-width: calc(var(--u) * 200); }
-.dsp-who b { display: block; font-size: calc(var(--u) * 30); font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; }
-.dsp-hero .dsp-sc { font-size: calc(var(--u) * 64); font-weight: 600; line-height: 0.9; letter-spacing: -0.03em; }
-.dsp-hero .dsp-go { background: var(--dsp-jaune); color: #17130a; padding: calc(var(--u) * 12) calc(var(--u) * 18); font-size: calc(var(--u) * 15); }
-.dsp-chip { display: inline-flex; align-items: center; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 12); font-weight: 600; padding: calc(var(--u) * 5) calc(var(--u) * 9); border-radius: calc(var(--u) * 6); background: var(--dsp-live); color: #fff; margin-bottom: calc(var(--u) * 8); }
-.dsp-chip i { width: calc(var(--u) * 7); height: calc(var(--u) * 7); border-radius: 50%; background: #fff; animation: blink 1.4s infinite; }
-.dsp-cote { display: flex; flex-direction: column; gap: calc(var(--u) * 12); }
-.dsp-mini { display: grid; grid-template-columns: calc(var(--u) * 6) minmax(0, 1fr) auto; gap: calc(var(--u) * 14); align-items: center; background: var(--dsp-card); border-radius: calc(var(--u) * 16); padding: calc(var(--u) * 14) calc(var(--u) * 16) calc(var(--u) * 14) 0; overflow: hidden; }
-.dsp-barre { align-self: stretch; background: var(--fond); }
-.dsp-meta { display: flex; gap: calc(var(--u) * 8); font-size: calc(var(--u) * 12); color: var(--muted); margin-bottom: calc(var(--u) * 8); }
-.dsp-meta .dsp-live { font-weight: 600; }
-.dsp-ln { display: flex; align-items: center; gap: calc(var(--u) * 10); min-width: 0; font-weight: 500; }
-.dsp-ln + .dsp-ln { margin-top: calc(var(--u) * 6); }
-.dsp-ln > span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dsp-ln b { font-size: calc(var(--u) * 20); font-weight: 600; }
-.dsp-nflux { font-size: calc(var(--u) * 13); font-weight: 600; color: var(--dsp-jaune); text-align: right; }
-.dsp-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--u) * 290)), 1fr)); gap: calc(var(--u) * 12); }
-.dsp-soon { display: flex; gap: calc(var(--u) * 12); overflow-x: auto; padding-bottom: calc(var(--u) * 6); }
-.dsp-cd { flex: 0 0 calc(var(--u) * 240); background: var(--dsp-card); border-radius: calc(var(--u) * 16); padding: calc(var(--u) * 16); }
-.dsp-in { font-size: calc(var(--u) * 30); font-weight: 600; letter-spacing: -0.03em; color: var(--dsp-jaune); }
-.dsp-in small { font-size: calc(var(--u) * 13); color: var(--muted); margin-left: calc(var(--u) * 4); letter-spacing: 0; }
-.dsp-tt { display: flex; align-items: center; gap: calc(var(--u) * 8); margin-top: calc(var(--u) * 10); font-weight: 500; }
-.dsp-cd .dsp-mute { font-size: calc(var(--u) * 13); font-weight: 400; }
 .dsp-ag { max-width: calc(var(--u) * 900); }
 .dsp-hour { display: grid; grid-template-columns: calc(var(--u) * 96) minmax(0, 1fr); gap: calc(var(--u) * 18); padding-block: calc(var(--u) * 16); border-top: 1px solid var(--dsp-raise); }
 .dsp-hour > b { font-size: calc(var(--u) * 20); font-weight: 600; color: var(--muted); }
@@ -1135,57 +1108,16 @@ body.dsp-on .zoom-controls { display: none !important; }
 .dsp-r { text-align: right; font-size: calc(var(--u) * 20); font-weight: 600; }
 .dsp-r small { display: block; font-size: calc(var(--u) * 12); color: var(--dsp-jaune); margin-top: calc(var(--u) * 4); }
 @media (max-width: 860px) {
-  .dsp-top { grid-template-columns: 1fr; }
-  .dsp-hero { min-height: calc(var(--u) * 340); }
-  .dsp-side .dsp-logo { width: calc(var(--u) * 110); height: calc(var(--u) * 110); }
-  .dsp-hero .dsp-sc { font-size: calc(var(--u) * 48); }
   .dsp-hour { grid-template-columns: 1fr; gap: calc(var(--u) * 8); }
 }
 
-/* C · Affiches. La tuile est une colonne (bandeau, blasons, pied) et non plus des couches
-   absolues : son contenu ne peut plus en sortir. Ses tailles suivent SA largeur (unités
-   cqi) : une petite tuile de tablette réduit son texte au lieu de le chevaucher. */
-.dsp-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 150), 1fr)); grid-auto-flow: dense; gap: calc(var(--u) * 10); }
-.dsp-affiches .dsp-t { container-type: inline-size; position: relative; display: flex; flex-direction: column; aspect-ratio: 1; min-width: 0; max-width: 100%; border-radius: calc(var(--u) * 8); color: #fff; background: var(--fond); font-weight: 400; }
-.dsp-affiches .dsp-big { grid-column: span 2; grid-row: span 2; }
-.dsp-tl { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 7px; padding: 5cqi; font-size: 11px; font-size: clamp(9px, 6.5cqi, 15px); font-weight: 600; min-width: 0; }
-.dsp-pill { background: rgba(0,0,0,0.55); padding: 0.3em 0.5em; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.dsp-pill-live { background: var(--dsp-live); flex: none; max-width: 60%; }
-.dsp-logos { flex: 1; min-height: 0; display: flex; justify-content: space-around; align-items: center; padding: 0 8%; }
-.dsp-logos .dsp-logo { width: 38%; height: auto; aspect-ratio: 1; background: rgba(255,255,255,0.95); border-radius: 50%; padding: 7%; }
-.dsp-logos .dsp-ph { color: #222; font-size: 14px; font-size: 9cqi; }
-.dsp-bot { display: flex; align-items: center; gap: 0.5em; padding: 0.55em 0.7em; background: rgba(0,0,0,0.72); border-radius: 0 0 calc(var(--u) * 8) calc(var(--u) * 8); font-size: 13px; font-size: clamp(10px, 7.5cqi, 18px); min-width: 0; }
-.dsp-bot .dsp-sc { font-size: 1.5em; font-weight: 600; flex: none; }
-.dsp-nm { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dsp-fx { font-weight: 600; white-space: nowrap; flex: none; }
-.dsp-big .dsp-bot .dsp-sc { font-size: 1.9em; }
-.dsp-big .dsp-nm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.dsp-affiches .dsp-petite { aspect-ratio: auto; min-height: calc(var(--u) * 74); background: var(--dsp-card); color: var(--text); border: 1px solid var(--dsp-line); flex-direction: row; align-items: center; gap: calc(var(--u) * 10); padding: calc(var(--u) * 8) calc(var(--u) * 12); }
-.dsp-paire { display: flex; flex-direction: column; gap: calc(var(--u) * 4); flex: none; }
-.dsp-petite .dsp-tx { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.dsp-petite .dsp-ab { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dsp-petite .dsp-lgp { color: var(--muted); font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dsp-petite .dsp-logo { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
-.dsp-petite .dsp-tx { font-size: calc(var(--u) * 13); font-weight: 500; }
-.dsp-petite .dsp-tx b { font-size: calc(var(--u) * 16); font-weight: 600; }
+/* C · Affiches : un mur de cartes par défaut (Live) et une colonne de cartes par heure
+   (Guide) ; la grille des cartes est plus bas, avec le look commun. */
 .dsp-hcols { display: flex; gap: calc(var(--u) * 12); overflow-x: auto; padding-bottom: calc(var(--u) * 20); scroll-snap-type: x proximity; }
-.dsp-hc { flex: 0 0 calc(var(--u) * 240); scroll-snap-align: start; display: flex; flex-direction: column; gap: calc(var(--u) * 8); }
+.dsp-hc { flex: 0 0 calc(var(--u) * 250); scroll-snap-align: start; display: flex; flex-direction: column; gap: calc(var(--u) * 8); }
 .dsp-hc > b { font-size: calc(var(--u) * 28); font-weight: 600; letter-spacing: -0.02em; padding-bottom: calc(var(--u) * 8); border-bottom: 2px solid var(--dsp-line); }
 .dsp-hc.dsp-nowh > b { color: var(--dsp-live); border-color: var(--dsp-live); }
 .dsp-hc.dsp-past > b { color: var(--muted); }
-.dsp-gt { display: grid; grid-template-columns: calc(var(--u) * 6) 1fr auto; background: var(--dsp-card); border: 1px solid var(--dsp-line); border-radius: calc(var(--u) * 8); overflow: hidden; }
-.dsp-stp { background: var(--fond); }
-.dsp-gt .dsp-in { padding: calc(var(--u) * 8) calc(var(--u) * 10); min-width: 0; font-size: inherit; color: inherit; letter-spacing: 0; font-weight: 400; }
-.dsp-top2 { display: flex; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 11); font-weight: 500; color: var(--muted); }
-.dsp-gt .dsp-ln { margin-top: calc(var(--u) * 5); font-size: calc(var(--u) * 14); }
-.dsp-gt .dsp-ln .dsp-logo { width: calc(var(--u) * 18); height: calc(var(--u) * 18); }
-.dsp-gt .dsp-ln b { font-size: calc(var(--u) * 15); }
-.dsp-gt .dsp-fx { padding: calc(var(--u) * 8) calc(var(--u) * 10) 0 0; }
-@media (max-width: 760px) {
-  .dsp-wall { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dsp-hc { flex-basis: 78%; }
-}
-
 /* D · Chaînes */
 .dsp-lay { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--u) * 360); gap: calc(var(--u) * 22); align-items: start; }
 .dsp-lst { display: flex; flex-direction: column; gap: calc(var(--u) * 6); }
@@ -1202,14 +1134,6 @@ body.dsp-on .zoom-controls { display: none !important; }
 .dsp-rt .dsp-sc { display: block; font-size: calc(var(--u) * 24); font-weight: 600; }
 .dsp-rt .dsp-n { display: block; color: var(--accent); font-weight: 500; font-size: calc(var(--u) * 12); margin-top: calc(var(--u) * 4); }
 .dsp-pv { position: sticky; top: calc(var(--u) * 10); background: var(--dsp-card); border-radius: calc(var(--u) * 18); overflow: hidden; border: 1px solid var(--dsp-line); }
-.dsp-art { aspect-ratio: 16 / 9; max-width: 100%; display: flex; align-items: center; justify-content: space-around; background: var(--fond); }
-.dsp-art .dsp-logo { width: 30%; height: auto; aspect-ratio: 1; background: rgba(255,255,255,0.94); border-radius: 50%; padding: 5%; }
-.dsp-bd { padding: calc(var(--u) * 18); display: flex; flex-direction: column; gap: calc(var(--u) * 10); }
-.dsp-bd h3 { margin: 0; font-size: calc(var(--u) * 22); font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }
-.dsp-bd .dsp-big { font-size: calc(var(--u) * 46); font-weight: 600; }
-.dsp-pv .dsp-go { background: var(--text); color: var(--bg); font-size: calc(var(--u) * 17); padding: calc(var(--u) * 14); }
-.dsp-vue-guide.dsp-chaines .dsp-pv { position: static; display: grid; grid-template-columns: calc(var(--u) * 220) minmax(0, 1fr); margin-bottom: calc(var(--u) * 14); }
-.dsp-vue-guide.dsp-chaines .dsp-art { border-radius: calc(var(--u) * 10); margin: calc(var(--u) * 14); }
 .dsp-epg { overflow: auto; max-height: calc(100vh - calc(var(--u) * 420)); min-height: calc(var(--u) * 300); border-radius: calc(var(--u) * 16); border: 1px solid var(--dsp-line); background: var(--dsp-card); --cw: calc(var(--u) * 230); }
 .dsp-epg-in { position: relative; width: calc(var(--cw) + var(--larg) * var(--dsp-px)); }
 .dsp-ruler { position: sticky; top: 0; z-index: 4; display: flex; background: var(--bg); border-bottom: 1px solid var(--dsp-line); }
@@ -1236,54 +1160,90 @@ body.dsp-on .zoom-controls { display: none !important; }
   .dsp-mid .dsp-tt { font-size: calc(var(--u) * 15); }
   .dsp-rt .dsp-sc { font-size: calc(var(--u) * 20); }
   .dsp-epg { --cw: calc(var(--u) * 140); max-height: none; }
-  .dsp-vue-guide.dsp-chaines .dsp-pv { grid-template-columns: 1fr; }
-  .dsp-vue-guide.dsp-chaines .dsp-art { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .dsp-chip i { animation: none; } }
 
 
 
-/* Un seul langage pour les huit vues (« mieux uniformiser les looks des 8 options, pour que
-   ça jure moins », 13 octobre 2026) : mêmes surfaces et rayons, une seule couleur d'action
-   (l'accent de l'application), un seul style d'indicateur de flux, d'en-tête d'heure et de
-   section, et le même rouge pour le direct. Cette couche passe après les règles propres à
-   chaque disposition et les ramène toutes à ces jetons. */
-.dsp { --dsp-r: calc(var(--u) * 12); --dsp-h: calc(var(--u) * 18); }
-.dsp-grp, .dsp-mini, .dsp-cd, .dsp-ev, .dsp-gt, .dsp-ch, .dsp-pv, .dsp-epg, .dsp-affiches .dsp-t { border-radius: var(--dsp-r); }
-.dsp-hero { border-radius: calc(var(--dsp-r) * 1.5); }
-.dsp-bot { border-radius: 0 0 var(--dsp-r) var(--dsp-r); }
-.dsp-mini, .dsp-cd, .dsp-ev, .dsp-ch { border: 1px solid var(--dsp-line); }
-.dsp-ch.dsp-sel, .dsp-ch:focus-visible { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.dsp-pg { border-radius: calc(var(--dsp-r) * 0.7); }
-.dsp-hr + .dsp-gr { border-radius: var(--dsp-r) var(--dsp-r) 0 0; }
-/* une action : le bouton de l'accent, partout */
-.dsp-go, .dsp-hero .dsp-go, .dsp-pv .dsp-go { background: var(--accent); color: #fff; }
-.dsp-go-vide { background: var(--dsp-raise); color: var(--muted); }
-/* un indicateur de flux : ▶ et le nombre, à l'accent */
-.dsp-nflux, .dsp-r small, .dsp-gt .dsp-fx, .dsp-rt .dsp-n, .dsp-petite .dsp-fx { color: var(--accent); font-weight: 600; font-size: calc(var(--u) * 13); }
-.dsp-in { color: var(--text); }
-/* en-têtes d'heure et de section : une taille, un poids */
-.dsp-hr, .dsp-hour > b, .dsp-hc > b, .dsp-sep { font-size: var(--dsp-h); font-weight: 600; letter-spacing: -0.01em; color: var(--muted2); }
-.dsp-hr.dsp-live, .dsp-hour.dsp-nowh > b, .dsp-hc.dsp-nowh > b { color: var(--dsp-live); }
-.dsp-hc > b { border-bottom-width: 2px; }
-.dsp-h2 { font-size: calc(var(--u) * 24); }
-/* le direct : le même rouge, le même poids */
-.dsp-live, .dsp-st.dsp-live, .dsp-meta .dsp-live, .dsp-sub .dsp-live { color: var(--dsp-live); font-weight: 600; }
-.dsp-gh { font-size: calc(var(--u) * 15); }
+/* Le look de la carte par défaut, partout (« pour toute carte, garder le look des cartes par
+   défaut, mais adaptées aux autres layouts, même style, pour garder cohérent », 13 octobre
+   2026). Les cartes des dispositions SONT des `.match-card` (js/dispositions.js, carte) :
+   styles.css les dessine comme dans « Actuelle ». Ce qui reste en liste (rangées du Tableau,
+   des Chaînes, programme du Guide) prend la même palette : panneau bleu nuit et liseré
+   indigo, bandeau d'état en petites capitales, blasons ronds blancs, compteur de flux
+   « ▶ 48 », rose-rouge du direct. */
+.dsp {
+  --dsp-card: var(--card-panel, #151a2e); --dsp-line: var(--card-panel-border, rgba(129, 140, 248, 0.28));
+  --dsp-mute: var(--card-panel-muted, #8b9bd4); --dsp-live: #f43f5e; --dsp-raise: rgba(255, 255, 255, 0.06);
+  --dsp-panneau: linear-gradient(180deg, rgba(13, 17, 32, 0.72) 0%, rgba(13, 17, 32, 0.9) 100%), var(--dsp-card);
+}
+/* surfaces */
+.dsp-grp, .dsp-gr, .dsp-ev, .dsp-ch, .dsp-epg, .dsp-en { background: var(--dsp-panneau); border-color: var(--dsp-line); }
+.dsp-grp, .dsp-ev, .dsp-ch, .dsp-epg, .dsp-pv { border-radius: var(--radius-card, 12px); }
+.dsp-ev, .dsp-ch { border: 1px solid var(--dsp-line); }
+.dsp-ch.dsp-sel, .dsp-ch:focus-visible { border-color: var(--card-panel-border-hover, rgba(165, 180, 252, 0.55)); box-shadow: inset 0 0 0 1px var(--card-panel-border-hover, rgba(165, 180, 252, 0.55)); background: var(--dsp-panneau); }
+.dsp-hr + .dsp-gr { border-radius: var(--radius-card, 12px) var(--radius-card, 12px) 0 0; }
+@media (hover: hover) { .dsp-row:hover, .dsp-gr:hover, .dsp-ch:hover, .dsp-ev:hover { border-color: var(--card-panel-border-hover, rgba(165, 180, 252, 0.55)); background: var(--dsp-panneau); } }
+/* bandeau d'état : petites capitales, comme .prime-head */
+.dsp-gh, .dsp-hr, .dsp-st, .dsp-sep, .dsp-lgh, .dsp-hour > b, .dsp-hc > b, .dsp-hh { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; font-size: 12px; font-size: calc(var(--u) * 12); color: var(--muted2); }
+.dsp-gh { background: rgba(255, 255, 255, 0.06); border-bottom-color: rgba(255, 255, 255, 0.06); }
+.dsp-gh-fav, .dsp-lgh { color: var(--accent); }
+.dsp-hr.dsp-live, .dsp-hour.dsp-nowh > b, .dsp-hc.dsp-nowh > b, .dsp-st.dsp-live { color: var(--dsp-live); }
+.dsp-hc > b { border-bottom-width: 2px; padding-bottom: calc(var(--u) * 8); }
+.dsp-h2 { font-size: calc(var(--u) * 17); font-weight: 700; letter-spacing: -0.2px; }
+/* noms d'équipe et scores : ceux de la carte */
+.dsp-n, .dsp-mm, .dsp-tx b, .dsp-mid .dsp-tt, .dsp-en { font-weight: 700; }
+.dsp-s, .dsp-stt b, .dsp-r, .dsp-rt .dsp-sc { font-weight: 700; }
+.dsp-lg, .dsp-sub, .dsp-tx > span, .dsp-num, .dsp-perd { color: var(--dsp-mute); }
+.dsp-n.dsp-perd { color: var(--dsp-mute); }
+/* le direct : le rose-rouge du bandeau des cartes */
+.dsp-live, .dsp-sub .dsp-live { color: var(--dsp-live); font-weight: 700; }
+.dsp-point, .dsp-st.dsp-live::before { background: var(--dsp-live); }
+.dsp-pbar i { background: linear-gradient(90deg, #e11d48 0%, #ec4899 100%); }
+.dsp-pg.dsp-live { background: linear-gradient(90deg, rgba(225, 29, 72, 0.35), rgba(236, 72, 153, 0.18)); border-color: rgba(236, 72, 153, 0.45); }
+.dsp-pg { background: var(--dsp-panneau); border-color: var(--dsp-line); }
+.dsp-pg.dsp-sel, .dsp-pg:focus-visible { border-color: var(--card-panel-border-hover, rgba(165, 180, 252, 0.55)); }
+/* blasons ronds blancs, comme .prime-logo */
+.dsp-logo { box-sizing: border-box; padding: 2px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff 0%, #e2e8f0 100%); border: 1px solid rgba(255, 255, 255, 0.75); }
+.dsp-sw .dsp-logo { padding: 1px; }
+.dsp-ph { color: #0f172a; }
+.dsp-emoji { background: radial-gradient(circle at 35% 30%, #ffffff 0%, #e2e8f0 100%); }
+/* le compteur de flux : celui des cartes, « ▶ 48 » */
+.dsp-go, .dsp-gr .dsp-go { min-height: 0; gap: 4px; padding: 3px 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.18); color: #fff; font-size: 12px; font-size: calc(var(--u) * 12); font-weight: 700; }
+.dsp-go .dsp-mot { display: none; }
+.dsp-go-vide { color: var(--muted2); }
+.dsp-r small, .dsp-rt .dsp-n { display: inline-block; margin-top: calc(var(--u) * 4); padding: 1px 7px; border-radius: 6px; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.18); color: #fff; font-size: 11px; font-size: calc(var(--u) * 11); font-weight: 700; }
+.dsp-sw { border: 1px solid rgba(255, 255, 255, 0.12); }
 
-/* Sélecteur de disposition, en tête du Live et du Guide (toutes dispositions, « Actuelle »
-   comprise). Collé au bord gauche dans la grille horaire, qui défile en largeur. Sur une
-   barre étroite, seul le choix courant garde son nom ; les autres gardent leur icône. */
-.dsp-switch { container-type: inline-size; position: sticky; left: 0; z-index: 50; box-sizing: border-box; width: 100%; max-width: min(100%, 100vw); display: flex; justify-content: safe center; gap: calc(var(--u) * 6); overflow-x: auto; scrollbar-width: none; padding: calc(var(--u) * 14) calc(var(--u) * 20) calc(var(--u) * 4); }
-.dsp-switch::-webkit-scrollbar { display: none; }
-.dsp-switch button { flex: none; display: inline-flex; align-items: center; gap: calc(var(--u) * 7); min-height: 44px; padding: 0 calc(var(--u) * 14); border-radius: 999px; border: 1px solid var(--border2); background: var(--bg2); color: var(--muted2); font: inherit; font-size: calc(var(--u) * 14); font-weight: 600; cursor: pointer; }
-.dsp-switch button svg { width: calc(var(--u) * 18); height: calc(var(--u) * 18); flex: none; }
-.dsp-switch button[aria-checked="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
-.dsp-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (hover: hover) { .dsp-switch button:hover { color: var(--text); border-color: var(--muted); } .dsp-switch button[aria-checked="true"]:hover { color: var(--bg); } }
-@container (max-width: 620px) { .dsp-switch button:not([aria-checked="true"]) span { display: none; } .dsp-switch button:not([aria-checked="true"]) { padding: 0 calc(var(--u) * 12); } }
-.dsp-switch + .dsp { padding-top: calc(var(--u) * 12); }
-@media (max-width: 760px) { .dsp-switch { padding-inline: 12px; } }
+/* Les cartes dans les dispositions : la grille des cartes d'« Actuelle » (.match-grid). */
+.dsp .match-card { min-width: 0; }
+.dsp-cartes, .dsp-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--u) * 240)), 1fr)); gap: calc(var(--u) * 16); align-content: start; }
+.dsp-wall { grid-auto-flow: dense; }
+.dsp-wall .dsp-big { grid-column: span 2; }
+.dsp-wall .dsp-big .prime-logo { max-height: calc(var(--u) * 110); }
+.dsp-wall .dsp-big .prime-info { font-size: calc(var(--u) * 17); }
+.dsp-rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(calc(var(--u) * 220), calc(var(--u) * 260)); gap: calc(var(--u) * 16); overflow-x: auto; padding-bottom: calc(var(--u) * 6); scroll-snap-type: x proximity; }
+.dsp-rail > * { scroll-snap-align: start; }
+.dsp-une-hote { max-width: calc(var(--u) * 640); }
+.dsp-une .prime-thumbnail { aspect-ratio: 2.4 / 1; }
+.dsp-une .prime-logo { max-height: calc(var(--u) * 120); }
+.dsp-une .prime-info { font-size: calc(var(--u) * 22); }
+.dsp-une .prime-head { min-height: calc(var(--u) * 38); font-size: calc(var(--u) * 13); }
+.dsp-hc .dsp-mini-carte .prime-thumbnail { aspect-ratio: 3 / 1; }
+.dsp-hc .dsp-mini-carte .prime-logo { max-height: calc(var(--u) * 44); }
+.dsp-hc .dsp-mini-carte .prime-info { font-size: calc(var(--u) * 13); }
+.dsp-pv { border: 0; background: none; overflow: visible; }
+.dsp-pv .match-card { width: 100%; }
+.dsp-pv-h { margin-bottom: calc(var(--u) * 14); }
+.dsp-horiz { display: grid !important; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); grid-template-areas: "th hd" "th ti" "th in" "th ft"; }
+.dsp-horiz .prime-head { grid-area: hd; } .dsp-horiz .prime-title { grid-area: ti; } .dsp-horiz .prime-info { grid-area: in; font-size: calc(var(--u) * 18); } .dsp-horiz .prime-foot { grid-area: ft; }
+.dsp-horiz .prime-thumbnail { grid-area: th; aspect-ratio: auto; height: 100%; min-height: calc(var(--u) * 140); }
+@media (max-width: 760px) {
+  .dsp-wall { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dsp-wall .dsp-big { grid-column: span 2; }
+  .dsp-hc { flex-basis: 78%; }
+  .dsp-horiz { grid-template-columns: 1fr; grid-template-areas: "hd" "th" "ti" "in" "ft"; }
+  .dsp-horiz .prime-thumbnail { aspect-ratio: 2.4 / 1; min-height: 0; }
+}
 
 /* La coquille suit les dispositions (« le reste de l'interface suit pas ») : mêmes pilules,
    même échelle, mêmes rayons. « Actuelle » garde son apparence d'avant. */
@@ -1292,16 +1252,10 @@ body.dsp-on .nav-btn.active-toggle { background: var(--text) !important; color: 
 body.dsp-on .nav-btn.active-toggle::after { display: none; }
 body.dsp-on .nav-btn .nav-ic, body.dsp-on .nav-btn .nav-ic svg { width: calc(var(--u) * 20); height: calc(var(--u) * 20); }
 body.dsp-on .app-header { height: auto; min-height: var(--hdr-height); padding-block: calc(var(--u) * 8); }
-body.dsp-on .bandeau-cache { margin: calc(var(--u) * 10) calc(var(--u) * 20) 0; border: 1px solid rgba(250, 204, 21, 0.28); border-radius: calc(var(--u) * 12); padding: calc(var(--u) * 8) calc(var(--u) * 12); font-size: calc(var(--u) * 13); }
-body.dsp-on .bandeau-cache.vieux { border-color: rgba(148, 163, 184, 0.22); }
-body.dsp-on .bandeau-cache .bc-btn { border-radius: 999px; min-height: 36px; padding: 0 calc(var(--u) * 12); font-size: calc(var(--u) * 12); }
-body.dsp-on .fab-actualiser { border-radius: 999px; background: var(--bg3); border: 1px solid var(--border2); font-size: calc(var(--u) * 14); font-weight: 600; min-height: 44px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-body.dsp-on .toast { border-radius: calc(var(--u) * 12); font-size: calc(var(--u) * 14); }
 @media (max-width: 768px) {
   body.dsp-on .app-header { padding-block: 0; }
   body.dsp-on .nav-btn { font-size: 11px; min-height: 0; border-radius: 14px; }
   body.dsp-on .nav-btn .nav-ic, body.dsp-on .nav-btn .nav-ic svg { width: 20px; height: 20px; }
-  body.dsp-on .bandeau-cache { margin: 8px 12px 0; }
 }
 
 /* ── 12. Accessibilité, mouvement réduit ──────────────────────────────────── */
@@ -1378,3 +1332,38 @@ body[data-view="player"] .fab-actualiser { display: none; }
   .fab-groupe { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 14px); right: 14px; }
   .fab-actualiser .fab-lb { display: none; }
 }
+
+/* ── 13. Le look des cartes, base de toute l'interface ─────────────────────────
+   « Dans les faits, le look des cartes dans Actuelle, avec les dégradés, arrondis, etc,
+   ça devrait être la base de tous les éléments ui » (13 octobre 2026). Les jetons de la
+   carte (panneau bleu nuit en dégradé, liseré indigo, rayon des cartes, bandeau translucide)
+   habillent aussi les boutons flottants, les menus, le bandeau des liens, les filtres, les
+   messages, le zoom, les panneaux des pages et la fiche. En dernier dans la feuille : ces
+   règles l'emportent sur celles, plus anciennes, de chaque élément. */
+:root {
+  --carte-fond: linear-gradient(180deg, rgba(13, 17, 32, 0.72) 0%, rgba(13, 17, 32, 0.9) 100%), var(--card-panel, #151a2e);
+  --carte-lisere: var(--card-panel-border, rgba(129, 140, 248, 0.28));
+  --carte-lisere-vif: var(--card-panel-border-hover, rgba(165, 180, 252, 0.55));
+  --carte-rayon: var(--radius-card, 12px);
+  --carte-bandeau: rgba(255, 255, 255, 0.06);
+  --carte-choisi: rgba(129, 140, 248, 0.22);
+}
+.fab-actualiser, .menu-look, .secondary-actions, .toast, .zoom-controls, .modal, .panel {
+  background: var(--carte-fond); border: 1px solid var(--carte-lisere); border-radius: var(--carte-rayon);
+}
+.fab-actualiser { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
+.fab-groupe .fab-sec { background: var(--carte-fond); }
+@media (hover: hover) { .fab-actualiser:hover { border-color: var(--carte-lisere-vif); } }
+.toast { backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* éléments choisis dans un menu : la teinte indigo du liseré, pas un aplat blanc */
+.menu-look button[aria-checked="true"], .dsp-filtres button[aria-pressed="true"] { background: var(--carte-choisi); color: var(--text); border-color: var(--carte-lisere-vif); box-shadow: inset 0 0 0 1px var(--carte-lisere-vif); }
+.menu-look button[aria-checked="true"] small { opacity: 0.8; }
+.menu-look .ml-titre { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; font-size: 11px; color: var(--muted2); }
+.dsp-filtres button { background: var(--carte-fond); border: 1px solid var(--carte-lisere); border-radius: var(--carte-rayon); color: var(--text); font-weight: 700; }
+/* bandeau des liens : une carte d'avertissement, avec son bandeau ambre */
+.bandeau-cache { margin: 10px 16px 0; border-radius: var(--carte-rayon); border: 1px solid rgba(250, 204, 21, 0.28); background: linear-gradient(180deg, rgba(250, 204, 21, 0.12), rgba(250, 204, 21, 0.06)), var(--carte-fond); }
+.bandeau-cache.vieux { border-color: var(--carte-lisere); background: var(--carte-fond); }
+.bandeau-cache .bc-btn { border-radius: calc(var(--carte-rayon) * 0.6); background: var(--carte-bandeau); border-color: rgba(255, 255, 255, 0.18); }
+@media (max-width: 768px) { .bandeau-cache { margin: 8px 12px 0; } }
+/* la fiche : l'en-tête aux couleurs des équipes garde son dégradé, le corps prend le panneau */
+@media (max-width: 768px) { .modal { border-radius: var(--carte-rayon) var(--carte-rayon) 0 0; } }

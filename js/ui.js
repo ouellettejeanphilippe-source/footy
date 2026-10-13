@@ -258,14 +258,15 @@ export function ficheMatch(m, now, jourGrille, maintenant) {
     sDom: avecScore ? m.score[0] : null, sExt: avecScore ? m.score[1] : null,
     flux: (m.streamLinks || []).length,
     fav: !!(favTeams[m.homeTeam] || favTeams[ext] || favTeams[m.league]),
-    jour: libelleJour(m, jourGrille) || ''
+    jour: libelleJour(m, jourGrille) || '',
+    sport: libelleSport(m.league || ''),
+    drapeau: m.flag || lgFlag(m.league) || ''
   };
 }
 
-/* Sélecteur de disposition posé en tête du Live et du Guide (« Possible de changer à même
-   la page live ? », 13 octobre 2026). Il porte les cinq choix, « Actuelle » compris, et
-   écrit le même réglage que Options → Disposition. Dans la grille horaire d'« Actuelle »,
-   qui défile en largeur, il reste collé au bord gauche (styles.css). */
+/* Icônes des dispositions, dans le menu Look du groupe flottant (basculerMenuLook). La
+   rangée de pastilles en tête de page est retirée : « enlever choix de look en haut car
+   maintenant en bas » (13 octobre 2026). */
 var ICONES_DISPOSITION = {
   actuelle: '<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/>',
   tableau: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="17" cy="6" r="0.5"/>',
@@ -273,20 +274,6 @@ var ICONES_DISPOSITION = {
   affiches: '<rect x="3" y="3" width="11" height="11" rx="1.5"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="16" y="9" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="10" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/>',
   chaines: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M7 9h2M7 13h2M12 9h5M12 13h5"/>'
 };
-function barreDispositions(actuelle) {
-  var barre = document.createElement('div');
-  barre.className = 'dsp-switch';
-  barre.setAttribute('role', 'radiogroup');
-  barre.setAttribute('aria-label', 'Disposition');
-  barre.innerHTML = DISPOSITIONS.map(function(d) {
-    var choisi = d[0] === actuelle;
-    return '<button type="button" role="radio" aria-checked="' + choisi + '" data-disposition="' + d[0] + '" title="' + esc(d[1]) + '">'
-      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES_DISPOSITION[d[0]] + '</svg>'
-      + '<span>' + esc(d[1]) + '</span></button>';
-  }).join('');
-  return barre;
-}
-
 /* Change la disposition d'une vue (celle qui est affichée par défaut) sans passer par
    Options : enregistrée tout de suite, menus d'Options tenus à jour, et la page repart du
    haut si c'est la vue affichée (une autre disposition n'a pas les mêmes hauteurs). */
@@ -315,8 +302,6 @@ export function choisirDisposition(nom, vue) {
   var c = document.getElementById('marea');
   var choisie = dispositionChoisie(v);
   if (c) { c.scrollTop = 0; if (choisie !== 'actuelle') c.scrollLeft = 0; }
-  var bouton = document.querySelector('.dsp-switch [data-disposition="' + choisie + '"]');
-  if (bouton && !document.querySelector('#menu-look:not([hidden])')) bouton.focus({ preventScroll: true });
   if (choisie === 'actuelle' && v === 'guide') scrollToNow();
   majMenuLook();
 }
@@ -324,7 +309,7 @@ export function choisirDisposition(nom, vue) {
 /* Couleur des équipes, la même que Options → Couleur des cartes, pour les huit vues. */
 var COULEURS_LOOK = [
   ['home', 'Uni', 'La couleur de l\'équipe à domicile'],
-  ['gradient-45', 'Dégradé', 'Les deux équipes, fondu court au centre'],
+  ['gradient-45', 'Dégradé', 'Les deux équipes, en fondu'],
   ['split', 'Deux couleurs', 'Les deux équipes, coupure nette'],
   ['dark', 'Neutre', 'Sans couleur d\'équipe']
 ];
@@ -409,7 +394,6 @@ function rendreAvecDisposition(nom, matches, epgContainer, fragment, jourGrille)
     maintenant: maintenant,
     couleurs: (userPrefs && userPrefs.cardColor) || 'gradient-45'
   });
-  fragment.appendChild(barreDispositions(nom));
   if (hote.firstChild) fragment.appendChild(hote.firstChild);
   epgContainer.appendChild(fragment);
   brancherDispositions(epgContainer);
@@ -442,8 +426,6 @@ function brancherDispositions(c) {
   if (!c || c.__dispositions) return;
   c.__dispositions = true;
   c.addEventListener('click', function(e) {
-    var bascule = e.target.closest && e.target.closest('.dsp-switch [data-disposition]');
-    if (bascule) return choisirDisposition(bascule.getAttribute('data-disposition'), vueCourante());
     var cible = e.target.closest && e.target.closest('[data-dsp], [data-mid]');
     if (!cible || !cible.closest('.dsp')) return;
     var action = cible.getAttribute('data-dsp');
@@ -987,10 +969,6 @@ function buildEPGInner(matches){
   if (disposition !== 'actuelle') {
       rendreAvecDisposition(disposition, filtered, epgContainer, fragment, jourGrille);
       return;
-  }
-  if (S.filter === 'live' || S.filter === 'all') {
-      fragment.appendChild(barreDispositions('actuelle'));
-      brancherDispositions(epgContainer);
   }
 
   /* Le Guide (grille temporelle) couvre déjà le programme de la journée : la vue
