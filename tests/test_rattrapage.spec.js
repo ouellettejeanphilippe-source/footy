@@ -151,7 +151,7 @@ async function demarrer(page, ageMin, options) {
 
   await page.clock.setFixedTime(INSTANT);
   // La fenêtre « Installer le script » du premier chargement recouvrirait le bandeau.
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   // Rien de ce qui n'est pas servi ici ne passe : ni ESPN, ni proxy CORS, ni site source.
   await page.route('**/*', (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
 

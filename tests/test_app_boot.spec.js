@@ -140,7 +140,7 @@ async function bootOffline(page) {
      n'a rien à voir avec ce qu'on mesure : elle recouvre le haut de la grille et
      interceptait les clics de ces tests. La plupart posaient déjà ce drapeau chacun de
      leur côté ; il est ici pour tous. */
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   // Tout ce qui n'est pas servi localement est refusé : ni ESPN, ni proxy, ni site source.
@@ -408,7 +408,7 @@ test('chaque section repliable de l\'onglet Live répond au clic', async ({ page
      vu. Les clics restent de vrais clics, non forcés : le jour où un élément recouvrira
      réellement les titres, ce test le dira. */
   await page.addInitScript(() => {
-    try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {}
+    try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {}
   });
   const pageErrors = await bootOffline(page);
 
@@ -564,7 +564,7 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
    fixe (js/mv-menu.js) : on vérifie que ce qui est PEINT au centre du menu est bien le
    menu, et que chaque tuile porte le bouton « Site » — le repli vers la page originale. */
 test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferment ailleurs', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   await page.evaluate((o) => {
@@ -742,7 +742,7 @@ test('sur téléphone, les menus du lecteur sont une feuille qu\'on peut parcour
    quand même porter ses liens, tout de suite. */
 test('les liens déjà connus s\'affichent avant la lecture des sources, qui peut ne jamais finir', async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {}
+    try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {}
     /* Le pont annonce sa présence par un message : on le simule, c'est le seul chemin
        qui met `bridge.available` à vrai (js/embed-bridge.js). */
     window.addEventListener('message', function relais(e) {
@@ -796,7 +796,7 @@ test('les liens déjà connus s\'affichent avant la lecture des sources, qui peu
    Cinq sections, cinq rectangles — le fond ne se voyait plus, il se répétait. */
 test('la page Live n\'a qu\'un fond : aucune section n\'en repeint une copie', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   const fonds = await page.evaluate(() => {
@@ -827,7 +827,7 @@ test('la page Live n\'a qu\'un fond : aucune section n\'en repeint une copie', a
 
 test('le bouton Actualiser est devant la grille, pas sur les pages, et dit qu\'il travaille', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   /* `offsetParent` est TOUJOURS nul pour un élément en position fixe : c'est le style
@@ -870,7 +870,7 @@ test('le bouton Actualiser est devant la grille, pas sur les pages, et dit qu\'i
 });
 
 test('la fiche de match a une seule croix, se ferme par Échap, et ses flux portent leurs actions', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   /* Une carte à DEUX équipes : la bannière testée plus bas porte deux blasons, ce qu'un
@@ -988,7 +988,7 @@ test('sur téléphone, aucune disposition ne fait déborder la page', async ({ p
 
 test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche monte du bas', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   const nav = await page.evaluate(() => {
@@ -1041,7 +1041,7 @@ test('l\'ancienne préférence d\'interface classique ne redirige plus', async (
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
   await page.route('**/*', (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); localStorage.setItem('ui_legacy', '1'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); localStorage.setItem('ui_legacy', '1'); } catch (e) {} });
 
   await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
@@ -1057,7 +1057,7 @@ test('l\'ancienne préférence d\'interface classique ne redirige plus', async (
    des cartes bougeait ; les objets restaient ceux d'il y a cinq minutes et les blocs du
    Guide gardaient leur texte de construction. */
 test('un match terminé selon ESPN quitte le Live, et le Guide suit le score', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   /* Un favori est rendu deux fois dans le Live (section Favoris, puis sa section) : sa
@@ -1132,7 +1132,7 @@ async function bootAvecCacheCassable(browser, mobile) {
   const etat = { casser: false, requetes: 0 };
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   await page.clock.install({ time: instantDesDonnees() });
   await page.route('**/*', (route) => {
     const u = route.request().url();
@@ -1225,7 +1225,7 @@ test('cache serveur injoignable et proxys muets : la grille s\'affiche sans atte
   const page = await ctx.newPage();
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   await page.clock.setFixedTime(instantDesDonnees());
   const enAttente = [];
   await page.route('**/*', (route) => {
@@ -1267,7 +1267,7 @@ test('cache serveur injoignable et proxys muets : la grille s\'affiche sans atte
    « Fin ? » et sortie du Live ; jamais tant qu'ESPN parle, et marge élargie si la
    dernière nouvelle disait « manches supplémentaires » ou « prolongation ». */
 test('sans nouvelle d\'ESPN, un match trop long passe à « Fin ? » et quitte le Live, sauf prolongation connue', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   const cible = await page.evaluate(() => {
@@ -1371,7 +1371,7 @@ test('minuit passe pendant qu\'on regarde : le jour affiché bascule, le match e
   const page = await ctx.newPage();
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
 
   // 23:50 à New York, le 14 septembre 2026 (heure d'été : UTC−4).
   const AVANT_MINUIT = new Date(Date.UTC(2026, 8, 15, 3, 50));
@@ -1458,7 +1458,7 @@ test('la grille couvre 48 h : un match de 02:00 demain est là ce soir, après l
   const page = await ctx.newPage();
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
 
   // 21:00 à New York, le 13 septembre 2026 (heure d'été : UTC−4).
   const SOIR = new Date(Date.UTC(2026, 8, 14, 1, 0));
@@ -1543,7 +1543,7 @@ test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:3
   const page = await ctx.newPage();
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
 
   // 00:30 à New York, le 8 septembre 2026 (heure d'été : UTC−4).
   const NUIT = new Date(Date.UTC(2026, 8, 8, 4, 30));
@@ -1648,7 +1648,7 @@ test('une passe ESPN partielle ne fait pas disparaître les ligues muettes ni le
   const page = await ctx.newPage();
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
 
   // 20:00 à New York le 8 septembre 2026 ; les deux matchs ont commencé à 19:00.
   const SOIR = new Date(Date.UTC(2026, 8, 9, 0, 0));
@@ -1766,7 +1766,7 @@ test('les scores des matchs en cours se rafraîchissent chaque minute, sans rede
   const page = await ctx.newPage();
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
-  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
 
   // 20:00 à New York le 8 septembre 2026 ; le match de base-ball a commencé à 19:00.
   const SOIR = new Date(Date.UTC(2026, 8, 9, 0, 0));
@@ -1905,6 +1905,52 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
   await page.evaluate(() => window.applyFilter('logs'));
   await expect(page.locator('.diag-android')).toContainText('posé dans tous les cadres');
   await expect(page.locator('.diag-android')).toContainText('regie.example (7)');
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Fait tout nécessaire, et clair dans le popup du début de comment setter ça »
+   (13 octobre 2026). Un visiteur Chrome qui avait vu l'ancien guide (drapeau « true »)
+   le revoit une fois, puisque l'ancien l'envoyait vers uBlock Origin, qui ne s'installe
+   plus sur Chrome. Le guide montre d'abord le chemin de Chrome, et son bouton fabrique
+   le zip de l'extension à partir des fichiers servis. */
+test('la fenêtre du début guide Chrome vers l\'extension, et le zip se télécharge', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  /* bootOffline pose « 2 » à chaque chargement ; on remet « true » au seul suivant. */
+  await page.addInitScript(() => {
+    try {
+      if (!sessionStorage.getItem('ancienGuide')) { sessionStorage.setItem('ancienGuide', '1'); localStorage.setItem('hasSeenScriptModal', 'true'); }
+    } catch (e) {}
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const fenetre = page.locator('#tm-modal');
+  await expect(fenetre).toBeVisible({ timeout: 15000 });
+  await expect(fenetre).toContainText('Aucune protection détectée');
+  await expect(fenetre.locator('.guide-chromium')).toBeVisible();
+  await expect(fenetre.locator('.guide-chromium')).toContainText('chrome://extensions');
+  await expect(fenetre.locator('.guide-chromium')).toContainText('Charger l\'extension non empaquetée');
+  await expect(fenetre.locator('.guide-firefox')).toBeHidden(); // replié sous « Un autre navigateur ? »
+  expect(await page.evaluate(() => localStorage.getItem('hasSeenScriptModal'))).toBe('2');
+
+  const [telechargement] = await Promise.all([
+    page.waitForEvent('download'),
+    fenetre.locator('button', { hasText: 'Télécharger l\'extension' }).click()
+  ]);
+  expect(telechargement.suggestedFilename()).toBe('guide-des-sports-extension.zip');
+  const octets = fs.readFileSync(await telechargement.path());
+  expect(octets.subarray(0, 4).toString('hex')).toBe('504b0304');
+  expect(octets.length).toBeGreaterThan(fs.statSync(path.join(ROOT, 'extension', 'regles', 'blocage.json')).size);
+  await expect(fenetre.locator('.guide-zip-etat')).toContainText('téléchargé');
+
+  // Une seule fois : au chargement suivant, elle ne revient pas.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
+  await page.waitForTimeout(2500);
+  await expect(page.locator('#tm-modal')).toHaveCount(0);
+
+  // Et Plus → Bloqueur de pub dit la même chose.
+  await page.evaluate(() => window.applyFilter('script'));
+  await expect(page.locator('#guide-installation .guide-chromium')).toBeVisible();
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

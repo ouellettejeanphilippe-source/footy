@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Guide des Sports — Bloqueur",
+  "short_name": "Guide des Sports",
+  "version": "1.0",
+  "description": "Bloque les publicités et les fenêtres surgissantes des lecteurs du Multivision, nettoie les tuiles et laisse s'afficher les pages qui refusent l'iframe.",
+  "icons": { "128": "icone.png" },
+  "minimum_chrome_version": "111",
+  "permissions": ["declarativeNetRequest"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "fond.js" },
+  "declarative_net_request": {
+    "rule_resources": [
+      { "id": "blocage", "enabled": true, "path": "regles/blocage.json" }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "all_frames": true,
+      "match_origin_as_fallback": true,
+      "run_at": "document_start",
+      "world": "MAIN",
+      "js": ["nettoyeur.js"]
+    },
+    {
+      "matches": ["http://127.0.0.1/*", "http://localhost/*", "https://ouellettejeanphilippe-source.github.io/*"],
+      "all_frames": false,
+      "run_at": "document_start",
+      "js": ["relais.js"]
+    }
+  ]
+}

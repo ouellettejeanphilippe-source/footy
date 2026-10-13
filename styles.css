@@ -676,6 +676,12 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .prose p { font-size: 14px; line-height: 1.55; color: var(--muted2); }
 .prose ol { margin: 0 0 4px 18px; padding: 0; font-size: 13px; line-height: 1.6; color: var(--muted2); }
 .prose li { margin-bottom: 4px; }
+/* Guide de protection des lecteurs (js/installation.js) */
+.guide-installation ol.guide-etapes li { margin-bottom: 10px; }
+.guide-installation .guide-etapes .btn { margin: 4px 0; }
+.guide-installation details > summary { cursor: pointer; padding: 6px 0; }
+.guide-installation .guide-etat strong { color: var(--text); }
+.guide-installation code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
 
 /* Favoris */
 .fav-container { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }

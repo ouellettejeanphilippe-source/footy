@@ -13,7 +13,7 @@ L'en-tête ne porte que quatre boutons. Sur téléphone (largeur ≤ 768 px), il
 | **Live** | Les matchs en cours et ceux qui commencent dans l'heure, en cartes. |
 | **Guide** | Le programme sur une grille horaire de **48 h** : aujourd'hui et demain, d'une seule traite. |
 | **Lecteur** | Le Multivision : jusqu'à quatre vidéos côte à côte. Le bouton se marque quand des vidéos sont chargées et qu'on est ailleurs. |
-| **Plus** | Un menu : `⭐ Favoris`, `⚙️ Options`, `📋 Logs`, `🧩 Script`, `↻ Mettre à jour l'app`. Se ferme d'un clic à l'extérieur ou par Échap. |
+| **Plus** | Un menu : `⭐ Favoris`, `⚙️ Options`, `📋 Logs`, `🛡️ Bloqueur de pub`, `↻ Mettre à jour l'app`. Se ferme d'un clic à l'extérieur ou par Échap. |
 
 Autres éléments toujours présents :
 
@@ -268,9 +268,13 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 - **Historique des requêtes** : journal horodaté, `📋 Copier le log` sur les entrées longues, `📥 Exporter` (fichier `jmtv-debug-logs-<date>.json`).
 - **Diagnostics des flux manuels** : les rapports produits par la recherche manuelle de la fiche.
 
-## 9. Script utilisateur (menu Plus → 🧩 Script)
+## 9. Bloqueur de pub (menu Plus → 🛡️ Bloqueur de pub)
 
-La page recommande **Firefox + uBlock Origin**, explique ce qui peut bloquer les tuiles sous Firefox (en-tête X-Frame-Options, lecture automatique, protection contre le pistage) et guide en trois étapes : le bloqueur, Tampermonkey, puis `Installer le script`. Une fenêtre le propose aussi au tout premier lancement.
+En tête, l'état : ✅ extension active, ✅ script actif, ⬆️ mise à jour de l'extension, ou ⚠️ aucune protection. Puis le chemin du navigateur utilisé ; les autres sont repliés sous « Un autre navigateur ? ». La même chose s'ouvre en fenêtre au démarrage tant que rien ne protège les lecteurs (une seule fois ; sur Chrome, une fois de plus pour qui avait vu l'ancien guide).
+
+- **Chrome, Edge, Brave, Opera : l'extension Guide des Sports.** `⬇️ Télécharger l'extension (.zip)`, extraire le dossier `guide-des-sports-extension` et le garder, ouvrir `chrome://extensions` (bouton `Copier l'adresse` : un site ne peut pas l'ouvrir), activer « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier, recharger l'application. Elle bloque les publicités (listes d'uBlock), ferme les fenêtres surgissantes, nettoie les lecteurs et laisse s'afficher ceux qui refusent l'iframe. uBlock Origin ne s'installe plus sur Chrome ; là où il tourne encore, comme uBlock Origin Lite, il peut rester ; le script Tampermonkey est à désactiver.
+- **Firefox : uBlock Origin + Tampermonkey + `Installer le script`**, puis les trois réglages des tuiles (Ignore X-Frame-Options Header, lecture automatique dans `about:config`, protection contre le pistage coupée pour l'application).
+- **Téléphone** : renvoie à l'APK, qui embarque nettoyage et blocage.
 
 Ce que le script **Multiview Stream Cleaner** (version 1.8) fait, et que l'application ne peut pas faire seule :
 
