@@ -110,10 +110,27 @@
 
 <!-- Actualisation à la demande : scores (ESPN) et liens (cache serveur), puis la grille
      est redessinée. Masqué sur les pages Logs / Options / Script (body.view-page). -->
-<button type="button" id="btn-actualiser" class="fab-actualiser" onclick="actualiserMaintenant()"
-        title="Actualiser les scores et les liens maintenant" aria-label="Actualiser les scores et les liens">
-  <span class="fab-ic" aria-hidden="true">↻</span><span class="fab-lb">Actualiser</span>
-</button>
+<!-- Groupe de boutons flottants (13 octobre 2026, « ajouter bouton pour changer look, proche
+     de actualiser, ainsi qu'ajouter à cet endroit le mettre à jour l'app ») : Look (menu des
+     dispositions et des couleurs, js/ui.js basculerMenuLook), Mettre à jour l'app (le même
+     que dans Plus), puis Actualiser. -->
+<div class="fab-groupe" id="fab-groupe">
+  <div class="look-wrap">
+    <button type="button" id="btn-look" class="fab-actualiser fab-sec" onclick="basculerMenuLook(event)"
+            title="Changer le look : disposition et couleurs" aria-label="Changer le look" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look">
+      <span class="fab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><circle cx="17.5" cy="17.5" r="3.5"/></svg></span><span class="fab-lb">Look</span>
+    </button>
+    <div class="menu-look" id="menu-look" role="menu" aria-label="Look" hidden></div>
+  </div>
+  <button type="button" id="btn-maj-fab" class="fab-actualiser fab-sec" onclick="mettreAJourApplication()"
+          title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés." aria-label="Mettre à jour l'application">
+    <span class="fab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></span><span class="fab-lb">Mettre à jour</span>
+  </button>
+  <button type="button" id="btn-actualiser" class="fab-actualiser" onclick="actualiserMaintenant()"
+          title="Actualiser les scores et les liens maintenant" aria-label="Actualiser les scores et les liens">
+    <span class="fab-ic" aria-hidden="true">↻</span><span class="fab-lb">Actualiser</span>
+  </button>
+</div>
 
 <!-- ═══ DÉBOGAGE ══════════════════════════════════════════════════════════════ -->
 <div class="dbg" id="dbg">
@@ -273,8 +290,19 @@
       </div>
 
       <div class="field row">
-        <div class="field-label">Disposition<small>Comment le Live et le Guide rangent les matchs. La couleur suit « Couleur des cartes ».</small></div>
-        <select id="pref-disposition" class="btn select" onchange="applyUserPrefs()">
+        <div class="field-label">Disposition du Live<small>Aussi en tête de page et dans le bouton Look. La couleur suit « Couleur des cartes ».</small></div>
+        <select id="pref-disposition-live" class="btn select" onchange="applyUserPrefs()">
+          <option value="actuelle" selected>Actuelle</option>
+          <option value="tableau">Tableau : scores en liste, par ligue</option>
+          <option value="maintenant">Maintenant : une affiche, puis ce qui joue</option>
+          <option value="affiches">Affiches : mur de tuiles</option>
+          <option value="chaines">Chaînes : guide télé, lisible de loin</option>
+        </select>
+      </div>
+
+      <div class="field row">
+        <div class="field-label">Disposition du Guide<small>Indépendante de celle du Live.</small></div>
+        <select id="pref-disposition-guide" class="btn select" onchange="applyUserPrefs()">
           <option value="actuelle" selected>Actuelle</option>
           <option value="tableau">Tableau : scores en liste, par ligue</option>
           <option value="maintenant">Maintenant : une affiche, puis ce qui joue</option>

@@ -4169,8 +4169,11 @@ export function initPrefs() {
   if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
   var selCardShape = document.getElementById('pref-card-shape');
   if(selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
-  var selDisposition = document.getElementById('pref-disposition');
-  if(selDisposition) selDisposition.value = userPrefs.disposition || 'actuelle';
+  ['live', 'guide'].forEach(function(v) {
+      var sel = document.getElementById('pref-disposition-' + v);
+      var cle = v === 'guide' ? 'dispositionGuide' : 'dispositionLive';
+      if(sel) sel.value = userPrefs[cle] || userPrefs.disposition || 'actuelle';
+  });
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
       selAccentColor.value = userPrefs.accent || '#0a84ff';
@@ -4235,8 +4238,11 @@ export function applyUserPrefs() {
   userPrefs.cardStyle = 'glass';
   var cardShapeSel = document.getElementById('pref-card-shape');
   if(cardShapeSel) userPrefs.cardShape = cardShapeSel.value;
-  var dispositionSel = document.getElementById('pref-disposition');
-  if(dispositionSel) userPrefs.disposition = dispositionSel.value;
+  var dispLive = document.getElementById('pref-disposition-live');
+  var dispGuide = document.getElementById('pref-disposition-guide');
+  if(dispLive) userPrefs.dispositionLive = dispLive.value;
+  if(dispGuide) userPrefs.dispositionGuide = dispGuide.value;
+  if(dispLive && dispGuide) delete userPrefs.disposition;
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');
@@ -4486,7 +4492,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v53';
+export var VERSION_APP = 'sports-guide-v54';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

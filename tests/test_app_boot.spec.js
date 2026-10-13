@@ -925,7 +925,8 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
 async function choisirDisposition(page, nom, vue) {
   await page.evaluate(([n, v]) => {
     applyFilter(v);
-    document.getElementById('pref-disposition').value = n;
+    document.getElementById('pref-disposition-live').value = n;
+    document.getElementById('pref-disposition-guide').value = n;
     applyUserPrefs();
   }, [nom, vue]);
 }
@@ -1018,16 +1019,51 @@ test('le sélecteur de la page change la disposition, et rien ne sort de son cad
       expect(sorties, nom + ' / ' + vue + ' : contenu hors de son cadre').toEqual([]);
     }
   }
-  const enregistre = await page.evaluate(() => ({
-    prefs: JSON.parse(localStorage.getItem('user_prefs') || '{}').disposition,
-    options: document.getElementById('pref-disposition').value
-  }));
-  expect(enregistre).toEqual({ prefs: 'chaines', options: 'chaines' });
+  const enregistre = await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('user_prefs') || '{}');
+    return { live: p.dispositionLive, guide: p.dispositionGuide,
+      options: [document.getElementById('pref-disposition-live').value, document.getElementById('pref-disposition-guide').value] };
+  });
+  expect(enregistre).toEqual({ live: 'chaines', guide: 'chaines', options: ['chaines', 'chaines'] });
 
   await page.locator('#marea .dsp-switch [data-disposition="actuelle"]').click();
   await page.waitForSelector('#marea .mb, #marea .match-card');
   await expect(page.locator('#marea .dsp')).toHaveCount(0);
   await expect(page.locator('#marea .dsp-switch')).toHaveCount(1);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Séparer guide et live pour pouvoir mix and match » et « ajouter bouton pour changer
+   look, proche de actualiser, ainsi que le mettre à jour l'app » (13 octobre 2026). */
+test('Live et Guide ont chacun leur disposition, et le bouton Look les change à côté d\'Actualiser', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const groupe = await page.evaluate(() => ['btn-look', 'btn-maj-fab', 'btn-actualiser'].map((id) => {
+    const b = document.getElementById(id);
+    return b && getComputedStyle(b).display !== 'none' && b.closest('#fab-groupe') !== null;
+  }));
+  expect(groupe, 'Look, Mettre à jour et Actualiser côte à côte').toEqual([true, true, true]);
+
+  await page.locator('#btn-look').click();
+  await expect(page.locator('#menu-look')).toBeVisible();
+  await page.locator('#menu-look [data-look-vue="live"][data-look-nom="tableau"]').click();
+  await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
+  await page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]').click();
+  await expect(page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]')).toHaveAttribute('aria-checked', 'true');
+  await page.locator('#menu-look [data-look-couleur="home"]').click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#menu-look')).toBeHidden();
+
+  await page.evaluate(() => applyFilter('all'));
+  await page.waitForSelector('#marea .dsp-chaines.dsp-vue-guide');
+  await page.evaluate(() => applyFilter('live'));
+  await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
+
+  const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'));
+  expect([prefs.dispositionLive, prefs.dispositionGuide, prefs.cardColor]).toEqual(['tableau', 'chaines', 'home']);
+  expect(await page.evaluate(() => document.getElementById('pref-card-color').value)).toBe('home');
+
+  await page.evaluate(() => applyFilter('logs'));
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('fab-groupe')).display), 'pas de boutons flottants sur Logs').toBe('none');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
