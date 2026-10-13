@@ -102,7 +102,7 @@ export function reevaluerFinsPresumees(now) {
 /* Les identifiants des cartes rendues dans le Live, et ceux qui devraient l'être. */
 function liveViewIsStale(matches) {
     if (S.filter !== 'live') return false;
-    if (dispositionChoisie() !== 'actuelle') return false;   // updateLiveScores redessine déjà
+    if (dispositionChoisie('live') !== 'actuelle') return false;   // updateLiveScores redessine déjà
     var container = document.getElementById('marea');
     if (!container) return false;
     var now = new Date();
@@ -147,8 +147,8 @@ export function updateLiveScores(matches) {
     /* Une disposition autre qu'« actuelle » (js/dispositions.js) n'a pas les cartes
        `mb-<id>` que la mise à jour en place sait modifier : on la redessine entière,
        défilement conservé. C'est une fois par minute au plus. */
-    if (dispositionChoisie() !== 'actuelle') {
-        if (S.filter === 'live' || S.filter === 'all') redessinerDisposition();
+    if ((S.filter === 'live' || S.filter === 'all') && dispositionChoisie() !== 'actuelle') {
+        redessinerDisposition();
         return;
     }
     var i = 0;

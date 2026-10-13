@@ -204,8 +204,13 @@ if (typeof window !== 'undefined') {
    « Les 4, avec l'actuelle toujours comme default ». Le rendu des quatre dispositions vit
    dans js/dispositions.js (sans import) ; ici, seulement le raccord : une fiche par match,
    les clics, et la reconstruction. « actuelle » laisse buildEPGInner tel qu'il était. */
-export function dispositionChoisie() {
-  return dispositionValide(userPrefs && userPrefs.disposition);
+/* Live et Guide ont chacun leur disposition (« séparer guide et live pour pouvoir mix and
+   match », 13 octobre 2026). L'ancien réglage unique `disposition` sert de repli aux deux. */
+export function vueCourante() { return S.filter === 'all' ? 'guide' : 'live'; }
+export function dispositionChoisie(vue) {
+  var p = userPrefs || {};
+  var v = vue || vueCourante();
+  return dispositionValide(v === 'guide' ? (p.dispositionGuide || p.disposition) : (p.dispositionLive || p.disposition));
 }
 
 /* Minutes écoulées depuis le minuit du jour affiché (négatif si le jour affiché est
@@ -282,21 +287,108 @@ function barreDispositions(actuelle) {
   return barre;
 }
 
-/* Change de disposition sans passer par Options : même réglage, enregistré tout de suite,
-   menu d'Options tenu à jour, et la page repart du haut (une autre disposition n'a pas les
-   mêmes hauteurs). */
-export function choisirDisposition(nom) {
-  if (!userPrefs) return;
-  userPrefs.disposition = dispositionValide(nom);
+/* Change la disposition d'une vue (celle qui est affichée par défaut) sans passer par
+   Options : enregistrée tout de suite, menus d'Options tenus à jour, et la page repart du
+   haut si c'est la vue affichée (une autre disposition n'a pas les mêmes hauteurs). */
+function enregistrerPrefs() {
+  if (userPrefs.disposition) {
+    if (!userPrefs.dispositionLive) userPrefs.dispositionLive = userPrefs.disposition;
+    if (!userPrefs.dispositionGuide) userPrefs.dispositionGuide = userPrefs.disposition;
+    delete userPrefs.disposition;
+  }
   safeStorageSetJSON('user_prefs', userPrefs);
-  var sel = typeof document !== 'undefined' && document.getElementById('pref-disposition');
-  if (sel) sel.value = userPrefs.disposition;
+  ['live', 'guide'].forEach(function(v) {
+    var sel = document.getElementById('pref-disposition-' + v);
+    if (sel) sel.value = dispositionChoisie(v);
+  });
+  var selC = document.getElementById('pref-card-color');
+  if (selC && userPrefs.cardColor) selC.value = userPrefs.cardColor;
+}
+export function choisirDisposition(nom, vue) {
+  if (!userPrefs) return;
+  var v = vue || vueCourante();
+  if (userPrefs.disposition) enregistrerPrefs();
+  userPrefs[v === 'guide' ? 'dispositionGuide' : 'dispositionLive'] = dispositionValide(nom);
+  enregistrerPrefs();
+  if (v !== vueCourante()) { majMenuLook(); return; }
   buildEPG(S.matches);
   var c = document.getElementById('marea');
-  if (c) { c.scrollTop = 0; if (userPrefs.disposition !== 'actuelle') c.scrollLeft = 0; }
-  var bouton = document.querySelector('.dsp-switch [data-disposition="' + userPrefs.disposition + '"]');
-  if (bouton) bouton.focus({ preventScroll: true });
-  if (userPrefs.disposition === 'actuelle' && S.filter === 'all') scrollToNow();
+  var choisie = dispositionChoisie(v);
+  if (c) { c.scrollTop = 0; if (choisie !== 'actuelle') c.scrollLeft = 0; }
+  var bouton = document.querySelector('.dsp-switch [data-disposition="' + choisie + '"]');
+  if (bouton && !document.querySelector('#menu-look:not([hidden])')) bouton.focus({ preventScroll: true });
+  if (choisie === 'actuelle' && v === 'guide') scrollToNow();
+  majMenuLook();
+}
+
+/* Couleur des équipes, la même que Options → Couleur des cartes, pour les huit vues. */
+var COULEURS_LOOK = [
+  ['home', 'Uni', 'La couleur de l\'équipe à domicile'],
+  ['gradient-45', 'Dégradé', 'Les deux équipes, fondu court au centre'],
+  ['split', 'Deux couleurs', 'Les deux équipes, coupure nette'],
+  ['dark', 'Neutre', 'Sans couleur d\'équipe']
+];
+export function choisirCouleurs(v) {
+  if (!userPrefs) return;
+  userPrefs.cardColor = v;
+  enregistrerPrefs();
+  redessinerDisposition();
+  majMenuLook();
+}
+
+/* Menu « Look » du groupe flottant (à côté d'Actualiser) : disposition du Live, du Guide,
+   et couleurs. Se ferme par Échap ou un clic ailleurs. */
+function menuLookHtml() {
+  var ligne = function(vue, titre) {
+    var choisie = dispositionChoisie(vue);
+    return '<div class="ml-titre">' + titre + '</div><div class="ml-rang" role="radiogroup" aria-label="' + titre + '">'
+      + DISPOSITIONS.map(function(d) {
+        return '<button type="button" role="radio" aria-checked="' + (d[0] === choisie) + '" data-look-vue="' + vue + '" data-look-nom="' + d[0] + '" title="' + esc(d[1]) + '">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES_DISPOSITION[d[0]] + '</svg><span>' + esc(d[1]) + '</span></button>';
+      }).join('') + '</div>';
+  };
+  var actuelle = (userPrefs && userPrefs.cardColor) || 'gradient-45';
+  var apercu = { home: '#c41230', 'gradient-45': 'linear-gradient(135deg,#c41230 0 36%,#00468b 64%)', split: 'linear-gradient(135deg,#c41230 50%,#00468b 50%)', dark: 'var(--bg3)' };
+  return ligne('live', 'Live') + ligne('guide', 'Guide')
+    + '<div class="ml-titre">Couleurs</div><div class="ml-col" role="radiogroup" aria-label="Couleurs">' + COULEURS_LOOK.map(function(c) {
+      var choisi = c[0] === actuelle || (c[0] === 'gradient-45' && (actuelle === 'gradient' || actuelle === 'league'));
+      return '<button type="button" role="radio" aria-checked="' + choisi + '" data-look-couleur="' + c[0] + '"><span class="ml-pastille" style="background:' + apercu[c[0]] + '"></span><span>' + esc(c[1]) + '<small>' + esc(c[2]) + '</small></span></button>';
+    }).join('') + '</div>';
+}
+function majMenuLook() {
+  var m = typeof document !== 'undefined' && document.getElementById('menu-look');
+  if (m && !m.hidden) m.innerHTML = menuLookHtml();
+}
+function fermerMenuLook() {
+  var m = document.getElementById('menu-look'), b = document.getElementById('btn-look');
+  if (m) m.hidden = true;
+  if (b) b.setAttribute('aria-expanded', 'false');
+}
+export function basculerMenuLook(e) {
+  if (e) e.stopPropagation();
+  var m = document.getElementById('menu-look'), b = document.getElementById('btn-look');
+  if (!m) return;
+  if (!m.hidden) return fermerMenuLook();
+  m.innerHTML = menuLookHtml();
+  m.hidden = false;
+  if (b) b.setAttribute('aria-expanded', 'true');
+  var premier = m.querySelector('[aria-checked="true"]');
+  if (premier) premier.focus({ preventScroll: true });
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', function(e) {
+    var m = document.getElementById('menu-look');
+    if (!m || m.hidden) return;
+    var vue = e.target.closest && e.target.closest('#menu-look [data-look-nom]');
+    if (vue) { e.stopPropagation(); return choisirDisposition(vue.getAttribute('data-look-nom'), vue.getAttribute('data-look-vue')); }
+    var coul = e.target.closest && e.target.closest('#menu-look [data-look-couleur]');
+    if (coul) { e.stopPropagation(); return choisirCouleurs(coul.getAttribute('data-look-couleur')); }
+    if (!e.target.closest('#menu-look') && !e.target.closest('#btn-look')) fermerMenuLook();
+  });
+  document.addEventListener('keydown', function(e) {
+    var m = document.getElementById('menu-look');
+    if (e.key === 'Escape' && m && !m.hidden) { fermerMenuLook(); var b = document.getElementById('btn-look'); if (b) b.focus(); }
+  });
 }
 
 function rendreAvecDisposition(nom, matches, epgContainer, fragment, jourGrille) {
@@ -351,7 +443,7 @@ function brancherDispositions(c) {
   c.__dispositions = true;
   c.addEventListener('click', function(e) {
     var bascule = e.target.closest && e.target.closest('.dsp-switch [data-disposition]');
-    if (bascule) return choisirDisposition(bascule.getAttribute('data-disposition'));
+    if (bascule) return choisirDisposition(bascule.getAttribute('data-disposition'), vueCourante());
     var cible = e.target.closest && e.target.closest('[data-dsp], [data-mid]');
     if (!cible || !cible.closest('.dsp')) return;
     var action = cible.getAttribute('data-dsp');
@@ -1454,7 +1546,7 @@ setInterval(updateNowLine, 60000);
 export function scrollToNow(){
     /* Les dispositions n'ont pas de grille de 48 h à faire défiler : elles commencent
        déjà par ce qui joue (js/dispositions.js). */
-    if (dispositionChoisie() !== 'actuelle') return;
+    if (dispositionChoisie('guide') !== 'actuelle') return;
     var epgContainer = document.getElementById('marea');
     var rootContainer = document.getElementById('epg');
     if(!rootContainer || rootContainer.style.display === 'none' || !epgContainer) return;
@@ -2348,6 +2440,8 @@ window.applyCardShape = applyCardShape;
 window.cardShapePref = cardShapePref;
 window.dispositionChoisie = dispositionChoisie;
 window.choisirDisposition = choisirDisposition;
+window.basculerMenuLook = basculerMenuLook;
+window.choisirCouleurs = choisirCouleurs;
 window.updateNowLine = updateNowLine;
 window.scrollToNow = scrollToNow;
 window.QC = QC;

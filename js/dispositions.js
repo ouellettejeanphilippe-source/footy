@@ -181,7 +181,7 @@ function liveTableau(fiches, o) {
   var pastille = function (v, lib) { return '<button type="button" data-dsp="filtre" data-v="' + v + '" aria-pressed="' + (filtre === v) + '">' + lib + '</button>'; };
   return '<div class="dsp-filtres">' + pastille('tout', 'Tout · ' + fiches.length) + pastille('live', '<span class="dsp-point"></span>En direct · ' + nLive)
     + pastille('bientot', 'Dans l\'heure · ' + (fiches.length - nLive)) + '</div>'
-    + '<div class="dsp-cols">' + groupes.map(function (g) {
+    + '<div class="dsp-cols" style="--ncol:' + Math.max(1, Math.min(3, groupes.length)) + '">' + groupes.map(function (g) {
       return '<section class="dsp-grp"><div class="dsp-gh' + (g[2] ? ' dsp-gh-fav' : '') + '">' + esc(g[0]) + '<span>' + g[1].length + '</span></div>' + g[1].map(ligne).join('') + '</section>';
     }).join('') + '</div>';
 }
@@ -273,8 +273,9 @@ function liveAffiches(fiches, o) {
       + '<span class="dsp-fx">' + (f.flux ? I_PLAY + ' ' + f.flux : I_FIND) + '</span></div></div>';
   };
   var petite = function (f) {
-    return '<div class="dsp-t dsp-petite" ' + attrs(f) + '>' + logo(f.logoDom, f.dom) + '<div class="dsp-tx"><b>' + esc(etiquetteEtat(f, o.maintenant)) + '</b>'
-      + esc(f.abDom) + (f.seul ? '' : ' – ' + esc(f.abExt)) + ' · ' + esc(f.ligue) + '</div></div>';
+    return '<div class="dsp-t dsp-petite" ' + attrs(f) + '><span class="dsp-paire">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '</span>'
+      + '<div class="dsp-tx"><b>' + esc(etiquetteEtat(f, o.maintenant)) + '</b><span class="dsp-ab">' + esc(f.abDom) + (f.seul ? '' : ' – ' + esc(f.abExt)) + '</span>'
+      + '<span class="dsp-lgp">' + esc(f.ligue) + '</span></div></div>';
   };
   var html = '';
   if (lives.length) html += '<h2 class="dsp-h2">En direct <small>' + lives.length + '</small></h2><div class="dsp-wall">' + lives.map(function (f, i) { return tuile(f, f.fav || i < 3); }).join('') + '</div>';

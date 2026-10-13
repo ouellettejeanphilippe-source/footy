@@ -98,11 +98,13 @@ test('Le texte venu des sources est échappé', () => {
   assert.doesNotMatch(html, /<img onerror/);
 });
 
-test('Options propose les cinq dispositions, « Actuelle » sélectionnée, et le module est précaché', () => {
+test('Options propose les cinq dispositions pour le Live et pour le Guide, « Actuelle » sélectionnée, et le module est précaché', () => {
   const index = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const bloc = index.slice(index.indexOf('id="pref-disposition"'), index.indexOf('</select>', index.indexOf('id="pref-disposition"')));
-  assert.deepStrictEqual([...bloc.matchAll(/value="([a-z]+)"/g)].map(m => m[1]), ['actuelle', 'tableau', 'maintenant', 'affiches', 'chaines']);
-  assert.match(bloc, /value="actuelle" selected/);
+  for (const id of ['pref-disposition-live', 'pref-disposition-guide']) {
+    const bloc = index.slice(index.indexOf('id="' + id + '"'), index.indexOf('</select>', index.indexOf('id="' + id + '"')));
+    assert.deepStrictEqual([...bloc.matchAll(/value="([a-z]+)"/g)].map(m => m[1]), ['actuelle', 'tableau', 'maintenant', 'affiches', 'chaines'], id);
+    assert.match(bloc, /value="actuelle" selected/, id);
+  }
   assert.match(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), /'\.\/js\/dispositions\.js'/);
 });
 

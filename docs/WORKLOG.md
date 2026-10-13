@@ -2,6 +2,17 @@
 ## En cours
 
 ## Fait
+- 2026-10-13 - **« Ajouter bouton pour changer look, proche de actualiser, ainsi qu'ajouter à cet endroit le mettre à jour l'app » ; « c'est weird » (capture : une seule colonne à gauche sur grand écran) ; « manque logos » ; « séparer guide et live pour pouvoir mix and match et mieux uniformiser les looks des 8 options ».**
+
+  - **Fait.**
+    - Groupe flottant `#fab-groupe` : Look (menu `#menu-look` : disposition du Live, du Guide, couleurs ; Échap / clic ailleurs), Mettre à jour l'app, Actualiser.
+    - Live et Guide ont chacun leur disposition (`dispositionLive`, `dispositionGuide` ; `disposition` lu en repli puis migré) ; deux menus dans Options ; le sélecteur en page change la vue affichée.
+    - Tableau : autant de colonnes que de groupes (trois au plus), bloc centré ; sélecteur et filtres centrés comme les onglets.
+    - Affiches : les petites tuiles « Dans l'heure » portent les deux logos ; ligue sur une ligne.
+    - Couche commune aux huit vues : rayons, une couleur d'action (l'accent), un indicateur de flux, une taille d'en-tête d'heure et de section, un rouge pour le direct.
+  - **Tests** : `test_app_boot` « Live et Guide ont chacun leur disposition, et le bouton Look les change à côté d'Actualiser » ; tests existants passés aux deux menus. `npm test` : 118 unitaires, 51 Playwright (1 ignoré, comme avant).
+  - **Fichiers** : `index.html`, `js/ui.js`, `js/main.js`, `js/multiview.js`, `js/dispositions.js`, `styles.css`, `sw.js`, `tests/test_app_boot.spec.js`, `tests/unit_dispositions.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`.
+  - **Version** : `sports-guide-v54`.
 - 2026-10-13 - **« Ya moyen d'améliorer le ad block sur Chrome pour éviter que ça soit juste Firefox qui peut ? » — « Fait tout nécessaire, et clair dans le popup du début de comment setter ça ».**
 
   - **Constat.** Le guide envoyait Chrome vers uBlock Origin, qui ne s'y installe plus depuis le retrait de Manifest V2 : sur Chrome, aucune publicité n'était bloquée dans les tuiles. Tampermonkey n'y tourne d'ailleurs qu'avec « Autoriser les scripts utilisateur ». Le dépôt avait déjà la matière : les listes d'uBlock en hôtes (APK) et le script de nettoyage.
