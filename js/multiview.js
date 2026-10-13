@@ -2,7 +2,7 @@ import { fetchPage } from './utils.js';
 import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, showPage, syncNavState, tailleStockageKo } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, copyToClipboard, showPage, syncNavState, tailleStockageKo } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
@@ -12,7 +12,8 @@ import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
-import { initEmbedBridge, getBridgeStatus } from './embed-bridge.js';
+import { initEmbedBridge, getBridgeStatus, waitForBridge } from './embed-bridge.js';
+import { guideInstallationHtml, quelNavigateur, etatProtection, doitProposerGuide, zipExtension, GUIDE_VU, VERSION_EXTENSION, DOSSIER_EXTENSION } from './installation.js';
 import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
@@ -4813,6 +4814,8 @@ export function openLogsPage() {
 }
 
 export function openScriptPage() {
+    var cible = document.getElementById('guide-installation');
+    if (cible) cible.innerHTML = guideInstallationHtml(quelNavigateur(), etatProtection(window, getBridgeStatus()));
     showPage('script-page');
 }
 
@@ -4823,13 +4826,17 @@ export function openScriptPage() {
 initPrefs(); // Run once on load
 
 
+/* La fenêtre du guide de protection des lecteurs (js/installation.js). Le nom est
+   resté : main.js et le menu l'appellent ainsi. */
 export function installTampermonkey() {
     var existing = document.getElementById('tm-modal');
     if (existing) existing.remove();
 
     var modal = document.createElement('div');
     modal.id = 'tm-modal';
-    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:500px;-webkit-overflow-scrolling:touch;color:#fff;';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-label', 'Bloquer les publicités des lecteurs');
+    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.97);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:14px;max-height:85vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:92%;max-width:620px;-webkit-overflow-scrolling:touch;color:#fff;';
 
     var closeBtn = document.createElement('div');
     closeBtn.innerHTML = '<span class="ic ic-close"></span>';
@@ -4838,71 +4845,76 @@ export function installTampermonkey() {
     modal.appendChild(closeBtn);
 
     var title = document.createElement('h2');
-    title.style.cssText = 'margin:0;font-size:18px;font-weight:bold;display:flex;align-items:center;gap:8px;';
-    title.innerHTML = '🧩 Installation des Scripts';
+    title.style.cssText = 'margin:0;padding-right:40px;font-size:18px;font-weight:bold;';
+    title.textContent = '🛡️ Bloquer les publicités des lecteurs';
     modal.appendChild(title);
 
-    var contentDiv = document.createElement('div');
-    contentDiv.style.cssText = 'font-size:14px;line-height:1.5;color:#ddd;display:flex;flex-direction:column;gap:12px;';
-
-    contentDiv.innerHTML = `        <div style="background:rgba(255,113,57,0.08);padding:12px;border-radius:8px;border:1px solid rgba(255,113,57,0.35);">
-            <div style="font-weight:bold;margin-bottom:8px;color:var(--text);font-size:15px;">🦊 Firefox : ce qui bloque les tuiles, et comment l'ouvrir</div>
-            <p style="margin-bottom:8px;color:var(--muted);">La tuile charge la page du match telle quelle et le script ne garde que la vidéo. Sur Chrome ça joue ; Firefox, lui, bloque à trois endroits. Chacun se règle.</p>
-            <ol style="margin:0 0 8px 18px;padding:0;color:#ddd;font-size:13px;line-height:1.6;">
-                <li><strong>Pages qui refusent l'iframe</strong> (« Firefox ne peut pas ouvrir cette page… intégrée par un autre site ») : installer l'extension <a href="https://addons.mozilla.org/fr/firefox/addon/ignore-x-frame-options-header/" target="_blank" style="color:var(--accent);">Ignore X-Frame-Options Header</a>, qui retire l'en-tête qui l'interdit.</li>
-                <li><strong>Lecture automatique et en arrière-plan</strong> : dans <code>about:config</code>, mettre <code>media.autoplay.default</code> à <code>0</code>, <code>media.autoplay.blocking_policy</code> à <code>0</code>, et <code>media.block-autoplay-until-in-foreground</code> à <code>false</code> — sinon une tuile ne démarre qu'après un clic, et seulement dans l'onglet au premier plan.</li>
-                <li><strong>Protection contre le pistage</strong> : elle coupe les cookies et le stockage des lecteurs encadrés, que plusieurs exigent. Cliquer le bouclier à gauche de l'adresse et désactiver la protection <em>pour ce site</em> (l'application), qui contient toutes les tuiles.</li>
-            </ol>
-            <p style="margin:0;color:var(--muted);font-size:12px;">Après ces trois réglages, recharger l'application. Si une tuile reste vide, son bouton ⏭ passe à la source suivante.</p>
-        </div>
-
-        <p>Pour profiter pleinement du Multivision sans publicités et avec le lecteur vidéo isolé, vous devez installer notre script utilisateur.</p>
-
-        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1); margin-bottom: 8px;">
-            <strong style="color:var(--accent);">🦊 Recommandation : Firefox + uBlock Origin</strong>
-            <p style="margin-top:4px;font-size:13px;">Nous recommandons fortement d'utiliser Firefox. Bien que le script fonctionne sur Chrome, le bloqueur de publicités uBlock Origin y est beaucoup moins efficace en raison des récentes restrictions de Manifest V3 par Google.</p>
-        </div>
-
-        <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
-            <strong style="color:#4285F4;">🌍 Navigateurs Chrome / Chromium (Edge, Brave, Opera)</strong>
-            <p style="margin-top:4px;font-size:13px;">Vous pouvez également utiliser le script sur les navigateurs basés sur Chromium. Assurez-vous d'installer les extensions appropriées depuis le Chrome Web Store.</p>
-        </div>
-
-        <ol style="padding-left:20px;margin:0;display:flex;flex-direction:column;gap:8px; margin-top: 8px;">
-            <li>Installez l'extension <strong>Tampermonkey</strong> sur votre navigateur :
-                <a href="https://addons.mozilla.org/fr/firefox/addon/tampermonkey/" target="_blank" style="color:var(--accent);">Firefox</a> |
-                <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" style="color:#4285F4;">Chrome</a>
-            </li>
-            <li>Installez l'extension <strong>uBlock Origin</strong> :
-                <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" style="color:var(--accent);">Firefox</a> |
-                <a href="https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" style="color:#4285F4;">Chrome</a>
-            </li>
-            <li>Cliquez sur le bouton ci-dessous pour installer le script de nettoyage Multivision.</li>
-        </ol>
-    `;
-    modal.appendChild(contentDiv);
-
-    var btn = document.createElement('button');
-    btn.className = 'btn g';
-    btn.style.cssText = 'padding:12px;font-size:16px;font-weight:bold;justify-content:center;margin-top:8px;';
-    btn.innerHTML = 'Installer le Script Multivision';
-    btn.onclick = function() {
-        autoriserSortie();
-        window.location.href = './multiview-cleaner.user.js';
-    };
-    modal.appendChild(btn);
+    var contenu = document.createElement('div');
+    contenu.innerHTML = guideInstallationHtml(quelNavigateur(), etatProtection(window, getBridgeStatus()));
+    modal.appendChild(contenu);
 
     document.body.appendChild(modal);
 
     setTimeout(function() {
         var closeListener = function(e) {
-            if (!modal.contains(e.target)) {
+            if (!document.body.contains(modal)) { document.removeEventListener('click', closeListener); return; }
+            /* Un clic de programme (le lien du zip, posé hors de la fenêtre) ne la ferme pas :
+               on la refermait au moment même où le téléchargement partait. */
+            if (e.isTrusted && !modal.contains(e.target)) {
                 modal.remove();
                 document.removeEventListener('click', closeListener);
             }
         };
         document.addEventListener('click', closeListener);
     }, 10);
+}
+
+/* Au démarrage : la fenêtre ne s'ouvre que si rien ne protège encore les lecteurs (ou
+   que l'extension est périmée), après avoir laissé au script ou à l'extension le temps
+   de s'annoncer. */
+export function proposerGuideAuDemarrage() {
+    return waitForBridge(1500).then(function() {
+        var vu = safeStorageGet('hasSeenScriptModal');
+        var etat = etatProtection(window, getBridgeStatus());
+        if (!doitProposerGuide(vu, quelNavigateur(), etat)) return false;
+        safeStorageSet('hasSeenScriptModal', etat.type === 'extension' ? 'maj-' + VERSION_EXTENSION : GUIDE_VU);
+        installTampermonkey();
+        return true;
+    });
+}
+
+export function installerScriptUtilisateur() {
+    autoriserSortie();
+    window.location.href = './multiview-cleaner.user.js';
+}
+
+export function telechargerExtension(bouton) {
+    var etat = bouton && bouton.parentElement ? bouton.parentElement.querySelector('.guide-zip-etat') : null;
+    if (etat) etat.textContent = 'Préparation…';
+    if (bouton) bouton.disabled = true;
+    return zipExtension().then(function(octets) {
+        var url = URL.createObjectURL(new Blob([octets], { type: 'application/zip' }));
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = DOSSIER_EXTENSION + '.zip';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+        if (etat) etat.textContent = '✅ ' + DOSSIER_EXTENSION + '.zip téléchargé';
+    }).catch(function(e) {
+        if (etat) etat.textContent = '❌ ' + (e && e.message || e) + ' — utilisez le lien du dépôt plus bas.';
+    }).finally(function() {
+        if (bouton) bouton.disabled = false;
+    });
+}
+
+export function copierTexte(texte, bouton) {
+    return copyToClipboard(texte).then(function() {
+        if (bouton) bouton.textContent = '✅ Copié';
+    }, function() {
+        if (bouton) bouton.textContent = 'Copiez à la main';
+    });
 }
 
 
@@ -5162,6 +5174,9 @@ window.openOptionsPage = openOptionsPage;
 window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
 window.installTampermonkey = installTampermonkey;
+window.telechargerExtension = telechargerExtension;
+window.copierTexte = copierTexte;
+window.installerScriptUtilisateur = installerScriptUtilisateur;
 
 export function exportSettings() {
     var settings = {

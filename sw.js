@@ -55,6 +55,7 @@ const APP_SHELL = [
   './js/genericlist.js',
   './js/links.js',
   './js/embed-bridge.js',
+  './js/installation.js',
   './js/ui.js',
   './js/multiview.js',
   './js/mv-menu.js',

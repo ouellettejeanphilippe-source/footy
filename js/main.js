@@ -1,6 +1,6 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
-import { setupMultivisionUI, installTampermonkey, setModeCable } from './multiview.js';
+import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesDeDepart, actionRetour } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
 import { closeMod } from './ui.js';
@@ -927,9 +927,9 @@ async function loadAllRun(isBackground, forceScrape){
   }).finally(function(){
       if(btn) btn.disabled=false;
             if (!isBackground) { hideLoadingOverlay(); }
-      if (!safeStorageGet('hasSeenScriptModal')) {
-          safeStorageSet('hasSeenScriptModal', 'true');
-          setTimeout(function() { installTampermonkey(); }, 500);
+      if (!guideDemarrageFait) {
+          guideDemarrageFait = true;
+          setTimeout(function() { proposerGuideAuDemarrage(); }, 500);
       }
       window.hasLoadedOnce = true;
       try { majBandeauCache(); } catch (e) {}
@@ -941,6 +941,11 @@ async function loadAllRun(isBackground, forceScrape){
   });
 }
 
+
+/* La fenêtre du guide de protection se décide une fois par chargement (voir
+   proposerGuideAuDemarrage, js/multiview.js : elle ne s'ouvre que si rien ne protège
+   les lecteurs). */
+var guideDemarrageFait = false;
 
 /* ══ INIT ═══════════════════════════════ */
 
@@ -980,9 +985,9 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
       if (S.matches.length > 0) {
           setTimeout(function() { buildEPG(S.matches); }, 0);
       }
-      if (!safeStorageGet('hasSeenScriptModal')) {
-          safeStorageSet('hasSeenScriptModal', 'true');
-          setTimeout(function() { installTampermonkey(); }, 500);
+      if (!guideDemarrageFait) {
+          guideDemarrageFait = true;
+          setTimeout(function() { proposerGuideAuDemarrage(); }, 500);
       }
       // On laisse au script utilisateur le temps de s'annoncer : c'est lui qui décide si le
       // navigateur lit les sources lui-même (voir loadAllRun). Au plus 1,5 s.
