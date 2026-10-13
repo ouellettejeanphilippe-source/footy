@@ -195,7 +195,7 @@ function guideTableau(fiches, o) {
   var ligne = function (f) {
     return '<div class="dsp-gr' + (f.etat === 'fin' || f.etat === 'fin?' ? ' dsp-fini' : '') + '" ' + attrs(f) + '>'
       + '<span class="dsp-t">' + (f.etat === 'live' ? '<span class="dsp-point"></span>' : esc((f.jour === 'hier' ? 'hier ' : '') + f.heure)) + '</span>'
-      + '<span class="dsp-mm">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '<span>' + titre(f) + etoile(f) + '</span></span>'
+      + '<span class="dsp-mm">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '<span>' + titre(f) + '</span>' + etoile(f) + '</span>'
       + '<span class="dsp-lg">' + esc(f.ligue) + '</span>'
       + '<span class="dsp-stt' + (f.etat === 'live' ? ' dsp-live' : '') + '">' + (f.sDom != null ? '<b>' + score(f, 'd') + '–' + score(f, 'e') + '</b> ' : '') + esc(f.etat === 'plus-tard' ? '' : etiquetteEtat(f, o.maintenant)) + '</span>'
       + (f.etat === 'fin' || f.etat === 'fin?' ? '<span></span>' : regarder(f, false)) + '</div>';
@@ -249,7 +249,7 @@ function guideMaintenant(fiches, o) {
     var p = progression(f, o.maintenant);
     return '<div class="dsp-ev' + (f.etat === 'fin' || f.etat === 'fin?' ? ' dsp-fini' : '') + '" style="--fond:' + fondEquipes(f, o.couleurs) + '" ' + attrs(f) + '>'
       + '<span class="dsp-sw">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '</span>'
-      + '<div class="dsp-tx"><b>' + titre(f) + etoile(f) + '</b><span>' + (f.etat === 'live' ? '<span class="dsp-live">' + esc(etiquetteEtat(f)) + '</span> · ' : esc(etiquetteEtat(f, o.maintenant)) + ' · ') + esc(f.ligue) + '</span>'
+      + '<div class="dsp-tx"><b>' + (f.fav ? '★ ' : '') + titre(f) + '</b><span>' + (f.etat === 'live' ? '<span class="dsp-live">' + esc(etiquetteEtat(f)) + '</span> · ' : esc(etiquetteEtat(f, o.maintenant)) + ' · ') + esc(f.ligue) + '</span>'
       + (f.etat === 'live' ? '<div class="dsp-pbar"><i style="width:' + Math.round(p * 100) + '%"></i></div>' : '') + '</div>'
       + '<div class="dsp-r">' + (f.sDom != null ? score(f, 'd') + '–' + score(f, 'e') : '') + (f.flux && f.etat !== 'fin' && f.etat !== 'fin?' ? '<small>' + I_PLAY + ' ' + f.flux + '</small>' : '') + '</div></div>';
   };
@@ -365,7 +365,8 @@ function guideChaines(fiches, o) {
     var w = Math.min(fin, Math.max(f.debut + f.duree, suite ? x0 + 50 : 0)) - x0;
     lignes += '<div class="dsp-er"><div class="dsp-en">' + logo(f.logoDom, f.dom) + '<span>' + esc(f.abDom) + (f.seul ? '' : ' – ' + esc(f.abExt)) + '</span></div>'
       + '<div class="dsp-lane"><div class="dsp-pg dsp-' + f.etat.replace('?', '') + (suite ? ' dsp-suite' : '') + (f === sel ? ' dsp-sel' : '') + '" data-dsp="choix" data-v="' + esc(f.id) + '" tabindex="0" role="button" style="--a:' + (x0 - debut) + ';--w:' + Math.max(10, w) + '">'
-      + '<span class="dsp-lbl">' + (f.sDom != null ? '<b>' + score(f, 'd') + '–' + score(f, 'e') + '</b> · ' : '') + esc(f.etat === 'live' ? etiquetteEtat(f) : f.heure) + ' · ' + titre(f) + '</span></div></div></div>';
+      + '<span class="dsp-lbl">' + (f.sDom != null ? '<b>' + score(f, 'd') + '–' + score(f, 'e') + '</b> · ' : '') + esc(f.etat === 'live' ? etiquetteEtat(f) : f.heure)
+      + ' · <span class="dsp-long">' + titre(f) + '</span><span class="dsp-court">' + esc(f.abDom) + (f.seul ? '' : '–' + esc(f.abExt)) + '</span></span></div></div></div>';
   });
   return apercu(sel, o)
     + '<div class="dsp-epg" style="--larg:' + largeur + '"><div class="dsp-epg-in"><div class="dsp-ruler"><div class="dsp-corner"></div>' + regle + '</div>' + lignes

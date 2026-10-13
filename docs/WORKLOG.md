@@ -2,6 +2,17 @@
 ## En cours
 
 ## Fait
+- 2026-10-13 - **« Faut vraiment optimiser, t'as des tuiles que le contenu dépasse, le reste de l'interface suit pas style uniforme […] Possible de changer à même la page live ? »**
+
+  - **Mesuré** (script jetable, vraies données, 4K / 1080p / tablette 820 / téléphone 390, quatre dispositions × Live et Guide) : tuiles des Affiches en couches absolues qui se chevauchaient sur tablette (« Dir… » sur « NCAA FOOTB… ») ; colonnes du Tableau à 2 sur tablette où « Regarder 57 » mangeait les noms ; libellés coupés dans les blocs courts de la grille des Chaînes ; étoile de favori hors cadre au téléphone.
+  - **Fait.**
+    - Sélecteur `.dsp-switch` en tête du Live et du Guide, « Actuelle » comprise (`barreDispositions`, `choisirDisposition`, `js/ui.js`) : enregistré, Options aligné, sans message « Préférences sauvegardées ».
+    - Composants qui s'ajustent à leur propre largeur (container queries) : tuile des Affiches en colonne, tailles en `cqi` ; colonne étroite du Tableau sans le mot « Regarder » ; bloc court des Chaînes en abréviations (`.dsp-court` / `.dsp-long`, seuil en `em`) ; étoile hors de la zone tronquée.
+    - Coquille au style des dispositions sous `body.dsp-on` (onglets en pilules, bandeau, Actualiser, message) ; `--u` posée sur `:root`.
+  - **Tests** : `unit_dispositions` (abréviations, étoile) ; `test_app_boot` « le sélecteur de la page change la disposition, et rien ne sort de son cadre » (tablette 820 px, les huit vues, enregistrement, retour à « Actuelle »). `npm test` : 104 unitaires, 49 Playwright (1 ignoré, comme avant).
+  - **Fichiers** : `js/dispositions.js`, `js/ui.js`, `styles.css`, `sw.js`, `js/multiview.js`, `tests/unit_dispositions.test.js`, `tests/test_app_boot.spec.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`.
+  - **Version** : `sports-guide-v53`.
+  - **Ce qui reste** : la fiche de match et les pages Options / Logs gardent leur style ; « Actuelle » aussi, volontairement.
 - 2026-10-13 - **« Ya moyen d'avoir le choix des différents layouts ? » — « Les 4, avec l'actuelle toujours comme default ».**
 
   - **Origine.** Quatre refontes du Live et du Guide maquettées avec l'utilisateur sur le programme réel du 13 octobre (artefacts) : Tableau, Maintenant, Affiches, Chaînes. Ses demandes en chemin, tenues partout : hiérarchie état → score → équipes → une action → ligue ; aucun titre ni sous-titre (« juste le ui ») ; pas de dégradé imposé ; texte qui s'adapte à l'écran (« 4k, 1080p, tablette, téléphone ») ; et dans le Guide, **jamais un match en cours avant l'heure actuelle** (« on dirait que c'est passé »).

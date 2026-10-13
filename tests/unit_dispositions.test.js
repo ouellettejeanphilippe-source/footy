@@ -105,3 +105,11 @@ test('Options propose les cinq dispositions, « Actuelle » sélectionnée, et l
   assert.match(bloc, /value="actuelle" selected/);
   assert.match(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), /'\.\/js\/dispositions\.js'/);
 });
+
+test('Chaînes : un bloc court a de quoi afficher les abréviations ; l\'étoile ne tronque pas le nom', () => {
+  const html = D.rendreDisposition('chaines', 'guide', jeu(), { maintenant: MAINTENANT });
+  assert.match(html, /<span class="dsp-court">MTL–[A-Z]{2,4}<\/span>/);
+  assert.match(html, /<span class="dsp-long">Montreal Canadiens – Buffalo Sabres<\/span>/);
+  const t = D.rendreDisposition('tableau', 'guide', jeu(), { maintenant: MAINTENANT });
+  assert.match(t, /<span>Montreal Canadiens – Buffalo Sabres<\/span><span class="dsp-fav"/, 'l\'étoile est hors de la zone tronquée');
+});
