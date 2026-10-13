@@ -16,6 +16,7 @@ import { mesurePour, formaterMesure } from './debit.js';
 import { extraireAlignements, extraireEffectifs, alignementsHtml } from './alignements.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
+import { dispositionValide, rendreDisposition, etatDisposition } from './dispositions.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
    dans les boucles de rendu. Alias stable pour pouvoir journaliser depuis celles-ci. */
@@ -196,6 +197,139 @@ if (typeof window !== 'undefined') {
          dont la position dépend de la largeur réelle. */
       if (typeof updateNowLine === 'function') updateNowLine();
     }
+  });
+}
+
+/* ══ DISPOSITIONS (Options → Disposition, 13 octobre 2026) ══════════════════════
+   « Les 4, avec l'actuelle toujours comme default ». Le rendu des quatre dispositions vit
+   dans js/dispositions.js (sans import) ; ici, seulement le raccord : une fiche par match,
+   les clics, et la reconstruction. « actuelle » laisse buildEPGInner tel qu'il était. */
+export function dispositionChoisie() {
+  return dispositionValide(userPrefs && userPrefs.disposition);
+}
+
+/* Minutes écoulées depuis le minuit du jour affiché (négatif si le jour affiché est
+   demain, plus de 1440 s'il est hier) : la même échelle que minutesDansLaJournee. */
+function minutesMaintenant(now, jourGrille) {
+  var p = getEstTimeStrFromDate(now).split(':');
+  var min = parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+  var jours = Math.round((Date.parse(getEstDateStrFromDate(now) + 'T00:00:00Z') - Date.parse(jourGrille + 'T00:00:00Z')) / 86400000);
+  return min + (isNaN(jours) ? 0 : jours * 1440);
+}
+
+/* `maintenant` : minutes depuis le minuit du jour affiché (minutesMaintenant). Un match
+   qui n'est pas en cours et dont la fin prévue est passée est rangé avec les terminés :
+   sans nouvelles d'ESPN (hors ligne, source muette), un match de 12:45 restait « à
+   venir » à 20:40 et le Guide le montrait avant ce qui joue. */
+export function ficheMatch(m, now, jourGrille, maintenant) {
+  var presume = m.status === 'live' && finPresumee(m);
+  var etat = m.status === 'finished' ? 'fin'
+    : presume ? 'fin?'
+    : isLiveNow(m, now) ? 'live'
+    : startsWithin(m, LIVE_WINDOW_MIN, now) ? 'bientot' : 'plus-tard';
+  var couleur = function(t) { var c = t ? getTeamColors(t) : null; return c && c[0] ? c[0] : lgColor(normName(t) || 'A'); };
+  var logoDe = function(t, url) {
+    var u = url || (t ? getLogo(t) : '');
+    if (!u) return null;
+    return String(u).indexOf('emoji:') === 0 ? { emoji: String(u).split(':')[1] } : { url: u };
+  };
+  var ext = m.awayTeam || '';
+  var seul = !ext || /^(race|fp|qual)/i.test(ext);
+  var debut = minutesDansLaJournee(m, jourGrille);
+  if (debut === null || isNaN(debut)) {
+    var hm = String(m.startTime || '0:0').split(':');
+    debut = parseInt(hm[0], 10) * 60 + parseInt(hm[1], 10) || 0;
+  }
+  var duree = m.durationMinutes || 120;
+  if ((etat === 'bientot' || etat === 'plus-tard') && typeof maintenant === 'number' && debut + duree <= maintenant) etat = 'fin';
+  var avecScore = (etat === 'live' || etat === 'fin' || etat === 'fin?') && m.score && m.score.length === 2;
+  var minute = formatLiveMinute(m);
+  return {
+    id: String(m.id), ligue: m.league || '', dom: m.homeTeam || '', ext: ext, seul: seul,
+    logoDom: logoDe(m.homeTeam, m.homeLogo), logoExt: seul ? null : logoDe(ext, m.awayLogo),
+    cDom: couleur(m.homeTeam), cExt: couleur(ext || m.homeTeam), cLigue: lgColor(m.league || ''),
+    heure: m.startTime || '', debut: debut, duree: duree, etat: etat,
+    chrono: minute === 'DIRECT' ? 'Direct' : minute,
+    sDom: avecScore ? m.score[0] : null, sExt: avecScore ? m.score[1] : null,
+    flux: (m.streamLinks || []).length,
+    fav: !!(favTeams[m.homeTeam] || favTeams[ext] || favTeams[m.league]),
+    jour: libelleJour(m, jourGrille) || ''
+  };
+}
+
+function rendreAvecDisposition(nom, matches, epgContainer, fragment, jourGrille) {
+  var now = new Date();
+  var vue = S.filter === 'live' ? 'live' : 'guide';
+  var maintenant = minutesMaintenant(now, jourGrille);
+  var fiches = [];
+  matches.forEach(function(m) {
+    var tier = leagueTier(m.league);
+    if (tier === 'ignored' || tier === 'other' || m.league === 'Autres Flux') return;
+    try { fiches.push(ficheMatch(m, now, jourGrille, maintenant)); }
+    catch (e) { logLine('Match ignoré (disposition)', (m && m.id ? m.id + ' — ' : '') + (e && e.message || e)); }
+  });
+  if (vue === 'live') fiches = fiches.filter(function(f) { return f.etat === 'live' || f.etat === 'bientot'; });
+  epgContainer.style.cssText = 'display:block;width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;';
+  var hote = document.createElement('div');
+  hote.innerHTML = rendreDisposition(nom, vue, fiches, {
+    maintenant: maintenant,
+    couleurs: (userPrefs && userPrefs.cardColor) || 'gradient-45'
+  });
+  if (hote.firstChild) fragment.appendChild(hote.firstChild);
+  epgContainer.appendChild(fragment);
+  brancherDispositions(epgContainer);
+}
+
+/* Reconstruit sans perdre le défilement — celui de #marea et ceux des bandes internes
+   (colonnes des Affiches, grille des Chaînes). */
+export function redessinerDisposition() {
+  var c = document.getElementById('marea');
+  var garde = c ? [c.scrollTop, c.scrollLeft] : [0, 0];
+  var internes = {};
+  if (c) ['.dsp-hcols', '.dsp-epg', '.dsp-cols'].forEach(function(sel) { var el = c.querySelector(sel); if (el) internes[sel] = [el.scrollTop, el.scrollLeft]; });
+  buildEPG(S.matches);
+  c = document.getElementById('marea');
+  if (!c) return;
+  c.scrollTop = garde[0]; c.scrollLeft = garde[1];
+  Object.keys(internes).forEach(function(sel) { var el = c.querySelector(sel); if (el) { el.scrollTop = internes[sel][0]; el.scrollLeft = internes[sel][1]; } });
+}
+
+function ouvrirFicheParId(id) {
+  var m = S.matchMap && S.matchMap.get(String(id));
+  if (m) openMod(m, lgColor(normName(m.homeTeam)));
+}
+
+/* Un seul écouteur, posé une fois sur #marea (qui survit aux reconstructions). Les
+   éléments des dispositions portent data-mid (ouvrir la fiche) ou data-dsp (filtre,
+   ligue, terminés, chaîne choisie). Entrée et Espace activent un élément focalisé :
+   au clavier comme à la télécommande (js/tv-navigation.js). */
+function brancherDispositions(c) {
+  if (!c || c.__dispositions) return;
+  c.__dispositions = true;
+  c.addEventListener('click', function(e) {
+    var cible = e.target.closest && e.target.closest('[data-dsp], [data-mid]');
+    if (!cible || !cible.closest('.dsp')) return;
+    var action = cible.getAttribute('data-dsp');
+    var v = cible.getAttribute('data-v');
+    if (action === 'filtre') { etatDisposition.filtre = v; return redessinerDisposition(); }
+    if (action === 'ligue') { etatDisposition.ligue = v; return redessinerDisposition(); }
+    if (action === 'termines') { etatDisposition.termines = !etatDisposition.termines; return redessinerDisposition(); }
+    if (action === 'choix') {
+      if (cible.classList.contains('dsp-sel')) return ouvrirFicheParId(v);
+      etatDisposition.choix = v;
+      redessinerDisposition();
+      var choisi = document.querySelector('.dsp [data-dsp="choix"][data-v="' + String(v).replace(/"/g, '\\"') + '"]');
+      if (choisi) choisi.focus({ preventScroll: true });
+      return;
+    }
+    ouvrirFicheParId(cible.getAttribute('data-mid'));
+  });
+  c.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var t = e.target;
+    if (!t || !t.closest || !t.closest('.dsp') || t.tagName === 'BUTTON' || t.getAttribute('role') !== 'button') return;
+    e.preventDefault();
+    t.click();
   });
 }
 
@@ -709,6 +843,14 @@ function buildEPGInner(matches){
      à la vue concernée (voir .zoom-controls dans styles.css). */
   document.body.classList.toggle('view-timeline', S.filter === 'all');
   applyCardShape();
+
+  /* Disposition choisie dans Options : tout autre choix qu'« actuelle » rend ici et sort. */
+  var disposition = dispositionChoisie();
+  document.body.classList.toggle('dsp-on', disposition !== 'actuelle');
+  if (disposition !== 'actuelle') {
+      rendreAvecDisposition(disposition, filtered, epgContainer, fragment, jourGrille);
+      return;
+  }
 
   /* Le Guide (grille temporelle) couvre déjà le programme de la journée : la vue
      « À venir », qui n'en était qu'une liste à plat, a été retirée de la navigation. */
@@ -1261,6 +1403,9 @@ export function updateNowLine() {
 setInterval(updateNowLine, 60000);
 
 export function scrollToNow(){
+    /* Les dispositions n'ont pas de grille de 48 h à faire défiler : elles commencent
+       déjà par ce qui joue (js/dispositions.js). */
+    if (dispositionChoisie() !== 'actuelle') return;
     var epgContainer = document.getElementById('marea');
     var rootContainer = document.getElementById('epg');
     if(!rootContainer || rootContainer.style.display === 'none' || !epgContainer) return;
@@ -2152,6 +2297,7 @@ window.belongsToLive = belongsToLive;
 window.renderSportChips = renderSportChips;
 window.applyCardShape = applyCardShape;
 window.cardShapePref = cardShapePref;
+window.dispositionChoisie = dispositionChoisie;
 window.updateNowLine = updateNowLine;
 window.scrollToNow = scrollToNow;
 window.QC = QC;

@@ -917,6 +917,75 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(pageErrors).toEqual([]);
 });
 
+/* Dispositions (Options → Disposition, js/dispositions.js, 13 octobre 2026) : « Les 4,
+   avec l'actuelle toujours comme default ». Chacune doit rendre le Live et le Guide sur
+   les vraies données sans exception ni titre, garder chaque match cliquable, ne pas
+   faire déborder la page sur un téléphone ; un clic ouvre la fiche, et revenir à
+   « Actuelle » rend les cartes d'avant. */
+async function choisirDisposition(page, nom, vue) {
+  await page.evaluate(([n, v]) => {
+    applyFilter(v);
+    document.getElementById('pref-disposition').value = n;
+    applyUserPrefs();
+  }, [nom, vue]);
+}
+
+test('les quatre dispositions rendent le Live et le Guide, et un match ouvre sa fiche', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
+    for (const vue of ['live', 'all']) {
+      await choisirDisposition(page, nom, vue);
+      await page.waitForSelector('#marea .dsp-' + nom + '.dsp-vue-' + (vue === 'live' ? 'live' : 'guide'));
+      const etat = await page.evaluate(() => {
+        const racine = document.querySelector('#marea .dsp');
+        return {
+          cliquables: racine.querySelectorAll('[data-mid], [data-dsp="choix"]').length,
+          vide: !!racine.querySelector('.dsp-vide'),
+          titre: /Guide des Sports/.test(racine.innerText),
+          cartesHistoriques: document.querySelectorAll('#marea .match-card, #marea .mb').length
+        };
+      });
+      expect(etat.titre, nom + ' / ' + vue + ' : pas de titre').toBe(false);
+      expect(etat.cliquables > 0 || etat.vide, nom + ' / ' + vue + ' : des matchs cliquables').toBeTruthy();
+      expect(etat.cartesHistoriques, nom + ' / ' + vue + ' : le rendu historique ne se superpose pas').toBe(0);
+    }
+  }
+
+  await choisirDisposition(page, 'tableau', 'all');
+  await page.waitForSelector('#marea .dsp-tableau .dsp-gr[data-mid]');
+  /* « On dirait que c'est passé » : après « En cours », le Guide ne liste que des heures
+     à venir — un match sans nouvelles dont la fin prévue est passée va aux terminés. */
+  const heures = await page.evaluate(() => {
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', hourCycle: 'h23', hour: '2-digit' }).format(new Date());
+    return { maintenant: parseInt(p, 10), lues: [...document.querySelectorAll('#marea .dsp-hr')].map((e) => e.textContent.trim()).filter((t) => /^\d+ h$/.test(t)).map((t) => parseInt(t, 10)) };
+  });
+  for (const h of heures.lues) expect(h, 'une heure du passé dans le Guide').toBeGreaterThanOrEqual(heures.maintenant);
+
+  await page.locator('#marea .dsp-gr[data-mid]').first().click();
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+
+  await choisirDisposition(page, 'actuelle', 'live');
+  await page.waitForSelector('#marea .match-card');
+  expect(await page.locator('#marea .dsp').count(), 'Actuelle : plus aucune disposition').toBe(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+test('sur téléphone, aucune disposition ne fait déborder la page', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pageErrors = await bootOffline(page);
+  for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
+    for (const vue of ['live', 'all']) {
+      await choisirDisposition(page, nom, vue);
+      await page.waitForSelector('#marea .dsp-' + nom);
+      const largeur = await page.evaluate(() => ({ scrollW: document.body.scrollWidth, innerW: window.innerWidth }));
+      expect(largeur.scrollW, nom + ' / ' + vue + ' à 390 px').toBeLessThanOrEqual(largeur.innerW + 1);
+    }
+  }
+  expect(pageErrors).toEqual([]);
+});
+
 test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche monte du bas', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', 'true'); } catch (e) {} });

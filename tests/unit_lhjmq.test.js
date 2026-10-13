@@ -92,6 +92,11 @@ async function main() {
         }));
         const oh = scrapers.parseOnHockey(grille);
         assert.strictEqual(oh.length, 2);
+        /* La grille d'OnHockey date ses lignes du jour affiché (TARGET_DATE, l'horloge
+           réelle) ; les matchs ci-dessus sont ceux du 12 octobre 2026. Sans cette date
+           fixée, le test tombait dès le lendemain (« un test ne dépend pas de l'heure »,
+           AGENTS.md) : la page est donc lue le jour de ses matchs. */
+        oh.forEach((o) => { o.matchDate = '2026-10-12'; });
         /* `sportOfTeamName` ne rangeait pas la ligue « lhjmq » au hockey : le garde-fou de
            sport de `getOfficialTeamName` refusait alors toute équipe de la LHJMQ, et
            OnHockey gardait « Drummondville » au lieu du nom de la base. */

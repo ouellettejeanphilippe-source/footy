@@ -78,6 +78,19 @@ Une grille horaire de **48 heures** — de 00:00 aujourd'hui à 00:00 après-dem
 - **Un match de demain** porte `demain · ` devant son heure, sur la case comme sur la carte. Les liens de demain sont là aussi : le cache du serveur couvre les deux journées.
 - **Ligues secondaires (n)** : leur propre grille, sous un titre repliable. **Autres streams (n)** : en cartes, repliée.
 
+## 3 bis. Dispositions (Options → Disposition)
+
+« Actuelle » est l'interface décrite aux sections 2 et 3, et reste le réglage par défaut. Les quatre autres rangent les mêmes matchs autrement, Live et Guide ensemble. Partout : pas de titre, l'état (direct, chrono) et le score d'abord, puis les équipes, un seul bouton (▶ et le nombre de flux, ou 🔎 sans lien), la ligue en dernier. Un toucher ouvre la fiche du match. La couleur des équipes suit **Couleur des cartes** (Couleur de l'équipe à domicile = unie, Foncé = neutre, dégradés). Le texte et la mise en page grandissent avec l'écran, du téléphone à la télé 4K. Les flux « Autres streams » et les ligues ignorées n'y figurent pas.
+
+**Dans le Guide, un match en cours n'est jamais rangé avant l'heure actuelle** : le Guide commence par « En cours », puis ce qui vient heure par heure (« Demain 12 h » pour le lendemain), et les matchs terminés sont à part, repliés sous « ▸ Terminés ». Un match sans nouvelles dont la fin prévue est passée compte comme terminé.
+
+| Disposition | Live | Guide |
+|---|---|---|
+| **Tableau** | Liste de scores groupée par ligue, Favoris en tête, filtres Tout / En direct / Dans l'heure. L'équipe qui perd est en gris. | Le programme en liste, filtrable par ligue. |
+| **Maintenant** | Le favori en direct (sinon le match le plus suivi) en grande affiche avec « Regarder », trois matchs à côté, puis En direct, puis « Commence bientôt » avec un compte à rebours. | Un agenda vertical, une rangée par heure, une barre de progression par match en cours. |
+| **Affiches** | Un mur de tuiles aux couleurs des équipes ; favoris et matchs les plus suivis deux fois plus grands. | Une colonne par heure, qu'on fait défiler de côté. |
+| **Chaînes** | Comme un guide télé : chaque match est une chaîne numérotée avec sa barre de progression, et un aperçu à droite. Un premier toucher choisit, un second ouvre la fiche. | Une grille horaire qui commence à l'heure actuelle ; un match en cours y entre par le bord gauche (liseré rouge). |
+
 ## 4. Fiche de match
 
 S'ouvre au clic sur une carte ou un bloc. Se ferme par la croix `✕` en haut à droite, par Échap, ou par un clic sur le fond. Sur téléphone, c'est une feuille qui monte du bas, avec un bouton `✕ Fermer` permanent en pied.
@@ -229,6 +242,7 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 | **Assombrissement du fond** | Curseur 0 à 100. |
 | **Retirer le noir des maillages** | Interrupteur. |
 | **Forme des boutons** | Arrondis, Doux, Rectangulaires. |
+| **Disposition** | Comment le Live et le Guide rangent les matchs (section 3 bis). **Actuelle** (par défaut), **Tableau**, **Maintenant**, **Affiches**, **Chaînes**. |
 | **Forme des cartes** | Automatique (affiche sous 900 px), Affiche verticale (2:3), Carte large (2,4:1). |
 | **Couleur des cartes** | Dégradé extérieur → domicile, Dégradé diagonal, Deux couleurs pleines, Couleur de l'équipe à domicile, Couleur de la ligue, Foncé. |
 | **Mode TV / tablette** | Zoom 1,3×, contour de focus très visible, navigation aux flèches et Entrée (télécommande). Dans l'APK sur une télé (Chromecast avec Google TV), il s'allume tout seul à la première ouverture, avec le mode câble ; un réglage déjà fait n'est jamais repris. |
