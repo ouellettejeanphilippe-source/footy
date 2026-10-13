@@ -2,6 +2,14 @@
 ## En cours
 
 ## Fait
+- 2026-10-13 - **« garder vieux guide plutôt que nouveau »** (précisé : le guide d'installation, pas l'onglet Guide).
+
+  - **Fait.** La page Plus → `🧩 Script` reprend mot pour mot l'ancien guide (Firefox + uBlock Origin recommandé, réglages Firefox, étapes uBlock / Tampermonkey / script), écrit dans `index.html` (`#guide-installation`) ; la fenêtre du début (« 🧩 Installation des Scripts ») en recopie le contenu. Le guide par navigateur vers l'extension Chrome est retiré (`guideInstallationHtml`, `quelNavigateur`, `telechargerExtension`, `copierTexte`, leur CSS). La fenêtre s'ouvre une seule fois (`hasSeenScriptModal` vide, posé à « true ») et pas si un nettoyeur tourne déjà ; plus de nouvel affichage pour Chrome ni de proposition de mise à jour de l'extension.
+  - **Gardé.** L'extension `extension/` (elle se charge depuis son dossier) et `zipExtension` (testé, plus appelé par l'interface).
+  - **Tests** : `unit_extension` (quand la fenêtre s'ouvre ; contenu de l'ancien guide ; le test « plus aucun lien vers uBlock pour Chrome » retiré, puisque l'ancien guide en a) ; `test_app_boot` « la fenêtre du début montre l'ancien guide des scripts, une seule fois ». `npm test` : 117 unitaires, 54 Playwright (1 ignoré, comme avant).
+  - **Fichiers** : `index.html`, `js/installation.js`, `js/multiview.js`, `styles.css`, `sw.js`, `tests/unit_extension.test.js`, `tests/test_app_boot.spec.js`, `FEATURES.md`, `README.md`, `docs/ARCHITECTURE.md`.
+  - **Version** : `sports-guide-v56`.
+  - **Ce qui reste.** Les liens uBlock Origin pour Chrome et Edge de l'ancien guide mènent à une extension qui ne s'installe plus sur Chrome (Manifest V2 retiré) : gardés tels quels, comme demandé.
 - 2026-10-13 - **« Ça pogne pas toujours le bon iframe (genre chat) ».**
 
   - **Cause.** Sans `<video>` dans la page, `findAndClean` (`multiview-cleaner.user.js`) gardait la plus grande iframe : une colonne de discussion 350 × 700 bat un lecteur 640 × 360. La tuile était réduite au chat, et `cleaned` ne se relevant plus, le lecteur n'avait plus sa chance.
