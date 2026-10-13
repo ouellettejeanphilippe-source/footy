@@ -2,6 +2,19 @@
 ## En cours
 
 ## Fait
+- 2026-10-13 - **« Ya moyen d'avoir le choix des différents layouts ? » — « Les 4, avec l'actuelle toujours comme default ».**
+
+  - **Origine.** Quatre refontes du Live et du Guide maquettées avec l'utilisateur sur le programme réel du 13 octobre (artefacts) : Tableau, Maintenant, Affiches, Chaînes. Ses demandes en chemin, tenues partout : hiérarchie état → score → équipes → une action → ligue ; aucun titre ni sous-titre (« juste le ui ») ; pas de dégradé imposé ; texte qui s'adapte à l'écran (« 4k, 1080p, tablette, téléphone ») ; et dans le Guide, **jamais un match en cours avant l'heure actuelle** (« on dirait que c'est passé »).
+  - **Fait.**
+    - `js/dispositions.js`, sans import : rendu HTML des quatre dispositions à partir de fiches préparées ; `classerPourGuide` (en cours, à venir par heure, terminés repliés) ; la couleur suit « Couleur des cartes » (`fondEquipes`).
+    - `js/ui.js` : `dispositionChoisie`, `ficheMatch` (un match qui n'est pas en cours et dont la fin prévue est passée compte comme terminé : hors ligne, les matchs de 12:45 restaient « à venir » à 20:40), `rendreAvecDisposition` (branché dans `buildEPGInner` après le filtrage), une écoute de clics sur `#marea`, `redessinerDisposition`.
+    - `js/main.js` : avec une disposition, la mise à jour des scores redessine au lieu de chercher les cartes `mb-<id>`.
+    - Options → **Disposition** (`index.html`, `js/multiview.js`), « Actuelle » par défaut. CSS en multiples de `--u` (§11 bis de `styles.css`).
+  - **Tests** : `unit_dispositions` (défaut, ordre du Guide, rendu des huit vues sans titre, chaque match cliquable, grille des Chaînes qui commence maintenant, échappement, Options et précache) ; deux suites dans `test_app_boot` (les quatre dispositions sur les vraies données, une fiche qui s'ouvre, retour à « Actuelle » ; aucun débordement à 390 px), passées trois fois de suite (`--repeat-each 3`). `npm test` : 103/103 unitaires, 48 Playwright (1 ignoré, comme avant).
+  - **Au passage** : `unit_lhjmq` tombait depuis le 13 octobre sur la branche principale aussi — `parseOnHockey` date ses lignes du jour réel et les matchs du test sont du 12. La date est fixée dans le test.
+  - **Fichiers** : `js/dispositions.js` (nouveau), `js/ui.js`, `js/main.js`, `js/multiview.js`, `index.html`, `styles.css`, `sw.js`, `tests/unit_dispositions.test.js` (nouveau), `tests/test_app_boot.spec.js`, `tests/unit_lhjmq.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`.
+  - **Version** : `sports-guide-v52`.
+  - **Ce qui reste** : la police Geist des maquettes n'est pas reprise (l'application n'a aucune police distante, hors ligne compris) ; le thème clair des maquettes non plus (l'application est sombre). Les dispositions ne montrent pas « Autres streams ».
 - 2026-10-12 - **« Faire que les sites genre pandastream marchent à nouveau (liens) » / « le vidéo charge pas » « sur ces domaines ».**
 
   - **Constaté.**

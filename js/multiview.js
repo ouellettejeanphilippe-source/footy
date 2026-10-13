@@ -4168,6 +4168,8 @@ export function initPrefs() {
   if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
   var selCardShape = document.getElementById('pref-card-shape');
   if(selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
+  var selDisposition = document.getElementById('pref-disposition');
+  if(selDisposition) selDisposition.value = userPrefs.disposition || 'actuelle';
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
       selAccentColor.value = userPrefs.accent || '#0a84ff';
@@ -4232,6 +4234,8 @@ export function applyUserPrefs() {
   userPrefs.cardStyle = 'glass';
   var cardShapeSel = document.getElementById('pref-card-shape');
   if(cardShapeSel) userPrefs.cardShape = cardShapeSel.value;
+  var dispositionSel = document.getElementById('pref-disposition');
+  if(dispositionSel) userPrefs.disposition = dispositionSel.value;
   if(btnSel) userPrefs.btnShape = btnSel.value;
   if(accentColorSel) userPrefs.accent = accentColorSel.value;
   var hoverSel = document.getElementById('pref-hover-style');
@@ -4481,7 +4485,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v51';
+export var VERSION_APP = 'sports-guide-v52';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

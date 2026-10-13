@@ -273,6 +273,17 @@
       </div>
 
       <div class="field row">
+        <div class="field-label">Disposition<small>Comment le Live et le Guide rangent les matchs. La couleur suit « Couleur des cartes ».</small></div>
+        <select id="pref-disposition" class="btn select" onchange="applyUserPrefs()">
+          <option value="actuelle" selected>Actuelle</option>
+          <option value="tableau">Tableau : scores en liste, par ligue</option>
+          <option value="maintenant">Maintenant : une affiche, puis ce qui joue</option>
+          <option value="affiches">Affiches : mur de tuiles</option>
+          <option value="chaines">Chaînes : guide télé, lisible de loin</option>
+        </select>
+      </div>
+
+      <div class="field row">
         <div class="field-label">Forme des cartes<small>L'affiche verticale (2:3) range trois matchs par ligne sur téléphone.</small></div>
         <select id="pref-card-shape" class="btn select" onchange="applyUserPrefs()">
           <option value="auto" selected>Automatique</option>

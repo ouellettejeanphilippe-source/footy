@@ -15,7 +15,7 @@ import { mergeMatches } from './match.js';
 import { appartientALaFenetre, jourDepasse, DUREE_LARGE_MIN } from './nuit.js';
 import { etatCacheServeur, rattrapageNecessaire, ciblesDeRattrapage, CIBLES_AVEC_PONT, CIBLES_SANS_PONT, INTERVALLE_RATTRAPAGE_MS } from './rattrapage.js';
 import { isMatchPair } from './match.js';
-import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId, majBandeauCache } from './ui.js';
+import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId, majBandeauCache, dispositionChoisie, redessinerDisposition } from './ui.js';
 import { setMatches } from './state.js';
 import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
 
@@ -102,6 +102,7 @@ export function reevaluerFinsPresumees(now) {
 /* Les identifiants des cartes rendues dans le Live, et ceux qui devraient l'être. */
 function liveViewIsStale(matches) {
     if (S.filter !== 'live') return false;
+    if (dispositionChoisie() !== 'actuelle') return false;   // updateLiveScores redessine déjà
     var container = document.getElementById('marea');
     if (!container) return false;
     var now = new Date();
@@ -143,6 +144,13 @@ function poserMinuteAuPied(card, texte) {
 }
 
 export function updateLiveScores(matches) {
+    /* Une disposition autre qu'« actuelle » (js/dispositions.js) n'a pas les cartes
+       `mb-<id>` que la mise à jour en place sait modifier : on la redessine entière,
+       défilement conservé. C'est une fois par minute au plus. */
+    if (dispositionChoisie() !== 'actuelle') {
+        if (S.filter === 'live' || S.filter === 'all') redessinerDisposition();
+        return;
+    }
     var i = 0;
     function patchCard(m, cached) {
         var card = cached.el;
