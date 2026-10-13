@@ -142,65 +142,38 @@ test('le zip de l\'extension se relit, fichier pour fichier', async () => {
   assert.strictEqual(inst.crc32(Buffer.from('123456789')), 0xCBF43926, 'CRC-32 de référence');
 });
 
-const UA = {
-  chrome: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-  edge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0',
-  firefox: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
-  android: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'
-};
-
-test('le navigateur reconnu, et la page de ses extensions', () => {
-  assert.deepStrictEqual(inst.quelNavigateur({ userAgent: UA.chrome }), { id: 'chromium', nom: 'Chrome', page: 'chrome://extensions' });
-  assert.strictEqual(inst.quelNavigateur({ userAgent: UA.edge }).page, 'edge://extensions');
-  assert.strictEqual(inst.quelNavigateur({ userAgent: UA.chrome, brave: {} }).page, 'brave://extensions');
-  assert.strictEqual(inst.quelNavigateur({ userAgent: UA.firefox }).id, 'firefox');
-  assert.strictEqual(inst.quelNavigateur({ userAgent: UA.android }).id, 'mobile');
-});
-
 test('la fenêtre du début : quand elle s\'ouvre', () => {
-  const chrome = inst.quelNavigateur({ userAgent: UA.chrome });
-  const firefox = inst.quelNavigateur({ userAgent: UA.firefox });
   const rien = inst.etatProtection({}, { available: false });
   const script = inst.etatProtection({}, { available: true, version: '1.11' });
   const ext = inst.etatProtection({ __footyExtension: inst.VERSION_EXTENSION }, { available: true });
-  const vieille = inst.etatProtection({ __footyExtension: '0.9' }, { available: true });
 
-  assert.strictEqual(inst.doitProposerGuide(null, chrome, rien), true, 'premier lancement');
-  assert.strictEqual(inst.doitProposerGuide('true', chrome, rien), true, 'a vu l\'ancien guide, qui envoyait vers un uBlock mort');
-  assert.strictEqual(inst.doitProposerGuide('true', firefox, rien), false, 'Firefox : l\'ancien guide valait');
-  assert.strictEqual(inst.doitProposerGuide(inst.GUIDE_VU, chrome, rien), false, 'une fois suffit');
-  assert.strictEqual(inst.doitProposerGuide(null, chrome, script), false, 'un nettoyeur tourne (Tampermonkey, bureau, APK)');
-  assert.strictEqual(inst.doitProposerGuide(null, chrome, ext), false, 'extension à jour');
-  assert.strictEqual(inst.doitProposerGuide(inst.GUIDE_VU, chrome, vieille), true, 'extension périmée');
-  assert.strictEqual(inst.doitProposerGuide('maj-' + inst.VERSION_EXTENSION, chrome, vieille), false, 'mise à jour déjà proposée');
+  assert.strictEqual(inst.doitProposerGuide(null, rien), true, 'premier lancement');
+  assert.strictEqual(inst.doitProposerGuide(inst.GUIDE_VU, rien), false, 'une fois suffit');
+  assert.strictEqual(inst.doitProposerGuide('2', rien), false, 'a vu le guide retiré : ne revoit pas la fenêtre');
+  assert.strictEqual(inst.doitProposerGuide(null, script), false, 'un nettoyeur tourne (Tampermonkey, bureau, APK)');
+  assert.strictEqual(inst.doitProposerGuide(null, ext), false, 'extension');
 });
 
-test('la fenêtre du début : ce qu\'elle dit', () => {
-  const chrome = inst.guideInstallationHtml(inst.quelNavigateur({ userAgent: UA.chrome }), inst.etatProtection({}, null));
-  assert.match(chrome, /Aucune protection détectée/);
-  assert.ok(chrome.indexOf('l\'extension Guide des Sports') < chrome.indexOf('Firefox : uBlock'), 'le chemin de Chrome d\'abord');
-  for (const etape of ['telechargerExtension(this)', 'Extraire tout', 'chrome://extensions', 'Mode développeur', 'Charger l\'extension non empaquetée', 'rechargez la page']) {
-    assert.ok(chrome.includes(etape), etape);
+/* « garder vieux guide plutôt que nouveau » (13 octobre 2026) : la page et la fenêtre
+   montrent l'ancien guide (Firefox recommandé, uBlock Origin, Tampermonkey, le script). */
+test('l\'ancien guide : la page Script, reprise par la fenêtre du début', () => {
+  const html = lire('index.html');
+  const debut = html.indexOf('<section id="script-page"');
+  const page = html.slice(debut, html.indexOf('</section>', debut));
+  for (const texte of ['🧩 Installation des scripts', 'Recommandation : Firefox + uBlock Origin', 'Étape 1 : le bloqueur de publicités (uBlock Origin)',
+    'Étape 2 : le gestionnaire de scripts (Tampermonkey)', 'Étape 3 : le script de nettoyage', 'multiview-cleaner.user.js', 'about:config', 'id="guide-installation"']) {
+    assert.ok(page.includes(texte), texte);
   }
-  const ff = inst.guideInstallationHtml(inst.quelNavigateur({ userAgent: UA.firefox }), inst.etatProtection({}, null));
-  assert.ok(ff.indexOf('Firefox : uBlock') < ff.indexOf('l\'extension Guide des Sports'), 'le chemin de Firefox d\'abord');
-  assert.ok(ff.includes('about:config') && ff.includes('installerScriptUtilisateur()'));
-  const ok = inst.guideInstallationHtml(inst.quelNavigateur({ userAgent: UA.chrome }), inst.etatProtection({ __footyExtension: inst.VERSION_EXTENSION }, null));
-  assert.match(ok, /Extension Guide des Sports active/);
-  assert.match(ok, /<details><summary class="help">Revoir l'installation/);
-});
-
-test('plus aucun lien vers uBlock Origin pour Chrome ou Edge', () => {
-  const morts = ['cjpalhdlnbpafiamejdnhcphjbkeiagm', 'odfafepnkmbhccpbejgmiehpchacaeak'];
-  for (const f of ['index.html', 'js/multiview.js', 'js/installation.js', 'README.md']) {
-    for (const id of morts) assert.ok(!lire(f).includes(id), `${f} pointe encore vers ${id}`);
-  }
+  assert.ok(!page.includes('Charger l\'extension non empaquetée'), 'plus le guide de l\'extension');
+  assert.ok(html.includes('>🧩 Script</button>'), 'menu Plus');
+  const mv = lire('js/multiview.js');
+  assert.ok(mv.includes("document.getElementById('guide-installation')"), 'la fenêtre reprend la page');
 });
 
 test('le module est précaché, et les fonctions du guide sont exposées', () => {
   assert.ok(lire('sw.js').includes("'./js/installation.js'"));
   const mv = lire('js/multiview.js');
-  for (const f of ['telechargerExtension', 'copierTexte', 'installerScriptUtilisateur']) {
+  for (const f of ['installTampermonkey', 'installerScriptUtilisateur']) {
     assert.ok(mv.includes(`window.${f} = ${f};`), f);
   }
 });

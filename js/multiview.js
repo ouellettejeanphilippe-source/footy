@@ -2,7 +2,7 @@ import { fetchPage } from './utils.js';
 import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, copyToClipboard, showPage, syncNavState, tailleStockageKo } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, tailleStockageKo } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
@@ -13,7 +13,7 @@ import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus, waitForBridge } from './embed-bridge.js';
-import { guideInstallationHtml, quelNavigateur, etatProtection, doitProposerGuide, zipExtension, GUIDE_VU, VERSION_EXTENSION, DOSSIER_EXTENSION } from './installation.js';
+import { etatProtection, doitProposerGuide, GUIDE_VU } from './installation.js';
 import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
@@ -4492,7 +4492,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v55';
+export var VERSION_APP = 'sports-guide-v56';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4820,8 +4820,6 @@ export function openLogsPage() {
 }
 
 export function openScriptPage() {
-    var cible = document.getElementById('guide-installation');
-    if (cible) cible.innerHTML = guideInstallationHtml(quelNavigateur(), etatProtection(window, getBridgeStatus()));
     showPage('script-page');
 }
 
@@ -4832,8 +4830,9 @@ export function openScriptPage() {
 initPrefs(); // Run once on load
 
 
-/* La fenêtre du guide de protection des lecteurs (js/installation.js). Le nom est
-   resté : main.js et le menu l'appellent ainsi. */
+/* La fenêtre du guide d'installation des scripts. Elle reprend le contenu de la page
+   Plus → 🧩 Script (#guide-installation, index.html) : « garder vieux guide plutôt que
+   nouveau » (13 octobre 2026). */
 export function installTampermonkey() {
     var existing = document.getElementById('tm-modal');
     if (existing) existing.remove();
@@ -4841,7 +4840,7 @@ export function installTampermonkey() {
     var modal = document.createElement('div');
     modal.id = 'tm-modal';
     modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-label', 'Bloquer les publicités des lecteurs');
+    modal.setAttribute('aria-label', 'Installation des scripts');
     modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.97);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:14px;max-height:85vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:92%;max-width:620px;-webkit-overflow-scrolling:touch;color:#fff;';
 
     var closeBtn = document.createElement('div');
@@ -4852,11 +4851,13 @@ export function installTampermonkey() {
 
     var title = document.createElement('h2');
     title.style.cssText = 'margin:0;padding-right:40px;font-size:18px;font-weight:bold;';
-    title.textContent = '🛡️ Bloquer les publicités des lecteurs';
+    title.textContent = '🧩 Installation des Scripts';
     modal.appendChild(title);
 
+    var guide = document.getElementById('guide-installation');
     var contenu = document.createElement('div');
-    contenu.innerHTML = guideInstallationHtml(quelNavigateur(), etatProtection(window, getBridgeStatus()));
+    contenu.className = 'stack prose';
+    contenu.innerHTML = guide ? guide.innerHTML : '';
     modal.appendChild(contenu);
 
     document.body.appendChild(modal);
@@ -4875,15 +4876,14 @@ export function installTampermonkey() {
     }, 10);
 }
 
-/* Au démarrage : la fenêtre ne s'ouvre que si rien ne protège encore les lecteurs (ou
-   que l'extension est périmée), après avoir laissé au script ou à l'extension le temps
-   de s'annoncer. */
+/* Au démarrage : la fenêtre s'ouvre une fois, et seulement si rien ne protège encore
+   les lecteurs, après avoir laissé au script ou à l'extension le temps de s'annoncer. */
 export function proposerGuideAuDemarrage() {
     return waitForBridge(1500).then(function() {
         var vu = safeStorageGet('hasSeenScriptModal');
         var etat = etatProtection(window, getBridgeStatus());
-        if (!doitProposerGuide(vu, quelNavigateur(), etat)) return false;
-        safeStorageSet('hasSeenScriptModal', etat.type === 'extension' ? 'maj-' + VERSION_EXTENSION : GUIDE_VU);
+        if (!doitProposerGuide(vu, etat)) return false;
+        safeStorageSet('hasSeenScriptModal', GUIDE_VU);
         installTampermonkey();
         return true;
     });
@@ -4894,34 +4894,6 @@ export function installerScriptUtilisateur() {
     window.location.href = './multiview-cleaner.user.js';
 }
 
-export function telechargerExtension(bouton) {
-    var etat = bouton && bouton.parentElement ? bouton.parentElement.querySelector('.guide-zip-etat') : null;
-    if (etat) etat.textContent = 'Préparation…';
-    if (bouton) bouton.disabled = true;
-    return zipExtension().then(function(octets) {
-        var url = URL.createObjectURL(new Blob([octets], { type: 'application/zip' }));
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = DOSSIER_EXTENSION + '.zip';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
-        if (etat) etat.textContent = '✅ ' + DOSSIER_EXTENSION + '.zip téléchargé';
-    }).catch(function(e) {
-        if (etat) etat.textContent = '❌ ' + (e && e.message || e) + ' — utilisez le lien du dépôt plus bas.';
-    }).finally(function() {
-        if (bouton) bouton.disabled = false;
-    });
-}
-
-export function copierTexte(texte, bouton) {
-    return copyToClipboard(texte).then(function() {
-        if (bouton) bouton.textContent = '✅ Copié';
-    }, function() {
-        if (bouton) bouton.textContent = 'Copiez à la main';
-    });
-}
 
 
 
@@ -5180,8 +5152,6 @@ window.openOptionsPage = openOptionsPage;
 window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
 window.installTampermonkey = installTampermonkey;
-window.telechargerExtension = telechargerExtension;
-window.copierTexte = copierTexte;
 window.installerScriptUtilisateur = installerScriptUtilisateur;
 
 export function exportSettings() {

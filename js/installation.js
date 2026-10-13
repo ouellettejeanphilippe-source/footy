@@ -1,45 +1,25 @@
-/* Le guide d'installation de la protection des lecteurs : la fenêtre du début et la page
-   Plus → 🧩 Script, qui disent la même chose.
+/* La protection des lecteurs : ce qui tourne déjà, quand ouvrir la fenêtre du début, et
+   le zip de l'extension maison (extension/).
 
-   « Ya moyen d'améliorer le ad block sur Chrome pour éviter que ça soit juste Firefox
-   qui peut ? » (13 octobre 2026). uBlock Origin ne s'installe plus sur Chrome depuis le
-   retrait de Manifest V2 ; le lien du guide menait à une page morte. Sur Chrome, Edge,
-   Brave et Opera, c'est désormais l'extension maison (extension/) : blocage réseau des
-   listes d'uBlock, script de nettoyage, et levée du refus d'iframe. Sur Firefox, qui
-   n'accepte pas durablement une extension non signée, on garde uBlock Origin et
-   Tampermonkey.
-
-   Le guide part de ce qui est déjà en place (`etatProtection`) et du navigateur
-   (`quelNavigateur`), et ne montre d'abord que le chemin qui le concerne.
+   Le guide lui-même est l'ancien (uBlock Origin, Tampermonkey, le script ; Firefox
+   recommandé), écrit dans index.html (#guide-installation, page Plus → 🧩 Script) et
+   repris par la fenêtre du début : « garder vieux guide plutôt que nouveau »
+   (13 octobre 2026). Le guide par navigateur qui menait à l'extension a été retiré ;
+   l'extension reste dans le dépôt et se charge depuis son dossier.
 
    Sans import : `getBridgeStatus` est passé par l'appelant. */
 
-/* Doit suivre "version" de extension/manifest.json (vérifié par unit_extension). En
-   dessous, l'application propose la mise à jour. */
+/* Doit suivre "version" de extension/manifest.json (vérifié par unit_extension). */
 export var VERSION_EXTENSION = '1.0';
 
-/* La valeur de `hasSeenScriptModal` qui veut dire « a vu le guide de l'extension ».
-   L'ancienne valeur (« true ») a vu l'ancien guide : un navigateur Chromium sans
-   protection le revoit une fois, puisque l'ancien l'envoyait vers une page morte. */
-export var GUIDE_VU = '2';
+/* La valeur de `hasSeenScriptModal` posée après la fenêtre du début. Toute valeur non
+   vide veut dire « déjà vue » (« 2 » vient du guide retiré). */
+export var GUIDE_VU = 'true';
 
 /* Ce que le zip contient, dans le dossier qu'il crée. Seulement ce que Chrome charge :
    pas le gabarit ni le générateur. */
 export var FICHIERS_EXTENSION = ['manifest.json', 'fond.js', 'relais.js', 'nettoyeur.js', 'icone.png', 'regles/blocage.json'];
 export var DOSSIER_EXTENSION = 'guide-des-sports-extension';
-var ZIP_DEPOT = 'https://github.com/ouellettejeanphilippe-source/footy/archive/refs/heads/main.zip';
-
-export function quelNavigateur(nav) {
-  var n = nav || (typeof navigator !== 'undefined' ? navigator : {});
-  var ua = String(n.userAgent || '');
-  if (/Android|iPhone|iPad|iPod/i.test(ua)) return { id: 'mobile', nom: 'téléphone' };
-  if (/Firefox\//.test(ua)) return { id: 'firefox', nom: 'Firefox' };
-  if (/Edg\//.test(ua)) return { id: 'chromium', nom: 'Edge', page: 'edge://extensions' };
-  if (/OPR\//.test(ua)) return { id: 'chromium', nom: 'Opera', page: 'opera://extensions' };
-  if (n.brave) return { id: 'chromium', nom: 'Brave', page: 'brave://extensions' };
-  if (/Chrome\/|Chromium\//.test(ua)) return { id: 'chromium', nom: 'Chrome', page: 'chrome://extensions' };
-  return { id: 'autre', nom: 'ce navigateur' };
-}
 
 /* { type: 'extension' | 'script' | 'aucune', version, aJour } */
 export function etatProtection(win, pont) {
@@ -60,95 +40,10 @@ export function versionInferieure(a, b) {
   return false;
 }
 
-/* La fenêtre s'ouvre-t-elle au démarrage ? Jamais si un nettoyeur tourne déjà (extension,
-   script, version de bureau ou APK, qui l'injectent), sauf extension périmée. */
-export function doitProposerGuide(vu, nav, etat) {
-  if (etat.type === 'extension') return !etat.aJour && vu !== 'maj-' + VERSION_EXTENSION;
-  if (etat.type === 'script') return false;
-  if (!vu) return true;
-  return nav.id === 'chromium' && vu !== GUIDE_VU;
-}
-
-function lienStore(url, classe, texte) {
-  return '<a href="' + url + '" target="_blank" rel="noopener" class="btn store ' + classe + '">' + texte + '</a>';
-}
-
-function bandeauEtat(etat, nav) {
-  if (etat.type === 'extension' && etat.aJour) {
-    return '<div class="panel accent guide-etat ok"><strong>✅ Extension Guide des Sports active (v' + etat.version + ')</strong>' +
-      '<p>Publicités, fenêtres surgissantes et refus d\'iframe sont pris en charge. Rien d\'autre à installer.</p></div>';
-  }
-  if (etat.type === 'extension') {
-    return '<div class="panel warn-panel guide-etat maj"><strong>⬆️ Une nouvelle version de l\'extension existe (v' + VERSION_EXTENSION + ', vous avez la v' + etat.version + ')</strong>' +
-      '<p>Téléchargez-la ci-dessous, remplacez le contenu du dossier <code>' + DOSSIER_EXTENSION + '</code> par le nouveau, puis cliquez ↻ sur l\'extension dans <code>' + (nav.page || 'chrome://extensions') + '</code>.</p></div>';
-  }
-  if (etat.type === 'script') {
-    var conseil = nav.id === 'chromium'
-      ? '<p>Sur ' + nav.nom + ', l\'extension ci-dessous bloque aussi les publicités, que uBlock Origin ne bloque plus sur Chrome. Après l\'avoir installée, désactivez le script dans Tampermonkey.</p>'
-      : '';
-    return '<div class="panel accent guide-etat ok"><strong>✅ Script de nettoyage actif (v' + etat.version + ')</strong>' + conseil + '</div>';
-  }
-  return '<div class="panel warn-panel guide-etat aucune"><strong>⚠️ Aucune protection détectée</strong>' +
-    '<p>Les lecteurs vont garder leurs publicités et leurs fenêtres surgissantes, et certains peuvent faire quitter l\'application. Quelques minutes suffisent pour les bloquer.</p></div>';
-}
-
-function sectionChromium(nav) {
-  var page = nav.page || 'chrome://extensions';
-  var nom = nav.id === 'chromium' ? nav.nom : 'Chrome, Edge, Brave ou Opera';
-  return '' +
-    '<div class="panel guide-chromium">' +
-      '<div class="panel-title"><span>🧩 ' + nom + ' : l\'extension Guide des Sports</span></div>' +
-      '<p class="help">Une seule extension remplace uBlock Origin, Tampermonkey et le script : elle bloque les publicités (les mêmes listes qu\'uBlock), ferme les fenêtres surgissantes, nettoie les lecteurs et laisse s\'afficher ceux qui refusent l\'iframe. Elle n\'agit que dans l\'application, sauf le blocage des publicités, qui vaut partout.</p>' +
-      '<ol class="guide-etapes">' +
-        '<li><strong>Téléchargez l\'extension</strong> : <button type="button" class="btn primary" onclick="telechargerExtension(this)">⬇️ Télécharger l\'extension (.zip)</button> <span class="help guide-zip-etat"></span></li>' +
-        '<li><strong>Décompressez le fichier</strong> (clic droit → « Extraire tout… »). Rangez le dossier <code>' + DOSSIER_EXTENSION + '</code> à un endroit où il restera, par exemple dans Documents : ' + nom + ' le relit à chaque démarrage, il ne faut pas le supprimer.</li>' +
-        '<li><strong>Ouvrez la page des extensions</strong> dans un nouvel onglet : <code>' + page + '</code> <button type="button" class="btn" onclick="copierTexte(\'' + page + '\', this)">Copier l\'adresse</button><br><span class="help">Un site n\'a pas le droit d\'ouvrir cette page lui-même : collez l\'adresse dans la barre d\'adresse.</span></li>' +
-        '<li><strong>Activez « Mode développeur »</strong>, l\'interrupteur en haut à droite de cette page (dans la colonne de gauche sur Edge).</li>' +
-        '<li><strong>Cliquez « Charger l\'extension non empaquetée »</strong> et choisissez le dossier <code>' + DOSSIER_EXTENSION + '</code> (celui qui contient <code>manifest.json</code>).</li>' +
-        '<li><strong>Revenez ici et rechargez la page.</strong> Le bandeau en haut de ce guide passe au vert.</li>' +
-      '</ol>' +
-      '<p class="help">Déjà installés ? <strong>uBlock Origin</strong> ne s\'installe plus sur Chrome (Google a retiré Manifest V2) ; là où il tourne encore, comme <strong>uBlock Origin Lite</strong>, il peut rester : il masque en plus les emplacements vides. Dans <strong>Tampermonkey</strong>, désactivez « Multiview Stream Cleaner », sinon le nettoyage tourne deux fois. Sur Brave, gardez les boucliers.</p>' +
-      '<p class="help">Si le bouton de téléchargement échoue : <a href="' + ZIP_DEPOT + '" target="_blank" rel="noopener">téléchargez le dépôt</a> et choisissez son dossier <code>extension</code> à l\'étape 5.</p>' +
-    '</div>';
-}
-
-function sectionFirefox() {
-  return '' +
-    '<div class="panel guide-firefox">' +
-      '<div class="panel-title"><span>🦊 Firefox : uBlock Origin + le script</span></div>' +
-      '<p class="help">Firefox garde uBlock Origin complet. Il n\'accepte pas durablement une extension non signée : on y passe donc par Tampermonkey.</p>' +
-      '<ol class="guide-etapes">' +
-        '<li><strong>Installez uBlock Origin</strong> : ' + lienStore('https://addons.mozilla.org/fr/firefox/addon/ublock-origin/', 'firefox', 'uBlock Origin') + '</li>' +
-        '<li><strong>Installez Tampermonkey</strong> : ' + lienStore('https://addons.mozilla.org/fr/firefox/addon/tampermonkey/', 'firefox', 'Tampermonkey') + '</li>' +
-        '<li><strong>Installez le script</strong> : <button type="button" class="btn primary" onclick="installerScriptUtilisateur()">Installer le script</button> puis « Installer » dans Tampermonkey.</li>' +
-        '<li><strong>Pages qui refusent l\'iframe</strong> (« Firefox ne peut pas ouvrir cette page ») : ' + lienStore('https://addons.mozilla.org/fr/firefox/addon/ignore-x-frame-options-header/', 'firefox', 'Ignore X-Frame-Options Header') + '</li>' +
-        '<li><strong>Lecture automatique</strong> : dans <code>about:config</code>, <code>media.autoplay.default</code> = <code>0</code>, <code>media.autoplay.blocking_policy</code> = <code>0</code>, <code>media.block-autoplay-until-in-foreground</code> = <code>false</code>. Sinon une tuile ne démarre qu\'après un clic, et seulement au premier plan.</li>' +
-        '<li><strong>Protection contre le pistage</strong> : bouclier à gauche de l\'adresse → la désactiver <em>pour ce site</em>. Elle coupe les cookies dont plusieurs lecteurs ont besoin.</li>' +
-      '</ol>' +
-      '<p class="help">Rechargez ensuite l\'application. Si une tuile reste vide, son bouton ⏭ passe à la source suivante.</p>' +
-    '</div>';
-}
-
-function sectionMobile() {
-  return '' +
-    '<div class="panel guide-mobile">' +
-      '<div class="panel-title"><span>📱 Sur téléphone</span></div>' +
-      '<p class="help">Les navigateurs de téléphone ne posent pas de script dans les lecteurs. L\'application Android (APK) embarque le nettoyage et le blocage des publicités : rien à installer d\'autre. Sur un ordinateur, rouvrez ce guide pour l\'extension.</p>' +
-    '</div>';
-}
-
-/* Le guide entier. Le chemin du navigateur courant d'abord ; les autres repliés. */
-export function guideInstallationHtml(nav, etat) {
-  var principal, autres = [];
-  if (nav.id === 'firefox') { principal = sectionFirefox(); autres.push(sectionChromium({ id: 'autre' })); }
-  else if (nav.id === 'mobile') { principal = sectionMobile(); autres.push(sectionChromium({ id: 'autre' }), sectionFirefox()); }
-  else { principal = sectionChromium(nav); autres.push(sectionFirefox()); }
-  var replie = etat.type === 'extension' && etat.aJour;
-  return '<div class="stack prose guide-installation">' +
-    bandeauEtat(etat, nav) +
-    (replie ? '<details><summary class="help">Revoir l\'installation</summary>' + principal + '</details>' : principal) +
-    '<details class="guide-autres"><summary class="help">Un autre navigateur ?</summary><div class="stack">' + autres.join('') + '</div></details>' +
-  '</div>';
+/* La fenêtre s'ouvre-t-elle au démarrage ? Une seule fois, et jamais si un nettoyeur
+   tourne déjà (extension, script, version de bureau ou APK, qui l'injectent). */
+export function doitProposerGuide(vu, etat) {
+  return !vu && etat.type === 'aucune';
 }
 
 /* ── Le zip ─────────────────────────────────────────────────────────────────────

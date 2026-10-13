@@ -27,13 +27,13 @@ Dans le navigateur, « Installer l'application » (ou « Ajouter à l'écran d'a
 
 Les pages des lecteurs vidéo sont chargées telles quelles dans le lecteur. Sans aide, elles gardent leurs fenêtres surgissantes et leurs calques, et certaines refusent de s'afficher dans un cadre. Le script **Multiview Stream Cleaner** (`multiview-cleaner.user.js`) règle cela :
 
-- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script. `Plus → 🛡️ Bloqueur de pub → Télécharger l'extension`, extraire le dossier, puis dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier. La fenêtre du début montre ces étapes.
+- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script. Dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier `extension/` du dépôt. Le guide de l'application (`Plus → 🧩 Script`) ne la mentionne pas : c'est l'ancien guide, uBlock Origin + Tampermonkey + le script.
 - **Firefox** :
   1. installez **uBlock Origin** (bloqueur de publicités) ;
   2. installez **Tampermonkey** (gestionnaire de scripts) ;
-  3. dans l'application, `Plus → 🛡️ Bloqueur de pub → Installer le script` (ou ouvrez [multiview-cleaner.user.js](./multiview-cleaner.user.js) et acceptez l'installation).
+  3. dans l'application, `Plus → 🧩 Script → Installer le script` (ou ouvrez [multiview-cleaner.user.js](./multiview-cleaner.user.js) et acceptez l'installation).
 
-Ce que le script apporte : blocage des fenêtres surgissantes dès le premier octet de la page, nettoyage autour du lecteur, lecture automatique, une seule vidéo avec le son, bascule automatique de source, mesure du débit, et le **pont** qui lit les pages des sources depuis votre adresse quand les proxys sont refusés. Options → Réseau & proxys indique s'il est actif. Firefox demande quelques réglages en plus, expliqués sur la page 🛡️ Bloqueur de pub. Après une modification du script, `node extension/construire.mjs --script` remet l'extension à jour (`node extension/construire.mjs` refait aussi ses règles de blocage, après `cd mobile && npm install`).
+Ce que le script apporte : blocage des fenêtres surgissantes dès le premier octet de la page, nettoyage autour du lecteur, lecture automatique, une seule vidéo avec le son, bascule automatique de source, mesure du débit, et le **pont** qui lit les pages des sources depuis votre adresse quand les proxys sont refusés. Options → Réseau & proxys indique s'il est actif. Firefox demande quelques réglages en plus, expliqués sur la page 🧩 Script. Après une modification du script, `node extension/construire.mjs --script` remet l'extension à jour (`node extension/construire.mjs` refait aussi ses règles de blocage, après `cd mobile && npm install`).
 
 Sur téléphone, les navigateurs ne prennent pas d'extensions : l'application fonctionne, mais sans nettoyage des lecteurs. **L'APK Android** (`mobile/`, téléphone et Chromecast avec Google TV) l'embarque : le script est posé dans chaque lecteur sans Tampermonkey, et rien à installer.
 

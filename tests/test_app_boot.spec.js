@@ -1983,38 +1983,26 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
-/* « Fait tout nécessaire, et clair dans le popup du début de comment setter ça »
-   (13 octobre 2026). Un visiteur Chrome qui avait vu l'ancien guide (drapeau « true »)
-   le revoit une fois, puisque l'ancien l'envoyait vers uBlock Origin, qui ne s'installe
-   plus sur Chrome. Le guide montre d'abord le chemin de Chrome, et son bouton fabrique
-   le zip de l'extension à partir des fichiers servis. */
-test('la fenêtre du début guide Chrome vers l\'extension, et le zip se télécharge', async ({ page }) => {
+/* « garder vieux guide plutôt que nouveau » (13 octobre 2026). Au premier lancement sans
+   protection, la fenêtre du début montre l'ancien guide (Firefox recommandé, uBlock
+   Origin, Tampermonkey, le script), le même que la page Plus → 🧩 Script, une seule fois. */
+test('la fenêtre du début montre l\'ancien guide des scripts, une seule fois', async ({ page }) => {
   const pageErrors = await bootOffline(page);
-  /* bootOffline pose « 2 » à chaque chargement ; on remet « true » au seul suivant. */
+  /* bootOffline pose « 2 » à chaque chargement ; on l'efface au seul suivant. */
   await page.addInitScript(() => {
     try {
-      if (!sessionStorage.getItem('ancienGuide')) { sessionStorage.setItem('ancienGuide', '1'); localStorage.setItem('hasSeenScriptModal', 'true'); }
+      if (!sessionStorage.getItem('premierLancement')) { sessionStorage.setItem('premierLancement', '1'); localStorage.removeItem('hasSeenScriptModal'); }
     } catch (e) {}
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
   const fenetre = page.locator('#tm-modal');
   await expect(fenetre).toBeVisible({ timeout: 15000 });
-  await expect(fenetre).toContainText('Aucune protection détectée');
-  await expect(fenetre.locator('.guide-chromium')).toBeVisible();
-  await expect(fenetre.locator('.guide-chromium')).toContainText('chrome://extensions');
-  await expect(fenetre.locator('.guide-chromium')).toContainText('Charger l\'extension non empaquetée');
-  await expect(fenetre.locator('.guide-firefox')).toBeHidden(); // replié sous « Un autre navigateur ? »
-  expect(await page.evaluate(() => localStorage.getItem('hasSeenScriptModal'))).toBe('2');
-
-  const [telechargement] = await Promise.all([
-    page.waitForEvent('download'),
-    fenetre.locator('button', { hasText: 'Télécharger l\'extension' }).click()
-  ]);
-  expect(telechargement.suggestedFilename()).toBe('guide-des-sports-extension.zip');
-  const octets = fs.readFileSync(await telechargement.path());
-  expect(octets.subarray(0, 4).toString('hex')).toBe('504b0304');
-  expect(octets.length).toBeGreaterThan(fs.statSync(path.join(ROOT, 'extension', 'regles', 'blocage.json')).size);
-  await expect(fenetre.locator('.guide-zip-etat')).toContainText('téléchargé');
+  await expect(fenetre).toContainText('Installation des Scripts');
+  await expect(fenetre).toContainText('Recommandation : Firefox + uBlock Origin');
+  await expect(fenetre).toContainText('Étape 2 : le gestionnaire de scripts (Tampermonkey)');
+  await expect(fenetre.locator('a', { hasText: 'Installer le script' })).toHaveAttribute('href', /multiview-cleaner\.user\.js$/);
+  await expect(fenetre).not.toContainText('Charger l\'extension non empaquetée');
+  expect(await page.evaluate(() => localStorage.getItem('hasSeenScriptModal'))).toBe('true');
 
   // Une seule fois : au chargement suivant, elle ne revient pas.
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -2022,9 +2010,9 @@ test('la fenêtre du début guide Chrome vers l\'extension, et le zip se téléc
   await page.waitForTimeout(2500);
   await expect(page.locator('#tm-modal')).toHaveCount(0);
 
-  // Et Plus → Bloqueur de pub dit la même chose.
+  // Et Plus → 🧩 Script dit la même chose.
   await page.evaluate(() => window.applyFilter('script'));
-  await expect(page.locator('#guide-installation .guide-chromium')).toBeVisible();
+  await expect(page.locator('#guide-installation')).toContainText('Étape 3 : le script de nettoyage');
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

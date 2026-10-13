@@ -65,7 +65,7 @@
         <button class="nav-btn" id="filter-fav" role="menuitem" onclick="applyFilter('fav'); toggleMenu(event);">⭐ Favoris</button>
         <button class="nav-btn" id="filter-options" role="menuitem" onclick="applyFilter('options'); toggleMenu(event);">⚙️ Options</button>
         <button class="nav-btn" id="filter-logs" role="menuitem" onclick="applyFilter('logs'); toggleMenu(event);">📋 Logs</button>
-        <button class="nav-btn" id="filter-script" role="menuitem" onclick="applyFilter('script'); toggleMenu(event);">🛡️ Bloqueur de pub</button>
+        <button class="nav-btn" id="filter-script" role="menuitem" onclick="applyFilter('script'); toggleMenu(event);">🧩 Script</button>
         <button class="nav-btn menu-sep" id="btn-maj-app" role="menuitem" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">↻ Mettre à jour l'app</button>
       </div>
     </div>
@@ -437,11 +437,53 @@
 <!-- ═══ SCRIPT ════════════════════════════════════════════════════════════════ -->
 <section id="script-page" class="page" style="display:none;">
   <div class="page-head">
-    <h2>🛡️ Bloquer les publicités des lecteurs</h2>
-    <p class="help">Les lecteurs sont les pages des sites, avec leurs publicités et leurs fenêtres surgissantes. Voici comment les bloquer sur ce navigateur.</p>
+    <h2>🧩 Installation des scripts</h2>
+    <p class="help">Pour un Multivision sans publicités et avec le lecteur isolé, configurez votre navigateur en trois étapes.</p>
   </div>
-  <!-- Rempli par openScriptPage (js/installation.js) : le chemin dépend du navigateur et de ce qui est déjà installé. -->
-  <div id="guide-installation"></div>
+  <!-- Aussi le contenu de la fenêtre du début (installTampermonkey, js/multiview.js). -->
+  <div class="stack prose" id="guide-installation">
+    <div class="panel accent">
+      <strong class="accent-text">🦊 Recommandation : Firefox + uBlock Origin</strong>
+      <p>Nous recommandons <strong>Firefox</strong>. L'application fonctionne sur Chrome ou Edge, mais uBlock Origin y est bien moins efficace depuis les restrictions de Google (Manifest V3).</p>
+    </div>
+
+    <div class="panel warn-panel">
+      <div class="panel-title"><span>🦊 Firefox : ce qui bloque les tuiles, et comment l'ouvrir</span></div>
+      <p class="help">La tuile charge la page du match telle quelle et le script ne garde que la vidéo. Sur Chrome ça joue ; Firefox, lui, bloque à trois endroits. Chacun se règle.</p>
+      <ol>
+        <li><strong>Pages qui refusent l'iframe</strong> (« Firefox ne peut pas ouvrir cette page… intégrée par un autre site ») : installer l'extension <a href="https://addons.mozilla.org/fr/firefox/addon/ignore-x-frame-options-header/" target="_blank" rel="noopener">Ignore X-Frame-Options Header</a>, qui retire l'en-tête qui l'interdit.</li>
+        <li><strong>Lecture automatique et en arrière-plan</strong> : dans <code>about:config</code>, mettre <code>media.autoplay.default</code> à <code>0</code>, <code>media.autoplay.blocking_policy</code> à <code>0</code>, et <code>media.block-autoplay-until-in-foreground</code> à <code>false</code> — sinon une tuile ne démarre qu'après un clic, et seulement dans l'onglet au premier plan.</li>
+        <li><strong>Protection contre le pistage</strong> : elle coupe les cookies et le stockage des lecteurs encadrés, que plusieurs exigent. Cliquer le bouclier à gauche de l'adresse et désactiver la protection <em>pour ce site</em> (l'application), qui contient toutes les tuiles.</li>
+      </ol>
+      <p class="help">Après ces trois réglages, recharger l'application. Si une tuile reste vide, son bouton ⏭ passe à la source suivante.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>Étape 1 : le bloqueur de publicités (uBlock Origin)</span></div>
+      <p class="help">Essentiel pour bloquer les publicités intrusives des sites de streaming.</p>
+      <div class="btn-row">
+        <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" rel="noopener" class="btn store firefox">Firefox (uBlock)</a>
+        <a href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" rel="noopener" class="btn store chrome">Chrome (uBlock)</a>
+        <a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin/odfafepnkmbhccpbejgmiehpchacaeak" target="_blank" rel="noopener" class="btn store edge">Edge (uBlock)</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>Étape 2 : le gestionnaire de scripts (Tampermonkey)</span></div>
+      <p class="help">Cette extension fait tourner notre script de nettoyage vidéo.</p>
+      <div class="btn-row">
+        <a href="https://addons.mozilla.org/fr/firefox/addon/tampermonkey/" target="_blank" rel="noopener" class="btn store firefox">Firefox (Tampermonkey)</a>
+        <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener" class="btn store chrome">Chrome (Tampermonkey)</a>
+        <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener" class="btn store edge">Edge (Tampermonkey)</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>Étape 3 : le script de nettoyage</span></div>
+      <p class="help">Une fois Tampermonkey installé, cliquez ci-dessous : Tampermonkey s'ouvre, choisissez « Installer » ou « Mettre à jour ».</p>
+      <a href="https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/multiview-cleaner.user.js" target="_blank" rel="noopener" class="btn primary lg">Installer le script</a>
+    </div>
+  </div>
 </section>
 
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toasttxt"></span></div>
