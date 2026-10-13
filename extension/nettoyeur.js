@@ -67,7 +67,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.11
+// @version      1.12
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -924,6 +924,36 @@
         } catch (e) { iframe.__mvRepris = 0; cadresRepris--; }
     }
 
+    /* « Ça pogne pas toujours le bon iframe (genre chat) » (13 octobre 2026). Le choix
+       gardait la PLUS GRANDE iframe de la page, et une boîte de discussion en colonne
+       (350 × 700, soit 245 000 px²) bat un lecteur 640 × 360 (230 400 px²) : la tuile
+       était réduite au chat, et comme `cleaned` ne se relève plus, le lecteur n'avait
+       plus aucune chance. Deux garde-fous :
+         - un cadre qui se DIT discussion — par son adresse, ou par l'id, la classe, le
+           nom ou le titre de lui-même ou de ses emballages proches — est écarté, et la
+           recherche continue d'attendre le vrai lecteur ;
+         - parmi les autres, un cadre en portrait ne vaut qu'un tiers de sa surface : un
+           lecteur est en paysage, une colonne latérale presque jamais. */
+    var DISCUSSION_RE = /chat|shout|cbox|minnit|tlk\.io|rumbletalk|disqus|comment|discussion|messenger|tawk\.to/i;
+
+    function estCadreDeDiscussion(ifr) {
+        var src = ifr.getAttribute('src') || ifr.getAttribute('data-src') || '';
+        try { var u = new URL(src, location.href); src = u.hostname + u.pathname + u.search; } catch (e) {}
+        if (DISCUSSION_RE.test(src)) return true;
+        var el = ifr;
+        for (var n = 0; el && el !== document.body && n < 4; n++, el = el.parentElement) {
+            var cls = typeof el.className === 'string' ? el.className : '';
+            var noms = [el.id, cls, el.getAttribute('name'), el.getAttribute('title'), el.getAttribute('aria-label')].join(' ');
+            if (DISCUSSION_RE.test(noms)) return true;
+        }
+        return false;
+    }
+
+    function noteCadre(ifr) {
+        var w = ifr.offsetWidth, h = ifr.offsetHeight;
+        return w * h * (h > w ? 1 / 3 : 1);
+    }
+
     function findAndClean() {
         if (cleaned) return;
 
@@ -938,9 +968,10 @@
         }
 
         // Chercher une iframe (si la vidéo est dans une sous-iframe sur le site)
-        const iframes = Array.from(document.querySelectorAll('iframe')).filter(ifr => ifr.offsetWidth > 200 && ifr.offsetHeight > 150);
+        const iframes = Array.from(document.querySelectorAll('iframe'))
+            .filter(ifr => ifr.offsetWidth > 200 && ifr.offsetHeight > 150 && !estCadreDeDiscussion(ifr));
         if (iframes.length > 0) {
-            const bestIframe = iframes.sort((a, b) => (b.offsetWidth * b.offsetHeight) - (a.offsetWidth * a.offsetHeight))[0];
+            const bestIframe = iframes.sort((a, b) => noteCadre(b) - noteCadre(a))[0];
             if (!bestIframe.__mvEcouteRefus) {
                 bestIframe.__mvEcouteRefus = 1;
                 bestIframe.addEventListener('load', function () { reprendreCadreRefuse(bestIframe); });
@@ -1067,7 +1098,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.11';
+    var VERSION = '1.12';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

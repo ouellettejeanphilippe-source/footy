@@ -2,6 +2,12 @@
 ## En cours
 
 ## Fait
+- 2026-10-13 - **« Ça pogne pas toujours le bon iframe (genre chat) ».**
+
+  - **Cause.** Sans `<video>` dans la page, `findAndClean` (`multiview-cleaner.user.js`) gardait la plus grande iframe : une colonne de discussion 350 × 700 bat un lecteur 640 × 360. La tuile était réduite au chat, et `cleaned` ne se relevant plus, le lecteur n'avait plus sa chance.
+  - **Fait.** `estCadreDeDiscussion` écarte les cadres de discussion (adresse, ou id/classe/nom/titre du cadre et de ses emballages proches) ; `noteCadre` pénalise les cadres en portrait. Script en 1.12, `extension/nettoyeur.js` reconstruit (`node extension/construire.mjs --script`). `unit_soncadre` exige désormais « au moins 1.11 » au lieu de « exactement 1.11 ».
+  - **Fichiers.** `multiview-cleaner.user.js`, `extension/nettoyeur.js`, `tests/test_cleaner.spec.js`, `tests/unit_soncadre.test.js`, `docs/ARCHITECTURE.md`.
+  - **Reste.** Tampermonkey met à jour le script tout seul ; l'extension Chrome (chargée depuis le dépôt) doit être rechargée. L'APK reprend le script à sa prochaine construction.
 - 2026-10-13 - **« Enlever choix de look en haut car maintenant en bas. Aussi, pour toute carte, garder le look des cartes par défaut, mais adaptées aux autres layouts, même style » ; « le look des cartes dans Actuelle, avec les dégradés, arrondis, etc, ça devrait être la base de tous les éléments ui ».**
 
   - **Fait.**

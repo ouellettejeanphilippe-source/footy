@@ -78,6 +78,17 @@ const SITE = `<html><body style="margin:0">
         };
         document.getElementById('zone').appendChild(vs);
       }
+      /* Une page de match ordinaire : le lecteur en iframe, et une boîte de discussion en
+         colonne à côté, PLUS GRANDE que lui (350 × 700 contre 640 × 360). */
+      if (e.data === 'poser_chat_et_lecteur') {
+        var colonne = document.createElement('div');
+        colonne.id = 'colonne-chat';
+        colonne.innerHTML = '<iframe id="chat" src="/salon" style="width:350px;height:700px;border:0"></iframe>';
+        var scene = document.createElement('div');
+        scene.innerHTML = '<iframe id="lecteur-cadre" src="/embed/1" style="width:640px;height:360px;border:0"></iframe>';
+        document.getElementById('zone').appendChild(colonne);
+        document.getElementById('zone').appendChild(scene);
+      }
       if (e.data === 'poser_video_minuscule') {
         var vp = document.createElement('video');
         vp.id = 'minuscule'; vp.width = 40; vp.height = 30;
@@ -316,6 +327,19 @@ test('le décor du site disparaît quand le lecteur arrive tardivement', async (
   await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
   await expect(cadre.locator('#avis')).toHaveCount(0);
   await expect(cadre.locator('#lecteur')).toBeAttached();
+});
+
+/* « Ça pogne pas toujours le bon iframe (genre chat). » Le nettoyage gardait la plus
+   grande iframe de la page : la colonne de discussion l'emportait sur le lecteur, et la
+   tuile était réduite au chat. */
+test('le nettoyage garde le lecteur, pas la boîte de discussion plus grande que lui', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => {
+    document.getElementById('tuile').contentWindow.postMessage('poser_chat_et_lecteur', '*');
+  });
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#lecteur-cadre')).toBeAttached();
+  await expect(cadre.locator('#chat')).toHaveCount(0);
 });
 
 /* « Faire que les vidéos dans le multiview se lancent directement. » Une fois la page
