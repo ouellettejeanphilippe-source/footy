@@ -7,7 +7,12 @@ const path = require('path');
 const script = fs.readFileSync(path.join(__dirname, '..', 'multiview-cleaner.user.js'), 'utf8');
 const mv = fs.readFileSync(path.join(__dirname, '..', 'js', 'multiview.js'), 'utf8');
 
-assert.ok(/@version\s+1\.11/.test(script) && /var VERSION = '1\.11'/.test(script));
+/* Le son dans le cadre intérieur est arrivé avec la 1.11 ; une version plus récente le
+   garde, et la version annoncée à l'application suit l'en-tête. */
+const enTete = (script.match(/@version\s+(\d+)\.(\d+)/) || []).slice(1).map(Number);
+const annoncee = (script.match(/var VERSION = '(\d+)\.(\d+)'/) || []).slice(1).map(Number);
+assert.ok(enTete.length === 2 && enTete.join('.') === annoncee.join('.'), 'la version annoncée suit l\'en-tête');
+assert.ok(enTete[0] > 1 || (enTete[0] === 1 && enTete[1] >= 11), 'au moins la 1.11');
 assert.ok(/ifr\.contentWindow\.postMessage\(e\.data, '\*'\)/.test(script),
   'mv_unmute est transmis au cadre du lecteur');
 assert.ok(/addEventListener\('mousedown'[\s\S]{0,280}el\.muted = false/.test(script),
