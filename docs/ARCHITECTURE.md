@@ -18,7 +18,7 @@ Toutes les heures manipulées sont celles de New York (`America/New_York`), fuse
 
 ```
 index.html              Coquille de l'interface actuelle (onglets Live / Guide / Lecteur / Plus)
-styles.css, tv.css
+styles.css, tv.css        Style de la coquille ; tv.css n'est chargé qu'en mode TV
 sw.js                   Service worker (précache de la coquille, réseau d'abord)
 manifest.json           Manifeste PWA
 multiview-cleaner.user.js   Script utilisateur Tampermonkey (nettoyage des lecteurs, pont)
@@ -27,11 +27,15 @@ domains.json            Surcharge vivante : adresses des sources et miroirs (ré
                         structure des sources (SOURCES) et listes d'hôtes (HOSTS) — voir §6.3
 js/                     Modules de l'application (voir §3)
 js/sources/             Un adaptateur par domaine de source
-scripts/                Scripts serveur (Node) lancés par les workflows
+scripts/                Scripts serveur (Node) : calendrier, liens, vérification des lecteurs, listes de blocage
 data/                   schedule.json, streams.json (régénérés automatiquement)
 icons/                  Icônes de l'application (SVG source + PNG)
-tests/                  Tests unitaires Node et suites Playwright
-docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal)
+tests/                  Tests unitaires Node (unit_*.test.js) et suites Playwright (test_*.spec.js)
+docs/                   ARCHITECTURE.md (ce fichier), WORKLOG.md (journal), WORKLOG-archive.md (avant octobre 2026)
+desktop/                Application de bureau Electron (passe de données toutes les 30 min, script injecté)
+mobile/                 APK Android (Capacitor) : assemblage du site, liste de blocage, projet android/
+tv/                     Appli Android TV native : joue le flux nu sans page web, voir tv/README.md
+local/                  pipeline.ps1 : rattrapage à la main du pipeline de données (Windows)
 .github/workflows/      tests, scrape_schedule, scrape_streams, domains-watch
 ```
 
