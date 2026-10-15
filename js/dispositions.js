@@ -181,16 +181,6 @@ function carte(f, o, cls) {
     + '<div class="prime-foot"><span class="prime-sport">' + esc(f.sport || '') + '</span>' + pied + '</div></div>';
 }
 
-/* Sections du Live, dans l'ordre de l'application : Favoris, En direct, Dans l'heure. */
-function sectionsLive(fiches) {
-  var fav = fiches.filter(function (f) { return f.fav; });
-  return {
-    fav: fav,
-    live: fiches.filter(function (f) { return !f.fav && f.etat === 'live'; }),
-    bientot: fiches.filter(function (f) { return !f.fav && f.etat !== 'live'; }),
-  };
-}
-
 /* ── A · Tableau ── */
 function liveTableau(fiches, o) {
   var filtre = etatDisposition.filtre;

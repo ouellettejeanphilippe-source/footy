@@ -148,9 +148,12 @@ Un nouveau domaine à essayer ? `npm run sonder -- streamed.st autre-site.xyz` d
 | `js/sources/` | Un adaptateur par site de flux. |
 | `scripts/` | Les scripts serveur lancés par les workflows. |
 | `data/` | Le calendrier et les liens régénérés automatiquement. |
-| `tests/` | Tests unitaires Node (`unit_*.test.js`) et suites Playwright (`*.spec.js`). |
+| `tests/` | Tests unitaires Node (`unit_*.test.js`) et suites Playwright (`test_*.spec.js`). |
+| `extension/` | L'extension Chrome / Edge (Manifest V3) : blocage, nettoyage des lecteurs. |
+| `desktop/`, `mobile/`, `tv/` | L'application de bureau (Electron), l'APK Android (Capacitor), l'appli Android TV. |
+| `local/` | `pipeline.ps1`, le rattrapage à la main du pipeline de données. |
 | `docs/ARCHITECTURE.md` | La référence technique : modules, flux de données, algorithmes, stockage, conventions. |
-| `docs/WORKLOG.md` | Le journal des changements, daté et argumenté. |
+| `docs/WORKLOG.md` | Le journal des changements, daté et argumenté (avant octobre 2026 : `docs/WORKLOG-archive.md`). |
 | `AGENTS.md` | Les règles de travail dans ce dépôt (pour les humains et les agents). |
 
 ### Automatisations (historiques)

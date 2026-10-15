@@ -4,7 +4,7 @@ Règles de travail dans ce dépôt, pour les agents comme pour les humains.
 
 ## Règle d'or
 
-Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), parcourir `docs/WORKLOG.md` (les décisions récentes et leurs raisons), et **faire un grep du symbole** avant de le créer, de le renommer ou de le supprimer. De nombreuses fonctions sont exposées sur `window` et appelées depuis du HTML construit en chaîne : un `grep` sur le nom, y compris dans `index.html`, est le seul moyen de savoir qui l'utilise.
+Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), parcourir `docs/WORKLOG.md` (les décisions récentes et leurs raisons ; les plus anciennes sont dans `docs/WORKLOG-archive.md`), et **faire un grep du symbole** avant de le créer, de le renommer ou de le supprimer. De nombreuses fonctions sont exposées sur `window` et appelées depuis du HTML construit en chaîne : un `grep` sur le nom, y compris dans `index.html`, est le seul moyen de savoir qui l'utilise.
 
 ## Workflow par tâche
 
