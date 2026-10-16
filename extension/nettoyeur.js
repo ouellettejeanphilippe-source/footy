@@ -67,7 +67,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.12
+// @version      1.13
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -83,6 +83,15 @@
 
     // Sécurité: Ne s'exécute que si la page est dans une iframe (ex: dans le Multiview)
     if (window.self === window.top) {
+        return;
+    }
+
+    /* Les lecteurs officiels (Twitch, YouTube) n'ont rien à nettoyer, et les pièges posés
+       plus bas (`window.parent`, `window.top`) empêchaient le lecteur Twitch de démarrer :
+       « Chargement de player.twitch.tv… » sans fin (16 octobre 2026). Même liste que
+       estLecteurOfficiel (js/esports.js). */
+    if (location.hostname === 'player.twitch.tv'
+        || (/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname) && location.pathname.indexOf('/embed/') === 0)) {
         return;
     }
 
@@ -1098,7 +1107,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.12';
+    var VERSION = '1.13';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     function isGuideApp() {

@@ -18,6 +18,7 @@ import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
+import { estLecteurOfficiel } from './esports.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -2211,7 +2212,7 @@ export function updateMultivisionLayout() {
                    l'utilisateur (« Sandbox detected, please remove sandbox attributes »). Le test
                    « aucune iframe de lecteur ne porte d'attribut sandbox » le verrouille. */
                 container.appendChild(iframe);
-                demanderNettoyage(iframe);
+                if (!estLecteurOfficiel(finalUrl)) demanderNettoyage(iframe);
 
                 s._posedAt = Date.now(); // pour reconnaître une sortie forcée (pagehide juste après)
                 if (estMediaDirecte(finalUrl)) {
@@ -2728,6 +2729,9 @@ var DELAI_REDEMARRAGE_MS = 45000;
 var DELAI_HOTE_LENT_MS = 90000;
 function armerBasculeAuto(s, idx, url) {
     couperMinuteur(s, 'auto');
+    /* Un lecteur officiel ne dit jamais « joue » : sans cette ligne, la tuile le quittait
+       au bout de 30 s pour le suivant, en boucle. Voir estLecteurOfficiel (js/esports.js). */
+    if (estLecteurOfficiel(url)) return;
     var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
     if (!pont || !pont.available) return;
     var L = liensDuMatch(s.mid);
@@ -4492,7 +4496,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v58';
+export var VERSION_APP = 'sports-guide-v59';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

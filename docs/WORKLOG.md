@@ -5,6 +5,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## En cours
 
 ## Fait
+- 2026-10-16 - **« It's stuck »** : une tuile figée sur « Chargement de player.twitch.tv… » (flux officiel de Karmine Corp – MVK, ajouté plus tôt le même jour).
+
+  - **Cause.** Pas reproductible ici (Twitch injoignable depuis le bac à sable), mais deux défauts lus dans le code. (1) La bascule automatique attend que le script utilisateur signale « joue ». Le lecteur Twitch ne le signale jamais : au bout de 30 s, la tuile passait au flux suivant, encore un lecteur Twitch parmi la vingtaine de flux du match, et recommençait. D'où un chargement sans fin. (2) Dans le cadre du lecteur Twitch, le script utilisateur remplaçait `window.parent` et `window.top` par des pièges, que le lecteur consulte pour vérifier son `parent`.
+  - **Fait.** `estLecteurOfficiel` (`js/esports.js`) : `player.twitch.tv`, et `/embed/` de youtube.com et youtube-nocookie.com. La tuile ne demande pas de nettoyage à ces cadres et n'arme pas la bascule automatique (`js/multiview.js`). Le script utilisateur rend la main sur ces mêmes adresses, avant tout piège (1.13) ; `extension/nettoyeur.js` régénéré.
+  - **Tests** : `unit_esports` groupe 8 ; `unit_lecteurofficiel` (nouveau ; il tombe sans le correctif du script). `npm test` : 118 unitaires, 54 Playwright (1 ignoré).
+  - **Fichiers** : `js/esports.js`, `js/multiview.js`, `multiview-cleaner.user.js`, `extension/nettoyeur.js`, `tests/unit_esports.test.js`, `tests/unit_lecteurofficiel.test.js`, `docs/ARCHITECTURE.md`, `FEATURES.md`, `sw.js` + `VERSION_APP` → `sports-guide-v59`.
+  - **Ce qui reste.** À confirmer chez l'utilisateur : mettre à jour le script dans Tampermonkey (1.13), ou recharger l'extension. Si le lecteur reste noir sans changer de source, la cause est ailleurs (réseau, Twitch lui-même).
 - 2026-10-16 - **Karmine Corp – MVK (Mondiaux, en direct) : « Aucun flux trouvé pour l'instant ».** (capture d'écran)
 
   - **Constaté.** `getLive` annonçait ce match en direct avec une vingtaine de flux (Twitch riotgames, YouTube, Kick…). Mais `data/schedule.json` porte les matchs LoL sans flux et à l'état « à venir », l'appli le lit en premier, et les passes suivantes (`applyScoreUpdates`) ne reportaient que statut et score. Les liens de `getLive` n'étaient donc vus que si le calendrier venait de l'API elle-même, ce qui n'arrive que quand `schedule.json` manque.

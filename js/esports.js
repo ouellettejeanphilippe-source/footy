@@ -78,6 +78,25 @@ export function liensDunEvenementEsports(streams, hote) {
     return out;
 }
 
+/* Les lecteurs officiels (Twitch, YouTube) : déjà propres, et muets envers l'application.
+
+   « It's stuck » (16 octobre 2026), sur « Chargement de player.twitch.tv… » : la tuile
+   attend que le script nettoyeur lui dise « la vidéo joue ». Ce signal ne vient pas du
+   lecteur Twitch : au bout de 30 s, la tuile tenait la source pour morte et passait à la
+   suivante — encore un lecteur Twitch, parmi la vingtaine de flux d'un match LoL — et
+   recommençait. Et le nettoyeur, dans ce cadre, remplaçait `window.parent` et
+   `window.top`, ce que le lecteur Twitch consulte pour vérifier son `parent`.
+
+   Ces adresses ne passent donc ni par le nettoyeur ni par la bascule automatique. */
+export function estLecteurOfficiel(url) {
+    var u;
+    try { u = new URL(String(url || '')); } catch (e) { return false; }
+    var h = u.hostname.toLowerCase();
+    if (h === 'player.twitch.tv') return true;
+    if (/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(h)) return u.pathname.indexOf('/embed/') === 0;
+    return false;
+}
+
 /* Les flux d'UN match, lus dans la réponse de `getLive`.
 
    « Aucun flux trouvé pour l'instant » sur Karmine Corp – MVK (Mondiaux, 16 octobre 2026),
