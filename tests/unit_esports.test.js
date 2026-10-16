@@ -108,6 +108,19 @@ async function main() {
     assert.deepStrictEqual(E.liensLolDuDirect(live, ''), []);
     ok('liensLolDuDirect : les flux d\'un match pris dans getLive');
 
+    // ── 8. Les lecteurs officiels échappent au nettoyeur et à la bascule ────
+    /* « It's stuck » sur « Chargement de player.twitch.tv… » : la tuile attendait un
+       « joue » que le lecteur Twitch n'envoie pas, passait au flux suivant au bout de
+       30 s, et ainsi de suite. */
+    assert.ok(E.estLecteurOfficiel(E.lienFluxEsports('twitch', 'riotgames', HOTE)));
+    assert.ok(E.estLecteurOfficiel(E.lienFluxEsports('youtube', 'poQCaeQpQu8', HOTE)));
+    assert.ok(E.estLecteurOfficiel('https://www.youtube-nocookie.com/embed/abc'));
+    ['https://twitch.tv/riotgames', 'https://www.youtube.com/watch?v=abc', 'https://embed.st/embed/x',
+     'https://player.twitch.tv.example.com/?channel=x', 'https://notyoutube.com/embed/x', '', null, 'pas une adresse'].forEach((u) => {
+        assert.ok(!E.estLecteurOfficiel(u), 'pas un lecteur officiel : ' + u);
+    });
+    ok('estLecteurOfficiel : Twitch et YouTube encadrés, rien d\'autre');
+
     console.log(`unit_esports: ${n} groupes de tests OK`);
     process.exit(0);
 }
