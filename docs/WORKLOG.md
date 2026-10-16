@@ -5,6 +5,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## En cours
 
 ## Fait
+- 2026-10-16 - **Karmine Corp – MVK (Mondiaux, en direct) : « Aucun flux trouvé pour l'instant ».** (capture d'écran)
+
+  - **Constaté.** `getLive` annonçait ce match en direct avec une vingtaine de flux (Twitch riotgames, YouTube, Kick…). Mais `data/schedule.json` porte les matchs LoL sans flux et à l'état « à venir », l'appli le lit en premier, et les passes suivantes (`applyScoreUpdates`) ne reportaient que statut et score. Les liens de `getLive` n'étaient donc vus que si le calendrier venait de l'API elle-même, ce qui n'arrive que quand `schedule.json` manque.
+  - **Fait.** `liensLolDuDirect` (`js/esports.js`) : les flux d'un match, lus dans `getLive` par son identifiant. La fiche d'un match LoL pas encore fini les demande à l'ouverture et se redessine (`js/ui.js`). `applyScoreUpdates` (`js/main.js`) ajoute aussi les liens apportés par la passe complète (jamais n'en retire).
+  - **Tests** : `unit_esports`, groupe 7. `npm test` : 117 unitaires, 54 Playwright (1 ignoré).
+  - **Fichiers** : `js/esports.js`, `js/ui.js`, `js/main.js`, `tests/unit_esports.test.js`, `docs/ARCHITECTURE.md`, `sw.js` + `VERSION_APP` → `sports-guide-v58`.
+  - **Ce qui reste.** Le script serveur (`scripts/scrape_schedule.mjs`) définit `fetchLolEsportsLiveStreams` sans l'appeler ; inutile tant que la fiche interroge `getLive` elle-même.
 - 2026-10-15 - **« clean repo, reorganize ».**
 
   - **Fait.**

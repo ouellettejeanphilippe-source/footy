@@ -9,7 +9,8 @@ import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl } from './utils.js';
 import { primaryDomain, matchDomainStats } from './links.js';
-import { TARGET_DATE, fetchGameStats, fetchTeamInfo } from './api.js';
+import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
+import { liensLolDuDirect } from './esports.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
 import { mesurePour, formaterMesure } from './debit.js';
@@ -2240,6 +2241,29 @@ export function openMod(m,col){
           contentHtml += sortedLinks.map(function(s,i){
               return renderFluxItem(s, i, m, registre);
           }).join('');
+      }
+
+      /* Flux officiels d'un match LoL pas encore fini : demandés à `getLive` à
+         l'ouverture de la fiche. Le calendrier du serveur (`data/schedule.json`) n'en
+         porte aucun, et la passe complète ne repasse que toutes les cinq minutes. Voir
+         liensLolDuDirect (js/esports.js). */
+      if (m.id && m.id.toString().startsWith('lol_') && m.status !== 'finished') {
+          fetchLolEsportsLiveStreams().then(function (liveData) {
+              var liens = liensLolDuDirect(liveData, m.id);
+              if (!liens.length) return;
+              m.streamLinks = m.streamLinks || [];
+              var ajoute = false;
+              liens.forEach(function (l) {
+                  if (!m.streamLinks.some(function (sl) { return sl.url === l.url; })) {
+                      m.streamLinks.push(l);
+                      ajoute = true;
+                  }
+              });
+              if (m.status === 'upcoming') m.status = 'live';
+              if (ajoute && document.getElementById('mbg').classList.contains('open') && document.getElementById('mname').dataset.matchName.indexOf(m.homeTeam) >= 0) {
+                  openMod(m, col);
+              }
+          }).catch(function (e) { lg('LoL : flux du direct indisponibles', e && e.message ? e.message : e); });
       }
 
             // Fetch League VODs
