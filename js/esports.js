@@ -78,6 +78,28 @@ export function liensDunEvenementEsports(streams, hote) {
     return out;
 }
 
+/* Les flux d'UN match, lus dans la réponse de `getLive`.
+
+   « Aucun flux trouvé pour l'instant » sur Karmine Corp – MVK (Mondiaux, 16 octobre 2026),
+   alors que `getLive` annonçait ce match en direct avec une vingtaine de flux (Twitch
+   riotgames, YouTube…). L'appli lit d'abord `data/schedule.json`, où le serveur range les
+   matchs LoL SANS flux ; et les passes de rafraîchissement ne reportaient que statut et
+   score. Les flux de `getLive` n'atteignaient donc jamais la fiche. La fiche les demande
+   désormais elle-même (js/ui.js), avec cette fonction.
+
+   `matchId` : l'identifiant de l'appli (`lol_<id>`) ou celui de l'API. */
+export function liensLolDuDirect(liveData, matchId, hote) {
+    var id = String(matchId || '').replace(/^lol_/, '');
+    if (!id) return [];
+    var events = liveData && liveData.data && liveData.data.schedule && liveData.data.schedule.events;
+    if (!Array.isArray(events)) return [];
+    for (var i = 0; i < events.length; i++) {
+        var ev = events[i];
+        if (ev && ev.match && String(ev.match.id) === id) return liensDunEvenementEsports(ev.streams, hote);
+    }
+    return [];
+}
+
 /* Ligues suivies, par leur `slug` dans l'API de LoL Esports.
 
    « C'est moi ou League of Legends est présentement brisé ? » (10 octobre 2026). Oui :

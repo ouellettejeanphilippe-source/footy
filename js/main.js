@@ -76,6 +76,14 @@ export function applyScoreUpdates(fresh) {
         m.detail = f.detail || null;
         m._scoreAt = Date.now(); // ESPN a parlé de CE match : la fin présumée s'efface
         if (f.startTime) m.startTime = f.startTime;
+        /* Les liens qu'apporte la passe complète (les flux officiels de LoL Esports, lus
+           dans `getLive`) : ajoutés, jamais retirés. Sans cela, un match venu de
+           `data/schedule.json` restait sans flux toute la journée. */
+        (f.streamLinks || []).forEach(function (l) {
+            if (!l || !l.url) return;
+            if (!m.streamLinks) m.streamLinks = [];
+            if (!m.streamLinks.some(function (x) { return x.url === l.url; })) m.streamLinks.push(l);
+        });
     }
     updateLiveScores(S.matches);
     return changed;

@@ -87,6 +87,27 @@ async function main() {
     });
     ok("les ligues suivies sont celles que l'API nomme vraiment");
 
+    // ── 7. Les flux d'un match, lus dans getLive ───────────────────────────
+    /* Karmine Corp – MVK (Mondiaux, 16 octobre 2026) : en direct dans getLive avec ses
+       flux, « Aucun flux trouvé » dans la fiche — le calendrier du serveur n'en porte
+       aucun. La fiche les demande désormais à getLive par l'identifiant du match. */
+    const live = { data: { schedule: { events: [
+        { type: 'show', streams: [{ provider: 'twitch', parameter: 'autre', locale: 'en-US' }] },
+        { type: 'match', match: { id: '115660588583171790' }, streams: [
+            { provider: 'twitch', parameter: 'riotgames', locale: 'en-US' },
+            { provider: 'youtube', parameter: 'poQCaeQpQu8', locale: 'en-US' },
+            { provider: 'kick', parameter: 'riotgames', locale: 'en-US' }
+        ] }
+    ] } } };
+    const kc = E.liensLolDuDirect(live, 'lol_115660588583171790', HOTE);
+    assert.strictEqual(kc.length, 2, 'Twitch et YouTube ; Kick ne s\'encadre pas');
+    assert.ok(kc[0].url.includes('channel=riotgames'));
+    assert.strictEqual(E.liensLolDuDirect(live, '115660588583171790', HOTE).length, 2, 'identifiant brut de l\'API accepté');
+    assert.deepStrictEqual(E.liensLolDuDirect(live, 'lol_1', HOTE), [], 'autre match : rien');
+    assert.deepStrictEqual(E.liensLolDuDirect(null, 'lol_1'), [], 'réponse vide tolérée');
+    assert.deepStrictEqual(E.liensLolDuDirect(live, ''), []);
+    ok('liensLolDuDirect : les flux d\'un match pris dans getLive');
+
     console.log(`unit_esports: ${n} groupes de tests OK`);
     process.exit(0);
 }
