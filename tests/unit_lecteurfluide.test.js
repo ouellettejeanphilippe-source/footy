@@ -153,6 +153,23 @@ async function main() {
   const flux = mv.mvFlux.splice(0);
   assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), false, 'sans vidéo, rien à garder');
   mv.mvFlux.push(...flux);
+  /* Une tuile sans page de site (mode direct, chargement, panneau de sortie forcée) ne
+     peut pas emmener l'onglet : rien à garder. */
+  const pages = [...document.querySelectorAll('iframe[id^="mv-iframe-"]')];
+  assert.ok(pages.length > 0 && mv.pagesDeSites() === pages.length, 'les tuiles affichent la page d\'un site');
+  const srcs = pages.map((f) => f.getAttribute('src'));
+  pages.forEach((f) => f.removeAttribute('src'));
+  assert.strictEqual(mv.pagesDeSites(), 0);
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), false, 'aucune page de site dans les tuiles : rien à garder');
+  pages.forEach((f, i) => f.setAttribute('src', srcs[i]));
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), true);
+  souris('mouseout', { relatedTarget: null, clientX: 300, clientY: mv.MARGE_HAUT_PX });
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), false, 'sorti à quelques pixels du haut : Firefox ne rapporte que la dernière position vue');
+  assert.strictEqual(mv.etatGarde().sortieFenetre.y, mv.MARGE_HAUT_PX, 'et le relevé le dit');
+  souris('mousemove', { clientX: 300, clientY: 200 });
+  souris('mouseout', { relatedTarget: null, clientX: 300, clientY: mv.MARGE_HAUT_PX + 30 });
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), true, 'plus bas, par un côté : on regarde encore');
+  souris('mousemove', { clientX: 300, clientY: 200 });
   mv.toggleGardeSortie();
   assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), false, 'le réglage la coupe');
   assert.strictEqual(localStorage.getItem('garde_sortie'), '0', 'et il est retenu');

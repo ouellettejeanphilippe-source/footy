@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.15
+// @version      1.16
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -56,12 +56,13 @@
        qui s'en va : pointeur sorti par le haut vers les onglets ou la croix, touche de
        raccourci (Ctrl, Cmd, Alt, F5). Quand le pointeur ou le focus est dans une tuile,
        c'est ce cadre qui les voit, pas l'application : on les lui dit. Le pointeur qui
-       revient directement dans une tuile, aussi. */
+       revient directement dans une tuile, aussi. Une marge de 20 px sous le haut (1.16) :
+       un pointeur rapide n'est vu qu'à sa dernière position, quelques pixels plus bas. */
     try {
         var signalerDepart = function (m) { try { window.top.postMessage(m, '*'); } catch (e) {} };
         var MODIFICATRICES = { Control: 1, Meta: 1, Alt: 1, OS: 1 };
         document.addEventListener('mouseout', function (e) {
-            if (!e.relatedTarget && e.clientY <= 0) signalerDepart({ __mv: 'pointeur', dehors: true });
+            if (!e.relatedTarget && e.clientY <= 20) signalerDepart({ __mv: 'pointeur', dehors: true });
         }, true);
         document.addEventListener('mouseover', function (e) {
             if (!e.relatedTarget) signalerDepart({ __mv: 'pointeur', dehors: false });
@@ -1228,7 +1229,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.15';
+    var VERSION = '1.16';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche

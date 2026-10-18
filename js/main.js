@@ -1,5 +1,5 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, showPage } from './utils.js';
+import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesDeDepart, actionRetour } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
@@ -978,6 +978,8 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
   var yEst = new Date(n); yEst.setDate(yEst.getDate() - 1);
   var removed = purgeStaleCalendarCache([getEspnDateStr(n), getEspnDateStr(yEst)]);
   if (removed) lg('Cache calendrier nettoyé', removed + ' jour(s) obsolète(s)');
+  // Hier garde ses matchs mais plus ses liens (allegerCalendrier, js/utils.js).
+  if (getEspnDateStr(yEst) !== todayStr && allegerCalendrier(getEspnDateStr(yEst))) lg('Cache calendrier allégé', 'liens d\'hier retirés');
 
   var lst = safeStorageGet('last_scrape_time');
   var lsm = safeStorageGetJSON('last_scraped_matches');

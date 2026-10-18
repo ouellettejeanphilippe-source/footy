@@ -27,17 +27,89 @@ export function safeStorageGet(key, fallback = null) {
    invisible : les écritures ne prennent pas, les lectures rendent une version ancienne,
    et rien ne le dit. On retient donc la dernière erreur et leur nombre ; la page Logs
    les montre sous « Cet appareil ». */
-export var stockageInfo = { echecs: 0, derniereCle: null, derniereErreur: null };
+export var stockageInfo = { echecs: 0, derniereCle: null, derniereErreur: null, liberees: [] };
+
+/* Stockage plein : faire de la place plutôt que perdre l'écriture (18 octobre 2026,
+   « Stockage local ❌ 1 écriture refusée · QuotaExceededError · 4569 Ko » sous Firefox,
+   dont la limite est de 5 120 Ko à ce compte). Mesuré sur les données du jour : le
+   calendrier du jour, qui garde les liens fusionnés, fait à lui seul 620 Ko (68 matchs,
+   2 931 liens), celui d'hier autant ; les matchs du dernier scraping, toutes sources
+   confondues, vont jusqu'à 1 100 Ko (700 matchs, 4 750 liens), et le cache des liens
+   s'y ajoute. Tout cela se refait depuis le réseau. On le retire dans cet ordre, jusqu'à
+   ce que l'écriture passe : jamais les favoris, les réglages, l'état du lecteur, ce que
+   le navigateur a appris des lecteurs et des débits, ni le relevé des sorties. */
+export var CACHES_JETABLES = ['stream_cache', 'last_scraped_matches', 'api_calendar_cache_'];
+
+function estPlein(e) {
+    var nom = e && (e.name || '');
+    return nom === 'QuotaExceededError' || nom === 'NS_ERROR_DOM_QUOTA_REACHED' || (e && (e.code === 22 || e.code === 1014));
+}
+
+function rangJetable(k) {
+    for (var i = 0; i < CACHES_JETABLES.length; i++) {
+        var p = CACHES_JETABLES[i];
+        if (k === p || (p.slice(-1) === '_' && k && k.indexOf(p) === 0)) return i;
+    }
+    return Infinity;
+}
+
+/* Les clés jetables présentes, dans l'ordre où on les sacrifie (les calendriers du plus
+   ancien au plus récent), sans jamais la clé qu'on écrit. Un cache n'en chasse pas un
+   plus utile que lui : les matchs du dernier scraping ne font pas partir le calendrier. */
+function clesJetables(sauf) {
+    var presentes = [];
+    try { for (var i = 0; i < localStorage.length; i++) presentes.push(localStorage.key(i)); } catch (e) { return []; }
+    var plafond = rangJetable(sauf);
+    return presentes.filter(function(k) { var r = rangJetable(k); return k && k !== sauf && r !== Infinity && r <= plafond; })
+        .sort(function(a, b) { return (rangJetable(a) - rangJetable(b)) || (a < b ? -1 : (a > b ? 1 : 0)); });
+}
 
 export function safeStorageSet(key, value) {
     try {
         localStorage.setItem(key, value);
+        return true;
     } catch(e) {
+        if (estPlein(e)) {
+            var jetables = clesJetables(key);
+            for (var i = 0; i < jetables.length; i++) {
+                try { localStorage.removeItem(jetables[i]); } catch (e2) {}
+                if (stockageInfo.liberees.indexOf(jetables[i]) < 0) stockageInfo.liberees.push(jetables[i]);
+                try { localStorage.setItem(key, value); if (typeof window !== 'undefined') window.stockageInfo = stockageInfo; return true; } catch (e3) {}
+            }
+        }
         stockageInfo.echecs++;
         stockageInfo.derniereCle = key;
         stockageInfo.derniereErreur = (e && (e.name || e.message)) ? String(e.name || e.message) : 'refus';
         if (typeof window !== 'undefined') window.stockageInfo = stockageInfo;
+        return false;
     }
+}
+
+/* Les plus grosses clés, pour la page Logs : [[clé, Ko], …]. */
+export function plusGrossesCles(n) {
+    try {
+        var t = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            t.push([k, Math.round(((k || '').length + (localStorage.getItem(k) || '').length) / 1024)]);
+        }
+        return t.sort(function(a, b) { return b[1] - a[1]; }).slice(0, n || 3);
+    } catch (e) { return []; }
+}
+
+/* Le calendrier d'un jour passé n'a plus besoin de ses liens fusionnés (620 Ko pour la
+   journée du 18 octobre) : ils viennent de data/streams.json et du scraping à chaque passe. On
+   garde ses matchs (la nuit appartient à la veille, js/nuit.js) et on retire les liens. */
+export function allegerCalendrier(dateStr) {
+    var cle = 'api_calendar_cache_' + dateStr;
+    var brut = safeStorageGet(cle);
+    if (!brut) return false;
+    try {
+        var c = JSON.parse(brut);
+        if (!c || !Array.isArray(c.matches) || !c.matches.some(function(m) { return m && m.streamLinks && m.streamLinks.length; })) return false;
+        c.matches.forEach(function(m) { if (m && m.streamLinks) { m.streamLinks = []; m.streamsLoaded = false; } });
+        return safeStorageSet(cle, JSON.stringify(c));
+    } catch (e) { return false; }
 }
 
 /* Taille approximative de ce que l'application garde en local, en kilo-octets. */
@@ -91,7 +163,7 @@ export function purgeStaleCalendarCache(keepDateStrs) {
 }
 
 export function safeStorageSetJSON(key, value) {
-    safeStorageSet(key, JSON.stringify(value));
+    return safeStorageSet(key, JSON.stringify(value));
 }
 
 

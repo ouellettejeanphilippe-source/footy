@@ -10,7 +10,7 @@
    Sans import : `getBridgeStatus` est passé par l'appelant. */
 
 /* Doit suivre "version" de extension/manifest.json (vérifié par unit_extension). */
-export var VERSION_EXTENSION = '1.2';
+export var VERSION_EXTENSION = '1.3';
 
 /* La valeur de `hasSeenScriptModal` posée après la fenêtre du début. Toute valeur non
    vide veut dire « déjà vue » (« 2 » vient du guide retiré). */
