@@ -670,6 +670,10 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   expect(page.url(), 'refuser garde l\'application').toContain(origin);
   await expect(page.locator('.mv-cell'), 'et ses vidéos').toHaveCount(1);
   expect(pageErrors).toEqual([]);
+  /* Le relevé des sorties (js/sorties.js) : la tentative est notée, garde armée, page restée. */
+  const releve = await page.evaluate(() => JSON.parse(localStorage.getItem('journal_sorties') || '[]'));
+  expect(releve[0], 'la tentative est notée').toMatchObject({ type: 'sortie', armee: true, quittee: false, tuiles: 1, reglage: true });
+  expect(releve[0].clicTuileIlYaMs === null || typeof releve[0].clicTuileIlYaMs === 'number').toBe(true);
 
   /* Le témoin : sans la garde, le même clic emporte l'onglet. */
   await page.evaluate(() => window.toggleGardeSortie());
@@ -680,6 +684,16 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   const nav = await depart;
   expect(nav && !nav.url().startsWith(origin), 'garde coupée, l\'onglet est emporté : le test a un sens').toBeTruthy();
   expect(dialogues.length, 'et rien ne l\'a retenu').toBe(avant);
+
+  /* Au retour par « Précédent », la page Logs dit ce qui s'est passé. */
+  await page.goBack();
+  await page.waitForFunction(() => typeof window.applyFilter === 'function' && window.hasLoadedOnce === true, null, { timeout: 60000 });
+  await page.evaluate(() => window.applyFilter('logs'));
+  const sorties = page.locator('.diag-sorties');
+  await expect(sorties).toContainText('retour sur l\'appli');
+  await expect(sorties).toContainText('page quittée · garde levée : réglage « Bloquer les redirections des sites » coupé');
+  await expect(sorties).toContainText('page restée · garde armée');
+  await expect(page.locator('#sources-status-container'), 'et « Cet appareil » dit la garde coupée').toContainText('coupée — Lecteur → ⋯ Plus → 🛡');
 });
 
 /* « Ça me demande souvent si je veux quitter quand je ferme la page, ce qui devrait jamais

@@ -19,6 +19,7 @@ import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexD
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
 import { estLecteurOfficiel } from './esports.js';
+import { noterSortie, marquerQuittee, noterRetour, sortiesHtml } from './sorties.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -675,6 +676,9 @@ export var mvFlux = [];
 var FENETRE_SORTIE_MS = 15000;
 var VALIDITE_SORTIE_MS = 10 * 60 * 1000;
 var CLE_SORTIE = 'mv_sortie_forcee';
+/* Le relevé des sorties (js/sorties.js) : chaque sortie de la page, vidéos chargées, avec
+   l'état de la garde ; et les retours par « Précédent ». */
+var CLE_SORTIES = 'journal_sorties';
 
 /* Adresses des tuiles posées il y a moins de FENETRE_SORTIE_MS. */
 export function suspectsDeSortie(flux, now) {
@@ -696,9 +700,10 @@ export function marquerSortiesForcees(flux, record, now) {
 }
 
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('pagehide', function() {
+    window.addEventListener('pagehide', function(e) {
         var urls = suspectsDeSortie(mvFlux, Date.now());
         if (urls.length) safeStorageSetJSON(CLE_SORTIE, { urls: urls, at: Date.now() });
+        safeStorageSetJSON(CLE_SORTIES, marquerQuittee(safeStorageGetJSON(CLE_SORTIES, []), Date.now(), e && e.persisted));
     });
 }
 
@@ -753,7 +758,7 @@ export var TOUCHE_DEPART_MS = 1500;
 /* Un modificateur dont on n'a pas vu le relâchement (focus parti ailleurs) ne lève pas
    la garde plus de 10 s. */
 export var MODIFICATEUR_MAX_MS = 10000;
-var depart = { parLeHaut: false, modificateur: false, modificateurAt: -Infinity, toucheAt: -Infinity };
+var depart = { parLeHaut: false, modificateur: false, modificateurAt: -Infinity, toucheAt: -Infinity, clicAt: -Infinity };
 /* Horloge monotone : un intervalle se mesure mieux ainsi, et elle n'est pas figée par
    les tests qui fixent Date.now. */
 function horlogeDepart() {
@@ -779,6 +784,33 @@ export function utilisateurPart(mono) {
     var t = (mono === undefined) ? horlogeDepart() : mono;
     if (depart.modificateur && t - depart.modificateurAt < MODIFICATEUR_MAX_MS) return true;
     return t - depart.toucheAt < TOUCHE_DEPART_MS;
+}
+
+/* Le dernier clic vu dans une tuile (`mv_frame_clicked`), pour le relevé des sorties. */
+export function noterClicTuile(mono) { depart.clicAt = (mono === undefined) ? horlogeDepart() : mono; }
+
+/* Tout ce qui décide de la garde, à cet instant : ce que note le relevé des sorties
+   (js/sorties.js), et ce que montre la page Logs. */
+export function etatGarde(now, mono) {
+    var t = (mono === undefined) ? horlogeDepart() : mono;
+    var maintenant = (now === undefined) ? Date.now() : now;
+    var ua = (typeof navigator !== 'undefined') ? navigator.userActivation : null;
+    var a = (typeof document !== 'undefined') ? document.activeElement : null;
+    var focus = (a && a.tagName === 'IFRAME' && /^mv-iframe-\d+$/.test(a.id || '')) ? parseInt(a.id.slice(10), 10) : -1;
+    return {
+        armee: gardeSortieArmee(now, mono),
+        reglage: gardeSortie,
+        tuiles: mvFlux.length,
+        autorisee: maintenant <= sortieAutoriseeJusqua,
+        cachee: typeof document !== 'undefined' && document.visibilityState === 'hidden',
+        parLeHaut: depart.parLeHaut,
+        modificateur: !!(depart.modificateur && t - depart.modificateurAt < MODIFICATEUR_MAX_MS),
+        toucheIlYaMs: (t - depart.toucheAt < TOUCHE_DEPART_MS) ? Math.round(t - depart.toucheAt) : null,
+        clicTuileIlYaMs: isFinite(depart.clicAt) ? Math.round(t - depart.clicAt) : null,
+        activation: ua ? { active: !!ua.isActive, deja: !!ua.hasBeenActive } : null,
+        focusTuile: focus,
+        sites: mvFlux.map(function(f) { return getDomain(f._currentUrl || f.url || ''); })
+    };
 }
 
 export function gardeSortieArmee(now, mono) {
@@ -821,10 +853,27 @@ export function toggleGardeSortie() {
 
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('beforeunload', function(e) {
-        if (!gardeSortieArmee()) return;
+        var etat = etatGarde();
+        if (etat.tuiles) safeStorageSetJSON(CLE_SORTIES, noterSortie(safeStorageGetJSON(CLE_SORTIES, []), etat, Date.now()));
+        if (!etat.armee) return;
         e.preventDefault();
         e.returnValue = '';
         return '';
+    });
+}
+
+/* Un retour sur l'application par « Précédent » : noté dans le relevé, pour qu'un
+   détournement qui n'est pas passé par `beforeunload` se voie quand même. */
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    try {
+        /* L'API Navigation d'abord (`traverse`), la chronologie de navigation à défaut
+           (`back_forward`) : l'horloge factice des tests remplace `performance`. */
+        var activation = (window.navigation && window.navigation.activation) ? window.navigation.activation.navigationType : '';
+        var nav = (typeof performance !== 'undefined' && performance.getEntriesByType) ? performance.getEntriesByType('navigation')[0] : null;
+        if (activation === 'traverse' || (nav && nav.type === 'back_forward')) safeStorageSetJSON(CLE_SORTIES, noterRetour(safeStorageGetJSON(CLE_SORTIES, []), Date.now(), false));
+    } catch (e) {}
+    window.addEventListener('pageshow', function(e) {
+        if (e && e.persisted) safeStorageSetJSON(CLE_SORTIES, noterRetour(safeStorageGetJSON(CLE_SORTIES, []), Date.now(), true));
     });
 }
 
@@ -1550,6 +1599,7 @@ export function setupMultivisionUI() {
             var idxClic = indexDeTuilePour(e.source);
             if (idxClic >= 0) {
                 noterPointeur(false);   // un clic dans une tuile : le pointeur est dans la page
+                noterClicTuile();
                 if (activeMvIdx !== idxClic) focusStream(idxClic);
                 mvFlux[idxClic]._dernierGeste = Date.now();
                 donnerLeSon(idxClic, 'geste');
@@ -4610,7 +4660,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v61';
+export var VERSION_APP = 'sports-guide-v62';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4676,12 +4726,16 @@ export function diagnosticAppareilHtml() {
     var sw = 'sans service worker';
     try { if (navigator.serviceWorker && navigator.serviceWorker.controller) sw = 'service worker actif'; } catch (e) {}
     html += ligne('Version', 'ok', VERSION_APP + ' · ' + sw);
+    /* La garde contre les redirections, coupée par le menu ⋯ du lecteur, ne se voyait nulle
+       part ailleurs (18 octobre 2026). */
+    html += ligne('Garde « Quitter le site ? »', gardeSortie ? 'ok' : 'ko',
+        gardeSortie ? 'active' : 'coupée — Lecteur → ⋯ Plus → 🛡 Bloquer les redirections des sites');
     html += '<div style="display:flex; justify-content:flex-end; padding-top:8px;">'
           + '<button class="btn xs" onclick="mettreAJourApplication()" '
           + 'title="Retire le service worker, vide ses caches et recharge. Les réglages, favoris et liens gardés en local ne sont pas touchés.">'
           + '↻ Mettre à jour l\'application</button></div>';
 
-    return html + '</div>';
+    return html + '</div>' + sortiesHtml(safeStorageGetJSON(CLE_SORTIES, []) || [], esc);
 }
 
 /* Dans l'APK : le journal de l'appareil (js/tele.js, Journal.java), demandé au natif à
