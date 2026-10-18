@@ -41,6 +41,13 @@ test.beforeAll(async () => {
         + '});<\/script></body></html>');
     }
     /* Un lecteur sage, d'une autre origine aussi : un clic dedans ne fait rien. */
+    /* Un lecteur qui fait reculer l'onglet dès son chargement, sans clic (18 octobre 2026,
+       Firefox 158 : `history.back()` dans un cadre d'une autre origine recule tout l'onglet). */
+    if (rel === '/__lecteur-recul') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      return res.end('<html><body style="margin:0"><button id="b" style="width:100vw;height:100vh">LIRE</button>'
+        + '<script>setTimeout(function () { history.back(); }, 400);<\/script></body></html>');
+    }
     if (rel === '/__lecteur-calme') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       /* `script=1` : le vrai script utilisateur, premier script du document, comme
@@ -2216,3 +2223,68 @@ test('stockage plein : les caches refaisables partent, les favoris restent, hier
   await expect(appareil).not.toContainText('écriture(s) refusée(s)');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
+
+/* « Ça redirige encore contre mon gré sans intervention de ma part » (18 octobre 2026, le
+   soir) : page quittée moins d'une seconde après la pose des vidéos, retour sur l'appli
+   cinq secondes plus tard. La page d'une vidéo qui appelle `history.back()` recule tout
+   l'onglet, sans clic ; le script 1.17 le bloque dans le cadre, mais seulement une fois mis
+   à jour. Le tampon d'historique (js/tampon.js) l'absorbe dans l'application, quel que soit
+   le script. Différentiel : garde coupée, donc sans tampon, l'onglet recule. */
+test('une vidéo qui fait reculer l\'onglet est absorbée par le tampon, sans dialogue', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const autreOrigine = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autreOrigine + '/**', (route) => route.continue());
+  const dialogues = [];
+  page.on('dialog', (d) => { dialogues.push(d.type()); d.dismiss().catch(() => {}); });
+  const app = page.url();
+
+  await page.evaluate((u) => window.addToMultivision(u, 'Match qui recule', 'mR'), autreOrigine + '/__lecteur-recul');
+  await expect(page.frameLocator('.mv-cell iframe.mv-iframe').locator('#b')).toBeVisible();
+  await page.waitForTimeout(1200);
+  expect(page.url(), 'l\'onglet reste sur l\'application').toBe(app);
+  await expect(page.locator('.mv-cell'), 'avec sa vidéo').toHaveCount(1);
+  expect(dialogues, 'sans « Quitter le site ? »').toEqual([]);
+  expect(await page.evaluate(() => history.state), 'le tampon est reposé').toEqual({ mvTampon: 1 });
+  const releve = await page.evaluate(() => JSON.parse(localStorage.getItem('journal_sorties') || '[]'));
+  expect(releve[0], 'le recul bloqué est noté').toMatchObject({ type: 'bloque', sites: ['localhost'] });
+  await page.evaluate(() => window.applyFilter('logs'));
+  await expect(page.locator('.diag-sorties')).toContainText('recul de l\'onglet demandé par une vidéo · bloqué');
+  expect(pageErrors).toEqual([]);
+});
+
+test('sans tampon (garde coupée), la même vidéo fait reculer l\'onglet : le test a un sens', async ({ page }) => {
+  await bootOffline(page);
+  const autreOrigine = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autreOrigine + '/**', (route) => route.continue());
+  await page.evaluate(() => window.toggleGardeSortie());
+  const parti = page.waitForEvent('framenavigated', { predicate: (f) => f === page.mainFrame(), timeout: 8000 }).catch(() => null);
+  await page.evaluate((u) => window.addToMultivision(u, 'Match qui recule', 'mR'), autreOrigine + '/__lecteur-recul');
+  const nav = await parti;
+  expect(nav && !nav.url().startsWith(origin), 'l\'onglet a reculé hors de l\'application').toBeTruthy();
+});
+
+/* Le tampon ne piège pas l'utilisateur : quand il recule lui-même (bouton ← du navigateur,
+   le pointeur sorti par le haut ; ou le bouton Précédent de la souris), l'onglet recule
+   d'un cran de plus, sans dialogue. */
+for (const [nom, signe] of [
+  ['bouton ← du navigateur', (p) => p.evaluate(() => document.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, clientX: 300, clientY: 0, relatedTarget: null })))],
+  ['bouton Précédent de la souris', (p) => p.evaluate(() => document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 3, clientX: 300, clientY: 300 })))],
+  ['balayage du pavé tactile', (p) => p.evaluate(() => document.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaX: -120, deltaY: 0 })))]
+]) {
+  test('reculer soi-même passe le tampon : ' + nom, async ({ page }) => {
+    const pageErrors = await bootOffline(page);
+    const autreOrigine = origin.replace('127.0.0.1', 'localhost');
+    await page.route(autreOrigine + '/**', (route) => route.continue());
+    const dialogues = [];
+    page.on('dialog', (d) => { dialogues.push(d.type()); d.dismiss().catch(() => {}); });
+    await page.evaluate((u) => window.addToMultivision(u, 'Match calme', 'mC'), autreOrigine + '/__lecteur-calme');
+    await expect(page.frameLocator('.mv-cell iframe.mv-iframe').locator('#b')).toBeVisible();
+    expect(await page.evaluate(() => history.state), 'tampon posé').toEqual({ mvTampon: 1 });
+    expect(pageErrors).toEqual([]);
+    await signe(page);
+    const parti = page.waitForEvent('framenavigated', { predicate: (f) => f === page.mainFrame() && !f.url().startsWith(origin), timeout: 8000 }).catch(() => null);
+    await page.evaluate(() => history.back());
+    expect(await parti, 'l\'onglet recule hors de l\'application').toBeTruthy();
+    expect(dialogues, 'sans dialogue').toEqual([]);
+  });
+}

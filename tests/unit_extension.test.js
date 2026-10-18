@@ -44,6 +44,18 @@ test('une seule version de l\'extension', () => {
   assert.match(lire('extension/gabarit-nettoyeur.js'), new RegExp(`VERSION_EXTENSION = '${v.replace('.', '\\.')}'`));
 });
 
+/* Le script annoncé plus ancien que celui publié se dit « pas à jour » dans Logs
+   (18 octobre 2026) : VERSION_SCRIPT doit suivre son @version et sa constante VERSION. */
+test('une seule version du script, et un script plus ancien se dit pas à jour', () => {
+  const us = lire('multiview-cleaner.user.js');
+  const v = us.match(/@version\s+(\S+)/)[1];
+  assert.strictEqual(inst.VERSION_SCRIPT, v, 'js/installation.js suit @version');
+  assert.match(us, new RegExp("var VERSION = '" + v.replace('.', '\\.') + "'"), 'et la constante annoncée');
+  assert.strictEqual(inst.etatProtection({}, { available: true, version: v }).aJour, true);
+  assert.strictEqual(inst.etatProtection({}, { available: true, version: '1.16' }).aJour, false, 'l\'ancienne ne bloque pas le recul de l\'onglet');
+  assert.strictEqual(inst.etatProtection({}, { available: true }).aJour, false, 'une version inconnue n\'est pas présumée à jour');
+});
+
 test('les adresses de l\'application sont les mêmes partout', () => {
   const relais = manifest().content_scripts.find((c) => c.js.includes('relais.js'));
   const hotes = relais.matches.map((m) => new URL(m.replace('/*', '/')).hostname).sort();

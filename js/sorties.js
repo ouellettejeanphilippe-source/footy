@@ -52,6 +52,16 @@ export function noterRetour(journal, maintenant, depuisCache) {
     return j.slice(0, SORTIES_MAX);
 }
 
+/* Un recul de l'onglet demandé par une vidéo, absorbé par le tampon d'historique
+   (js/tampon.js) : la page n'est pas partie, rien ne passe par `beforeunload`. */
+export function noterBlocage(journal, etat, maintenant) {
+    var j = Array.isArray(journal) ? journal.slice() : [];
+    var e = { type: 'bloque', at: maintenant };
+    ['sites', 'poseesIlYaMs', 'script', 'clicTuileIlYaMs'].forEach(function (k) { if (etat && etat[k] !== undefined) e[k] = etat[k]; });
+    j.unshift(e);
+    return j.slice(0, SORTIES_MAX);
+}
+
 /* Pourquoi la garde était, ou n'était pas, armée — en clair. */
 export function raisonDeLaGarde(e) {
     if (!e) return '';
@@ -83,6 +93,13 @@ function duree(ms) {
     return Math.round(ms / 60000) + ' min';
 }
 
+function videos(e) {
+    return e.sites.map(function (site, i) {
+        var pose = Array.isArray(e.poseesIlYaMs) ? duree(e.poseesIlYaMs[i]) : null;
+        return site + (pose ? ' (chargée il y a ' + pose + ')' : '');
+    }).join(', ');
+}
+
 /* Le journal pour la page Logs. `esc` échappe le HTML (js/utils.js). */
 export function sortiesHtml(journal, esc) {
     var j = Array.isArray(journal) ? journal : [];
@@ -95,6 +112,14 @@ export function sortiesHtml(journal, esc) {
             return;
         }
         var details = [];
+        if (e.type === 'bloque') {
+            if (Array.isArray(e.sites) && e.sites.length) details.push('vidéos : ' + videos(e));
+            if (e.script) details.push('script ' + e.script);
+            html += '<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;">⛔ <b>' + esc(heure(e.at)) + '</b> '
+                + 'recul de l\'onglet demandé par une vidéo · bloqué, la page est restée'
+                + '<div style="color:var(--muted2);">' + esc(details.join(' · ')) + '</div></div>';
+            return;
+        }
         if (e.activation) details.push('geste dans la page : ' + (e.activation.active ? 'à l\'instant' : (e.activation.deja ? 'plus tôt' : 'jamais')));
         if (typeof e.focusTuile === 'number' && e.focusTuile >= 0) details.push('focus dans la vidéo ' + (e.focusTuile + 1));
         var clic = duree(e.clicTuileIlYaMs);
@@ -103,10 +128,10 @@ export function sortiesHtml(journal, esc) {
         if (e.pointeur) details.push('pointeur vu à ' + e.pointeur.y + ' px du haut' + (duree(e.pointeur.ilYaMs) ? ' il y a ' + duree(e.pointeur.ilYaMs) : ''));
         if (e.sortieFenetre) details.push('sorti de la fenêtre à ' + e.sortieFenetre.y + ' px du haut' + (duree(e.sortieFenetre.ilYaMs) ? ' il y a ' + duree(e.sortieFenetre.ilYaMs) : ''));
         if (e.derniereTouche) details.push('dernière touche ' + e.derniereTouche.touche + (duree(e.derniereTouche.ilYaMs) ? ' il y a ' + duree(e.derniereTouche.ilYaMs) : ''));
-        if (Array.isArray(e.sites) && e.sites.length) details.push('vidéos : ' + e.sites.map(function (site, i) {
-            var pose = Array.isArray(e.poseesIlYaMs) ? duree(e.poseesIlYaMs[i]) : null;
-            return site + (pose ? ' (chargée il y a ' + pose + ')' : '');
-        }).join(', '));
+        if (Array.isArray(e.sites) && e.sites.length) details.push('vidéos : ' + videos(e));
+        if (e.script) details.push('script ' + e.script);
+        else if (e.script === null) details.push('sans script');
+        if (e.tampon === false && e.armee) details.push('sans tampon d\'historique');
         html += '<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;">'
             + (e.quittee ? '🚪' : '🛡') + ' <b>' + esc(heure(e.at)) + '</b> '
             + (e.quittee ? 'page quittée' : 'page restée') + ' · ' + esc(raisonDeLaGarde(e))

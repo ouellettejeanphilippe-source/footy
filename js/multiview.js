@@ -13,13 +13,14 @@ import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus, waitForBridge, lireOctetsViaPont } from './embed-bridge.js';
-import { etatProtection, doitProposerGuide, GUIDE_VU } from './installation.js';
+import { etatProtection, doitProposerGuide, GUIDE_VU, VERSION_SCRIPT } from './installation.js';
 import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
 import { estLecteurOfficiel } from './esports.js';
-import { noterSortie, marquerQuittee, noterRetour, sortiesHtml } from './sorties.js';
+import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml } from './sorties.js';
+import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -773,7 +774,9 @@ export var MARGE_HAUT_PX = 20;
 var depart = { parLeHaut: false, modificateur: false, modificateurAt: -Infinity, toucheAt: -Infinity, clicAt: -Infinity,
     /* Pour le relevé seulement : dernière position vue, dernière sortie de la fenêtre,
        dernière touche de raccourci (jamais une autre touche). */
-    y: null, yAt: -Infinity, sortieY: null, sortieAt: -Infinity, nomTouche: null, nomToucheAt: -Infinity };
+    y: null, yAt: -Infinity, sortieY: null, sortieAt: -Infinity, nomTouche: null, nomToucheAt: -Infinity,
+    /* Le dernier balayage horizontal (pavé tactile), pour le tampon d'historique. */
+    balayageAt: -Infinity };
 /* Horloge monotone : un intervalle se mesure mieux ainsi, et elle n'est pas figée par
    les tests qui fixent Date.now. */
 function horlogeDepart() {
@@ -850,8 +853,15 @@ export function etatGarde(now, mono) {
         sortieFenetre: depart.sortieY === null ? null : { y: depart.sortieY, ilYaMs: age(depart.sortieAt) },
         derniereTouche: depart.nomTouche === null ? null : { touche: depart.nomTouche, ilYaMs: age(depart.nomToucheAt) },
         poseesIlYaMs: mvFlux.map(function(f) { return f._posedAt ? Math.max(0, maintenant - f._posedAt) : null; }),
+        script: versionDuScript(),
+        tampon: (typeof window !== 'undefined' && tamponPossible(window)) ? estTampon(history.state) : null,
         sites: mvFlux.map(function(f) { return getDomain(f._currentUrl || f.url || ''); })
     };
+}
+
+/* La version du script utilisateur qui s'est annoncée, ou null. */
+function versionDuScript() {
+    try { var b = getBridgeStatus(); return (b && b.available && b.version) ? String(b.version) : null; } catch (e) { return null; }
 }
 
 export function gardeSortieArmee(now, mono) {
@@ -887,6 +897,9 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
     document.addEventListener('keyup', function(e) {
         if (TOUCHES_MODIFICATRICES[e.key]) noterTouche(e.ctrlKey || e.metaKey || e.altKey, false);
     }, true);
+    document.addEventListener('wheel', function(e) {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) depart.balayageAt = horlogeDepart();
+    }, { capture: true, passive: true });
     /* Les boutons Précédent et Suivant de la souris : c'est l'utilisateur qui recule. */
     document.addEventListener('mousedown', function(e) {
         if (e.button !== 3 && e.button !== 4) return;
@@ -929,6 +942,37 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
     } catch (e) {}
     window.addEventListener('pageshow', function(e) {
         if (e && e.persisted) safeStorageSetJSON(CLE_SORTIES, noterRetour(safeStorageGetJSON(CLE_SORTIES, []), Date.now(), true));
+    });
+}
+
+/* Le tampon d'historique (js/tampon.js) : posé quand une tuile affiche la page d'un site,
+   il absorbe le `history.back()` qu'une vidéo envoie à l'onglet. `surTampon` dit si
+   l'entrée courante est le tampon : un `popstate` qui en descend l'a consommé. */
+var surTampon = (typeof history !== 'undefined') && estTampon(history.state);
+
+export function poserTampon() {
+    if (!gardeSortie || typeof window === 'undefined' || !tamponPossible(window) || surTampon) return false;
+    try { history.pushState(ETAT_TAMPON, '', location.href); } catch (e) { return false; }
+    surTampon = true;
+    return true;
+}
+
+export function balayageRecent(mono) {
+    var t = (mono === undefined) ? horlogeDepart() : mono;
+    return t - depart.balayageAt < BALAYAGE_MS;
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('popstate', function(e) {
+        var consomme = surTampon;
+        surTampon = estTampon(e.state);
+        if (!consomme || surTampon) return;
+        var decision = decisionRetour({ reglage: gardeSortie, pages: pagesDeSites(), utilisateurPart: utilisateurPart(), balayage: balayageRecent() });
+        /* La garde ne repose pas la question pour ce recul-là : c'est l'utilisateur. */
+        if (decision === 'laisser') { autoriserSortie(); try { history.back(); } catch (err) {} return; }
+        poserTampon();
+        safeStorageSetJSON(CLE_SORTIES, noterBlocage(safeStorageGetJSON(CLE_SORTIES, []), etatGarde(), Date.now()));
+        showToast('⛔ Une vidéo a voulu faire reculer l\'onglet : bloqué. Pour reculer toi-même : ← du navigateur ou Alt+←.');
     });
 }
 
@@ -2446,6 +2490,7 @@ export function updateMultivisionLayout() {
                     poserChargement(container, 'Chargement de ' + (getDomain(finalUrl) || 'la vidéo') + '…');
                     iframe.addEventListener('load', function() { retirerChargement(cell); }, { once: true });
                     iframe.src = finalUrl;
+                    if (!estLecteurOfficiel(finalUrl)) poserTampon();
                 }
 
                 s._playing = false;
@@ -4721,7 +4766,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v64';
+export var VERSION_APP = 'sports-guide-v65';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4792,6 +4837,14 @@ export function diagnosticAppareilHtml() {
     var sw = 'sans service worker';
     try { if (navigator.serviceWorker && navigator.serviceWorker.controller) sw = 'service worker actif'; } catch (e) {}
     html += ligne('Version', 'ok', VERSION_APP + ' · ' + sw);
+    /* Le script de nettoyage qui tourne ICI, et s'il est le dernier : le blocage du recul
+       de l'onglet n'existe que depuis la 1.17, et Tampermonkey peut garder l'ancienne des
+       jours (18 octobre 2026). */
+    var prot = etatProtection(typeof window !== 'undefined' ? window : {}, getBridgeStatus());
+    if (prot.type === 'extension') html += ligne('Extension de nettoyage', prot.aJour ? 'ok' : 'warn', prot.version + (prot.aJour ? ' (à jour)' : ' — une version plus récente existe'));
+    else if (prot.type === 'script') html += ligne('Script de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
+        : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Plus → 🧩 Script → Installer le script, puis accepter la mise à jour dans Tampermonkey');
+    else html += ligne('Script de nettoyage', 'warn', 'absent — Plus → 🧩 Script');
     /* La garde contre les redirections, coupée par le menu ⋯ du lecteur, ne se voyait nulle
        part ailleurs (18 octobre 2026). */
     html += ligne('Garde « Quitter le site ? »', gardeSortie ? 'ok' : 'ko',

@@ -12,6 +12,12 @@
 /* Doit suivre "version" de extension/manifest.json (vérifié par unit_extension). */
 export var VERSION_EXTENSION = '1.4';
 
+/* Doit suivre @version de multiview-cleaner.user.js (vérifié par unit_extension). Un script
+   plus ancien s'annonce « pas à jour » (18 octobre 2026 : le recul de l'onglet n'est bloqué
+   dans les vidéos que depuis la 1.17, et rien ne disait que Tampermonkey tournait encore
+   sur l'ancienne). */
+export var VERSION_SCRIPT = '1.17';
+
 /* La valeur de `hasSeenScriptModal` posée après la fenêtre du début. Toute valeur non
    vide veut dire « déjà vue » (« 2 » vient du guide retiré). */
 export var GUIDE_VU = 'true';
@@ -27,7 +33,7 @@ export function etatProtection(win, pont) {
   if (w.__footyExtension) {
     return { type: 'extension', version: String(w.__footyExtension), aJour: !versionInferieure(String(w.__footyExtension), VERSION_EXTENSION) };
   }
-  if (pont && pont.available) return { type: 'script', version: pont.version || '?', aJour: true };
+  if (pont && pont.available) return { type: 'script', version: pont.version || '?', aJour: !!pont.version && !versionInferieure(String(pont.version), VERSION_SCRIPT) };
   return { type: 'aucune', version: null, aJour: true };
 }
 
