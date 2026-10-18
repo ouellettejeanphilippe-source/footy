@@ -15,7 +15,7 @@
     'use strict';
     if (window.__footyNettoyeur) return;
 
-    var VERSION_EXTENSION = '1.0';
+    var VERSION_EXTENSION = '1.1';
     var HOTES_APPLICATION = ['127.0.0.1', 'localhost', 'ouellettejeanphilippe-source.github.io'];
 
     /* La fenêtre du haut, vue d'ici. `ancestorOrigins` la donne même depuis un cadre
@@ -67,7 +67,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.13
+// @version      1.14
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -117,9 +117,55 @@
        bac à sable n'obéit à rien), mais d'ici, oui, à condition d'arriver le premier. */
     try { injectPopupBlocker(); } catch (e) {}
 
-    // Ne pas nettoyer notre propre application (Guide TV), par sécurité
+    /* Ne pas nettoyer notre propre application. Elle est reconnue à sa structure, comme
+       par le pont plus bas : `#marea` ET `.epg`. Le titre « Guide TV », ou une classe
+       `.epg` seule, désignaient aussi des sites de chaînes (une grille de programmes
+       s'appelle une EPG) : le script y renonçait, et la page restait entière, publicités
+       comprises (18 octobre 2026). */
     function estLApplication() {
-        return document.title.includes('Guide TV') || !!document.querySelector('#marea') || !!document.querySelector('.epg');
+        return !!(document.querySelector('#marea') && document.querySelector('.epg'));
+    }
+
+    /* Les <video> de la page, y compris celles des racines fantômes ouvertes (lecteurs en
+       éléments personnalisés) : `querySelectorAll` n'y descend pas, et une page dont le
+       lecteur vit là n'était jamais nettoyée. On ne descend que si la page n'en a aucune
+       ailleurs : c'est le cas rare, et la descente parcourt tout le document. */
+    /* Les hôtes de racines fantômes sont relevés au plus toutes les 5 s : le signal de
+       lecture interroge les vidéos toutes les 2 s, et une page de lecteur faite
+       d'iframes seulement n'a aucune vidéo à elle. */
+    var hotesFantomes = [];
+    var hotesReleves = 0;
+    function toutesLesVideos() {
+        var trouvees = Array.from(document.querySelectorAll('video'));
+        if (trouvees.length) return trouvees;
+        var maintenant = Date.now();
+        if (maintenant - hotesReleves > 5000) {
+            hotesReleves = maintenant;
+            hotesFantomes = [];
+            var visiter = function(racine, profondeur) {
+                racine.querySelectorAll('*').forEach(function(el) {
+                    if (!el.shadowRoot) return;
+                    hotesFantomes.push(el);
+                    if (profondeur < 3) visiter(el.shadowRoot, profondeur + 1);
+                });
+            };
+            try { visiter(document, 0); } catch (e) {}
+        }
+        hotesFantomes.forEach(function(h) {
+            try { h.shadowRoot.querySelectorAll('video').forEach(function(v) { trouvees.push(v); }); } catch (e) {}
+        });
+        return trouvees;
+    }
+
+    /* L'élément à garder pour une vidéo : elle-même, ou l'hôte de sa racine fantôme
+       (on ne remonte pas d'une racine fantôme par `parentElement`). */
+    function horsDeLOmbre(el) {
+        var racine = el && el.getRootNode ? el.getRootNode() : null;
+        while (racine && racine !== document && racine.host) {
+            el = racine.host;
+            racine = el.getRootNode();
+        }
+        return el;
     }
 
     let cleaned = false;
@@ -169,14 +215,18 @@
 
             /* Détournement de l'onglet entier : le travers le plus pénible de ces sites, et
                ce que 'allow-top-navigation' refusait quand le bac à sable était posé. On
-               rend 'window.top' et 'window.parent' inertes en écriture pour ce cadre.
-               Chaque piège est indépendant : si l'un est refusé par la page, les autres
-               tiennent quand même. */
+               rend 'window.parent' inerte en écriture pour ce cadre.
+
+               'window.top', lui, ne peut pas l'être : la propriété n'est pas
+               redéfinissable (« Cannot redefine property: top », vérifié dans Chromium le
+               18 octobre 2026 ; c'est la règle des navigateurs). Le piège posé dessus
+               échouait sans bruit depuis toujours. C'est la garde « Quitter le site ? »
+               de l'application qui retient un « top.location = … ». */
             try {
                 const bloque = (quoi) => {
                     console.log('[Multiview Cleaner] Navigation de plus haut niveau bloquée (' + quoi + ')');
                 };
-                for (const cible of ['top', 'parent']) {
+                for (const cible of ['parent']) {
                     try {
                         const ref = window[cible];
                         if (!ref || ref === window) continue;
@@ -385,6 +435,68 @@
         });
     }
 
+    /* Ce qui reste PAR-DESSUS la vidéo une fois la page réduite au lecteur (18 octobre
+       2026, « j'ai à nouveau des pubs dans les frames du multiview » : une pub par-dessus
+       la vidéo). Dans l'emballage du lecteur, le nettoyage ne retirait que les calques
+       transparents, et ceux ajoutés après coup avec un z-index de plus de 1000. Une
+       bannière visible, un lien vers un site de paris posé sur l'image ou l'iframe d'une
+       régie restaient.
+
+       On masque maintenant tout calque positionné qui couvre au moins un vingtième de la
+       vidéo et qui mène AILLEURS : un lien vers un autre site, ou une iframe quand la
+       cible est une <video> (aucune iframe n'est alors à elle). Un vingtième, parce que
+       la vidéo est agrandie à toute la tuile et qu'une bannière garde sa taille en pixels :
+       un 300 × 250 couvre 14 % d'une tuile de 960 × 540. Les commandes du lecteur (boutons,
+       barres, affiche) ne sont pas des liens vers un autre site, et restent ; son logo
+       l'est parfois, mais il couvre à peine 1 % de l'image. Un calque « mène ailleurs »
+       s'il est un lien, s'il est dans un lien, si un lien en fait au moins la moitié, ou
+       s'il porte un lien et aucune commande (bouton, curseur) : une barre de commandes
+       qui porte un petit lien « propulsé par » reste une barre. */
+    var PART_CALQUE_DE_PUB = 0.05;
+    function lienAilleurs(el) {
+        var a = el.closest('a[href]');
+        if (!a && el.querySelectorAll) {
+            var re = el.getBoundingClientRect();
+            var aireCalque = re.width * re.height;
+            var liens = el.querySelectorAll('a[href]');
+            for (var i = 0; i < liens.length && !a; i++) {
+                var rl = liens[i].getBoundingClientRect();
+                if (aireCalque > 0 && rl.width * rl.height >= aireCalque / 2) a = liens[i];
+            }
+            if (!a && liens.length && !el.querySelector('button, input, select, [role="button"], [role="slider"]')) a = liens[0];
+        }
+        if (!a) return false;
+        try {
+            var u = new URL(a.getAttribute('href'), location.href);
+            return /^https?:$/.test(u.protocol) && u.hostname !== location.hostname;
+        } catch (e) { return false; }
+    }
+    function retirerCalquesDePub(base, cible) {
+        if (!base || !cible || !base.isConnected || !cible.isConnected) return 0;
+        var rc = cible.getBoundingClientRect();
+        var aire = rc.width * rc.height;
+        if (aire < 1) return 0;
+        var retires = 0;
+        base.querySelectorAll('*').forEach(function(el) {
+            if (el === cible || el.contains(cible) || el.classList.contains('mv-cleaner-hidden')) return;
+            var estCadre = el.tagName === 'IFRAME';
+            if (estCadre && cible.tagName !== 'VIDEO') return;
+            if (!estCadre) {
+                var pos = window.getComputedStyle(el).position;
+                if (pos !== 'absolute' && pos !== 'fixed') return;
+            }
+            var r = el.getBoundingClientRect();
+            var ix = Math.max(0, Math.min(r.right, rc.right) - Math.max(r.left, rc.left));
+            var iy = Math.max(0, Math.min(r.bottom, rc.bottom) - Math.max(r.top, rc.top));
+            if ((ix * iy) / aire < PART_CALQUE_DE_PUB) return;
+            if (!estCadre && !lienAilleurs(el)) return;
+            el.classList.add('mv-cleaner-hidden');
+            retires++;
+        });
+        if (retires) console.log('[Multiview Cleaner] Calque de pub retiré de la vidéo (' + retires + ')');
+        return retires;
+    }
+
     function cleanEverythingOutside(target) {
         if (cleaned) return;
 
@@ -442,6 +554,35 @@
 
         removeInvisibleOverlays(mainPlayerBase);
 
+        /* Les enfants de <html> hors de <body> : une régie qui s'y accroche échappe à la
+           remontée ci-dessus, qui s'arrête à <body>. */
+        var horsCorps = function(n) {
+            return n && n.nodeType === 1 && n !== document.body && n !== document.head
+                && !['SCRIPT', 'STYLE', 'LINK', 'META', 'HEAD', 'BODY'].includes(n.tagName);
+        };
+        Array.from(document.documentElement.children).forEach(function(n) {
+            if (horsCorps(n)) n.classList.add('mv-cleaner-hidden');
+        });
+        new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) { m.addedNodes.forEach(function(n) { if (horsCorps(n)) n.classList.add('mv-cleaner-hidden'); }); });
+        }).observe(document.documentElement, { childList: true });
+
+        /* Calques de pub : tout de suite, puis un moment encore, parce qu'une régie pose
+           souvent sa bannière quelques secondes après le départ de la vidéo. */
+        retirerCalquesDePub(mainPlayerBase, target);
+        /* Et à chaque ajout dans le lecteur, regroupé : un lecteur ajoute des nœuds sans
+           arrêt (sous-titres, commandes), la passe ne court qu'une fois par demi-seconde. */
+        var calquesPrevus = null;
+        var planifierCalques = function() {
+            if (calquesPrevus) return;
+            calquesPrevus = setTimeout(function() { calquesPrevus = null; retirerCalquesDePub(mainPlayerBase, target); }, 500);
+        };
+        var passesCalques = 0;
+        var boucleCalques = setInterval(function() {
+            if (++passesCalques > 60) { clearInterval(boucleCalques); return; }
+            retirerCalquesDePub(mainPlayerBase, target);
+        }, 2000);
+
         cleaned = true;
         console.log('[Multiview Cleaner] Page nettoyée avec succès !');
         lancerLectureImmediate(mainPlayerBase);
@@ -466,6 +607,8 @@
                                     // Risque élevé de pub en surimpression
                                     node.classList.add('mv-cleaner-hidden');
                                     try { node.remove(); } catch(e) {}
+                                } else {
+                                    planifierCalques();
                                 }
                             }
                         }
@@ -637,7 +780,7 @@
        joue sans son vaut mieux qu'une vidéo arrêtée. */
     function verifierLeSon() {
         setTimeout(() => {
-            const videos = Array.from(document.querySelectorAll('video'));
+            const videos = toutesLesVideos();
             const v = videos.find((x) => x.offsetWidth > 50 || x.offsetHeight > 50) || videos[0];
             if (!v) return;
             if (v.paused) {
@@ -671,7 +814,7 @@
         if (e.data === 'mv_mute' || e.data === 'mv_unmute') {
             const couper = (e.data === 'mv_mute');
             window.mvUnmutedState = !couper;
-            document.querySelectorAll('video, audio').forEach(el => {
+            toutesLesVideos().concat(Array.from(document.querySelectorAll('audio'))).forEach(el => {
                 el.muted = couper;
                 el.volume = couper ? 0 : 1;
             });
@@ -718,7 +861,7 @@
        un cadre plus bas ; ce script y tourne aussi, donc le clic tombe là où est la vidéo. */
     window.addEventListener('mousedown', function () {
         window.mvUnmutedState = true;
-        document.querySelectorAll('video, audio').forEach(function (el) {
+        toutesLesVideos().concat(Array.from(document.querySelectorAll('audio'))).forEach(function (el) {
             el.muted = false;
             el.volume = 1;
         });
@@ -761,7 +904,7 @@
     }
     function signalerMesure() {
         let v = null;
-        document.querySelectorAll('video').forEach((el) => {
+        toutesLesVideos().forEach((el) => {
             if (!v && el.videoHeight > 0) v = el;
         });
         const kbps = mesurerDebit();
@@ -775,7 +918,7 @@
     function signalerLecture() {
         let joue = false;
         let enPause = false;
-        document.querySelectorAll('video').forEach((v) => {
+        toutesLesVideos().forEach((v) => {
             if (v.readyState >= 3 && !v.paused && (v.currentTime > 0 || !v.ended)) joue = true;
             else if (v.readyState >= 3 && v.paused && !v.ended) enPause = true;
         });
@@ -789,7 +932,7 @@
            (js/playability.js, arretMeriteRechargement). Un script plus ancien n'envoie
            pas ce champ : l'application retombe alors sur le dernier clic vu dans le
            cadre, qui distingue déjà une pause d'une panne. */
-        const cause = joue ? 'joue' : (enPause ? 'pause' : (document.querySelector('video') ? 'attente' : 'absente'));
+        const cause = joue ? 'joue' : (enPause ? 'pause' : (toutesLesVideos().length ? 'attente' : 'absente'));
         try { window.top.postMessage({ __mv: 'video_state', playing: joue, cause: cause, host: location.hostname }, '*'); } catch (e) {}
     }
     /* Mode direct (voir js/directmedia.js) : pendant que la page joue, on voit passer le
@@ -846,7 +989,7 @@
     function videoJoue(v) { return !!v && !v.paused && !v.ended && v.readyState >= 2; }
     function tenterLecture(base) {
         try {
-            const videos = Array.from(document.querySelectorAll('video'));
+            const videos = toutesLesVideos();
             if (videos.some(videoJoue)) return true;
             videos.forEach((v) => {
                 try {
@@ -951,6 +1094,11 @@
         if (DISCUSSION_RE.test(src)) return true;
         var el = ifr;
         for (var n = 0; el && el !== document.body && n < 4; n++, el = el.parentElement) {
+            /* Un emballage ne parle que de ce qu'il contient SEUL. S'il porte aussi le
+               lecteur (« stream-chat-container », « player-with-chat »), son nom ne dit rien
+               de CE cadre : sans cette règle, le lecteur d'une telle page était écarté et la
+               page n'était jamais nettoyée (18 octobre 2026). */
+            if (n > 0 && el.querySelectorAll('iframe, video').length > 1) break;
             var cls = typeof el.className === 'string' ? el.className : '';
             var noms = [el.id, cls, el.getAttribute('name'), el.getAttribute('title'), el.getAttribute('aria-label')].join(' ');
             if (DISCUSSION_RE.test(noms)) return true;
@@ -969,10 +1117,10 @@
         try { const m = extractM3u8Url(); if (m) signalerManifeste(m); } catch (e) {}
 
         // Chercher une vidéo
-        const videos = Array.from(document.querySelectorAll('video')).filter(v => v.offsetWidth > 50 || v.offsetHeight > 50);
+        const videos = toutesLesVideos().filter(v => v.offsetWidth > 50 || v.offsetHeight > 50);
         if (videos.length > 0) {
             const bestVideo = videos.sort((a, b) => (b.offsetWidth * b.offsetHeight) - (a.offsetWidth * a.offsetHeight))[0];
-            cleanEverythingOutside(bestVideo);
+            cleanEverythingOutside(horsDeLOmbre(bestVideo));
             return;
         }
 
@@ -1002,16 +1150,26 @@
        exactement ce que ce script est censé éviter.
 
        Trois déclencheurs désormais, du moins cher au plus sûr :
-         - le sondage périodique, gardé pour les 15 premières secondes ;
+         - le sondage périodique : toutes les 500 ms pendant 15 secondes, puis toutes
+           les 3 secondes jusqu'au nettoyage ;
          - un observateur du DOM, qui ne coûte rien tant que rien n'arrive et réagit à
            l'apparition tardive d'une <video> ou d'une <iframe> ;
          - l'ordre `mv_clean` de l'application, qui relance tout.
        L'observateur s'arrête de lui-même dès que le nettoyage a réussi. */
     let interval = null;
     let observateur = null;
+    let versSondageLent = null;
+
+    /* Après les 15 premières secondes, le sondage ralentit au lieu de s'arrêter
+       (18 octobre 2026). L'observateur ne voit que des nœuds AJOUTÉS : un lecteur déjà
+       dans la page mais caché (compte à rebours, avis à fermer) ou dimensionné plus tard
+       par le site n'ajoute rien quand il apparaît, et la page restait entière. Une
+       recherche toutes les 3 s ne coûte presque rien et s'arrête au nettoyage. */
+    var SONDAGE_LENT_MS = 3000;
 
     function arreterRecherche() {
         if (interval) { clearInterval(interval); interval = null; }
+        if (versSondageLent) { clearTimeout(versSondageLent); versSondageLent = null; }
         if (observateur) { observateur.disconnect(); observateur = null; }
     }
 
@@ -1032,14 +1190,19 @@
         chercherSansCasser();
         if (cleaned) return;
 
-        interval = setInterval(() => {
+        const sonder = () => {
             if (cleaned) { arreterRecherche(); return; }
             chercherSansCasser();
-        }, 500);
-        setTimeout(() => { if (interval) { clearInterval(interval); interval = null; } }, 15000);
+        };
+        interval = setInterval(sonder, 500);
+        versSondageLent = setTimeout(() => {
+            versSondageLent = null;
+            if (interval) clearInterval(interval);
+            interval = cleaned ? null : setInterval(sonder, SONDAGE_LENT_MS);
+        }, 15000);
 
-        /* Le sondage s'arrête, l'observateur reste : c'est lui qui rattrape un lecteur
-           qui n'arrive qu'au bout de plusieurs minutes.
+        /* Le sondage ralentit, l'observateur reste : c'est lui qui rattrape le plus vite
+           un lecteur qui n'arrive qu'au bout de plusieurs minutes.
 
            `document.body` peut ne pas exister encore selon le moment où le gestionnaire
            d'extensions injecte le script. Sans cette attente, l'observateur n'était jamais
@@ -1107,8 +1270,52 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.13';
+    var VERSION = '1.14';
     var MAX_BYTES = 4 * 1024 * 1024;
+
+    /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche
+       avec AUCUN SITE »). Les CDN de ces flux ne répondent `Access-Control-Allow-Origin`
+       qu'à l'origine de leur propre lecteur, et plusieurs refusent un `Referer` qui n'est
+       pas le sien : le manifeste demandé par l'application était refusé avant la première
+       image. GM_xmlhttpRequest n'est pas soumis à CORS et pose le `Referer` du lecteur ;
+       l'application y fait passer manifestes, clés et segments (js/directmedia.js,
+       chargeurParPont). Annoncé seulement sous un vrai gestionnaire de scripts
+       (Tampermonkey, Violentmonkey, Greasemonkey : `GM_info`) : les copies de
+       l'extension, de la version de bureau et de l'APK bâtissent GM_xmlhttpRequest sur
+       `fetch`, qui ne sait ni lire en binaire ni poser un `Referer`. */
+    var BINAIRE = (typeof GM_info !== 'undefined') || (typeof GM !== 'undefined' && !!GM && !!GM.info);
+    var MAX_OCTETS_BINAIRES = 64 * 1024 * 1024;
+
+    function lireBinaire(d) {
+        var repondre = function(r) {
+            r.__mvBridge = 'mv_bridge_page';
+            r.id = d.id;
+            window.postMessage(r, '*');
+        };
+        var entetes = {};
+        if (typeof d.referer === 'string' && /^https?:\/\//i.test(d.referer)) entetes['Referer'] = d.referer;
+        if (typeof d.origine === 'string' && /^https?:\/\//i.test(d.origine)) entetes['Origin'] = d.origine;
+        if (typeof d.plage === 'string' && /^bytes=\d*-\d*$/.test(d.plage)) entetes['Range'] = d.plage;
+        try {
+            GM_FETCH({
+                method: 'GET',
+                url: d.url,
+                timeout: Math.min(Math.max(Number(d.timeout) || 20000, 1000), 60000),
+                headers: entetes,
+                responseType: 'arraybuffer',
+                onload: function (res) {
+                    var octets = res && res.response;
+                    var taille = octets && typeof octets.byteLength === 'number' ? octets.byteLength : -1;
+                    var ok = !!res && res.status >= 200 && res.status < 400 && taille >= 0 && taille <= MAX_OCTETS_BINAIRES;
+                    repondre({ ok: ok, binaire: true, octets: ok ? octets : null, status: res && res.status, finalUrl: (res && res.finalUrl) || d.url, error: ok ? '' : ('HTTP ' + (res && res.status)) });
+                },
+                onerror: function () { repondre({ ok: false, binaire: true, error: 'echec reseau' }); },
+                ontimeout: function () { repondre({ ok: false, binaire: true, delai: true, error: 'delai depasse' }); }
+            });
+        } catch (err) {
+            repondre({ ok: false, binaire: true, error: String(err && err.message || err) });
+        }
+    }
 
     function isGuideApp() {
         // L'application est reconnue a sa structure, pas a son adresse : elle tourne
@@ -1117,7 +1324,7 @@
     }
 
     function announce() {
-        window.postMessage({ __mvBridge: 'mv_bridge_ready', version: VERSION }, '*');
+        window.postMessage({ __mvBridge: 'mv_bridge_ready', version: VERSION, binaire: BINAIRE }, '*');
     }
 
     window.addEventListener('message', function (e) {
@@ -1133,6 +1340,11 @@
         if (d.__mvBridge === 'mv_bridge_fetch' && d.id && typeof d.url === 'string') {
             if (!/^https?:\/\//i.test(d.url)) {
                 window.postMessage({ __mvBridge: 'mv_bridge_page', id: d.id, ok: false, error: 'adresse invalide' }, '*');
+                return;
+            }
+            if (d.binaire) {
+                if (BINAIRE) lireBinaire(d);
+                else window.postMessage({ __mvBridge: 'mv_bridge_page', id: d.id, ok: false, binaire: true, error: 'lecture binaire indisponible' }, '*');
                 return;
             }
             try {

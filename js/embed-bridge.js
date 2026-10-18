@@ -60,12 +60,12 @@ var BRIDGE_READY = 'mv_bridge_ready';
 var BRIDGE_FETCH = 'mv_bridge_fetch';
 var BRIDGE_PAGE = 'mv_bridge_page';
 
-var bridge = { available: false, version: null, checked: false };
+var bridge = { available: false, version: null, checked: false, binaire: false };
 var pending = {};
 var seq = 0;
 
 export function getBridgeStatus() {
-  return { available: bridge.available, version: bridge.version, checked: bridge.checked };
+  return { available: bridge.available, version: bridge.version, checked: bridge.checked, binaire: bridge.binaire };
 }
 
 /* Écoute les réponses du script utilisateur et annonce la présence de l'application.
@@ -84,6 +84,7 @@ export function initEmbedBridge() {
       bridge.available = true;
       bridge.checked = true;
       bridge.version = d.version || '?';
+      bridge.binaire = d.binaire === true;
       window.dispatchEvent(new CustomEvent('mvBridgeReady', { detail: { version: bridge.version } }));
       return;
     }
@@ -92,6 +93,17 @@ export function initEmbedBridge() {
       var p = pending[d.id];
       delete pending[d.id];
       clearTimeout(p.timer);
+      if (p.binaire) {
+        if (d.ok && d.octets && typeof d.octets.byteLength === 'number') {
+          p.resolve({ octets: d.octets, status: d.status, finalUrl: d.finalUrl || p.url });
+        } else {
+          var err = new Error(d.error || 'réponse vide du script');
+          err.status = d.status | 0;
+          err.delai = !!d.delai;
+          p.reject(err);
+        }
+        return;
+      }
       if (d.ok && d.html) p.resolve({ html: d.html, finalUrl: d.finalUrl || p.url, via: 'script' });
       else p.reject(new Error(d.error || 'réponse vide du script'));
     }
@@ -138,6 +150,37 @@ export function fetchViaBridge(url, timeoutMs) {
       }, timeoutMs || 15000)
     };
     window.postMessage({ __mvBridge: BRIDGE_FETCH, id: id, url: url }, '*');
+  });
+}
+
+/* Lit une ressource en binaire par le script utilisateur (≥ 1.14, sous un vrai
+   gestionnaire de scripts), avec le `Referer` et l'`Origin` voulus et sans CORS. C'est
+   ce que demande le mode direct (js/directmedia.js, `chargeurParPont`) : les CDN des
+   flux refusent l'origine de l'application. Rend { octets, status, finalUrl } ; l'erreur
+   porte `status` et `delai`. */
+export function lireOctetsViaPont(url, options) {
+  var o = options || {};
+  return new Promise(function (resolve, reject) {
+    if (!bridge.available || !bridge.binaire) { reject(new Error('lecture binaire du script absente')); return; }
+    var id = 'o' + (++seq) + '_' + Date.now();
+    var delaiMs = o.timeoutMs || 20000;
+    pending[id] = {
+      binaire: true,
+      resolve: resolve,
+      reject: reject,
+      url: url,
+      /* Le script a son propre délai : on lui laisse le temps de le dire. */
+      timer: setTimeout(function () {
+        delete pending[id];
+        var err = new Error('le script utilisateur n\'a pas répondu');
+        err.delai = true;
+        reject(err);
+      }, delaiMs + 2000)
+    };
+    window.postMessage({
+      __mvBridge: BRIDGE_FETCH, id: id, url: url, binaire: true,
+      referer: o.referer || '', origine: o.origine || '', plage: o.plage || '', timeout: delaiMs
+    }, '*');
   });
 }
 

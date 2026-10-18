@@ -138,7 +138,7 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 | **➕ Ajouter** | Passe au Live et invite à choisir un match ; le lecteur revient avec la nouvelle vidéo. |
 | **⊞ Disposition** | `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`. En portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. |
 | **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
-| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent ; dès deux vidéos, la vidéo 1 reste dans la page et les autres s'y empilent, une par-dessus l'autre), `🖥 Deux écrans : une fenêtre étirée` et `🗗 Deux écrans : deux fenêtres` (ordinateur), `🛡 Bloquer les redirections des sites` (allumé par défaut : si une vidéo tente d'emmener l'onglet sur son site, le navigateur demande « Quitter le site ? » ; répondre non. Contrepartie : quitter ou recharger l'onglet soi-même, vidéos chargées, demande aussi confirmation), `✕ Fermer toutes les vidéos`. |
+| **⋯ Plus** | `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `🖼 Fenêtre détachée` (navigateurs qui le permettent ; dès deux vidéos, la vidéo 1 reste dans la page et les autres s'y empilent, une par-dessus l'autre), `🖥 Deux écrans : une fenêtre étirée` et `🗗 Deux écrans : deux fenêtres` (ordinateur), `🛡 Bloquer les redirections des sites` (allumé par défaut : si une vidéo tente d'emmener l'onglet sur son site au clic qu'on vient d'y faire, le navigateur demande « Quitter le site ? » ; répondre non. La garde ne vaut que pendant les 5 secondes qui suivent un clic dans une vidéo : fermer ou recharger l'onglet ne demande rien), `✕ Fermer toutes les vidéos`. |
 
 Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois. Ils sont rangés en sections (⋯ : Affichage, Lecture, Autres fenêtres ; ⋮ : Si la vidéo ne joue pas, Cette tuile, Le site), et chaque entrée dit en petit ce qu'elle fait.
 
@@ -169,7 +169,7 @@ Deux façons, dans `⋯ Plus` :
 
 ### 5.4 La tuile
 
-En-tête : poignée de glissement, numéro (`Touche N`), **nom du match** et, dessous, la pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré, bouton d'ajustement (icône seule), puis **`↗ Site`**, le menu **`⋮`** et, un peu à l'écart, **`✕`**.
+En-tête : poignée de glissement, numéro (`Touche N`), **nom du match** et, dessous, la pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré (avec le script utilisateur 1.14 sous Tampermonkey, le flux passe par le script, avec le référent du lecteur du site : sans lui, presque tous les serveurs vidéo le refusent), bouton d'ajustement (icône seule), puis **`↗ Site`**, le menu **`⋮`** et, un peu à l'écart, **`✕`**.
 
 - **Chargement** : tant que la page n'est pas chargée (ou qu'aucune vidéo n'est signalée), une pastille « Chargement de … » s'affiche au centre, sans prendre les clics. Des tuiles posées ensemble partent l'une après l'autre (450 ms d'écart) plutôt que toutes à la fois.
 
@@ -284,7 +284,7 @@ L'extension maison pour Chrome (`extension/`) reste dans le dépôt, mais le gui
 
 Ce que le script **Multiview Stream Cleaner** (version 1.8) fait, et que l'application ne peut pas faire seule :
 
-- dans chaque page de lecteur : bloque les fenêtres surgissantes et les détournements dès le premier octet de la page, retire tout ce qui entoure le lecteur et les calques invisibles, lance la vidéo (`play()`, muet si nécessaire, puis le gros bouton de lecture des lecteurs connus), obéit aux ordres de son (`mv_mute` / `mv_unmute`), et remonte à l'application l'état de lecture, le débit et la définition, et les adresses de flux direct qu'il voit passer ; sur mobile, ajoute `📱 Force Native Player (Cast)` et `📺 Open in Cast App` ;
+- dans chaque page de lecteur : bloque les fenêtres surgissantes et les détournements dès le premier octet de la page, retire tout ce qui entoure le lecteur, les calques invisibles et les calques de pub posés sur la vidéo (bannière ou cadre qui mène vers un autre site), continue de chercher toutes les 3 secondes un lecteur qui apparaît tard, lance la vidéo (`play()`, muet si nécessaire, puis le gros bouton de lecture des lecteurs connus), obéit aux ordres de son (`mv_mute` / `mv_unmute`), et remonte à l'application l'état de lecture, le débit et la définition, et les adresses de flux direct qu'il voit passer ; dans la fenêtre de l'application, lit pour le mode direct manifestes et segments avec le référent du lecteur (1.14, sous un vrai gestionnaire de scripts) ; sur mobile, ajoute `📱 Force Native Player (Cast)` et `📺 Open in Cast App` ;
 - dans l'application : sert de **pont** pour télécharger les pages des sources depuis l'adresse de l'utilisateur, là où les proxys CORS sont refusés. Options → Réseau montre s'il est actif.
 
 ## 10. Application installable (PWA)

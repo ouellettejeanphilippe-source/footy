@@ -89,6 +89,54 @@ const SITE = `<html><body style="margin:0">
         document.getElementById('zone').appendChild(colonne);
         document.getElementById('zone').appendChild(scene);
       }
+      /* « J'ai à nouveau des pubs dans les frames du multiview » (18 octobre 2026) : un
+         lecteur dont l'emballage porte aussi une bannière de paris, l'iframe d'une régie
+         posée sur l'image, ses commandes, son logo et son affiche. */
+      if (e.data === 'poser_lecteur_et_pub') {
+        var p = document.createElement('div');
+        p.className = 'player'; p.setAttribute('style', 'position:relative;width:640px;height:360px');
+        p.innerHTML = '<video id="lecteur" width="640" height="360" style="width:640px;height:360px"></video>'
+          + '<div id="affiche" style="position:absolute;left:0;top:0;width:640px;height:360px;background:#123"></div>'
+          + '<div id="pub-banniere" style="position:absolute;left:120px;top:100px;width:400px;height:160px;background:#fc0;z-index:20">'
+          +   '<a href="https://paris.example/bonus" style="display:block;width:400px;height:140px">MISEZ</a><span class="close-btn">x</span></div>'
+          + '<iframe id="pub-cadre" src="/pub" style="position:absolute;right:0;bottom:0;width:300px;height:250px;border:0"></iframe>'
+          + '<div id="commandes" class="vjs-control-bar" style="position:absolute;left:0;bottom:0;width:640px;height:40px;background:#000"><button>lecture</button>'
+          +   '<a href="https://lecteur.example/" style="display:inline-block;width:60px;height:20px">propulsé par</a></div>'
+          + '<a id="logo" href="https://lecteur.example/" style="position:absolute;right:8px;top:8px;width:80px;height:30px">logo</a>';
+        document.getElementById('zone').appendChild(p);
+      }
+      /* La régie qui attend que la vidéo parte pour poser sa bannière, z-index modeste. */
+      if (e.data === 'poser_pub_tardive') {
+        var t = document.createElement('div');
+        t.id = 'pub-tardive';
+        t.setAttribute('style', 'position:absolute;left:0;top:0;width:640px;height:120px;background:#c00;z-index:50');
+        t.innerHTML = '<a href="https://paris.example/tard">COTE x10</a>';
+        document.querySelector('.player').appendChild(t);
+      }
+      /* Un lecteur déjà dans la page mais caché (compte à rebours, avis à fermer), montré
+         plus tard par un simple changement de style : aucun nœud n'est ajouté. */
+      if (e.data === 'poser_lecteur_cache') {
+        var cache = document.createElement('div');
+        cache.id = 'enveloppe-cachee'; cache.style.display = 'none';
+        cache.innerHTML = '<video id="lecteur" width="640" height="360" style="width:640px;height:360px"></video>';
+        document.getElementById('zone').appendChild(cache);
+      }
+      if (e.data === 'montrer_lecteur') document.getElementById('enveloppe-cachee').style.display = 'block';
+      /* Un lecteur en élément personnalisé : sa <video> vit dans une racine fantôme. */
+      if (e.data === 'poser_lecteur_ombre') {
+        var hote = document.createElement('div');
+        hote.id = 'hote-ombre';
+        hote.attachShadow({ mode: 'open' }).innerHTML = '<video id="lecteur-ombre" width="640" height="360" style="width:640px;height:360px"></video>';
+        document.getElementById('zone').appendChild(hote);
+      }
+      /* Lecteur et discussion dans un emballage qui porte « chat » dans son nom. */
+      if (e.data === 'poser_lecteur_emballage_chat') {
+        var emb = document.createElement('div');
+        emb.className = 'stream-chat-container';
+        emb.innerHTML = '<div class="col"><iframe id="lecteur-cadre" src="/embed/1" style="width:640px;height:360px;border:0"></iframe></div>'
+          + '<div class="col"><iframe id="chat" src="/salon" style="width:300px;height:360px;border:0"></iframe></div>';
+        document.getElementById('zone').appendChild(emb);
+      }
       if (e.data === 'poser_video_minuscule') {
         var vp = document.createElement('video');
         vp.id = 'minuscule'; vp.width = 40; vp.height = 30;
@@ -123,8 +171,23 @@ test.beforeAll(async () => {
          ce qu'aucun gestionnaire d'extensions ne fait, et le blocage des popups n'aurait
          nulle part où se poser à temps. */
       const avecScript = !/(^|[?&])sans=1/.test(req.url);
+      /* Un site de chaînes, avec sa grille de programmes (« .epg ») : le script le prenait
+         pour l'application et n'y touchait pas. */
+      const site = /(^|[?&])epg=1/.test(req.url) ? SITE.replace('<div id="zone">', '<div class="epg">Grille des programmes</div><div id="zone">') : SITE;
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      return res.end(avecScript ? SITE.replace('<html>', '<html><script>' + SCRIPT + '</script>') : SITE);
+      return res.end(avecScript ? site.replace('<html>', '<html><script>' + SCRIPT + '</script>') : site);
+    }
+    /* La fenêtre principale de l'application, réduite à ce que le pont reconnaît, avec un
+       faux GM_xmlhttpRequest qui note ce qu'on lui demande. `info=1` : un vrai
+       gestionnaire de scripts (GM_info) ; sinon, une copie bâtie sur fetch. */
+    if (rel === '/__app-factice') {
+      const gm = '<script>window.__gm = [];'
+        + (/(^|[?&])info=1/.test(req.url) ? 'window.GM_info = { script: { version: "1.14" } };' : '')
+        + 'window.GM_xmlhttpRequest = function (o) { window.__gm.push({ url: o.url, headers: o.headers, responseType: o.responseType });'
+        + ' setTimeout(function () { o.onload({ status: 200, response: new Uint8Array([7, 7, 7]).buffer, responseText: "", finalUrl: o.url }); }, 10);'
+        + ' return { abort: function () {} }; };</script>';
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      return res.end('<html>' + gm + '<script>' + SCRIPT + '</script><body><div id="marea"></div><main class="epg"></main></body></html>');
     }
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end('<html><body style="margin:0"></body></html>');
@@ -139,7 +202,7 @@ test.afterAll(async () => { await new Promise((r) => server.close(r)); });
 
 /* Monte une tuile : page hôte sur une origine, cadre sur l'autre, script injecté dans
    tous les cadres comme le ferait Tampermonkey. */
-async function monterTuile(page, avecHorloge, sansScript) {
+async function monterTuile(page, avecHorloge, sansScript, requete) {
   /* L'horloge doit être installée AVANT toute navigation, sinon elle ne gouverne pas les
      minuteries que le script pose à son démarrage — et un test qui avance une horloge
      qu'il ne contrôle pas ne prouve rien. */
@@ -150,7 +213,7 @@ async function monterTuile(page, avecHorloge, sansScript) {
     f.id = 'tuile'; f.src = src;
     f.setAttribute('style', 'width:800px;height:600px;border:0');
     document.body.appendChild(f);
-  }, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : ''));
+  }, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : (requete ? '?' + requete : '')));
   const cadre = await (await page.locator('#tuile').elementHandle()).contentFrame();
   await cadre.waitForSelector('#decor');
   return cadre;
@@ -455,4 +518,109 @@ test('seule la fenêtre qui encadre la tuile peut lui donner des ordres', async 
   await page.waitForTimeout(600);
   expect(await cadre.evaluate(() => window.mvUnmutedState), 'un ordre qui ne vient pas de la fenêtre parente est ignoré').toBe(false);
   await expect(cadre.locator('#decor')).toBeVisible();
+});
+
+/* « J'ai à nouveau des pubs dans les frames du multiview » : une pub par-dessus la vidéo
+   (18 octobre 2026). Le nettoyage ne retirait de l'emballage du lecteur que les calques
+   transparents, et ceux ajoutés après coup avec un z-index de plus de 1000. Une bannière
+   visible ou l'iframe d'une régie restaient sur l'image. Ce qui mène ailleurs et couvre la
+   vidéo part ; les commandes, l'affiche et le petit logo restent. */
+test('les calques de pub posés sur la vidéo disparaissent, les commandes du lecteur restent', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_et_pub', '*'); });
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#pub-banniere'), 'la bannière de paris posée sur l\'image').toBeHidden({ timeout: 5000 });
+  await expect(cadre.locator('#pub-cadre'), 'l\'iframe d\'une régie dans l\'emballage d\'une <video>').toBeHidden();
+  await expect(cadre.locator('#lecteur')).toBeVisible();
+  await expect(cadre.locator('#commandes'), 'les commandes du lecteur, même avec leur petit lien « propulsé par »').toBeVisible();
+  await expect(cadre.locator('#logo'), 'son logo, qui ne couvre presque rien').toBeVisible();
+  await expect(cadre.locator('#affiche'), 'son affiche, qui ne mène nulle part').toBeVisible();
+
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_pub_tardive', '*'); });
+  await expect(cadre.locator('#pub-tardive'), 'la bannière posée après le départ de la vidéo, z-index 50').toBeHidden({ timeout: 5000 });
+  await expect(cadre.locator('#commandes')).toBeVisible();
+});
+
+/* Un lecteur déjà dans la page mais caché, montré plus tard par un changement de style :
+   l'observateur ne voit que les nœuds ajoutés, et le sondage s'arrêtait à 15 s. La page
+   restait entière autour de la vidéo. */
+test('un lecteur montré tard, sans nœud ajouté, est quand même trouvé', async ({ page }) => {
+  const cadre = await monterTuile(page, true);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_cache', '*'); });
+  await expect(cadre.locator('#lecteur')).toBeAttached();
+  await page.clock.fastForward('00:30');
+  await expect(cadre.locator('#decor'), 'caché, il ne compte pas').toBeVisible();
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('montrer_lecteur', '*'); });
+  await page.waitForTimeout(200);
+  await page.clock.fastForward('00:04');
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 5000 });
+  await expect(cadre.locator('#lecteur')).toBeVisible();
+});
+
+test('un lecteur dont la vidéo vit dans une racine fantôme est nettoyé', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_ombre', '*'); });
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 12000 });
+  await expect(cadre.locator('#hote-ombre')).toBeVisible();
+});
+
+/* Le script se croyait dans l'application dès qu'un élément « .epg » existait : un site de
+   chaînes et sa grille de programmes n'étaient jamais nettoyés. */
+test('un site qui a sa grille de programmes (.epg) est nettoyé comme les autres', async ({ page }) => {
+  const cadre = await monterTuile(page, false, false, 'epg=1');
+  await expect(cadre.locator('.epg')).toBeAttached();
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*'); });
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#lecteur')).toBeAttached();
+});
+
+/* Un emballage nommé « stream-chat-container » qui porte le lecteur ET la discussion : son
+   nom écartait le lecteur aussi (1.12), et plus rien n'était à garder. */
+test('un emballage qui contient le lecteur et la discussion ne fait pas écarter le lecteur', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_emballage_chat', '*'); });
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#lecteur-cadre')).toBeAttached();
+  await expect(cadre.locator('#chat')).toHaveCount(0);
+});
+
+/* Le pont lit en binaire pour le mode direct (« le bouton direct, ça marche avec AUCUN
+   SITE », 18 octobre 2026), avec le Referer et l'Origin du lecteur, et seulement sous un
+   vrai gestionnaire de scripts : les copies de l'extension, du bureau et de l'APK bâtissent
+   GM_xmlhttpRequest sur fetch, qui ne sait ni lire en binaire ni poser un Referer. */
+async function questionnerPont(page, info) {
+  await page.goto(origin + '/__app-factice' + (info ? '?info=1' : ''));
+  return page.evaluate(() => new Promise((resolve) => {
+    const recu = { pret: null, page: null };
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || !d.__mvBridge) return;
+      if (d.__mvBridge === 'mv_bridge_ready' && !recu.pret) {
+        recu.pret = d;
+        window.postMessage({ __mvBridge: 'mv_bridge_fetch', id: 'x1', url: 'https://cdn.test/hls/seg-1.ts', binaire: true,
+          referer: 'https://lecteur.test/', origine: 'https://lecteur.test', plage: 'bytes=0-99', timeout: 5000 }, '*');
+      }
+      if (d.__mvBridge === 'mv_bridge_page' && d.id === 'x1') {
+        recu.page = { ok: d.ok, binaire: d.binaire, octets: d.octets ? Array.from(new Uint8Array(d.octets)) : null, error: d.error };
+        resolve({ recu, gm: window.__gm });
+      }
+    });
+    window.postMessage({ __mvBridge: 'mv_bridge_hello' }, '*');
+  }));
+}
+
+test('le pont lit en binaire, avec le Referer du lecteur, sous un vrai gestionnaire de scripts', async ({ page }) => {
+  const { recu, gm } = await questionnerPont(page, true);
+  expect(recu.pret.version).toBe('1.14');
+  expect(recu.pret.binaire, 'lecture binaire annoncée').toBe(true);
+  expect(recu.page).toEqual({ ok: true, binaire: true, octets: [7, 7, 7], error: '' });
+  expect(gm).toEqual([{ url: 'https://cdn.test/hls/seg-1.ts', responseType: 'arraybuffer',
+    headers: { Referer: 'https://lecteur.test/', Origin: 'https://lecteur.test', Range: 'bytes=0-99' } }]);
+});
+
+test('sans gestionnaire de scripts, le pont ne promet pas la lecture binaire', async ({ page }) => {
+  const { recu, gm } = await questionnerPont(page, false);
+  expect(recu.pret.binaire).toBe(false);
+  expect(recu.page.ok).toBe(false);
+  expect(gm, 'rien n\'est demandé au GM_xmlhttpRequest bâti sur fetch').toEqual([]);
 });
