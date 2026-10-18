@@ -44,6 +44,7 @@ async function main() {
   assert.match(S.raisonDeLaGarde({ armee: false, reglage: true, tuiles: 1, parLeHaut: true }), /par le haut/);
   assert.match(S.raisonDeLaGarde({ armee: false, reglage: true, tuiles: 1, modificateur: true }), /Ctrl/);
   assert.match(S.raisonDeLaGarde({ armee: false, reglage: true, tuiles: 1, toucheIlYaMs: 40 }), /F5/);
+  assert.match(S.raisonDeLaGarde({ armee: false, reglage: true, tuiles: 1, pages: 0 }), /aucune tuile n'affiche la page d'un site/);
   ok('chaque cas de la garde est expliqué en clair');
 
   // ── 4. La page Logs ────────────────────────────────────────────────────────
@@ -60,6 +61,17 @@ async function main() {
   assert.ok(!h.includes('<b>pub</b>'), 'les noms de sites sont échappés');
   assert.ok(h.includes('&lt;b&gt;pub&lt;/b&gt;.example'));
   ok('la page Logs montre chaque sortie et chaque retour, échappés');
+
+  // ── 5. Ce qui précédait (deux « Quitter le site ? » d'origine inconnue, 18 octobre) ─
+  const d = S.sortiesHtml([{ type: 'sortie', at: 299000, quittee: false, armee: true, reglage: true, tuiles: 2, pages: 2,
+    focusPage: false, pointeur: { y: 14, ilYaMs: 300 }, sortieFenetre: { y: 37, ilYaMs: 250 },
+    derniereTouche: { touche: 'F5', ilYaMs: 4000 }, poseesIlYaMs: [4000, null], sites: ['a.example', 'b.example'] }], esc);
+  assert.match(d, /fenêtre sans le focus/);
+  assert.match(d, /pointeur vu à 14 px du haut il y a 300 ms/);
+  assert.match(d, /sorti de la fenêtre à 37 px du haut il y a 250 ms/);
+  assert.match(d, /dernière touche F5 il y a 4 s/);
+  assert.match(d, /a\.example \(chargée il y a 4 s\), b\.example/);
+  ok('une sortie dit où était le pointeur, la dernière touche, le focus et l\'âge de chaque vidéo');
 
   console.log(`unit_sorties: ${n} groupes de tests OK`);
 }

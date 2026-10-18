@@ -2169,3 +2169,50 @@ test('la fenêtre du début montre l\'ancien guide des scripts, une seule fois',
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
+
+/* « Stockage local ❌ 1 écriture(s) refusée(s) · QuotaExceededError · 4569 Ko » (Logs,
+   Firefox, 18 octobre 2026). Le calendrier du jour avec ses liens, celui d'hier autant,
+   les matchs du dernier scraping et le cache des liens remplissaient le stockage : une
+   écriture refusée, c'est un réglage, un favori ou l'état du lecteur qui ne prend pas.
+   Ici le VRAI quota du navigateur, rempli de caches refaisables avant le démarrage :
+   l'application doit écrire son calendrier en les vidant, sans toucher aux favoris, et
+   retirer les liens du calendrier d'hier. Sans la correction, le calendrier du jour est
+   refusé et la ligne « Stockage local » est rouge. */
+test('stockage plein : les caches refaisables partent, les favoris restent, hier perd ses liens', async ({ page }) => {
+  const cal = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'schedule.json'), 'utf8'));
+  const [, a, m, j] = String(cal.fetchDate).match(/^(\d{4})(\d{2})(\d{2})$/);
+  const hier = new Date(Date.UTC(+a, +m - 1, +j - 1)).toISOString().slice(0, 10).replace(/-/g, '');
+  await page.goto(origin + '/manifest.json');
+  await page.evaluate((hier) => {
+    localStorage.clear();
+    localStorage.setItem('fav_teams', JSON.stringify(['Canadiens de Montréal']));
+    const lien = { name: 'Sky Sports', url: 'https://exemple.test/watch.php?id=38', source: 'daddylive', site: 'exemple.test' };
+    localStorage.setItem('api_calendar_cache_' + hier, JSON.stringify({ fetchDate: hier, savedAt: 1, matches: [
+      { id: 'h1', homeTeam: 'Canadiens', awayTeam: 'Bruins', matchDate: 'x', startTime: '19:00', streamLinks: Array(200).fill(lien), streamsLoaded: true }] }));
+    localStorage.setItem('last_scraped_matches', 'x'.repeat(200000));
+    /* Le reste du quota : le plus gros bloc qui passe encore, puis de plus en plus petits. */
+    let bloc = 1 << 22;
+    while (bloc >= 64) {
+      try { localStorage.setItem('stream_cache', (localStorage.getItem('stream_cache') || '') + 'x'.repeat(bloc)); }
+      catch (e) { bloc >>= 1; }
+    }
+  }, hier);
+  const pageErrors = await bootOffline(page);
+  const etat = await page.evaluate((hier) => ({
+    info: window.stockageInfo || null,
+    fav: localStorage.getItem('fav_teams'),
+    jour: Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_') && !k.endsWith(hier)),
+    hier: JSON.parse(localStorage.getItem('api_calendar_cache_' + hier) || 'null')
+  }), hier);
+  expect(etat.info && etat.info.liberees, 'des caches ont été vidés pour faire de la place').toContain('stream_cache');
+  expect(etat.info.echecs, 'aucune écriture refusée').toBe(0);
+  expect(etat.fav, 'les favoris restent').toBe(JSON.stringify(['Canadiens de Montréal']));
+  expect(etat.jour.length, 'le calendrier du jour est écrit').toBe(1);
+  expect(etat.hier && etat.hier.matches.length, 'hier garde ses matchs').toBe(1);
+  expect(etat.hier.matches[0].streamLinks, 'mais plus ses liens').toEqual([]);
+  await page.evaluate(() => window.applyFilter('logs'));
+  const appareil = page.locator('#sources-status-container');
+  await expect(appareil).toContainText('caches vidés pour faire de la place : stream_cache');
+  await expect(appareil).not.toContainText('écriture(s) refusée(s)');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});

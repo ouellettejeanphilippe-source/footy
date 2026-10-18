@@ -56,6 +56,7 @@ export function raisonDeLaGarde(e) {
     }
     if (e.reglage === false) return 'garde levée : réglage « Bloquer les redirections des sites » coupé';
     if (!e.tuiles) return 'garde levée : aucune vidéo';
+    if (e.pages === 0) return 'garde levée : aucune tuile n\'affiche la page d\'un site (mode direct, chargement ou lecteur officiel)';
     if (e.autorisee) return 'garde levée : navigation de l\'application (mise à jour, installation du script)';
     if (e.cachee) return 'garde levée : onglet en arrière-plan';
     if (e.parLeHaut) return 'garde levée : pointeur sorti par le haut (vers les onglets)';
@@ -93,7 +94,14 @@ export function sortiesHtml(journal, esc) {
         if (typeof e.focusTuile === 'number' && e.focusTuile >= 0) details.push('focus dans la vidéo ' + (e.focusTuile + 1));
         var clic = duree(e.clicTuileIlYaMs);
         details.push(clic ? 'dernier clic dans une vidéo il y a ' + clic : 'aucun clic dans une vidéo');
-        if (Array.isArray(e.sites) && e.sites.length) details.push('vidéos : ' + e.sites.join(', '));
+        if (e.focusPage === false) details.push('fenêtre sans le focus');
+        if (e.pointeur) details.push('pointeur vu à ' + e.pointeur.y + ' px du haut' + (duree(e.pointeur.ilYaMs) ? ' il y a ' + duree(e.pointeur.ilYaMs) : ''));
+        if (e.sortieFenetre) details.push('sorti de la fenêtre à ' + e.sortieFenetre.y + ' px du haut' + (duree(e.sortieFenetre.ilYaMs) ? ' il y a ' + duree(e.sortieFenetre.ilYaMs) : ''));
+        if (e.derniereTouche) details.push('dernière touche ' + e.derniereTouche.touche + (duree(e.derniereTouche.ilYaMs) ? ' il y a ' + duree(e.derniereTouche.ilYaMs) : ''));
+        if (Array.isArray(e.sites) && e.sites.length) details.push('vidéos : ' + e.sites.map(function (site, i) {
+            var pose = Array.isArray(e.poseesIlYaMs) ? duree(e.poseesIlYaMs[i]) : null;
+            return site + (pose ? ' (chargée il y a ' + pose + ')' : '');
+        }).join(', '));
         html += '<div style="padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;">'
             + (e.quittee ? '🚪' : '🛡') + ' <b>' + esc(heure(e.at)) + '</b> '
             + (e.quittee ? 'page quittée' : 'page restée') + ' · ' + esc(raisonDeLaGarde(e))

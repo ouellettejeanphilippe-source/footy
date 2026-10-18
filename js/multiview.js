@@ -2,7 +2,7 @@ import { fetchPage } from './utils.js';
 import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, tailleStockageKo } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, tailleStockageKo, plusGrossesCles } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
@@ -758,7 +758,15 @@ export var TOUCHE_DEPART_MS = 1500;
 /* Un modificateur dont on n'a pas vu le relâchement (focus parti ailleurs) ne lève pas
    la garde plus de 10 s. */
 export var MODIFICATEUR_MAX_MS = 10000;
-var depart = { parLeHaut: false, modificateur: false, modificateurAt: -Infinity, toucheAt: -Infinity, clicAt: -Infinity };
+/* Marge, en pixels, sous le haut de la fenêtre : un pointeur rapide sort de la page sans
+   qu'elle le voie à la ligne 0, et Firefox ne rapporte souvent que sa dernière position
+   vue, quelques pixels plus bas (18 octobre 2026, deux « Quitter le site ? » au relevé
+   sans que l'utilisateur sache d'où). */
+export var MARGE_HAUT_PX = 20;
+var depart = { parLeHaut: false, modificateur: false, modificateurAt: -Infinity, toucheAt: -Infinity, clicAt: -Infinity,
+    /* Pour le relevé seulement : dernière position vue, dernière sortie de la fenêtre,
+       dernière touche de raccourci (jamais une autre touche). */
+    y: null, yAt: -Infinity, sortieY: null, sortieAt: -Infinity, nomTouche: null, nomToucheAt: -Infinity };
 /* Horloge monotone : un intervalle se mesure mieux ainsi, et elle n'est pas figée par
    les tests qui fixent Date.now. */
 function horlogeDepart() {
@@ -786,6 +794,23 @@ export function utilisateurPart(mono) {
     return t - depart.toucheAt < TOUCHE_DEPART_MS;
 }
 
+/* Les tuiles qui affichent la page d'un site, seules capables d'emmener l'onglet. Une
+   vidéo jouée en mode direct (`<video>`), une tuile qui charge encore, le panneau « ce
+   site a fait sortir la page » ou un lecteur officiel (js/esports.js) n'en ont pas : la
+   garde n'a alors rien à retenir, et « Quitter le site ? » ne venait qu'à la fermeture. */
+export function pagesDeSites() {
+    var n = 0;
+    try {
+        documentsDuLecteur().forEach(function(d) {
+            Array.prototype.forEach.call(d.querySelectorAll('iframe[id^="mv-iframe-"]'), function(f) {
+                var src = f.getAttribute('src') || '';
+                if (/^https?:/i.test(src) && !estLecteurOfficiel(src)) n++;
+            });
+        });
+    } catch (e) { return mvFlux.length; }
+    return n;
+}
+
 /* Le dernier clic vu dans une tuile (`mv_frame_clicked`), pour le relevé des sorties. */
 export function noterClicTuile(mono) { depart.clicAt = (mono === undefined) ? horlogeDepart() : mono; }
 
@@ -797,10 +822,14 @@ export function etatGarde(now, mono) {
     var ua = (typeof navigator !== 'undefined') ? navigator.userActivation : null;
     var a = (typeof document !== 'undefined') ? document.activeElement : null;
     var focus = (a && a.tagName === 'IFRAME' && /^mv-iframe-\d+$/.test(a.id || '')) ? parseInt(a.id.slice(10), 10) : -1;
+    var age = function(at) { return isFinite(at) ? Math.round(t - at) : null; };
+    var focusPage = null;
+    try { focusPage = (typeof document !== 'undefined' && typeof document.hasFocus === 'function') ? document.hasFocus() : null; } catch (e) {}
     return {
         armee: gardeSortieArmee(now, mono),
         reglage: gardeSortie,
         tuiles: mvFlux.length,
+        pages: pagesDeSites(),
         autorisee: maintenant <= sortieAutoriseeJusqua,
         cachee: typeof document !== 'undefined' && document.visibilityState === 'hidden',
         parLeHaut: depart.parLeHaut,
@@ -809,13 +838,18 @@ export function etatGarde(now, mono) {
         clicTuileIlYaMs: isFinite(depart.clicAt) ? Math.round(t - depart.clicAt) : null,
         activation: ua ? { active: !!ua.isActive, deja: !!ua.hasBeenActive } : null,
         focusTuile: focus,
+        focusPage: focusPage,
+        pointeur: depart.y === null ? null : { y: depart.y, ilYaMs: age(depart.yAt) },
+        sortieFenetre: depart.sortieY === null ? null : { y: depart.sortieY, ilYaMs: age(depart.sortieAt) },
+        derniereTouche: depart.nomTouche === null ? null : { touche: depart.nomTouche, ilYaMs: age(depart.nomToucheAt) },
+        poseesIlYaMs: mvFlux.map(function(f) { return f._posedAt ? Math.max(0, maintenant - f._posedAt) : null; }),
         sites: mvFlux.map(function(f) { return getDomain(f._currentUrl || f.url || ''); })
     };
 }
 
 export function gardeSortieArmee(now, mono) {
     return gardeSortie && mvFlux.length > 0 && (now === undefined ? Date.now() : now) > sortieAutoriseeJusqua
-        && !utilisateurPart(mono);
+        && !utilisateurPart(mono) && pagesDeSites() > 0;
 }
 
 var TOUCHES_MODIFICATRICES = { Control: 1, Meta: 1, Alt: 1, OS: 1 };
@@ -824,10 +858,13 @@ function estToucheDeDepart(e) {
 }
 if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
     document.addEventListener('mouseout', function(e) {
-        if (!e.relatedTarget && e.clientY <= 0) noterPointeur(true);
+        if (e.relatedTarget) return;
+        depart.sortieY = Math.round(e.clientY); depart.sortieAt = horlogeDepart();
+        if (e.clientY <= MARGE_HAUT_PX) noterPointeur(true);
     }, true);
     var pointeurDedans = function(e) {
         depart.parLeHaut = false;
+        if (typeof e.clientY === 'number') { depart.y = Math.round(e.clientY); depart.yAt = horlogeDepart(); }
         noterTouche(e.ctrlKey || e.metaKey || e.altKey, false);
     };
     document.addEventListener('mousemove', pointeurDedans, true);
@@ -835,6 +872,10 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
     document.addEventListener('pointerdown', pointeurDedans, true);
     document.addEventListener('keydown', function(e) {
         noterTouche(TOUCHES_MODIFICATRICES[e.key] || e.ctrlKey || e.metaKey || e.altKey, estToucheDeDepart(e));
+        if (TOUCHES_MODIFICATRICES[e.key] || estToucheDeDepart(e)) {
+            depart.nomTouche = ((e.ctrlKey && e.key !== 'Control') ? 'Ctrl+' : '') + ((e.metaKey && e.key !== 'Meta') ? 'Cmd+' : '') + e.key;
+            depart.nomToucheAt = horlogeDepart();
+        }
     }, true);
     document.addEventListener('keyup', function(e) {
         if (TOUCHES_MODIFICATRICES[e.key]) noterTouche(e.ctrlKey || e.metaKey || e.altKey, false);
@@ -1618,7 +1659,13 @@ export function setupMultivisionUI() {
             return;
         }
         if (e.data && typeof e.data === 'object' && e.data.__mv === 'touche') {
-            if (indexDeTuilePour(e.source) >= 0) noterTouche(e.data.modificateur, e.data.depart);
+            if (indexDeTuilePour(e.source) >= 0) {
+                noterTouche(e.data.modificateur, e.data.depart);
+                if (e.data.modificateur || e.data.depart) {
+                    depart.nomTouche = (e.data.depart ? 'F5 ou Ctrl+R' : 'Ctrl, Cmd ou Alt') + ' (dans la vidéo)';
+                    depart.nomToucheAt = horlogeDepart();
+                }
+            }
             return;
         }
         /* Le son a été refusé par le navigateur dans la tuile (le script utilisateur a
@@ -4660,7 +4707,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v62';
+export var VERSION_APP = 'sports-guide-v63';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4717,8 +4764,13 @@ export function diagnosticAppareilHtml() {
        rendent une version ancienne. Sur téléphone la limite est de quelques mégaoctets. */
     var st = (typeof window !== 'undefined' && window.stockageInfo) || null;
     var ko = tailleStockageKo();
-    if (st && st.echecs) html += ligne('Stockage local', 'ko', st.echecs + ' écriture(s) refusée(s) · ' + st.derniereErreur + ' · ' + (ko === null ? '?' : ko) + ' Ko');
-    else html += ligne('Stockage local', 'ok', (ko === null ? 'illisible' : ko + ' Ko utilisés'));
+    /* Plein, il se vide de ses caches refaisables avant de refuser (safeStorageSet) : la
+       ligne dit lesquels sont partis et ce qui pèse le plus. */
+    var gros = plusGrossesCles(3).filter(function(c) { return c[1] >= 50; })
+        .map(function(c) { return c[0] + ' ' + c[1] + ' Ko'; }).join(', ');
+    var liberees = (st && st.liberees && st.liberees.length) ? ' · caches vidés pour faire de la place : ' + st.liberees.join(', ') : '';
+    if (st && st.echecs) html += ligne('Stockage local', 'ko', st.echecs + ' écriture(s) refusée(s) · ' + st.derniereErreur + ' · ' + (ko === null ? '?' : ko) + ' Ko' + liberees + (gros ? ' · ' + gros : ''));
+    else html += ligne('Stockage local', 'ok', (ko === null ? 'illisible' : ko + ' Ko utilisés') + liberees + (gros ? ' · ' + gros : ''));
 
     /* Quelle version du code tourne ICI : un service worker peut servir une copie plus
        ancienne que celle qui est publiée, et deux appareils ne montrent alors pas la
