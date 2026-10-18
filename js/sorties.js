@@ -9,6 +9,11 @@
    vraiment partie ; ce qui précédait (geste, focus, dernier clic dans une tuile). La page
    Logs les montre au retour, en clair.
 
+   Lu le soir même : quatre « page restée · garde armée » juste après la pose des vidéos,
+   puis une page quittée et un retour trois secondes après. C'était `history.back()`
+   appelé par une vidéo, qui fait reculer tout l'onglet sans clic (Firefox 158) ; le
+   script 1.17 le rend inerte.
+
    Trois lectures possibles du prochain détournement :
      - une sortie « garde armée » puis « quittée » : le navigateur n'a pas posé la
        question (ou on a répondu « Quitter ») ;
@@ -61,7 +66,7 @@ export function raisonDeLaGarde(e) {
     if (e.cachee) return 'garde levée : onglet en arrière-plan';
     if (e.parLeHaut) return 'garde levée : pointeur sorti par le haut (vers les onglets)';
     if (e.modificateur) return 'garde levée : Ctrl, Cmd ou Alt tenu';
-    if (typeof e.toucheIlYaMs === 'number') return 'garde levée : F5 ou Ctrl+R il y a ' + e.toucheIlYaMs + ' ms';
+    if (typeof e.toucheIlYaMs === 'number') return 'garde levée : F5, Ctrl+R ou bouton Précédent de la souris il y a ' + e.toucheIlYaMs + ' ms';
     return 'garde levée';
 }
 

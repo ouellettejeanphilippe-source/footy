@@ -746,7 +746,14 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
      - l'onglet est caché (fermer un onglet d'arrière-plan).
    Un mouvement ou un clic dans la page, ou le message `mv_frame_clicked`, efface le
    départ. Un lecteur qui détourne l'onglet pendant qu'on regarde, au clic ou sans
-   clic, trouve donc la garde armée. */
+   clic, trouve donc la garde armée.
+
+   Le « sans clic », enfin compris le soir même (« toute demande de redirect doit être
+   bloquée, je devrais pas avoir le popup ») : dans Firefox 158, un cadre sans clic chez
+   lui ne peut PAS naviguer l'onglet, mais `history.back()` le fait reculer, et
+   `history.forward()` avancer. Le script (1.17) rend l'historique inerte dans les
+   cadres ; la garde ne pose plus la question que pour un `top.location` qui suit un
+   clic dans le cadre. Les boutons Précédent et Suivant de la souris valent départ. */
 var sortieAutoriseeJusqua = 0;
 export var gardeSortie = true;
 try { gardeSortie = (localStorage.getItem('garde_sortie') !== '0'); } catch (e) { gardeSortie = true; }
@@ -879,6 +886,13 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
     }, true);
     document.addEventListener('keyup', function(e) {
         if (TOUCHES_MODIFICATRICES[e.key]) noterTouche(e.ctrlKey || e.metaKey || e.altKey, false);
+    }, true);
+    /* Les boutons Précédent et Suivant de la souris : c'est l'utilisateur qui recule. */
+    document.addEventListener('mousedown', function(e) {
+        if (e.button !== 3 && e.button !== 4) return;
+        noterTouche(false, true);
+        depart.nomTouche = 'bouton ' + (e.button === 3 ? 'Précédent' : 'Suivant') + ' de la souris';
+        depart.nomToucheAt = horlogeDepart();
     }, true);
 }
 
@@ -1662,7 +1676,7 @@ export function setupMultivisionUI() {
             if (indexDeTuilePour(e.source) >= 0) {
                 noterTouche(e.data.modificateur, e.data.depart);
                 if (e.data.modificateur || e.data.depart) {
-                    depart.nomTouche = (e.data.depart ? 'F5 ou Ctrl+R' : 'Ctrl, Cmd ou Alt') + ' (dans la vidéo)';
+                    depart.nomTouche = (e.data.bouton ? 'bouton Précédent ou Suivant de la souris' : (e.data.depart ? 'F5 ou Ctrl+R' : 'Ctrl, Cmd ou Alt')) + ' (dans la vidéo)';
                     depart.nomToucheAt = horlogeDepart();
                 }
             }
@@ -4707,7 +4721,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v63';
+export var VERSION_APP = 'sports-guide-v64';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

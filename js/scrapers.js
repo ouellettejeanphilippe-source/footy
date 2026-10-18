@@ -2467,7 +2467,30 @@ export function saveStreamCache(mid, streams) {
     }
 
     globalCache[mid] = { ts: now, streams: streams };
-    safeStorageSetJSON('stream_cache', globalCache);
+    safeStorageSetJSON('stream_cache', bornerStreamCache(globalCache, mid));
+}
+
+/* 3 125 Ko pour ce seul cache dans les Logs du 18 octobre 2026, sur 4 575 : chaque
+   lecture de page de match (le rattrapage en fait toutes les quelques minutes) y range la
+   liste complète des liens du match, et rien n'en bornait la somme. Au-delà de
+   STREAM_CACHE_MAX_CARS, on retire les matchs les plus anciennement lus, jamais celui
+   qu'on vient d'écrire. Le calendrier du jour garde de toute façon les liens fusionnés. */
+export var STREAM_CACHE_MAX_CARS = 400 * 1024;
+export function bornerStreamCache(cache, garder) {
+    var tailles = {}, total = 0;
+    Object.keys(cache).forEach(function(k) {
+        var t = 0;
+        try { t = k.length + JSON.stringify(cache[k]).length + 4; } catch (e) {}
+        tailles[k] = t; total += t;
+    });
+    if (total <= STREAM_CACHE_MAX_CARS) return cache;
+    var cles = Object.keys(cache).filter(function(k) { return k !== garder; })
+        .sort(function(a, b) { return ((cache[a] && cache[a].ts) || 0) - ((cache[b] && cache[b].ts) || 0); });
+    for (var i = 0; i < cles.length && total > STREAM_CACHE_MAX_CARS; i++) {
+        total -= tailles[cles[i]];
+        delete cache[cles[i]];
+    }
+    return cache;
 }
 
 /* ══ REGISTRE D'INTÉGRABILITÉ ══════════════════════════════════════════════
