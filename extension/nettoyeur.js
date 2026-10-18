@@ -15,7 +15,7 @@
     'use strict';
     if (window.__footyNettoyeur) return;
 
-    var VERSION_EXTENSION = '1.3';
+    var VERSION_EXTENSION = '1.4';
     var HOTES_APPLICATION = ['127.0.0.1', 'localhost', 'ouellettejeanphilippe-source.github.io'];
 
     /* La fenêtre du haut, vue d'ici. `ancestorOrigins` la donne même depuis un cadre
@@ -67,7 +67,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.16
+// @version      1.17
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -139,6 +139,11 @@
         }, true);
         window.addEventListener('keyup', function (e) {
             if (MODIFICATRICES[e.key]) signalerDepart({ __mv: 'touche', modificateur: !!(e.ctrlKey || e.metaKey || e.altKey), depart: false });
+        }, true);
+        /* Les boutons Précédent et Suivant de la souris (1.17) : c'est l'utilisateur qui
+           recule, pas la page. */
+        window.addEventListener('mousedown', function (e) {
+            if (e.button === 3 || e.button === 4) signalerDepart({ __mv: 'touche', modificateur: false, depart: true, bouton: true });
         }, true);
     } catch (e) {}
 
@@ -274,6 +279,54 @@
                             }
                         });
                     } catch (e) {}
+                }
+            } catch (e) {}
+
+            /* L'historique de l'onglet entier (1.17, 18 octobre 2026 : des « Quitter le
+               site ? » juste après la pose des vidéos, puis la page quittée et un « retour
+               sur l'appli » trois secondes plus tard). Mesuré dans Firefox 158 : un cadre
+               d'une autre origine qui appelle history.back() fait reculer TOUT l'onglet,
+               sans aucun clic, parce que l'historique est celui de l'onglet ;
+               history.forward() le mène de même sur une page vue après l'application, la
+               pub d'un détournement précédent. Ni Firefox ni l'application ne peuvent
+               l'annuler (l'événement « navigate » arrive après « beforeunload », et n'est
+               pas annulable). Un lecteur n'a aucune raison de toucher à l'historique de
+               l'onglet : back, forward et go deviennent inertes ici, et dans les cadres de
+               même origine que la page crée, le moyen classique de retrouver une fonction
+               d'origine. go(0), qui recharge le cadre lui-même, reste permis. */
+            try {
+                if (window.top !== window) {
+                    const inerte = (quoi) => function () {
+                        console.log('[Multiview Cleaner] Historique de l\\'onglet bloqué (history.' + quoi + ')');
+                    };
+                    const neutraliser = (w) => {
+                        try {
+                            const H = w.History && w.History.prototype;
+                            if (!H || Object.getOwnPropertyDescriptor(H, '__mvInerte')) return;
+                            const go = H.go;
+                            Object.defineProperty(H, 'back', { configurable: false, writable: false, value: inerte('back') });
+                            Object.defineProperty(H, 'forward', { configurable: false, writable: false, value: inerte('forward') });
+                            Object.defineProperty(H, 'go', { configurable: false, writable: false, value: function (n) {
+                                if (!Number(n)) return go.call(this, 0);
+                                inerte('go(' + n + ')')();
+                            } });
+                            Object.defineProperty(H, '__mvInerte', { value: true });
+                        } catch (e) {}
+                    };
+                    neutraliser(window);
+                    const I = HTMLIFrameElement.prototype;
+                    for (const p of ['contentWindow', 'contentDocument']) {
+                        const d = Object.getOwnPropertyDescriptor(I, p);
+                        if (!d || !d.get) continue;
+                        Object.defineProperty(I, p, {
+                            configurable: true, enumerable: d.enumerable,
+                            get() {
+                                const v = d.get.call(this);
+                                try { const w = p === 'contentWindow' ? v : (v && v.defaultView); if (w) neutraliser(w); } catch (e) {}
+                                return v;
+                            }
+                        });
+                    }
                 }
             } catch (e) {}
         `;
@@ -1295,7 +1348,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.16';
+    var VERSION = '1.17';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche

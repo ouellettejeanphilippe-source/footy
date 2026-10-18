@@ -40,7 +40,7 @@ async function main() {
   globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   globalThis.fetch = () => Promise.reject(new Error('réseau coupé'));
 
-  await import('../js/scrapers.js');
+  const scrapers = await import('../js/scrapers.js');
   const utils = await import('../js/utils.js');
   const mv = await import('../js/multiview.js');
   let n = 0;
@@ -157,6 +157,23 @@ async function main() {
   assert.ok(/caches vidés pour faire de la place : stream_cache/.test(html), 'les caches vidés sont dits');
   assert.ok(/api_calendar_cache_20261018 620 Ko/.test(html), 'la plus grosse clé est nommée');
   ok('la ligne « Stockage local » nomme les caches vidés et la plus grosse clé');
+
+  // ── 8. Le cache des liens est borné (3 125 Ko dans les Logs du même soir) ──
+  ls = stockage(1e8);
+  poser(ls);
+  const liens = (k) => Array.from({ length: 200 }, (_, i) => ({ name: 'Lien ' + i, url: 'https://exemple.test/' + k + '/' + i, source: 'footybite', site: 'exemple.test' }));
+  const debut = Date.now() - 60000;
+  const plein = {};
+  for (let i = 0; i < 60; i++) plein['m' + i] = { ts: debut + i * 100, streams: liens('m' + i) };
+  ls.setItem('stream_cache', JSON.stringify(plein));
+  assert.ok(ls.getItem('stream_cache').length > 2 * scrapers.STREAM_CACHE_MAX_CARS, 'le cache de départ dépasse largement la borne');
+  scrapers.saveStreamCache('nouveau', liens('nouveau'));
+  const borne = JSON.parse(ls.getItem('stream_cache'));
+  assert.ok(ls.getItem('stream_cache').length <= scrapers.STREAM_CACHE_MAX_CARS, 'borné');
+  assert.ok(borne.nouveau && borne.nouveau.streams.length === 200, 'le match qu\'on vient de lire reste');
+  assert.ok(borne.m59 && !borne.m0, 'les plus anciennement lus partent d\'abord');
+  assert.strictEqual(scrapers.getStreamCache('m59').length, 200, 'et ce qui reste se relit');
+  ok('le cache des liens est borné, les matchs les plus anciennement lus partent');
 
   console.log('unit_stockageplein: ' + n + ' groupes de tests OK');
   process.exit(0);

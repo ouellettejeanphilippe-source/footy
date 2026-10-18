@@ -673,3 +673,66 @@ test('le script signale le pointeur qui sort par le haut, qui revient, et la tou
   await page.waitForTimeout(200);
   expect(await vus(), 'et relâché').toContainEqual({ __mv: 'touche', modificateur: false, depart: false });
 });
+
+/* « Toute demande de redirect doit être bloquée, je devrais pas avoir le popup »
+   (18 octobre 2026). Le relevé montrait des « Quitter le site ? » juste après la pose
+   des vidéos, puis une page quittée suivie d'un « retour sur l'appli » trois secondes
+   après. Mesuré dans Firefox 158 : un cadre d'une autre origine qui appelle
+   history.back() fait reculer tout l'onglet, sans clic, parce que l'historique est celui
+   de l'onglet ; forward() le mène sur une page vue après l'application. Le script 1.17
+   rend back, forward et go inertes dans le cadre, et dans les cadres de même origine
+   qu'il crée. Différentiel : sans le script, chaque appel emmène l'onglet. */
+async function poserCadre(page, src) {
+  await page.evaluate((s) => {
+    const f = document.createElement('iframe');
+    f.id = 'tuile'; f.src = s;
+    f.setAttribute('style', 'width:800px;height:600px;border:0');
+    document.body.appendChild(f);
+  }, src);
+  const cadre = await (await page.locator('#tuile').elementHandle()).contentFrame();
+  await cadre.waitForSelector('#decor');
+  return cadre;
+}
+
+for (const [nom, appel] of [
+  ['history.back()', () => history.back()],
+  ['history.go(-1)', () => history.go(-1)],
+  ['un cadre interne qu\'il crée', () => { const f = document.createElement('iframe'); document.body.appendChild(f); f.contentWindow.history.back(); }],
+  ['History.prototype.back', () => History.prototype.back.call(history)]
+]) {
+  test('le script empêche un cadre de faire reculer l\'onglet : ' + nom, async ({ page }) => {
+    for (const sansScript of [true, false]) {
+      await page.goto(origin + '/avant');
+      await page.goto(origin + '/hote');
+      const cadre = await poserCadre(page, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : ''));
+      await cadre.evaluate(appel);
+      await page.waitForTimeout(800);
+      if (sansScript) expect(page.url(), 'sans le script, l\'onglet recule : le test a un sens').toBe(origin + '/avant');
+      else expect(page.url(), 'avec le script, l\'onglet reste sur l\'application').toBe(origin + '/hote');
+    }
+  });
+}
+
+test('le script empêche un cadre d\'avancer l\'onglet vers la page vue après', async ({ page }) => {
+  for (const sansScript of [true, false]) {
+    await page.goto(origin + '/hote');
+    await page.goto(origin + '/pub-precedente');
+    await page.goBack();
+    expect(page.url()).toBe(origin + '/hote');
+    const cadre = await poserCadre(page, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : ''));
+    await cadre.evaluate(() => history.forward());
+    await page.waitForTimeout(800);
+    if (sansScript) expect(page.url(), 'sans le script, l\'onglet part sur la page d\'après').toBe(origin + '/pub-precedente');
+    else expect(page.url(), 'avec le script, il reste').toBe(origin + '/hote');
+  }
+});
+
+test('le script signale les boutons Précédent et Suivant de la souris', async ({ page }) => {
+  await page.goto(origin + '/hote');
+  await page.evaluate(() => { window.__vus = []; addEventListener('message', (e) => { if (e.data && e.data.__mv) window.__vus.push(e.data); }); });
+  const cadre = await poserCadre(page, autreOrigine + '/__site-stream');
+  for (const bouton of [3, 4]) await cadre.evaluate((b) => window.dispatchEvent(new MouseEvent('mousedown', { button: b, bubbles: true })), bouton);
+  await page.waitForTimeout(200);
+  const vus = await page.evaluate(() => window.__vus.filter((m) => m.__mv === 'touche'));
+  expect(vus.filter((m) => m.depart && m.bouton).length, 'un départ par bouton').toBe(2);
+});

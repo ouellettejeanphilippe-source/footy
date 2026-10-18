@@ -170,6 +170,11 @@ async function main() {
   souris('mouseout', { relatedTarget: null, clientX: 300, clientY: mv.MARGE_HAUT_PX + 30 });
   assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), true, 'plus bas, par un côté : on regarde encore');
   souris('mousemove', { clientX: 300, clientY: 200 });
+  const t1 = performance.now();
+  souris('mousedown', { button: 3, clientX: 300, clientY: 200 });
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000), false, 'bouton Précédent de la souris : on recule soi-même');
+  assert.strictEqual(mv.etatGarde().derniereTouche.touche, 'bouton Précédent de la souris');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t1 + mv.TOUCHE_DEPART_MS + 50), true, 'pour un instant seulement');
   mv.toggleGardeSortie();
   assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), false, 'le réglage la coupe');
   assert.strictEqual(localStorage.getItem('garde_sortie'), '0', 'et il est retenu');
