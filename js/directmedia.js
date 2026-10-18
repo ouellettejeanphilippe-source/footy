@@ -48,9 +48,31 @@ export var MEDIA_DIRECT_TTL_LONG_MS = 12 * 3600 * 1000;
    l'autre ; ceux-ci couvrent ce qui a été réellement observé — `?st=…&e=…` chez
    embedme.st et streame.center, `?s=…&e=…` chez dlive.sx. */
 export function adresseSignee(url) {
-    var q = String(url || '').split('#')[0].split('?')[1] || '';
+    var u = String(url || '').split('#')[0];
+    /* Un jeton peut aussi être dans le CHEMIN (18 octobre 2026, judiaslevels.embeds.gay :
+       `/main/secure/<64 hexadécimaux>/1792358790/willow-usa.m3u8`), gardé douze heures
+       alors qu'il expirait en deux heures et demie. */
+    if (/\/[0-9a-f]{32,}\//i.test(u.split('?')[0]) || expirationDe(u) !== null) return true;
+    var q = u.split('?')[1] || '';
     if (!q) return false;
     return /(^|&)(e|exp|expires|expiry|st|s|token|hash|md5|sig|signature|key)=/i.test(q);
+}
+
+/* L'heure d'expiration que l'adresse porte elle-même : un nombre de dix chiffres, segment
+   du chemin ou valeur d'un paramètre, qui tombe à trois jours de `now` au plus (au-delà,
+   c'est un identifiant, pas une heure). En millisecondes, ou null. Mesuré le 18 octobre
+   2026 : « 410 Gone - Token expired » à l'heure dite, et l'appli proposait encore
+   ▶ direct. */
+var FENETRE_EXPIRATION_MS = 3 * 24 * 3600 * 1000;
+export function expirationDe(url, now) {
+    var t = now === undefined ? Date.now() : now;
+    var re = /[\/=]([12]\d{9})(?=[\/&.?#]|$)/g, m;
+    var u = String(url || '');
+    while ((m = re.exec(u))) {
+        var ms = Number(m[1]) * 1000;
+        if (Math.abs(ms - t) <= FENETRE_EXPIRATION_MS) return ms;
+    }
+    return null;
 }
 
 export function dureeDeVie(url) {
@@ -92,7 +114,29 @@ export function mediaDirectPour(registre, lienUrl, now) {
     if (!e || !estManifeste(e.url)) return null;
     var t = now === undefined ? Date.now() : now;
     if (typeof e.at !== 'number' || t - e.at > dureeDeVie(e.url)) return null;
+    var exp = expirationDe(e.url, t);
+    if (exp !== null && t > exp) return null;
     return e;
+}
+
+/* ─── Vérifier avant de proposer ────────────────────────────────────────────────
+   « Le direct marche jamais » (18 octobre 2026). Relu ce soir-là, depuis un autre
+   réseau que celui qui les avait vus : 7 manifestes du cache sur 39 répondaient (avec le
+   `Referer` de leur lecteur), 22 refusaient (403, jeton lié à l'adresse qui l'a obtenu),
+   les autres étaient expirés ou injoignables. Et celui de bintv-sources ne sert qu'une
+   fois : relu une seconde après son lecteur, depuis le même navigateur, 404. Le bouton
+   ▶ direct s'affichait pour tous.
+
+   La tuile lit donc le manifeste AVANT de proposer le bouton, par le chemin même que le
+   direct prendra (le pont du script, ou fetch), et ne le montre que si un vrai manifeste
+   répond. Le verdict vaut `SONDE_VALIDE_MS`. */
+export var SONDE_VALIDE_MS = 10 * 60 * 1000;
+export function verdictSonde(statut, debut) {
+    var st = statut | 0;
+    if (st && (st < 200 || st >= 300)) return { ok: false, raison: 'HTTP ' + st };
+    var d = String(debut || '').replace(/^\uFEFF/, '').trim();
+    if (/^#EXTM3U/.test(d) || /^<\?xml|^<MPD/i.test(d)) return { ok: true, raison: '' };
+    return { ok: false, raison: d ? 'pas un manifeste' : 'réponse vide' };
 }
 
 /* Un direct qui a échoué deux fois pour ce lien ne se propose plus d'office : on garde

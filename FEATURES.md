@@ -169,7 +169,7 @@ Deux façons, dans `⋯ Plus` :
 
 ### 5.4 La tuile
 
-En-tête : poignée de glissement, numéro (`Touche N`), **nom du match** et, dessous, la pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré (avec le script utilisateur 1.14 sous Tampermonkey, le flux passe par le script, avec le référent du lecteur du site : sans lui, presque tous les serveurs vidéo le refusent), bouton d'ajustement (icône seule), puis **`↗ Site`**, le menu **`⋮`** et, un peu à l'écart, **`✕`**.
+En-tête : poignée de glissement, numéro (`Touche N`), **nom du match** et, dessous, la pastille **`source k/n`** (précédée de `●` quand une vidéo joue, avec le débit mesuré et « · direct »), `⏭` source suivante, `▶ direct` / `🖼 page` quand un flux direct a été repéré **et qu'il répond depuis ton navigateur** : l'appli lit d'abord le manifeste, par le chemin même que prendra le direct, et ne montre le bouton que si un vrai flux répond (beaucoup sont liés à l'adresse qui les a vus, expirés à l'heure qu'ils portent, ou à usage unique). Avec le script utilisateur 1.14 sous Tampermonkey, le flux passe par le script, avec le référent du lecteur du site : sans lui, presque tous les serveurs vidéo le refusent. Logs dit combien de flux directs répondent, et pourquoi les autres non, bouton d'ajustement (icône seule), puis **`↗ Site`**, le menu **`⋮`** et, un peu à l'écart, **`✕`**.
 
 - **Chargement** : tant que la page n'est pas chargée (ou qu'aucune vidéo n'est signalée), une pastille « Chargement de … » s'affiche au centre, sans prendre les clics. Des tuiles posées ensemble partent l'une après l'autre (450 ms d'écart) plutôt que toutes à la fois.
 

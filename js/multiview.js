@@ -7,7 +7,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX } from './playability.js';
-import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect } from './directmedia.js';
+import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
@@ -165,6 +165,61 @@ function pontPourDirect(media) {
     if (!pont || !pont.available || !pont.binaire) return null;
     return { lire: lireOctetsViaPont, referer: refererPourDirect(media) };
 }
+/* Le bouton ▶ direct n'est montré qu'après avoir lu le manifeste depuis CE navigateur
+   (js/directmedia.js, « Vérifier avant de proposer »). `sondesDirect` : { adresse du
+   manifeste: { ok, at, raison, enCours } }, en mémoire seulement : un verdict dépend du
+   réseau et du moment. */
+var sondesDirect = {};
+export function etatSondesDirect() { return sondesDirect; }
+function texteDebut(octets) {
+    try { return new TextDecoder().decode(new Uint8Array(octets).slice(0, 64)); } catch (e) { return ''; }
+}
+/* Le chemin qu'une lecture prendrait maintenant : un verdict obtenu par l'autre ne vaut
+   plus (le script qui s'annonce après coup avec la lecture binaire). */
+function cheminDirect(media) { return pontPourDirect(media) ? 'pont' : 'fetch'; }
+function finSonde(media, ok, raison, chemin) {
+    sondesDirect[media.url] = { ok: ok, at: Date.now(), raison: raison || '', chemin: chemin };
+    mvFlux.forEach(function(f, i) {
+        var m = f && (f._media || mediaDirectPour(registreDirect(), f.url));
+        if (m && m.url === media.url) rafraichirPastille(i);
+    });
+}
+function sonderDirect(media) {
+    var so = sondesDirect[media.url];
+    var chemin = cheminDirect(media);
+    if (so && so.chemin === chemin && (so.enCours || Date.now() - so.at < SONDE_VALIDE_MS)) return;
+    sondesDirect[media.url] = { enCours: true, at: Date.now(), chemin: chemin };
+    var pont = pontPourDirect(media);
+    var lecture = pont
+        ? lireOctetsViaPont(media.url, { referer: pont.referer, origine: origineDe(pont.referer), timeoutMs: 8000 }).then(function(r) { return { status: r.status, debut: texteDebut(r.octets) }; })
+        : fetch(media.url, { credentials: 'omit' }).then(function(r) { return r.text().then(function(x) { return { status: r.status, debut: x.slice(0, 64) }; }); });
+    lecture.then(function(r) {
+        var v = verdictSonde(r.status, r.debut);
+        finSonde(media, v.ok, v.raison, chemin);
+    }, function(e) {
+        finSonde(media, false, (e && e.status) ? 'HTTP ' + e.status : (pont ? ((e && e.message) || 'refus') : 'refusé par le navigateur (CORS)'), chemin);
+    });
+}
+/* Le bouton ▶ direct de cette tuile est-il à montrer ? En mode direct, oui toujours : c'est
+   lui qui ramène à la page. Le lecteur natif de l'APK pose ses propres `Referer` : il
+   essaie sans sonde. */
+function directDisponible(s) {
+    if (s && s.mode === 'direct') return true;
+    var media = s && (s._media || mediaDirectPour(registreDirect(), s.url));
+    if (!media) return false;
+    if (pluginNatif()) return true;
+    var so = sondesDirect[media.url];
+    if (so && !so.enCours && so.chemin === cheminDirect(media) && Date.now() - so.at < SONDE_VALIDE_MS) return so.ok;
+    sonderDirect(media);
+    return false;
+}
+
+/* Le script qui s'annonce (ou se ré-annonce avec la lecture binaire) change le chemin
+   d'une lecture : les boutons ▶ direct sont réévalués. */
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('mvBridgeReady', function() { mvFlux.forEach(function(f, i) { rafraichirPastille(i); }); });
+}
+
 function poserDirect(media, url, container, cell, s) {
     container.innerHTML = '';
     var natif = pluginNatif();
@@ -178,6 +233,7 @@ function poserDirect(media, url, container, cell, s) {
         fini = true;
         if (s._currentUrl !== url || s.mode !== 'direct') return;
         safeStorageSetJSON('direct_media', noterEchecDirect(registreDirect(), url));
+        sondesDirect[media.url] = { ok: false, at: Date.now(), raison: raison, chemin: cheminDirect(media) };
         s.mode = 'page';
         s._currentUrl = null;
         s._playing = false;
@@ -2715,7 +2771,7 @@ export function updateMultivisionLayout() {
         var boutonsSource = (pos ? '<button type="button" class="mv-hdr-btn mv-next-source" title="Essayer la source suivante" aria-label="Source suivante" onclick="nextFluxForTile(' + idx + '); event.stopPropagation();">⏭</button>' : '')
             /* « ▶ direct » / « 🖼 page » : la deuxième façon d'utiliser le lien, dès que le
                script a vu passer le manifeste vidéo de la page (rafraichirPastille l'affiche). */
-            + '<button type="button" class="mv-hdr-btn mv-direct-btn' + (s.mode === 'direct' ? ' on' : '') + '" title="Basculer entre la page du site et le flux direct" aria-label="Mode direct" style="display:' + ((s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none') + ';" onclick="toggleDirectMode(' + idx + '); event.stopPropagation();">' + (s.mode === 'direct' ? '🖼 page' : '▶ direct') + '</button>';
+            + '<button type="button" class="mv-hdr-btn mv-direct-btn' + (s.mode === 'direct' ? ' on' : '') + '" title="Basculer entre la page du site et le flux direct" aria-label="Mode direct" style="display:' + (directDisponible(s) ? 'inline-flex' : 'none') + ';" onclick="toggleDirectMode(' + idx + '); event.stopPropagation();">' + (s.mode === 'direct' ? '🖼 page' : '▶ direct') + '</button>';
         var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
         var svgMenu = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>';
         var svgClose = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
@@ -3088,7 +3144,7 @@ function rafraichirPastille(idx) {
     pill.title = s._playing ? 'Vidéo en lecture' + (s.mode === 'direct' ? ' (flux direct)' : ' (vu par le script utilisateur)') : 'Aucune vidéo confirmée pour l\'instant';
     var btnDirect = cell.querySelector('.mv-direct-btn');
     if (btnDirect) {
-        btnDirect.style.display = (s._media || mediaDirectPour(registreDirect(), s.url)) ? 'inline-flex' : 'none';
+        btnDirect.style.display = directDisponible(s) ? 'inline-flex' : 'none';
         btnDirect.textContent = s.mode === 'direct' ? '🖼 page' : '▶ direct';
         btnDirect.classList.toggle('on', s.mode === 'direct');
     }
@@ -4766,7 +4822,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v65';
+export var VERSION_APP = 'sports-guide-v66';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4845,6 +4901,16 @@ export function diagnosticAppareilHtml() {
     else if (prot.type === 'script') html += ligne('Script de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
         : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Plus → 🧩 Script → Installer le script, puis accepter la mise à jour dans Tampermonkey');
     else html += ligne('Script de nettoyage', 'warn', 'absent — Plus → 🧩 Script');
+    /* Le mode direct, vu d'ici : combien de manifestes répondent, et pourquoi les autres
+       non (18 octobre 2026, « le direct marche jamais »). */
+    var sondes = Object.keys(sondesDirect).map(function(k) { return sondesDirect[k]; }).filter(function(x) { return x && !x.enCours; });
+    if (sondes.length) {
+        var bons = sondes.filter(function(x) { return x.ok; }).length;
+        var raisons = {};
+        sondes.forEach(function(x) { if (!x.ok) raisons[x.raison || '?'] = (raisons[x.raison || '?'] || 0) + 1; });
+        var detail = Object.keys(raisons).map(function(r) { return raisons[r] + ' × ' + r; }).join(', ');
+        html += ligne('Flux directs', bons ? 'ok' : 'warn', bons + ' sur ' + sondes.length + ' répondent' + (detail ? ' · refusés : ' + detail : ''));
+    }
     /* La garde contre les redirections, coupée par le menu ⋯ du lecteur, ne se voyait nulle
        part ailleurs (18 octobre 2026). */
     html += ligne('Garde « Quitter le site ? »', gardeSortie ? 'ok' : 'ko',

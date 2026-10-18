@@ -108,6 +108,28 @@ async function main() {
   assert.strictEqual(reg['https://site.test/game/b'].echecs, 0, 'un nouveau manifeste repart à zéro');
   ok('échecs comptés par lien ; un nouveau manifeste remet le compteur à zéro');
 
+  /* « Le direct marche jamais » (18 octobre 2026) : un jeton dans le CHEMIN, expiré à
+     l'heure qu'il porte, restait proposé douze heures. */
+  const signe = 'https://judiaslevels.embeds.gay/main/secure/8ae2123fc337aeff654a938be8173e35804c14a558e37b830bb0fb4977ccdbb8/1792358790/willow-usa.m3u8';
+  const avant = 1792358790 * 1000 - 60000, apres = 1792358790 * 1000 + 60000;
+  assert.strictEqual(dm.expirationDe(signe, avant), 1792358790 * 1000, 'l\'heure d\'expiration du chemin est lue');
+  assert.strictEqual(dm.adresseSignee(signe), true, 'un jeton dans le chemin est une signature');
+  assert.strictEqual(dm.dureeDeVie(signe), dm.MEDIA_DIRECT_TTL_MS);
+  const regJeton = dm.retenirMediaDirect({}, 'https://bintv.test/?id=1', { url: signe }, avant - 3600000);
+  assert.ok(dm.mediaDirectPour(regJeton, 'https://bintv.test/?id=1', avant), 'avant l\'heure : proposé');
+  assert.strictEqual(dm.mediaDirectPour(regJeton, 'https://bintv.test/?id=1', apres), null, 'après : plus proposé');
+  assert.strictEqual(dm.expirationDe('https://cdn.test/live/1234567890/index.m3u8', avant), null, 'un identifiant loin de l\'heure présente n\'est pas une heure');
+  assert.strictEqual(dm.expirationDe('https://cdn.test/a.m3u8?st=x&e=' + Math.floor(avant / 1000 + 600), avant), avant + 600000 - (avant % 1000), 'ni dans un paramètre e=');
+  ok('une adresse qui porte son heure d\'expiration n\'est plus proposée après');
+
+  assert.deepStrictEqual(dm.verdictSonde(200, '#EXTM3U\n#EXT-X-VERSION:3'), { ok: true, raison: '' });
+  assert.deepStrictEqual(dm.verdictSonde(200, '\uFEFF #EXTM3U'), { ok: true, raison: '' }, 'avec une marque d\'ordre');
+  assert.deepStrictEqual(dm.verdictSonde(200, '<?xml version="1.0"?><MPD'), { ok: true, raison: '' }, 'DASH');
+  assert.deepStrictEqual(dm.verdictSonde(404, 'Not Found'), { ok: false, raison: 'HTTP 404' });
+  assert.deepStrictEqual(dm.verdictSonde(410, 'Gone - Token expired'), { ok: false, raison: 'HTTP 410' });
+  assert.deepStrictEqual(dm.verdictSonde(200, '<html>'), { ok: false, raison: 'pas un manifeste' }, 'une page d\'erreur servie en 200');
+  ok('la sonde ne valide qu\'un vrai manifeste');
+
   console.log('\n' + n + ' groupes OK — détection des flux vidéo directs');
   process.exit(0);
 }

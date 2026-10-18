@@ -43,6 +43,16 @@ test.beforeAll(async () => {
     /* Un lecteur sage, d'une autre origine aussi : un clic dedans ne fait rien. */
     /* Un lecteur qui fait reculer l'onglet dès son chargement, sans clic (18 octobre 2026,
        Firefox 158 : `history.back()` dans un cadre d'une autre origine recule tout l'onglet). */
+    /* Deux manifestes : l'un répond, l'autre est mort (jeton expiré, lié à une autre
+       adresse, ou à usage unique : 404 comme celui de bintv-sources le 18 octobre 2026). */
+    if (rel === '/__manifeste-ok.m3u8') {
+      res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl', 'Access-Control-Allow-Origin': '*' });
+      return res.end('#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:4\n');
+    }
+    if (rel === '/__manifeste-mort.m3u8') {
+      res.writeHead(404, { 'Access-Control-Allow-Origin': '*' });
+      return res.end('Not Found');
+    }
     if (rel === '/__lecteur-recul') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       return res.end('<html><body style="margin:0"><button id="b" style="width:100vw;height:100vh">LIRE</button>'
@@ -805,21 +815,24 @@ test('le mode direct lit le flux par le pont du script, avec le Referer du lecte
   await page.evaluate(() => window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.13' }, '*'));
   await page.evaluate((u) => window.addToMultivision(u, 'Match direct', 'mD'), lien);
   await expect(page.locator('.mv-cell')).toHaveCount(1);
-  await expect(page.locator('.mv-cell .mv-direct-btn')).toBeVisible();
-  await page.locator('.mv-cell .mv-direct-btn').click();
-  await expect.poll(() => page.evaluate(() => window.mvFlux[0].mode), { message: 'sans le pont, le CDN refuse : retour à la page' }).toBe('page');
-  await expect(page.locator('#toasttxt')).toContainText('1.14');
+  /* Sans le pont, le « CDN » refuse la lecture faite d'ici : la sonde le voit, et le
+     bouton ▶ direct n'est pas proposé (18 octobre 2026, « le direct marche jamais »). */
+  await page.waitForTimeout(800);
+  await expect(page.locator('.mv-cell .mv-direct-btn'), 'sans le pont, pas de ▶ direct').toBeHidden();
   expect(await page.evaluate(() => (window.__hls || []).filter((h) => h.pont).length), 'aucun chargeur par le pont sans lecture binaire').toBe(0);
 
-  /* Le script 1.14, sous Tampermonkey : lecture binaire annoncée. */
+  /* Le script 1.14, sous Tampermonkey : lecture binaire annoncée. La sonde repasse par le pont. */
   await page.evaluate(() => window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.14', binaire: true }, '*'));
+  await expect(page.locator('.mv-cell .mv-direct-btn'), 'par le pont, le manifeste répond : ▶ direct').toBeVisible({ timeout: 10000 });
   await page.locator('.mv-cell .mv-direct-btn').click();
   await expect.poll(() => page.evaluate(() => window.mvFlux[0]._playing), { message: 'par le pont, le flux joue' }).toBe(true);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('direct');
   expect(await page.evaluate(() => (window.__hls || []).filter((h) => h.pont).length),
     'hls.js et son chargeur par le pont, même quand le navigateur lit le HLS lui-même').toBe(1);
-  expect(await page.evaluate(() => window.__demandesPont), 'le manifeste demandé au script, avec le Referer et l\'Origin du lecteur')
-    .toEqual([{ url: 'https://cdn.test/hls/index.m3u8', referer: 'https://lecteur.test/', origine: 'https://lecteur.test' }]);
+  const demandes = await page.evaluate(() => window.__demandesPont);
+  expect(demandes.length, 'la sonde, puis la lecture').toBe(2);
+  for (const d of demandes) expect(d, 'le manifeste demandé au script, avec le Referer et l\'Origin du lecteur')
+    .toEqual({ url: 'https://cdn.test/hls/index.m3u8', referer: 'https://lecteur.test/', origine: 'https://lecteur.test' });
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
@@ -2288,3 +2301,31 @@ for (const [nom, signe] of [
     expect(dialogues, 'sans dialogue').toEqual([]);
   });
 }
+
+/* « Le direct marche jamais » (18 octobre 2026). Relus le soir même depuis un autre réseau,
+   7 manifestes du cache sur 39 répondaient ; celui de bintv-sources ne sert qu'une fois
+   (404 une seconde après son lecteur). Le bouton ▶ direct s'affichait pour tous. Il n'est
+   plus montré qu'après avoir lu le manifeste depuis ce navigateur. */
+test('▶ direct ne s\'affiche que pour un flux qui répond d\'ici', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const autreOrigine = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autreOrigine + '/**', (route) => route.continue());
+  const tuiles = { ok: autreOrigine + '/__lecteur-calme?d=ok', mort: autreOrigine + '/__lecteur-calme?d=mort' };
+  await page.evaluate(([t, o]) => {
+    const reg = {};
+    reg[t.ok] = { url: o + '/__manifeste-ok.m3u8', pageUrl: t.ok, at: Date.now(), echecs: 0 };
+    reg[t.mort] = { url: o + '/__manifeste-mort.m3u8', pageUrl: t.mort, at: Date.now(), echecs: 0 };
+    localStorage.setItem('direct_media', JSON.stringify(reg));
+    window.addToMultivision(t.ok, 'Match qui répond', 'mOk');
+    window.addToMultivision(t.mort, 'Match mort', 'mMort');
+  }, [tuiles, autreOrigine]);
+  await expect(page.locator('.mv-cell')).toHaveCount(2);
+  const bouton = (i) => page.locator('.mv-cell').nth(i).locator('.mv-direct-btn');
+  await expect(bouton(0), 'le flux qui répond : ▶ direct').toBeVisible({ timeout: 10000 });
+  await expect(bouton(1), 'le flux mort : pas de bouton').toBeHidden();
+  await page.waitForTimeout(500);
+  await expect(bouton(1), 'même après la sonde').toBeHidden();
+  await page.evaluate(() => window.applyFilter('logs'));
+  await expect(page.locator('#sources-status-container')).toContainText('1 sur 2 répondent · refusés : 1 × HTTP 404');
+  expect(pageErrors).toEqual([]);
+});
