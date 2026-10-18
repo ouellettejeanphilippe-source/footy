@@ -645,9 +645,14 @@ test('le script signale le pointeur qui sort par le haut, qui revient, et la tou
   });
   await cadre.waitForSelector('#decor');
   const vus = () => page.evaluate(() => window.__depart.splice(0));
-  await page.mouse.move(100, 200);
-  await page.mouse.move(100, 120, { steps: 2 });
-  expect(await vus(), 'le pointeur entre dans la tuile depuis la page').toContainEqual({ __mv: 'pointeur', dehors: false });
+  /* D'abord dans la page hôte, à droite de la tuile : la tuile vient de descendre de
+     20 px sous un pointeur immobile, et le Chromium de la CI (headless shell) croyait
+     encore le pointeur sur son bandeau ; l'entrée ne venait alors pas « de dehors ». */
+  await page.mouse.move(1000, 300);
+  await page.mouse.move(100, 200, { steps: 4 });
+  await expect.poll(() => page.evaluate(() => window.__depart.slice()), { message: 'le pointeur entre dans la tuile depuis la page' })
+    .toContainEqual({ __mv: 'pointeur', dehors: false });
+  await vus();
   await page.mouse.move(100, 8);
   await page.waitForTimeout(200);
   expect(await vus(), 'il en sort par le haut').toContainEqual({ __mv: 'pointeur', dehors: true });
