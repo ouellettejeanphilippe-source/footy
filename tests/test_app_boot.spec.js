@@ -146,12 +146,23 @@ async function bootOffline(page) {
      interceptait les clics de ces tests. La plupart posaient déjà ce drapeau chacun de
      leur côté ; il est ici pour tous. */
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  /* La fin de la première passe de chargement, que `hasLoadedOnce` ne marque pas : il
+     est posé dès l'affichage provisoire, avec les liens déjà connus. Quand le cache des
+     liens du dépôt a plus de 3 h à l'instant gelé, la passe lit ensuite les sources et
+     redessine TOUTE la grille quelques secondes plus tard (js/main.js, fusion finale).
+     Mesuré le 18 octobre 2026 : premier rendu à 3,2 s, second à 6,4 s, bien après les
+     600 ms d'immobilité d'`attendreGrilleStable` ; « chaque section repliable… » tenait
+     alors des titres détachés du document (2 échecs sur 8, sur main aussi). */
+  await page.addInitScript(() => {
+    window.__passesFinies = 0;
+    window.addEventListener('loadSequenceComplete', () => { window.__passesFinies++; });
+  });
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   // Tout ce qui n'est pas servi localement est refusé : ni ESPN, ni proxy, ni site source.
   await page.route('**/*', (route) => (route.request().url().startsWith(origin) ? route.continue() : route.abort()));
   await page.goto(origin + '/index.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.hasLoadedOnce === true, null, { timeout: 60000 });
+  await page.waitForFunction(() => window.hasLoadedOnce === true && window.__passesFinies > 0, null, { timeout: 60000 });
   /* `window.hasLoadedOnce` est posé dans le `.finally` de loadAll, mais le rendu final
      atterrit dans le DOM 50 à 150 ms plus tard (mesuré sur six démarrages). Un test qui
      lisait le DOM dès ce drapeau tombait donc sur une grille encore vide, au hasard de la
@@ -716,6 +727,9 @@ test('le mode direct lit le flux par le pont du script, avec le Referer du lecte
     localStorage.setItem('direct_media', JSON.stringify({
       [lien]: { url: 'https://cdn.test/hls/index.m3u8', pageUrl: lien, referer: 'https://lecteur.test/', at: Date.now(), echecs: 0 }
     }));
+    /* Comme Safari et les Chrome récents (celui de la CI), le navigateur lit le HLS
+       lui-même : sans le pont, l'application lui confie le manifeste, sans hls.js. */
+    HTMLVideoElement.prototype.canPlayType = function (t) { return /mpegurl/i.test(t) ? 'maybe' : ''; };
     window.__demandesPont = [];
     window.addEventListener('message', (e) => {
       const d = e.data;
@@ -751,14 +765,15 @@ test('le mode direct lit le flux par le pont du script, avec le Referer du lecte
   await page.locator('.mv-cell .mv-direct-btn').click();
   await expect.poll(() => page.evaluate(() => window.mvFlux[0].mode), { message: 'sans le pont, le CDN refuse : retour à la page' }).toBe('page');
   await expect(page.locator('#toasttxt')).toContainText('1.14');
-  expect(await page.evaluate(() => window.__hls.map((h) => h.pont))).toEqual([false]);
+  expect(await page.evaluate(() => (window.__hls || []).filter((h) => h.pont).length), 'aucun chargeur par le pont sans lecture binaire').toBe(0);
 
   /* Le script 1.14, sous Tampermonkey : lecture binaire annoncée. */
   await page.evaluate(() => window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.14', binaire: true }, '*'));
   await page.locator('.mv-cell .mv-direct-btn').click();
   await expect.poll(() => page.evaluate(() => window.mvFlux[0]._playing), { message: 'par le pont, le flux joue' }).toBe(true);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('direct');
-  expect(await page.evaluate(() => window.__hls.map((h) => h.pont))).toEqual([false, true]);
+  expect(await page.evaluate(() => (window.__hls || []).filter((h) => h.pont).length),
+    'hls.js et son chargeur par le pont, même quand le navigateur lit le HLS lui-même').toBe(1);
   expect(await page.evaluate(() => window.__demandesPont), 'le manifeste demandé au script, avec le Referer et l\'Origin du lecteur')
     .toEqual([{ url: 'https://cdn.test/hls/index.m3u8', referer: 'https://lecteur.test/', origine: 'https://lecteur.test' }]);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
