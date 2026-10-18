@@ -43,7 +43,10 @@ test.beforeAll(async () => {
     /* Un lecteur sage, d'une autre origine aussi : un clic dedans ne fait rien. */
     if (rel === '/__lecteur-calme') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      return res.end('<html><body style="margin:0"><button id="b" style="width:100vw;height:100vh">LIRE</button></body></html>');
+      /* `script=1` : le vrai script utilisateur, premier script du document, comme
+         Tampermonkey à document-start. */
+      const script = /(^|[?&])script=1/.test(req.url) ? '<script>' + fs.readFileSync(path.join(ROOT, 'multiview-cleaner.user.js'), 'utf8') + '<\/script>' : '';
+      return res.end('<html>' + script + '<body style="margin:0"><button id="b" style="width:100vw;height:100vh">LIRE</button></body></html>');
     }
     if (rel === '/') rel = '/index.html';
     const file = path.join(ROOT, rel);
@@ -659,7 +662,7 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   await expect(page.locator('.mv-cell')).toHaveCount(1);
   const cadre = page.frameLocator('.mv-cell iframe.mv-iframe');
   await expect(cadre.locator('#b')).toBeVisible();
-  expect(await page.evaluate(() => window.gardeSortieArmee()), 'une vidéo chargée, sans geste dans sa tuile : rien à retenir').toBe(false);
+  expect(await page.evaluate(() => window.gardeSortieArmee()), 'une vidéo chargée arme la garde, sans attendre de geste : un cadre peut emmener l\'onglet tout seul').toBe(true);
 
   await cadre.locator('#b').click();
   await page.waitForTimeout(800);
@@ -681,34 +684,54 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
 
 /* « Ça me demande souvent si je veux quitter quand je ferme la page, ce qui devrait jamais
    arriver » (18 octobre 2026). La garde était armée dès qu'une vidéo était chargée : fermer
-   l'onglet passait par le même « Quitter le site ? » qu'un lecteur qui l'emmène. Elle ne
-   l'est plus que dans les secondes qui suivent un geste DANS une tuile, seul moment où un
-   cadre peut détourner l'onglet.
+   l'onglet passait par le même « Quitter le site ? » qu'un lecteur qui l'emmène. Elle reste
+   armée (le même jour, un lecteur a emmené l'onglet « tout seul, sans clic »), et se lève
+   quand l'utilisateur s'en va : pointeur sorti par le haut vers les onglets ou la croix,
+   ou touche de raccourci (Ctrl+W), y compris quand le focus est dans une tuile, où c'est
+   le script utilisateur qui la voit.
 
    Le navigateur ne montre ce dialogue qu'à une page qui a reçu un geste : on en fait un
-   dans l'application, puis un dans la tuile, assez tôt pour que le droit du cadre à
-   naviguer soit passé. Sans la correction, la fermeture demandait confirmation. */
-test('fermer la page, vidéos chargées, ne demande jamais « Quitter le site ? »', async ({ page }) => {
+   dans l'application, puis un dans la tuile, comme quand on regarde. Sans la correction,
+   chacune de ces fermetures demandait confirmation. */
+async function fermerSansDialogue(page, partir) {
   const pageErrors = await bootOffline(page);
   const autreOrigine = origin.replace('127.0.0.1', 'localhost');
   await page.route(autreOrigine + '/**', (route) => route.continue());
   const dialogues = [];
   page.on('dialog', (d) => { dialogues.push(d.type()); d.dismiss().catch(() => {}); });
 
-  await page.evaluate((u) => window.addToMultivision(u, 'Match calme', 'mC'), autreOrigine + '/__lecteur-calme');
+  await page.evaluate((u) => window.addToMultivision(u, 'Match calme', 'mC'), autreOrigine + '/__lecteur-calme?script=1');
   const cadre = page.frameLocator('.mv-cell iframe.mv-iframe');
   await expect(cadre.locator('#b')).toBeVisible();
   await page.locator('#mv-more-btn').click();
   await page.keyboard.press('Escape');
   await cadre.locator('#b').click();
+  expect(await page.evaluate(() => window.gardeSortieArmee()), 'on regarde : armée').toBe(true);
+  await partir(page);
   expect(pageErrors).toEqual([]);
-  /* Aucune évaluation dans la page à partir d'ici : Playwright les fait passer pour un
-     geste, ce qui rendrait à la page l'activation qu'on attend de voir expirer. */
-  await page.waitForTimeout(5600);
   await page.close({ runBeforeUnload: true });
   await new Promise((r) => setTimeout(r, 800));
   expect(dialogues, 'aucun « Quitter le site ? » à la fermeture').toEqual([]);
   expect(page.isClosed(), 'la page s\'est fermée').toBe(true);
+}
+
+test('fermer la page à la souris, vidéos chargées, ne demande pas « Quitter le site ? »', async ({ page }) => {
+  await fermerSansDialogue(page, async (p) => {
+    /* Vers la croix de l'onglet : le pointeur traverse la barre du lecteur et sort par le haut. */
+    const barre = await p.locator('#mv-toolbar').boundingBox();
+    await p.mouse.move(barre.x + 200, barre.y + 10);
+    await p.mouse.move(barre.x + 200, -5);
+    await p.waitForTimeout(100);
+  });
+});
+
+test('fermer la page au clavier, le focus dans une tuile, ne demande pas « Quitter le site ? »', async ({ page }) => {
+  await fermerSansDialogue(page, async (p) => {
+    /* Ctrl+W : la lettre n'arrive jamais à la page, la touche Ctrl si, dans le cadre qui
+       a le focus ; le script utilisateur la relaie. */
+    await p.keyboard.down('Control');
+    await p.waitForTimeout(300);
+  });
 });
 
 /* « Le bouton direct, ça marche avec AUCUN SITE » (18 octobre 2026). Les CDN refusent

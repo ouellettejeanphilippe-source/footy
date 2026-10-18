@@ -114,32 +114,50 @@ async function main() {
   ok('rouvrir le lecteur rend ses commandes, et ses vidéos n\'ont pas rechargé');
 
   // ── 6. La garde contre les redirections ────────────────────────────────────
-  /* Armée seulement quand des vidéos sont chargées ET juste après un geste dans une tuile
+  /* Armée quand des vidéos sont chargées, levée pour les navigations voulues par
+     l'application, désactivable, et levée quand c'est l'utilisateur qui s'en va
      (« ça me demande souvent si je veux quitter quand je ferme la page, ce qui devrait
-     jamais arriver », 18 octobre 2026), levée pour les navigations voulues par
-     l'application, et désactivable. Le comportement réel (dialogue du navigateur, clic
-     dans un lecteur hostile, fermeture de l'onglet) est vérifié dans
-     tests/test_app_boot.spec.js. */
+     jamais arriver », 18 octobre 2026) : pointeur sorti par le haut, touche de
+     raccourci. Mais armée sans geste dans une tuile : le même jour, « l'onglet de
+     l'appli » est parti sur une régie « tout seul, sans clic », la garde n'étant armée
+     qu'après un clic. Le comportement réel (dialogue du navigateur, clic dans un
+     lecteur hostile, fermeture de l'onglet) est vérifié dans tests/test_app_boot.spec.js. */
   const quitter = () => { const e = new w.Event('beforeunload', { cancelable: true }); w.dispatchEvent(e); return e.defaultPrevented; };
-  assert.strictEqual(mv.gardeSortieArmee(), false, 'des vidéos chargées, mais aucun geste dans une tuile : fermer la page passe');
-  assert.strictEqual(quitter(), false, 'quitter la page n\'est pas retenu');
-  const t0 = performance.now();
-  mv.noterGesteDansTuile(t0);
-  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + 100), true, 'juste après un geste dans une tuile : armée');
+  const souris = (type, init) => document.dispatchEvent(new w.MouseEvent(type, Object.assign({ bubbles: true }, init)));
+  const touche = (type, key, init) => document.dispatchEvent(new w.KeyboardEvent(type, Object.assign({ key, bubbles: true }, init)));
+  assert.strictEqual(mv.gardeSortieArmee(), true, 'des vidéos chargées, sans aucun geste : armée (un cadre peut emmener l\'onglet tout seul)');
   assert.strictEqual(quitter(), true, 'un lecteur qui emmène l\'onglet est retenu');
-  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + mv.GESTE_TUILE_MS + 1), false,
-    'le droit du cadre à naviguer est passé (activation passagère) : plus rien à retenir');
+
+  souris('mouseout', { relatedTarget: null, clientX: 300, clientY: -2 });
+  assert.strictEqual(mv.gardeSortieArmee(), false, 'pointeur sorti par le haut, vers les onglets ou la croix : fermer passe');
+  assert.strictEqual(quitter(), false);
+  souris('mousemove', { clientX: 300, clientY: 200 });
+  assert.strictEqual(mv.gardeSortieArmee(), true, 'le pointeur revient : armée');
+  souris('mouseout', { relatedTarget: null, clientX: 300, clientY: 400 });
+  assert.strictEqual(mv.gardeSortieArmee(), true, 'sorti par le bas ou un côté (vers un autre écran) : on regarde encore');
+
+  touche('keydown', 'Control', { ctrlKey: true });
+  assert.strictEqual(mv.gardeSortieArmee(), false, 'Ctrl enfoncé (Ctrl+W, Ctrl+R) : le navigateur ne transmet pas la lettre, mais la touche Ctrl');
+  touche('keyup', 'Control');
+  assert.strictEqual(mv.gardeSortieArmee(), true, 'relâché : armée');
+  const t0 = performance.now();
+  mv.noterTouche(true, false, t0);
+  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + mv.MODIFICATEUR_MAX_MS + 1), true, 'un relâchement perdu ne lève pas la garde indéfiniment');
+  mv.noterTouche(false, true, t0);
+  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + 100), false, 'F5 : on recharge soi-même');
+  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + mv.TOUCHE_DEPART_MS + 1), true, 'pour un instant seulement');
+
   mv.autoriserSortie();
-  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + 100), false, 'une navigation voulue par l\'application passe');
-  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 100), true, 'pour quelques secondes seulement');
+  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + 1e9), false, 'une navigation voulue par l\'application passe');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), true, 'pour quelques secondes seulement');
   const flux = mv.mvFlux.splice(0);
-  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 100), false, 'sans vidéo, rien à garder');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), false, 'sans vidéo, rien à garder');
   mv.mvFlux.push(...flux);
   mv.toggleGardeSortie();
-  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 100), false, 'le réglage la coupe');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 1e9), false, 'le réglage la coupe');
   assert.strictEqual(localStorage.getItem('garde_sortie'), '0', 'et il est retenu');
   mv.toggleGardeSortie();
-  ok('la garde contre les redirections est armée juste après un geste dans une tuile, et seulement alors');
+  ok('la garde contre les redirections reste armée, sauf quand c\'est l\'utilisateur qui s\'en va');
 
   console.log(`unit_lecteurfluide: ${n} groupes de tests OK`);
   process.exit(0);

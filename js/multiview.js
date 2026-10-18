@@ -719,50 +719,94 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
    installation du script) passent par `autoriserSortie`. Réglage `garde_sortie`,
    allumé par défaut, dans le menu ⋯ du lecteur.
 
-   Et seulement juste après un geste DANS une tuile (18 octobre 2026, « ça me demande
-   souvent si je veux quitter quand je ferme la page, ce qui devrait jamais arriver »).
-   Armée en permanence, la garde retenait aussi la fermeture de l'onglet : `beforeunload`
-   ne dit pas qui s'en va. Ce qui distingue les deux, c'est ce qui précède. Un lecteur ne
-   détourne l'onglet qu'au geste fait dans son cadre : Chrome l'exige, et les régies « au
-   clic » de ces sites attendent ce clic. Le navigateur ne laisse ce droit que quelques
-   secondes (activation passagère : 5 s dans Chrome comme dans Firefox). Fermer
-   l'onglet, c'est la croix ou Ctrl+W : aucun geste dans une tuile. Le piège du script
-   utilisateur sur `window.top` ne tient pas, lui : `top` n'est pas redéfinissable.
-   Un geste se voit de trois façons : le message `mv_frame_clicked` du script, le
-   passage du focus dans une tuile (`blur` de cette fenêtre), et l'activation passagère
-   de cette fenêtre quand le focus est dans une tuile (un clic dans un cadre active
-   aussi ses ancêtres ; c'est le seul signal synchrone, et le message du script peut
-   arriver après la navigation). */
+   Sauf quand c'est l'utilisateur qui s'en va (18 octobre 2026, « ça me demande souvent
+   si je veux quitter quand je ferme la page, ce qui devrait jamais arriver »).
+   `beforeunload` ne dit pas qui part : fermer l'onglet et le détournement par un lecteur
+   arrivent par le même événement. Ce qui les distingue, c'est ce qui précède.
+
+   Une première version n'armait la garde que dans les 5 s suivant un geste dans une
+   tuile. Le jour même : « l'onglet de l'appli » parti sur une régie (srowox.com/click,
+   arrêtée par uBlock), « tout seul, sans clic », script 1.14. Firefox laisse un cadre
+   d'une autre origine emmener l'onglet sans geste, et le piège du script sur
+   `window.top` ne peut pas tenir (`top` n'est pas redéfinissable).
+
+   La garde reste donc armée, et ne se lève que sur les signes d'un départ voulu :
+     - le pointeur est sorti de la page par le HAUT, vers les onglets, la croix, le
+       rechargement ou la barre d'adresse. La page le voit quand il traverse la barre du
+       lecteur ; le script utilisateur le signale (`pointeur`) quand il quitte un cadre
+       collé au haut de la fenêtre, et quand il revient directement dans une tuile ;
+     - une touche de raccourci : Ctrl, Cmd ou Alt enfoncé (Ctrl+W, Cmd+W, Alt+F4,
+       Ctrl+R), ou F5. Le navigateur ne transmet pas la lettre de Ctrl+W, mais transmet
+       la touche Ctrl ; le script la relaie quand le focus est dans une tuile (`touche`) ;
+     - l'onglet est caché (fermer un onglet d'arrière-plan).
+   Un mouvement ou un clic dans la page, ou le message `mv_frame_clicked`, efface le
+   départ. Un lecteur qui détourne l'onglet pendant qu'on regarde, au clic ou sans
+   clic, trouve donc la garde armée. */
 var sortieAutoriseeJusqua = 0;
 export var gardeSortie = true;
 try { gardeSortie = (localStorage.getItem('garde_sortie') !== '0'); } catch (e) { gardeSortie = true; }
 
 export function autoriserSortie() { sortieAutoriseeJusqua = Date.now() + 5000; }
 
-export var GESTE_TUILE_MS = 5000;
-var dernierGesteTuile = -Infinity;
+/* Délai pendant lequel F5 (ou un Ctrl+R vu en entier) vaut départ. */
+export var TOUCHE_DEPART_MS = 1500;
+/* Un modificateur dont on n'a pas vu le relâchement (focus parti ailleurs) ne lève pas
+   la garde plus de 10 s. */
+export var MODIFICATEUR_MAX_MS = 10000;
+var depart = { parLeHaut: false, modificateur: false, modificateurAt: -Infinity, toucheAt: -Infinity };
 /* Horloge monotone : un intervalle se mesure mieux ainsi, et elle n'est pas figée par
    les tests qui fixent Date.now. */
-function horlogeGeste() {
+function horlogeDepart() {
     return (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
 }
-export function noterGesteDansTuile(mono) { dernierGesteTuile = (mono === undefined) ? horlogeGeste() : mono; }
 
-function focusDansUneTuile() {
-    var a = (typeof document !== 'undefined') ? document.activeElement : null;
-    return !!(a && a.tagName === 'IFRAME' && a.classList && a.classList.contains('mv-iframe'));
+/* Le pointeur, vu par la page ou rapporté d'un cadre. `dehors` : sorti de la fenêtre
+   par le haut. */
+export function noterPointeur(dehors) { depart.parLeHaut = !!dehors; }
+
+/* Une touche, vue par la page ou rapportée d'un cadre. `modificateur` : Ctrl, Cmd ou
+   Alt tenu à cet instant ; `depart` : une touche qui quitte d'elle-même (F5, Ctrl+R). */
+export function noterTouche(modificateur, toucheDeDepart, mono) {
+    var t = (mono === undefined) ? horlogeDepart() : mono;
+    depart.modificateur = !!modificateur;
+    if (modificateur) depart.modificateurAt = t;
+    if (toucheDeDepart) depart.toucheAt = t;
 }
 
-export function gesteRecentDansTuile(mono) {
-    var t = (mono === undefined) ? horlogeGeste() : mono;
-    if (t - dernierGesteTuile < GESTE_TUILE_MS) return true;
-    var ua = (typeof navigator !== 'undefined') ? navigator.userActivation : null;
-    return !!(ua && ua.isActive && focusDansUneTuile());
+export function utilisateurPart(mono) {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return true;
+    if (depart.parLeHaut) return true;
+    var t = (mono === undefined) ? horlogeDepart() : mono;
+    if (depart.modificateur && t - depart.modificateurAt < MODIFICATEUR_MAX_MS) return true;
+    return t - depart.toucheAt < TOUCHE_DEPART_MS;
 }
 
 export function gardeSortieArmee(now, mono) {
     return gardeSortie && mvFlux.length > 0 && (now === undefined ? Date.now() : now) > sortieAutoriseeJusqua
-        && gesteRecentDansTuile(mono);
+        && !utilisateurPart(mono);
+}
+
+var TOUCHES_MODIFICATRICES = { Control: 1, Meta: 1, Alt: 1, OS: 1 };
+function estToucheDeDepart(e) {
+    return e.key === 'F5' || ((e.ctrlKey || e.metaKey) && /^[rwq]$/i.test(e.key || ''));
+}
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('mouseout', function(e) {
+        if (!e.relatedTarget && e.clientY <= 0) noterPointeur(true);
+    }, true);
+    var pointeurDedans = function(e) {
+        depart.parLeHaut = false;
+        noterTouche(e.ctrlKey || e.metaKey || e.altKey, false);
+    };
+    document.addEventListener('mousemove', pointeurDedans, true);
+    document.addEventListener('mouseover', pointeurDedans, true);
+    document.addEventListener('pointerdown', pointeurDedans, true);
+    document.addEventListener('keydown', function(e) {
+        noterTouche(TOUCHES_MODIFICATRICES[e.key] || e.ctrlKey || e.metaKey || e.altKey, estToucheDeDepart(e));
+    }, true);
+    document.addEventListener('keyup', function(e) {
+        if (TOUCHES_MODIFICATRICES[e.key]) noterTouche(e.ctrlKey || e.metaKey || e.altKey, false);
+    }, true);
 }
 
 export function toggleGardeSortie() {
@@ -1505,11 +1549,27 @@ export function setupMultivisionUI() {
         if (e.data === 'mv_frame_clicked') {
             var idxClic = indexDeTuilePour(e.source);
             if (idxClic >= 0) {
-                noterGesteDansTuile();
+                noterPointeur(false);   // un clic dans une tuile : le pointeur est dans la page
                 if (activeMvIdx !== idxClic) focusStream(idxClic);
                 mvFlux[idxClic]._dernierGeste = Date.now();
                 donnerLeSon(idxClic, 'geste');
             }
+        }
+        /* Pointeur et clavier vus dans une tuile, pour la garde « Quitter le site ? »
+           (voir `utilisateurPart`). Un cadre ne quitte la fenêtre par le haut que s'il
+           en touche le haut : sinon le pointeur entre dans la page, qui le voit. Une tuile
+           du second écran est dans une autre fenêtre. */
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'pointeur') {
+            var idxP = indexDeTuilePour(e.source);
+            if (idxP < 0) return;
+            if (!e.data.dehors) { noterPointeur(false); return; }
+            var cadreP = cadreDeTuile(idxP);
+            if (cadreP && cadreP.ownerDocument === document && cadreP.getBoundingClientRect().top <= 1) noterPointeur(true);
+            return;
+        }
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'touche') {
+            if (indexDeTuilePour(e.source) >= 0) noterTouche(e.data.modificateur, e.data.depart);
+            return;
         }
         /* Le son a été refusé par le navigateur dans la tuile (le script utilisateur a
            dû remuer la vidéo pour qu'elle continue de jouer). */
@@ -1586,12 +1646,7 @@ export function setupMultivisionUI() {
     });
 
     window.addEventListener('blur', function() {
-        /* Le focus part dans une tuile : c'est un geste dans son cadre (garde contre les
-           redirections), vu même sans script utilisateur. Lu tout de suite : le clic qui
-           détourne l'onglet n'attend pas les 100 ms ci-dessous. */
-        if (focusDansUneTuile()) noterGesteDansTuile();
         setTimeout(function() {
-            if (focusDansUneTuile()) noterGesteDansTuile();
             var activeElement = document.activeElement;
             if (activeElement && activeElement.tagName === 'IFRAME' && activeElement.classList.contains('mv-iframe')) {
                 var idx = parseInt(activeElement.id.replace('mv-iframe-', ''));
@@ -4555,7 +4610,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v60';
+export var VERSION_APP = 'sports-guide-v61';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

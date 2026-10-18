@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.14
+// @version      1.15
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -50,6 +50,30 @@
        le multiview ? » — depuis l'application, non (une iframe d'origine croisée sans
        bac à sable n'obéit à rien), mais d'ici, oui, à condition d'arriver le premier. */
     try { injectPopupBlocker(); } catch (e) {}
+
+    /* Pour la garde « Quitter le site ? » de l'application (18 octobre 2026). Elle reste
+       armée contre un lecteur qui emmène l'onglet, et se lève quand c'est l'utilisateur
+       qui s'en va : pointeur sorti par le haut vers les onglets ou la croix, touche de
+       raccourci (Ctrl, Cmd, Alt, F5). Quand le pointeur ou le focus est dans une tuile,
+       c'est ce cadre qui les voit, pas l'application : on les lui dit. Le pointeur qui
+       revient directement dans une tuile, aussi. */
+    try {
+        var signalerDepart = function (m) { try { window.top.postMessage(m, '*'); } catch (e) {} };
+        var MODIFICATRICES = { Control: 1, Meta: 1, Alt: 1, OS: 1 };
+        document.addEventListener('mouseout', function (e) {
+            if (!e.relatedTarget && e.clientY <= 0) signalerDepart({ __mv: 'pointeur', dehors: true });
+        }, true);
+        document.addEventListener('mouseover', function (e) {
+            if (!e.relatedTarget) signalerDepart({ __mv: 'pointeur', dehors: false });
+        }, true);
+        window.addEventListener('keydown', function (e) {
+            var quitte = e.key === 'F5' || ((e.ctrlKey || e.metaKey) && /^[rwq]$/i.test(e.key || ''));
+            if (MODIFICATRICES[e.key] || quitte) signalerDepart({ __mv: 'touche', modificateur: !!(MODIFICATRICES[e.key] || e.ctrlKey || e.metaKey || e.altKey), depart: quitte });
+        }, true);
+        window.addEventListener('keyup', function (e) {
+            if (MODIFICATRICES[e.key]) signalerDepart({ __mv: 'touche', modificateur: !!(e.ctrlKey || e.metaKey || e.altKey), depart: false });
+        }, true);
+    } catch (e) {}
 
     /* Ne pas nettoyer notre propre application. Elle est reconnue à sa structure, comme
        par le pont plus bas : `#marea` ET `.epg`. Le titre « Guide TV », ou une classe
@@ -1204,7 +1228,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.14';
+    var VERSION = '1.15';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche
