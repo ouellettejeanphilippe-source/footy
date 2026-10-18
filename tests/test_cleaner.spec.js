@@ -202,7 +202,7 @@ test.afterAll(async () => { await new Promise((r) => server.close(r)); });
 
 /* Monte une tuile : page hôte sur une origine, cadre sur l'autre, script injecté dans
    tous les cadres comme le ferait Tampermonkey. */
-async function monterTuile(page, avecHorloge, sansScript, requete) {
+async function monterTuile(page, avecHorloge, sansScript, requete, origineCadre) {
   /* L'horloge doit être installée AVANT toute navigation, sinon elle ne gouverne pas les
      minuteries que le script pose à son démarrage — et un test qui avance une horloge
      qu'il ne contrôle pas ne prouve rien. */
@@ -213,7 +213,7 @@ async function monterTuile(page, avecHorloge, sansScript, requete) {
     f.id = 'tuile'; f.src = src;
     f.setAttribute('style', 'width:800px;height:600px;border:0');
     document.body.appendChild(f);
-  }, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : (requete ? '?' + requete : '')));
+  }, (origineCadre || autreOrigine) + '/__site-stream' + (sansScript ? '?sans=1' : (requete ? '?' + requete : '')));
   const cadre = await (await page.locator('#tuile').elementHandle()).contentFrame();
   await cadre.waitForSelector('#decor');
   return cadre;
@@ -611,7 +611,8 @@ async function questionnerPont(page, info) {
 
 test('le pont lit en binaire, avec le Referer du lecteur, sous un vrai gestionnaire de scripts', async ({ page }) => {
   const { recu, gm } = await questionnerPont(page, true);
-  expect(recu.pret.version).toBe('1.14');
+  const [maj, min] = String(recu.pret.version).split('.').map(Number);
+  expect(maj > 1 || (maj === 1 && min >= 14), 'au moins 1.14, la version qui lit en binaire : ' + recu.pret.version).toBe(true);
   expect(recu.pret.binaire, 'lecture binaire annoncée').toBe(true);
   expect(recu.page).toEqual({ ok: true, binaire: true, octets: [7, 7, 7], error: '' });
   expect(gm).toEqual([{ url: 'https://cdn.test/hls/seg-1.ts', responseType: 'arraybuffer',
@@ -623,4 +624,47 @@ test('sans gestionnaire de scripts, le pont ne promet pas la lecture binaire', a
   expect(recu.pret.binaire).toBe(false);
   expect(recu.page.ok).toBe(false);
   expect(gm, 'rien n\'est demandé au GM_xmlhttpRequest bâti sur fetch').toEqual([]);
+});
+
+/* La garde « Quitter le site ? » de l'application se lève quand l'utilisateur s'en va
+   (18 octobre 2026) : pointeur sorti par le haut, touche de raccourci. Quand le pointeur
+   ou le focus est dans une tuile, seul ce cadre les voit : le script les signale. */
+test('le script signale le pointeur qui sort par le haut, qui revient, et la touche Ctrl', async ({ page }) => {
+  /* Cadre de même origine ici : Chromium sans écran simule l'entrée du pointeur dans un
+     cadre d'une autre origine, pas sa sortie (vérifié le 18 octobre 2026). Le script, lui,
+     ne fait aucune différence. */
+  const cadre = await monterTuile(page, false, false, '', origin);
+  await page.evaluate(() => {
+    window.__depart = [];
+    window.addEventListener('message', (e) => {
+      if (e.data && (e.data.__mv === 'pointeur' || e.data.__mv === 'touche')) window.__depart.push(e.data);
+    });
+    /* La tuile commence 20 px plus bas : le pointeur qui la quitte par le haut entre dans
+       la page hôte, comme quand il monte vers la barre du lecteur. */
+    document.body.style.paddingTop = '20px';
+  });
+  await cadre.waitForSelector('#decor');
+  const vus = () => page.evaluate(() => window.__depart.splice(0));
+  await page.mouse.move(100, 200);
+  await page.mouse.move(100, 120, { steps: 2 });
+  expect(await vus(), 'le pointeur entre dans la tuile depuis la page').toContainEqual({ __mv: 'pointeur', dehors: false });
+  await page.mouse.move(100, 8);
+  await page.waitForTimeout(200);
+  expect(await vus(), 'il en sort par le haut').toContainEqual({ __mv: 'pointeur', dehors: true });
+  await page.mouse.move(100, 300);
+  await page.waitForTimeout(200);
+  await vus();
+  await page.mouse.move(100, 300, { steps: 1 });
+  await page.mouse.move(400, 590);
+  await page.mouse.move(400, 640);
+  await page.waitForTimeout(200);
+  expect((await vus()).filter((m) => m.__mv === 'pointeur' && m.dehors), 'sortir par le bas n\'est pas partir vers les onglets').toEqual([]);
+
+  await cadre.click('#avis');
+  await page.keyboard.down('Control');
+  await page.waitForTimeout(200);
+  expect(await vus(), 'Ctrl enfoncé dans la tuile').toContainEqual({ __mv: 'touche', modificateur: true, depart: false });
+  await page.keyboard.up('Control');
+  await page.waitForTimeout(200);
+  expect(await vus(), 'et relâché').toContainEqual({ __mv: 'touche', modificateur: false, depart: false });
 });
