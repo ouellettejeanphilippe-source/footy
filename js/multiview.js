@@ -7,12 +7,12 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX } from './playability.js';
-import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer } from './directmedia.js';
+import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
-import { initEmbedBridge, getBridgeStatus, waitForBridge } from './embed-bridge.js';
+import { initEmbedBridge, getBridgeStatus, waitForBridge, lireOctetsViaPont } from './embed-bridge.js';
 import { etatProtection, doitProposerGuide, GUIDE_VU } from './installation.js';
 import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
@@ -101,8 +101,13 @@ function chargerHlsJs() {
 }
 /* Rend un `<video>` prêt à jouer `url`, avec les mêmes classe et style que
    l'iframe qu'il remplace — la mise en page (taille, recadrage, glisser-déposer)
-   ne fait ainsi aucune différence entre les deux. */
-function creerLecteurVideo(url, surEchec) {
+   ne fait ainsi aucune différence entre les deux.
+
+   `pont` (voir `pontPourDirect`) fait passer manifeste et segments par le script
+   utilisateur, avec le `Referer` du lecteur et sans CORS. hls.js est alors pris même
+   quand le navigateur lit le HLS lui-même : le lecteur natif ne laisse pas choisir par
+   où passent ses requêtes. */
+function creerLecteurVideo(url, surEchec, pont) {
     var video = document.createElement('video');
     var echec = function(raison) { if (typeof surEchec === 'function') surEchec(raison); };
     video.addEventListener('error', function() {
@@ -119,10 +124,10 @@ function creerLecteurVideo(url, surEchec) {
     video.muted = true;
 
     var estM3u8 = /\.m3u8(\?|#|$)/i.test(url);
-    if (estM3u8 && !video.canPlayType('application/vnd.apple.mpegurl')) {
+    if (estM3u8 && (pont || !video.canPlayType('application/vnd.apple.mpegurl'))) {
         chargerHlsJs().then(function(Hls) {
             if (Hls && Hls.isSupported()) {
-                var hls = new Hls();
+                var hls = new Hls(pont ? { loader: chargeurParPont(pont.lire, { referer: pont.referer }) } : undefined);
                 /* Une erreur FATALE (manifeste refusé : CORS, 403, adresse expirée ; ou
                    média illisible) est remontée à l'appelant, qui décide (le mode direct
                    revient à la page). Les erreurs non fatales, hls.js les rattrape seul. */
@@ -150,8 +155,18 @@ function creerLecteurVideo(url, surEchec) {
    d'elle-même au mode page, retient l'échec, et le dit. */
 var DELAI_DIRECT_MS = 25000;
 function registreDirect() { return safeStorageGetJSON('direct_media', {}) || {}; }
+/* Le pont du script utilisateur pour ce manifeste, s'il sait lire en binaire (≥ 1.14,
+   sous un gestionnaire de scripts) ; null sinon, et hls.js lit lui-même, ce que les CDN
+   de ces flux refusent presque tous (js/directmedia.js, chargeurParPont). */
+function pontPourDirect(media) {
+    var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
+    if (!pont || !pont.available || !pont.binaire) return null;
+    return { lire: lireOctetsViaPont, referer: refererPourDirect(media) };
+}
 function poserDirect(media, url, container, cell, s) {
     container.innerHTML = '';
+    var natif = pluginNatif();
+    var pont = natif ? null : pontPourDirect(media);
     s._currentUrl = url;
     s._playing = false;
     var idx = parseInt(cell.dataset.index, 10);
@@ -164,13 +179,13 @@ function poserDirect(media, url, container, cell, s) {
         s.mode = 'page';
         s._currentUrl = null;
         s._playing = false;
-        showToast('Direct refusé (' + raison + ') : retour à la page');
+        showToast('Direct refusé (' + raison + ') : retour à la page'
+            + ((pont || natif) ? '' : ' — le script utilisateur à jour (1.14, Tampermonkey) fait passer le direct'));
         saveMultivisionState();
         updateMultivisionLayout();
     };
-    var natif = pluginNatif();
     if (natif) { poserDirectNatif(natif, media, url, container, s, idx, revenir); return; }
-    var video = creerLecteurVideo(media.url, revenir);
+    var video = creerLecteurVideo(media.url, revenir, pont);
     video.id = 'mv-iframe-' + idx;
     video.style.transform = s.cropped ? 'scale(1.15)' : 'scale(1)';
     video.addEventListener('playing', function() {
@@ -256,7 +271,9 @@ export function toggleDirectMode(idx) {
    doit toujours réaffecter sa variable avec ce retour. */
 function versVideoSiDirect(elementActuel, url, container) {
     if (!estMediaDirecte(url)) return elementActuel;
-    var video = creerLecteurVideo(url);
+    /* Un lien qui EST un manifeste : aucun lecteur connu pour son `Referer`, mais le pont
+       lève au moins le refus d'origine. */
+    var video = creerLecteurVideo(url, null, pontPourDirect({}));
     /* Le recadrage (`s.cropped`) est appliqué à l'iframe AVANT la résolution du
        tour de passe-passe, quand le lecteur n'arrive qu'après coup — sans quoi le
        remplacement tardif par une vidéo perdrait ce réglage. */
@@ -699,17 +716,53 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
 
    Armé seulement quand des vidéos sont chargées : sans tuile, aucune page tierce ne
    peut détourner l'onglet. Les navigations voulues par l'application (mise à jour,
-   installation du script) passent par `autoriserSortie`. Prix : quitter ou recharger
-   l'onglet soi-même, vidéos chargées, demande une confirmation. Réglage `garde_sortie`,
-   allumé par défaut, dans le menu ⋯ du lecteur. */
+   installation du script) passent par `autoriserSortie`. Réglage `garde_sortie`,
+   allumé par défaut, dans le menu ⋯ du lecteur.
+
+   Et seulement juste après un geste DANS une tuile (18 octobre 2026, « ça me demande
+   souvent si je veux quitter quand je ferme la page, ce qui devrait jamais arriver »).
+   Armée en permanence, la garde retenait aussi la fermeture de l'onglet : `beforeunload`
+   ne dit pas qui s'en va. Ce qui distingue les deux, c'est ce qui précède. Un lecteur ne
+   détourne l'onglet qu'au geste fait dans son cadre : Chrome l'exige, et les régies « au
+   clic » de ces sites attendent ce clic. Le navigateur ne laisse ce droit que quelques
+   secondes (activation passagère : 5 s dans Chrome comme dans Firefox). Fermer
+   l'onglet, c'est la croix ou Ctrl+W : aucun geste dans une tuile. Le piège du script
+   utilisateur sur `window.top` ne tient pas, lui : `top` n'est pas redéfinissable.
+   Un geste se voit de trois façons : le message `mv_frame_clicked` du script, le
+   passage du focus dans une tuile (`blur` de cette fenêtre), et l'activation passagère
+   de cette fenêtre quand le focus est dans une tuile (un clic dans un cadre active
+   aussi ses ancêtres ; c'est le seul signal synchrone, et le message du script peut
+   arriver après la navigation). */
 var sortieAutoriseeJusqua = 0;
 export var gardeSortie = true;
 try { gardeSortie = (localStorage.getItem('garde_sortie') !== '0'); } catch (e) { gardeSortie = true; }
 
 export function autoriserSortie() { sortieAutoriseeJusqua = Date.now() + 5000; }
 
-export function gardeSortieArmee(now) {
-    return gardeSortie && mvFlux.length > 0 && (now === undefined ? Date.now() : now) > sortieAutoriseeJusqua;
+export var GESTE_TUILE_MS = 5000;
+var dernierGesteTuile = -Infinity;
+/* Horloge monotone : un intervalle se mesure mieux ainsi, et elle n'est pas figée par
+   les tests qui fixent Date.now. */
+function horlogeGeste() {
+    return (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
+}
+export function noterGesteDansTuile(mono) { dernierGesteTuile = (mono === undefined) ? horlogeGeste() : mono; }
+
+function focusDansUneTuile() {
+    var a = (typeof document !== 'undefined') ? document.activeElement : null;
+    return !!(a && a.tagName === 'IFRAME' && a.classList && a.classList.contains('mv-iframe'));
+}
+
+export function gesteRecentDansTuile(mono) {
+    var t = (mono === undefined) ? horlogeGeste() : mono;
+    if (t - dernierGesteTuile < GESTE_TUILE_MS) return true;
+    var ua = (typeof navigator !== 'undefined') ? navigator.userActivation : null;
+    return !!(ua && ua.isActive && focusDansUneTuile());
+}
+
+export function gardeSortieArmee(now, mono) {
+    return gardeSortie && mvFlux.length > 0 && (now === undefined ? Date.now() : now) > sortieAutoriseeJusqua
+        && gesteRecentDansTuile(mono);
 }
 
 export function toggleGardeSortie() {
@@ -1452,6 +1505,7 @@ export function setupMultivisionUI() {
         if (e.data === 'mv_frame_clicked') {
             var idxClic = indexDeTuilePour(e.source);
             if (idxClic >= 0) {
+                noterGesteDansTuile();
                 if (activeMvIdx !== idxClic) focusStream(idxClic);
                 mvFlux[idxClic]._dernierGeste = Date.now();
                 donnerLeSon(idxClic, 'geste');
@@ -1532,7 +1586,12 @@ export function setupMultivisionUI() {
     });
 
     window.addEventListener('blur', function() {
+        /* Le focus part dans une tuile : c'est un geste dans son cadre (garde contre les
+           redirections), vu même sans script utilisateur. Lu tout de suite : le clic qui
+           détourne l'onglet n'attend pas les 100 ms ci-dessous. */
+        if (focusDansUneTuile()) noterGesteDansTuile();
         setTimeout(function() {
+            if (focusDansUneTuile()) noterGesteDansTuile();
             var activeElement = document.activeElement;
             if (activeElement && activeElement.tagName === 'IFRAME' && activeElement.classList.contains('mv-iframe')) {
                 var idx = parseInt(activeElement.id.replace('mv-iframe-', ''));
@@ -4496,7 +4555,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v59';
+export var VERSION_APP = 'sports-guide-v60';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

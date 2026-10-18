@@ -105,3 +105,129 @@ export function noterEchecDirect(registre, lienUrl) {
 export function aProposer(entree) {
     return !!entree && (entree.echecs | 0) < 2;
 }
+
+/* ─── Le direct par le pont du script utilisateur ───────────────────────────────
+   « Le bouton direct, ça marche avec AUCUN SITE » (18 octobre 2026). Mesuré le jour même
+   sur les manifestes du cache : les CDN ne répondent `Access-Control-Allow-Origin` qu'à
+   l'origine de LEUR lecteur (streame.center, dembed.st, matchora.to, getembed.live…), ou
+   pas du tout, et plusieurs refusent (403) un `Referer` qui n'est pas le leur. hls.js,
+   lancé depuis l'application, demandait le manifeste avec notre origine : le navigateur
+   le refusait avant la première image, et la tuile revenait à la page.
+
+   Le script utilisateur (≥ 1.14, sous Tampermonkey, Violentmonkey ou Greasemonkey) lit
+   sans CORS et pose le `Referer` du lecteur (js/embed-bridge.js, `lireOctetsViaPont`).
+   `chargeurParPont` est un chargeur hls.js (option `loader`) qui fait passer par lui
+   manifestes, clés et segments. */
+
+/* Le `Referer` que le lecteur de la page envoyait. La vérification du serveur l'a relevé
+   sur la requête même (`referer`, depuis `mediaReferer`) ; à défaut, le cadre où le
+   script a vu passer le manifeste (`pageUrl`), réduit à son origine comme le fait un
+   navigateur pour une requête d'une autre origine. */
+export function refererPourDirect(media) {
+    var r = media && typeof media.referer === 'string' ? media.referer : '';
+    if (/^https?:\/\//i.test(r)) return r;
+    var page = media && typeof media.pageUrl === 'string' ? media.pageUrl : '';
+    if (!/^https?:\/\//i.test(page)) return '';
+    try { return new URL(page).origin + '/'; } catch (e) { return ''; }
+}
+
+export function origineDe(url) {
+    if (!/^https?:\/\//i.test(String(url || ''))) return '';
+    try { return new URL(url).origin; } catch (e) { return ''; }
+}
+
+function horlogeChargeur() {
+    return (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
+}
+
+function statsVides() {
+    return {
+        aborted: false, loaded: 0, retry: 0, total: 0, chunkCount: 0, bwEstimate: 0,
+        loading: { start: 0, first: 0, end: 0 },
+        parsing: { start: 0, end: 0 },
+        buffering: { start: 0, first: 0, end: 0 }
+    };
+}
+
+/* Rend une classe de chargeur au contrat de hls.js 1.5 : `load(context, config,
+   callbacks)`, `abort()`, `destroy()`, `stats`, `context`. `lire(url, options)` rend une
+   promesse de { octets, status, finalUrl } ; une erreur porte `status` et `delai`.
+   Les manifestes (réponse texte) sont décodés en UTF-8, le reste rendu tel quel. */
+export function chargeurParPont(lire, entetes) {
+    var referer = (entetes && entetes.referer) || '';
+    var origine = (entetes && entetes.origine) || origineDe(referer);
+
+    function ChargeurPont(config) {
+        this.config = config;
+        this.context = null;
+        this.callbacks = null;
+        this.stats = statsVides();
+        this._minuteur = null;
+        this._fini = false;
+        this._jeton = 0;
+    }
+
+    ChargeurPont.prototype.load = function (context, config, callbacks) {
+        var self = this;
+        this.context = context;
+        this.callbacks = callbacks;
+        this._fini = false;
+        /* Un chargeur peut être relancé : la réponse d'un essai abandonné ne doit pas
+           clore le suivant. */
+        var jeton = ++this._jeton;
+        var stats = this.stats;
+        stats.loading.start = horlogeChargeur();
+        var binaire = context.responseType === 'arraybuffer';
+        var debut = context.rangeStart | 0;
+        var fin = context.rangeEnd | 0;
+        var plage = (debut || fin) ? 'bytes=' + debut + '-' + (fin ? fin - 1 : '') : '';
+        var politique = config && config.loadPolicy;
+        var delaiMs = (politique && politique.maxLoadTimeMs) || (config && config.timeout) || 20000;
+
+        var finir = function () {
+            if (self._fini || jeton !== self._jeton) return false;
+            self._fini = true;
+            if (self._minuteur) { clearTimeout(self._minuteur); self._minuteur = null; }
+            return !!self.callbacks;
+        };
+        this._minuteur = setTimeout(function () {
+            if (!finir()) return;
+            self.callbacks.onTimeout(stats, context, null);
+        }, delaiMs);
+
+        lire(context.url, { referer: referer, origine: origine, plage: plage, timeoutMs: delaiMs }).then(function (rep) {
+            if (!finir()) return;
+            var octets = rep.octets;
+            var taille = octets && octets.byteLength ? octets.byteLength : 0;
+            stats.loading.first = stats.loading.end = horlogeChargeur();
+            stats.loaded = stats.total = taille;
+            var donnees = binaire ? octets : new TextDecoder('utf-8').decode(octets);
+            self.callbacks.onSuccess({ url: rep.finalUrl || context.url, data: donnees, code: rep.status }, stats, context, null);
+        }, function (err) {
+            if (!finir()) return;
+            stats.loading.end = horlogeChargeur();
+            if (err && err.delai) { self.callbacks.onTimeout(stats, context, null); return; }
+            self.callbacks.onError({ code: (err && err.status) | 0, text: String((err && err.message) || 'pont') }, context, null, stats);
+        });
+    };
+
+    ChargeurPont.prototype.abort = function () {
+        var cb = this.callbacks;
+        if (this._fini) return;
+        this._fini = true;
+        this.stats.aborted = true;
+        if (this._minuteur) { clearTimeout(this._minuteur); this._minuteur = null; }
+        if (cb && typeof cb.onAbort === 'function') cb.onAbort(this.stats, this.context, null);
+    };
+
+    ChargeurPont.prototype.destroy = function () {
+        if (!this._fini) this.abort();
+        this.callbacks = null;
+        this.config = null;
+    };
+
+    ChargeurPont.prototype.getCacheAge = function () { return null; };
+    ChargeurPont.prototype.getResponseHeader = function () { return null; };
+
+    return ChargeurPont;
+}

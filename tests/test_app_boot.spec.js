@@ -40,6 +40,11 @@ test.beforeAll(async () => {
         + 'try{top.location.href="http://regie-pub.invalid/";}catch(e){}'
         + '});<\/script></body></html>');
     }
+    /* Un lecteur sage, d'une autre origine aussi : un clic dedans ne fait rien. */
+    if (rel === '/__lecteur-calme') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      return res.end('<html><body style="margin:0"><button id="b" style="width:100vw;height:100vh">LIRE</button></body></html>');
+    }
     if (rel === '/') rel = '/index.html';
     const file = path.join(ROOT, rel);
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end('not found'); }
@@ -643,7 +648,7 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   await expect(page.locator('.mv-cell')).toHaveCount(1);
   const cadre = page.frameLocator('.mv-cell iframe.mv-iframe');
   await expect(cadre.locator('#b')).toBeVisible();
-  expect(await page.evaluate(() => window.gardeSortieArmee()), 'une vidéo chargée arme la garde').toBe(true);
+  expect(await page.evaluate(() => window.gardeSortieArmee()), 'une vidéo chargée, sans geste dans sa tuile : rien à retenir').toBe(false);
 
   await cadre.locator('#b').click();
   await page.waitForTimeout(800);
@@ -661,6 +666,102 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   const nav = await depart;
   expect(nav && !nav.url().startsWith(origin), 'garde coupée, l\'onglet est emporté : le test a un sens').toBeTruthy();
   expect(dialogues.length, 'et rien ne l\'a retenu').toBe(avant);
+});
+
+/* « Ça me demande souvent si je veux quitter quand je ferme la page, ce qui devrait jamais
+   arriver » (18 octobre 2026). La garde était armée dès qu'une vidéo était chargée : fermer
+   l'onglet passait par le même « Quitter le site ? » qu'un lecteur qui l'emmène. Elle ne
+   l'est plus que dans les secondes qui suivent un geste DANS une tuile, seul moment où un
+   cadre peut détourner l'onglet.
+
+   Le navigateur ne montre ce dialogue qu'à une page qui a reçu un geste : on en fait un
+   dans l'application, puis un dans la tuile, assez tôt pour que le droit du cadre à
+   naviguer soit passé. Sans la correction, la fermeture demandait confirmation. */
+test('fermer la page, vidéos chargées, ne demande jamais « Quitter le site ? »', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const autreOrigine = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autreOrigine + '/**', (route) => route.continue());
+  const dialogues = [];
+  page.on('dialog', (d) => { dialogues.push(d.type()); d.dismiss().catch(() => {}); });
+
+  await page.evaluate((u) => window.addToMultivision(u, 'Match calme', 'mC'), autreOrigine + '/__lecteur-calme');
+  const cadre = page.frameLocator('.mv-cell iframe.mv-iframe');
+  await expect(cadre.locator('#b')).toBeVisible();
+  await page.locator('#mv-more-btn').click();
+  await page.keyboard.press('Escape');
+  await cadre.locator('#b').click();
+  expect(pageErrors).toEqual([]);
+  /* Aucune évaluation dans la page à partir d'ici : Playwright les fait passer pour un
+     geste, ce qui rendrait à la page l'activation qu'on attend de voir expirer. */
+  await page.waitForTimeout(5600);
+  await page.close({ runBeforeUnload: true });
+  await new Promise((r) => setTimeout(r, 800));
+  expect(dialogues, 'aucun « Quitter le site ? » à la fermeture').toEqual([]);
+  expect(page.isClosed(), 'la page s\'est fermée').toBe(true);
+});
+
+/* « Le bouton direct, ça marche avec AUCUN SITE » (18 octobre 2026). Les CDN refusent
+   l'origine de l'application (CORS) et un Referer qui n'est pas celui de leur lecteur :
+   hls.js lisant lui-même, le manifeste était refusé partout. Avec le script utilisateur
+   1.14, manifeste et segments passent par le pont, avec le Referer du lecteur.
+
+   hls.js est remplacé par un double qui, comme lui, lit le manifeste par le chargeur
+   qu'on lui donne, ou par lui-même faute de chargeur, et que le « CDN » refuse alors
+   (code 0, comme un refus CORS). Le pont est un faux script qui note ce qu'on lui
+   demande. Différentiel : sans lecture binaire annoncée, la tuile revient à la page. */
+test('le mode direct lit le flux par le pont du script, avec le Referer du lecteur', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const lien = origin + '/__lecteur-calme?direct';
+  await page.evaluate(({ lien }) => {
+    localStorage.setItem('direct_media', JSON.stringify({
+      [lien]: { url: 'https://cdn.test/hls/index.m3u8', pageUrl: lien, referer: 'https://lecteur.test/', at: Date.now(), echecs: 0 }
+    }));
+    window.__demandesPont = [];
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.__mvBridge !== 'mv_bridge_fetch' || !d.binaire) return;
+      window.__demandesPont.push({ url: d.url, referer: d.referer, origine: d.origine });
+      const octets = new TextEncoder().encode('#EXTM3U\n').buffer;
+      window.postMessage({ __mvBridge: 'mv_bridge_page', id: d.id, ok: true, binaire: true, octets, status: 200, finalUrl: d.url }, '*');
+    });
+    window.Hls = class {
+      static isSupported() { return true; }
+      static get Events() { return { ERROR: 'hlsError' }; }
+      constructor(config) { this.config = config || {}; this.ecouteurs = []; (window.__hls = window.__hls || []).push({ pont: !!this.config.loader }); }
+      on(ev, f) { if (ev === 'hlsError') this.ecouteurs.push(f); }
+      loadSource(u) { this.u = u; }
+      attachMedia(video) {
+        const echec = (code) => this.ecouteurs.forEach((f) => f('hlsError', { fatal: true, details: 'manifestLoadError', response: { code } }));
+        if (!this.config.loader) { setTimeout(() => echec(0), 20); return; }
+        new this.config.loader({}).load({ url: this.u, responseType: '' }, { timeout: 5000 }, {
+          onSuccess: (r) => { if (/^#EXTM3U/.test(r.data)) video.dispatchEvent(new Event('playing')); else echec(200); },
+          onError: (e) => echec(e.code),
+          onTimeout: () => echec(0)
+        });
+      }
+      destroy() {}
+    };
+  }, { lien });
+
+  /* Le script annonce le pont SANS lecture binaire (copie de l'extension, par exemple). */
+  await page.evaluate(() => window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.13' }, '*'));
+  await page.evaluate((u) => window.addToMultivision(u, 'Match direct', 'mD'), lien);
+  await expect(page.locator('.mv-cell')).toHaveCount(1);
+  await expect(page.locator('.mv-cell .mv-direct-btn')).toBeVisible();
+  await page.locator('.mv-cell .mv-direct-btn').click();
+  await expect.poll(() => page.evaluate(() => window.mvFlux[0].mode), { message: 'sans le pont, le CDN refuse : retour à la page' }).toBe('page');
+  await expect(page.locator('#toasttxt')).toContainText('1.14');
+  expect(await page.evaluate(() => window.__hls.map((h) => h.pont))).toEqual([false]);
+
+  /* Le script 1.14, sous Tampermonkey : lecture binaire annoncée. */
+  await page.evaluate(() => window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.14', binaire: true }, '*'));
+  await page.locator('.mv-cell .mv-direct-btn').click();
+  await expect.poll(() => page.evaluate(() => window.mvFlux[0]._playing), { message: 'par le pont, le flux joue' }).toBe(true);
+  expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('direct');
+  expect(await page.evaluate(() => window.__hls.map((h) => h.pont))).toEqual([false, true]);
+  expect(await page.evaluate(() => window.__demandesPont), 'le manifeste demandé au script, avec le Referer et l\'Origin du lecteur')
+    .toEqual([{ url: 'https://cdn.test/hls/index.m3u8', referer: 'https://lecteur.test/', origine: 'https://lecteur.test' }]);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
 /* « Les menus, surtout sur mobile, c'est pas super affordant et efficace » (10 octobre

@@ -114,23 +114,32 @@ async function main() {
   ok('rouvrir le lecteur rend ses commandes, et ses vidéos n\'ont pas rechargé');
 
   // ── 6. La garde contre les redirections ────────────────────────────────────
-  /* Armée seulement quand des vidéos sont chargées, levée pour les navigations voulues
-     par l'application, et désactivable. Le comportement réel (dialogue du navigateur,
-     clic dans un lecteur hostile) est vérifié dans tests/test_app_boot.spec.js. */
+  /* Armée seulement quand des vidéos sont chargées ET juste après un geste dans une tuile
+     (« ça me demande souvent si je veux quitter quand je ferme la page, ce qui devrait
+     jamais arriver », 18 octobre 2026), levée pour les navigations voulues par
+     l'application, et désactivable. Le comportement réel (dialogue du navigateur, clic
+     dans un lecteur hostile, fermeture de l'onglet) est vérifié dans
+     tests/test_app_boot.spec.js. */
   const quitter = () => { const e = new w.Event('beforeunload', { cancelable: true }); w.dispatchEvent(e); return e.defaultPrevented; };
-  assert.strictEqual(mv.gardeSortieArmee(), true, 'des vidéos chargées : armée');
-  assert.strictEqual(quitter(), true, 'quitter la page est retenu');
+  assert.strictEqual(mv.gardeSortieArmee(), false, 'des vidéos chargées, mais aucun geste dans une tuile : fermer la page passe');
+  assert.strictEqual(quitter(), false, 'quitter la page n\'est pas retenu');
+  const t0 = performance.now();
+  mv.noterGesteDansTuile(t0);
+  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + 100), true, 'juste après un geste dans une tuile : armée');
+  assert.strictEqual(quitter(), true, 'un lecteur qui emmène l\'onglet est retenu');
+  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + mv.GESTE_TUILE_MS + 1), false,
+    'le droit du cadre à naviguer est passé (activation passagère) : plus rien à retenir');
   mv.autoriserSortie();
-  assert.strictEqual(quitter(), false, 'une navigation voulue par l\'application passe');
-  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000), true, 'pour quelques secondes seulement');
+  assert.strictEqual(mv.gardeSortieArmee(undefined, t0 + 100), false, 'une navigation voulue par l\'application passe');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 100), true, 'pour quelques secondes seulement');
   const flux = mv.mvFlux.splice(0);
-  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000), false, 'sans vidéo, rien à garder');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 100), false, 'sans vidéo, rien à garder');
   mv.mvFlux.push(...flux);
   mv.toggleGardeSortie();
-  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000), false, 'le réglage la coupe');
+  assert.strictEqual(mv.gardeSortieArmee(Date.now() + 6000, t0 + 100), false, 'le réglage la coupe');
   assert.strictEqual(localStorage.getItem('garde_sortie'), '0', 'et il est retenu');
   mv.toggleGardeSortie();
-  ok('la garde contre les redirections est armée quand il le faut, et seulement alors');
+  ok('la garde contre les redirections est armée juste après un geste dans une tuile, et seulement alors');
 
   console.log(`unit_lecteurfluide: ${n} groupes de tests OK`);
   process.exit(0);
