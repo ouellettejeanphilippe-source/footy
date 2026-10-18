@@ -4,7 +4,27 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 
 ## En cours
 
+## Blocages
+- 2026-10-18 - **« ça le fait encore » : l'onglet de l'appli part sur une pub, « je quittais pas, le stream redirige », appli v61 + script 1.15, Firefox.** Troisième retour sur la garde « Quitter le site ? » le même jour (#614, #615) : arrêt avant un quatrième correctif à l'aveugle, comme le veut AGENTS.md.
+
+  - **Essayé dans un vrai Firefox** (158.0, Linux, sans écran, piloté par puppeteer-core en WebDriver BiDi, avec `userActivation: false` sur les évaluations ; sinon Puppeteer donne lui-même un geste à la page et fausse tout) :
+    - un cadre d'une autre origine qui n'a pas reçu de clic ne peut PAS emmener l'onglet : `top.location.href`, `location.replace`, `window.open(…, '_top')`, lien `target=_top` cliqué par script, formulaire `target=_top`, vers un site tiers comme vers le sien, tous bloqués ;
+    - même un cadre cliqué une fois ne le peut plus 8 s après : il faut un clic dans le cadre quelques secondes avant (activation passagère) ;
+    - l'application réelle (v61, script 1.15 dans la tuile), clic dans la tuile puis redirection 3 s après : la garde est armée et Firefox demande « Quitter le site ? », l'onglet reste. Pareil sans aucun clic dans l'application elle-même (un clic dans la tuile compte pour la page), en plein écran (⛶), et quand la page croyait le pointeur parti par le haut (elle le voit revenir sur la tuile) ;
+    - `navigator.userActivation` existe dans Firefox 158, et la page est active juste après un clic dans une tuile.
+  - **Pas reproduit.** Le détournement suit forcément un clic dans le cadre, et dans tous les cas joués ici la garde le retient.
+  - **Hypothèses restantes** : réglage `🛡 Bloquer les redirections des sites` coupé ; pointeur réellement sur la barre des onglets, ou touche Ctrl/Alt tenue, au moment du détournement (garde levée par `utilisateurPart`) ; une version de Firefox ou un réglage qui se comporte autrement que 158 ; un chemin de navigation non essayé ici.
+  - **Réponses de l'utilisateur** : réglage « devrait être toujours activé » (pas vérifié), « rien, je regardais », Firefox 158, et oui au relevé.
+  - **Ce qu'il faut** : la page Logs (« Sorties de l'appli ») au prochain détournement. Elle tranche entre : garde armée mais page quittée (le navigateur n'a pas demandé), garde levée (et par quel signe), ou aucune sortie notée avant un retour par « Précédent » (départ sans `beforeunload`).
 ## Fait
+- 2026-10-18 - **Relevé des sorties** (voir Blocages ci-dessus ; accepté par l'utilisateur).
+
+  - **Fait.** `js/sorties.js` (nouveau, sans import) et `etatGarde()` (`js/multiview.js`) : à chaque `beforeunload` avec des vidéos, l'état complet de la garde est noté dans `journal_sorties` ; `pagehide` marque « quittée » ; un retour par « Précédent » est noté (`navigation.activation`, à défaut la chronologie de navigation ; `pageshow` persisté). Plus → Logs montre « Sorties de l'appli » en clair, et « Cet appareil » dit si la garde est active.
+  - **Vérifié dans Firefox 158** (le vrai, sans écran) : détournement au clic retenu → « page restée · garde armée » ; garde coupée → « page quittée · réglage coupé » ; retour depuis le cache de navigation noté. L'API Navigation y existe.
+  - **Tests** : `unit_sorties` (nouveau) ; `test_app_boot` « un lecteur qui tente de détourner l'onglet… » vérifie le relevé, puis, après « Précédent », la page Logs et la ligne de la garde coupée. `npm test` : 120 unitaires, 65 Playwright (1 ignoré, comme avant).
+  - **Au passage** : sous l'horloge factice de Playwright, `performance.getEntriesByType('navigation')` est vide ; d'où l'API Navigation en premier.
+  - **Fichiers** : `js/sorties.js`, `js/multiview.js`, `sw.js` (`APP_SHELL`, `sports-guide-v62`), `tests/unit_sorties.test.js`, `tests/test_app_boot.spec.js`, `docs/ARCHITECTURE.md`, `FEATURES.md`, `docs/WORKLOG.md` (le titre « ## Fait », retiré par erreur avec l'ajout de « ## Blocages », est remis).
+  - **Ce qui reste** : lire le relevé au prochain détournement (Blocages).
 - 2026-10-18 - **Capture : uBlock Origin a empêché « srowox.com/click?key=… » de se charger.** Précisé : dans l'onglet de l'appli (l'appli a disparu), « tout seul, sans clic », script 1.14.
 
   - **Cause.** L'entrée suivante (même jour) n'armait la garde « Quitter le site ? » que dans les 5 s après un geste dans une tuile, sur l'idée qu'un cadre ne détourne l'onglet qu'au clic. Vrai dans Chrome, faux dans Firefox : un cadre d'une autre origine y emmène l'onglet sans geste. Le piège du script sur `window.top` ne pouvant pas tenir, plus rien ne retenait l'onglet. uBlock a arrêté la régie, l'appli était perdue quand même.
