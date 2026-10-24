@@ -195,7 +195,7 @@ function liveTableau(fiches, o) {
   var ligne = function (f) {
     return '<div class="dsp-row" ' + attrs(f) + '>'
       + '<div class="dsp-st' + (f.etat === 'live' ? ' dsp-live' : '') + '">' + esc(etiquetteEtat(f, o.maintenant)) + '</div>'
-      + '<div class="dsp-tm">' + logo(f.logoDom, f.dom) + '<span class="dsp-n' + perdant(f, 'd') + '">' + esc(f.dom) + etoile(f) + '</span><span class="dsp-s' + perdant(f, 'd') + '">' + score(f, 'd') + '</span>'
+      + '<div class="dsp-tm">' + logo(f.logoDom, f.dom) + '<span class="dsp-nom"><span class="dsp-n' + perdant(f, 'd') + '">' + esc(f.dom) + '</span>' + etoile(f) + '</span><span class="dsp-s' + perdant(f, 'd') + '">' + score(f, 'd') + '</span>'
       + (f.seul ? '' : logo(f.logoExt, f.ext) + '<span class="dsp-n' + perdant(f, 'e') + '">' + esc(f.ext) + '</span><span class="dsp-s' + perdant(f, 'e') + '">' + score(f, 'e') + '</span>')
       + '</div>' + regarder(f, true) + '</div>';
   };

@@ -1054,6 +1054,11 @@ body.dsp-on .zoom-controls { display: none !important; }
 .dsp-st.dsp-live::before { content: ""; display: block; width: calc(var(--u) * 8); height: calc(var(--u) * 8); border-radius: 50%; background: var(--dsp-live); margin-bottom: calc(var(--u) * 4); }
 .dsp-tm { display: grid; grid-template-columns: calc(var(--u) * 22) minmax(0, 1fr) auto; gap: calc(var(--u) * 4) calc(var(--u) * 10); align-items: center; min-width: 0; }
 .dsp-n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+/* L'étoile du favori À CÔTÉ du nom tronqué, pas dedans : dans `.dsp-n`, un nom long la
+   poussait hors de la zone visible (« MSC Cruises United States Grand Prix », 24 octobre 2026). */
+.dsp-nom { display: flex; align-items: center; min-width: 0; }
+.dsp-nom > .dsp-n { min-width: 0; }
+.dsp-nom > .dsp-fav { flex: none; }
 .dsp-s { font-size: calc(var(--u) * 20); font-weight: 600; min-width: calc(var(--u) * 26); text-align: right; letter-spacing: -0.02em; }
 .dsp-perd { color: var(--muted); }
 .dsp-prog { max-width: calc(var(--u) * 1100); margin: calc(var(--u) * 14) auto 0; }
