@@ -125,6 +125,7 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
   3. `⊞` ajouter au Multivision,
   4. `↗` ouvrir dans un nouvel onglet.
   Le clic sur la ligne elle-même envoie le flux au Multivision.
+- **L'ordre apprend de ton appareil.** Les liens sont rangés d'après ce qui a été vu jouer : par le serveur d'abord, puis par ton appareil, qui prend le dessus dès qu'il a essayé un site trois fois. Un site qui n'a jamais joué chez toi descend tout seul, marqué `ici 0/N`, même si le serveur l'a vu jouer ; il remonte dès qu'il joue. Quand la vérification a vu un lien jouer, sa définition réelle (« 1080p ») s'affiche et sert au tri à la place de la qualité annoncée. Un `⏭` appuyé sur une source qui n'a rien montré (entre 8 s et 90 s après son chargement) compte comme un échec, avec ou sans script utilisateur.
 - **Aucun flux** : « Aucun flux trouvé pour l'instant. » et, si la page du match est connue, `Ouvrir la page du match ↗`.
 - **Recherche manuelle et sites sources** (repli en bas) : les sites sources avec leur nombre de flux, un champ pour ajouter un flux à la main (m3u8, iframe, URL) au Multivision, un champ de diagnostic pour extraire les lecteurs d'une URL, et les flux isolés trouvés.
 - Tant que la fiche est ouverte, la page du match est relue toutes les 60 secondes ; la liste n'est redessinée que si de nouveaux flux jouables apparaissent.

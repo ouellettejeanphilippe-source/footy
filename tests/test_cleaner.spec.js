@@ -694,6 +694,16 @@ async function poserCadre(page, src) {
   return cadre;
 }
 
+/* Lance dans le cadre un appel qui PEUT faire naviguer l'onglet. Sans le script, c'est
+   ce que le test attend : l'onglet recule, et le contexte du cadre peut être détruit
+   avant que `evaluate` ait rendu sa réponse — « Execution context was destroyed »,
+   3 fois sur 60 en local, et sur main le 18 octobre 2026. Cette erreur-là seule est
+   attendue ; c'est l'adresse de l'onglet, vérifiée ensuite, qui dit ce qui s'est passé. */
+async function appelerQuiPeutNaviguer(cadre, appel) {
+  try { await cadre.evaluate(appel); }
+  catch (e) { if (!/Execution context was destroyed|Frame was detached/.test(String(e && e.message))) throw e; }
+}
+
 for (const [nom, appel] of [
   ['history.back()', () => history.back()],
   ['history.go(-1)', () => history.go(-1)],
@@ -705,7 +715,7 @@ for (const [nom, appel] of [
       await page.goto(origin + '/avant');
       await page.goto(origin + '/hote');
       const cadre = await poserCadre(page, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : ''));
-      await cadre.evaluate(appel);
+      await appelerQuiPeutNaviguer(cadre, appel);
       await page.waitForTimeout(800);
       if (sansScript) expect(page.url(), 'sans le script, l\'onglet recule : le test a un sens').toBe(origin + '/avant');
       else expect(page.url(), 'avec le script, l\'onglet reste sur l\'application').toBe(origin + '/hote');
@@ -720,7 +730,7 @@ test('le script empêche un cadre d\'avancer l\'onglet vers la page vue après',
     await page.goBack();
     expect(page.url()).toBe(origin + '/hote');
     const cadre = await poserCadre(page, autreOrigine + '/__site-stream' + (sansScript ? '?sans=1' : ''));
-    await cadre.evaluate(() => history.forward());
+    await appelerQuiPeutNaviguer(cadre, () => history.forward());
     await page.waitForTimeout(800);
     if (sansScript) expect(page.url(), 'sans le script, l\'onglet part sur la page d\'après').toBe(origin + '/pub-precedente');
     else expect(page.url(), 'avec le script, il reste').toBe(origin + '/hote');

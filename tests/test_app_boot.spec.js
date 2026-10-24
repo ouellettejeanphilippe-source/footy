@@ -1164,6 +1164,42 @@ test('sur téléphone, aucune disposition ne fait déborder la page', async ({ p
   expect(pageErrors).toEqual([]);
 });
 
+/* L'étoile d'un favori reste visible, même au nom long (24 octobre 2026). Elle était posée
+   DANS le nom tronqué de la disposition « tableau » : « MSC Cruises United States Grand
+   Prix », favori par défaut par « F1 », la poussait hors de la zone visible, et le test
+   ci-dessous ne le voyait qu'avec les polices de la CI. Toutes les équipes du calendrier
+   sont ici favorites, pour qu'un nom long soit là quelles que soient les données du jour. */
+test('l\'étoile d\'un favori au nom long reste visible dans le tableau', async ({ page }) => {
+  const cal = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'schedule.json'), 'utf8'));
+  const favoris = {};
+  for (const m of cal.matches || []) { if (m.homeTeam) favoris[m.homeTeam] = 1; if (m.awayTeam) favoris[m.awayTeam] = 1; }
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.addInitScript((f) => { localStorage.setItem('fav_teams', JSON.stringify(f)); }, favoris);
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => { applyFilter('live'); choisirDisposition('tableau'); });
+  await page.waitForSelector('#marea .dsp-tableau');
+  const etat = await page.evaluate(() => {
+    const etoiles = [...document.querySelectorAll('#marea .dsp-row .dsp-fav')];
+    let longs = 0;
+    const cachees = [];
+    for (const e of etoiles) {
+      const nom = e.parentElement.matches('.dsp-n') ? e.parentElement : e.parentElement.querySelector('.dsp-n');
+      if (nom && nom.scrollWidth > nom.clientWidth) longs++;
+      // Visible = dans la boîte de chacun de ses ancêtres qui coupe ce qui dépasse.
+      const q = e.getBoundingClientRect();
+      for (let a = e.parentElement; a && !a.matches('.dsp-row'); a = a.parentElement) {
+        if (getComputedStyle(a).overflowX === 'visible') continue;
+        const R = a.getBoundingClientRect();
+        if (q.right > R.right + 1 || q.left < R.left - 1) { cachees.push(e.closest('.dsp-row').textContent.trim()); break; }
+      }
+    }
+    return { etoiles: etoiles.length, longs, cachees };
+  });
+  expect(etat.longs, 'au moins un favori au nom tronqué : le test a un sens').toBeGreaterThan(0);
+  expect(etat.cachees, 'étoiles coupées par leur cadre').toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
+
 /* Le contenu des cartes et des lignes ne déborde pas de son cadre, sur tablette (« t'as
    des tuiles que le contenu dépasse »), dans les huit vues ; et les cartes des dispositions
    sont les cartes par défaut (« garder le look des cartes par défaut […] même style »).
