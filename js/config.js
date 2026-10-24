@@ -1630,8 +1630,16 @@ export function sortFluxLinks(links) {
       return 0; // SD or unknown
     }
 
-    var scoreA = getQualityScore(qualA, nameA);
-    var scoreB = getQualityScore(qualB, nameB);
+    /* La définition MESURÉE par la vérification (`hauteur`, scripts/verify_players.mjs)
+       remplace celle qu'annonce le nom : un « 1080p » vu jouer en 480 est un 480. */
+    function qualiteDe(lien, qualStr, nameStr) {
+      var h = lien.hauteur | 0;
+      if (!h) return getQualityScore(qualStr, nameStr);
+      return h >= 2000 ? 100000 : h >= 1000 ? 10000 : h >= 700 ? 1000 : 1;
+    }
+    var scoreA = qualiteDe(a, qualA, nameA);
+    var scoreB = qualiteDe(b, qualB, nameB);
+    if (scoreA === scoreB && (a.hauteur | 0) !== (b.hauteur | 0) && a.hauteur && b.hauteur) return b.hauteur - a.hauteur;
     if (scoreA !== scoreB) {
         return scoreB - scoreA;
     }

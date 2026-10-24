@@ -146,7 +146,7 @@ export function reporterVerifications(matches, precedent, maintenant, validiteMs
             if (!l || !l.url || !l.verified) return;
             var at = l.verifiedAt ? Date.parse(l.verifiedAt) : NaN;
             if (isNaN(at) || now - at > validite || now - at < 0) return;
-            vus[l.url] = { verified: l.verified, verifiedAt: l.verifiedAt, media: l.media, mediaAt: l.mediaAt, mediaReferer: l.mediaReferer };
+            vus[l.url] = { verified: l.verified, verifiedAt: l.verifiedAt, media: l.media, mediaAt: l.mediaAt, mediaReferer: l.mediaReferer, hauteur: l.hauteur };
         });
     });
     var n = 0;
@@ -161,6 +161,8 @@ export function reporterVerifications(matches, precedent, maintenant, validiteMs
                instant, et le mode direct a sa propre péremption (MEDIA_DIRECT_TTL_MS,
                js/directmedia.js) qui la jettera plus tôt si elle était signée. */
             if (v.media) { l.media = v.media; l.mediaAt = v.mediaAt; if (v.mediaReferer) l.mediaReferer = v.mediaReferer; }
+            // La hauteur mesurée voyage elle aussi avec son verdict (sortFluxLinks, js/config.js).
+            if (v.hauteur) l.hauteur = v.hauteur;
             n++;
         });
     });
@@ -445,32 +447,76 @@ export function arretMeriteRechargement(opts) {
 /* Cibles à éprouver pendant un passage : les matchs par ordre de `rank` (0 = en direct,
    1 = imminent, 2 = le reste), au plus `perMatch` liens par match sur des hôtes
    distincts, au plus `perHost` liens par hôte sur tout le passage (un hôte qui sert cent
-   liens n'a pas besoin de cent essais), au plus `total` cibles. */
+   liens n'a pas besoin de cent essais), au plus `total` cibles.
+
+   ÉPROUVER CE QUE L'APPLICATION MONTRERA EN PREMIER (24 octobre 2026, « faut vraiment
+   réfléchir à comment optimiser que les meilleurs streams soient les premiers »). Mesuré
+   ce jour-là : un passage n'éprouve que ~88 cibles dans son budget, et il les prenait
+   dans l'ordre de COLLECTE des liens ; 18 d'entre elles (20 %) portaient sur des hôtes
+   déjà jugés morts (`hoteTranche`), 8 seulement sur des hôtes incertains. Avec
+   `opts.ledger` (et `opts.sources`), les liens de chaque match sont pris dans l'ordre
+   du classement (palier, puis réputation, comme sortFluxLinks) — un verdict sur le
+   premier lien affiché vaut plus qu'un verdict sur le neuvième —, et les liens d'un hôte
+   tranché mort passent après toutes les autres cibles : éprouvés seulement s'il reste
+   de la place. Sans registre, l'ordre de collecte, comme avant. */
+export var TRANCHE_ESSAIS = 20;
+export var TRANCHE_TAUX_MORT = 0.1;
+export function hoteTranche(entree) {
+    var e = entree || {};
+    return (e.tested | 0) >= TRANCHE_ESSAIS && (e.plays | 0) / e.tested <= TRANCHE_TAUX_MORT;
+}
 export function pickTargets(matches, opts) {
     var o = opts || {};
     var perMatch = o.perMatch || 3, perHost = o.perHost || 4, total = o.total || 150;
-    var hostCount = {};
-    var out = [];
+    var ledger = o.ledger || null, sources = o.sources || null;
     var ordered = (matches || []).map(function (m, i) { return { m: m, i: i }; })
         .filter(function (x) { return x.m && Array.isArray(x.m.streamLinks) && x.m.streamLinks.length; })
         .sort(function (a, b) { return (a.m.rank | 0) - (b.m.rank | 0); });
-    ordered.forEach(function (x) {
-        if (out.length >= total) return;
-        var vus = {};
-        var pris = 0;
-        for (var k = 0; k < x.m.streamLinks.length && pris < perMatch && out.length < total; k++) {
-            var l = x.m.streamLinks[k];
-            var target = tileTarget(l);
-            var host = hostOfUrl(target);
+    // Les candidats de chaque match : dans l'ordre du classement, un par hôte, `perMatch` au plus.
+    var parMatch = ordered.map(function (x) {
+        var liens = x.m.streamLinks;
+        var idx = liens.map(function (l, k) { return k; });
+        if (ledger) idx.sort(function (a, b) {
+            var d = playabilityScore(liens[b], ledger) - playabilityScore(liens[a], ledger);
+            if (d) return d;
+            return (reputationLien(liens[b], ledger, sources) - reputationLien(liens[a], ledger, sources)) || (a - b);
+        });
+        var vus = {}, c = [];
+        for (var j = 0; j < idx.length && c.length < perMatch; j++) {
+            var l = liens[idx[j]];
+            if (!l || !l.url) continue;
+            var target = tileTarget(l), host = hostOfUrl(target);
             if (!host || vus[host]) continue;
-            if ((hostCount[host] | 0) >= perHost) continue;
             vus[host] = true;
-            hostCount[host] = (hostCount[host] | 0) + 1;
-            out.push({ matchIndex: x.i, linkIndex: k, target: target, host: host });
-            pris++;
+            c.push({ matchIndex: x.i, linkIndex: idx[j], target: target, host: host, rank: x.m.rank | 0, lien: l });
         }
+        return c;
     });
-    return out;
+    /* Sans registre : match après match, comme avant. Avec : EN LARGEUR — le premier lien
+       affiché de chaque match, puis le deuxième… —, et dans chaque tour les plus
+       incertains d'abord (p·(1−p) sur la réputation : un hôte à 50 % apprend plus qu'un
+       hôte à 95 %). Un budget de ~88 cibles couvrait sinon les trente premiers matchs de
+       la liste, trois liens chacun, et laissait les trois cents autres sans un essai. */
+    var file = [];
+    if (!ledger) parMatch.forEach(function (c) { file = file.concat(c); });
+    else {
+        for (var tour = 0; tour < perMatch; tour++) {
+            var ceTour = [];
+            parMatch.forEach(function (c) { if (c[tour]) ceTour.push(c[tour]); });
+            ceTour.forEach(function (c) { var p = reputationLien(c.lien, ledger, sources); c.incertitude = p * (1 - p); });
+            ceTour.sort(function (a, b) { return (a.rank - b.rank) || (b.incertitude - a.incertitude); });
+            file = file.concat(ceTour);
+        }
+    }
+    var hostCount = {}, out = [], plusTard = [];
+    file.forEach(function (c) {
+        if ((hostCount[c.host] | 0) >= perHost) return;
+        hostCount[c.host] = (hostCount[c.host] | 0) + 1;
+        var cible = { matchIndex: c.matchIndex, linkIndex: c.linkIndex, target: c.target, host: c.host };
+        if (ledger && hoteTranche(ledger[c.host])) plusTard.push(cible);
+        else out.push(cible);
+    });
+    return out.concat(plusTard).slice(0, total);
 }
 
 /* Lien suivant dans l'ordre donné, après celui dont l'adresse est `currentUrl` ; revient

@@ -66,7 +66,12 @@ for (const m of data.matches) {
     else if (mn !== null && mn <= IMMINENT_MIN && mn > -config.LIVE_MAX_DURATION_MIN) m.rank = 1;
     else m.rank = 2;
 }
-const targets = play.pickTargets(data.matches, { perMatch: PER_MATCH, perHost: PER_HOST, total: TOTAL })
+/* Les liens de chaque match dans l'ordre où l'application les montrera, et les hôtes déjà
+   tranchés morts en dernier (pickTargets, js/playability.js). Le registre lu tel quel :
+   s'il a été gagné sous une autre règle, il ne compte pas (voir plus bas). */
+const registreCibles = (data.hostPlayCritere | 0) === play.CRITERE_VERDICT ? (data.hostPlay || {}) : null;
+const sourcesCibles = registreCibles ? (data.sourcePlay || {}) : null;
+const targets = play.pickTargets(data.matches, { perMatch: PER_MATCH, perHost: PER_HOST, total: TOTAL, ledger: registreCibles, sources: sourcesCibles })
     .filter((t) => data.matches[t.matchIndex].rank <= 1);
 for (const m of data.matches) delete m.rank;
 /* Les hôtes écartés du fichier (ecarterLiensMorts, js/playability.js) ne sont plus dans
@@ -111,6 +116,7 @@ async function observe(target) {
         sample: '',
         media: '',          // l'adresse du manifeste, ENTIÈRE : le mode direct s'en sert
         mediaReferer: '',   // la page qui l'a demandé : l'appli TV le renvoie (tv/README.md)
+        hauteur: 0,         // hauteur RÉELLE de la vidéo vue jouer (720, 1080…) : départage les liens qui jouent
     };
     page.on('request', (r) => {
         const u = r.url();
@@ -150,8 +156,9 @@ async function observe(target) {
             if (f === page.mainFrame()) continue;
             if (/^chrome-error:/.test(f.url())) { obs.frameError = true; continue; }
             try {
-                const v = await f.evaluate(() => Array.from(document.querySelectorAll('video')).map((x) => ({ rs: x.readyState, t: x.currentTime, src: !!(x.currentSrc || x.src) })));
+                const v = await f.evaluate(() => Array.from(document.querySelectorAll('video')).map((x) => ({ rs: x.readyState, t: x.currentTime, src: !!(x.currentSrc || x.src), h: x.videoHeight | 0 })));
                 if (v.some((x) => x.rs >= 2 || x.t > 0)) obs.videoReady = true;
+                for (const x of v) if ((x.rs >= 2 || x.t > 0) && x.h > obs.hauteur) obs.hauteur = x.h;
             } catch (e) { /* cadre inaccessible : on ne conclut rien */ }
         }
         const frames = page.frames();
@@ -186,7 +193,7 @@ if (critereStocke !== play.CRITERE_VERDICT) {
     // Les verdicts déjà posés sur les liens ont été gagnés sous l'ancienne règle.
     for (const m of data.matches) {
         for (const l of (m.streamLinks || [])) {
-            delete l.verified; delete l.verifiedAt; delete l.media; delete l.mediaAt; delete l.mediaReferer;
+            delete l.verified; delete l.verifiedAt; delete l.media; delete l.mediaAt; delete l.mediaReferer; delete l.hauteur;
         }
     }
 } else {
@@ -226,6 +233,7 @@ async function worker() {
             } else {
                 delete link.media; delete link.mediaAt; delete link.mediaReferer;
             }
+            if (verdict === 'plays' && obs.hauteur > 0) link.hauteur = obs.hauteur; else delete link.hauteur;
         }
         play.recordObservation(ledger, t.host, verdict);
         parHote[t.host] = parHote[t.host] || { plays: 0, tested: 0 };

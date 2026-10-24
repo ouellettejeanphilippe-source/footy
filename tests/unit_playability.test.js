@@ -247,6 +247,41 @@ async function main() {
         ok('fusionAppareil : l\'appareil corrige le serveur ; sautManuelEstEchec');
     }
 
+    // ── 10. Éprouver ce qui sera montré en premier ; trier sur la définition mesurée ──
+    /* Mesuré le 24 octobre 2026 : 88 cibles par passage, prises dans l'ordre de collecte,
+       dont 20 % sur des hôtes déjà tranchés morts. */
+    {
+        const ledger = { 'mort.test': { tested: 30, plays: 1 }, 'bon.test': { tested: 30, plays: 28 }, 'moyen.test': { tested: 10, plays: 5 } };
+        const matches = [{ rank: 0, streamLinks: [
+            { url: 'https://mort.test/1' }, { url: 'https://moyen.test/1' }, { url: 'https://neuf.test/1' }, { url: 'https://bon.test/1' },
+        ] }];
+        const brut = P.pickTargets(matches, { perMatch: 2 }).map((c) => c.host);
+        assert.deepStrictEqual(brut, ['mort.test', 'moyen.test'], 'sans registre : l\'ordre de collecte, comme avant');
+        const classe = P.pickTargets(matches, { perMatch: 2, ledger }).map((c) => c.host);
+        assert.deepStrictEqual(classe, ['bon.test', 'moyen.test'], 'avec le registre : les deux premiers du classement');
+        const tout = P.pickTargets(matches, { perMatch: 4, ledger }).map((c) => c.host);
+        assert.strictEqual(tout[tout.length - 1], 'mort.test', 'l\'hôte tranché mort passe après toutes les autres cibles');
+        assert.strictEqual(P.pickTargets(matches, { perMatch: 4, ledger, total: 3 }).some((c) => c.host === 'mort.test'), false, '… et saute s\'il n\'y a pas la place');
+        assert.ok(P.hoteTranche({ tested: 20, plays: 2 }) && !P.hoteTranche({ tested: 19, plays: 0 }) && !P.hoteTranche({ tested: 40, plays: 5 }));
+
+        const precedent = { matches: [{ streamLinks: [{ url: 'https://bon.test/1', verified: 'plays', verifiedAt: '2026-10-24T12:00:00Z', hauteur: 1080 }] }] };
+        const neufs = [{ streamLinks: [{ url: 'https://bon.test/1' }] }];
+        P.reporterVerifications(neufs, precedent, Date.parse('2026-10-24T13:00:00Z'));
+        assert.strictEqual(neufs[0].streamLinks[0].hauteur, 1080, 'la hauteur mesurée est reportée avec son verdict');
+
+        globalThis.window.hostPlayLedger = {};
+        globalThis.window.sourcePlayLedger = {};
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
+        const tri = C.sortFluxLinks([
+            { name: 'Annoncé 1080p', url: 'https://a.test/1', quality: '1080p', verified: 'plays', hauteur: 480 },
+            { name: 'Vu en 720', url: 'https://b.test/1', verified: 'plays', hauteur: 720 },
+            { name: 'Vu en 1080', url: 'https://c.test/1', verified: 'plays', hauteur: 1080 },
+        ]);
+        assert.deepStrictEqual(tri.map((l) => l.name), ['Vu en 1080', 'Vu en 720', 'Annoncé 1080p'],
+            'la définition mesurée passe avant l\'annoncée (obtenu : ' + tri.map((l) => l.name).join(' > ') + ')');
+        ok('pickTargets suit le classement et relègue les hôtes tranchés ; la définition mesurée trie');
+    }
+
     console.log(`unit_playability: ${n} groupes de tests OK`);
     process.exit(0);
 }
