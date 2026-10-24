@@ -181,6 +181,62 @@ export function mergeLedgers(a, b) {
     return out;
 }
 
+/* Le registre de CET appareil passe devant celui du serveur, dès qu'il a de quoi juger.
+
+   « Je voudrais que ça se corrige et adapte de lui-même » (24 octobre 2026). Le serveur
+   éprouve les lecteurs dans un Chromium d'ordinateur ; ce que joue un Firefox, un
+   téléphone ou la télé n'est pas forcément la même chose. Or le navigateur ajoutait ses
+   observations au registre du serveur par simple somme : un hôte à 30 sur 40 côté serveur
+   et 0 sur 5 ici restait à 30 sur 45 — en tête, sur un appareil où il n'a jamais joué.
+
+   Dès que l'appareil a éprouvé un hôte `SEUIL_APPAREIL` fois, le serveur ne compte plus
+   que comme un a priori de `POIDS_SERVEUR_APPAREIL` essais (à son taux) : 0 sur 5 ici et
+   30 sur 40 là-bas donnent 3 sur 9. Et l'hôte qui n'a JAMAIS joué ici porte
+   `appareilMort` : un lien que le serveur a vu jouer (`verified: 'plays'`) n'est plus
+   présumé jouer sur cet appareil (voir playabilityScore, reputationLien). En dessous du
+   seuil, la somme d'avant : deux essais ratés peuvent être une panne passagère.
+
+   Sert pour les hôtes comme pour les sources (js/config.js, `playLedger`,
+   `sourcePlayLedger`). Pure. */
+export var SEUIL_APPAREIL = 3;
+export var POIDS_SERVEUR_APPAREIL = 4;
+export function fusionAppareil(serveur, local) {
+    var out = mergeLedgers(serveur, null);
+    Object.keys(local || {}).forEach(function (k) {
+        var l = local[k] || {};
+        var lt = l.tested | 0, lp = l.plays | 0;
+        var s = out[k] || { tested: 0, plays: 0 };
+        if (lt < SEUIL_APPAREIL) {
+            out[k] = { tested: s.tested + lt, plays: s.plays + lp };
+            return;
+        }
+        var st = Math.min(s.tested, POIDS_SERVEUR_APPAREIL);
+        var sp = s.tested ? Math.round(s.plays * st / s.tested) : 0;
+        var e = { tested: lt + st, plays: lp + sp, appareil: { tested: lt, plays: lp } };
+        if (lp === 0) e.appareilMort = true;
+        out[k] = e;
+    });
+    return out;
+}
+
+/* Un ⏭ MANUEL compte-t-il comme « rien n'a joué » ?
+
+   Jusqu'ici, seule la bascule automatique notait un échec — et elle n'existe qu'avec le
+   script utilisateur. Sans lui, l'appareil n'apprenait rien : on zappait les mêmes sources
+   mortes jour après jour. Un ⏭ appuyé sur une source qui n'a donné aucun signe de lecture,
+   après lui avoir laissé `SAUT_MIN_MS` (le temps de charger) et avant `SAUT_MAX_MS` (au-delà,
+   on la regardait peut-être, et on change pour une autre raison), est un échec. Une source
+   qui a joué dans cette tuile n'est jamais notée sur un ⏭. */
+export var SAUT_MIN_MS = 8 * 1000;
+export var SAUT_MAX_MS = 90 * 1000;
+export function sautManuelEstEchec(opts) {
+    var o = opts || {};
+    if (o.aJoue) return false;
+    var d = Number(o.depuisMs);
+    if (!isFinite(d)) return false;
+    return d >= SAUT_MIN_MS && d <= SAUT_MAX_MS;
+}
+
 /* Score de jouabilité d'un lien, du plus sûr au plus douteux :
      3  observé en train de jouer (ce lien même) ;
      2  hôte qui joue le plus souvent ;
@@ -189,10 +245,13 @@ export function mergeLedgers(a, b) {
     -1  cadre refusé ou hôte mort. */
 export function playabilityScore(link, ledger) {
     if (!link) return 0;
-    if (link.verified === 'plays') return 3;
-    if (link.verified === 'blocked') return -1;
     var host = hostOfUrl(tileTarget(link));
     var e = ledger && ledger[host];
+    /* Jamais joué sur cet appareil (fusionAppareil) : ni le verdict du serveur ni son
+       taux ne le remontent. */
+    if (e && e.appareilMort) return link.verified === 'blocked' ? -1 : 0;
+    if (link.verified === 'plays') return 3;
+    if (link.verified === 'blocked') return -1;
     if (e && e.tested >= 3) {
         var rate = e.plays / e.tested;
         if (rate >= 0.5) return 2;
@@ -238,6 +297,15 @@ export function playabilityScore(link, ledger) {
    c'est ce qui permet de l'éprouver sans navigateur ni DOM. */
 export function marqueJouabilite(link, ledger) {
     if (!link || !link.url) return null;
+    var ea = ledger && ledger[hostOfUrl(tileTarget(link))];
+    if (ea && ea.appareilMort) {
+        return {
+            classe: 'si-mort',
+            texte: 'ici 0/' + ea.appareil.tested,
+            infobulle: 'Cet hôte a été essayé ' + ea.appareil.tested + ' fois sur cet appareil sans '
+                + "qu'aucune vidéo ne démarre. Il est classé en bas de la liste ; il remontera s'il se met à jouer.",
+        };
+    }
     if (link.verified === 'plays') {
         return {
             classe: 'si-joue',
@@ -521,8 +589,9 @@ function tauxLisse(e) {
 
 export function reputationLien(link, ledger, sources) {
     if (!link) return 0;
-    if (link.verified === 'plays') return 1;
-    var hote = tauxLisse(ledger && ledger[hostOfUrl(tileTarget(link))]);
+    var eh = ledger && ledger[hostOfUrl(tileTarget(link))];
+    if (link.verified === 'plays' && !(eh && eh.appareilMort)) return 1;
+    var hote = tauxLisse(eh);
     if (hote !== null) return hote;
     var source = tauxLisse(sources && link.source ? sources[link.source] : null);
     if (source !== null) return source;

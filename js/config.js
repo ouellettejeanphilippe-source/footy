@@ -6,7 +6,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStanding
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS, sportOfLeague } from './db.js';
 import { buildProxyList } from './fetcher.js';
-import { playabilityScore, hostOfUrl, tileTarget, reputationLien } from './playability.js';
+import { playabilityScore, hostOfUrl, tileTarget, reputationLien, fusionAppareil } from './playability.js';
 import { finPresumee as finPresumeeBrute, raisonFinPresumee as raisonFinPresumeeBrute } from './finpresumee.js';
 import { getLeagueDuration } from './utils.js';
 import { appliquerHotesDistants } from './extractors.js';
@@ -1549,35 +1549,23 @@ export function toggleDomainPref(domain, type, mid) {
 }
 
 /* Registre de jouabilité : les observations du serveur (data/streams.json, `hostPlay`)
-   additionnées à celles du navigateur de l'utilisateur (`play_ledger`, alimenté par le
-   script utilisateur quand il voit la vidéo jouer, et par la tuile quand rien ne joue). */
+   réunies à celles du navigateur de l'utilisateur (`play_ledger`, alimenté par le
+   script utilisateur quand il voit la vidéo jouer, par la tuile quand rien ne joue, et
+   par un ⏭ sur une source muette). Ce que CET appareil a vu prime dès qu'il a assez
+   d'essais (fusionAppareil, js/playability.js). */
 export function playLedger() {
   var serveur = (window.hostPlayLedger && typeof window.hostPlayLedger === 'object') ? window.hostPlayLedger : {};
   var local = safeStorageGetJSON('play_ledger', {}) || {};
-  var out = {};
-  [serveur, local].forEach(function(l) {
-    Object.keys(l).forEach(function(h) {
-      var e = l[h] || {}; var t = out[h] || { tested: 0, plays: 0 };
-      t.tested += e.tested | 0; t.plays += e.plays | 0; out[h] = t;
-    });
-  });
-  return out;
+  return fusionAppareil(serveur, local);
 }
 
 /* Le registre par SOURCE (l'agrégateur qui a fourni le lien : ppv, daddylive…), même
-   forme et même réunion serveur + navigateur que `playLedger`. Voir reputationLien
+   forme et même fusion serveur + appareil que `playLedger`. Voir reputationLien
    (js/playability.js). */
 export function sourcePlayLedger() {
   var serveur = (window.sourcePlayLedger && typeof window.sourcePlayLedger === 'object') ? window.sourcePlayLedger : {};
   var local = safeStorageGetJSON('play_ledger_sources', {}) || {};
-  var out = {};
-  [serveur, local].forEach(function(l) {
-    Object.keys(l).forEach(function(k) {
-      var e = l[k] || {}; var t = out[k] || { tested: 0, plays: 0 };
-      t.tested += e.tested | 0; t.plays += e.plays | 0; out[k] = t;
-    });
-  });
-  return out;
+  return fusionAppareil(serveur, local);
 }
 
 function noterDans(cle, nom, verdict) {

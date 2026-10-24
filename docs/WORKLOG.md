@@ -7,6 +7,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-24 - **« Je voudrais que ça se corrige et adapte de lui-même »** (après « ya des catégories qui marchent mieux » : les icônes des liens).
+
+  - **Mesuré** sur le cache du matin (6 510 liens) : l'icône ne prédit rien (📺 couvre daddylive à 89 % comme olympicweb à 0 %) ; ce qui prédit, c'est le flux direct (151/151), la source et le site, déjà utilisés par `sortFluxLinks` (le premier lien est le site le mieux noté pour 609 matchs sur 640, les 31 autres sont des liens vus jouer). Ce qui manquait : l'appareil ne corrigeait pas le serveur (somme simple, 40 essais serveur contre quelques-uns ici), et sans script utilisateur il n'apprenait rien.
+  - **Fait.** `fusionAppareil` (l'appareil prime dès 3 essais, le serveur devient un a priori de 4 essais, `appareilMort` rétrograde même un lien `verified: 'plays'`), branchée dans `playLedger` / `sourcePlayLedger` ; `playabilityScore`, `reputationLien`, `marqueJouabilite` (« ici 0/N ») la respectent ; `sautManuelEstEchec` : un ⏭ sur une source muette entre 8 et 90 s note un échec.
+  - **Tests** : `unit_playability` groupe 9 (tombe sans la fusion : le lien vu jouer par le serveur restait en tête après trois échecs ici).
+  - **Fichiers** : `js/playability.js`, `js/config.js`, `js/multiview.js`, `sw.js` + `VERSION_APP` → `sports-guide-v67`, `tests/unit_playability.test.js`, `docs/ARCHITECTURE.md`, `FEATURES.md`, `docs/WORKLOG.md`.
+  - **Ce qui reste.** Le registre de l'appareil n'est pas visible en clair (pas d'écran Jouabilité dans Logs). Un ⏭ pour une autre raison (langue, qualité) dans les 90 s compte comme un échec : bruit accepté, l'appareil a besoin de trois essais avant de juger.
 - 2026-10-18 - **« Le direct marche jamais, pis je pense que les pages chargent moins bien les vidéos une fois bloqué. »**
 
   - **Direct, mesuré.** Les 39 manifestes du cache, relus d'ici avec le `Referer` de leur lecteur : 7 répondent ; 22 en 403 (jeton lié à l'adresse qui les a vus : le serveur de vérification, ou un autre réseau) ; les autres expirés ou injoignables. Le flux de bintv-sources (« willow-usa ») : « 410 Gone - Token expired » à l'heure que porte son chemin (21:26 UTC, 2 h 30 après son relevé), gardé douze heures parce que son jeton est dans le chemin et non dans un paramètre ; et, relu frais, il ne sert qu'une fois (404 une seconde après son lecteur, même navigateur, avec ou sans `Referer`). apexztreams et primestream n'ont aucun manifeste connu. Le bouton ▶ direct s'affichait pourtant pour tous.

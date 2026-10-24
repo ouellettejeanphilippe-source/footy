@@ -208,6 +208,45 @@ async function main() {
         ok('sortFluxLinks : réputation de l\'hôte ou de la source dans le palier, avant la qualité');
     }
 
+    // ── 9. L'appareil corrige le serveur (24 octobre 2026) ──────────────────
+    /* « Je voudrais que ça se corrige et adapte de lui-même. » Avant, la somme
+       serveur + appareil laissait 30/40 + 0/5 = 30/45 en tête sur un appareil où l'hôte
+       n'avait jamais joué ; et un ⏭ manuel n'apprenait rien. */
+    {
+        const serveur = { 'serveurok.test': { tested: 40, plays: 30 }, 'neuf.test': { tested: 2, plays: 0 } };
+        const f = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 5, plays: 0 }, 'peu.test': { tested: 2, plays: 0 } });
+        assert.strictEqual(f['serveurok.test'].appareilMort, true, '0 sur 5 ici : mort sur cet appareil');
+        assert.deepStrictEqual([f['serveurok.test'].tested, f['serveurok.test'].plays], [9, 3], 'le serveur ne pèse plus que quatre essais');
+        assert.deepStrictEqual(f['peu.test'], { tested: 2, plays: 0 }, 'sous le seuil : simple somme');
+        assert.deepStrictEqual(f['neuf.test'], { tested: 2, plays: 0 }, 'le serveur seul reste tel quel');
+        assert.deepStrictEqual(serveur['serveurok.test'], { tested: 40, plays: 30 }, 'le registre du serveur n\'est pas modifié');
+        const g = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 4, plays: 3 } });
+        assert.ok(!g['serveurok.test'].appareilMort && P.playabilityScore({ url: 'https://serveurok.test/1' }, g) === 2, 'joue ici aussi : reste fiable');
+
+        const vu = { url: 'https://serveurok.test/1', verified: 'plays' };
+        assert.strictEqual(P.playabilityScore(vu, f), 0, 'vu jouer par le serveur, jamais ici : ne passe plus devant');
+        assert.ok(P.reputationLien(vu, f, {}) < 0.5, '… et sa réputation n\'est plus celle d\'un lien vu jouer');
+        assert.strictEqual(P.marqueJouabilite(vu, f).classe, 'si-mort', 'la liste le dit');
+        assert.strictEqual(P.marqueJouabilite(vu, f).texte, 'ici 0/5');
+
+        globalThis.window.hostPlayLedger = { 'serveurok.test': { tested: 40, plays: 30 } };
+        globalThis.window.sourcePlayLedger = {};
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
+        const liens = [{ name: 'Serveur', url: 'https://serveurok.test/1', verified: 'plays' }, { name: 'Inconnu', url: 'https://autre.test/1' }];
+        assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Serveur', 'au départ, le verdict du serveur mène');
+        for (let i = 0; i < 3; i++) C.notePlayability({ url: 'https://serveurok.test/1' }, 'none');
+        assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Inconnu', 'trois échecs ici : il descend tout seul');
+        C.notePlayability({ url: 'https://serveurok.test/1' }, 'plays');
+        assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Serveur', 'et remonte dès qu\'il joue ici');
+
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: 20000 }), true, '⏭ après 20 s sans vidéo : échec');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: true, depuisMs: 20000 }), false, 'source qui a joué : jamais');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: 2000 }), false, 'trop tôt : pas laissé sa chance');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: 10 * 60000 }), false, 'regardée longtemps : autre raison');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: NaN }), false, 'durée inconnue : rien');
+        ok('fusionAppareil : l\'appareil corrige le serveur ; sautManuelEstEchec');
+    }
+
     console.log(`unit_playability: ${n} groupes de tests OK`);
     process.exit(0);
 }
