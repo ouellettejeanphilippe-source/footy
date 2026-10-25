@@ -66,7 +66,6 @@
         <button class="nav-btn" id="filter-options" role="menuitem" onclick="applyFilter('options'); toggleMenu(event);">⚙️ Options</button>
         <button class="nav-btn" id="filter-logs" role="menuitem" onclick="applyFilter('logs'); toggleMenu(event);">📋 Logs</button>
         <button class="nav-btn" id="filter-script" role="menuitem" onclick="applyFilter('script'); toggleMenu(event);">🧩 Script</button>
-        <button class="nav-btn menu-sep" id="btn-maj-app" role="menuitem" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">↻ Mettre à jour l'app</button>
       </div>
     </div>
   </nav>
@@ -112,8 +111,10 @@
      est redessinée. Masqué sur les pages Logs / Options / Script (body.view-page). -->
 <!-- Groupe de boutons flottants (13 octobre 2026, « ajouter bouton pour changer look, proche
      de actualiser, ainsi qu'ajouter à cet endroit le mettre à jour l'app ») : Look (menu des
-     dispositions et des couleurs, js/ui.js basculerMenuLook), Mettre à jour l'app (le même
-     que dans Plus), puis Actualiser. -->
+     dispositions et des couleurs, js/ui.js basculerMenuLook), Mettre à jour l'app, puis
+     Actualiser. Depuis le 25 octobre 2026 (« tous les doublons »), ce sont les seuls : ni
+     Options (dispositions, couleur des cartes) ni le menu Plus (Mettre à jour) ne les
+     répètent. -->
 <div class="fab-groupe" id="fab-groupe">
   <div class="look-wrap">
     <button type="button" id="btn-look" class="fab-actualiser fab-sec" onclick="basculerMenuLook(event)"
@@ -290,25 +291,7 @@
       </div>
 
       <div class="field row">
-        <div class="field-label">Disposition du Live<small>Aussi en tête de page et dans le bouton Look. La couleur suit « Couleur des cartes ».</small></div>
-        <select id="pref-disposition-live" class="btn select" onchange="applyUserPrefs()">
-          <option value="actuelle" selected>Actuelle</option>
-          <option value="tableau">Tableau : scores en liste, par ligue</option>
-          <option value="maintenant">Maintenant : une affiche, puis ce qui joue</option>
-          <option value="affiches">Affiches : mur de tuiles</option>
-          <option value="chaines">Chaînes : guide télé, lisible de loin</option>
-        </select>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Disposition du Guide<small>Indépendante de celle du Live.</small></div>
-        <select id="pref-disposition-guide" class="btn select" onchange="applyUserPrefs()">
-          <option value="actuelle">Actuelle</option>
-          <option value="tableau">Tableau : scores en liste, par ligue</option>
-          <option value="maintenant">Maintenant : une affiche, puis ce qui joue</option>
-          <option value="affiches">Affiches : mur de tuiles</option>
-          <option value="chaines" selected>Chaînes : guide télé, lisible de loin</option>
-        </select>
+        <div class="field-label">Disposition et couleurs<small>Par le bouton Look, en bas à droite du Live et du Guide : la disposition de chacun et la couleur des cartes.</small></div>
       </div>
 
       <div class="field row">
@@ -317,18 +300,6 @@
           <option value="auto" selected>Automatique</option>
           <option value="poster">Affiche verticale (2:3)</option>
           <option value="wide">Carte large (2,4:1)</option>
-        </select>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Couleur des cartes</div>
-        <select id="pref-card-color" class="btn select" onchange="applyUserPrefs()">
-          <option value="gradient">Dégradé extérieur → domicile</option>
-          <option value="gradient-45" selected>Dégradé diagonal</option>
-          <option value="split">Deux couleurs pleines</option>
-          <option value="home">Couleur de l'équipe à domicile</option>
-          <option value="league">Couleur de la ligue</option>
-          <option value="dark">Foncé</option>
         </select>
       </div>
 

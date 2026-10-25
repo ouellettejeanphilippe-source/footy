@@ -2824,15 +2824,18 @@ export function updateMultivisionLayout() {
             ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-cable-btn' + (s._gestesSuspendus ? '' : ' on') + '" title="' + (s._gestesSuspendus ? 'Reprendre les gestes de zapping' : 'Suspendre les gestes tant qu\'on travaille dans la page (un simple appui les rend quatre secondes)') + '" aria-label="Gestes de zapping" onclick="basculerGestesTuile(' + idx + '); event.stopPropagation();">' + (s._gestesSuspendus ? '🖐' : '📺') + '</button>'
             : '';
 
-        /* À droite, la croix ; et, sur deux écrans, ⇄ : le second écran n'a pas la barre.
-           Le reste des actions vit dans le menu ⋮ de la barre (ouvrirMenuTuile). */
-        var boutonEchange = (idx > 0 && (grid2 || etire))
+        /* ⇄ et ✕ seulement sur le second écran (deux fenêtres), qui n'a pas la barre : dans
+           la page, ils doublaient « Échanger avec la vidéo principale » et « Fermer cette
+           vidéo » du menu ⋮ de la barre (ouvrirMenuTuile), qui a tout le reste (« tous
+           les doublons », 25 octobre 2026). */
+        var surSecondEcran = !!grid2 && idx > 0;
+        var boutonEchange = surSecondEcran
             ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-swap-btn" title="Échanger avec la vidéo principale" aria-label="Échanger avec la vidéo principale" onclick="mettreSurEcranPrincipal(' + idx + '); event.stopPropagation();">⇄ <span class="mv-hdr-lb">Principal</span></button>'
             : '';
         var controlsHtml = '<div class="mv-hdr-right">'
             + boutonEchange
             + boutonGestes
-            + '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>'
+            + (surSecondEcran ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>' : '')
             + '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
@@ -3760,14 +3763,12 @@ export function ouvrirMenuTuile(idx, bouton, event) {
     var empile = window.innerHeight > window.innerWidth;
     ouvrirMenu(bouton, [
         { titre: 'Si la vidéo ne joue pas' },
-        pos ? { icon: '⏭', label: 'Source suivante', detail: 'Source ' + pos.k + ' sur ' + pos.n + ' pour ce match', onSelect: function() { nextFluxForTile(idx); } } : null,
         s.mid ? { icon: '🔁', label: 'Choisir une autre source', detail: 'La liste des liens du match', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
         { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
-        media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', detail: s.mode === 'direct' ? 'La page complète, comme le site la sert' : 'La vidéo seule, sans la page du site', onSelect: function() { toggleDirectMode(idx); } } : null,
-        /* « Pourquoi scores et stats sont dans deux menus ? Pas de doublons » (25 octobre
-           2026) : « Infos et statistiques » est parti ; ⚙ Réglages → Scores et
-           statistiques montre les stats du match de la vidéo choisie (focusStream le
-           met à jour), plus les scores en direct. */
+        /* « Pas de doublons » (25 octobre 2026) : « Source suivante » et « Lire le flux
+           direct » / « Revenir à la page du site » sont ⏭ et ▶ Direct de la barre ;
+           « Infos et statistiques » est ⚙ Réglages → Scores et statistiques (les stats du
+           match de la vidéo choisie, que focusStream met à jour). */
         { titre: 'Cette tuile' },
         { icon: fitInfo.icon, label: 'Cadrage de l\'image', detail: 'Actuellement : ' + fitInfo.label + ' (étiré → ajusté → rempli)', onSelect: function() { cycleMvFit(idx); } },
         (idx > 0 && (deuxEcransActif() || mvLayout === 'ecrans')) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
@@ -4843,7 +4844,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v71';
+export var VERSION_APP = 'sports-guide-v72';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

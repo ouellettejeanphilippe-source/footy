@@ -7,6 +7,12 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-25 - **« Même chose tous les doublons lol »** (après le panneau de stats).
+
+  - **Inventaire et choix.** Pour chaque paire, gardé l'exemplaire le plus direct ou celui que l'utilisateur avait demandé à cet endroit : menu ⋮ du lecteur « Source suivante » et « Lire le flux direct / Revenir à la page » (⏭ et ▶ Direct de la barre ; ▶ Direct suit la sonde, toujours vraie avec le lecteur natif) ; ✕ et ⇄ des tuiles de la page (menu ⋮ ; gardés sur le second écran, qui n'a pas la barre) ; fiche : ⊞ de la barre « Flux » (« ▶ Regarder ») et ⊞ de chaque ligne (le clic sur la ligne, qui gère aussi le remplacement) ; Options : Disposition du Live, du Guide, Couleur des cartes (Look, demandé à côté d'Actualiser le 13 octobre ; Look reçoit les deux couleurs qu'il n'avait pas, « Dégradé de côté » et « Ligue », rien ne se perd) ; menu Plus : Mettre à jour l'app (bouton flottant, demandé au même endroit le 13 octobre ; Logs garde le sien, à côté de la version).
+  - **Gardés exprès** : « Cadrage de l'image » (⋮, une tuile) et « Cadrage de toutes les images » (⚙) n'agissent pas sur la même chose ; Plein écran et Mode cinéma non plus ; 🔄 de la fiche et « 🔎 Chercher des liens » (le second n'apparaît que sans lien, et appuie sur le premier).
+  - **Fichiers** : `js/multiview.js`, `js/ui.js`, `js/scrapers.js` (gestionnaire du ⊞ retiré), `index.html`, `styles.css`, `sw.js` (v72), `tests/test_app_boot.spec.js`, `tests/unit_deuxecrans.test.js`, `tests/unit_majapp.test.js`, `tests/unit_dispositions.test.js`, `docs/ARCHITECTURE.md`, `FEATURES.md`, `docs/WORKLOG.md`.
+  - **Tests** : « les menus du lecteur… » (ni Source suivante, ni flux direct, ni ✕ ⇄ sur les tuiles), « la fiche de match… » (⭐ 👎 seulement, aucun ⊞), « Live et Guide… Look » (six couleurs, rien en double dans Options et Plus), `unit_deuxecrans` (⇄ ✕ sur le second écran seulement), `unit_majapp`, `unit_dispositions`. `npm test` : 131 unitaires ; Playwright 90 passés, 1 ignoré.
 - 2026-10-25 - **« Pourquoi scores et stats sont dans deux menus ? Pas de doublons »**
 
   - **Constaté.** Deux panneaux pour la même chose dans le lecteur : ⚙ Réglages → « Scores et statistiques » (`toggleMvGameMode` : stats du match de la vidéo choisie, mises à jour par `focusStream`, et scores en direct) et ⋮ → « Infos et statistiques » (`openGlobalStatsFromMatch`, le panneau des stats de la fiche).

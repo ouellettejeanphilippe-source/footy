@@ -108,15 +108,11 @@ test('Le texte venu des sources est échappé', () => {
   assert.doesNotMatch(html, /<img onerror/);
 });
 
-test('Options propose les cinq dispositions pour le Live et pour le Guide, « Actuelle » au Live, « Chaînes » au Guide, et le module est précaché', () => {
+test('dispositions et couleurs se choisissent par Look seulement, pas aussi dans Options ; le module est précaché', () => {
+  // « Tous les doublons » (25 octobre 2026) : Options les répétait.
   const index = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  for (const id of ['pref-disposition-live', 'pref-disposition-guide']) {
-    const bloc = index.slice(index.indexOf('id="' + id + '"'), index.indexOf('</select>', index.indexOf('id="' + id + '"')));
-    assert.deepStrictEqual([...bloc.matchAll(/value="([a-z]+)"/g)].map(m => m[1]), ['actuelle', 'tableau', 'maintenant', 'affiches', 'chaines'], id);
-    // « Guide par défaut : Chaînes » (25 octobre 2026).
-    assert.match(bloc, id === 'pref-disposition-guide' ? /value="chaines" selected/ : /value="actuelle" selected/, id);
-    assert.strictEqual((bloc.match(/ selected/g) || []).length, 1, id);
-  }
+  for (const id of ['pref-disposition-live', 'pref-disposition-guide', 'pref-card-color']) assert.ok(!index.includes('id="' + id + '"'), id);
+  assert.match(index, /id="btn-look"/);
   assert.match(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), /'\.\/js\/dispositions\.js'/);
 });
 

@@ -308,10 +308,15 @@ export function choisirDisposition(nom, vue) {
 }
 
 /* Couleur des équipes, la même que Options → Couleur des cartes, pour les huit vues. */
+/* Les six couleurs de cartes : Look est le seul endroit où les choisir depuis que la liste
+   d'Options, qui en avait deux de plus, est partie (25 octobre 2026, « tous les
+   doublons »). */
 var COULEURS_LOOK = [
   ['home', 'Uni', 'La couleur de l\'équipe à domicile'],
   ['gradient-45', 'Dégradé', 'Les deux équipes, en fondu'],
+  ['gradient', 'Dégradé de côté', 'De l\'équipe à l\'extérieur vers celle à domicile'],
   ['split', 'Deux couleurs', 'Les deux équipes, coupure nette'],
+  ['league', 'Ligue', 'La couleur de la ligue'],
   ['dark', 'Neutre', 'Sans couleur d\'équipe']
 ];
 export function choisirCouleurs(v) {
@@ -334,10 +339,10 @@ function menuLookHtml() {
       }).join('') + '</div>';
   };
   var actuelle = (userPrefs && userPrefs.cardColor) || 'gradient-45';
-  var apercu = { home: '#c41230', 'gradient-45': 'linear-gradient(135deg,#c41230 0 36%,#00468b 64%)', split: 'linear-gradient(135deg,#c41230 50%,#00468b 50%)', dark: 'var(--bg3)' };
+  var apercu = { home: '#c41230', 'gradient-45': 'linear-gradient(135deg,#c41230 0 36%,#00468b 64%)', gradient: 'linear-gradient(90deg,#00468b,#c41230)', split: 'linear-gradient(135deg,#c41230 50%,#00468b 50%)', league: '#2f6bff', dark: 'var(--bg3)' };
   return ligne('live', 'Live') + ligne('guide', 'Guide')
     + '<div class="ml-titre">Couleurs</div><div class="ml-col" role="radiogroup" aria-label="Couleurs">' + COULEURS_LOOK.map(function(c) {
-      var choisi = c[0] === actuelle || (c[0] === 'gradient-45' && (actuelle === 'gradient' || actuelle === 'league'));
+      var choisi = c[0] === actuelle;
       return '<button type="button" role="radio" aria-checked="' + choisi + '" data-look-couleur="' + c[0] + '"><span class="ml-pastille" style="background:' + apercu[c[0]] + '"></span><span>' + esc(c[1]) + '<small>' + esc(c[2]) + '</small></span></button>';
     }).join('') + '</div>';
 }
@@ -1628,15 +1633,6 @@ export function renderFluxItem(s, i, m, ledger) {
        de l'application est parti. Le classement lui-même vient du moteur d'extraction
        (js/extractors.js) et du registre appris, pas d'une supposition de l'interface. */
 
-    var addMvEv = "";
-    if (window.multiviewPendingAction && window.multiviewPendingAction.type === 'replace') {
-        addMvEv = "mvFlux[" + window.multiviewPendingAction.replaceIdx + "].url='" + escJs(s.url||'#') + "'; mvFlux[" + window.multiviewPendingAction.replaceIdx + "].name='" + escJs(m.homeTeam) + " vs " + escJs(m.awayTeam) + "'; mvFlux[" + window.multiviewPendingAction.replaceIdx + "].mid='" + escJs(m.id) + "'; saveMultivisionState(); updateMultivisionLayout(); window.multiviewPendingAction=null; closeMod(); if(document.getElementById('mv-container') && document.getElementById('mv-container').classList.contains('mv-pip')){ toggleMultiviewPip(); } event.stopPropagation(); event.preventDefault();";
-    } else if (window.multiviewPendingAction && window.multiviewPendingAction.type === 'add') {
-        addMvEv = "addToMultivision('"+escJs(s.url||'#')+"','"+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+"', '"+escJs(m.id)+"'); window.multiviewPendingAction=null; closeMod(); if(document.getElementById('mv-container') && document.getElementById('mv-container').classList.contains('mv-pip')){ toggleMultiviewPip(); } event.stopPropagation(); event.preventDefault();";
-    } else {
-        addMvEv = "addToMultivision('"+escJs(s.url||'#')+"','"+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+"', '"+escJs(m.id)+"'); closeMod(); event.stopPropagation(); event.preventDefault();";
-    }
-
     var dom = getDomain(s.url);
     var pref = domainPrefs[dom] || 0;
     var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
@@ -1670,7 +1666,6 @@ export function renderFluxItem(s, i, m, ledger) {
       +'<div class="si-actions">'
         +'<button type="button" class="si-btn'+(pref===1?' on-fav':'')+'" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" aria-pressed="'+(pref===1)+'" onclick="'+favEv+'">⭐</button>'
         +'<button type="button" class="si-btn'+(pref===-1?' on-dep':'')+'" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" aria-pressed="'+(pref===-1)+'" onclick="'+depEv+'">👎</button>'
-        +'<button type="button" class="si-btn si-add" title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'">⊞</button>'
       +'</div>'
       +'</div>';
 }
@@ -2126,10 +2121,11 @@ export function openMod(m,col){
   var hasEnoughStreams = compterFluxUtiles(m) > 0;
   var needsScraping = !hasEnoughStreams && m.matchUrl;
 
-  // Barre d'actions de la colonne des flux : rafraîchir, et « meilleur flux au Multivision »
+  /* Barre d'actions de la colonne des flux : rafraîchir. Son ⊞ « meilleur flux au
+     Multivision » doublait « ▶ Regarder » et est parti (25 octobre 2026, « tous les
+     doublons »). */
   var rightHeaderHtml = '<div class="flux-head"><span class="flux-title">Flux</span><div class="flux-actions">'
       + '<button id="mv-refresh-btn" class="icon-btn" aria-label="Mettre à jour les flux" title="Mettre à jour les flux"' + (!m.matchUrl ? ' disabled' : '') + '>🔄</button>'
-      + '<button id="mv-random-btn" class="icon-btn" aria-label="Ajouter le meilleur flux au Multivision" title="Ajouter le meilleur flux au Multivision">⊞</button>'
       + '</div></div>';
 
   // This will attach events to the header buttons once rightCol.innerHTML is set
@@ -2154,22 +2150,6 @@ export function openMod(m,col){
                       openMod(m, col);
                   }
               });
-          };
-      }
-      var randomBtn = document.getElementById('mv-random-btn');
-      if (randomBtn) {
-          randomBtn.onclick = function(e) {
-              e.stopPropagation();
-              e.preventDefault();
-              if (m && m.streamLinks && m.streamLinks.length > 0) {
-                  var sList = m.streamLinks;
-                  var s4k = sList.filter(function(s) {
-                      return (s.quality && s.quality.toUpperCase() === '4K') || (s.name && s.name.toUpperCase().indexOf('4K') > -1);
-                  });
-                  var sel = s4k.length > 0 ? s4k[0] : sList[Math.floor(Math.random() * sList.length)];
-                  addToMultivision(sel.url || '#', m.homeTeam + ' vs ' + m.awayTeam, m.id);
-                  closeMod();
-              }
           };
       }
   }

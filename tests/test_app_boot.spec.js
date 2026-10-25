@@ -659,6 +659,10 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   expect(etat.items).not.toContain('Changer de match');
   // « Pas de doublons » : les stats sont sous ⚙ Réglages → Scores et statistiques, seulement.
   expect(etat.items).not.toContain('Infos et statistiques');
+  // Ni ce que la barre porte déjà : ⏭ Source suivante, ▶ Direct.
+  expect(etat.items).not.toContain('Source suivante');
+  expect(etat.items).not.toContain('Lire le flux direct');
+  await expect(page.locator('.mv-cell .mv-close-btn, .mv-cell .mv-swap-btn'), 'ni ✕ ni ⇄ sur les tuiles de la page : ils sont au menu ⋮').toHaveCount(0);
   await expect(page.locator('#mv-bar-site')).toHaveCount(0);
 
   await page.mouse.click(4, 4);
@@ -1123,7 +1127,10 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(fiche.fondEquipes, 'le fond de l\'en-tête est aux couleurs des équipes').toBeTruthy();
   expect(fiche.corpsSansDoublon, 'le corps ne répète plus la vignette').toBe(0);
   expect(fiche.barre, 'la barre d\'actions des flux est présente').toBeTruthy();
-  if (fiche.flux > 0) expect(fiche.actions, 'trois actions par ligne de flux (⭐ 👎 ⊞)').toBe(fiche.flux * 3);
+  /* Deux actions par ligne (⭐ 👎) : ⊞ doublait le clic sur la ligne, et le ⊞ de la barre
+     « Flux » doublait « ▶ Regarder » (« tous les doublons », 25 octobre 2026). */
+  if (fiche.flux > 0) expect(fiche.actions, 'deux actions par ligne de flux (⭐ 👎)').toBe(fiche.flux * 2);
+  expect(await page.locator('#mv-random-btn, #mbg .si-add').count(), 'ni ⊞ en tête des flux, ni ⊞ par ligne').toBe(0);
   expect(fiche.versLeSite, 'aucun lien vers le site').toBe(0);
 
   await page.keyboard.press('Escape');
@@ -1137,11 +1144,11 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
    faire déborder la page sur un téléphone ; un clic ouvre la fiche, et revenir à
    « Actuelle » rend les cartes d'avant. */
 async function choisirDisposition(page, nom, vue) {
+  // Le choix passe par Look (window.choisirDisposition), le seul endroit depuis le 25 octobre 2026.
   await page.evaluate(([n, v]) => {
     applyFilter(v);
-    document.getElementById('pref-disposition-live').value = n;
-    document.getElementById('pref-disposition-guide').value = n;
-    applyUserPrefs();
+    window.choisirDisposition(n, 'live');
+    window.choisirDisposition(n, 'guide');
   }, [nom, vue]);
 }
 
@@ -1288,6 +1295,8 @@ test('Live et Guide ont chacun leur disposition, et le bouton Look les change à
   await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
   await page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]').click();
   await expect(page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]')).toHaveAttribute('aria-checked', 'true');
+  // Les six couleurs de cartes sont là (Options ne les répète plus).
+  await expect(page.locator('#menu-look [data-look-couleur]')).toHaveCount(6);
   await page.locator('#menu-look [data-look-couleur="home"]').click();
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu-look')).toBeHidden();
@@ -1299,7 +1308,8 @@ test('Live et Guide ont chacun leur disposition, et le bouton Look les change à
 
   const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'));
   expect([prefs.dispositionLive, prefs.dispositionGuide, prefs.cardColor]).toEqual(['tableau', 'chaines', 'home']);
-  expect(await page.evaluate(() => document.getElementById('pref-card-color').value)).toBe('home');
+  // Pas de doublons : ni Options ni le menu Plus ne répètent Look et Mettre à jour.
+  expect(await page.locator('#pref-card-color, #pref-disposition-live, #pref-disposition-guide, #btn-maj-app').count()).toBe(0);
 
   await page.evaluate(() => applyFilter('logs'));
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('fab-groupe')).display), 'pas de boutons flottants sur Logs').toBe('none');
@@ -2823,6 +2833,6 @@ test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fic
   // Le Guide s'ouvre sur « Chaînes ».
   await page.evaluate(() => window.applyFilter('all'));
   await expect(page.locator('#marea .dsp-chaines')).toHaveCount(1);
-  expect(await page.evaluate(() => document.getElementById('pref-disposition-guide').value)).toBe('chaines');
+  expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('chaines');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
