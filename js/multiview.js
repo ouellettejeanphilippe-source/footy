@@ -5299,15 +5299,29 @@ export function brancherManetteApplication() {
                 var cible = document.activeElement || document.body;
                 cible.dispatchEvent(new KeyboardEvent('keydown', { key: cle, code: cle, bubbles: true, cancelable: true }));
             },
+            /* Un élément devenu invisible (un bouton du lecteur, une fois le lecteur
+               quitté) ne se clique pas : la flèche ramène le focus sur la page. */
             ok: function() {
                 var el = document.activeElement;
-                if (el && el !== document.body && typeof el.click === 'function') el.click();
-                else document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true }));
+                var visible = el && el !== document.body && el.getClientRects().length > 0;
+                if (!visible) { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true })); return; }
+                if (el.tagName === 'SELECT') { try { el.showPicker(); } catch (e) {} return; }
+                if (typeof el.click === 'function') el.click();
             },
             retour: function() { if (typeof window.retourTele === 'function') window.retourTele(); },
             lecteur: function() { if (typeof window.openMultiviewTab === 'function') window.openMultiviewTab(); },
             live: function() { applyFilter('live'); },
             menu: function() { if (typeof window.toggleMenu === 'function') window.toggleMenu(); },
+            /* Live ← Guide → Lecteur, sans boucler ; le bouton de la vue prend le focus. */
+            vue: function(sens) {
+                var ordre = ['live', 'all', 'player'];
+                var i = ordre.indexOf(document.body.getAttribute('data-view'));
+                var suivante = ordre[Math.min(Math.max((i < 0 ? 0 : i) + sens, 0), ordre.length - 1)];
+                if (suivante === 'player') { if (typeof window.openMultiviewTab === 'function') window.openMultiviewTab(); }
+                else applyFilter(suivante);
+                var bouton = document.getElementById(suivante === 'player' ? 'mv-toggle-btn' : 'filter-' + suivante);
+                if (bouton && bouton.getClientRects().length) bouton.focus();
+            },
             tuile: function(sens) { if (mvFlux.length) focusStream(tuileVoisine(activeMvIdx, mvFlux.length, sens)); },
             chaine: function(sens) {
                 var i = tuileActive();

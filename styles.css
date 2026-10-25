@@ -105,6 +105,9 @@
 /* ── 2. Base ───────────────────────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow: hidden; background: var(--bg); background-image: var(--bg-gradient); color: var(--text); }
+/* L'APK sur une télé : la page à l'échelle d'un écran d'ordinateur (zoomInterface,
+   js/tele.js) ; le mode TV a la même variable, dans tv.css. */
+body.android-tv { zoom: var(--zoom-interface, 1); }
 body { font-family: var(--font-family); font-size: 14px; line-height: 1.4; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 button, input, select { font-family: inherit; font-size: inherit; color: inherit; }
 button { cursor: pointer; }

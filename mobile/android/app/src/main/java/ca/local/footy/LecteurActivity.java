@@ -111,6 +111,18 @@ public class LecteurActivity extends Activity {
         if (lecteur != null) { lecteur.release(); lecteur = null; }
     }
 
+    /*
+     * Accueil pendant une vidéo, sur une télé : l'utilisateur quitte l'application, qui
+     * repart de zéro à la prochaine ouverture (MainActivity.fermer). finishAndRemoveTask
+     * termine toute la tâche, page de l'application comprise.
+     */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        android.app.UiModeManager ui = (android.app.UiModeManager) getSystemService(UI_MODE_SERVICE);
+        if (ui != null && ui.getCurrentModeType() == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) finishAndRemoveTask();
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();

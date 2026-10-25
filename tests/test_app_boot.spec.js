@@ -2137,7 +2137,7 @@ test('les scores des matchs en cours se rafraîchissent chaque minute, sans rede
    première fois, la touche Retour ferme ce qui est ouvert, et un flux direct part au
    lecteur NATIF d'Android (js/tele.js) — ici un faux plugin Capacitor qui note ce qu'on
    lui demande. */
-test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, flux direct au lecteur natif', async ({ page }) => {
+test('sur la télé Android : le site tel quel (modes imposés défaits), Retour qui ferme, flux direct au lecteur natif', async ({ page }) => {
   await page.addInitScript((o) => {
     const appels = [];
     const ecouteurs = [];
@@ -2156,19 +2156,36 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
   }, origin);
   const pageErrors = await bootOffline(page);
 
-  // Le côté natif signale la télé (BloqueurWebViewClient.onPageFinished).
-  const avant = await page.evaluate(() => ({ tv: localStorage.getItem('pref-tv-mode'), cable: localStorage.getItem('mode_cable') }));
-  expect(avant, 'aucun réglage fait : la télé peut choisir').toEqual({ tv: null, cable: null });
+  /* « T'as forcé le mode câble, je veux que l'APK soit exactement le site » (25 octobre
+     2026). Une version précédente avait allumé d'office les modes TV et câble : la
+     nouvelle les éteint une fois, et la télé garde la navigation à la télécommande et
+     l'échelle d'un écran d'ordinateur. */
+  await page.evaluate(() => { window.toggleTvMode(true); localStorage.setItem('mode_cable', '1'); });
   expect(await page.evaluate(() => { window.__ANDROID_TV__ = true; return window.activerTeleAndroid(); })).toBe(true);
-  await expect(page.locator('body')).toHaveClass(/tv-mode/);
-  expect(await page.evaluate(() => localStorage.getItem('mode_cable')), 'le mode câble, une seule vidéo').toBe('1');
-
-  // Un réglage fait par l'utilisateur reste le sien : le deuxième appel ne reprend rien.
-  await page.evaluate(() => { window.toggleTvMode(false); window.activerTeleAndroid(); });
   await expect(page.locator('body')).not.toHaveClass(/tv-mode/);
+  await expect(page.locator('body')).toHaveClass(/android-tv/);
+  await expect(page.locator('body')).toHaveClass(/manette/);
+  expect(await page.evaluate(() => ({ cable: localStorage.getItem('mode_cable'), fait: localStorage.getItem('apk_comme_site') }))).toEqual({ cable: '0', fait: '1' });
+  const echelle = await page.evaluate(() => ({ zoom: Number(getComputedStyle(document.body).zoom), attendu: Math.round(Math.min(Math.max(innerWidth / 1920, 0.5), 1) * 100) / 100 }));
+  expect(echelle.zoom, 'la page à la largeur d\'un écran d\'ordinateur').toBeCloseTo(echelle.attendu, 2);
+  // Comme sur Netflix : le focus de départ est un match, et les cartes du Guide s'atteignent.
+  await expect.poll(() => page.evaluate(() => !!(document.activeElement && document.activeElement.closest('.match-card, .mb, [data-mid]'))),
+    { message: 'le focus de départ est sur un match', timeout: 10000 }).toBe(true);
+  await page.evaluate(() => window.applyFilter('all'));
+  await expect.poll(() => page.evaluate(() => { const c = document.querySelector('#marea .mb, #marea [data-mid]'); return c && c.getAttribute('tabindex'); })).toBe('0');
+  await page.evaluate(() => window.applyFilter('live'));
 
-  // Un flux direct connu part au lecteur natif, avec les Referer dans l'ordre, sans <video>.
-  await page.evaluate((o) => window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA'), origin);
+  // Ensuite, le mode TV est un choix comme un autre : le rallumer tient.
+  await page.evaluate(() => { window.toggleTvMode(true); window.activerTeleAndroid(); });
+  await expect(page.locator('body')).toHaveClass(/tv-mode/);
+  await page.evaluate(() => { window.toggleTvMode(false); });
+
+  /* Un flux direct connu part au lecteur natif, avec les Referer dans l'ordre, sans
+     <video>. Sans mode câble imposé, la tuile montre d'abord la page, comme sur le site ;
+     le bouton ▶ direct (toggleDirectMode) passe au lecteur natif. */
+  await page.evaluate((o) => { window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA'); window.openMultiviewTab(); }, origin);
+  await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
+  await page.evaluate(() => window.toggleDirectMode(0));
   await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(1);
   const jouer = await page.evaluate(() => window.__natif.appels.find((a) => a[0] === 'jouer')[1]);
   expect(jouer.media).toBe('https://cdn.test/a/index.m3u8');
@@ -2185,10 +2202,13 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('page');
 
-  // Retour : le lecteur revient au Live ; sur le Live, il n'y a plus rien à fermer.
+  /* Retour : le lecteur revient au Live ; sur le Live, la barre de navigation prend
+     d'abord le focus (comme sur Netflix), puis Retour laisse quitter. */
   expect(await page.evaluate(() => window.retourTele()), 'depuis le lecteur, Retour ramène au Live').toBe(true);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
-  expect(await page.evaluate(() => window.retourTele()), 'sur le Live, Retour laisse quitter').toBe(false);
+  expect(await page.evaluate(() => window.retourTele()), 'sur le Live, Retour mène à la barre de navigation').toBe(true);
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).toBe('filter-live');
+  expect(await page.evaluate(() => window.retourTele()), 'depuis la barre, Retour laisse quitter').toBe(false);
 
   // Plus → Logs : le journal de l'APK est lisible sur l'appareil même.
   await page.evaluate(() => window.applyFilter('logs'));
@@ -2265,6 +2285,77 @@ test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, 
   await expect(page.locator('#main-menu')).toHaveClass(/open/);
   await presser(B);
   await expect(page.locator('#main-menu')).not.toHaveClass(/open/);
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « La manette suit pas dans les modals », « après toast et sortie du multiview, plus de
+   manette » (25 octobre 2026, sur le Chromecast). La navigation aux flèches reste dans la
+   fenêtre ouverte et y prend le focus, B la ferme et rend le focus où il était ; un focus
+   resté sur un bouton du lecteur caché repart de la page ; ◀ ▶ change une liste. */
+test('à la manette : les fenêtres gardent le focus, B les ferme, et la page reprend après le lecteur', async ({ page }) => {
+  await page.addInitScript(() => {
+    const pad = { index: 0, id: 'Manette de test', connected: true, mapping: 'standard', timestamp: 0,
+      buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })), axes: [0, 0, 0, 0] };
+    window.__manette = {
+      appuyer(i) { pad.buttons[i] = { pressed: true, touched: true, value: 1 }; },
+      relacher(i) { pad.buttons[i] = { pressed: false, touched: false, value: 0 }; }
+    };
+    Object.defineProperty(Navigator.prototype, 'getGamepads', { configurable: true, value: () => [pad, null, null, null] });
+  });
+  const pageErrors = await bootOffline(page);
+  const presser = async (b) => {
+    await page.evaluate((i) => window.__manette.appuyer(i), b);
+    await page.waitForTimeout(250);
+    await page.evaluate((i) => window.__manette.relacher(i), b);
+    await page.waitForTimeout(150);
+  };
+  const HAUT = 12, BAS = 13, DROITE = 15, A = 0, B = 1, START = 9;
+  const focusDans = (sel) => page.evaluate((s) => { const z = document.querySelector(s); return !!(z && z.contains(document.activeElement)); }, sel);
+
+  await presser(BAS);
+  await expect(page.locator('#tv-nav-script')).toHaveCount(1);
+
+  // La fiche d'un match : le focus y entre et n'en sort pas ; B la ferme et le rend.
+  await page.evaluate(() => document.getElementById('filter-live').focus());
+  await page.evaluate(() => window.openMod(window.S.matches[0]));
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await expect.poll(() => focusDans('#mbg'), { message: 'le focus entre dans la fiche' }).toBe(true);
+  for (const b of [BAS, BAS, HAUT, BAS]) {
+    await presser(b);
+    expect(await focusDans('#mbg'), 'et n\'en sort pas').toBe(true);
+  }
+  await presser(B);
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+  await expect.poll(() => page.evaluate(() => document.activeElement.id), { message: 'le focus revient où il était' }).toBe('filter-live');
+
+  // Le guide des scripts : même chose, et B le ferme.
+  await page.evaluate(() => window.installTampermonkey());
+  await expect.poll(() => focusDans('#tm-modal')).toBe(true);
+  await presser(BAS);
+  expect(await focusDans('#tm-modal')).toBe(true);
+  await presser(B);
+  await expect(page.locator('#tm-modal')).toHaveCount(0);
+
+  // Le lecteur, quitté avec le focus sur un de ses boutons : la page reprend la main.
+  await presser(START);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  await page.evaluate(() => document.querySelector('#mv-container button').focus());
+  await presser(B);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+  await presser(A);
+  await presser(BAS);
+  const apres = await page.evaluate(() => {
+    const el = document.activeElement;
+    return { visible: !!(el && el !== document.body && el.getClientRects().length), dansLecteur: !!(el && el.closest('#mv-container')) };
+  });
+  expect(apres, 'le focus repart d\'un élément visible de la page').toEqual({ visible: true, dansLecteur: false });
+
+  // Une liste : ◀ ▶ change le choix (la taille de l'interface).
+  await page.evaluate(() => window.applyFilter('options'));
+  await page.evaluate(() => document.getElementById('pref-zoom-tv').focus());
+  await presser(DROITE);
+  expect(await page.evaluate(() => ({ choix: document.getElementById('pref-zoom-tv').value, garde: localStorage.getItem('zoom_tv') }))).toEqual({ choix: '50', garde: '50' });
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

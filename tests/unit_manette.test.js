@@ -62,7 +62,9 @@ test('actions : la télécommande partout, les boutons du lecteur dans le lecteu
   assert.deepStrictEqual(m.actionManette('start', hors), { type: 'lecteur' });
   assert.deepStrictEqual(m.actionManette('start', lecteur), { type: 'live' });
   assert.deepStrictEqual(m.actionManette('select', hors), { type: 'menu' });
-  assert.strictEqual(m.actionManette('rb', hors), null, 'hors du lecteur, LB/RB ne font rien');
+  assert.deepStrictEqual(m.actionManette('rb', hors), { type: 'vue', sens: 1 }, 'hors du lecteur, LB/RB changent de vue');
+  assert.deepStrictEqual(m.actionManette('lb', hors), { type: 'vue', sens: -1 });
+  assert.strictEqual(m.actionManette('y', hors), null, 'Y hors du lecteur ne fait rien');
   assert.deepStrictEqual(m.actionManette('rb', lecteur), { type: 'tuile', sens: 1 });
   assert.deepStrictEqual(m.actionManette('lb', cable), { type: 'chaine', sens: -1 }, 'mode câble : le match');
   assert.deepStrictEqual(m.actionManette('lt', cable), { type: 'source', sens: -1 });
@@ -106,7 +108,7 @@ function brancher(w, ctx) {
   const aides = [];
   const action = (nom) => (...args) => faits.push([nom, ...args]);
   const actions = {};
-  ['fleche', 'ok', 'retour', 'lecteur', 'live', 'menu', 'tuile', 'chaine', 'source', 'pleinEcran', 'modeCable', 'defiler'].forEach((n) => { actions[n] = action(n); });
+  ['fleche', 'ok', 'retour', 'lecteur', 'live', 'menu', 'vue', 'tuile', 'chaine', 'source', 'pleinEcran', 'modeCable', 'defiler'].forEach((n) => { actions[n] = action(n); });
   const r = m.brancherManette({ win: w, actions, contexte: () => ctx, maintenant: () => w.t, aide: (t) => aides.push(t) });
   return { faits, aides, r };
 }
@@ -172,15 +174,50 @@ test('double emploi : la plateforme livre aussi la touche, la manette se tait po
   r.arreter();
 });
 
-test('sans manette, la boucle ne tourne pas ; elle démarre à la connexion', () => {
+test('sans manette, rien ne tourne ; une manette vue qui disparaît un instant est retrouvée', () => {
   const w = fenetre();
   w.navigator.getGamepads = () => [null, null];
   brancher(w, {});
   assert.strictEqual(w.images.length, 0, 'aucune image demandée');
+  assert.strictEqual(w.minuteurs.length, 0, 'ni recherche au ralenti : aucune manette vue');
   w.navigator.getGamepads = () => [manette()];
   w.emettre('gamepadconnected');
   assert.strictEqual(w.images.length, 1);
+  w.image();
+  /* « Après toast et sortie du multiview, plus de manette » : la liste revient vide un
+     instant (page cachée, focus perdu), et aucun gamepadconnected ne suit. */
   w.navigator.getGamepads = () => [];
   w.image();
-  assert.strictEqual(w.images.length, 0, 'débranchée : la boucle s\'arrête');
+  assert.strictEqual(w.images.length, 0, 'plus d\'image tant qu\'elle manque');
+  assert.strictEqual(w.minuteurs.length, 1, 'mais une recherche au ralenti');
+  w.avancer(m.ATTENTE_MANETTE_MS);
+  w.image();
+  assert.strictEqual(w.minuteurs.length, 1, 'toujours absente : on cherche encore');
+  w.navigator.getGamepads = () => [manette()];
+  w.avancer(m.ATTENTE_MANETTE_MS);
+  assert.strictEqual(w.images.length, 1, 'revenue : la boucle repart, sans événement');
+});
+
+test('page cachée : pas d\'image, recherche au ralenti, reprise au retour', () => {
+  const w = fenetre();
+  w.pad = manette();
+  brancher(w, {});
+  w.image();
+  // La manette manque un instant, puis la page passe derrière le lecteur natif.
+  w.pad = null;
+  w.image();
+  assert.strictEqual(w.minuteurs.length, 1);
+  w.document.hidden = true;
+  w.avancer(m.ATTENTE_MANETTE_MS);
+  assert.strictEqual(w.images.length, 0, 'cachée : aucune image demandée');
+  assert.strictEqual(w.minuteurs.length, 1, 'mais toujours recherchée au ralenti');
+  // Retour à l'application, manette là : la boucle repart.
+  w.document.hidden = false;
+  w.pad = manette();
+  w.avancer(m.ATTENTE_MANETTE_MS);
+  assert.strictEqual(w.images.length, 1);
+  w.image();
+  w.pad = manette({ 0: true });
+  w.image();
+  w.avancer(m.DELAI_NATIF_MS);
 });

@@ -4,8 +4,10 @@
  * sans altérer la mise en page CSS relative.
  */
 
+/* --zoom-interface : zoomInterface (js/tele.js), selon la largeur de l'écran ou le
+   réglage d'Options. */
 body.tv-mode {
-    zoom: 1.3;
+    zoom: var(--zoom-interface, 1.3);
 }
 
 /* Spatial Navigation Focus Styles (mode TV, et manette : body.manette, js/manette.js) */
@@ -33,9 +35,20 @@ body.manette .stream-link:focus {
     z-index: 10;
 }
 
+/* La carte qui a le focus grossit et ressort, comme une affiche sur Netflix. */
 body.tv-mode .match-card:focus,
-body.manette .match-card:focus {
-    transform: scale(1.02);
+body.manette .match-card:focus,
+body.tv-mode .mb:focus,
+body.manette .mb:focus,
+body.tv-mode [data-mid]:focus,
+body.manette [data-mid]:focus {
+    transform: scale(1.06);
+    outline: 3px solid #fff !important;
+    outline-offset: 0;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7), 0 0 0 6px rgba(255, 255, 255, 0.18);
+    position: relative;
+    z-index: 20;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* Ensure modal contents behave appropriately */

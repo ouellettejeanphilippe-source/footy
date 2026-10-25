@@ -9,7 +9,8 @@
      - croix ou stick gauche : les flèches (navigation du mode TV, js/tv-navigation.js ;
        dans le lecteur en mode câble, ◀ ▶ source et ▲ ▼ match, comme au doigt) ;
      - A : OK (le bouton qui a le focus) ; B : Retour (window.retourTele, js/main.js) ;
-     - Start : le lecteur, ou le retour au Live ; Select : le menu ⋯ Plus ;
+     - Start : le lecteur, ou le retour au Live ; Select : le menu ⋯ Plus ; hors du
+       lecteur, LB / RB la vue précédente / suivante (Live, Guide, Lecteur) ;
      - dans le lecteur : LB / RB tuile précédente / suivante (le son la suit ; en mode
        câble, match précédent / suivant), LT / RT source précédente / suivante, Y plein
        écran, X mode câble ;
@@ -23,6 +24,12 @@
    équivalente (`isTrusted`) arrive autour de l'appui, c'est que la plateforme s'en
    charge : on annule, et on lui laisse cette entrée pour la suite (`natives`).
 
+   La boucle ne meurt pas (« après toast et sortie du multiview, plus de manette »,
+   25 octobre 2026). Le navigateur peut rendre une liste vide un instant : page cachée
+   par le lecteur natif de l'APK, focus perdu. La boucle s'arrêtait alors et n'attendait
+   plus qu'un `gamepadconnected` qui ne revenait pas toujours. Une manette déjà vue est
+   désormais recherchée toutes les ATTENTE_MANETTE_MS ; avant la première, rien ne tourne.
+
    Module sans import : les actions viennent de l'appelant (brancherManetteApplication,
    js/multiview.js), la logique se teste sans navigateur. */
 
@@ -33,6 +40,7 @@ export var REPETITION_PREMIERE_MS = 400;
 export var REPETITION_MS = 130;
 export var DELAI_NATIF_MS = 80;
 export var FENETRE_NATIVE_MS = 150;
+export var ATTENTE_MANETTE_MS = 500;
 
 /* La disposition « standard » de l'API Gamepad (w3c.github.io/gamepad, figure 1). */
 var BOUTONS = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, select: 8, start: 9, haut: 12, bas: 13, gauche: 14, droite: 15 };
@@ -98,7 +106,11 @@ export function actionManette(entree, ctx) {
     case 'start': return { type: c.lecteur ? 'live' : 'lecteur' };
     case 'select': return { type: 'menu' };
   }
-  if (!c.lecteur) return null;
+  if (!c.lecteur) {
+    if (entree === 'lb') return { type: 'vue', sens: -1 };
+    if (entree === 'rb') return { type: 'vue', sens: 1 };
+    return null;
+  }
   switch (entree) {
     case 'lb': return c.modeCable ? { type: 'chaine', sens: -1 } : { type: 'tuile', sens: -1 };
     case 'rb': return c.modeCable ? { type: 'chaine', sens: 1 } : { type: 'tuile', sens: 1 };
@@ -124,11 +136,11 @@ export function tuileVoisine(actuelle, nombre, sens) {
 }
 
 /* Le texte d'aide montré à la première manette de la séance. */
-export var AIDE_MANETTE = '🎮 Manette : ✚ naviguer · A ok · B retour · Start lecteur · Select menu · '
+export var AIDE_MANETTE = '🎮 Manette : ✚ naviguer · A ok · B retour · LB/RB vue · Start lecteur · Select menu · '
   + 'dans le lecteur : LB/RB tuile (match en mode câble) · LT/RT source · Y plein écran · X mode câble';
 
 /* Branche la manette sur la page. `o` :
-     win, actions { fleche(dir), ok(), retour(), lecteur(), live(), menu(), tuile(sens),
+     win, actions { fleche(dir), ok(), retour(), lecteur(), live(), menu(), vue(sens), tuile(sens),
        chaine(sens), source(sens), pleinEcran(), modeCable(), defiler(dy), eveil() },
      contexte() → { lecteur, modeCable }, maintenant() (ms), aide(texte).
    Rend { arreter, natives } (natives : les entrées que la plateforme livre elle-même). */
@@ -142,6 +154,8 @@ export function brancherManette(o) {
   var enAttente = {};
   var dernieresTouches = {};
   var boucle = null;
+  var attente = null;
+  var dejaVue = false;
   var aideMontree = false;
 
   function lire() {
@@ -189,7 +203,11 @@ export function brancherManette(o) {
   function tour() {
     boucle = null;
     var manettes = lire();
-    if (!manettes.length) return;
+    if (!manettes.length) {
+      if (dejaVue && attente == null) attente = win.setTimeout(function () { attente = null; demarrer(); }, ATTENTE_MANETTE_MS);
+      return;
+    }
+    dejaVue = true;
     var t = maintenant();
     manettes.forEach(function (gp) {
       var cle = gp.index != null ? gp.index : 0;
@@ -210,7 +228,14 @@ export function brancherManette(o) {
   }
 
   function demarrer() {
-    if (boucle != null || win.document.hidden) return;
+    if (attente != null) { win.clearTimeout(attente); attente = null; }
+    if (boucle != null) return;
+    /* Page cachée : pas d'image à attendre ; une manette déjà vue est recherchée au
+       ralenti, et visibilitychange relance la boucle. */
+    if (win.document.hidden) {
+      if (dejaVue) attente = win.setTimeout(function () { attente = null; demarrer(); }, ATTENTE_MANETTE_MS);
+      return;
+    }
     boucle = win.requestAnimationFrame(tour);
   }
 
@@ -220,6 +245,8 @@ export function brancherManette(o) {
   }
 
   win.addEventListener('gamepadconnected', demarrer);
+  win.addEventListener('focus', demarrer);
+  win.addEventListener('pageshow', demarrer);
   win.addEventListener('keydown', surTouche, true);
   win.document.addEventListener('visibilitychange', demarrer);
   /* Le Retour d'Android ne passe pas par une touche de la page : l'APK appelle
@@ -233,8 +260,12 @@ export function brancherManette(o) {
     natives: natives,
     arreter: function () {
       if (boucle != null) win.cancelAnimationFrame(boucle);
+      if (attente != null) win.clearTimeout(attente);
       boucle = null;
+      attente = null;
       win.removeEventListener('gamepadconnected', demarrer);
+      win.removeEventListener('focus', demarrer);
+      win.removeEventListener('pageshow', demarrer);
       win.removeEventListener('keydown', surTouche, true);
       win.removeEventListener('retourTeleNatif', surRetourNatif);
       win.document.removeEventListener('visibilitychange', demarrer);

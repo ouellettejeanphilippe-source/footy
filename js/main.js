@@ -1,9 +1,9 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
-import { surTeleAndroid, reglagesDeDepart, actionRetour } from './tele.js';
+import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
-import { closeMod } from './ui.js';
+import { closeMod, fermerMenuLook } from './ui.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
 import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee, isLiveNow, startsWithin, minutesUntilStart, isMatchPageBlocked, LIVE_WINDOW_MIN } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
@@ -1787,14 +1787,32 @@ function chargerNavigationSpatiale() {
     }
 }
 
+/* L'échelle de l'interface (zoomInterface, js/tele.js) : en mode TV et dans l'APK sur
+   une télé, selon la largeur de l'écran ou le choix d'Options (`zoom_tv`). Relue quand
+   la fenêtre change de taille et quand le mode TV change. */
+function appliquerZoomInterface() {
+    var z = zoomInterface(window.innerWidth, safeStorageGet('zoom_tv', 'auto'), {
+        modeTv: document.body.classList.contains('tv-mode'),
+        tele: surTeleAndroid()
+    });
+    document.documentElement.style.setProperty('--zoom-interface', String(z));
+}
+window.addEventListener('resize', appliquerZoomInterface);
+window.changerZoomTv = function(valeur) {
+    safeStorageSet('zoom_tv', valeur || 'auto');
+    appliquerZoomInterface();
+};
+
 window.toggleTvMode = function(enabled) {
     localStorage.setItem('pref-tv-mode', enabled ? 'true' : 'false');
 
     if (enabled) {
         document.body.classList.add('tv-mode');
+        appliquerZoomInterface();
         chargerNavigationSpatiale();
     } else {
         document.body.classList.remove('tv-mode');
+        appliquerZoomInterface();
 
         // Retirer css
         const link = document.getElementById('tv-css');
@@ -1822,18 +1840,25 @@ window.activerNavigationManette = function() {
 
 /* ── La télé Android (js/tele.js) ──────────────────────────────────────────────
    Appelée par l'APK (BloqueurWebViewClient.onPageFinished) après avoir posé
-   `window.__ANDROID_TV__`. Allume le mode TV et le mode câble la première fois
-   seulement : un réglage déjà fait par l'utilisateur reste le sien. */
+   `window.__ANDROID_TV__`. « Je veux que l'APK soit exactement le site » (25 octobre
+   2026) : ni mode TV ni mode câble imposés (ceux que les versions précédentes avaient
+   posés d'office sont éteints une fois), seulement la navigation à la télécommande
+   (sans changer l'apparence) et la page à l'échelle d'un écran d'ordinateur. */
 window.activerTeleAndroid = function() {
     if (!surTeleAndroid()) return false;
     document.body.classList.add('android-tv');
-    var depart = reglagesDeDepart(function(k) { return safeStorageGet(k, null); });
-    if (depart.modeTv) {
-        window.toggleTvMode(true);
-        var cb = document.getElementById('pref-tv-mode');
-        if (cb) cb.checked = true;
+    var aDefaire = reglagesImposesADefaire(function(k) { return safeStorageGet(k, null); });
+    if (aDefaire) {
+        if (aDefaire.modeTv) {
+            window.toggleTvMode(false);
+            var cb = document.getElementById('pref-tv-mode');
+            if (cb) cb.checked = false;
+        }
+        if (aDefaire.modeCable) setModeCable(false);
+        safeStorageSet(CLE_APK_COMME_SITE, '1');
     }
-    if (depart.modeCable) setModeCable(true);
+    window.activerNavigationManette();
+    appliquerZoomInterface();
     return true;
 };
 
@@ -1843,14 +1868,28 @@ window.activerTeleAndroid = function() {
 window.retourTele = function() {
     var mbg = document.getElementById('mbg');
     var menu = document.getElementById('main-menu');
+    var guide = document.getElementById('tm-modal');
+    var enqueteur = document.getElementById('investigator-modal');
+    var look = document.getElementById('menu-look');
+    var barre = document.getElementById('nav-links');
+    var boutonVue = document.querySelector('#nav-links .nav-btn.active-toggle') || document.getElementById('filter-live');
     var action = actionRetour({
+        navVisible: !!(boutonVue && boutonVue.getClientRects().length),
+        dansNav: !!(barre && barre.contains(document.activeElement)),
         menuLecteur: menuEstOuvert(),
+        fenetre: !!(guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
         fiche: !!(mbg && mbg.classList.contains('open')),
         menuPlus: !!(menu && menu.classList.contains('open')),
-        vue: S.filter === 'live' && document.body.getAttribute('data-view') !== 'player' ? 'live' : 'autre'
+        vue: document.body.getAttribute('data-view') === 'player' ? 'player' : (S.filter === 'live' ? 'live' : 'autre')
     });
     if (action === 'menu') fermerMenus();
+    else if (action === 'fenetre') {
+        if (guide) guide.remove();
+        else if (enqueteur && enqueteur.style.display === 'flex') { enqueteur.style.display = 'none'; var ic = document.getElementById('investigator-content'); if (ic) ic.innerHTML = ''; }
+        else fermerMenuLook();
+    }
     else if (action === 'fiche') closeMod();
+    else if (action === 'nav') { window.activerNavigationManette(); boutonVue.focus(); }
     else if (action === 'plus') { if (typeof window.toggleMenu === 'function') window.toggleMenu(); }
     else if (action === 'live') window.applyFilter('live');
     return action !== 'quitter';
@@ -1861,5 +1900,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
     const tvCheckbox = document.getElementById('pref-tv-mode');
     if (tvCheckbox) tvCheckbox.checked = isTvMode;
+    const choixZoom = document.getElementById('pref-zoom-tv');
+    if (choixZoom) choixZoom.value = safeStorageGet('zoom_tv', 'auto') || 'auto';
     if (isTvMode) window.toggleTvMode(true);
 });

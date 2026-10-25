@@ -1,6 +1,9 @@
 package ca.local.footy;
 
+import android.app.UiModeManager;
+import android.content.Context;
 import android.content.pm.PackageInfo;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.WebView;
@@ -67,12 +70,34 @@ public class MainActivity extends BridgeActivity {
                         "(function(){try{window.dispatchEvent(new Event('retourTeleNatif'));return !!(window.retourTele && window.retourTele());}catch(e){return false;}})()",
                         reponse -> {
                             if ("true".equals(reponse)) return;
-                            // Plus rien à fermer : on rend la main au système, qui quitte.
-                            setEnabled(false);
-                            getOnBackPressedDispatcher().onBackPressed();
-                            setEnabled(true);
+                            // Plus rien à fermer : on ferme pour de bon (fermer()).
+                            fermer();
                         });
             }
         });
+    }
+
+    /*
+     * « Reset l'app lorsque fermée, pas garder en mémoire » (25 octobre 2026). Depuis
+     * Android 12, le Retour sur la dernière page ne ferme plus l'application : il la met
+     * de côté, page, vidéos et mémoire comprises, et la rouvrir reprenait où l'on était.
+     * fermer() termine la tâche et la retire des applications récentes : la prochaine
+     * ouverture repart de zéro. Les favoris et réglages, enregistrés, restent.
+     */
+    void fermer() {
+        finishAndRemoveTask();
+    }
+
+    /*
+     * La touche Accueil, sur une télé : l'utilisateur quitte, on ferme aussi. Pas sur un
+     * téléphone, où l'on passe d'une application à l'autre sans vouloir tout recharger.
+     * Le lecteur natif (LecteurActivity) est lancé avec FLAG_ACTIVITY_NO_USER_ACTION
+     * (LecteurNatifPlugin) : l'ouvrir n'appelle pas ceci.
+     */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        UiModeManager ui = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+        if (ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) fermer();
     }
 }

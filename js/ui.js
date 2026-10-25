@@ -345,7 +345,7 @@ function majMenuLook() {
   var m = typeof document !== 'undefined' && document.getElementById('menu-look');
   if (m && !m.hidden) m.innerHTML = menuLookHtml();
 }
-function fermerMenuLook() {
+export function fermerMenuLook() {
   var m = document.getElementById('menu-look'), b = document.getElementById('btn-look');
   if (m) m.hidden = true;
   if (b) b.setAttribute('aria-expanded', 'false');

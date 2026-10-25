@@ -3,9 +3,11 @@
    « Garder le concept actuel de l'app, juste adapter à CCGTV » (10 octobre 2026). Sur la
    télé, c'est la même application, avec trois adaptations :
 
-   1. Le mode TV (navigation aux flèches, js/tv-navigation.js) et le mode câble (une seule
-      vidéo) s'allument d'eux-mêmes la première fois. Un réglage que l'utilisateur a déjà
-      fait, dans un sens ou dans l'autre, n'est jamais repris (`reglagesDeDepart`).
+   1. La télécommande navigue (js/tv-navigation.js, sans changer l'apparence), et la page
+      est mise à l'échelle d'un écran d'ordinateur (`zoomInterface`). Plus de mode TV ni
+      de mode câble imposés : « je veux que l'APK soit exactement le site » (25 octobre
+      2026) ; ceux que les versions précédentes avaient posés d'office sont défaits une
+      fois (`reglagesImposesADefaire`).
    2. La touche Retour de la télécommande ferme ce qui est ouvert avant de quitter
       l'application (`actionRetour`).
    3. Un flux direct (manifeste HLS) est joué par le lecteur NATIF d'Android
@@ -31,24 +33,58 @@ export function surTeleAndroid(win) {
     return !!(w && w.__ANDROID_TV__);
 }
 
-/* Ce que la première ouverture sur la télé allume. `lire(cle)` rend la valeur stockée,
-   ou null quand l'utilisateur n'a jamais touché au réglage. */
-export function reglagesDeDepart(lire) {
-    var r = {};
-    if (lire('pref-tv-mode') === null) r.modeTv = true;
-    if (lire('mode_cable') === null) r.modeCable = true;
-    return r;
+/* « T'as forcé le mode câble, je veux que l'APK soit exactement le site » (25 octobre
+   2026). Les versions précédentes allumaient d'office le mode TV et le mode câble à la
+   première ouverture sur la télé. Une seule fois (`apk_comme_site`), on éteint ceux qui
+   sont allumés ; ensuite, ce sont des réglages comme les autres. `lire(cle)` rend la
+   valeur stockée ou null. Rend null quand c'est déjà fait. */
+export var CLE_APK_COMME_SITE = 'apk_comme_site';
+export function reglagesImposesADefaire(lire) {
+    if (lire(CLE_APK_COMME_SITE) !== null) return null;
+    return { modeTv: lire('pref-tv-mode') === 'true', modeCable: lire('mode_cable') === '1' };
 }
 
-/* La touche Retour, du plus proche au plus loin : un menu, la fiche d'un match, le menu
-   « Plus », puis le retour au Live. Sur le Live, rien à fermer : on quitte. */
+/* La touche Retour (et le B de la manette), du plus proche au plus loin : un menu, une
+   fenêtre (le guide des scripts, l'enquêteur, le menu Look), la fiche d'un match, le
+   menu « Plus » ; puis, comme sur Netflix, la barre de navigation (« donner accès facile
+   aux boutons pour changer la vue », 25 octobre 2026) : le focus y va, sauf depuis le
+   lecteur, qui revient au Live ; puis le retour au Live ; sur le Live, on quitte.
+   `vue` : 'live', 'player' ou 'autre'. */
 export function actionRetour(etat) {
     var e = etat || {};
     if (e.menuLecteur) return 'menu';
+    if (e.fenetre) return 'fenetre';
     if (e.fiche) return 'fiche';
     if (e.menuPlus) return 'plus';
+    if (e.navVisible && !e.dansNav && e.vue !== 'player') return 'nav';
     if (e.vue && e.vue !== 'live') return 'live';
     return 'quitter';
+}
+
+/* L'échelle de l'interface (« calme toi le zoom, c'est au moins 200% du 100% que je
+   voudrais », 25 octobre 2026). Sur Android TV, la page ne fait que 960 px de large
+   (1920 pixels à densité 2) : le site y paraît deux fois plus gros que sur un écran
+   d'ordinateur, et le mode TV ajoutait 1,3 par-dessus. En automatique :
+     - dans l'APK sur une télé, hors mode TV : la page à LARGEUR_SITE px, comme sur un
+       écran d'ordinateur (0,5 sur un Chromecast) ;
+     - en mode TV (textes plus gros) : la page à LARGEUR_CIBLE_TV px, entre 0,5 et 1,3
+       (1,3 comme avant sur un écran de 1920 px, 0,65 sur un Chromecast) ;
+     - ailleurs : 1, rien ne change.
+   `reglage` : 'auto' (ou rien), ou un pourcentage choisi dans Options.
+   `ctx` : { modeTv, tele }. */
+export var LARGEUR_SITE = 1920;
+export var LARGEUR_CIBLE_TV = 1480;
+function arrondi(x) { return Math.round(x * 100) / 100; }
+export function zoomInterface(largeur, reglage, ctx) {
+    var c = ctx || {};
+    var pct = Number(reglage);
+    if (reglage != null && reglage !== '' && reglage !== 'auto' && isFinite(pct) && pct > 0) {
+        return arrondi(Math.min(Math.max(pct / 100, 0.4), 2));
+    }
+    var l = Number(largeur) > 0 ? Number(largeur) : 0;
+    if (c.modeTv) return arrondi(Math.min(Math.max((l || LARGEUR_CIBLE_TV) / LARGEUR_CIBLE_TV, 0.5), 1.3));
+    if (c.tele) return arrondi(Math.min(Math.max((l || LARGEUR_SITE) / LARGEUR_SITE, 0.5), 1));
+    return 1;
 }
 
 /* Les `Referer` que le lecteur natif essaiera, dans l'ordre, sans doublon. La chaîne
