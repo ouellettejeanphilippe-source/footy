@@ -8,7 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
-import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
+import { pluginNatif, diagnosticAndroidHtml } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
@@ -110,7 +110,9 @@ function chargerHlsJs() {
    utilisateur, avec le `Referer` du lecteur et sans CORS. hls.js est alors pris même
    quand le navigateur lit le HLS lui-même : le lecteur natif ne laisse pas choisir par
    où passent ses requêtes. */
-function creerLecteurVideo(url, surEchec, pont) {
+/* `entetes` : dans l'APK, les en-têtes du relais (entetesRelais) posés sur chaque requête
+   de hls.js ; Android y remplace le `Referer` (RelaisReferer.java). */
+function creerLecteurVideo(url, surEchec, pont, entetes) {
     var video = document.createElement('video');
     var echec = function(raison) { if (typeof surEchec === 'function') surEchec(raison); };
     video.addEventListener('error', function() {
@@ -127,10 +129,12 @@ function creerLecteurVideo(url, surEchec, pont) {
     video.muted = true;
 
     var estM3u8 = /\.m3u8(\?|#|$)/i.test(url);
-    if (estM3u8 && (pont || !video.canPlayType('application/vnd.apple.mpegurl'))) {
+    if (estM3u8 && (pont || entetes || !video.canPlayType('application/vnd.apple.mpegurl'))) {
         chargerHlsJs().then(function(Hls) {
             if (Hls && Hls.isSupported()) {
-                var hls = new Hls(pont ? { loader: chargeurParPont(pont.lire, { referer: pont.referer }) } : undefined);
+                var hls = new Hls(pont ? { loader: chargeurParPont(pont.lire, { referer: pont.referer }) }
+                    : entetes ? { xhrSetup: function(xhr) { Object.keys(entetes).forEach(function(k) { try { xhr.setRequestHeader(k, entetes[k]); } catch (e) {} }); } }
+                    : undefined);
                 /* Une erreur FATALE (manifeste refusé : CORS, 403, adresse expirée ; ou
                    média illisible) est remontée à l'appelant, qui décide (le mode direct
                    revient à la page). Les erreurs non fatales, hls.js les rattrape seul. */
@@ -161,6 +165,24 @@ function registreDirect() { return safeStorageGetJSON('direct_media', {}) || {};
 /* Le pont du script utilisateur pour ce manifeste, s'il sait lire en binaire (≥ 1.14,
    sous un gestionnaire de scripts) ; null sinon, et hls.js lit lui-même, ce que les CDN
    de ces flux refusent presque tous (js/directmedia.js, chargeurParPont). */
+/* « Le mode direct… ça part en mode câble sur ma télé » ; « y marche pas à date, et ça
+   chie avec le reste du UI » (25 octobre 2026). Dans l'APK, le flux direct joue dans sa
+   tuile, comme sur le site, par hls.js ; il n'ouvre plus le lecteur natif plein écran.
+   Ce qui le rend possible : Capacitor fait passer les requêtes de la page par le réseau
+   d'Android (CapacitorHttp, adresse « /_capacitor_http_interceptor_ »), sans CORS, et
+   Android y pose le `Referer` que porte l'en-tête `X-Footy-Referer` (RelaisReferer.java,
+   appelé par BloqueurWebViewClient) — ce qu'aucune page ne sait faire elle-même. */
+export var ENTETE_RELAIS_REFERER = 'X-Footy-Referer';
+export var ENTETE_RELAIS_ORIGINE = 'X-Footy-Origin';
+function relaisApk() { return !!pluginNatif(); }
+export function entetesRelais(media) {
+    var ref = refererPourDirect(media);
+    var h = {};
+    h[ENTETE_RELAIS_REFERER] = ref;
+    h[ENTETE_RELAIS_ORIGINE] = origineDe(ref);
+    return h;
+}
+
 function pontPourDirect(media) {
     var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
     if (!pont || !pont.available || !pont.binaire) return null;
@@ -177,7 +199,7 @@ function texteDebut(octets) {
 }
 /* Le chemin qu'une lecture prendrait maintenant : un verdict obtenu par l'autre ne vaut
    plus (le script qui s'annonce après coup avec la lecture binaire). */
-function cheminDirect(media) { return pontPourDirect(media) ? 'pont' : 'fetch'; }
+function cheminDirect(media) { return pontPourDirect(media) ? 'pont' : (relaisApk() ? 'relais' : 'fetch'); }
 function finSonde(media, ok, raison, chemin) {
     sondesDirect[media.url] = { ok: ok, at: Date.now(), raison: raison || '', chemin: chemin };
     mvFlux.forEach(function(f, i) {
@@ -193,7 +215,7 @@ function sonderDirect(media) {
     var pont = pontPourDirect(media);
     var lecture = pont
         ? lireOctetsViaPont(media.url, { referer: pont.referer, origine: origineDe(pont.referer), timeoutMs: 8000 }).then(function(r) { return { status: r.status, debut: texteDebut(r.octets) }; })
-        : fetch(media.url, { credentials: 'omit' }).then(function(r) { return r.text().then(function(x) { return { status: r.status, debut: x.slice(0, 64) }; }); });
+        : fetch(media.url, { credentials: 'omit', headers: relaisApk() ? entetesRelais(media) : undefined }).then(function(r) { return r.text().then(function(x) { return { status: r.status, debut: x.slice(0, 64) }; }); });
     lecture.then(function(r) {
         var v = verdictSonde(r.status, r.debut);
         finSonde(media, v.ok, v.raison, chemin);
@@ -202,13 +224,12 @@ function sonderDirect(media) {
     });
 }
 /* Le bouton ▶ direct de cette tuile est-il à montrer ? En mode direct, oui toujours : c'est
-   lui qui ramène à la page. Le lecteur natif de l'APK pose ses propres `Referer` : il
-   essaie sans sonde. */
+   lui qui ramène à la page. Sinon, la sonde dit si le flux répond par le chemin que
+   prendra la lecture (le pont du script, le relais de l'APK, ou fetch). */
 function directDisponible(s) {
     if (s && s.mode === 'direct') return true;
     var media = s && (s._media || mediaDirectPour(registreDirect(), s.url));
     if (!media) return false;
-    if (pluginNatif()) return true;
     var so = sondesDirect[media.url];
     if (so && !so.enCours && so.chemin === cheminDirect(media) && Date.now() - so.at < SONDE_VALIDE_MS) return so.ok;
     sonderDirect(media);
@@ -223,8 +244,8 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
 
 function poserDirect(media, url, container, cell, s) {
     container.innerHTML = '';
-    var natif = pluginNatif();
-    var pont = natif ? null : pontPourDirect(media);
+    var pont = pontPourDirect(media);
+    var entetes = (!pont && relaisApk()) ? entetesRelais(media) : null;
     s._currentUrl = url;
     s._playing = false;
     var idx = parseInt(cell.dataset.index, 10);
@@ -239,12 +260,11 @@ function poserDirect(media, url, container, cell, s) {
         s._currentUrl = null;
         s._playing = false;
         showToast('Direct refusé (' + raison + ') : retour à la page'
-            + ((pont || natif) ? '' : ' — le script utilisateur à jour (1.14, Tampermonkey) fait passer le direct'));
+            + ((pont || entetes) ? '' : ' — le script utilisateur à jour (1.14, Tampermonkey) fait passer le direct'));
         saveMultivisionState();
         updateMultivisionLayout();
     };
-    if (natif) { poserDirectNatif(natif, media, url, container, s, idx, revenir); return; }
-    var video = creerLecteurVideo(media.url, revenir, pont);
+    var video = creerLecteurVideo(media.url, revenir, pont, entetes);
     video.id = 'mv-iframe-' + idx;
     video.style.transform = s.cropped ? 'scale(1.15)' : 'scale(1)';
     video.addEventListener('playing', function() {
@@ -255,58 +275,6 @@ function poserDirect(media, url, container, cell, s) {
     });
     container.appendChild(video);
     setTimeout(function() { if (!s._playing) revenir('rien en ' + Math.round(DELAI_DIRECT_MS / 1000) + ' s'); }, DELAI_DIRECT_MS);
-}
-
-/* ─── Le lecteur natif d'Android (APK de mobile/, js/tele.js) ───
-   Dans l'APK, le flux direct n'est pas joué par hls.js dans la WebView mais par le
-   lecteur d'Android (LecteurNatifPlugin → LecteurActivity, ExoPlayer), en plein écran
-   par-dessus l'application. Il essaie les `Referer` de `referersPour`, qu'aucun
-   navigateur ne peut poser. La tuile garde sa place et montre de quoi le relancer.
-   La télécommande, dans le lecteur natif, revient ici : ▲▼ zappe (`zapperChaine`),
-   ◀▶ change de source (`changerSourceTuile`), comme les flèches du mode câble ; c'est
-   l'application qui choisit, le lecteur natif ne fait que jouer. Quand plus aucun
-   `Referer` ne passe, il le dit (`echec`) et la tuile revient à la page, comme hls.js. */
-var natifCourant = null;    // { s, url, idx, revenir } : la tuile que joue le lecteur natif
-var natifEcoute = false;
-function ecouterNatif(natif) {
-    if (natifEcoute || typeof natif.addListener !== 'function') return;
-    natifEcoute = true;
-    natif.addListener('evenement', function(ev) {
-        var c = natifCourant;
-        if (!c || !ev || mvFlux[c.idx] !== c.s || c.s._currentUrl !== c.url) return;
-        if (ev.type === 'joue') { c.s._playing = true; rafraichirPastille(c.idx); }
-        else if (ev.type === 'echec') { natifCourant = null; c.revenir(ev.raison || 'lecteur natif'); }
-        else if (ev.type === 'chaine') zapperChaine(c.idx, ev.sens < 0 ? -1 : 1);
-        else if (ev.type === 'source') changerSourceTuile(c.idx, ev.sens < 0 ? -1 : 1);
-    });
-}
-function poserDirectNatif(natif, media, url, container, s, idx, revenir) {
-    ecouterNatif(natif);
-    natifCourant = { s: s, url: url, idx: idx, revenir: revenir };
-    var lancer = function() {
-        try {
-            natif.jouer({
-                media: media.url,
-                referers: referersPour(media, url),
-                titre: s.name || getDomain(url),
-                source: getDomain(url)
-            });
-        } catch (e) { revenir('lecteur natif indisponible'); }
-    };
-    var bouton = document.createElement('button');
-    bouton.type = 'button';
-    bouton.className = 'mv-natif';
-    bouton.textContent = '▶ Reprendre en plein écran';
-    bouton.addEventListener('click', function(e) { e.stopPropagation(); natifCourant = { s: s, url: url, idx: idx, revenir: revenir }; lancer(); });
-    container.appendChild(bouton);
-    lancer();
-}
-/* Une tuile qui repart sur une PAGE : le lecteur natif, posé par-dessus, la cacherait. */
-function fermerNatif() {
-    if (!natifCourant) return;
-    natifCourant = null;
-    var natif = pluginNatif();
-    if (natif && typeof natif.fermer === 'function') { try { natif.fermer(); } catch (e) {} }
 }
 
 /* Bascule une tuile entre « page » (la page du site, nettoyée par le script) et
@@ -2452,7 +2420,6 @@ export function updateMultivisionLayout() {
                 if (mediaDirect) { poserDirect(mediaDirect, url, container, cell, s); return; }
                 s.mode = 'page';
             }
-            if (natifCourant && natifCourant.s === s) fermerNatif();
             container.innerHTML = '';
             s._currentUrl = url;
             if (s._sortieForcee) {
@@ -3245,8 +3212,7 @@ export function addToMultivision(url, name, mid) {
     }
     mvFlux.push({url: url, name: name, mid: mid, cropped: false, _autoTried: 0});
     /* La première vidéo du mode câble prend, elle aussi, le flux direct connu : elle
-       passait à côté de `poserLienSurTuile`, et seul le premier zapping le trouvait.
-       Sur la télé, c'est ce qui l'envoie au lecteur natif (js/tele.js). */
+       passait à côté de `poserLienSurTuile`, et seul le premier zapping le trouvait. */
     if (modeCable) poserLienSurTuile(mvFlux[mvFlux.length - 1], url);
 
     // Make the newly added stream the active one (unmuted and focused)
@@ -4770,7 +4736,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v77';
+export var VERSION_APP = 'sports-guide-v78';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

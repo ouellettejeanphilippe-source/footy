@@ -2171,7 +2171,7 @@ test('les scores des matchs en cours se rafraîchissent chaque minute, sans rede
    première fois, la touche Retour ferme ce qui est ouvert, et un flux direct part au
    lecteur NATIF d'Android (js/tele.js) — ici un faux plugin Capacitor qui note ce qu'on
    lui demande. */
-test('sur la télé Android : le site tel quel (modes imposés défaits), Retour qui ferme, flux direct au lecteur natif', async ({ page }) => {
+test('sur la télé Android : le site tel quel (modes imposés défaits), Retour qui ferme, flux direct dans la tuile', async ({ page }) => {
   await page.addInitScript((o) => {
     const appels = [];
     const ecouteurs = [];
@@ -2187,6 +2187,24 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
         [o + '/__faux-lecteur?a']: { url: 'https://cdn.test/a/index.m3u8', pageUrl: o + '/__faux-lecteur?a', referer: 'https://cadre.test/', at: Date.now(), echecs: 0 }
       }));
     } catch (e) {}
+    /* hls.js remplacé par un double : il note les en-têtes que `xhrSetup` pose sur ses
+       requêtes, ceux que l'APK (RelaisReferer.java) change en Referer. */
+    window.__hls = [];
+    window.Hls = class {
+      static isSupported() { return true; }
+      static get Events() { return { ERROR: 'hlsError' }; }
+      constructor(config) { this.config = config || {}; this.ecouteurs = []; window.__hls.push(this); }
+      on(ev, f) { if (ev === 'hlsError') this.ecouteurs.push(f); }
+      loadSource(u) { this.u = u; }
+      attachMedia(video) {
+        const entetes = {};
+        if (this.config.xhrSetup) this.config.xhrSetup({ setRequestHeader: (k, v) => { entetes[k] = v; } }, this.u);
+        this.entetes = entetes;
+        this.video = video;
+      }
+      echouer() { this.ecouteurs.forEach((f) => f('hlsError', { fatal: true, details: 'manifestLoadError', response: { code: 403 } })); }
+      destroy() {}
+    };
   }, origin);
   const pageErrors = await bootOffline(page);
 
@@ -2214,27 +2232,33 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await expect(page.locator('body')).toHaveClass(/tv-mode/);
   await page.evaluate(() => { window.toggleTvMode(false); });
 
-  /* Un flux direct connu part au lecteur natif, avec les Referer dans l'ordre, sans
-     <video>. Sans mode câble imposé, la tuile montre d'abord la page, comme sur le site ;
-     le bouton ▶ direct (toggleDirectMode) passe au lecteur natif. */
+  /* « Le mode direct… ça part en mode câble sur ma télé » ; « y marche pas à date, et ça
+     chie avec le reste du UI » (25 octobre 2026). Un flux direct connu joue DANS SA
+     TUILE, par hls.js, comme sur le site ; le lecteur natif plein écran n'est plus
+     ouvert. Ses requêtes portent le Referer du lecteur en en-tête, qu'Android remet à sa
+     place (RelaisReferer.java). */
   await page.evaluate((o) => { window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA'); window.openMultiviewTab(); }, origin);
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
   await page.evaluate(() => window.toggleDirectMode(0));
-  await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(1);
-  const jouer = await page.evaluate(() => window.__natif.appels.find((a) => a[0] === 'jouer')[1]);
-  expect(jouer.media).toBe('https://cdn.test/a/index.m3u8');
-  expect(jouer.referers).toEqual(['https://cadre.test/', origin + '/__faux-lecteur?a', '']);
-  await expect(page.locator('.mv-cell[data-index="0"] .mv-natif')).toBeVisible();
-  await expect(page.locator('.mv-cell video, .mv-cell iframe')).toHaveCount(0);
+  await expect(page.locator('.mv-cell[data-index="0"] video.mv-video')).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(1);
+  const hls = await page.evaluate(() => ({ u: window.__hls[0].u, entetes: window.__hls[0].entetes }));
+  expect(hls.u).toBe('https://cdn.test/a/index.m3u8');
+  expect(hls.entetes, 'le Referer et l\'origine du lecteur, pour le relais d\'Android').toEqual({ 'X-Footy-Referer': 'https://cadre.test/', 'X-Footy-Origin': 'https://cadre.test' });
+  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'pas de lecteur natif plein écran').toBe(0);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
 
-  // Le lecteur natif a vu jouer : la pastille le dit.
-  await page.evaluate(() => window.__natif.emettre({ type: 'joue' }));
-  expect(await page.evaluate(() => window.mvFlux[0]._playing)).toBe(true);
-
-  // Plus aucun Referer ne passe : la tuile revient à la page, comme avec hls.js.
-  await page.evaluate(() => window.__natif.emettre({ type: 'echec', raison: 'ERROR_CODE_IO_BAD_HTTP_STATUS' }));
+  // Refusé : la tuile revient à la page, comme sur le site.
+  await page.evaluate(() => window.__hls[0].echouer());
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('page');
+
+  // Un nouvel essai qui joue : la pastille le dit.
+  await page.evaluate(() => window.toggleDirectMode(0));
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(2);
+  await page.evaluate(() => window.__hls[1].video.dispatchEvent(new Event('playing')));
+  expect(await page.evaluate(() => window.mvFlux[0]._playing)).toBe(true);
+  await page.evaluate(() => window.toggleDirectMode(0));
 
   /* Retour : le lecteur revient au Live ; sur le Live, la barre de navigation prend
      d'abord le focus (comme sur Netflix), puis Retour laisse quitter. */

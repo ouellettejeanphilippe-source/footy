@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Le blocage des publicités sur Android.
@@ -105,6 +107,9 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
     @Override
     public WebResourceResponse shouldInterceptRequest(WebView vue, WebResourceRequest requete) {
         if (requete != null && requete.getUrl() != null) {
+            // Un flux direct joué dans la tuile, relayé par Capacitor : son Referer (RelaisReferer).
+            Map<String, String> relais = RelaisReferer.recrire(requete.getUrl().getPath(), requete.getRequestHeaders());
+            if (relais != null) return deballer(super.shouldInterceptRequest(vue, avecEntetes(requete, relais)));
             String url = requete.getUrl().toString();
             String hote = requete.getUrl().getHost();
 
@@ -293,6 +298,37 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
     /** Échappe ce qui casserait la chaîne JavaScript. Les URL en contiennent. */
     private static String pourJs(String s) {
         return s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "").replace("\r", "");
+    }
+
+    /** Une réponse relayée dont le corps est une image (segment déguisé) : déballée. */
+    private static WebResourceResponse deballer(WebResourceResponse r) {
+        if (r == null || r.getData() == null) return r;
+        try {
+            RelaisReferer.Corps c = RelaisReferer.deballer(r.getData());
+            r.setData(c.flux);
+            if (c.image) {
+                r.setMimeType("video/mp2t");
+                Map<String, String> h = new LinkedHashMap<>();
+                if (r.getResponseHeaders() != null) h.putAll(r.getResponseHeaders());
+                h.keySet().removeIf(k -> k.equalsIgnoreCase("Content-Length") || k.equalsIgnoreCase("Content-Encoding"));
+                r.setResponseHeaders(h);
+            }
+        } catch (IOException e) {
+            Log.w(TAG, "segment illisible", e);
+        }
+        return r;
+    }
+
+    /** La même requête, avec d'autres en-têtes (WebResourceRequest n'a pas de setter). */
+    private static WebResourceRequest avecEntetes(final WebResourceRequest r, final Map<String, String> entetes) {
+        return new WebResourceRequest() {
+            @Override public Uri getUrl() { return r.getUrl(); }
+            @Override public boolean isForMainFrame() { return r.isForMainFrame(); }
+            @Override public boolean isRedirect() { return r.isRedirect(); }
+            @Override public boolean hasGesture() { return r.hasGesture(); }
+            @Override public String getMethod() { return r.getMethod(); }
+            @Override public Map<String, String> getRequestHeaders() { return entetes; }
+        };
     }
 
     /**
