@@ -31,10 +31,11 @@ async function main() {
     'https://cdn.exemple.test/video.webm#t=10',
     'https://cdn.exemple.test/clip.mov',
     'https://cdn.exemple.test/clip.m4v?x=1',
+    'https://cdn.exemple.test/live/manifest.mpd?t=1',
   ]) {
     assert.strictEqual(mv.estMediaDirecte(u), true, u + ' devrait être reconnu comme média direct');
   }
-  ok('.m3u8, .mp4, .webm, .mov, .m4v sont reconnus, avec ou sans requête/ancre');
+  ok('.m3u8, .mpd, .mp4, .webm, .mov, .m4v sont reconnus, avec ou sans requête/ancre');
 
   // ── 2. Une page ordinaire, ou une adresse d'iframe, n'est pas confondue ───────
   for (const u of [
