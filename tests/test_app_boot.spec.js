@@ -2245,11 +2245,23 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   const hls = await page.evaluate(() => ({ u: window.__hls[0].u, entetes: window.__hls[0].entetes }));
   expect(hls.u).toBe('https://cdn.test/a/index.m3u8');
   expect(hls.entetes, 'le Referer et l\'origine du lecteur, pour le relais d\'Android').toEqual({ 'X-Footy-Referer': 'https://cadre.test/', 'X-Footy-Origin': 'https://cadre.test' });
-  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'pas de lecteur natif plein écran').toBe(0);
+  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'pas de lecteur natif plein écran d\'emblée').toBe(0);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
 
-  // Refusé : la tuile revient à la page, comme sur le site.
+  /* Refusé dans la tuile : le lecteur d'Android a sa chance, avec les Referer dans l'ordre
+     (« je suis pas fermé au lecteur natif… s'il marche, c'est ça l'important »). */
   await page.evaluate(() => window.__hls[0].echouer());
+  await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(1);
+  const jouer = await page.evaluate(() => window.__natif.appels.find((a) => a[0] === 'jouer')[1]);
+  expect(jouer.media).toBe('https://cdn.test/a/index.m3u8');
+  expect(jouer.referers).toEqual(['https://cadre.test/', origin + '/__faux-lecteur?a', '']);
+  await expect(page.locator('.mv-cell[data-index="0"] .mv-natif')).toBeVisible();
+  // ▲▼ ne zappe plus de match depuis le lecteur natif.
+  const avantZap = await page.evaluate(() => window.mvFlux[0].url);
+  await page.evaluate(() => window.__natif.emettre({ type: 'chaine', sens: 1 }));
+  expect(await page.evaluate(() => window.mvFlux[0].url)).toBe(avantZap);
+  // Refusé là aussi : la page, comme sur le site.
+  await page.evaluate(() => window.__natif.emettre({ type: 'echec', raison: 'ERROR_CODE_IO_BAD_HTTP_STATUS' }));
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('page');
 

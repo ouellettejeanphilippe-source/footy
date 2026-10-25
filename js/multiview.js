@@ -8,7 +8,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
-import { pluginNatif, diagnosticAndroidHtml } from './tele.js';
+import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
@@ -250,9 +250,7 @@ function poserDirect(media, url, container, cell, s) {
     s._playing = false;
     var idx = parseInt(cell.dataset.index, 10);
     var fini = false;
-    var revenir = function(raison) {
-        if (fini) return;
-        fini = true;
+    var versPage = function(raison) {
         if (s._currentUrl !== url || s.mode !== 'direct') return;
         safeStorageSetJSON('direct_media', noterEchecDirect(registreDirect(), url));
         sondesDirect[media.url] = { ok: false, at: Date.now(), raison: raison, chemin: cheminDirect(media) };
@@ -263,6 +261,22 @@ function poserDirect(media, url, container, cell, s) {
             + ((pont || entetes) ? '' : ' — le script utilisateur à jour (1.14, Tampermonkey) fait passer le direct'));
         saveMultivisionState();
         updateMultivisionLayout();
+    };
+    /* Refusé dans la tuile : dans l'APK, le lecteur d'Android a sa chance (poserDirectNatif),
+       puis seulement la page. */
+    var revenir = function(raison) {
+        if (fini) return;
+        fini = true;
+        if (s._currentUrl !== url || s.mode !== 'direct') return;
+        var natif = entetes ? pluginNatif() : null;
+        if (natif) {
+            if (video && video._hls) { try { video._hls.destroy(); } catch (e) {} }
+            container.innerHTML = '';
+            showToast('Direct refusé dans la tuile (' + raison + ') : essai au lecteur d\'Android');
+            poserDirectNatif(natif, media, url, container, s, idx, function(r) { versPage(r + ', lecteur d\'Android compris'); });
+            return;
+        }
+        versPage(raison);
     };
     var video = creerLecteurVideo(media.url, revenir, pont, entetes);
     video.id = 'mv-iframe-' + idx;
@@ -276,6 +290,58 @@ function poserDirect(media, url, container, cell, s) {
     container.appendChild(video);
     setTimeout(function() { if (!s._playing) revenir('rien en ' + Math.round(DELAI_DIRECT_MS / 1000) + ' s'); }, DELAI_DIRECT_MS);
 }
+
+/* ─── Le lecteur natif d'Android, en repli (APK de mobile/, js/tele.js) ───
+   « Je suis pas fermé au lecteur natif… S'il marche, c'est ça l'important » (25 octobre
+   2026). Le direct joue d'abord dans la tuile (poserDirect) ; s'il y échoue, l'APK
+   essaie le lecteur d'Android (LecteurNatifPlugin → LecteurActivity, ExoPlayer, plein
+   écran) avant de revenir à la page. Il essaie les `Referer` de `referersPour` et lit
+   les segments déguisés en image. La tuile garde sa place et montre de quoi le
+   relancer. Dans le lecteur natif, ◀▶ change de source (`changerSourceTuile`) ; ▲▼ ne
+   zappe plus de match (« ça part en mode câble »). Quand plus aucun `Referer` ne passe,
+   il le dit (`echec`) et la tuile revient à la page. */
+var natifCourant = null;    // { s, url, idx, revenir } : la tuile que joue le lecteur natif
+var natifEcoute = false;
+function ecouterNatif(natif) {
+    if (natifEcoute || typeof natif.addListener !== 'function') return;
+    natifEcoute = true;
+    natif.addListener('evenement', function(ev) {
+        var c = natifCourant;
+        if (!c || !ev || mvFlux[c.idx] !== c.s || c.s._currentUrl !== c.url) return;
+        if (ev.type === 'joue') { c.s._playing = true; rafraichirPastille(c.idx); }
+        else if (ev.type === 'echec') { natifCourant = null; c.revenir(ev.raison || 'lecteur natif'); }
+        else if (ev.type === 'source') changerSourceTuile(c.idx, ev.sens < 0 ? -1 : 1);
+    });
+}
+function poserDirectNatif(natif, media, url, container, s, idx, revenir) {
+    ecouterNatif(natif);
+    natifCourant = { s: s, url: url, idx: idx, revenir: revenir };
+    var lancer = function() {
+        try {
+            natif.jouer({
+                media: media.url,
+                referers: referersPour(media, url),
+                titre: s.name || getDomain(url),
+                source: getDomain(url)
+            });
+        } catch (e) { revenir('lecteur natif indisponible'); }
+    };
+    var bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'mv-natif';
+    bouton.textContent = '▶ Reprendre en plein écran';
+    bouton.addEventListener('click', function(e) { e.stopPropagation(); natifCourant = { s: s, url: url, idx: idx, revenir: revenir }; lancer(); });
+    container.appendChild(bouton);
+    lancer();
+}
+/* Une tuile qui repart sur une PAGE : le lecteur natif, posé par-dessus, la cacherait. */
+function fermerNatif() {
+    if (!natifCourant) return;
+    natifCourant = null;
+    var natif = pluginNatif();
+    if (natif && typeof natif.fermer === 'function') { try { natif.fermer(); } catch (e) {} }
+}
+
 
 /* Bascule une tuile entre « page » (la page du site, nettoyée par le script) et
    « direct » (le manifeste vidéo dans notre lecteur). Les deux restent à un clic. */
@@ -2420,6 +2486,7 @@ export function updateMultivisionLayout() {
                 if (mediaDirect) { poserDirect(mediaDirect, url, container, cell, s); return; }
                 s.mode = 'page';
             }
+            if (natifCourant && natifCourant.s === s) fermerNatif();
             container.innerHTML = '';
             s._currentUrl = url;
             if (s._sortieForcee) {
@@ -4736,7 +4803,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v78';
+export var VERSION_APP = 'sports-guide-v79';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
