@@ -1590,10 +1590,9 @@ export function notePlayability(link, verdict) {
 
 export function sortFluxLinks(links) {
   /* Ordre : le choix explicite de l'utilisateur (⭐ / 👎 sur un domaine), puis ce qui a
-     été vu mort derrière, puis la notoriété du site (rangNotoriete), puis ce qui a
-     été OBSERVÉ en train de jouer (js/playability.js) — palier, puis réputation de l'hôte
-     ou de la source dans le palier —, puis seulement la forme du lien
-     (qualité annoncée, site). Mettre tout lien non `topLevel` devant a été essayé le
+     été OBSERVÉ en train de jouer (js/playability.js) — palier, puis, dans le palier, la
+     notoriété du site (rangNotoriete) et la réputation de l'hôte ou de la source —, puis
+     seulement la forme du lien (qualité annoncée, site). Mettre tout lien non `topLevel` devant a été essayé le
      30 septembre 2026 et retiré le jour même : embed.st et ses pareils ne sont pas
      `topLevel`, ils passaient en tête, et ils font sortir la fenêtre. */
   var ledger = playLedger();
@@ -1603,14 +1602,14 @@ export function sortFluxLinks(links) {
     var prefB0 = domainPrefs[getDomain(b.url)] || 0;
     if (prefA0 !== prefB0) return prefB0 - prefA0;
     var jouA = playabilityScore(a, ledger), jouB = playabilityScore(b, ledger);
-    /* « Les sites les plus célèbres en premier » (25 octobre 2026, rangNotoriete) : ce qui
-       a été vu mort ou bloqué reste derrière, quel que soit le site ; parmi le reste, le
-       site connu passe devant ce qui a été vu jouer sur un hôte inconnu. */
-    var ecarteA = jouA <= 0, ecarteB = jouB <= 0;
-    if (ecarteA !== ecarteB) return ecarteA ? 1 : -1;
+    if (jouA !== jouB) return jouB - jouA;
+    /* « Les sites les plus célèbres en premier » (25 octobre 2026, rangNotoriete) : dans un
+       même palier seulement. Placée avant le palier le matin même, elle passait devant les
+       liens vus jouer et changeait le haut des listes (« les sources chargent moins bien
+       aujourd'hui… pas les domaines que je suis habitué » : sur les données du jour, le
+       premier lien proposé était vu jouer pour 46 matchs au lieu de 68). */
     var rangA = rangNotoriete(a, sources), rangB = rangNotoriete(b, sources);
     if (rangA !== rangB) return rangA - rangB;
-    if (jouA !== jouB) return jouB - jouA;
     /* Dans un même palier, la réputation : le taux de lecture estimé de l'hôte, ou à
        défaut de la source qui a fourni le lien (reputationLien, js/playability.js). Elle
        passe AVANT la qualité annoncée : « 1080p » ne veut rien dire d'un lien qui ne joue
