@@ -195,6 +195,19 @@ async function bootOffline(page) {
   return pageErrors;
 }
 
+/* « Guide par défaut : Chaînes » (25 octobre 2026). Les tests de la grille horaire
+   classique (blocs `.mb`, ligne du direct, frontière de minuit) la choisissent. */
+async function guideClassique(page) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('guide_chaines', '1');
+      const p = JSON.parse(localStorage.getItem('user_prefs') || '{}');
+      p.dispositionGuide = 'actuelle';
+      localStorage.setItem('user_prefs', JSON.stringify(p));
+    } catch (e) {}
+  });
+}
+
 /* Le premier chargement dessine la grille avec les liens déjà connus, puis la REDESSINE
    quand la lecture des sources finit — quelques centaines de millisecondes plus tard,
    au hasard des refus de proxys. Un test qui commençait entre les deux tenait des titres
@@ -615,8 +628,11 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   await expect(page.locator('#mv-container')).toBeVisible();
   await expect(page.locator('.mv-cell')).toHaveCount(2);
 
-  // Menu de la première tuile : la plus à gauche, celle que sa voisine recouvrait.
-  await page.locator('.mv-cell[data-index="0"] .mv-tile-menu-btn').click();
+  /* Menu de la première tuile, la plus à gauche, celle que sa voisine recouvrait : par ⋮
+     de la barre, le seul (« pas de doublon de menu dans le haut du multiview »). */
+  await expect(page.locator('.mv-tile-menu-btn'), 'plus de ⋮ en haut des tuiles').toHaveCount(0);
+  await page.evaluate(() => window.focusStream(0));
+  await page.locator('#mv-bar-video-menu').click();
   const menu = page.locator('.mv-menu');
   await expect(menu).toHaveCount(1);
   const etat = await page.evaluate(() => {
@@ -637,16 +653,25 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   expect(etat.dansEcran, 'le menu tient dans la fenêtre').toBeTruthy();
   expect(etat.entier, 'le menu est entier, pas rogné').toBeTruthy();
   expect(etat.auDessus, 'ce qui est peint au centre du menu est le menu, pas une tuile').toBeTruthy();
-  expect(etat.items).toContain('Ouvrir sur le site');
   expect(etat.items).toContain('Fermer cette vidéo');
-
-  await expect(page.locator('#mv-bar-site'), 'le repli vers le site est un bouton visible de la barre').toBeVisible();
+  // « Pas de liens vers le vrai site, jamais » ; « Changer de match » : après avoir fermé la vidéo.
+  expect(etat.items).not.toContain('Ouvrir sur le site');
+  expect(etat.items).not.toContain('Changer de match');
+  await expect(page.locator('#mv-bar-site')).toHaveCount(0);
 
   await page.mouse.click(4, 4);
   await expect(menu, 'un clic ailleurs ferme le menu').toHaveCount(0);
 
-  await page.locator('#mv-layout-toggle-btn').click();
+  /* La disposition est un sous-menu de ⚙ Réglages ; fenêtre détachée et deux écrans n'y
+     sont plus qu'à cet endroit. */
+  await expect(page.locator('#mv-layout-toggle-btn'), 'plus de bouton Disposition dans la barre').toHaveCount(0);
+  await page.locator('#mv-more-btn').click();
+  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Deux écrans' })).toHaveCount(0);
+  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Fenêtre détachée' })).toHaveCount(0);
+  await page.locator('.mv-menu .mv-menu-item', { hasText: 'Disposition' }).click();
   await expect(page.locator('.mv-menu')).toHaveCount(1);
+  await expect(page.locator('.mv-menu .mv-menu-entete')).toHaveText('Disposition des vidéos');
+  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Deux écrans' })).toHaveCount(2);
   await page.locator('.mv-menu .mv-menu-item', { hasText: 'Côte à côte' }).click();
   await expect(page.locator('.mv-menu')).toHaveCount(0);
   expect(await page.evaluate(() => window.mvLayout), 'le choix de disposition est appliqué').toBe('horizontal');
@@ -888,10 +913,9 @@ test('sur téléphone, les menus du lecteur sont une feuille qu\'on peut parcour
   await expect(page.locator('.mv-menu-voile')).toHaveCount(0);
   await expect(page.locator('.mv-cell'), 'sans rien fermer derrière').toHaveCount(2);
 
-  /* Le menu d'une tuile, et une entrée qui agit. */
-  await page.locator('.mv-cell[data-index="0"]').hover();
-  await page.evaluate(() => window.resetMvIdleTimer());
-  await page.locator('.mv-cell[data-index="0"] .mv-tile-menu-btn').click();
+  /* Le menu d'une tuile (⋮ de la barre, pour la vidéo choisie), et une entrée qui agit. */
+  await page.evaluate(() => { window.focusStream(0); window.resetMvIdleTimer(); });
+  await page.locator('#mv-bar-video-menu').click();
   await expect(feuille).toHaveCount(1);
   await expect(page.locator('.mv-menu.feuille .mv-menu-tete-lb')).toHaveText('Match A');
   await page.locator('.mv-menu.feuille .mv-menu-item', { hasText: 'Fermer cette vidéo' }).click();
@@ -899,7 +923,7 @@ test('sur téléphone, les menus du lecteur sont une feuille qu\'on peut parcour
   await expect(page.locator('.mv-cell'), 'l\'entrée a agi').toHaveCount(1);
 
   /* La croix de la feuille. */
-  await page.locator('#mv-layout-toggle-btn').click();
+  await page.locator('#mv-more-btn').click();
   await expect(feuille).toHaveCount(1);
   await page.locator('.mv-menu-fermer').click();
   await expect(feuille).toHaveCount(0);
@@ -1085,6 +1109,8 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
     corpsSansDoublon: document.querySelectorAll('#mbg .mbody .prime-thumbnail').length,
     flux: document.querySelectorAll('#modal-right-col .si').length,
     actions: document.querySelectorAll('#modal-right-col .si .si-btn').length,
+    // « Pas de liens vers le vrai site, jamais » : ni ↗ par flux, ni liens vers les sources.
+    versLeSite: document.querySelectorAll('#mbg .si-ext, #mbg a[target="_blank"]').length,
     barre: !!document.querySelector('#modal-right-col .flux-head #mv-refresh-btn')
   }));
   expect(fiche.croix, 'exactement une croix de fermeture visible').toBe(1);
@@ -1095,7 +1121,8 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(fiche.fondEquipes, 'le fond de l\'en-tête est aux couleurs des équipes').toBeTruthy();
   expect(fiche.corpsSansDoublon, 'le corps ne répète plus la vignette').toBe(0);
   expect(fiche.barre, 'la barre d\'actions des flux est présente').toBeTruthy();
-  if (fiche.flux > 0) expect(fiche.actions, 'quatre actions par ligne de flux').toBe(fiche.flux * 4);
+  if (fiche.flux > 0) expect(fiche.actions, 'trois actions par ligne de flux (⭐ 👎 ⊞)').toBe(fiche.flux * 3);
+  expect(fiche.versLeSite, 'aucun lien vers le site').toBe(0);
 
   await page.keyboard.press('Escape');
   await expect(page.locator('#mbg')).not.toHaveClass(/open/);
@@ -1348,6 +1375,7 @@ test('l\'ancienne préférence d\'interface classique ne redirige plus', async (
    des cartes bougeait ; les objets restaient ceux d'il y a cinq minutes et les blocs du
    Guide gardaient leur texte de construction. */
 test('un match terminé selon ESPN quitte le Live, et le Guide suit le score', async ({ page }) => {
+  await guideClassique(page);
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
@@ -1666,6 +1694,7 @@ test('sans nouvelle d\'ESPN, un match trop long passe à « Fin ? » et quitte l
 test('minuit passe pendant qu\'on regarde : le jour affiché bascule, le match en cours reste, la ligne du direct suit', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
+  await guideClassique(page);
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
@@ -1753,6 +1782,7 @@ test('minuit passe pendant qu\'on regarde : le jour affiché bascule, le match e
 test('la grille couvre 48 h : un match de 02:00 demain est là ce soir, après la frontière de minuit', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
+  await guideClassique(page);
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
@@ -1838,6 +1868,7 @@ test('la grille couvre 48 h : un match de 02:00 demain est là ce soir, après l
 test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:30, dans le Live, la grille et les scores', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
+  await guideClassique(page);
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
@@ -2419,8 +2450,22 @@ test('le lecteur n\'a qu\'une barre : les vidéos, la vidéo choisie, le lecteur
   await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
   await expect(page.locator('.mv-cell')).toHaveCount(3);
 
-  // Les tuiles : nom, source, menu, croix ; ni ⏭, ni ▶ direct, ni cadrage, ni Site.
-  expect(await page.locator('.mv-cell .mv-next-source, .mv-cell .mv-direct-btn, .mv-cell .mv-fit-btn, .mv-cell .mv-site-btn').count()).toBe(0);
+  /* « Faudrait que le Lecteur soit un onglet comme les autres ; il surplombe le reste » :
+     dans le flux, sous l'en-tête, jusqu'au bas de la fenêtre, comme une page. */
+  const place = await page.evaluate(() => {
+    const c = document.getElementById('mv-container');
+    const r = c.getBoundingClientRect();
+    return { position: getComputedStyle(c).position, haut: Math.round(r.top), bas: Math.round(r.bottom), entete: Math.round(document.getElementById('app-header').getBoundingClientRect().bottom), vh: innerHeight };
+  });
+  expect(place.position, 'pas une couche fixée par-dessus la page').not.toBe('fixed');
+  expect(place.haut, 'sous l\'en-tête').toBe(place.entete);
+  expect(place.bas, 'jusqu\'au bas de la fenêtre').toBe(place.vh);
+
+  /* Les tuiles : leur numéro et la croix ; ni nom, ni source, ni ⋮ (dans la barre : « pas
+     de doublon de menu dans le haut du multiview ; même chose pour le titre »), ni ⏭, ni
+     ▶ direct, ni cadrage, ni Site. */
+  expect(await page.locator('.mv-cell .mv-next-source, .mv-cell .mv-direct-btn, .mv-cell .mv-fit-btn, .mv-cell .mv-site-btn, .mv-cell .mv-tile-menu-btn, .mv-cell .mv-tile-name, .mv-cell .mv-source-pill').count()).toBe(0);
+  await expect(page.locator('.mv-cell .mv-stream-number')).toHaveText(['1', '2', '3']);
   expect(await page.evaluate(() => [...document.querySelectorAll('.mv-cell .mv-hdr button, .mv-cell .mv-hdr [role="button"]')].every((b) => b.getAttribute('tabindex') === '-1')),
     'leurs boutons sont pour la souris et le doigt').toBe(true);
 
@@ -2448,16 +2493,20 @@ test('le lecteur n\'a qu\'une barre : les vidéos, la vidéo choisie, le lecteur
   await page.evaluate(() => window.resetMvIdleTimer());
   await page.locator('#mv-bar-video-menu').click();
   await expect(page.locator('.mv-menu .mv-menu-entete')).toHaveText('Match C');
-  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Ouvrir sur le site' })).toHaveCount(1);
+  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Ouvrir sur le site' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 
-  // ⚙ Réglages, sans le doublon de Disposition (la fenêtre étirée y est « Deux écrans »).
+  /* ⚙ Réglages : mode câble, son automatique, redirections, et Disposition en sous-menu,
+     qu'on atteint à la télécommande (↓ puis OK). */
   await page.locator('#mv-more-btn').click();
   await expect(page.locator('.mv-menu .mv-menu-entete')).toHaveText('Réglages du lecteur');
-  expect(await page.locator('.mv-menu .mv-menu-item', { hasText: 'fenêtre étirée' }).count()).toBe(0);
-  await page.keyboard.press('Escape');
-  await page.locator('#mv-layout-toggle-btn').click();
-  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Deux écrans' })).toHaveCount(1);
+  for (const l of ['Disposition', 'Mode câble', 'Son automatique', 'Bloquer les redirections']) {
+    await expect(page.locator('.mv-menu .mv-menu-item', { hasText: l })).toHaveCount(1);
+  }
+  await page.locator('.mv-menu .mv-menu-item', { hasText: 'Disposition' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.mv-menu .mv-menu-entete')).toHaveText('Disposition des vidéos');
+  await expect.poll(() => page.evaluate(() => !!document.activeElement.closest('.mv-menu')), { message: 'le focus entre dans le sous-menu' }).toBe(true);
   await page.keyboard.press('Escape');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
@@ -2725,4 +2774,53 @@ test('▶ direct ne s\'affiche que pour un flux qui répond d\'ici', async ({ pa
   await page.evaluate(() => window.applyFilter('logs'));
   await expect(page.locator('#sources-status-container')).toContainText('1 sur 2 répondent · refusés : 1 × HTTP 404');
   expect(pageErrors).toEqual([]);
+});
+
+/* « La manette devrait ignorer certains éléments ; quand modal, back ramène à l'entrée ;
+   juste la carte doit être cliquable, pas le chiffre » (25 octobre 2026, au Chromecast).
+   À la télécommande, une carte est un seul arrêt (ni « ▶ 105 », ni ★) ; dans la fiche, un
+   flux aussi (OK le lance) ; et Retour rend le focus à la carte même si la grille s'est
+   redessinée pendant que la fiche était ouverte — avant, la flèche suivante repartait de
+   la barre du haut. Et « Guide par défaut : Chaînes ». */
+test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fiche y revient', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  const carte = await page.evaluate(() => {
+    const c = Array.from(document.querySelectorAll('#marea .match-card')).find((x) => x.querySelector('.card-streams') && x.getClientRects().length);
+    c.focus();
+    return c.id;
+  });
+  for (const touche of ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'ArrowDown']) {
+    await page.keyboard.press(touche);
+    const dansCarte = await page.evaluate(() => {
+      const el = document.activeElement;
+      return !!(el && el.parentElement && el.parentElement.closest('.match-card, .mb, [data-mid]'));
+    });
+    expect(dansCarte, touche + ' : jamais un élément à l\'intérieur d\'une carte').toBe(false);
+  }
+
+  // OK sur la carte : la fiche, focus sur « ▶ Regarder » ; ↓ parcourt les flux, sans leurs petits boutons.
+  await page.evaluate((id) => document.getElementById(id).focus(), carte);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await expect.poll(() => page.evaluate(() => document.activeElement.className)).toContain('btn-regarder');
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press(i % 2 ? 'ArrowRight' : 'ArrowDown');
+    expect(await page.evaluate(() => document.activeElement.matches('.si-btn, .fb-fav')), 'ni ⭐ 👎 ⊞, ni ★').toBe(false);
+  }
+
+  // La grille se redessine pendant que la fiche est ouverte, puis Retour.
+  await page.evaluate(() => window.buildEPG(window.S.matches));
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+  await expect.poll(() => page.evaluate(() => document.activeElement && document.activeElement.id), { message: 'le focus revient à la carte, pas en haut' }).toBe(carte);
+  await page.keyboard.press('ArrowDown');
+  expect(await page.evaluate(() => !!document.activeElement.closest('#nav-links')), 'la flèche suivante reste dans la grille').toBe(false);
+
+  // Le Guide s'ouvre sur « Chaînes ».
+  await page.evaluate(() => window.applyFilter('all'));
+  await expect(page.locator('#marea .dsp-chaines')).toHaveCount(1);
+  expect(await page.evaluate(() => document.getElementById('pref-disposition-guide').value)).toBe('chaines');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

@@ -1050,7 +1050,6 @@ function poserAvertissementSortie(container, cell, s) {
     box.innerHTML = '<div class="mv-sortie-titre">Ce site a fait sortir la page du lecteur</div>'
         + '<div class="mv-sortie-texte">' + esc(getDomain(s.url)) + ' a redirigé toute la fenêtre vers lui la dernière fois. La tuile n\'a pas été rechargée pour éviter la boucle.</div>'
         + '<div class="mv-sortie-actions">'
-        + '<button type="button" class="btn o" onclick="ouvrirPageOriginale(' + idx + '); event.stopPropagation();">↗ Ouvrir sur le site</button>'
         + '<button type="button" class="btn" onclick="chargerQuandMeme(' + idx + '); event.stopPropagation();">Charger quand même</button>'
         + '</div>';
     container.appendChild(box);
@@ -1728,8 +1727,11 @@ export function setupMultivisionUI() {
        - les vidéos, une pastille chacune (numéro, match ; la choisie dit sa source) :
          choisir celle sur qui agit la suite, à la télécommande comme au doigt ;
        - ce qu'on fait à la vidéo choisie : ⏮ ⏭ la source, ▶ direct quand il existe,
-         ↗ Site (le repli quand elle ne joue pas ici), ⋮ ses options ;
-       - ce qu'on fait au lecteur : Ajouter, Disposition, Plein écran, ⚙ Réglages.
+         ⋮ ses options ;
+       - ce qu'on fait au lecteur : Ajouter, Plein écran, ⚙ Réglages (Disposition y est
+         un sous-menu).
+     « Pas de liens vers le vrai site, jamais » (25 octobre 2026) : le bouton ↗ Site est
+     parti, comme « Ouvrir sur le site » du menu ⋮.
      ⏭ prend le focus quand la barre revient (focaliserCommandes). Les menus s'ouvrent
      par-dessus tout (js/mv-menu.js). */
   var mvToolbarHtml = '<div class="mv-bar-videos" id="mv-bar-videos" role="group" aria-label="Vidéos du lecteur"><span class="mv-title">Lecteur</span></div>'
@@ -1737,13 +1739,11 @@ export function setupMultivisionUI() {
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo choisie" aria-label="Source précédente"><span class="mv-tb-ic" aria-hidden="true">⏮</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⏭</span><span class="mv-tb-lb">Source<span class="mv-tb-lb-long"> suivante</span></span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-bar-direct" onclick="basculerDirectActif()" title="Basculer entre la page du site et le flux direct" hidden><span class="mv-tb-ic" aria-hidden="true">▶</span><span class="mv-tb-lb">Direct</span></button>'
-      + '<button type="button" class="mv-tb-btn mv-bar-site" id="mv-bar-site" onclick="ouvrirSiteActif()" title="La vidéo ne joue pas ici ? Ouvrir la page du site dans un nouvel onglet"><span class="mv-tb-ic" aria-hidden="true">↗</span><span class="mv-tb-lb">Site</span></button>'
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⋮</span><span class="mv-tb-lb mv-tb-lb-tel">Vidéo</span></button>'
       + '</div>'
       + '<div class="sp"></div>'
       + '<div id="mv-actions-menu" class="mv-bar-groupe mv-actions" role="group" aria-label="Lecteur">'
       + '<button type="button" class="mv-tb-btn primary" onclick="showMatchSelector(event)" title="Choisir un match à ajouter"><span class="mv-tb-ic mv-tb-plus" aria-hidden="true">+</span><span class="mv-tb-lb">Ajouter</span></button>'
-      + '<button type="button" class="mv-tb-btn" id="mv-layout-toggle-btn" onclick="ouvrirMenuDisposition(this, event)" aria-haspopup="menu" aria-expanded="false" title="Disposition des vidéos"><span class="mv-tb-ic" aria-hidden="true">⊞</span><span class="mv-tb-lb">Disposition</span></button>'
       + '<button type="button" class="mv-tb-btn" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" title="Plein écran"><span class="mv-tb-ic" aria-hidden="true">⛶</span><span class="mv-tb-lb">Plein écran</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-more-btn" onclick="ouvrirMenuBarre(this, event)" aria-haspopup="menu" aria-expanded="false" title="Réglages du lecteur"><span class="mv-tb-ic" aria-hidden="true">⚙</span><span class="mv-tb-lb">Réglages</span></button>'
       + '</div>';
@@ -2798,19 +2798,10 @@ export function updateMultivisionLayout() {
 
         // Update header HTML
         var hdr = cell.querySelector('.mv-hdr');
-        var domain = s.url ? getDomain(s.url) : 'Flux';
-
-        /* « source k/n · ● » : la tuile dit quelle source elle essaie et si une vidéo joue
-           (● vert, signalé par le script utilisateur). Passer à la suivante, le flux
-           direct, le site : la barre, pour la vidéo choisie, et le menu ⋮. */
-        var pos = positionDuFlux(s);
-        var libellePastille = (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : domain);
-        var pastilleSource = '<div class="mv-source-pill' + (s._playing ? ' joue' : '') + '" title="' + (s._playing ? 'Vidéo en lecture' : 'Aucune vidéo confirmée pour l\'instant') + '">' + esc(libellePastille) + '</div>';
         /* La sonde du flux direct part dès la pose de chaque tuile, pas seulement quand
            on la choisit : ▶ Direct est prêt dans la barre au moment où on y arrive. */
         cell.classList.toggle('mv-direct-dispo', directDisponible(s));
         var svgDrag = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>';
-        var svgMenu = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>';
         var svgClose = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
 
         /* Les boutons d'une tuile sont pour la souris et le doigt (tabindex -1) : à la
@@ -2818,11 +2809,12 @@ export function updateMultivisionLayout() {
            de sauter en haut de chaque tuile (js/tv-navigation.js les ignore). */
         var hdrHtml = '<div class="mv-hdr-left">'
             + '<div class="mv-drag-handle" role="button" tabindex="-1" aria-label="Déplacer" title="Glisser pour déplacer" onmousedown="this.closest(\'.mv-cell\').draggable=true;">' + svgDrag + '</div>'
-            + '<div class="mv-stream-number" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>'
-            /* Le nom du match, au-dessus de sa source (9 octobre 2026) : avec quatre
-               tuiles, rien ne disait laquelle montrait quel match — la pastille ne
-               portait que « source 1/3 » ou le nom du site. */
-            + '<div class="mv-tile-id"><div class="mv-tile-name" title="' + esc(s.name || domain) + '">' + esc(s.name || domain) + '</div>' + pastilleSource + '</div>'
+            /* « Pas de doublon de menu dans le haut du multiview ; même chose pour le
+               titre » (25 octobre 2026) : le nom du match, sa source et le menu ⋮ sont
+               dans la barre (la pastille de la vidéo, ⋮ de la vidéo choisie). Le haut de
+               la tuile ne garde que son numéro, qui la relie à sa pastille, dès deux
+               vidéos. */
+            + (mvFlux.length >= 2 ? '<div class="mv-stream-number" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' : '')
             + '</div>';
 
         /* En mode câble, l'échappatoire est à portée de pouce : suspendre les gestes de
@@ -2832,15 +2824,14 @@ export function updateMultivisionLayout() {
             ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-cable-btn' + (s._gestesSuspendus ? '' : ' on') + '" title="' + (s._gestesSuspendus ? 'Reprendre les gestes de zapping' : 'Suspendre les gestes tant qu\'on travaille dans la page (un simple appui les rend quatre secondes)') + '" aria-label="Gestes de zapping" onclick="basculerGestesTuile(' + idx + '); event.stopPropagation();">' + (s._gestesSuspendus ? '🖐' : '📺') + '</button>'
             : '';
 
-        /* À droite, le menu et la croix ; et, sur deux écrans, ⇄ : le second écran n'a pas
-           la barre. Le reste des actions vit dans le menu flottant (ouvrirMenuTuile). */
+        /* À droite, la croix ; et, sur deux écrans, ⇄ : le second écran n'a pas la barre.
+           Le reste des actions vit dans le menu ⋮ de la barre (ouvrirMenuTuile). */
         var boutonEchange = (idx > 0 && (grid2 || etire))
             ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-swap-btn" title="Échanger avec la vidéo principale" aria-label="Échanger avec la vidéo principale" onclick="mettreSurEcranPrincipal(' + idx + '); event.stopPropagation();">⇄ <span class="mv-hdr-lb">Principal</span></button>'
             : '';
         var controlsHtml = '<div class="mv-hdr-right">'
             + boutonEchange
             + boutonGestes
-            + '<button type="button" tabindex="-1" class="mv-hdr-btn mv-tile-menu-btn" title="Options de cette vidéo" aria-label="Options de cette vidéo" aria-haspopup="menu" aria-expanded="false" onclick="ouvrirMenuTuile(' + idx + ', this, event);">' + svgMenu + '</button>'
             + '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>'
             + '</div>';
 
@@ -3177,15 +3168,11 @@ function libelleSource(s) {
     return (s._playing ? '● ' : '') + (pos ? 'source ' + pos.k + '/' + pos.n : getDomain(tileTarget(lienDuMatchPourFlux(s, s.url) || { url: s.url }))) + (s.mode === 'direct' ? ' · direct' : '') + (mesureTuile ? ' · ' + mesureTuile : '');
 }
 
-/* Met à jour la pastille « source k/n · ● » d'une tuile sans re-rendre la cellule. */
+/* Met à jour la source d'une tuile (sa pastille dans la barre) sans re-rendre la cellule. */
 function rafraichirPastille(idx) {
     var s = mvFlux[idx];
     var cell = celluleDeTuile(idx);
-    var pill = cell && cell.querySelector('.mv-source-pill');
-    if (!s || !pill) return;
-    pill.textContent = libelleSource(s);
-    pill.classList.toggle('joue', !!s._playing);
-    pill.title = s._playing ? 'Vidéo en lecture' + (s.mode === 'direct' ? ' (flux direct)' : ' (vu par le script utilisateur)') : 'Aucune vidéo confirmée pour l\'instant';
+    if (!s || !cell) return;
     cell.classList.toggle('mv-direct-dispo', directDisponible(s));
     majBarreVideos();
 }
@@ -3742,17 +3729,6 @@ export function toggleModeCable() {
    « un bouton pour revenir au lecteur de la page originale ». Les menus sont bâtis par
    js/mv-menu.js et posés au niveau du document ; ici, seulement leur contenu. */
 
-/* Le repli : la page du site telle quelle, dans un nouvel onglet. Quand une vidéo ne
-   joue pas dans la tuile (cadre refusé, lecture automatique bloquée, lecteur qui exige
-   un cookie), le lecteur du site, lui, joue toujours. */
-export function ouvrirPageOriginale(idx) {
-    var s = mvFlux[idx];
-    if (!s || !s.url) return;
-    var w = null;
-    try { w = window.open(s.url, '_blank', 'noopener'); } catch (e) { w = null; }
-    showToast(w === null && !('ontouchstart' in window) ? 'Le navigateur a bloqué l\'ouverture : autorisez les fenêtres pour ce site.' : 'Page du site ouverte dans un nouvel onglet');
-}
-
 /* Recharge la tuile par le même chemin que sa pose initiale (fallbackToIframe via
    updateMultivisionLayout), mode direct compris — plutôt que de vider et remettre `src`. */
 export function rechargerTuile(idx) {
@@ -3787,10 +3763,8 @@ export function ouvrirMenuTuile(idx, bouton, event) {
         pos ? { icon: '⏭', label: 'Source suivante', detail: 'Source ' + pos.k + ' sur ' + pos.n + ' pour ce match', onSelect: function() { nextFluxForTile(idx); } } : null,
         s.mid ? { icon: '🔁', label: 'Choisir une autre source', detail: 'La liste des liens du match', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
         { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
-        { icon: '↗', label: 'Ouvrir sur le site', detail: 'Dans un nouvel onglet : le lecteur du site, lui, joue', onSelect: function() { ouvrirPageOriginale(idx); } },
         media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', detail: s.mode === 'direct' ? 'La page complète, comme le site la sert' : 'La vidéo seule, sans la page du site', onSelect: function() { toggleDirectMode(idx); } } : null,
         { titre: 'Cette tuile' },
-        { icon: '🏟', label: 'Changer de match', onSelect: function() { showMatchSelector(null, idx); } },
         s.mid ? { icon: '📊', label: 'Infos et statistiques', onSelect: function() { openGlobalStatsFromMatch(s.mid); } } : null,
         { icon: fitInfo.icon, label: 'Cadrage de l\'image', detail: 'Actuellement : ' + fitInfo.label + ' (étiré → ajusté → rempli)', onSelect: function() { cycleMvFit(idx); } },
         (idx > 0 && (deuxEcransActif() || mvLayout === 'ecrans')) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
@@ -3811,24 +3785,30 @@ export function ouvrirMenuDisposition(bouton, event) {
        on le dit au lieu de laisser croire que le choix n'a rien fait. */
     var portrait = window.innerHeight > window.innerWidth && mvFlux.length >= 2;
     var mobile = window.innerWidth <= 768;
+    var pip = ('documentPictureInPicture' in window);
     ouvrirMenu(bouton, [
         portrait ? { titre: 'En portrait, les vidéos s\'empilent ; le choix vaut à l\'horizontale' } : null,
         { icon: '⊞', label: 'Automatique', detail: 'Selon le nombre de vidéos', actif: mvLayout === 'auto', onSelect: choisir('auto') },
         { icon: '⭐', label: 'Une grande, les autres à côté', detail: 'La vidéo 1 en grand', actif: mvLayout === 'focus', onSelect: choisir('focus') },
         { icon: '☰', label: 'Les unes sous les autres', actif: mvLayout === 'vertical', onSelect: choisir('vertical') },
         { icon: '⫴', label: 'Côte à côte', actif: mvLayout === 'horizontal', onSelect: choisir('horizontal') },
-        /* Le seul chemin vers la fenêtre étirée (il était aussi sous « Plus ») : celui
-           qui ferme la paire de fenêtres et dit quoi faire. */
-        !mobile ? { icon: '🖥', label: 'Deux écrans', detail: 'Une fenêtre étirée sur deux moniteurs ; échange sans recharger', actif: mvLayout === 'ecrans', onSelect: function() { if (mvLayout !== 'ecrans') toggleEcransEtire(); } } : null
+        /* « Fenêtre détachée et deux écrans dans le sous-menu de disposition seulement »
+           (25 octobre 2026) : ils étaient aussi sous ⚙ Réglages, « Autres fenêtres ». */
+        (pip || !mobile) ? { titre: 'Autres fenêtres' } : null,
+        pip ? { icon: '🖼', label: 'Fenêtre détachée', detail: mvFlux.length >= 2 ? 'La vidéo 1 reste ici, les autres s\'empilent dans une petite fenêtre' : 'La vidéo dans une petite fenêtre, par-dessus le reste', actif: !!docPiPWindow || (deuxEcransActif() && secondEcranPiP), onSelect: function() { toggleDocumentPiP(); } } : null,
+        !mobile ? { icon: '🖥', label: 'Deux écrans', detail: 'Une fenêtre étirée sur deux moniteurs ; échange sans recharger', actif: mvLayout === 'ecrans', onSelect: function() { if (mvLayout !== 'ecrans') toggleEcransEtire(); } } : null,
+        !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres', detail: 'Plein écran sur chacun ; un échange recharge les deux vidéos', actif: deuxEcransActif() && !secondEcranPiP, onSelect: function() { toggleDeuxEcrans(); } } : null
     ], { label: 'Disposition des vidéos' });
 }
 
 export function ouvrirMenuBarre(bouton, event) {
     if (event) { event.stopPropagation(); event.preventDefault(); }
-    var mobile = window.innerWidth <= 768;
-    var pip = ('documentPictureInPicture' in window);
+    /* La disposition est un sous-menu des réglages (25 octobre 2026 : « envoyer mode câble,
+       bloquer les redirections, disposition, son automatique dans les settings ») : la
+       barre n'a plus son bouton. Le sous-menu s'ouvre sous le même bouton ⚙. */
     ouvrirMenu(bouton, [
         { titre: 'Affichage' },
+        { icon: '⊞', label: 'Disposition', detail: 'Comment les vidéos se partagent l\'écran ; autres fenêtres', onSelect: function() { ouvrirMenuDisposition(bouton); } },
         { icon: '⤢', label: 'Cadrage de toutes les images', detail: 'étiré → ajusté → rempli', onSelect: function() { cycleMvFitAll(); } },
         { icon: '🎬', label: 'Mode cinéma', detail: 'Le lecteur seul, sans la navigation', onSelect: function() { toggleTheaterMode(document.getElementById('mv-grid-wrapper')); } },
         { icon: '📊', label: 'Scores et statistiques', detail: 'Un panneau des matchs en cours', actif: mvGameModeActive, onSelect: function() { toggleMvGameMode(); } },
@@ -3836,9 +3816,6 @@ export function ouvrirMenuBarre(bouton, event) {
         { icon: '📺', label: 'Mode câble', detail: 'Une seule vidéo ; glisser ↑↓ change de match, ←→ de source', actif: modeCable, onSelect: function() { toggleModeCable(); } },
         { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', detail: 'La vidéo regardée prend le son dès qu\'elle joue', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
         { icon: '🛡', label: 'Bloquer les redirections', detail: 'Demande « Quitter le site ? » si une vidéo tente d\'emmener l\'onglet', actif: gardeSortie, onSelect: function() { toggleGardeSortie(); } },
-        (pip || !mobile) ? { titre: 'Autres fenêtres' } : null,
-        pip ? { icon: '🖼', label: 'Fenêtre détachée', detail: mvFlux.length >= 2 ? 'La vidéo 1 reste ici, les autres s\'empilent dans une petite fenêtre' : 'La vidéo dans une petite fenêtre, par-dessus le reste', actif: !!docPiPWindow || (deuxEcransActif() && secondEcranPiP), onSelect: function() { toggleDocumentPiP(); } } : null,
-        !mobile ? { icon: '🗗', label: 'Deux écrans : deux fenêtres', detail: 'Plein écran sur chacun ; un échange recharge les deux vidéos', actif: deuxEcransActif() && !secondEcranPiP, onSelect: function() { toggleDeuxEcrans(); } } : null,
         mvFlux.length ? { sep: true } : null,
         mvFlux.length ? { icon: '✕', label: 'Fermer toutes les vidéos', danger: true, onSelect: fermerToutesLesVideos } : null
     ], { label: 'Réglages du lecteur' });
@@ -4543,7 +4520,7 @@ export function initPrefs() {
   ['live', 'guide'].forEach(function(v) {
       var sel = document.getElementById('pref-disposition-' + v);
       var cle = v === 'guide' ? 'dispositionGuide' : 'dispositionLive';
-      if(sel) sel.value = userPrefs[cle] || userPrefs.disposition || 'actuelle';
+      if(sel) sel.value = userPrefs[cle] || userPrefs.disposition || (v === 'guide' ? 'chaines' : 'actuelle');
   });
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
@@ -4863,7 +4840,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v69';
+export var VERSION_APP = 'sports-guide-v70';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4997,7 +4974,7 @@ export function renderSourcesStatus() {
         html += '<div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0;">' +
                   '<div style="display:flex; align-items:center; gap: 8px;">' +
                       '<span style="font-size: 14px;">' + icon + '</span>' +
-                      '<a href="https://' + esc(s.name) + '" target="_blank" style="font-weight: bold; color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--muted);">' + esc(s.name) + '</a>' +
+                      '<span style="font-weight: bold; color: var(--text);">' + esc(s.name) + '</span>' +
                       '<button class="btn o" title="Investigate" style="padding: 2px 6px; font-size: 11px; margin-left: 4px;" onclick="window.openInvestigatorModal(); window.investigateUrl(\'https://' + escJs(s.name) + '\');">🕵️</button>' +
                   '</div>' +
                   '<div style="display:flex; align-items:center; gap: 10px; font-size: 12px;">' +
@@ -5327,9 +5304,6 @@ export function ouvrirMenuVideoActive(bouton, event) {
 export function basculerDirectActif() {
     if (mvFlux.length) toggleDirectMode(tuileActive());
 }
-export function ouvrirSiteActif() {
-    if (mvFlux.length) ouvrirPageOriginale(tuileActive());
-}
 
 /* Le côté gauche de la barre : une pastille par vidéo, la choisie en blanc, avec le nom
    du match (comme le titre d'un film) et sa source. Les pastilles ne sont refaites que
@@ -5381,7 +5355,7 @@ function majBarreVideos() {
         if (lb) lb.textContent = (s && s.mode === 'direct') ? 'Page du site' : 'Direct';
         if (ic) ic.textContent = (s && s.mode === 'direct') ? '🖼' : '▶';
     }
-    ['mv-src-prev', 'mv-src-next', 'mv-bar-site', 'mv-bar-video-menu'].forEach(function(id) {
+    ['mv-src-prev', 'mv-src-next', 'mv-bar-video-menu'].forEach(function(id) {
         var b = document.getElementById(id);
         if (b) b.disabled = !s;
     });
@@ -5712,7 +5686,6 @@ window.removeFromMultivision = removeFromMultivision;
 window.ouvrirMenuTuile = ouvrirMenuTuile;
 window.ouvrirMenuDisposition = ouvrirMenuDisposition;
 window.ouvrirMenuBarre = ouvrirMenuBarre;
-window.ouvrirPageOriginale = ouvrirPageOriginale;
 window.chargerQuandMeme = chargerQuandMeme;
 window.diagnosticAppareilHtml = diagnosticAppareilHtml;
 window.mettreAJourApplication = mettreAJourApplication;
@@ -5759,7 +5732,6 @@ window.changerSourceActive = changerSourceActive;
 window.choisirVideo = choisirVideo;
 window.ouvrirMenuVideoActive = ouvrirMenuVideoActive;
 window.basculerDirectActif = basculerDirectActif;
-window.ouvrirSiteActif = ouvrirSiteActif;
 
 export function exportSettings() {
     var settings = {

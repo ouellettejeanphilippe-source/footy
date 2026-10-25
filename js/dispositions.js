@@ -207,12 +207,25 @@ function liveTableau(fiches, o) {
     }).join('') + '</div>';
 }
 
-function guideTableau(fiches, o) {
+/* Les pastilles de ligue en tête du Guide (Tableau, et Chaînes depuis le 25 octobre 2026 :
+   « dans guide, toggles en haut par ligue pour recherche rapide ») : une ligue à la fois,
+   ou toutes ; le choix est commun aux deux (etatDisposition.ligue). */
+function filtreLigues(fiches) {
   var ligues = [], vu = {};
   fiches.forEach(function (f) { if (!vu[f.ligue]) { vu[f.ligue] = 0; ligues.push(f.ligue); } vu[f.ligue]++; });
   var choix = etatDisposition.ligue;
   if (choix !== 'toutes' && !vu[choix]) choix = 'toutes';
-  var c = classerPourGuide(fiches.filter(function (f) { return choix === 'toutes' || f.ligue === choix; }));
+  return {
+    fiches: fiches.filter(function (f) { return choix === 'toutes' || f.ligue === choix; }),
+    html: '<div class="dsp-filtres"><button type="button" data-dsp="ligue" data-v="toutes" aria-pressed="' + (choix === 'toutes') + '">Toutes · ' + fiches.length + '</button>'
+      + ligues.map(function (l) { return '<button type="button" data-dsp="ligue" data-v="' + esc(l) + '" aria-pressed="' + (choix === l) + '">' + esc(l) + ' · ' + vu[l] + '</button>'; }).join('')
+      + '</div>'
+  };
+}
+
+function guideTableau(fiches, o) {
+  var filtre = filtreLigues(fiches);
+  var c = classerPourGuide(filtre.fiches);
   var ligne = function (f) {
     return '<div class="dsp-gr' + (f.etat === 'fin' || f.etat === 'fin?' ? ' dsp-fini' : '') + '" ' + attrs(f) + '>'
       + '<span class="dsp-t">' + (f.etat === 'live' ? '<span class="dsp-point"></span>' : esc((f.jour === 'hier' ? 'hier ' : '') + f.heure)) + '</span>'
@@ -226,9 +239,7 @@ function guideTableau(fiches, o) {
   c.heures.forEach(function (h) { out += '<div class="dsp-hr">' + esc(h.libelle) + '</div>' + h.fiches.map(ligne).join(''); });
   if (c.termines.length) out += '<div class="dsp-hr">' + boutonTermines(c.termines.length) + '</div>' + (etatDisposition.termines ? c.termines.map(ligne).join('') : '');
   if (!out) out = '<div class="dsp-vide">Aucun match dans cette ligue.</div>';
-  return '<div class="dsp-filtres"><button type="button" data-dsp="ligue" data-v="toutes" aria-pressed="' + (choix === 'toutes') + '">Toutes · ' + fiches.length + '</button>'
-    + ligues.map(function (l) { return '<button type="button" data-dsp="ligue" data-v="' + esc(l) + '" aria-pressed="' + (choix === l) + '">' + esc(l) + ' · ' + vu[l] + '</button>'; }).join('')
-    + '</div><div class="dsp-prog">' + out + '</div>';
+  return filtre.html + '<div class="dsp-prog">' + out + '</div>';
 }
 
 /* ── B · Maintenant ── */
@@ -316,7 +327,9 @@ function liveChaines(fiches, o) {
 /* La grille commence À l'heure actuelle : un match en cours y entre par le bord gauche,
    au lieu d'être dessiné dans le passé. Positions en minutes, converties par le CSS
    (--dsp-px : pixels par minute). */
-function guideChaines(fiches, o) {
+function guideChaines(tout, o) {
+  var filtre = filtreLigues(tout);
+  var fiches = filtre.fiches;
   var actifs = fiches.filter(function (f) { return f.etat !== 'fin' && f.etat !== 'fin?'; });
   var termines = fiches.filter(function (f) { return f.etat === 'fin' || f.etat === 'fin?'; });
   var debut = Math.floor(o.maintenant / 10) * 10;
@@ -349,7 +362,7 @@ function guideChaines(fiches, o) {
       + '<span class="dsp-lbl">' + (f.sDom != null ? '<b>' + score(f, 'd') + '–' + score(f, 'e') + '</b> · ' : '') + esc(f.etat === 'live' ? etiquetteEtat(f) : f.heure)
       + ' · <span class="dsp-long">' + titre(f) + '</span><span class="dsp-court">' + esc(f.abDom) + (f.seul ? '' : '–' + esc(f.abExt)) + '</span></span></div></div></div>';
   });
-  return apercu(sel, o, true)
+  return filtre.html + apercu(sel, o, true)
     + '<div class="dsp-epg" style="--larg:' + largeur + '"><div class="dsp-epg-in"><div class="dsp-ruler"><div class="dsp-corner"></div>' + regle + '</div>' + lignes
     + '<div class="dsp-nowv" style="--a:' + (o.maintenant - debut) + '"></div></div></div>'
     + (termines.length ? '<div class="dsp-dlist">' + boutonTermines(termines.length) + (etatDisposition.termines ? '<div class="dsp-dl">' + termines.map(function (f) {

@@ -609,7 +609,6 @@ body.view-timeline .zoom-controls { display: flex; }
 .si-btn.on-dep { background: var(--red); color: #fff; }
 .si-btn.si-add { background: rgba(56,189,248,0.16); color: var(--text); margin-left: 4px; font-weight: 700; }
 .si-btn.si-add:hover { background: var(--accent); color: #fff; }
-.si-btn.si-ext.hint { background: rgba(255,255,255,0.14); }
 .sbadge { font-weight: 800; font-size: 11px; letter-spacing: 0.4px; padding: 3px 8px; border-radius: 6px; flex-shrink: 0; text-transform: uppercase; }
 .bHD { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
 .bSD { background: rgba(255,255,255,0.1); color: var(--muted2); border: 1px solid rgba(255,255,255,0.1); }
@@ -710,7 +709,16 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
    bas (mobile, plus bas). `display` reste piloté en ligne par toggleMultiview. */
 /* `position: fixed` : la marge posee sur le body ne l'atteint pas, il porte donc la
    sienne. C'est cette barre-la qu'on voyait chevaucher l'heure. */
-#mv-container.mv-full { position: fixed; top: calc(var(--hdr-height) + var(--safe-top)); left: 0; right: 0; bottom: 0; background: #000; z-index: 90; display: flex; flex-direction: column; }
+/* « Faudrait que le Lecteur soit un onglet comme les autres ; présentement, il surplombe
+   le reste » (25 octobre 2026). Il était une couche fixée par-dessus la page (z 90),
+   posée sur une grille seulement masquée ; il est maintenant dans le flux, comme le Live,
+   le Guide et les pages : il prend la place que la vue affichée laisse sous l'en-tête
+   (au-dessus de la barre du bas sur téléphone, par la marge du `body`). */
+#mv-container.mv-full { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; background: #000; display: flex; flex-direction: column; }
+/* La vue Lecteur ne montre que le lecteur. Plusieurs chemins remettaient la grille en
+   `display: flex` derrière lui (showPage, à l'ouverture de l'onglet) : la couche fixée
+   les cachait. */
+body[data-view="player"] #epg, body[data-view="player"] .page { display: none !important; }
 #mv-toolbar { position: relative; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; direction: ltr; transition: opacity var(--t-fast); }
 .mv-title { font-weight: 800; font-size: 15px; color: var(--text); padding: 0 4px; white-space: nowrap; }
 /* Le lecteur façon Netflix (25 octobre 2026, « interface moderne ») : la barre est posée
@@ -720,32 +728,33 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 #mv-container.mv-full #mv-toolbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; min-height: 64px; padding: 30px 16px 14px; background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 55%, rgba(0,0,0,0) 100%); border-bottom: 0; transition: opacity var(--t-med), transform var(--t-med); }
 #mv-container.mv-full #mv-toolbar.mv-cachee { transform: translateY(14px); }
 #mv-container.mv-full #mv-toolbar .mv-title { color: #fff; font-size: 17px; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-#mv-container.mv-full #mv-toolbar .mv-tb-btn:not(.primary), #mv-container.mv-full #mv-toolbar .mv-chip:not(.actif) { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 /* Une seule barre (25 octobre 2026, « moins all over the place ») : les vidéos, ce qu'on
    fait à la vidéo choisie, ce qu'on fait au lecteur — trois groupes, de gauche à droite.
-   Boutons en pilule, tous de la même hauteur ; la vidéo choisie en blanc. */
+   Boutons blancs, sans capsule derrière (25 octobre 2026, « boutons blancs, pas de
+   capsule derrière »), tous de la même hauteur ; la vidéo choisie en blanc. Le focus
+   (souris au clavier, télécommande) : le bouton grossit et se souligne. */
 .mv-bar-groupe { display: flex; align-items: center; gap: 6px; }
 .mv-source-nav { padding-left: 12px; margin-left: 4px; border-left: 1px solid rgba(255,255,255,0.18); }
 .mv-actions { flex-wrap: wrap; justify-content: flex-end; }
-.mv-tb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.1); color: #fff; font-weight: 600; font-size: 14px; white-space: nowrap; cursor: pointer; transition: background var(--t-fast), filter var(--t-fast), transform var(--t-fast); }
-.mv-tb-btn:hover { background: rgba(255,255,255,0.2); }
-.mv-tb-btn.mv-tb-ic-seul { min-width: 44px; padding: 8px 12px; }
-.mv-tb-btn.primary { background: var(--accent); border-color: transparent; color: #06131c; }
-.mv-tb-btn.primary:hover { filter: brightness(1.1); }
-.mv-tb-btn.on { background: rgba(124,252,154,0.22); border-color: rgba(124,252,154,0.5); }
+.mv-tb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 8px 12px; border-radius: 0; border: 0; background: transparent; color: #fff; font-weight: 700; font-size: 15px; white-space: nowrap; cursor: pointer; text-shadow: 0 1px 4px rgba(0,0,0,0.85); opacity: 0.9; transition: opacity var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast); }
+.mv-tb-btn:hover { opacity: 1; transform: scale(1.06); }
+.mv-tb-btn.mv-tb-ic-seul { min-width: 44px; padding: 8px 10px; }
+.mv-tb-btn.primary { background: transparent; color: #fff; }
+.mv-tb-btn.on { color: #7CFC9A; }
 .mv-tb-btn[disabled] { opacity: 0.38; cursor: default; }
 .mv-tb-btn[hidden] { display: none; }
 .mv-tb-btn .mv-tb-ic { font-size: 16px; line-height: 1; }
 .mv-tb-btn .mv-tb-plus { font-size: 21px; font-weight: 800; }
 .mv-tb-lb-tel { display: none; }
-.mv-tb-btn:focus-visible, .mv-chip:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.mv-tb-btn:focus-visible { outline: none; opacity: 1; transform: scale(1.12); box-shadow: inset 0 -3px 0 #fff; }
+.mv-chip:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 /* Les vidéos : une pastille chacune. La choisie (blanche) porte le nom du match et sa
    source ; à partir de trois, les autres ne gardent que leur numéro. La rangée défile de
    côté ; sa marge intérieure laisse la place au contour du focus, que le défilement rognait. */
 .mv-bar-videos { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; overflow-x: auto; scrollbar-width: none; padding: 12px 10px; margin: -12px -10px; }
 .mv-bar-videos::-webkit-scrollbar { display: none; }
-.mv-chip { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; min-height: 44px; max-width: 210px; padding: 4px 14px 4px 5px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.1); color: #fff; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast); }
-.mv-chip:hover { background: rgba(255,255,255,0.2); }
+.mv-chip { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; min-height: 44px; max-width: 210px; padding: 4px 14px 4px 5px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: #fff; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast); }
+.mv-chip:hover { background: rgba(255,255,255,0.12); }
 .mv-chip-n { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.16); font-weight: 800; font-size: 15px; }
 .mv-chip-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .mv-chip-nom { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1033,12 +1042,11 @@ body[data-view="player"] .toast { bottom: calc(96px + var(--safe-bottom)); }
      ne disaient pas ce qu'elles faisaient. Deux rangées (25 octobre 2026) : les vidéos,
      qui défilent de côté ; puis six gestes de même largeur — ⏮ et Site restent dans le
      menu ⋮ de la vidéo. */
-  #mv-container.mv-full { top: 0; bottom: calc(var(--bottom-nav) + var(--safe-bottom)); }
   #mv-toolbar { padding: 4px 6px; gap: 4px; min-height: 0; flex-wrap: wrap; }
   #mv-toolbar .sp { display: none; }
   .mv-bar-videos { flex: 1 1 100%; }
   .mv-bar-groupe { display: contents; }
-  #mv-src-prev, #mv-bar-site { display: none; }
+  #mv-src-prev { display: none; }
   .mv-tb-btn, .mv-tb-btn.mv-tb-ic-seul { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 4px 4px; border-radius: 12px; font-size: 11px; line-height: 1.1; }
   .mv-tb-btn .mv-tb-ic { font-size: 18px; }
   .mv-tb-btn .mv-tb-lb, .mv-tb-btn .mv-tb-lb-tel { display: inline; }
