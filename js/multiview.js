@@ -13,7 +13,7 @@ import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus, waitForBridge, lireOctetsViaPont } from './embed-bridge.js';
-import { etatProtection, doitProposerGuide, GUIDE_VU, VERSION_SCRIPT } from './installation.js';
+import { etatProtection, doitProposerGuide, GUIDE_VU, VERSION_SCRIPT, VERSION_EXTENSION, telechargerExtension } from './installation.js';
 import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
@@ -4829,7 +4829,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v67';
+export var VERSION_APP = 'sports-guide-v68';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -4904,7 +4904,8 @@ export function diagnosticAppareilHtml() {
        de l'onglet n'existe que depuis la 1.17, et Tampermonkey peut garder l'ancienne des
        jours (18 octobre 2026). */
     var prot = etatProtection(typeof window !== 'undefined' ? window : {}, getBridgeStatus());
-    if (prot.type === 'extension') html += ligne('Extension de nettoyage', prot.aJour ? 'ok' : 'warn', prot.version + (prot.aJour ? ' (à jour)' : ' — une version plus récente existe'));
+    if (prot.type === 'extension') html += ligne('Extension de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
+        : prot.version + ' — la ' + VERSION_EXTENSION + ' est sortie : Plus → 🧩 Script → Télécharger l\'extension, remplacer le dossier, puis ↻ dans chrome://extensions');
     else if (prot.type === 'script') html += ligne('Script de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
         : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Plus → 🧩 Script → Installer le script, puis accepter la mise à jour dans Tampermonkey');
     else html += ligne('Script de nettoyage', 'warn', 'absent — Plus → 🧩 Script');
@@ -5258,6 +5259,17 @@ export function installerScriptUtilisateur() {
     window.location.href = './multiview-cleaner.user.js';
 }
 
+/* Le bouton du panneau Chrome du guide (index.html). */
+export function telechargerExtensionGuide() {
+    return telechargerExtension().then(function(nom) {
+        showToast('⬇ ' + nom + ' : décompresser, puis « Charger l\'extension non empaquetée »');
+        return nom;
+    }, function(e) {
+        showToast('Téléchargement de l\'extension impossible : ' + (e && e.message ? e.message : e));
+        return null;
+    });
+}
+
 
 
 
@@ -5517,6 +5529,7 @@ window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
 window.installTampermonkey = installTampermonkey;
 window.installerScriptUtilisateur = installerScriptUtilisateur;
+window.telechargerExtension = telechargerExtensionGuide;
 
 export function exportSettings() {
     var settings = {

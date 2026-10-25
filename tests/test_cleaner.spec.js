@@ -179,7 +179,8 @@ test.beforeAll(async () => {
     }
     /* La fenêtre principale de l'application, réduite à ce que le pont reconnaît, avec un
        faux GM_xmlhttpRequest qui note ce qu'on lui demande. `info=1` : un vrai
-       gestionnaire de scripts (GM_info) ; sinon, une copie bâtie sur fetch. */
+       gestionnaire de scripts (GM_info) ; sinon, une copie bâtie sur fetch. `double=1` : le
+       script deux fois, comme Tampermonkey et l'extension ensemble sur Chrome. */
     if (rel === '/__app-factice') {
       const gm = '<script>window.__gm = [];'
         + (/(^|[?&])info=1/.test(req.url) ? 'window.GM_info = { script: { version: "1.14" } };' : '')
@@ -187,7 +188,8 @@ test.beforeAll(async () => {
         + ' setTimeout(function () { o.onload({ status: 200, response: new Uint8Array([7, 7, 7]).buffer, responseText: "", finalUrl: o.url }); }, 10);'
         + ' return { abort: function () {} }; };</script>';
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      return res.end('<html>' + gm + '<script>' + SCRIPT + '</script><body><div id="marea"></div><main class="epg"></main></body></html>');
+      const copies = /(^|[?&])double=1/.test(req.url) ? 2 : 1;
+      return res.end('<html>' + gm + ('<script>' + SCRIPT + '</script>').repeat(copies) + '<body><div id="marea"></div><main class="epg"></main></body></html>');
     }
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end('<html><body style="margin:0"></body></html>');
@@ -586,12 +588,13 @@ test('un emballage qui contient le lecteur et la discussion ne fait pas écarter
 
 /* Le pont lit en binaire pour le mode direct (« le bouton direct, ça marche avec AUCUN
    SITE », 18 octobre 2026), avec le Referer et l'Origin du lecteur, et seulement sous un
-   vrai gestionnaire de scripts : les copies de l'extension, du bureau et de l'APK bâtissent
-   GM_xmlhttpRequest sur fetch, qui ne sait ni lire en binaire ni poser un Referer. */
-async function questionnerPont(page, info) {
-  await page.goto(origin + '/__app-factice' + (info ? '?info=1' : ''));
+   vrai gestionnaire de scripts : les copies du bureau et de l'APK bâtissent
+   GM_xmlhttpRequest sur fetch, qui ne sait ni lire en binaire ni poser un Referer.
+   L'extension Chrome, elle, le sait depuis 1.5 (test_extension.spec.js). */
+async function questionnerPont(page, info, double) {
+  await page.goto(origin + '/__app-factice' + (info ? '?info=1' : '') + (double ? '&double=1' : ''));
   return page.evaluate(() => new Promise((resolve) => {
-    const recu = { pret: null, page: null };
+    const recu = { pret: null, page: null, reponses: 0 };
     window.addEventListener('message', (e) => {
       const d = e.data;
       if (!d || !d.__mvBridge) return;
@@ -601,8 +604,11 @@ async function questionnerPont(page, info) {
           referer: 'https://lecteur.test/', origine: 'https://lecteur.test', plage: 'bytes=0-99', timeout: 5000 }, '*');
       }
       if (d.__mvBridge === 'mv_bridge_page' && d.id === 'x1') {
+        recu.reponses++;
+        if (recu.page) return;
         recu.page = { ok: d.ok, binaire: d.binaire, octets: d.octets ? Array.from(new Uint8Array(d.octets)) : null, error: d.error };
-        resolve({ recu, gm: window.__gm });
+        /* Une seconde réponse arriverait dans la foulée : on lui laisse le temps. */
+        setTimeout(() => resolve({ recu, gm: window.__gm }), 300);
       }
     });
     window.postMessage({ __mvBridge: 'mv_bridge_hello' }, '*');
@@ -617,6 +623,18 @@ test('le pont lit en binaire, avec le Referer du lecteur, sous un vrai gestionna
   expect(recu.page).toEqual({ ok: true, binaire: true, octets: [7, 7, 7], error: '' });
   expect(gm).toEqual([{ url: 'https://cdn.test/hls/seg-1.ts', responseType: 'arraybuffer',
     headers: { Referer: 'https://lecteur.test/', Origin: 'https://lecteur.test', Range: 'bytes=0-99' } }]);
+});
+
+/* Sur Chrome, Tampermonkey et l'extension (qui embarque le même script) peuvent tourner
+   ensemble (25 octobre 2026). Sans garde, chaque page demandée était lue deux fois et deux
+   copies se disputaient chaque tuile. Différentiel : le même document avec une seule copie
+   répond une fois aussi, et la seconde copie, sans la garde, répondait (vérifié en la
+   retirant). */
+test('deux copies du script dans la même page : une seule répond', async ({ page }) => {
+  const { recu, gm } = await questionnerPont(page, true, true);
+  expect(recu.page.ok).toBe(true);
+  expect(recu.reponses, 'une seule réponse du pont').toBe(1);
+  expect(gm.length, 'une seule lecture').toBe(1);
 });
 
 test('sans gestionnaire de scripts, le pont ne promet pas la lecture binaire', async ({ page }) => {

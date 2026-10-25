@@ -10,12 +10,19 @@
  *     n'est pas l'application (une vidéo YouTube sur un blogue, un formulaire de
  *     connexion) n'est pas touché ; Tampermonkey nettoyait toutes les iframes du web ;
  *   - `GM_xmlhttpRequest` passe par relais.js et fond.js, présents dans la seule
- *     fenêtre de l'application. Ailleurs, il échoue tout de suite, proprement. */
+ *     fenêtre de l'application. Ailleurs, il échoue tout de suite, proprement.
+ *
+ * Pour le reste, depuis 1.5 (25 octobre 2026, « les mêmes fonctions sur Firefox et
+ * Chrome »), ce `GM_xmlhttpRequest` fait ce que fait celui de Tampermonkey pour le
+ * script : texte ou binaire (`responseType: 'arraybuffer'`), avec les en-têtes
+ * `Referer`, `Origin` et `Range` (fond.js). Le script n'annonce la lecture binaire,
+ * donc le mode direct, que sous un vrai gestionnaire de scripts, qu'il reconnaît à
+ * `GM_info` : on le lui donne. */
 (function () {
     'use strict';
     if (window.__footyNettoyeur) return;
 
-    var VERSION_EXTENSION = '1.4';
+    var VERSION_EXTENSION = '1.5';
     var HOTES_APPLICATION = ['127.0.0.1', 'localhost', 'ouellettejeanphilippe-source.github.io'];
 
     /* La fenêtre du haut, vue d'ici. `ancestorOrigins` la donne même depuis un cadre
@@ -43,9 +50,22 @@
         try {
             if (d.erreur === 'timeout') { if (typeof o.ontimeout === 'function') o.ontimeout({ error: 'timeout' }); }
             else if (d.erreur) { if (typeof o.onerror === 'function') o.onerror({ error: d.erreur }); }
-            else if (typeof o.onload === 'function') o.onload({ status: d.status, statusText: d.statusText, responseText: d.responseText, finalUrl: d.finalUrl, responseHeaders: '' });
+            else if (typeof o.onload === 'function') o.onload({ status: d.status, statusText: d.statusText, responseText: d.responseText || '', response: d.octets || d.responseText, finalUrl: d.finalUrl, responseHeaders: '' });
         } catch (err) {}
     });
+
+    /* Les seuls en-têtes que le script demande, et que fond.js sait poser. */
+    function entetesDuPont(h) {
+        var e = {};
+        Object.keys(h || {}).forEach(function (k) {
+            var v = h[k], n = k.toLowerCase();
+            if (typeof v !== 'string') return;
+            if (n === 'referer') e.referer = v;
+            else if (n === 'origin') e.origine = v;
+            else if (n === 'range') e.plage = v;
+        });
+        return e;
+    }
 
     function gmXhr(options) {
         var o = options || {};
@@ -56,18 +76,19 @@
         }
         var id = 'fx' + (++suite) + '_' + Date.now();
         attente[id] = o;
-        window.postMessage({ __footyExt: 'requete', id: id, url: o.url, method: o.method || 'GET', timeout: o.timeout || 15000 }, '*');
+        window.postMessage({ __footyExt: 'requete', id: id, url: o.url, method: o.method || 'GET', timeout: o.timeout || 15000, binaire: o.responseType === 'arraybuffer', entetes: entetesDuPont(o.headers) }, '*');
         return { abort: function () { delete attente[id]; } };
     }
 
+    var GM_info = { scriptHandler: 'Guide des Sports (extension)', version: VERSION_EXTENSION };
     var GM_xmlhttpRequest = gmXhr;
-    var GM = { xmlHttpRequest: gmXhr };
+    var GM = { xmlHttpRequest: gmXhr, info: GM_info };
 
     try {
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.17
+// @version      1.18
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -94,6 +115,16 @@
         || (/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname) && location.pathname.indexOf('/embed/') === 0)) {
         return;
     }
+
+    /* Une seule copie par document (1.18). Sur Chrome, Tampermonkey et l'extension du
+       Guide des Sports (extension/, qui embarque ce même script) peuvent tourner ensemble.
+       La seconde copie capturerait plus bas, comme fenêtre parente, le piège de la
+       première : elle n'obéirait à aucun ordre de l'application (ni le son, ni le muet)
+       et relancerait la vidéo muette de son côté. La première arrivée garde le cadre.
+       Sur le document et non sur la fenêtre : un cadre qui passe de son about:blank
+       initial à un document de même origine (`srcdoc`) garde la même fenêtre. */
+    if (document.__mvCleanerActif) return;
+    document.__mvCleanerActif = true;
 
     /* La fenêtre qui nous encadre, capturée MAINTENANT — avant le piège
        anti-détournement posé juste en dessous, qui remplace `window.parent` par un Proxy
@@ -1346,9 +1377,14 @@
         : null;
     if (!GM_FETCH) return;
 
+    /* Une seule copie répond à l'application (1.18) : Tampermonkey et l'extension
+       ensemble liraient chaque page deux fois. */
+    if (document.__mvCleanerActif) return;
+    document.__mvCleanerActif = true;
+
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.17';
+    var VERSION = '1.18';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche
@@ -1358,9 +1394,10 @@
        image. GM_xmlhttpRequest n'est pas soumis à CORS et pose le `Referer` du lecteur ;
        l'application y fait passer manifestes, clés et segments (js/directmedia.js,
        chargeurParPont). Annoncé seulement sous un vrai gestionnaire de scripts
-       (Tampermonkey, Violentmonkey, Greasemonkey : `GM_info`) : les copies de
-       l'extension, de la version de bureau et de l'APK bâtissent GM_xmlhttpRequest sur
-       `fetch`, qui ne sait ni lire en binaire ni poser un `Referer`. */
+       (Tampermonkey, Violentmonkey, Greasemonkey : `GM_info`) : les copies de la version
+       de bureau et de l'APK bâtissent GM_xmlhttpRequest sur `fetch`, qui ne sait ni lire
+       en binaire ni poser un `Referer`. L'extension Chrome (1.5 et plus) le sait, par son
+       service worker, et pose `GM_info`. */
     var BINAIRE = (typeof GM_info !== 'undefined') || (typeof GM !== 'undefined' && !!GM && !!GM.info);
     var MAX_OCTETS_BINAIRES = 64 * 1024 * 1024;
 

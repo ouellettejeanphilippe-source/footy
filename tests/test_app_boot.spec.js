@@ -2194,7 +2194,10 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
 
 /* « garder vieux guide plutôt que nouveau » (13 octobre 2026). Au premier lancement sans
    protection, la fenêtre du début montre l'ancien guide (Firefox recommandé, uBlock
-   Origin, Tampermonkey, le script), le même que la page Plus → 🧩 Script, une seule fois. */
+   Origin, Tampermonkey, le script), le même que la page Plus → 🧩 Script, une seule fois.
+   Depuis le 25 octobre 2026 (« les mêmes fonctions sur Firefox et Chrome »), il mène aussi
+   Chrome à l'extension : le bouton du panneau Chrome télécharge le zip sans fermer la
+   fenêtre. */
 test('la fenêtre du début montre l\'ancien guide des scripts, une seule fois', async ({ page }) => {
   const pageErrors = await bootOffline(page);
   /* bootOffline pose « 2 » à chaque chargement ; on l'efface au seul suivant. */
@@ -2210,7 +2213,16 @@ test('la fenêtre du début montre l\'ancien guide des scripts, une seule fois',
   await expect(fenetre).toContainText('Recommandation : Firefox + uBlock Origin');
   await expect(fenetre).toContainText('Étape 2 : le gestionnaire de scripts (Tampermonkey)');
   await expect(fenetre.locator('a', { hasText: 'Installer le script' })).toHaveAttribute('href', /multiview-cleaner\.user\.js$/);
-  await expect(fenetre).not.toContainText('Charger l\'extension non empaquetée');
+  await expect(fenetre).toContainText('Charger l\'extension non empaquetée');
+  const [zip] = await Promise.all([
+    page.waitForEvent('download'),
+    fenetre.locator('button', { hasText: 'Télécharger l\'extension' }).click()
+  ]);
+  expect(zip.suggestedFilename()).toBe('guide-des-sports-extension-' + JSON.parse(fs.readFileSync(path.join(ROOT, 'extension', 'manifest.json'), 'utf8')).version + '.zip');
+  const octets = fs.readFileSync(await zip.path());
+  expect(octets.subarray(0, 4).toString('hex'), 'un zip').toBe('504b0304');
+  expect(octets.length).toBeGreaterThan(fs.statSync(path.join(ROOT, 'extension', 'regles', 'blocage.json')).size);
+  await expect(fenetre, 'le téléchargement ne ferme pas la fenêtre').toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('hasSeenScriptModal'))).toBe('true');
 
   // Une seule fois : au chargement suivant, elle ne revient pas.

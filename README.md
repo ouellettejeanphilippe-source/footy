@@ -27,7 +27,7 @@ Dans le navigateur, « Installer l'application » (ou « Ajouter à l'écran d'a
 
 Les pages des lecteurs vidéo sont chargées telles quelles dans le lecteur. Sans aide, elles gardent leurs fenêtres surgissantes et leurs calques, et certaines refusent de s'afficher dans un cadre. Le script **Multiview Stream Cleaner** (`multiview-cleaner.user.js`) règle cela :
 
-- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script. Dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier `extension/` du dépôt. Le guide de l'application (`Plus → 🧩 Script`) ne la mentionne pas : c'est l'ancien guide, uBlock Origin + Tampermonkey + le script.
+- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script, avec les mêmes fonctions que sur Firefox, mode direct compris. `Plus → 🧩 Script → ⬇ Télécharger l'extension` (panneau Chrome) en fabrique le zip ; décompresser, puis dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier `guide-des-sports-extension` (ou le dossier `extension/` du dépôt). Sans elle : uBlock Origin Lite, Tampermonkey avec « Autoriser les scripts utilisateur » (dans ses détails), et le script.
 - **Firefox** :
   1. installez **uBlock Origin** (bloqueur de publicités) ;
   2. installez **Tampermonkey** (gestionnaire de scripts) ;

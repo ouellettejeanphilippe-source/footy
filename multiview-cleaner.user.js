@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.17
+// @version      1.18
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -28,6 +28,16 @@
         || (/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname) && location.pathname.indexOf('/embed/') === 0)) {
         return;
     }
+
+    /* Une seule copie par document (1.18). Sur Chrome, Tampermonkey et l'extension du
+       Guide des Sports (extension/, qui embarque ce même script) peuvent tourner ensemble.
+       La seconde copie capturerait plus bas, comme fenêtre parente, le piège de la
+       première : elle n'obéirait à aucun ordre de l'application (ni le son, ni le muet)
+       et relancerait la vidéo muette de son côté. La première arrivée garde le cadre.
+       Sur le document et non sur la fenêtre : un cadre qui passe de son about:blank
+       initial à un document de même origine (`srcdoc`) garde la même fenêtre. */
+    if (document.__mvCleanerActif) return;
+    document.__mvCleanerActif = true;
 
     /* La fenêtre qui nous encadre, capturée MAINTENANT — avant le piège
        anti-détournement posé juste en dessous, qui remplace `window.parent` par un Proxy
@@ -1280,9 +1290,14 @@
         : null;
     if (!GM_FETCH) return;
 
+    /* Une seule copie répond à l'application (1.18) : Tampermonkey et l'extension
+       ensemble liraient chaque page deux fois. */
+    if (document.__mvCleanerActif) return;
+    document.__mvCleanerActif = true;
+
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.17';
+    var VERSION = '1.18';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche
@@ -1292,9 +1307,10 @@
        image. GM_xmlhttpRequest n'est pas soumis à CORS et pose le `Referer` du lecteur ;
        l'application y fait passer manifestes, clés et segments (js/directmedia.js,
        chargeurParPont). Annoncé seulement sous un vrai gestionnaire de scripts
-       (Tampermonkey, Violentmonkey, Greasemonkey : `GM_info`) : les copies de
-       l'extension, de la version de bureau et de l'APK bâtissent GM_xmlhttpRequest sur
-       `fetch`, qui ne sait ni lire en binaire ni poser un `Referer`. */
+       (Tampermonkey, Violentmonkey, Greasemonkey : `GM_info`) : les copies de la version
+       de bureau et de l'APK bâtissent GM_xmlhttpRequest sur `fetch`, qui ne sait ni lire
+       en binaire ni poser un `Referer`. L'extension Chrome (1.5 et plus) le sait, par son
+       service worker, et pose `GM_info`. */
     var BINAIRE = (typeof GM_info !== 'undefined') || (typeof GM !== 'undefined' && !!GM && !!GM.info);
     var MAX_OCTETS_BINAIRES = 64 * 1024 * 1024;
 
