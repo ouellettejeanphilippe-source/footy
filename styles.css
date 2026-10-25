@@ -720,23 +720,55 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 #mv-container.mv-full #mv-toolbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; min-height: 64px; padding: 30px 16px 14px; background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 55%, rgba(0,0,0,0) 100%); border-bottom: 0; transition: opacity var(--t-med), transform var(--t-med); }
 #mv-container.mv-full #mv-toolbar.mv-cachee { transform: translateY(14px); }
 #mv-container.mv-full #mv-toolbar .mv-title { color: #fff; font-size: 17px; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-.mv-source-nav { display: flex; gap: 6px; }
-.mv-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-.mv-tb-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border2); background: rgba(255,255,255,0.06); color: var(--text); font-weight: 600; font-size: 14px; white-space: nowrap; transition: background var(--t-fast), filter var(--t-fast); }
-.mv-tb-btn:hover { background: rgba(255,255,255,0.12); }
+#mv-container.mv-full #mv-toolbar .mv-tb-btn:not(.primary), #mv-container.mv-full #mv-toolbar .mv-chip:not(.actif) { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+/* Une seule barre (25 octobre 2026, « moins all over the place ») : les vidéos, ce qu'on
+   fait à la vidéo choisie, ce qu'on fait au lecteur — trois groupes, de gauche à droite.
+   Boutons en pilule, tous de la même hauteur ; la vidéo choisie en blanc. */
+.mv-bar-groupe { display: flex; align-items: center; gap: 6px; }
+.mv-source-nav { padding-left: 12px; margin-left: 4px; border-left: 1px solid rgba(255,255,255,0.18); }
+.mv-actions { flex-wrap: wrap; justify-content: flex-end; }
+.mv-tb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.1); color: #fff; font-weight: 600; font-size: 14px; white-space: nowrap; cursor: pointer; transition: background var(--t-fast), filter var(--t-fast), transform var(--t-fast); }
+.mv-tb-btn:hover { background: rgba(255,255,255,0.2); }
+.mv-tb-btn.mv-tb-ic-seul { min-width: 44px; padding: 8px 12px; }
 .mv-tb-btn.primary { background: var(--accent); border-color: transparent; color: #06131c; }
 .mv-tb-btn.primary:hover { filter: brightness(1.1); }
+.mv-tb-btn.on { background: rgba(124,252,154,0.22); border-color: rgba(124,252,154,0.5); }
+.mv-tb-btn[disabled] { opacity: 0.38; cursor: default; }
+.mv-tb-btn[hidden] { display: none; }
 .mv-tb-btn .mv-tb-ic { font-size: 16px; line-height: 1; }
+.mv-tb-btn .mv-tb-plus { font-size: 21px; font-weight: 800; }
+.mv-tb-lb-tel { display: none; }
+.mv-tb-btn:focus-visible, .mv-chip:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+/* Les vidéos : une pastille chacune. La choisie (blanche) porte le nom du match et sa
+   source ; à partir de trois, les autres ne gardent que leur numéro. La rangée défile de
+   côté ; sa marge intérieure laisse la place au contour du focus, que le défilement rognait. */
+.mv-bar-videos { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; overflow-x: auto; scrollbar-width: none; padding: 12px 10px; margin: -12px -10px; }
+.mv-bar-videos::-webkit-scrollbar { display: none; }
+.mv-chip { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; min-height: 44px; max-width: 210px; padding: 4px 14px 4px 5px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.1); color: #fff; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast); }
+.mv-chip:hover { background: rgba(255,255,255,0.2); }
+.mv-chip-n { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.16); font-weight: 800; font-size: 15px; }
+.mv-chip-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.mv-chip-nom { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-chip-etat { font-size: 11.5px; font-weight: 600; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-chip-etat:empty { display: none; }
+.mv-chip.actif { max-width: 340px; background: #fff; border-color: #fff; color: #0b0b0f; }
+.mv-chip.actif .mv-chip-n { background: #0b0b0f; color: #fff; }
+.mv-chip.actif .mv-chip-etat.joue { color: #08752f; opacity: 1; }
+.mv-bar-videos-nombreuses .mv-chip:not(.actif) { padding-right: 5px; }
+.mv-bar-videos-nombreuses .mv-chip:not(.actif) .mv-chip-txt { display: none; }
 .mv-cell { border-bottom-right-radius: 8px; container-type: inline-size; }
 
-/* En-tête d'une tuile, en surimpression. À gauche : numéro, source, ajustement ;
-   à droite, trois gestes toujours visibles et nommés — « Site » (la page originale dans
-   un nouvel onglet, le repli quand la vidéo ne joue pas ici), le menu, la croix. */
+/* En-tête d'une tuile, en surimpression : à gauche, qui elle est (numéro, match, source) ;
+   à droite, le menu et la croix, pour la souris et le doigt. Le reste est dans la barre
+   (25 octobre 2026). À la souris, ces deux boutons n'apparaissent qu'au survol de la
+   tuile ; à la télécommande, jamais : le focus ne les atteint pas, la barre a les mêmes. */
 .mv-hdr { position: absolute; top: 0; left: 0; right: 0; z-index: 10; pointer-events: none; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 6px 8px; padding: 8px 10px; color: #fff; font-size: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%); transition: background var(--t-med), opacity var(--t-med); }
 .mv-hdr:hover { background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%); }
 .mv-hdr-left, .mv-hdr-right { display: flex; align-items: center; gap: 6px; pointer-events: auto; min-width: 0; }
 .mv-hdr-left { flex-wrap: wrap; }
-.mv-hdr-right { flex-shrink: 0; background: rgba(0,0,0,0.35); padding: 3px; border-radius: 10px; }
+.mv-hdr-right { flex-shrink: 0; background: rgba(0,0,0,0.35); padding: 3px; border-radius: 10px; transition: opacity var(--t-fast); }
+@media (hover: hover) { .mv-cell:not(:hover) .mv-hdr-right { opacity: 0; } }
+body.manette .mv-hdr-right, body.manette .mv-drag-handle { display: none; }
 .mv-drag-handle { cursor: grab; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); }
 .mv-stream-number { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.2); font-weight: 800; font-size: 14px; }
 /* Nom du match au-dessus de sa source (9 octobre 2026). */
@@ -748,18 +780,13 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .mv-hdr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 36px; height: 36px; padding: 0 10px; border: none; border-radius: 8px; background: rgba(255,255,255,0.16); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background var(--t-fast); }
 .mv-hdr-btn:hover { background: rgba(255,255,255,0.28); }
 .mv-hdr-btn.on { background: rgba(56,189,248,0.35); }
-.mv-direct-btn.on { background: rgba(124,252,154,0.25); }
-.mv-site-btn { background: rgba(56,189,248,0.3); }
-.mv-site-btn:hover { background: rgba(56,189,248,0.5); }
 /* La croix se tient à l'écart du menu : un clic qui vise ⋮ ne ferme pas la vidéo. */
 .mv-close-btn { background: rgba(220,53,69,0.55); margin-left: 6px; }
 .mv-close-btn:hover { background: rgba(220,53,69,0.85); }
-/* Tuile étroite (grille 2×2 sur portable, panneau latéral) : l'essentiel reste —
-   numéro, source, Site, menu, croix. */
-/* Sous 520 px, l'en-tête tient sur UNE rangée : sur deux, il couvrait le haut de la
-   vidéo. Le cadrage reste dans le menu ⋮ (« Cadrage de l'image »). */
-@container (max-width: 520px) { .mv-hdr-lb, .mv-drag-handle, .mv-fit-btn { display: none; } .mv-hdr-btn { padding: 0 8px; } .mv-hdr { flex-wrap: nowrap; } .mv-hdr-left { flex-wrap: nowrap; overflow: hidden; } .mv-tile-id { max-width: none; flex: 1; } }
-@container (max-width: 360px) { .mv-fit-btn, .mv-stream-number { display: none; } .mv-tile-id { max-width: 40cqw; } }
+/* Tuile étroite (grille 2×2 sur portable, panneau latéral) : l'en-tête tient sur UNE
+   rangée — sur deux, il couvrait le haut de la vidéo. */
+@container (max-width: 520px) { .mv-hdr-lb, .mv-drag-handle { display: none; } .mv-hdr-btn { padding: 0 8px; } .mv-hdr { flex-wrap: nowrap; } .mv-hdr-left { flex-wrap: nowrap; overflow: hidden; } .mv-tile-id { max-width: none; flex: 1; } }
+@container (max-width: 360px) { .mv-stream-number { display: none; } .mv-tile-id { max-width: 40cqw; } }
 
 /* Chargement d'une tuile : une pastille au centre, qui ne prend aucun clic et laisse
    voir la page autour (js/multiview.js, poserChargement). */
@@ -775,6 +802,7 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
    là où les anciens menus, posés dans la tuile, étaient rognés et recouverts. */
 .mv-menu { position: fixed; z-index: 2147483000; min-width: 240px; max-width: min(340px, calc(100vw - 16px)); padding: 6px; background: var(--bg-elev); border: 1px solid var(--border2); border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,0.75); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; color: var(--text); font-size: 15px; }
 .mv-menu-title { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-menu-entete { flex-shrink: 0; padding: 10px 12px 8px; margin-bottom: 2px; border-bottom: 1px solid var(--border2); font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mv-menu-sep { height: 1px; background: var(--border2); margin: 4px; flex-shrink: 0; }
 .mv-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: none; border-radius: 9px; background: transparent; color: var(--text); font-size: 15px; font-weight: 500; text-align: left; cursor: pointer; flex-shrink: 0; }
 .mv-menu-item:hover, .mv-menu-item:focus-visible { background: rgba(255,255,255,0.1); outline: none; }
@@ -904,6 +932,8 @@ body[data-icon-pack="rounded"] .ic-close {
 
 .toast { position: fixed; bottom: calc(28px + var(--safe-bottom)); left: 50%; transform: translateX(-50%) translateY(16px); z-index: 600; background: rgba(28, 28, 32, 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: var(--text); font-weight: 600; font-size: 14px; padding: 12px 22px; border-radius: 999px; opacity: 0; transition: opacity var(--t-med), transform var(--t-med) var(--ease); pointer-events: none; display: flex; align-items: center; gap: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.14); max-width: calc(100vw - 32px); text-align: center; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* Dans le lecteur, au-dessus de sa barre : il cachait « Source suivante ». */
+body[data-view="player"] .toast { bottom: calc(96px + var(--safe-bottom)); }
 
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
@@ -983,6 +1013,7 @@ body[data-icon-pack="rounded"] .ic-close {
 
   .ov { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 16px); right: 50%; transform: translateX(50%); width: calc(100% - 32px); max-width: 400px; padding: 12px 14px; }
   .toast { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 16px); }
+  body[data-view="player"] .toast { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 132px); }
 
   .page { padding: 14px 12px calc(20px + var(--safe-bottom)); gap: 12px; }
   .page-head h2 { font-size: 19px; }
@@ -999,18 +1030,25 @@ body[data-icon-pack="rounded"] .ic-close {
 
   /* Lecteur : tout l'écran, au-dessus de la barre du bas. Chaque bouton de la barre
      garde un libellé court SOUS son icône (10 octobre 2026) : des icônes seules (⊞ ⛶ ⋯)
-     ne disaient pas ce qu'elles faisaient. */
+     ne disaient pas ce qu'elles faisaient. Deux rangées (25 octobre 2026) : les vidéos,
+     qui défilent de côté ; puis six gestes de même largeur — ⏮ et Site restent dans le
+     menu ⋮ de la vidéo. */
   #mv-container.mv-full { top: 0; bottom: calc(var(--bottom-nav) + var(--safe-bottom)); }
-  #mv-toolbar { padding: 4px 6px; gap: 4px; min-height: 0; }
+  #mv-toolbar { padding: 4px 6px; gap: 4px; min-height: 0; flex-wrap: wrap; }
   #mv-toolbar .sp { display: none; }
-  .mv-actions { flex-wrap: nowrap; gap: 4px; flex: 1; justify-content: space-between; }
-  .mv-tb-btn { flex: 1; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 4px 6px; font-size: 11px; line-height: 1.1; }
+  .mv-bar-videos { flex: 1 1 100%; }
+  .mv-bar-groupe { display: contents; }
+  #mv-src-prev, #mv-bar-site { display: none; }
+  .mv-tb-btn, .mv-tb-btn.mv-tb-ic-seul { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 4px 4px; border-radius: 12px; font-size: 11px; line-height: 1.1; }
   .mv-tb-btn .mv-tb-ic { font-size: 18px; }
-  .mv-tb-btn .mv-tb-lb { display: inline; }
+  .mv-tb-btn .mv-tb-lb, .mv-tb-btn .mv-tb-lb-tel { display: inline; }
   .mv-tb-btn .mv-tb-lb-long { display: none; }
+  .mv-chip { min-height: 40px; max-width: 46vw; }
+  .mv-chip.actif { max-width: 72vw; }
+  .mv-chip-n { width: 30px; height: 30px; }
   .mv-hdr { padding: 6px 8px; }
 }
-@media (max-width: 768px) { .mv-title { display: none; } #mv-container.mv-full #mv-toolbar { padding: 20px 8px 8px; min-height: 0; } .mv-source-nav .mv-tb-lb { display: none; } }
+@media (max-width: 768px) { #mv-container.mv-full #mv-toolbar { padding: 20px 8px 8px; min-height: 0; } }
 @keyframes sheetup { from { opacity: 0; transform: translateY(40px) } to { opacity: 1; transform: none } }
 
 /* ── 11 bis. Dispositions (Options → Disposition, js/dispositions.js) ──────────

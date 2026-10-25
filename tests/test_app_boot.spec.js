@@ -602,7 +602,8 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
    dans la tuile étaient rognés par son `overflow: hidden` et recouverts par la tuile
    voisine (et son iframe). Ils vivent désormais au niveau du document, en position
    fixe (js/mv-menu.js) : on vérifie que ce qui est PEINT au centre du menu est bien le
-   menu, et que chaque tuile porte le bouton « Site » — le repli vers la page originale. */
+   menu, et que la barre porte le bouton « Site » de la vidéo choisie — le repli vers la
+   page originale (sur chaque tuile jusqu'au 25 octobre 2026 ; une seule barre depuis). */
 test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferment ailleurs', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
@@ -639,7 +640,7 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   expect(etat.items).toContain('Ouvrir sur le site');
   expect(etat.items).toContain('Fermer cette vidéo');
 
-  await expect(page.locator('.mv-cell[data-index="0"] .mv-site-btn'), 'le repli vers le site est un bouton visible de la tuile').toBeVisible();
+  await expect(page.locator('#mv-bar-site'), 'le repli vers le site est un bouton visible de la barre').toBeVisible();
 
   await page.mouse.click(4, 4);
   await expect(menu, 'un clic ailleurs ferme le menu').toHaveCount(0);
@@ -710,7 +711,7 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   await expect(sorties).toContainText('retour sur l\'appli');
   await expect(sorties).toContainText('page quittée · garde levée : réglage « Bloquer les redirections des sites » coupé');
   await expect(sorties).toContainText('page restée · garde armée');
-  await expect(page.locator('#sources-status-container'), 'et « Cet appareil » dit la garde coupée').toContainText('coupée — Lecteur → ⋯ Plus → 🛡');
+  await expect(page.locator('#sources-status-container'), 'et « Cet appareil » dit la garde coupée').toContainText('coupée — Lecteur → ⚙ Réglages → 🛡');
 });
 
 /* « Ça me demande souvent si je veux quitter quand je ferme la page, ce qui devrait jamais
@@ -818,13 +819,14 @@ test('le mode direct lit le flux par le pont du script, avec le Referer du lecte
   /* Sans le pont, le « CDN » refuse la lecture faite d'ici : la sonde le voit, et le
      bouton ▶ direct n'est pas proposé (18 octobre 2026, « le direct marche jamais »). */
   await page.waitForTimeout(800);
-  await expect(page.locator('.mv-cell .mv-direct-btn'), 'sans le pont, pas de ▶ direct').toBeHidden();
+  await expect(page.locator('#mv-bar-direct'), 'sans le pont, pas de ▶ Direct').toBeHidden();
   expect(await page.evaluate(() => (window.__hls || []).filter((h) => h.pont).length), 'aucun chargeur par le pont sans lecture binaire').toBe(0);
 
   /* Le script 1.14, sous Tampermonkey : lecture binaire annoncée. La sonde repasse par le pont. */
   await page.evaluate(() => window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.14', binaire: true }, '*'));
-  await expect(page.locator('.mv-cell .mv-direct-btn'), 'par le pont, le manifeste répond : ▶ direct').toBeVisible({ timeout: 10000 });
-  await page.locator('.mv-cell .mv-direct-btn').click();
+  await expect(page.locator('#mv-bar-direct'), 'par le pont, le manifeste répond : ▶ Direct').toBeVisible({ timeout: 10000 });
+  await page.evaluate(() => window.resetMvIdleTimer());
+  await page.locator('#mv-bar-direct').click();
   await expect.poll(() => page.evaluate(() => window.mvFlux[0]._playing), { message: 'par le pont, le flux joue' }).toBe(true);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('direct');
   expect(await page.evaluate(() => (window.__hls || []).filter((h) => h.pont).length),
@@ -2342,7 +2344,7 @@ test('le lecteur façon Netflix : barre en bas qui s\'efface, première touche q
   });
   expect(Math.abs(position.basBarre - position.basLecteur), 'la barre est au bas du lecteur').toBeLessThanOrEqual(2);
   expect(position.hautBarre, 'dans sa moitié basse').toBeGreaterThan(position.milieu);
-  await expect(page.locator('#mv-toolbar .mv-title')).toHaveText('Match A');
+  await expect(page.locator('#mv-toolbar .mv-chip.actif .mv-chip-nom'), 'la vidéo choisie, en titre').toHaveText('Match A');
 
   // Au repos, elle s'efface avec les en-têtes.
   await page.waitForTimeout(3400);
@@ -2359,7 +2361,104 @@ test('le lecteur façon Netflix : barre en bas qui s\'efface, première touche q
 
   // Le match regardé suit la tuile active.
   await page.evaluate(() => window.focusStream(1));
-  await expect(page.locator('#mv-toolbar .mv-title')).toHaveText('Match B');
+  await expect(page.locator('#mv-toolbar .mv-chip.actif .mv-chip-nom')).toHaveText('Match B');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Dans multiview, un coup de la manette bouge de deux boutons » (25 octobre 2026, à la
+   télécommande du Chromecast). Le menu du lecteur passait à l'entrée suivante, puis la
+   navigation aux flèches repartait de celle-là ; OK sur un titre de section le repliait,
+   puis le cliquait, qui le rouvrait. Une touche déjà traitée ne l'est plus deux fois. */
+test('à la télécommande, une touche fait un pas : menu du lecteur, titre de section', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+
+  const titre = page.locator('#marea .section-title[role="button"]').first();
+  await titre.focus();
+  const avant = await titre.getAttribute('aria-expanded');
+  await page.keyboard.press('Enter');
+  expect(await titre.getAttribute('aria-expanded'), 'OK replie la section, une fois').not.toBe(avant);
+
+  // Chargée deux fois (mode TV, puis la télé Android), elle ne fait toujours qu'un pas.
+  await page.evaluate(() => {
+    const s = document.createElement('script');
+    s.src = 'js/tv-navigation.js';
+    document.body.appendChild(s);
+    return new Promise((ok) => { s.onload = ok; });
+  });
+
+  await page.evaluate((o) => {
+    window.addToMultivision(o.replace('127.0.0.1', 'localhost') + '/__lecteur-calme?a', 'Match A', 'mA');
+    window.openMultiviewTab();
+  }, origin);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  await page.locator('#mv-more-btn').click();
+  const entrees = page.locator('.mv-menu .mv-menu-item:not([disabled])');
+  await expect(entrees.first()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(entrees.nth(1), 'une flèche, une entrée plus bas').toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(entrees.first(), 'et une plus haut').toBeFocused();
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Refondre les menus, surtout dans le multiview, pour qqchose de moderne et moins all
+   over the place » (25 octobre 2026). Une seule barre : les vidéos (une pastille chacune),
+   les gestes de la vidéo choisie, ceux du lecteur. Les en-têtes de tuile ne gardent que le
+   nom, la source, le menu et la croix, et la télécommande ne va plus les chercher. */
+test('le lecteur n\'a qu\'une barre : les vidéos, la vidéo choisie, le lecteur ; la télécommande y reste', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  await page.evaluate((o) => {
+    ['A', 'B', 'C'].forEach((n) => window.addToMultivision(o.replace('127.0.0.1', 'localhost') + '/__lecteur-calme?' + n, 'Match ' + n, 'm' + n));
+    if (document.body.getAttribute('data-view') !== 'player') window.openMultiviewTab();
+    window.focusStream(0);
+  }, origin);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  await expect(page.locator('.mv-cell')).toHaveCount(3);
+
+  // Les tuiles : nom, source, menu, croix ; ni ⏭, ni ▶ direct, ni cadrage, ni Site.
+  expect(await page.locator('.mv-cell .mv-next-source, .mv-cell .mv-direct-btn, .mv-cell .mv-fit-btn, .mv-cell .mv-site-btn').count()).toBe(0);
+  expect(await page.evaluate(() => [...document.querySelectorAll('.mv-cell .mv-hdr button, .mv-cell .mv-hdr [role="button"]')].every((b) => b.getAttribute('tabindex') === '-1')),
+    'leurs boutons sont pour la souris et le doigt').toBe(true);
+
+  // Les vidéos : une pastille chacune ; la choisie porte son nom, les autres leur numéro.
+  const pastilles = page.locator('#mv-bar-videos .mv-chip');
+  await expect(pastilles).toHaveCount(3);
+  await expect(pastilles.nth(0)).toHaveClass(/actif/);
+  await expect(pastilles.nth(0).locator('.mv-chip-nom')).toBeVisible();
+  await expect(pastilles.nth(1).locator('.mv-chip-nom'), 'à partir de trois, les autres ne gardent que leur numéro').toBeHidden();
+
+  // À la télécommande : ◀ depuis ⏭ mène aux pastilles, OK choisit la vidéo.
+  await page.evaluate(() => document.getElementById('mv-src-next').focus());
+  await page.keyboard.press('ArrowLeft');
+  expect(await page.evaluate(() => document.activeElement.id)).toBe('mv-src-prev');
+  await page.keyboard.press('ArrowLeft');
+  expect(await page.evaluate(() => document.activeElement.getAttribute('data-idx')), 'la dernière pastille').toBe('2');
+  await page.keyboard.press('Enter');
+  await expect(pastilles.nth(2), 'OK choisit la vidéo 3').toHaveClass(/actif/);
+  await expect(pastilles.nth(2), 'et le focus reste sur sa pastille').toBeFocused();
+  // ▲ ne part jamais dans une tuile.
+  await page.keyboard.press('ArrowUp');
+  expect(await page.evaluate(() => !!document.activeElement.closest('.mv-cell')), 'pas dans une tuile').toBe(false);
+
+  // ⋮ de la barre : le menu de la vidéo choisie, qui dit son nom.
+  await page.evaluate(() => window.resetMvIdleTimer());
+  await page.locator('#mv-bar-video-menu').click();
+  await expect(page.locator('.mv-menu .mv-menu-entete')).toHaveText('Match C');
+  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Ouvrir sur le site' })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+
+  // ⚙ Réglages, sans le doublon de Disposition (la fenêtre étirée y est « Deux écrans »).
+  await page.locator('#mv-more-btn').click();
+  await expect(page.locator('.mv-menu .mv-menu-entete')).toHaveText('Réglages du lecteur');
+  expect(await page.locator('.mv-menu .mv-menu-item', { hasText: 'fenêtre étirée' }).count()).toBe(0);
+  await page.keyboard.press('Escape');
+  await page.locator('#mv-layout-toggle-btn').click();
+  await expect(page.locator('.mv-menu .mv-menu-item', { hasText: 'Deux écrans' })).toHaveCount(1);
+  await page.keyboard.press('Escape');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
@@ -2612,11 +2711,17 @@ test('▶ direct ne s\'affiche que pour un flux qui répond d\'ici', async ({ pa
     window.addToMultivision(t.mort, 'Match mort', 'mMort');
   }, [tuiles, autreOrigine]);
   await expect(page.locator('.mv-cell')).toHaveCount(2);
-  const bouton = (i) => page.locator('.mv-cell').nth(i).locator('.mv-direct-btn');
-  await expect(bouton(0), 'le flux qui répond : ▶ direct').toBeVisible({ timeout: 10000 });
-  await expect(bouton(1), 'le flux mort : pas de bouton').toBeHidden();
+  /* ▶ Direct est dans la barre, pour la vidéo choisie ; les deux sondes partent dès la
+     pose des tuiles. */
+  const bouton = page.locator('#mv-bar-direct');
+  await page.evaluate(() => window.focusStream(0));
+  await expect(bouton, 'le flux qui répond : ▶ Direct').toBeVisible({ timeout: 10000 });
+  await page.evaluate(() => window.focusStream(1));
+  await expect(bouton, 'le flux mort : pas de bouton').toBeHidden();
   await page.waitForTimeout(500);
-  await expect(bouton(1), 'même après la sonde').toBeHidden();
+  await expect(bouton, 'même après la sonde').toBeHidden();
+  await page.evaluate(() => window.focusStream(0));
+  await expect(bouton, 'et il revient avec la vidéo qui répond').toBeVisible();
   await page.evaluate(() => window.applyFilter('logs'));
   await expect(page.locator('#sources-status-container')).toContainText('1 sur 2 répondent · refusés : 1 × HTTP 404');
   expect(pageErrors).toEqual([]);

@@ -7,6 +7,18 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-25 - **« Je parlais de plus refondre les menus, surtout dans le multivew, pour qqchose de moderne et moins all over the place. Aussi, dans multiview, un coup de la manette bouge de deux boutons, s'pas super. »**
+
+  - **Cause du double pas.** Deux écouteurs déplaçaient le focus pour la même touche : le menu du lecteur (`js/mv-menu.js`, ↑↓ sur le document) passait à l'entrée suivante, puis `js/tv-navigation.js` (sur la fenêtre) repartait de celle-là. Même famille : OK sur un titre de section le repliait, puis le cliquait, ce qui le rouvrait ; en mode câble, une flèche zappait ET déplaçait le focus. Et une seconde copie du script (mode TV, puis la télé Android) s'ajoutait à la première.
+  - **Fait.**
+    - `js/tv-navigation.js` : une touche déjà traitée (`defaultPrevented`) n'est pas retraitée ; une seconde copie remplace la première ; `tabindex="-1"` n'est pas atteint.
+    - Une seule barre au bas du lecteur, trois groupes : les vidéos (une pastille chacune, la choisie en blanc avec sa source ; dès trois, numéro seul), la vidéo choisie (⏮ ⏭, ▶ Direct quand il répond, ↗ Site, ⋮ son menu), le lecteur (+ Ajouter, Disposition, Plein écran, ⚙ Réglages, ex-« ⋯ Plus »). Boutons en pilule de même hauteur ; à la télécommande, contour blanc et léger grossissement.
+    - En-tête de tuile : numéro, nom, source, ⋮ et ✕ (⇄ sur deux écrans, 📺 en mode câble), hors de la navigation à la télécommande ; à la souris, ⋮ et ✕ au survol. ⏭, ▶ direct, cadrage et Site partent dans la barre et le menu ⋮. Défait la décision du 6 septembre (« ↗ Site » sur chaque tuile) : le bouton est dans la barre, pour la vidéo choisie.
+    - Menus : leur titre en tête aussi hors téléphone ; la fenêtre étirée n'est plus que dans Disposition (« Deux écrans ») ; le toast passe au-dessus de la barre. Sur téléphone : deux rangées (pastilles, puis six boutons).
+    - `CACHE_NAME` et `VERSION_APP` à v69 (l'APK livré portait v68).
+  - **Tests** : `test_app_boot` « à la télécommande, une touche fait un pas… » (menu ↑↓ et titre de section, script chargé deux fois ; échouait avant), « le lecteur n'a qu'une barre… » (tuiles allégées, boutons hors navigation, pastilles, ◀ et OK, ▲ hors des tuiles, menu de la vidéo depuis la barre, Réglages sans doublon) ; tests du menu, du mode direct, de « ▶ direct ne s'affiche que… », de la garde et du lecteur Netflix adaptés à la barre.
+  - **Fichiers** : `js/multiview.js`, `js/mv-menu.js`, `js/tv-navigation.js`, `styles.css`, `tv.css`, `sw.js`, `tests/test_app_boot.spec.js`, `docs/ARCHITECTURE.md`, `FEATURES.md`, `README.md`, `docs/WORKLOG.md`.
+  - **Ce qui reste.** Pas essayé sur le Chromecast. La barre du téléphone s'efface au repos depuis le 25 octobre (question posée à l'utilisateur, sans réponse). Étapes 3 (navigation selon l'écran) et 4 (boîte à outils commune) toujours à faire.
 - 2026-10-25 - **« Go 1-2 »** : une interface moderne, sans tout refaire (« l'idée est vraiment d'avoir une interface qui fitte les standards de UI et UX modernes, sur toutes les plateformes ») ; 1. le lecteur, 2. la fiche d'un match.
 
   - **Fait.**

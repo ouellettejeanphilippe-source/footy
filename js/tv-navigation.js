@@ -18,9 +18,17 @@
  * Et, comme sur Netflix (« améliorer la navigation style Netflix, sans tout refaire ») :
  * le focus de départ est le premier match, pas un onglet ; la carte qui a le focus
  * grossit (tv.css) ; Retour mène à la barre de navigation (actionRetour, js/tele.js).
+ *
+ * « Dans multiview, un coup de la manette bouge de deux boutons » (même jour) : une
+ * touche qu'un composant a déjà traitée (preventDefault) n'est pas traitée une seconde
+ * fois ici. Le menu du lecteur (js/mv-menu.js) passait à l'entrée suivante, puis ce
+ * script repartait de celle-là ; OK sur un titre de section le repliait, puis le
+ * cliquait, ce qui le rouvrait. Et une seconde copie de ce script (mode TV, puis la
+ * télé Android) remplace la première au lieu de s'y ajouter.
  */
 
 (function() {
+    if (typeof window.__tvNavigationCleanup === 'function') window.__tvNavigationCleanup();
     console.log("TV Navigation Mode initialisé");
 
     const SELECTEURS = [
@@ -69,9 +77,11 @@
         return null;
     }
 
+    /* tabindex="-1" : pour la souris et le doigt seulement (les boutons d'une tuile du
+       lecteur, dont la barre porte les mêmes gestes). */
     function focusables(racine) {
         return Array.from((racine || document).querySelectorAll('[tabindex="0"], button, a[href], input, select, summary'))
-            .filter(el => !el.disabled && estVisible(el));
+            .filter(el => !el.disabled && el.getAttribute('tabindex') !== '-1' && estVisible(el));
     }
 
     /* Le point de départ : l'élément qui le demande (data-focus-depart : « ▶ Regarder »
@@ -208,6 +218,7 @@
 
     // Fonction écouteur clavier
     function handleKeyDown(e) {
+        if (e.defaultPrevented) return;
         const actif = document.activeElement;
         // Ignorer si on tape dans un champ de texte
         if (actif && actif.tagName === 'INPUT' && (actif.type === 'text' || actif.type === 'search')) {

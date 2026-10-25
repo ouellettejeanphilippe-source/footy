@@ -51,6 +51,28 @@ body.manette [data-mid]:focus {
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Le lecteur et ses menus : le focus façon Netflix, contour blanc et léger
+   grossissement, au lieu du vert (illisible sur la pastille blanche de la vidéo choisie). */
+body.tv-mode #mv-toolbar button:focus,
+body.manette #mv-toolbar button:focus {
+    outline: 3px solid #fff !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.16);
+    background-color: rgba(255, 255, 255, 0.26);
+    transform: scale(1.07);
+}
+body.tv-mode #mv-toolbar .mv-chip.actif:focus,
+body.manette #mv-toolbar .mv-chip.actif:focus { background-color: #fff; }
+body.tv-mode #mv-toolbar .mv-tb-btn.primary:focus,
+body.manette #mv-toolbar .mv-tb-btn.primary:focus { background-color: var(--accent); }
+body.tv-mode .mv-menu-item:focus,
+body.manette .mv-menu-item:focus {
+    outline: 3px solid #fff !important;
+    outline-offset: -3px;
+    box-shadow: none;
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
 /* Ensure modal contents behave appropriately */
 body.tv-mode .modal-content {
     max-width: 90%;
