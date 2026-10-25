@@ -75,10 +75,13 @@ async function main() {
   assert.ok(cellules()[2].querySelector('.mv-chargement'), 'les autres le gardent');
   ok('les tuiles partent l\'une après l\'autre et disent qu\'elles chargent');
 
-  // ── 3. Le nom du match sur chaque tuile ────────────────────────────────────
-  assert.deepStrictEqual(cellules().map((c) => c.querySelector('.mv-tile-name').textContent), ['Match A', 'Match B', 'Match C']);
-  assert.ok(cellules()[0].querySelector('.mv-tile-id .mv-source-pill'), 'la source reste dessous');
-  ok('chaque tuile porte le nom de son match');
+  // ── 3. Le haut d'une tuile : son numéro seulement ───────────────────────────
+  /* « Pas de doublon de menu dans le haut du multiview ; même chose pour le titre »
+     (25 octobre 2026) : le nom, la source et ⋮ sont dans la barre, sur la pastille. */
+  assert.deepStrictEqual(cellules().map((c) => c.querySelector('.mv-stream-number').textContent), ['1', '2', '3']);
+  assert.ok(cellules().every((c) => !c.querySelector('.mv-tile-name, .mv-source-pill, .mv-tile-menu-btn')), 'ni nom, ni source, ni ⋮');
+  assert.deepStrictEqual(Array.from(barre.querySelectorAll('.mv-chip-nom')).map((n) => n.textContent), ['Match A', 'Match B', 'Match C'], 'les noms sont dans la barre');
+  ok('le haut d\'une tuile ne porte que son numéro ; les noms sont dans la barre');
 
   // ── 4. Le repos ne cache pas la barre sous un menu ouvert ──────────────────
   /* On capture le minuteur du repos au lieu d'attendre trois secondes. */

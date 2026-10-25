@@ -211,7 +211,7 @@ export function vueCourante() { return S.filter === 'all' ? 'guide' : 'live'; }
 export function dispositionChoisie(vue) {
   var p = userPrefs || {};
   var v = vue || vueCourante();
-  return dispositionValide(v === 'guide' ? (p.dispositionGuide || p.disposition) : (p.dispositionLive || p.disposition));
+  return dispositionValide(v === 'guide' ? (p.dispositionGuide || p.disposition || DISPOSITION_GUIDE_DEFAUT) : (p.dispositionLive || p.disposition));
 }
 
 /* Minutes écoulées depuis le minuit du jour affiché (négatif si le jour affiché est
@@ -1623,11 +1623,10 @@ export function renderFluxItem(s, i, m, ledger) {
     /* Le clic envoie toujours vers le Multivision, intégrable ou non : ouvrir
        automatiquement un nouvel onglet pour les liens « page » ne faisait pas mieux
        sur certains navigateurs mobiles (onglet vide). Le badge « onglet » ci-dessous
-       prévient que ce lien précis risque de refuser l'affichage intégré, et le
-       bouton dédié ↗ (à droite de la ligne) reste le moyen explicite de l'ouvrir
-       hors de l'application. Le classement lui-même vient du moteur d'extraction
+       prévient que ce lien précis risque de refuser l'affichage intégré. « Pas de liens
+       vers le vrai site, jamais » (25 octobre 2026) : le bouton ↗ qui l'ouvrait hors
+       de l'application est parti. Le classement lui-même vient du moteur d'extraction
        (js/extractors.js) et du registre appris, pas d'une supposition de l'interface. */
-    var openExtEv = "window.open('"+escJs(s.url||'#')+"','_blank','noopener');event.stopPropagation();event.preventDefault();";
 
     var addMvEv = "";
     if (window.multiviewPendingAction && window.multiviewPendingAction.type === 'replace') {
@@ -1661,7 +1660,7 @@ export function renderFluxItem(s, i, m, ledger) {
       +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
       +'<div class="si-inf">'
         +'<div class="si-n"><span>'+esc(s.name||'Flux '+(i+1))+'</span>'
-        +(s.topLevel?'<span class="si-tab" title="Cette page refuse l\'affichage intégré : le clic l\'ouvre dans un onglet">onglet</span>':'')
+        +(s.topLevel?'<span class="si-tab" title="Cette page refuse souvent l\'affichage intégré">onglet</span>':'')
         + badgeJouabilite(s, ledger)+'</div>'
         + meta
       +'</div>'
@@ -1672,7 +1671,6 @@ export function renderFluxItem(s, i, m, ledger) {
         +'<button type="button" class="si-btn'+(pref===1?' on-fav':'')+'" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" aria-pressed="'+(pref===1)+'" onclick="'+favEv+'">⭐</button>'
         +'<button type="button" class="si-btn'+(pref===-1?' on-dep':'')+'" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" aria-pressed="'+(pref===-1)+'" onclick="'+depEv+'">👎</button>'
         +'<button type="button" class="si-btn si-add" title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'">⊞</button>'
-        +'<button type="button" class="si-btn si-ext'+(s.topLevel?' hint':'')+'" title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet" onclick="'+openExtEv+'">↗</button>'
       +'</div>'
       +'</div>';
 }
@@ -2285,11 +2283,7 @@ export function openMod(m,col){
 
       var contentHtml = rightHeaderHtml;
       if (sortedLinks.length === 0) {
-          contentHtml += '<div class="flux-empty"><div>Aucun flux trouvé pour l\'instant.</div>';
-          if (m.matchUrl) {
-              contentHtml += '<a href="'+esc(m.matchUrl)+'" target="_blank" rel="noopener" class="btn sm o">Ouvrir la page du match ↗</a>';
-          }
-          contentHtml += '</div>';
+          contentHtml += '<div class="flux-empty"><div>Aucun flux trouvé pour l\'instant.</div></div>';
       } else {
           contentHtml += renderDomainChips(m);
           // Le registre, lu une seule fois pour toute la liste (voir renderFluxItem).
@@ -2401,7 +2395,7 @@ export function openMod(m,col){
               statHtml = ' <span style="font-size: 10px; margin-left: 4px; color: '+statColor+';" title="Flux extraits pour ce match">('+feedCount+' flux)</span>';
           }
 
-          contentHtml += '<a href="'+site.url+'" target="_blank" rel="noopener" class="mtag">'+site.name+' 🔗' + statHtml + '</a>';
+          contentHtml += '<span class="mtag">'+esc(site.name) + statHtml + '</span>';
       });
       contentHtml += '</div>';
 
@@ -2483,6 +2477,28 @@ export var userPrefs = {
 
 var storedPrefs = safeStorageGetJSON('user_prefs');
 if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
+
+/* « Guide par défaut : Chaînes » (25 octobre 2026). Une seule fois (`guide_chaines`), le
+   Guide resté sur « Actuelle », ou jamais choisi, passe à « Chaînes » ; ensuite, c'est
+   un réglage comme un autre. Appelée au démarrage (js/main.js), pas au chargement de ce
+   module : le cycle d'imports peut l'évaluer avant que js/utils.js ait fini le sien, et
+   l'écriture dans un stockage plein plantait alors. */
+export var DISPOSITION_GUIDE_DEFAUT = 'chaines';
+export function migrerGuideChaines() {
+  if (safeStorageGetJSON('guide_chaines')) return false;
+  var guideAvant = userPrefs.dispositionGuide || userPrefs.disposition;
+  var change = !guideAvant || guideAvant === 'actuelle';
+  if (change) {
+    if (userPrefs.disposition && !userPrefs.dispositionLive) userPrefs.dispositionLive = userPrefs.disposition;
+    delete userPrefs.disposition;
+    userPrefs.dispositionGuide = DISPOSITION_GUIDE_DEFAUT;
+    if (safeStorageGetJSON('user_prefs')) safeStorageSetJSON('user_prefs', userPrefs);
+    var sel = typeof document !== 'undefined' && document.getElementById('pref-disposition-guide');
+    if (sel) sel.value = DISPOSITION_GUIDE_DEFAUT;
+  }
+  safeStorageSetJSON('guide_chaines', 1);
+  return change;
+}
 
 
 

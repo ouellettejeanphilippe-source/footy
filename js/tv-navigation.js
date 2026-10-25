@@ -77,11 +77,25 @@
         return null;
     }
 
+    /* « La manette devrait ignorer certains éléments ; juste la carte doit être
+       cliquable, pas le chiffre » (25 octobre 2026). À la télécommande, une carte de
+       match est un seul arrêt : ni son compteur de liens (« ▶ 105 », qui porte lui aussi
+       data-mid), ni les ★ de ses équipes. Dans la fiche, un flux est un seul arrêt (OK le
+       lance) : ses petits boutons ⭐ 👎 ⊞ et les ★ du bandeau sont pour la souris. */
+    const CARTE = '.match-card, .mb, [data-mid]';
+    const IGNORES = '.si-btn, .fb-fav';
+    const CARTES = '#marea .match-card, #marea .mb, #marea [data-mid]';
+    function ignore(el) {
+        if (el.matches(IGNORES)) return true;
+        const parent = el.parentElement;
+        return !!(parent && parent.closest(CARTE));
+    }
+
     /* tabindex="-1" : pour la souris et le doigt seulement (les boutons d'une tuile du
        lecteur, dont la barre porte les mêmes gestes). */
     function focusables(racine) {
         return Array.from((racine || document).querySelectorAll('[tabindex="0"], button, a[href], input, select, summary'))
-            .filter(el => !el.disabled && el.getAttribute('tabindex') !== '-1' && estVisible(el));
+            .filter(el => !el.disabled && el.getAttribute('tabindex') !== '-1' && !ignore(el) && estVisible(el));
     }
 
     /* Le point de départ : l'élément qui le demande (data-focus-depart : « ▶ Regarder »
@@ -190,10 +204,36 @@
             return;
         }
         if (focusAvantZone) {
-            const avant = focusAvantZone;
+            const avant = retrouver(focusAvantZone);
             focusAvantZone = null;
             if ((!actif || actif === document.body || !estVisible(actif)) && estVisible(avant)) avant.focus();
         }
+    }
+
+    /* « Quand modal, back ramène à l'entrée » (25 octobre 2026) : la grille se redessine
+       pendant que la fiche est ouverte (scores, liens), et la carte d'où l'on venait n'est
+       plus dans la page à la fermeture. Le focus restait sur le bouton caché de la fiche,
+       et la flèche suivante repartait de la barre du haut. On retrouve la carte qui l'a
+       remplacée, par son identifiant ou son match. */
+    function retrouver(el) {
+        if (!el || el.isConnected) return el;
+        if (el.id) {
+            const meme = document.getElementById(el.id);
+            if (meme) return meme;
+        }
+        const mid = el.getAttribute && el.getAttribute('data-mid');
+        if (mid) {
+            const meme = Array.from(document.querySelectorAll('[data-mid]')).find(x => x.getAttribute('data-mid') === mid && estVisible(x));
+            if (meme) return meme;
+        }
+        return depart();
+    }
+
+    /* Hors d'une fenêtre, sans focus utilisable : le premier match affiché (comme au
+       démarrage), sinon le bouton de la vue. */
+    function depart() {
+        const carte = Array.from(document.querySelectorAll(CARTES)).find(estVisible);
+        return carte || premier(document);
     }
 
     let verificationPrevue = false;
@@ -246,7 +286,7 @@
         const racine = zone || document;
 
         if (!actif || actif === document.body || !estVisible(actif) || (zone && !zone.contains(actif))) {
-            focaliser(premier(racine));
+            focaliser(zone ? premier(zone) : depart());
             return;
         }
         if (actif.tagName === 'SELECT' && (direction === 'LEFT' || direction === 'RIGHT')) {
@@ -260,7 +300,6 @@
 
     /* Le focus de départ : le premier match affiché, dès que la grille est là (elle arrive
        après les données) ; à défaut, le bouton de la vue. Seulement si rien n'a le focus. */
-    const CARTES = '#marea .match-card, #marea .mb, #marea [data-mid]';
     let essaisDepart = 0;
     function focusDeDepart() {
         const actif = document.activeElement;

@@ -108,12 +108,14 @@ test('Le texte venu des sources est échappé', () => {
   assert.doesNotMatch(html, /<img onerror/);
 });
 
-test('Options propose les cinq dispositions pour le Live et pour le Guide, « Actuelle » sélectionnée, et le module est précaché', () => {
+test('Options propose les cinq dispositions pour le Live et pour le Guide, « Actuelle » au Live, « Chaînes » au Guide, et le module est précaché', () => {
   const index = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   for (const id of ['pref-disposition-live', 'pref-disposition-guide']) {
     const bloc = index.slice(index.indexOf('id="' + id + '"'), index.indexOf('</select>', index.indexOf('id="' + id + '"')));
     assert.deepStrictEqual([...bloc.matchAll(/value="([a-z]+)"/g)].map(m => m[1]), ['actuelle', 'tableau', 'maintenant', 'affiches', 'chaines'], id);
-    assert.match(bloc, /value="actuelle" selected/, id);
+    // « Guide par défaut : Chaînes » (25 octobre 2026).
+    assert.match(bloc, id === 'pref-disposition-guide' ? /value="chaines" selected/ : /value="actuelle" selected/, id);
+    assert.strictEqual((bloc.match(/ selected/g) || []).length, 1, id);
   }
   assert.match(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'), /'\.\/js\/dispositions\.js'/);
 });
@@ -124,4 +126,21 @@ test('Chaînes : un bloc court a de quoi afficher les abréviations ; l\'étoile
   assert.match(html, /<span class="dsp-long">Montreal Canadiens – Buffalo Sabres<\/span>/);
   const t = D.rendreDisposition('tableau', 'guide', jeu(), { maintenant: MAINTENANT });
   assert.match(t, /<span>Montreal Canadiens – Buffalo Sabres<\/span><span class="dsp-fav"/, 'l\'étoile est hors de la zone tronquée');
+});
+
+test('Guide Chaînes : des pastilles de ligue en tête, qui filtrent la grille (« toggles en haut par ligue »)', () => {
+  const fiches = jeu().concat([fiche('foot', 'bientot', 21 * 60 + 15, { ligue: 'LA LIGA', dom: 'Barcelona', ext: 'Real Madrid' })]);
+  const tout = D.rendreDisposition('chaines', 'guide', fiches, { maintenant: MAINTENANT });
+  assert.match(tout, /^<div class="dsp [^"]*"><div class="dsp-filtres">/, 'en tête du Guide');
+  assert.match(tout, /data-dsp="ligue" data-v="toutes" aria-pressed="true">Toutes · 6</);
+  assert.match(tout, /data-dsp="ligue" data-v="NHL" aria-pressed="false">NHL · 5</);
+  assert.match(tout, /data-dsp="ligue" data-v="LA LIGA" aria-pressed="false">LA LIGA · 1</);
+  assert.match(tout, /Barcelona/);
+  D.etatDisposition.ligue = 'LA LIGA';
+  try {
+    const liga = D.rendreDisposition('chaines', 'guide', fiches, { maintenant: MAINTENANT });
+    assert.match(liga, /data-v="LA LIGA" aria-pressed="true"/);
+    assert.ok(!/<div class="dsp-lgh">NHL</.test(liga), 'les autres ligues sortent de la grille');
+    assert.match(liga, /<div class="dsp-lgh">LA LIGA</);
+  } finally { D.etatDisposition.ligue = 'toutes'; }
 });
