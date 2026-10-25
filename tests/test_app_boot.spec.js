@@ -1463,9 +1463,15 @@ test('cache serveur injoignable au démarrage : deux essais, badge ⚠ plutôt q
 test('un cache serveur momentanément injoignable ne vide pas la liste, et le retour au premier plan la relit', async ({ browser }) => {
   const { ctx, page, etat, pageErrors } = await bootAvecCacheCassable(browser, false);
   await attendreGrille(page);
-  const avant = await page.evaluate(() => ({ n: window.prefetchedStreamMatches.length, compteurs: document.querySelectorAll('div.card-streams').length }));
+  /* Les matchs dont la carte porte un compteur, par identifiant : onze minutes plus tard,
+     d'autres matchs entrent dans la fenêtre et ont le leur, selon le calendrier du jour.
+     Ce qui compte, c'est qu'aucun compteur ne disparaisse. */
+  await page.evaluate(() => {
+    window.__compteurs = () => [...new Set([...document.querySelectorAll('div.card-streams')].map((e) => e.dataset.mid))];
+  });
+  const avant = await page.evaluate(() => ({ n: window.prefetchedStreamMatches.length, compteurs: window.__compteurs() }));
   expect(avant.n).toBeGreaterThan(0);
-  expect(avant.compteurs).toBeGreaterThan(0);
+  expect(avant.compteurs.length).toBeGreaterThan(0);
 
   // Le serveur tombe ; le cache a plus de dix minutes ; une passe d'arrière-plan le relit.
   etat.casser = true;
@@ -1474,7 +1480,7 @@ test('un cache serveur momentanément injoignable ne vide pas la liste, et le re
   await expect.poll(() => page.evaluate(() => window.prefetchedStreamsError), { timeout: 15000 }).toBeTruthy();
   const pendant = await page.evaluate(() => ({
     n: window.prefetchedStreamMatches.length,
-    compteurs: document.querySelectorAll('div.card-streams').length,
+    compteurs: window.__compteurs(),
     grille: window.S.matches.length,
     /* Le rafraîchissement des scores, dont toutes les requêtes ESPN sont refusées ici,
        écrivait un calendrier VIDE : la passe suivante effaçait la grille. */
@@ -1483,7 +1489,7 @@ test('un cache serveur momentanément injoignable ne vide pas la liste, et le re
   expect(pendant.n, 'la liste précédente est conservée').toBe(avant.n);
   expect(pendant.grille, 'la grille n\'est pas vidée').toBeGreaterThan(0);
   expect(pendant.calendrier, 'le calendrier local du jour n\'est pas écrasé par une liste vide').toBeGreaterThan(0);
-  expect(pendant.compteurs, 'les compteurs des cartes restent').toBe(avant.compteurs);
+  expect(pendant.compteurs, 'les compteurs des cartes restent').toEqual(expect.arrayContaining(avant.compteurs));
 
   // Le serveur revient ; la page redevient visible : relecture sans attendre la minuterie.
   etat.casser = false;

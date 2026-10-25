@@ -7,6 +7,12 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-25 - **« go »** (corriger dans la PR #622 le test qui tombait aussi sans elle).
+
+  - **Cause.** « un cache serveur momentanément injoignable ne vide pas la liste… » (`tests/test_app_boot.spec.js`) comptait les cartes à compteur de liens, avançait l'horloge de onze minutes et exigeait le même NOMBRE. Avec le calendrier du 25 octobre, deux matchs de plus entrent dans la fenêtre pendant ces onze minutes et prennent leur compteur (29 → 31 le matin, 35 → 37 l'après-midi) : le test dépendait des données du jour, ce qu'interdit AGENTS.md. Reproduit sur le code de `main`.
+  - **Fait.** Le test compare les identifiants (`data-mid`) : chaque carte qui avait un compteur le garde. L'intention est la même (un cache injoignable ne fait disparaître aucun compteur) ; un match qui entre dans la fenêtre n'est plus une erreur.
+  - **Tests** : le test seul cinq fois de suite ; les quatre suites Playwright : 84 passés, 1 ignoré (comme avant).
+  - **Fichiers** : `tests/test_app_boot.spec.js`, `docs/WORKLOG.md`.
 - 2026-10-25 - **« I want the apk to have the same functionnality as the site, but with control with the manette, controller could work on pc and adnroid too actyally »** (après « et si on installait Vivaldi par adb avec les bonnes extensions ? Ou Firefox, whatever »).
 
   - **Constaté.** L'APK (`mobile/`) avait déjà, sans extension, ce que le site doit à uBlock Origin et à Tampermonkey : les mêmes ≈ 99 000 hôtes bloqués, le script posé dans chaque cadre avant la page, le verrou de navigation, le pont, et le mode direct par le lecteur natif (mieux que hls.js : les `Referer` essayés un à un). Il lui manquait les **pages qui refusent l'iframe** : la WebView applique `X-Frame-Options` et `frame-ancestors`, que l'extension retire sur Chrome. Aucune manette nulle part : seule la télécommande (flèches, OK, Retour). Vivaldi 8.2 prend des extensions sur Android depuis septembre 2026, mais du Chrome Web Store seulement (pas l'extension maison ; Tampermonkey et « Autoriser les scripts utilisateur » non confirmés), et l'utilisateur l'avait trouvé « hyper lent » sur le Chromecast le 10 octobre ; Firefox Android porte uBlock Origin et Tampermonkey mais n'est pas fait pour la télécommande. Gardé : l'APK, et la manette dans l'application elle-même, donc dans n'importe quel navigateur.
