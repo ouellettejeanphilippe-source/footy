@@ -1040,30 +1040,19 @@ test('la page Live n\'a qu\'un fond : aucune section n\'en repeint une copie', a
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
-test('le bouton Actualiser est devant la grille, pas sur les pages, et dit qu\'il travaille', async ({ page }) => {
+/* « Look, mettre à jour et actualiser… dans le Plus » (25 octobre 2026) : plus de boutons
+   flottants posés sur la grille ; les trois sont dans le menu Plus, sur toutes les vues. */
+test('Actualiser est dans le menu Plus, et dit qu\'il travaille', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
-  /* `offsetParent` est TOUJOURS nul pour un élément en position fixe : c'est le style
-     calculé qui dit s'il est affiché, pas lui. */
-  const surGrille = await page.evaluate(() => {
-    const b = document.getElementById('btn-actualiser');
-    const r = b.getBoundingClientRect();
-    const nav = document.getElementById('nav-links').getBoundingClientRect();
-    return { affiche: getComputedStyle(b).display !== 'none', bas: r.bottom, navHaut: nav.top, droite: r.right, largeur: window.innerWidth };
-  });
-  expect(surGrille.affiche, 'le bouton est offert devant la grille').toBeTruthy();
-  expect(surGrille.bas, 'et posé AU-DESSUS de la barre d\'onglets, pas dessous').toBeLessThanOrEqual(surGrille.navHaut);
-  expect(surGrille.droite, 'sans déborder de l\'écran').toBeLessThanOrEqual(surGrille.largeur);
-
-  await page.evaluate(() => window.applyFilter('logs'));
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('btn-actualiser')).display),
-    'rien à rafraîchir sur la page Logs').toBe('none');
-
-  await page.evaluate(() => window.applyFilter('live'));
-  await page.waitForTimeout(300);
+  expect(await page.locator('#fab-groupe, .fab-actualiser').count(), 'plus de boutons flottants').toBe(0);
+  await page.locator('#menu-btn').click();
+  await expect(page.locator('#main-menu #btn-actualiser')).toBeVisible();
+  await expect(page.locator('#main-menu #btn-look')).toBeVisible();
+  await expect(page.locator('#main-menu #btn-maj-app')).toBeVisible();
+  await page.locator('#menu-btn').click();
 
   /* L'état « je travaille » est posé AVANT le premier aller-retour : on le lit dans la
      même évaluation que le clic, donc sans course. */
@@ -1281,15 +1270,12 @@ test('rien ne sort de son cadre, et les cartes des dispositions sont les cartes 
 
 /* « Séparer guide et live pour pouvoir mix and match » et « ajouter bouton pour changer
    look, proche de actualiser, ainsi que le mettre à jour l'app » (13 octobre 2026). */
-test('Live et Guide ont chacun leur disposition, et le bouton Look les change à côté d\'Actualiser', async ({ page }) => {
+test('Live et Guide ont chacun leur disposition, et Look (menu Plus) les change', async ({ page }) => {
   const pageErrors = await bootOffline(page);
-  const groupe = await page.evaluate(() => ['btn-look', 'btn-maj-fab', 'btn-actualiser'].map((id) => {
-    const b = document.getElementById(id);
-    return b && getComputedStyle(b).display !== 'none' && b.closest('#fab-groupe') !== null;
-  }));
-  expect(groupe, 'Look, Mettre à jour et Actualiser côte à côte').toEqual([true, true, true]);
-
-  await page.locator('#btn-look').click();
+  // Look est dans le menu Plus depuis le 25 octobre 2026 ; ouvrir Look ferme Plus.
+  await page.locator('#menu-btn').click();
+  await page.locator('#main-menu #btn-look').click();
+  await expect(page.locator('#main-menu')).not.toHaveClass(/open/);
   await expect(page.locator('#menu-look')).toBeVisible();
   await page.locator('#menu-look [data-look-vue="live"][data-look-nom="tableau"]').click();
   await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
@@ -1308,11 +1294,8 @@ test('Live et Guide ont chacun leur disposition, et le bouton Look les change à
 
   const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'));
   expect([prefs.dispositionLive, prefs.dispositionGuide, prefs.cardColor]).toEqual(['tableau', 'chaines', 'home']);
-  // Pas de doublons : ni Options ni le menu Plus ne répètent Look et Mettre à jour.
-  expect(await page.locator('#pref-card-color, #pref-disposition-live, #pref-disposition-guide, #btn-maj-app').count()).toBe(0);
-
-  await page.evaluate(() => applyFilter('logs'));
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('fab-groupe')).display), 'pas de boutons flottants sur Logs').toBe('none');
+  // Pas de doublons : Options ne répète pas Look.
+  expect(await page.locator('#pref-card-color, #pref-disposition-live, #pref-disposition-guide').count()).toBe(0);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 

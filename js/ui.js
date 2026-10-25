@@ -265,7 +265,7 @@ export function ficheMatch(m, now, jourGrille, maintenant) {
   };
 }
 
-/* Icônes des dispositions, dans le menu Look du groupe flottant (basculerMenuLook). La
+/* Icônes des dispositions, dans le menu Look (Plus → Look, basculerMenuLook). La
    rangée de pastilles en tête de page est retirée : « enlever choix de look en haut car
    maintenant en bas » (13 octobre 2026). */
 var ICONES_DISPOSITION = {
@@ -327,7 +327,7 @@ export function choisirCouleurs(v) {
   majMenuLook();
 }
 
-/* Menu « Look » du groupe flottant (à côté d'Actualiser) : disposition du Live, du Guide,
+/* Menu « Look » (Plus → Look) : disposition du Live, du Guide,
    et couleurs. Se ferme par Échap ou un clic ailleurs. */
 function menuLookHtml() {
   var ligne = function(vue, titre) {

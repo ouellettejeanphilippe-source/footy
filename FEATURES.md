@@ -13,11 +13,11 @@ L'en-tête ne porte que quatre boutons. Sur téléphone (largeur ≤ 768 px), il
 | **Live** | Les matchs en cours et ceux qui commencent dans l'heure, en cartes. |
 | **Guide** | Le programme sur une grille horaire de **48 h** : aujourd'hui et demain, d'une seule traite. |
 | **Lecteur** | Le Multivision : jusqu'à quatre vidéos côte à côte. Le bouton se marque quand des vidéos sont chargées et qu'on est ailleurs. |
-| **Plus** | Un menu : `⭐ Favoris`, `⚙️ Options`, `📋 Logs`, `🧩 Script` (Mettre à jour l'app est à côté d'Actualiser). Se ferme d'un clic à l'extérieur ou par Échap. |
+| **Plus** | Un menu : `⭐ Favoris`, `⚙️ Options`, `📋 Logs`, `🧩 Script`, puis `🎨 Look`, `↻ Actualiser`, `⬇ Mettre à jour l'app` (des boutons flottants sur la grille jusqu'au 25 octobre 2026 : « Look, mettre à jour et actualiser… dans le Plus »). Se ferme d'un clic à l'extérieur ou par Échap. |
 
 Autres éléments toujours présents :
 
-- **`↻ Actualiser`**, bouton flottant devant la grille : relit les liens du serveur, puis les scores ESPN, puis refait la fusion. L'icône tourne pendant l'opération, et un message dit combien de matchs ont des liens. Masqué sur les pages annexes ; réduit à l'icône sous 900 px.
+- **`Plus → ↻ Actualiser`** : relit les liens du serveur, puis les scores ESPN, puis refait la fusion. L'icône tourne pendant l'opération, et un message dit combien de matchs ont des liens.
 - **Écran de chargement** au premier démarrage : « Connexion API… », puis trois étapes cochées (Téléchargement Guide télé, Recherche de streams, Fusion et Affichage). En cas d'échec, une boîte 📡 avec le message, le code replié et `↺ Réessayer`.
 - **Bandeau de l'état des liens**, juste au-dessus de la grille. Les liens sont republiés toutes les 30 min ; quand ça s'arrête, l'application le dit au lieu de servir des liens d'avant-hier sans un mot (ce qu'elle a fait pendant 45 h les 10-12 septembre 2026) :
   - moins de 45 min : rien du tout (la gigue du cron ne se raconte pas) ;
@@ -78,11 +78,11 @@ Une grille horaire de **48 heures** — de 00:00 aujourd'hui à 00:00 après-dem
 - **Un match de demain** porte `demain · ` devant son heure, sur la case comme sur la carte. Les liens de demain sont là aussi : le cache du serveur couvre les deux journées.
 - **Ligues secondaires (n)** : leur propre grille, sous un titre repliable. **Autres streams (n)** : en cartes, repliée.
 
-## 3 bis. Dispositions (bouton Look, ou Options)
+## 3 bis. Dispositions (Plus → Look)
 
 « Actuelle » est l'interface décrite aux sections 2 et 3, et reste le réglage par défaut du Live ; le Guide s'ouvre sur **Chaînes** (25 octobre 2026, « Guide par défaut : Chaînes » ; un Guide resté sur « Actuelle » y passe une fois, ensuite c'est un réglage comme un autre). **Le Live et le Guide ont chacun leur disposition** : on peut mélanger, par exemple Tableau pour le Live et Chaînes pour le Guide. On change :
 
-- **par le bouton Look**, dans le groupe flottant en bas à droite (Look, Mettre à jour, Actualiser) : un menu avec la disposition du Live, celle du Guide, et la couleur des cartes (Uni, Dégradé, Dégradé de côté, Deux couleurs, Ligue, Neutre). Échap ou un clic ailleurs le ferme. C'est le seul endroit pour ces réglages, et ce **Mettre à jour** est le seul hors de Logs (25 octobre 2026, « tous les doublons » : Options et le menu Plus les répétaient).
+- **par Plus → 🎨 Look** : un menu, sous l'en-tête à droite (au-dessus de la barre du bas sur téléphone), avec la disposition du Live, celle du Guide, et la couleur des cartes (Uni, Dégradé, Dégradé de côté, Deux couleurs, Ligue, Neutre). Échap ou un clic ailleurs le ferme. C'est le seul endroit pour ces réglages, et ce **Mettre à jour** est le seul hors de Logs (25 octobre 2026, « tous les doublons » : Options et le menu Plus les répétaient).
 
 Le choix est enregistré. **Le look des cartes d'« Actuelle » est la base de tout** : les cartes des dispositions (la une et la rangée de Maintenant, le mur des Affiches et ses colonnes du Guide, l'aperçu des Chaînes) SONT ces cartes — bandeau d'état, vignette aux couleurs des équipes, blasons ronds, ligue, équipes et score, sport en pied — ; ce qui reste en liste (Tableau, Chaînes, programme du Guide) en prend la palette : panneau bleu nuit en dégradé, liseré indigo, bandeau en petites capitales, blasons ronds, compteur « ▶ 48 », rose-rouge du direct. Les boutons flottants, les menus, le bandeau des liens, les filtres, les messages, le zoom, les panneaux des pages et la fiche prennent le même panneau, le même liseré et le même rayon. Quand une disposition est active, l'en-tête, le bandeau des liens, le bouton Actualiser et les messages prennent le même style (pilules, même échelle) ; « Actuelle » garde son apparence. Les quatre autres rangent les mêmes matchs autrement, Live et Guide ensemble. Partout : pas de titre, l'état (direct, chrono) et le score d'abord, puis les équipes, un seul bouton (▶ et le nombre de flux, ou 🔎 sans lien), la ligue en dernier. Un toucher ouvre la fiche du match. La couleur des équipes suit **Couleur des cartes** (Couleur de l'équipe à domicile = unie, Foncé = neutre, dégradés). Le texte et la mise en page grandissent avec l'écran, du téléphone à la télé 4K, et chaque tuile ou ligne s'ajuste à sa propre largeur : une petite tuile réduit son texte, un bloc court de la grille des Chaînes montre les abréviations (MTL–BUF), une colonne étroite du Tableau garde ▶ et le nombre de flux sans le mot « Regarder ». Les flux « Autres streams » et les ligues ignorées n'y figurent pas.
 
@@ -254,7 +254,7 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 | **Assombrissement du fond** | Curseur 0 à 100. |
 | **Retirer le noir des maillages** | Interrupteur. |
 | **Forme des boutons** | Arrondis, Doux, Rectangulaires. |
-| **Disposition et couleurs** | Un renvoi au bouton Look (section 3 bis), seul endroit où les choisir depuis le 25 octobre 2026. |
+| **Disposition et couleurs** | Un renvoi à Plus → Look (section 3 bis), seul endroit où les choisir depuis le 25 octobre 2026. |
 | **Forme des cartes** | Automatique (affiche sous 900 px), Affiche verticale (2:3), Carte large (2,4:1). |
 | **Manette** | Une manette Xbox, PlayStation ou générique, sur ordinateur, Android, l'APK et la version de bureau : ✚ ou stick gauche naviguer, A ok, B retour, Start lecteur (ou retour au Live), Select menu Plus (de la navigation), stick droit défiler ; dans le lecteur, LB/RB tuile voisine (le son la suit ; en mode câble, match voisin), LT/RT source précédente / suivante, Y plein écran (ou mode Cinéma si le navigateur refuse), X mode câble ; hors du lecteur, LB/RB vue précédente / suivante. L'aide s'affiche à la première pression ; une manette qui disparaît un instant (lecteur natif, perte de focus) est retrouvée seule. Dans le lecteur natif de l'APK : LB/RB match, LT/RT source, A/Y bandeau, X/Start pause. |
 | **Mode TV / tablette** | Textes plus gros (selon la largeur de l'écran : 1,3× sur un écran de 1920 px, 0,65 sur un Chromecast ; Options → Taille de l'interface), contour de focus très visible, navigation aux flèches et Entrée (télécommande). Un choix : rien ne l'allume d'office, pas même l'APK. |

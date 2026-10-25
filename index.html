@@ -66,6 +66,9 @@
         <button class="nav-btn" id="filter-options" role="menuitem" onclick="applyFilter('options'); toggleMenu(event);">⚙️ Options</button>
         <button class="nav-btn" id="filter-logs" role="menuitem" onclick="applyFilter('logs'); toggleMenu(event);">📋 Logs</button>
         <button class="nav-btn" id="filter-script" role="menuitem" onclick="applyFilter('script'); toggleMenu(event);">🧩 Script</button>
+        <button class="nav-btn menu-sep" id="btn-look" role="menuitem" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look" onclick="toggleMenu(event); basculerMenuLook(event);">🎨 Look</button>
+        <button class="nav-btn" id="btn-actualiser" role="menuitem" onclick="toggleMenu(event); actualiserMaintenant();" title="Actualiser les scores et les liens maintenant"><span class="menu-ic" aria-hidden="true">↻</span> Actualiser</button>
+        <button class="nav-btn" id="btn-maj-app" role="menuitem" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">⬇ Mettre à jour l'app</button>
       </div>
     </div>
   </nav>
@@ -107,31 +110,11 @@
   </div>
 </main>
 
-<!-- Actualisation à la demande : scores (ESPN) et liens (cache serveur), puis la grille
-     est redessinée. Masqué sur les pages Logs / Options / Script (body.view-page). -->
-<!-- Groupe de boutons flottants (13 octobre 2026, « ajouter bouton pour changer look, proche
-     de actualiser, ainsi qu'ajouter à cet endroit le mettre à jour l'app ») : Look (menu des
-     dispositions et des couleurs, js/ui.js basculerMenuLook), Mettre à jour l'app, puis
-     Actualiser. Depuis le 25 octobre 2026 (« tous les doublons »), ce sont les seuls : ni
-     Options (dispositions, couleur des cartes) ni le menu Plus (Mettre à jour) ne les
-     répètent. -->
-<div class="fab-groupe" id="fab-groupe">
-  <div class="look-wrap">
-    <button type="button" id="btn-look" class="fab-actualiser fab-sec" onclick="basculerMenuLook(event)"
-            title="Changer le look : disposition et couleurs" aria-label="Changer le look" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look">
-      <span class="fab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><circle cx="17.5" cy="17.5" r="3.5"/></svg></span><span class="fab-lb">Look</span>
-    </button>
-    <div class="menu-look" id="menu-look" role="menu" aria-label="Look" hidden></div>
-  </div>
-  <button type="button" id="btn-maj-fab" class="fab-actualiser fab-sec" onclick="mettreAJourApplication()"
-          title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés." aria-label="Mettre à jour l'application">
-    <span class="fab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></span><span class="fab-lb">Mettre à jour</span>
-  </button>
-  <button type="button" id="btn-actualiser" class="fab-actualiser" onclick="actualiserMaintenant()"
-          title="Actualiser les scores et les liens maintenant" aria-label="Actualiser les scores et les liens">
-    <span class="fab-ic" aria-hidden="true">↻</span><span class="fab-lb">Actualiser</span>
-  </button>
-</div>
+<!-- Le menu Look (dispositions du Live et du Guide, couleur des cartes, js/ui.js
+     basculerMenuLook), ouvert depuis le menu Plus. Look, Mettre à jour l'app et
+     Actualiser étaient des boutons flottants (13 octobre 2026) ; « Look, mettre à jour et
+     actualiser… dans le Plus » (25 octobre 2026). -->
+<div class="menu-look" id="menu-look" role="menu" aria-label="Look" hidden></div>
 
 <!-- ═══ DÉBOGAGE ══════════════════════════════════════════════════════════════ -->
 <div class="dbg" id="dbg">
@@ -291,7 +274,7 @@
       </div>
 
       <div class="field row">
-        <div class="field-label">Disposition et couleurs<small>Par le bouton Look, en bas à droite du Live et du Guide : la disposition de chacun et la couleur des cartes.</small></div>
+        <div class="field-label">Disposition et couleurs<small>Par Plus → 🎨 Look : la disposition du Live et du Guide, et la couleur des cartes.</small></div>
       </div>
 
       <div class="field row">

@@ -7,6 +7,11 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-25 - **« Look, mettre à jour et actualiser… dans le Plus »**
+
+  - **Fait.** Le groupe flottant (`#fab-groupe`, posé sur la grille en bas à droite) est retiré ; le menu Plus porte, après Script, `🎨 Look` (`#btn-look`, ouvre `#menu-look`, maintenant fixé sous l'en-tête à droite, au-dessus de la barre du bas sur téléphone ; Plus se ferme), `↻ Actualiser` (`#btn-actualiser`, même `actualiserMaintenant`, l'icône tourne) et `⬇ Mettre à jour l'app` (`#btn-maj-app`, revenu de la page flottante). Le renvoi d'Options pointe vers Plus → Look. Le `↻ Actualiser` du bandeau « liens anciens » reste : il n'apparaît qu'avec l'avertissement.
+  - **Tests** : `test_app_boot` « Actualiser est dans le menu Plus, et dit qu'il travaille » (plus de bouton flottant ; les trois dans Plus ; état « je travaille »), « Live et Guide… Look (menu Plus) » ; `unit_majapp`. `npm test` : 131 unitaires ; Playwright 90 passés, 1 ignoré. `CACHE_NAME` et `VERSION_APP` à v74.
+  - **Fichiers** : `index.html`, `styles.css`, `js/ui.js` (commentaires), `tests/test_app_boot.spec.js`, `tests/unit_majapp.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`.
 - 2026-10-25 - **« Ya moyen que l'APK puisse aussi se mettre à jour avec le bouton de mise à jour ? » ; « l'APK peut pas juste servir le site ? »** Choix proposé et retenu : servir le site en ligne ; « prioriser APK ».
 
   - **Constaté.** L'APK embarquait une copie du site et un instantané de `data/` (assemblés par `mobile/assembler-www.mjs`) : il fallait le refaire pour suivre le site, ses liens vieillissaient, et « Mettre à jour » ne pouvait rien y faire. Le site publié répond à `https://ouellettejeanphilippe-source.github.io/footy/` (même version que `main`, `data/streams.json` du jour).
