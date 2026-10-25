@@ -68,7 +68,7 @@ Elle fait deux choses que la version hébergée ne pouvait pas faire :
 
 ### `mobile/` — l'application Android (téléphone et Chromecast avec Google TV)
 
-Le même APK s'installe sur un téléphone et sur un Chromecast avec Google TV, où il apparaît dans le lanceur. C'est le site tel quel (« site = APK », `AGENTS.md`) : sur la télé, seulement la navigation à la télécommande (ou à la manette), la page à l'échelle d'un écran d'ordinateur (Options → Taille de l'interface), et Retour qui passe par la barre de navigation ; fermée (Retour sur la dernière page, ou Accueil), l'application repart de zéro. Partout, le mode direct passe par le lecteur natif d'Android (`docs/ARCHITECTURE.md` §12.2).
+Le même APK s'installe sur un téléphone et sur un Chromecast avec Google TV, où il apparaît dans le lanceur. C'est le site tel quel (« site = APK », `AGENTS.md`) : sur la télé, seulement la navigation à la télécommande (ou à la manette), la page à l'échelle d'une appli de télé, comme Netflix ou Prime Video (Options → Taille de l'interface), et Retour qui passe par la barre de navigation ; fermée (Retour sur la dernière page, ou Accueil), l'application repart de zéro. Partout, le mode direct passe par le lecteur natif d'Android (`docs/ARCHITECTURE.md` §12.2).
 
 ```bash
 cd mobile && npm install

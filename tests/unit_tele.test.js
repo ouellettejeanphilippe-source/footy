@@ -25,13 +25,13 @@ async function main() {
   assert.strictEqual(tele.reglagesImposesADefaire(stock({ [tele.CLE_APK_COMME_SITE]: '1', 'pref-tv-mode': 'true' })), null, 'une seule fois : ensuite, le mode TV est un choix');
   /* L'échelle : la télé à la largeur d'un écran d'ordinateur, le mode TV un peu plus
      gros, et rien ailleurs. Un choix d'Options l'emporte. */
-  assert.strictEqual(tele.zoomInterface(960, 'auto', { tele: true }), 0.5, 'Chromecast : le site comme sur 1920 px');
+  assert.strictEqual(tele.zoomInterface(960, 'auto', { tele: true }), 0.8, 'Chromecast : l\'échelle d\'une appli de télé (page de 1200 px)');
   assert.strictEqual(tele.zoomInterface(960, 'auto', { tele: true, modeTv: true }), 0.65, 'Chromecast en mode TV : 0,65 (au lieu de 1,3)');
   assert.strictEqual(tele.zoomInterface(1920, 'auto', { modeTv: true }), 1.3, 'ordinateur en mode TV : comme avant');
   assert.strictEqual(tele.zoomInterface(1920, 'auto', {}), 1, 'ailleurs : rien');
   assert.strictEqual(tele.zoomInterface(390, null, { tele: true }), 0.5, 'jamais sous 0,5');
   assert.strictEqual(tele.zoomInterface(960, '80', { tele: true }), 0.8, 'le choix d\'Options');
-  assert.strictEqual(tele.zoomInterface(960, 'n\'importe', { tele: true }), 0.5, 'un choix illisible : automatique');
+  assert.strictEqual(tele.zoomInterface(960, 'n\'importe', { tele: true }), 0.8, 'un choix illisible : automatique');
   ok('APK = site : modes imposés défaits une fois, échelle d\'un écran d\'ordinateur sur la télé');
 
   // 2. Retour : du plus proche au plus loin, et ne quitte que depuis le Live.

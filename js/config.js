@@ -6,7 +6,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStanding
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS, sportOfLeague } from './db.js';
 import { buildProxyList } from './fetcher.js';
-import { playabilityScore, hostOfUrl, tileTarget, reputationLien, fusionAppareil } from './playability.js';
+import { playabilityScore, hostOfUrl, tileTarget, reputationLien, fusionAppareil, rangNotoriete } from './playability.js';
 import { finPresumee as finPresumeeBrute, raisonFinPresumee as raisonFinPresumeeBrute } from './finpresumee.js';
 import { getLeagueDuration } from './utils.js';
 import { appliquerHotesDistants } from './extractors.js';
@@ -1590,6 +1590,7 @@ export function notePlayability(link, verdict) {
 
 export function sortFluxLinks(links) {
   /* Ordre : le choix explicite de l'utilisateur (⭐ / 👎 sur un domaine), puis ce qui a
+     été vu mort derrière, puis la notoriété du site (rangNotoriete), puis ce qui a
      été OBSERVÉ en train de jouer (js/playability.js) — palier, puis réputation de l'hôte
      ou de la source dans le palier —, puis seulement la forme du lien
      (qualité annoncée, site). Mettre tout lien non `topLevel` devant a été essayé le
@@ -1602,6 +1603,13 @@ export function sortFluxLinks(links) {
     var prefB0 = domainPrefs[getDomain(b.url)] || 0;
     if (prefA0 !== prefB0) return prefB0 - prefA0;
     var jouA = playabilityScore(a, ledger), jouB = playabilityScore(b, ledger);
+    /* « Les sites les plus célèbres en premier » (25 octobre 2026, rangNotoriete) : ce qui
+       a été vu mort ou bloqué reste derrière, quel que soit le site ; parmi le reste, le
+       site connu passe devant ce qui a été vu jouer sur un hôte inconnu. */
+    var ecarteA = jouA <= 0, ecarteB = jouB <= 0;
+    if (ecarteA !== ecarteB) return ecarteA ? 1 : -1;
+    var rangA = rangNotoriete(a, sources), rangB = rangNotoriete(b, sources);
+    if (rangA !== rangB) return rangA - rangB;
     if (jouA !== jouB) return jouB - jouA;
     /* Dans un même palier, la réputation : le taux de lecture estimé de l'hôte, ou à
        défaut de la source qui a fourni le lien (reputationLien, js/playability.js). Elle

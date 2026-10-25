@@ -667,3 +667,37 @@ export function reputationParSource(matches, ledger) {
     });
     return out;
 }
+
+/* LA NOTORIÉTÉ DES SITES (25 octobre 2026, « prioriser de mettre en premier les flux des
+   sites les plus célèbres pour être fiables »).
+
+   Rang 1 : les sites connus qui servent leur propre lecteur, sur leur propre CDN
+   (Streamed et son lecteur embed.st, DaddyLive et dlive.sx). Rang 2 : les noms connus
+   qui ont aussi leurs lecteurs. Rang 3 : tout le reste, dont les agrégateurs (Sportsurge,
+   Footybite…) qui renvoient vers des hôtes pris au hasard, même quand leur nom est connu.
+   Le rang se lit sur la SOURCE du lien, ou sur son hôte quand celui-ci est le lecteur
+   d'un site connu (un agrégateur qui pointe vers embed.st donne un lien de Streamed).
+   `sortFluxLinks` (js/config.js) l'applique après les choix de l'utilisateur et après
+   avoir écarté ce qui a été vu mort, et avant ce qui a été vu jouer ailleurs. */
+export var NOTORIETE_SOURCES = {
+    streamed: 1, daddylive: 1,
+    methstreams: 2, streameast: 2, totalsportek: 2, crichd: 2, cdnlivetv: 2, vipleague: 2, mybuffstreams: 2
+};
+export var NOTORIETE_HOTES = {
+    'embed.st': 1, 'streamed.su': 1, 'streamed.pk': 1, 'streamed.buzz': 1, 'dlive.sx': 1,
+    'cdnlivetv.tv': 2, 'vipleague.vg': 2
+};
+export var RANG_INCONNU = 3;
+/* Un nom connu ne protège pas une source qui, éprouvée, ne joue jamais : `sources` est le
+   registre par source (sourcePlayLedger). */
+export var ESSAIS_SANS_LECTURE = 10;
+
+export function rangNotoriete(link, sources) {
+    if (!link) return RANG_INCONNU;
+    var src = link.source ? String(link.source).toLowerCase() : '';
+    var e = src && sources ? sources[src] : null;
+    if (e && (e.tested | 0) >= ESSAIS_SANS_LECTURE && (e.plays | 0) === 0) return RANG_INCONNU;
+    var parHote = NOTORIETE_HOTES[hostOfUrl(link.url)];
+    var parSource = src ? NOTORIETE_SOURCES[src] : undefined;
+    return Math.min(parHote || RANG_INCONNU, parSource || RANG_INCONNU);
+}

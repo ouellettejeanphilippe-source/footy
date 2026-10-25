@@ -537,6 +537,9 @@ export function syncNavState(active) {
     mvBtn.style.cssText = '';
   }
   document.body.setAttribute('data-view', active);
+  /* La grille retenue pendant le lecteur (buildEPG, js/ui.js) est dessinée en le
+     quittant, par quelque chemin que ce soit. */
+  if (active !== 'player' && typeof window.grilleEnAttente === 'function') window.grilleEnAttente();
 }
 
 export function applyFilter(f){

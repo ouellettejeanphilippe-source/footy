@@ -170,10 +170,13 @@
         return bestCandidate;
     }
 
+    /* Sur la télé Android, sans animation : un défilement doux coûte une image par pas sur
+       un Chromecast, et la touche suivante arrive avant la fin (« optimiser pour le CPU du
+       Chromecast », 25 octobre 2026). */
     function focaliser(el) {
         if (!el) return;
         el.focus();
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.scrollIntoView({ behavior: document.body.classList.contains('android-tv') ? 'auto' : 'smooth', block: 'center' });
     }
 
     /* ◀ ▶ sur une liste déroulante : le choix précédent ou suivant (un clic de programme

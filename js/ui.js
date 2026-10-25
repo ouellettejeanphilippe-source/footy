@@ -458,6 +458,19 @@ function brancherDispositions(c) {
   });
 }
 
+var grilleARefaire;
+function grilleCachee() {
+  return typeof document !== 'undefined' && !!document.body && document.body.getAttribute('data-view') === 'player';
+}
+/* Redessine la grille si un rendu a été retenu pendant le lecteur. */
+export function grilleEnAttente() {
+  if (grilleARefaire === undefined || grilleCachee()) return false;
+  var m = grilleARefaire || (S && S.matches) || [];
+  grilleARefaire = undefined;
+  buildEPG(m);
+  return true;
+}
+
 export function buildEPG(matches){
   /* Compteur de rendus, lu par les tests : « la grille est stable » veut dire que ce
      nombre n'a pas bougé depuis un moment. Le premier chargement dessine la grille
@@ -465,6 +478,13 @@ export function buildEPG(matches){
      (js/main.js) ; un test qui lisait le DOM entre les deux tenait des éléments
      détachés — c'est ce qui rendait « chaque section repliable… » instable. */
   if (typeof window !== 'undefined') window.rendusGrille = (window.rendusGrille || 0) + 1;
+  /* « Optimiser pour la RAM et le CPU du Chromecast » (25 octobre 2026). Pendant qu'on
+     regarde le lecteur, la grille est cachée : la redessiner (scores chaque minute, passe
+     complète toutes les cinq minutes) volait du temps aux vidéos. On la marque à refaire,
+     et elle l'est au retour (grilleEnAttente, appelée par syncNavState, js/utils.js,
+     dès que la vue n'est plus le lecteur). */
+  if (grilleCachee()) { grilleARefaire = matches || null; return; }
+  grilleARefaire = undefined;
   try {
     buildEPGInner(matches);
   } catch (e) {
@@ -2471,6 +2491,7 @@ export function migrerGuideChaines() {
 window.diagnosticScrape = diagnosticScrape;
 window.getOriginalMatchId = getOriginalMatchId;
 window.buildEPG = buildEPG;
+window.grilleEnAttente = grilleEnAttente;
 window.timelineBadgeHtml = timelineBadgeHtml;
 window.belongsToLive = belongsToLive;
 window.renderSportChips = renderSportChips;

@@ -2200,8 +2200,8 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await expect(page.locator('body')).toHaveClass(/android-tv/);
   await expect(page.locator('body')).toHaveClass(/manette/);
   expect(await page.evaluate(() => ({ cable: localStorage.getItem('mode_cable'), fait: localStorage.getItem('apk_comme_site') }))).toEqual({ cable: '0', fait: '1' });
-  const echelle = await page.evaluate(() => ({ zoom: Number(getComputedStyle(document.body).zoom), attendu: Math.round(Math.min(Math.max(innerWidth / 1920, 0.5), 1) * 100) / 100 }));
-  expect(echelle.zoom, 'la page à la largeur d\'un écran d\'ordinateur').toBeCloseTo(echelle.attendu, 2);
+  const echelle = await page.evaluate(() => ({ zoom: Number(getComputedStyle(document.body).zoom), attendu: Math.round(Math.min(Math.max(innerWidth / 1200, 0.5), 1) * 100) / 100 }));
+  expect(echelle.zoom, 'la page à l\'échelle d\'une appli de télé (1200 px)').toBeCloseTo(echelle.attendu, 2);
   // Comme sur Netflix : le focus de départ est un match, et les cartes du Guide s'atteignent.
   await expect.poll(() => page.evaluate(() => !!(document.activeElement && document.activeElement.closest('.match-card, .mb, [data-mid]'))),
     { message: 'le focus de départ est sur un match', timeout: 10000 }).toBe(true);
@@ -2852,5 +2852,30 @@ test('le Guide façon câble : cases plates avec logos, Chaînes plein écran sa
   // Une case ouvre la fiche du premier coup.
   await page.locator('#marea .dsp-pg').first().click();
   await expect(page.locator('#mbg')).toHaveClass(/open/);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Optimiser pour la RAM et le CPU du Chromecast » (25 octobre 2026) : pendant le
+   lecteur, la grille cachée n'est pas redessinée (scores, passes de cinq minutes) ; elle
+   l'est en revenant, par quelque chemin que ce soit. Sur la télé, pas de flou
+   d'arrière-plan. */
+test('pendant le lecteur, la grille cachée attend ; sur la télé, pas de flou', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => { window.addToMultivision(o + '/__lecteur-calme?a', 'A', 'mA'); window.openMultiviewTab(); }, origin);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  await page.evaluate(() => { window.__marque = document.querySelector('#marea .match-card, #marea .mb, #marea [data-mid]'); window.buildEPG(window.S.matches); });
+  expect(await page.evaluate(() => window.__marque.isConnected), 'rien n\'est redessiné derrière le lecteur').toBe(true);
+  await page.evaluate(() => window.applyFilter('live'));
+  await expect.poll(() => page.evaluate(() => window.__marque.isConnected), { message: 'redessinée en revenant' }).toBe(false);
+  expect(await page.locator('#marea .match-card, #marea .mb, #marea [data-mid]').count()).toBeGreaterThan(0);
+
+  // Retour par Retour (toggleMultiviewPip) : même chose.
+  await page.evaluate(() => window.openMultiviewTab());
+  await page.evaluate(() => { window.__marque = document.querySelector('#marea .match-card'); window.buildEPG(window.S.matches); });
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__marque.isConnected)).toBe(false);
+
+  await page.evaluate(() => { window.__ANDROID_TV__ = true; window.activerTeleAndroid(); window.openMod(window.S.matches[0]); });
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('mbg')).backdropFilter)).toBe('none');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

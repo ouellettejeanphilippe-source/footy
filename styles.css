@@ -1476,3 +1476,13 @@ body.dsp-on .app-header { height: auto; min-height: var(--hdr-height); padding-b
 .dsp-chaines.dsp-vue-guide .dsp-pg.dsp-sel, .dsp-chaines.dsp-vue-guide .dsp-pg:focus, .dsp-chaines.dsp-vue-guide .dsp-pg:focus-visible { background: var(--cable-choix); color: #000; outline: none; transform: none; box-shadow: none; }
 .dsp-chaines.dsp-vue-guide .dsp-pg.dsp-sel.dsp-live .dsp-lbl::before, .dsp-chaines.dsp-vue-guide .dsp-pg:focus.dsp-live .dsp-lbl::before { color: #b00020; }
 .dsp-chaines.dsp-vue-guide .dsp-dlist { flex: none; margin: 0; padding: calc(var(--u) * 8) calc(var(--u) * 16); background: var(--cable-regle); border-top: 1px solid var(--cable-filet); max-height: 30vh; overflow: auto; }
+
+/* ── 15. La télé Android : épargner la puce graphique ──────────────────────────
+   « Optimiser pour la RAM et le CPU du Chromecast, pour la rapidité » (25 octobre 2026).
+   Le flou d'arrière-plan est l'effet le plus cher pour la puce graphique d'un Chromecast,
+   surtout sur ce qui défile (titres de section collants) ou recouvre tout (fiche) : il
+   est recalculé à chaque image. Sur la télé, des aplats à la place. */
+body.android-tv *, body.android-tv *::before, body.android-tv *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body.android-tv.cards-poster .section-title { background: linear-gradient(to bottom, var(--bg, #000) 55%, transparent); }
+body.android-tv .mbg { background: rgba(0, 0, 0, 0.9); }
+body.android-tv .app-header { background: rgb(10, 10, 12); }
