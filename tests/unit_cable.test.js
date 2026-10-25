@@ -225,6 +225,19 @@ async function main() {
     mv.changerSourceTuile(0, -1);
     ok('changer de source oublie ce qui décrivait la page d\'avant');
 
+    /* « Le modal de changement de poste de câble apparaît… quand je change de stream »
+       (25 octobre 2026) : hors du mode câble, ⏮ ⏭ ou LT / RT changent la source sans le décodeur. */
+    cell().querySelectorAll('.mv-cable-osd').forEach((o) => o.remove());
+    mv.setModeCable(false);
+    mv.changerSourceTuile(0, 1);
+    assert.strictEqual(document.querySelectorAll('.mv-cable-osd').length, 0, 'mode éteint : pas d\'incrustation');
+    mv.changerSourceTuile(0, -1);
+    mv.setModeCable(true);
+    mv.changerSourceTuile(0, 1);
+    assert.strictEqual(cell().querySelectorAll('.mv-cable-osd').length, 1, 'mode allumé : l\'incrustation');
+    mv.changerSourceTuile(0, -1);
+    ok('l\'incrustation du câble n\'apparaît qu\'en mode câble');
+
     // ── 10. Le geste lu sur le calque, de bout en bout ────────────────────────
     const glisser = (dx, dy) => {
         const s = surface();

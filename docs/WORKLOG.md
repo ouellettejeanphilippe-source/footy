@@ -7,6 +7,12 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-25 - **« Sur l'interface multiview, le genre de modal de changement de poste de câble apparaît… quand je change de stream »** (Windows)
+
+  - **Cause.** `changerSourceTuile` (⏮ ⏭ de la barre, LT / RT de la manette, ◀▶ du lecteur natif) appelait `annoncerCable` dans tous les modes : l'incrustation du décodeur (numéro de chaîne, match, source) paraissait sans le mode câble.
+  - **Fait.** `annoncerCable` ne fait rien hors du mode câble. `CACHE_NAME` et `VERSION_APP` à v81.
+  - **Tests** : `unit_cable` « l'incrustation du câble n'apparaît qu'en mode câble » (échoue sans la correction). `npm test` : 131 unitaires ; Playwright 93 passés, 1 ignoré.
+  - **Fichiers** : `js/multiview.js`, `sw.js`, `tests/unit_cable.test.js`, `docs/WORKLOG.md`.
 - 2026-10-25 - **« Les sources chargent moins bien aujourd'hui on dirait, même sur pc » ; « ya beaucoup de sources, genre daddy.pk que j'avais jamais vues » ; « pas les domaines que je suis habitué »**
 
   - **Cause.** Le classement « sites connus d'abord » du matin (`rangNotoriete`) passait avant le palier de jouabilité : un lien de Streamed, DaddyLive (`thedaddy.pk`, son adresse depuis plusieurs jours, pas une nouveauté des données) ou CDNLiveTV non vérifié passait devant un lien que la vérification avait vu jouer. Mesuré sur `data/streams.json` du jour (554 matchs regroupés) : premier lien proposé vu jouer pour 46 matchs au lieu de 68.
