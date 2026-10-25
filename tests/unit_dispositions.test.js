@@ -88,7 +88,8 @@ test('La couleur suit « Couleur des cartes », avec la règle exacte de la cart
 });
 
 test('Les cartes des dispositions sont les cartes par défaut (.match-card, .prime-*)', () => {
-  for (const [nom, vue] of [['maintenant', 'live'], ['affiches', 'live'], ['affiches', 'guide'], ['chaines', 'live'], ['chaines', 'guide']]) {
+  // Le Guide Chaînes n'a plus d'aperçu (« pas de en direct en haut », 25 octobre 2026) : voir plus bas.
+  for (const [nom, vue] of [['maintenant', 'live'], ['affiches', 'live'], ['affiches', 'guide'], ['chaines', 'live']]) {
     const html = D.rendreDisposition(nom, vue, jeu(), { maintenant: MAINTENANT, couleurs: 'gradient-45' });
     assert.match(html, /class="match-card dsp-carte/, nom + '/' + vue);
     for (const c of ['prime-head', 'prime-thumbnail', 'prime-logo', 'prime-title', 'prime-info', 'prime-foot', 'card-streams']) assert.ok(html.includes(c), nom + '/' + vue + ' : ' + c);
@@ -128,6 +129,9 @@ test('Guide Chaînes : des pastilles de ligue en tête, qui filtrent la grille (
   const fiches = jeu().concat([fiche('foot', 'bientot', 21 * 60 + 15, { ligue: 'LA LIGA', dom: 'Barcelona', ext: 'Real Madrid' })]);
   const tout = D.rendreDisposition('chaines', 'guide', fiches, { maintenant: MAINTENANT });
   assert.match(tout, /^<div class="dsp [^"]*"><div class="dsp-filtres">/, 'en tête du Guide');
+  assert.ok(!tout.includes('match-card') && !tout.includes('dsp-pv'), 'pas d\'aperçu au-dessus de la grille');
+  assert.ok(!tout.includes('data-dsp="choix"'), 'une case ouvre la fiche du premier coup (data-mid)');
+  assert.match(tout, /class="dsp-pg dsp-live[^"]*" data-mid="encours" tabindex="0" role="button"/);
   assert.match(tout, /data-dsp="ligue" data-v="toutes" aria-pressed="true">Toutes · 6</);
   assert.match(tout, /data-dsp="ligue" data-v="NHL" aria-pressed="false">NHL · 5</);
   assert.match(tout, /data-dsp="ligue" data-v="LA LIGA" aria-pressed="false">LA LIGA · 1</);

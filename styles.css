@@ -1407,3 +1407,72 @@ body.dsp-on .app-header { height: auto; min-height: var(--hdr-height); padding-b
 @media (max-width: 768px) { .bandeau-cache { margin: 8px 12px 0; } }
 /* la fiche : l'en-tête aux couleurs des équipes garde son dégradé, le corps prend le panneau */
 @media (max-width: 768px) { .modal { border-radius: var(--carte-rayon) var(--carte-rayon) 0 0; } }
+
+/* ── 14. Le Guide façon câble ──────────────────────────────────────────────────
+   « Rendre le guide Basique et celui qu'on a récemment mis de base plus clean et plein
+   écran, comme le câble dans le temps » (25 octobre 2026). Les deux Guides, « Actuelle »
+   (.epg-wrapper) et « Chaînes » (.dsp-chaines.dsp-vue-guide), prennent la grille d'un
+   guide de câblodistributeur : fond bleu nuit, cases plates aux coins presque droits,
+   séparées par un filet, le titre sur une ligne, et la case choisie en jaune. Les
+   couleurs des équipes ne sont plus qu'un liseré à gauche de la case (--mb-c1, --mb-c2,
+   posées par buildEPGInner selon « Couleur des cartes »). */
+:root {
+  --cable-fond: #060c22;
+  --cable-chaine: #0b1637;
+  --cable-regle: #081130;
+  --cable-case: #13204d;
+  --cable-case-direct: #2b1a4a;
+  --cable-filet: rgba(160, 180, 255, 0.12);
+  --cable-texte: #eef1ff;
+  --cable-doux: #9aa6d6;
+  --cable-choix: #ffd21f;
+}
+
+/* « Actuelle » */
+.epg-wrapper { background: var(--cable-fond); }
+.epg-wrapper .ruler-times, .epg-wrapper .corner { background: var(--cable-regle); border-color: var(--cable-filet); }
+.epg-wrapper .ruler-times .tc { color: var(--cable-texte); font-weight: 700; }
+.epg-wrapper .lg-hdr { background: var(--cable-regle); border-color: var(--cable-filet); text-transform: uppercase; letter-spacing: 0.06em; }
+.epg-wrapper .chan-cell { background: var(--cable-chaine); border-color: var(--cable-filet); }
+.epg-wrapper .chan-cell:hover { background: var(--cable-case); }
+.epg-wrapper .mrow { border-color: var(--cable-filet); }
+.epg-wrapper .mb {
+  top: 3px; bottom: 3px; border: 0; border-radius: 3px; box-shadow: none;
+  display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 4px; padding: 6px 12px 6px 16px;
+  background: linear-gradient(180deg, var(--mb-c1, #3b6cff), var(--mb-c2, #3b6cff)) left / 5px 100% no-repeat, var(--cable-case) !important;
+  color: var(--cable-texte);
+}
+.epg-wrapper .mb::before { display: none; }
+.epg-wrapper .mb.live { background: linear-gradient(180deg, var(--mb-c1, #3b6cff), var(--mb-c2, #3b6cff)) left / 5px 100% no-repeat, var(--cable-case-direct) !important; box-shadow: none; }
+.epg-wrapper .mb-tt { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.epg-wrapper .mb-logo { width: 20px; height: 20px; padding: 1px; border-radius: 3px; background: rgba(255,255,255,0.9); flex: none; }
+.epg-wrapper .mb-t { flex: 0 1 auto; color: inherit; text-shadow: none; font-size: 14px; font-weight: 700; }
+.epg-wrapper .mb-vs { flex: none; color: var(--cable-doux); }
+.epg-wrapper .mb-m { margin-top: 0; justify-content: flex-start; }
+.epg-wrapper .mb-time, .epg-wrapper .mb-score { background: none; padding: 0; color: var(--cable-doux); }
+.epg-wrapper .mb-sn { margin-left: 0; background: none; border: 0; padding: 0; color: var(--cable-doux); }
+.epg-wrapper .mb-sn::before { content: "· "; }
+.epg-wrapper .mb:hover, .epg-wrapper .mb:focus, .epg-wrapper .mb:focus-visible {
+  background: var(--cable-choix) !important; color: #000; filter: none; box-shadow: none; outline: none !important; transform: none;
+}
+.epg-wrapper .mb:hover .mb-vs, .epg-wrapper .mb:hover .mb-time, .epg-wrapper .mb:hover .mb-score, .epg-wrapper .mb:hover .mb-sn,
+.epg-wrapper .mb:focus .mb-vs, .epg-wrapper .mb:focus .mb-time, .epg-wrapper .mb:focus .mb-score, .epg-wrapper .mb:focus .mb-sn { color: #000; }
+
+/* « Chaînes » : tout l'écran ; la grille prend ce que laissent les pastilles de ligue (plus
+   d'aperçu au-dessus : « pas de en direct en haut »). */
+.dsp.dsp-chaines.dsp-vue-guide { max-width: none; height: 100%; display: flex; flex-direction: column; padding: 0 0 var(--safe-bottom); background: var(--cable-fond); }
+.dsp-chaines.dsp-vue-guide .dsp-filtres { flex: none; justify-content: flex-start; padding: calc(var(--u) * 10) calc(var(--u) * 16); background: var(--cable-regle); border-bottom: 1px solid var(--cable-filet); }
+.dsp-chaines.dsp-vue-guide .dsp-filtres button { min-height: 36px; padding: calc(var(--u) * 4) calc(var(--u) * 12); border-radius: 4px; background: transparent; border-color: var(--cable-filet); color: var(--cable-texte); }
+.dsp-chaines.dsp-vue-guide .dsp-filtres button[aria-pressed="true"] { background: var(--cable-choix); border-color: var(--cable-choix); color: #000; box-shadow: none; }
+.dsp-chaines.dsp-vue-guide .dsp-epg { flex: 1 1 auto; min-height: 0; max-height: none; border: 0; border-radius: 0; background: var(--cable-fond); }
+.dsp-chaines.dsp-vue-guide .dsp-ruler, .dsp-chaines.dsp-vue-guide .dsp-corner { background: var(--cable-regle); border-color: var(--cable-filet); }
+.dsp-chaines.dsp-vue-guide .dsp-hh { color: var(--cable-texte); border-color: var(--cable-filet); }
+.dsp-chaines.dsp-vue-guide .dsp-lgh { background: var(--cable-regle); color: var(--cable-choix); }
+.dsp-chaines.dsp-vue-guide .dsp-er { border-color: var(--cable-filet); }
+.dsp-chaines.dsp-vue-guide .dsp-en { background: var(--cable-chaine); border-color: var(--cable-filet); color: var(--cable-texte); }
+.dsp-chaines.dsp-vue-guide .dsp-pg { top: 3px; bottom: 3px; border: 0; border-radius: 3px; background: var(--cable-case); color: var(--cable-texte); }
+.dsp-chaines.dsp-vue-guide .dsp-pg.dsp-live { background: var(--cable-case-direct); }
+.dsp-chaines.dsp-vue-guide .dsp-pg.dsp-suite { box-shadow: inset 4px 0 0 var(--dsp-live); }
+.dsp-chaines.dsp-vue-guide .dsp-pg.dsp-sel, .dsp-chaines.dsp-vue-guide .dsp-pg:focus, .dsp-chaines.dsp-vue-guide .dsp-pg:focus-visible { background: var(--cable-choix); color: #000; outline: none; transform: none; box-shadow: none; }
+.dsp-chaines.dsp-vue-guide .dsp-pg.dsp-sel.dsp-live .dsp-lbl::before, .dsp-chaines.dsp-vue-guide .dsp-pg:focus.dsp-live .dsp-lbl::before { color: #b00020; }
+.dsp-chaines.dsp-vue-guide .dsp-dlist { flex: none; margin: 0; padding: calc(var(--u) * 8) calc(var(--u) * 16); background: var(--cable-regle); border-top: 1px solid var(--cable-filet); max-height: 30vh; overflow: auto; }

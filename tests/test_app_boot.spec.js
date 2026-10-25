@@ -261,7 +261,7 @@ test('les onglets Live et Guide se rendent sans exception', async ({ page }) => 
 
   expect(pageErrors, 'aucune exception en changeant d\'onglet :\n' + pageErrors.join('\n---\n')).toEqual([]);
   expect(guide.timelineClass, 'le Guide active la grille temporelle').toBeTruthy();
-  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb, #marea [data-mid]').length)).toBeGreaterThan(0);
 });
 
 test('les boutons de navigation atteignent chaque vue', async ({ page }) => {
@@ -277,7 +277,7 @@ test('les boutons de navigation atteignent chaque vue', async ({ page }) => {
     await page.waitForTimeout(600);
     expect(await page.evaluate(() => window.S.filter), `#${id} doit activer le filtre ${filter}`).toBe(filter);
     await expect(button).toHaveClass(/active-toggle/);
-    expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length),
+    expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb, #marea [data-mid]').length),
       `la vue ${filter} doit afficher des matchs`).toBeGreaterThan(0);
   }
 
@@ -607,7 +607,7 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
 
   await page.evaluate(() => window.applyFilter('all'));
   await page.waitForTimeout(400);
-  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length), 'le Guide reste peuplé').toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb, #marea [data-mid]').length), 'le Guide reste peuplé').toBeGreaterThan(0);
   expect(pageErrors).toEqual([]);
 });
 
@@ -2817,5 +2817,40 @@ test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fic
   await page.evaluate(() => window.applyFilter('all'));
   await expect(page.locator('#marea .dsp-chaines')).toHaveCount(1);
   expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('chaines');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Rendre le guide Basique et celui qu'on a récemment mis de base plus clean et plein
+   écran, comme le câble dans le temps » ; « pas de en direct en haut » ; « je veux logos
+   quand même » (25 octobre 2026). */
+test('le Guide façon câble : cases plates avec logos, Chaînes plein écran sans aperçu', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => { window.applyFilter('all'); window.choisirDisposition('actuelle', 'guide'); });
+  await page.waitForSelector('#marea .mb');
+  const bloc = await page.evaluate(() => {
+    const b = document.querySelector('#marea .mb');
+    const cs = getComputedStyle(b);
+    return { image: cs.backgroundImage, rayon: parseFloat(cs.borderTopLeftRadius), liseré: b.style.getPropertyValue('--mb-c1'), logos: b.querySelectorAll('.mb-logo').length, titre: !!b.querySelector('.mb-tt .mb-t') };
+  });
+  expect(bloc.image, 'une case plate : le liseré des équipes, pas un dégradé plein').toMatch(/^linear-gradient\(/);
+  expect(bloc.liseré, 'aux couleurs des équipes').not.toBe('');
+  expect(bloc.rayon, 'coins presque droits').toBeLessThanOrEqual(4);
+  expect(bloc.logos, 'avec les logos').toBeGreaterThan(0);
+  expect(bloc.titre).toBe(true);
+
+  await page.evaluate(() => window.choisirDisposition('chaines', 'guide'));
+  await page.waitForSelector('#marea .dsp-chaines.dsp-vue-guide .dsp-pg');
+  const geo = await page.evaluate(() => {
+    const g = document.querySelector('#marea .dsp-epg').getBoundingClientRect();
+    const c = document.getElementById('marea').getBoundingClientRect();
+    return { apercu: document.querySelectorAll('#marea .dsp-pv, #marea .match-card').length, basGrille: g.bottom, basZone: c.bottom, largeur: g.width, zone: c.width };
+  });
+  expect(geo.apercu, 'pas d\'aperçu « en direct » en haut').toBe(0);
+  expect(geo.largeur, 'toute la largeur').toBeGreaterThanOrEqual(geo.zone - 20);
+  expect(geo.basZone - geo.basGrille, 'la grille descend jusqu\'en bas (Terminés compris)').toBeLessThan(80);
+  // Une case ouvre la fiche du premier coup.
+  await page.locator('#marea .dsp-pg').first().click();
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

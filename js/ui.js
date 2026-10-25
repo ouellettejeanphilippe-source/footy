@@ -1178,45 +1178,29 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               if (tColorsH) homeColor = tColorsH[0];
               if (tColorsA) awayColor = tColorsA[0];
 
-              if (userPrefs.cardColor === 'home') {
-                  b.style.background = homeColor;
-              } else if (userPrefs.cardColor === 'league') {
-                  b.style.background = lgCol;
-              } else if (userPrefs.cardColor === 'dark') {
-                  b.style.background = 'rgba(255,255,255,0.05)';
-              } else if (userPrefs.cardColor === 'split') {
-                  b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
-              } else if (userPrefs.cardColor === 'gradient') {
-                  b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-              } else {
-                  b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-              }
+              /* Le Guide façon câble (25 octobre 2026, « plus clean et plein écran, comme le
+                 câble dans le temps ») : une case plate, et les couleurs ne sont plus qu'un
+                 liseré à gauche (styles.css §14), qui suit toujours « Couleur des cartes ». */
+              var c1 = homeColor, c2 = m.awayTeam ? awayColor : homeColor;
+              if (userPrefs.cardColor === 'home') c2 = c1;
+              else if (userPrefs.cardColor === 'league') c1 = c2 = lgCol;
+              else if (userPrefs.cardColor === 'dark') c1 = c2 = 'rgba(255,255,255,0.25)';
+              b.style.setProperty('--mb-c1', c1);
+              b.style.setProperty('--mb-c2', c2);
 
               var timeBadge = timelineBadgeHtml(m);
 
               var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
-              if (m.awayTeam) {
-                  b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 12px;">'
-                              +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-end; text-align: right; width: auto;">'
-                              +     '<div class="mb-t" style="text-align: right;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                              +     homeLogoHtml
-                              +   '</div>'
-                              +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-start; text-align: left; width: auto;">'
-                              +     awayLogoHtml
-                              +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
-                              +   '</div>'
-                              + '</div>'
-                              + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
-              } else {
-                  b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: center; align-items: center; gap: 12px;">'
-                              +   '<div class="mb-team-row" style="flex: 1; justify-content: center; text-align: center; width: auto;">'
-                              +     homeLogoHtml
-                              +     '<div class="mb-t" style="text-align: center;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                              +   '</div>'
-                              + '</div>'
-                              + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
-              }
+              /* Une ligne, comme un titre d'émission : « Domicile – Extérieur », chacun avec son
+                 logo (« je veux logos quand même »), puis l'heure (ou le direct, le score) et
+                 le nombre de liens. */
+              var logoMb = function(h) { return h.replace(/chan-logo/g, 'mb-logo'); };
+              b.innerHTML = '<div class="mb-tt">'
+                          +   logoMb(homeLogoHtml) + '<span class="mb-t" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span>'
+                          +   (m.awayTeam ? '<span class="mb-vs">–</span>' + logoMb(awayLogoHtml) + '<span class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span>' : '')
+                          + '</div>'
+                          + '<div class="mb-m">'+timeBadge+streamsBadge+'</div>';
 
               /* Position : les minutes comptées depuis le minuit de la grille
                  (`minutesDansLaJournee`, js/nuit.js) — négatives pour un match d'hier

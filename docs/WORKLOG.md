@@ -7,6 +7,12 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-25 - **« Rendre le guide Basique et celui qu'on a récemment mis de base plus clean et plein écran, comme le câble dans le temps »** (« Basique » : « Actuelle » ; à la question, « je veux que ça soit mieux ») ; puis « pas de en direct en haut » et « je veux logos quand même ».
+
+  - **Fait.** `styles.css` §14 « Le Guide façon câble » (jetons `--cable-*`) pour « Actuelle » (`.epg-wrapper`) et « Chaînes » du Guide : fond bleu nuit, cases plates séparées d'un filet, coins de 3 px, case choisie ou survolée en jaune. « Actuelle » : le titre sur une ligne avec les deux logos, l'heure et les liens dessous, les couleurs en liseré (`--mb-c1/--mb-c2`, toujours selon `cardColor`). « Chaînes » : plein écran (la grille prend la hauteur), pastilles de ligue en bande, plus d'aperçu en haut, une case ouvre la fiche (`data-mid`), les deux logos dans la colonne des chaînes.
+  - **Tests** : `test_app_boot` « le Guide façon câble… » (case plate à liseré, coins ≤ 4 px, logos ; Chaînes sans aperçu, pleine largeur, jusqu'en bas ; un clic ouvre la fiche) ; trois tests comptent maintenant les cases `[data-mid]` du Guide (l'aperçu était la seule `.match-card`) ; `unit_dispositions` (pas d'aperçu, `data-mid`). `npm test` : 131 unitaires ; Playwright 91 passés, 1 ignoré. Logos vérifiés à l'œil avec une image locale (le réseau est coupé dans les tests).
+  - **Fichiers** : `styles.css`, `js/ui.js`, `js/dispositions.js`, `sw.js` (v75), `tests/test_app_boot.spec.js`, `tests/unit_dispositions.test.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`.
+  - **Ce qui reste.** Pas vu sur la télé.
 - 2026-10-25 - **« Look, mettre à jour et actualiser… dans le Plus »**
 
   - **Fait.** Le groupe flottant (`#fab-groupe`, posé sur la grille en bas à droite) est retiré ; le menu Plus porte, après Script, `🎨 Look` (`#btn-look`, ouvre `#menu-look`, maintenant fixé sous l'en-tête à droite, au-dessus de la barre du bas sur téléphone ; Plus se ferme), `↻ Actualiser` (`#btn-actualiser`, même `actualiserMaintenant`, l'icône tourne) et `⬇ Mettre à jour l'app` (`#btn-maj-app`, revenu de la page flottante). Le renvoi d'Options pointe vers Plus → Look. Le `↻ Actualiser` du bandeau « liens anciens » reste : il n'apparaît qu'avec l'avertissement.
