@@ -1095,7 +1095,15 @@ export function showFluxSelector(idx, mid, event) {
             var dom = getDomain(s.url);
             var isActive = mvFlux[idx].url === s.url;
 
+            /* Une source est un arrêt de la télécommande, et OK la lance (« choisir une source
+               permet juste de upvote ou downvote, pas de choisir le stream », 25 octobre 2026 :
+               la ligne n'était qu'un bloc, seuls ⭐ et 👎 prenaient le focus). ⭐ et 👎 restent
+               pour la souris et le doigt (tabindex -1, ignorés par js/tv-navigation.js). */
             var btn = document.createElement('div');
+            btn.className = 'mv-flux-choix' + (isActive ? ' actif' : '');
+            btn.setAttribute('role', 'button');
+            btn.setAttribute('tabindex', '0');
+            if (isActive) btn.setAttribute('data-focus-depart', '');
             btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.15s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
 
             btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
@@ -1124,8 +1132,8 @@ export function showFluxSelector(idx, mid, event) {
                             (isActive ? '<div style="font-size:9px;background:var(--accent);color:#fff;padding:2px 4px;border-radius:4px;font-weight:bold;margin-right:4px;">ACTIF</div>' : '') +
                             '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;margin-right:8px;">' + (s.quality||'SD') + '</span>' +
                             '<div style="display:flex; align-items:center; gap:4px;">' +
-                                '<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="' + favEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === 1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>' +
-                                '<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="' + depEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === -1 ? 'var(--red)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === -1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>' +
+                                '<button tabindex="-1" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="' + favEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === 1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>' +
+                                '<button tabindex="-1" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="' + depEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === -1 ? 'var(--red)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === -1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>' +
                             '</div>';
 
             streamsContainer.appendChild(btn);
@@ -1133,98 +1141,8 @@ export function showFluxSelector(idx, mid, event) {
         selector.appendChild(streamsContainer);
     }
 
-    // Section 2: Other Live Matches
-    var titleMatches = document.createElement('div');
-    titleMatches.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;margin-top:8px;';
-    titleMatches.textContent = 'Remplacer par un autre match';
-    selector.appendChild(titleMatches);
-
-    var matchesContainer = document.createElement('div');
-    matchesContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
-
-
-    var availableMatches = S.matches.filter(function(x) {
-        return x.streamsLoaded && compterFluxUtiles(x) > 0 && String(x.id) !== String(mid);
-    });
-
-    availableMatches.sort(function(a, b) {
-        var f1 = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? -1 : 0;
-        var f2 = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? -1 : 0;
-        if (f1 !== f2) return f1 - f2;
-
-        if (a.status === 'live' && b.status !== 'live') return -1;
-        if (a.status !== 'live' && b.status === 'live') return 1;
-        return a.startTime.localeCompare(b.startTime);
-    });
-
-
-    if (availableMatches.length === 0) {
-        var empty = document.createElement('div');
-        empty.style.cssText = 'padding:10px;text-align:center;color:var(--muted);font-size:12px;background:rgba(255,255,255,0.02);border-radius:8px;';
-        empty.innerHTML = 'Aucun autre match avec flux disponible.';
-        matchesContainer.appendChild(empty);
-    } else {
-        availableMatches.forEach(function(sm) {
-            // Already in multiview?
-            var alreadyIn = mvFlux.some(function(ms) { return String(ms.mid) === String(sm.id); });
-
-            var btn = document.createElement('div');
-            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.15s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
-
-            btn.onmouseenter = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.1)'; };
-            btn.onmouseleave = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.05)'; };
-
-            var thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:16px;">' + (sm.flag || '⚽') + '</div>';
-            if(sm.homeLogo) {
-                thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:2px;flex-shrink:0;">'
-                  +'<img src="'+esc(sm.homeLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\\\'none\\\'">'
-                +'</div>';
-            }
-
-            var score = sm.score ? '<div style="font-size:13px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;flex-shrink:0;"><span>'+esc(sm.score[0])+'</span><span>'+esc(sm.score[1])+'</span></div>' : '';
-
-            btn.innerHTML = thumb +
-                '<div style="flex:1; overflow:hidden;">' +
-                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(sm.minute?esc(sm.minute)+"'":'EN DIRECT')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+esc(sm.flag)+' '+esc(sm.league)+'</span></div>' +
-                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.homeTeam)+'</div>' +
-                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.awayTeam)+'</div>' +
-                '</div>' + score + (alreadyIn ? '<div style="font-size:10px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 4px;border-radius:4px;margin-left:4px;">AJOUTÉ</div>' : '');
-
-            btn.onclick = function(e) {
-                e.stopPropagation();
-                if(sm.streamsLoaded && compterFluxUtiles(sm) > 0) {
-                    var sortedSmLinks = sortFluxLinks(sm.streamLinks);
-                    mvFlux[idx].url = sortedSmLinks[0].url;
-                    mvFlux[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
-                    mvFlux[idx].mid = sm.id;
-                    saveMultivisionState(); updateMultivisionLayout();
-                    selector.remove();
-                } else {
-                    // Si pas chargé
-                    showToast('Chargement des streams...');
-                    scrapeMatchFlux(sm).then(function() {
-                        sm.streamsLoaded = true;
-                        if(sm.streamLinks && sm.streamLinks.length > 0) {
-                            var sortedSmLinks = sortFluxLinks(sm.streamLinks);
-                            mvFlux[idx].url = sortedSmLinks[0].url;
-                            mvFlux[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
-                            mvFlux[idx].mid = sm.id;
-                            saveMultivisionState(); updateMultivisionLayout();
-                        } else {
-                            showToast('Aucun flux trouvé pour ce match.');
-                        }
-                        selector.remove();
-                    }).catch(function() {
-                        showToast('Erreur lors du chargement des streams.');
-                        selector.remove();
-                    });
-                }
-            };
-
-            matchesContainer.appendChild(btn);
-        });
-    }
-    selector.appendChild(matchesContainer);
+    /* « Remplacer par un autre match » est parti avec « Changer de match » (25 octobre 2026 :
+       « juste possible après avoir fermé le match ») : fermer la vidéo, puis + Ajouter. */
 
     document.body.appendChild(selector);
 
@@ -4852,7 +4770,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v76';
+export var VERSION_APP = 'sports-guide-v77';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

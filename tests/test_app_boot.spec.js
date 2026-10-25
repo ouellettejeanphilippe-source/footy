@@ -2879,3 +2879,35 @@ test('pendant le lecteur, la grille cachée attend ; sur la télé, pas de flou'
   expect(await page.evaluate(() => getComputedStyle(document.getElementById('mbg')).backdropFilter)).toBe('none');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
+
+/* « Choisir une source dans le lecteur permet juste de upvote ou downvote, pas de choisir
+   le maudit stream » (25 octobre 2026, à la télécommande) : la ligne d'une source n'était
+   qu'un bloc, seuls ⭐ et 👎 prenaient le focus. */
+test('à la télécommande, « Choisir une autre source » choisit la source ; Retour ferme', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  const mid = await page.evaluate(() => {
+    const m = window.S.matches.find((x) => (x.streamLinks || []).length >= 3);
+    const l = window.sortFluxLinks(m.streamLinks)[0];
+    window.addToMultivision(l.url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+    window.openMultiviewTab();
+    return m.id;
+  });
+  await page.evaluate((mid) => window.showFluxSelector(0, mid), mid);
+  await expect(page.locator('#mv-flux-selector')).toBeVisible();
+  await expect(page.locator('#mv-flux-selector')).not.toContainText('Remplacer par un autre match');
+  await expect.poll(() => page.evaluate(() => document.activeElement.classList.contains('actif')), { message: 'le focus entre sur la source active' }).toBe(true);
+  const avant = await page.evaluate(() => window.mvFlux[0].url);
+  await page.keyboard.press('ArrowDown');
+  expect(await page.evaluate(() => document.activeElement.classList.contains('mv-flux-choix')), 'une autre source, pas ⭐ ni 👎').toBe(true);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#mv-flux-selector')).toHaveCount(0);
+  expect(await page.evaluate(() => window.mvFlux[0].url), 'OK lance la source choisie').not.toBe(avant);
+
+  await page.evaluate((mid) => window.showFluxSelector(0, mid), mid);
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect(page.locator('#mv-flux-selector'), 'Retour ferme la fenêtre').toHaveCount(0);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});

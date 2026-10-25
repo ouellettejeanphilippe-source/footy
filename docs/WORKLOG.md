@@ -7,6 +7,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-25 - **« Choisir une source dans le lecteur permet juste de upvote ou downvote, pas de choisir le maudit stream »** ; et « pourquoi quand je mets mode direct, ça part en mode câble sur ma télé ? »
+
+  - **Cause (source).** Dans « Choisir une autre source » (`showFluxSelector`), une source était un bloc sans `tabindex` : à la télécommande, seuls ⭐ et 👎 prenaient le focus. La fenêtre n'était pas non plus une zone de `js/tv-navigation.js`, ni fermée par Retour.
+  - **Fait.** Chaque source est un arrêt (`.mv-flux-choix`, `role="button"`, `tabindex="0"`, la source active en `data-focus-depart`) et OK la lance ; ⭐ 👎 en `tabindex="-1"` ; `#mv-flux-selector` dans `ZONES` ; Retour la ferme (`retourTele`, « fenêtre »). La section « Remplacer par un autre match » est retirée, comme « Changer de match ». `CACHE_NAME` et `VERSION_APP` à v77.
+  - **Mode direct sur la télé.** Pas de mode câble allumé : ▶ Direct y passe au lecteur natif d'Android (`LecteurActivity`), plein écran, qui se pilote comme le mode câble (▲▼ match, ◀▶ source, bandeau). Question posée à l'utilisateur sur ce qu'il veut à la place.
+  - **Tests** : `test_app_boot` « à la télécommande, « Choisir une autre source » choisit la source ; Retour ferme » (deux fois de suite). `npm test` : 131 unitaires ; Playwright 93 passés, 1 ignoré.
+  - **Fichiers** : `js/multiview.js`, `js/tv-navigation.js`, `js/main.js`, `sw.js`, `tests/test_app_boot.spec.js`, `docs/WORKLOG.md`.
 - 2026-10-25 - **« Aussi, optimiser pour RAM, CPU du CCGTV pour rapidité et compatibilité des feeds. Prioriser de mettre en premier les flux des sites les plus célèbres pour être fiables »** ; puis « zoom plus, niveau Prime Video ou Netflix sur CCGTV ».
 
   - **Sites connus d'abord.** `rangNotoriete` (`js/playability.js`) : rang 1 Streamed (et son lecteur embed.st) et DaddyLive (dlive.sx), rang 2 Methstreams, Streameast, TotalSportek, CricHD, CDNLiveTV, VIPLeague, MyBuffstreams, rang 3 le reste dont les agrégateurs (Sportsurge, Footybite…) qui renvoient vers des hôtes au hasard ; lu sur la source, ou sur l'hôte quand c'est le lecteur d'un site connu. Une source éprouvée 10 fois sans jamais jouer perd son rang. `sortFluxLinks` : choix ⭐ / 👎, puis les liens vus morts derrière, puis la notoriété, puis ce qui a été vu jouer, la réputation et la qualité. Liste mesurée sur `data/streams.json` du jour (4 742 liens, 18 sources).

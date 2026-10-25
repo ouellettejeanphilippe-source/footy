@@ -59,9 +59,9 @@
     }
 
     /* Les fenêtres qui gardent le focus, de la plus haute à la plus basse : le menu du
-       lecteur (js/mv-menu.js), le guide des scripts, l'enquêteur, la fiche d'un match,
+       lecteur (js/mv-menu.js), le choix d'une source (showFluxSelector), le guide des scripts, l'enquêteur, la fiche d'un match,
        le menu Look, le menu ⋯ Plus. */
-    const ZONES = ['.mv-menu', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look', '#main-menu.open'];
+    const ZONES = ['.mv-menu', '#mv-flux-selector', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look', '#main-menu.open'];
 
     function estVisible(el) {
         if (!el || !el.isConnected) return false;
