@@ -208,6 +208,80 @@ async function main() {
         ok('sortFluxLinks : réputation de l\'hôte ou de la source dans le palier, avant la qualité');
     }
 
+    // ── 9. L'appareil corrige le serveur (24 octobre 2026) ──────────────────
+    /* « Je voudrais que ça se corrige et adapte de lui-même. » Avant, la somme
+       serveur + appareil laissait 30/40 + 0/5 = 30/45 en tête sur un appareil où l'hôte
+       n'avait jamais joué ; et un ⏭ manuel n'apprenait rien. */
+    {
+        const serveur = { 'serveurok.test': { tested: 40, plays: 30 }, 'neuf.test': { tested: 2, plays: 0 } };
+        const f = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 5, plays: 0 }, 'peu.test': { tested: 2, plays: 0 } });
+        assert.strictEqual(f['serveurok.test'].appareilMort, true, '0 sur 5 ici : mort sur cet appareil');
+        assert.deepStrictEqual([f['serveurok.test'].tested, f['serveurok.test'].plays], [9, 3], 'le serveur ne pèse plus que quatre essais');
+        assert.deepStrictEqual(f['peu.test'], { tested: 2, plays: 0 }, 'sous le seuil : simple somme');
+        assert.deepStrictEqual(f['neuf.test'], { tested: 2, plays: 0 }, 'le serveur seul reste tel quel');
+        assert.deepStrictEqual(serveur['serveurok.test'], { tested: 40, plays: 30 }, 'le registre du serveur n\'est pas modifié');
+        const g = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 4, plays: 3 } });
+        assert.ok(!g['serveurok.test'].appareilMort && P.playabilityScore({ url: 'https://serveurok.test/1' }, g) === 2, 'joue ici aussi : reste fiable');
+
+        const vu = { url: 'https://serveurok.test/1', verified: 'plays' };
+        assert.strictEqual(P.playabilityScore(vu, f), 0, 'vu jouer par le serveur, jamais ici : ne passe plus devant');
+        assert.ok(P.reputationLien(vu, f, {}) < 0.5, '… et sa réputation n\'est plus celle d\'un lien vu jouer');
+        assert.strictEqual(P.marqueJouabilite(vu, f).classe, 'si-mort', 'la liste le dit');
+        assert.strictEqual(P.marqueJouabilite(vu, f).texte, 'ici 0/5');
+
+        globalThis.window.hostPlayLedger = { 'serveurok.test': { tested: 40, plays: 30 } };
+        globalThis.window.sourcePlayLedger = {};
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
+        const liens = [{ name: 'Serveur', url: 'https://serveurok.test/1', verified: 'plays' }, { name: 'Inconnu', url: 'https://autre.test/1' }];
+        assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Serveur', 'au départ, le verdict du serveur mène');
+        for (let i = 0; i < 3; i++) C.notePlayability({ url: 'https://serveurok.test/1' }, 'none');
+        assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Inconnu', 'trois échecs ici : il descend tout seul');
+        C.notePlayability({ url: 'https://serveurok.test/1' }, 'plays');
+        assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Serveur', 'et remonte dès qu\'il joue ici');
+
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: 20000 }), true, '⏭ après 20 s sans vidéo : échec');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: true, depuisMs: 20000 }), false, 'source qui a joué : jamais');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: 2000 }), false, 'trop tôt : pas laissé sa chance');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: 10 * 60000 }), false, 'regardée longtemps : autre raison');
+        assert.strictEqual(P.sautManuelEstEchec({ aJoue: false, depuisMs: NaN }), false, 'durée inconnue : rien');
+        ok('fusionAppareil : l\'appareil corrige le serveur ; sautManuelEstEchec');
+    }
+
+    // ── 10. Éprouver ce qui sera montré en premier ; trier sur la définition mesurée ──
+    /* Mesuré le 24 octobre 2026 : 88 cibles par passage, prises dans l'ordre de collecte,
+       dont 20 % sur des hôtes déjà tranchés morts. */
+    {
+        const ledger = { 'mort.test': { tested: 30, plays: 1 }, 'bon.test': { tested: 30, plays: 28 }, 'moyen.test': { tested: 10, plays: 5 } };
+        const matches = [{ rank: 0, streamLinks: [
+            { url: 'https://mort.test/1' }, { url: 'https://moyen.test/1' }, { url: 'https://neuf.test/1' }, { url: 'https://bon.test/1' },
+        ] }];
+        const brut = P.pickTargets(matches, { perMatch: 2 }).map((c) => c.host);
+        assert.deepStrictEqual(brut, ['mort.test', 'moyen.test'], 'sans registre : l\'ordre de collecte, comme avant');
+        const classe = P.pickTargets(matches, { perMatch: 2, ledger }).map((c) => c.host);
+        assert.deepStrictEqual(classe, ['bon.test', 'moyen.test'], 'avec le registre : les deux premiers du classement');
+        const tout = P.pickTargets(matches, { perMatch: 4, ledger }).map((c) => c.host);
+        assert.strictEqual(tout[tout.length - 1], 'mort.test', 'l\'hôte tranché mort passe après toutes les autres cibles');
+        assert.strictEqual(P.pickTargets(matches, { perMatch: 4, ledger, total: 3 }).some((c) => c.host === 'mort.test'), false, '… et saute s\'il n\'y a pas la place');
+        assert.ok(P.hoteTranche({ tested: 20, plays: 2 }) && !P.hoteTranche({ tested: 19, plays: 0 }) && !P.hoteTranche({ tested: 40, plays: 5 }));
+
+        const precedent = { matches: [{ streamLinks: [{ url: 'https://bon.test/1', verified: 'plays', verifiedAt: '2026-10-24T12:00:00Z', hauteur: 1080 }] }] };
+        const neufs = [{ streamLinks: [{ url: 'https://bon.test/1' }] }];
+        P.reporterVerifications(neufs, precedent, Date.parse('2026-10-24T13:00:00Z'));
+        assert.strictEqual(neufs[0].streamLinks[0].hauteur, 1080, 'la hauteur mesurée est reportée avec son verdict');
+
+        globalThis.window.hostPlayLedger = {};
+        globalThis.window.sourcePlayLedger = {};
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
+        const tri = C.sortFluxLinks([
+            { name: 'Annoncé 1080p', url: 'https://a.test/1', quality: '1080p', verified: 'plays', hauteur: 480 },
+            { name: 'Vu en 720', url: 'https://b.test/1', verified: 'plays', hauteur: 720 },
+            { name: 'Vu en 1080', url: 'https://c.test/1', verified: 'plays', hauteur: 1080 },
+        ]);
+        assert.deepStrictEqual(tri.map((l) => l.name), ['Vu en 1080', 'Vu en 720', 'Annoncé 1080p'],
+            'la définition mesurée passe avant l\'annoncée (obtenu : ' + tri.map((l) => l.name).join(' > ') + ')');
+        ok('pickTargets suit le classement et relègue les hôtes tranchés ; la définition mesurée trie');
+    }
+
     console.log(`unit_playability: ${n} groupes de tests OK`);
     process.exit(0);
 }

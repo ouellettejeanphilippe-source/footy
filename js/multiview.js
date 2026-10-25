@@ -6,7 +6,7 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
-import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX } from './playability.js';
+import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
@@ -2540,6 +2540,7 @@ export function updateMultivisionLayout() {
                 if (!estLecteurOfficiel(finalUrl)) demanderNettoyage(iframe);
 
                 s._posedAt = Date.now(); // pour reconnaître une sortie forcée (pagehide juste après)
+                s._poseeUrl = url;     // … et l'adresse posée à cet instant (sautManuelEstEchec)
                 if (estMediaDirecte(finalUrl)) {
                     iframe = versVideoSiDirect(iframe, finalUrl, container);
                 } else {
@@ -2983,6 +2984,12 @@ export function nextFluxForTile(idx, raison) {
     var suivant = nextLinkAfter(L, s.url);
     if (!suivant) { if (raison !== 'auto') showToast('Aucune autre source pour ce match.'); return false; }
     if (raison === 'auto') notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'none');
+    /* Un ⏭ sur une source qui n'a rien montré apprend aussi à l'appareil, script
+       utilisateur ou pas (sautManuelEstEchec, js/playability.js). */
+    else if (s._poseeUrl === s.url && sautManuelEstEchec({
+        aJoue: s._playing || s._playNoted || s._aJoueUrl === s.url,
+        depuisMs: s._posedAt ? Date.now() - s._posedAt : NaN
+    })) notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'none');
     s._autoTried = (s._autoTried | 0) + (raison === 'auto' ? 1 : 0);
     /* Tout ce qu'une tuile oublie en changeant d'adresse est décidé au même endroit
        (`poserLienSurTuile`, mode câble) : la lecture observée, le manifeste vu passer,
@@ -4822,7 +4829,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v66';
+export var VERSION_APP = 'sports-guide-v67';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

@@ -1614,7 +1614,8 @@ export function renderFluxItem(s, i, m, ledger) {
     var metaInner = (s.channel ? '<span class="si-chan">📡 '+esc(s.channel)+'</span>' : '')
         + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
         + (s.lang && !/^multi$/i.test(s.lang) ? '<span class="si-lang">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
-        + (mesure ? '<span class="si-mesure" title="Mesuré chez vous la dernière fois que ce flux a joué">' + esc(mesure) + '</span>' : '');
+        + (mesure ? '<span class="si-mesure" title="Mesuré chez vous la dernière fois que ce flux a joué">' + esc(mesure) + '</span>'
+          : (s.hauteur | 0) > 0 ? '<span class="si-mesure" title="Définition vue par la vérification des lecteurs">' + (s.hauteur | 0) + 'p</span>' : '');
     var meta = metaInner ? '<div class="si-meta">' + metaInner + '</div>' : '';
     return '<div class="si" data-dom="'+esc(primaryDomain(s.url))+'">'
       +'<a href="#" class="si-main" onclick="'+ev+'">'
