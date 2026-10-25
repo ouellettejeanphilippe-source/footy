@@ -208,7 +208,8 @@ async function main() {
         ok('sortFluxLinks : réputation de l\'hôte ou de la source dans le palier, avant la qualité');
 
         /* « Les sites les plus célèbres en premier » (25 octobre 2026) : Streamed et
-           DaddyLive devant un hôte inconnu vu jouer ; jamais devant un choix ⭐ / 👎, jamais
+           DaddyLive devant un hôte inconnu ; jamais devant un choix ⭐ / 👎, ni devant un lien
+           vu jouer (« les sources chargent moins bien aujourd'hui », le même jour), jamais
            un lien vu mort ; et un nom connu qui ne joue jamais perd son rang. */
         assert.strictEqual(P.rangNotoriete({ url: 'https://embed.st/x', source: 'sportsurge' }), 1, 'le lecteur de Streamed, même venu d\'un agrégateur');
         assert.strictEqual(P.rangNotoriete({ url: 'https://dlive.sx/1', source: 'daddylive' }), 1);
@@ -222,9 +223,10 @@ async function main() {
             { name: 'DaddyLive', url: 'https://dlive.sx/1', source: 'daddylive' },
             { name: 'Streamed', url: 'https://embed.st/1', source: 'streamed', quality: '720p' },
             { name: 'Meth', url: 'https://meth.test/1', source: 'methstreams' },
+            { name: 'Inconnu', url: 'https://hasard.test/2', source: 'footybite' },
         ]);
-        assert.deepStrictEqual(tri4.map((l) => l.name), ['Streamed', 'DaddyLive', 'Meth', 'Inconnu vu jouer', 'Streamed mort']);
-        ok('sortFluxLinks : les sites connus en premier, sauf vus morts');
+        assert.deepStrictEqual(tri4.map((l) => l.name), ['Inconnu vu jouer', 'Streamed', 'DaddyLive', 'Meth', 'Inconnu', 'Streamed mort']);
+        ok('sortFluxLinks : le lien vu jouer, puis les sites connus, sauf vus morts');
     }
 
     // ── 9. L'appareil corrige le serveur (24 octobre 2026) ──────────────────

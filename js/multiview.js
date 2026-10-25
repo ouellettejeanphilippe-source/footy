@@ -3488,9 +3488,13 @@ export function gesteCable(idx, direction) {
 
 /* ── L'incrustation, comme celle du décodeur ─────────────────────────────────
    Numéro de chaîne, match, ligue ou score, source utilisée. Deux secondes et demie,
-   puis elle s'efface : c'est une confirmation, pas un bandeau. */
+   puis elle s'efface : c'est une confirmation, pas un bandeau. En mode câble seulement :
+   hors de lui, ⏮ ⏭ ou LT / RT changent la source sans faire paraître le décodeur
+   (« le modal de changement de poste de câble apparaît… quand je change de stream »,
+   25 octobre 2026). */
 var OSD_MS = 2500;
 export function annoncerCable(idx, note) {
+    if (!modeCable) return null;
     var s = mvFlux[idx];
     var cell = celluleDeTuile(idx);
     if (!s || !cell) return null;
@@ -4803,7 +4807,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v79';
+export var VERSION_APP = 'sports-guide-v81';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
