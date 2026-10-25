@@ -3710,26 +3710,6 @@ export function updateMatchUiAfterScrape(m) {
                             scrapeMatchFlux(m, true);
                         };
                     }
-                    var randomBtn = document.getElementById('mv-random-btn');
-                    if (randomBtn) {
-                        randomBtn.onclick = function(e) {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            if (m && m.streamLinks && m.streamLinks.length > 0) {
-                                var sList = m.streamLinks;
-                                var s4k = sList.filter(function(s) {
-                                    return (s.quality && s.quality.toUpperCase() === '4K') || (s.name && s.name.toUpperCase().indexOf('4K') > -1);
-                                });
-                                var sel = s4k.length > 0 ? s4k[0] : sList[Math.floor(Math.random() * sList.length)];
-                                if(typeof window.addToMultivision === 'function') {
-                                    window.addToMultivision(sel.url || '#', m.homeTeam + ' vs ' + m.awayTeam, m.id);
-                                }
-                                if(typeof window.closeMod === 'function') {
-                                    window.closeMod();
-                                }
-                            }
-                        };
-                    }
                 }
             }
         }

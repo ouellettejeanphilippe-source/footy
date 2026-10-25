@@ -5,7 +5,7 @@ import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, tailleStockageKo, plusGrossesCles } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
-import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
+import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
@@ -110,7 +110,9 @@ function chargerHlsJs() {
    utilisateur, avec le `Referer` du lecteur et sans CORS. hls.js est alors pris même
    quand le navigateur lit le HLS lui-même : le lecteur natif ne laisse pas choisir par
    où passent ses requêtes. */
-function creerLecteurVideo(url, surEchec, pont) {
+/* `entetes` : dans l'APK, les en-têtes du relais (entetesRelais) posés sur chaque requête
+   de hls.js ; Android y remplace le `Referer` (RelaisReferer.java). */
+function creerLecteurVideo(url, surEchec, pont, entetes) {
     var video = document.createElement('video');
     var echec = function(raison) { if (typeof surEchec === 'function') surEchec(raison); };
     video.addEventListener('error', function() {
@@ -127,10 +129,12 @@ function creerLecteurVideo(url, surEchec, pont) {
     video.muted = true;
 
     var estM3u8 = /\.m3u8(\?|#|$)/i.test(url);
-    if (estM3u8 && (pont || !video.canPlayType('application/vnd.apple.mpegurl'))) {
+    if (estM3u8 && (pont || entetes || !video.canPlayType('application/vnd.apple.mpegurl'))) {
         chargerHlsJs().then(function(Hls) {
             if (Hls && Hls.isSupported()) {
-                var hls = new Hls(pont ? { loader: chargeurParPont(pont.lire, { referer: pont.referer }) } : undefined);
+                var hls = new Hls(pont ? { loader: chargeurParPont(pont.lire, { referer: pont.referer }) }
+                    : entetes ? { xhrSetup: function(xhr) { Object.keys(entetes).forEach(function(k) { try { xhr.setRequestHeader(k, entetes[k]); } catch (e) {} }); } }
+                    : undefined);
                 /* Une erreur FATALE (manifeste refusé : CORS, 403, adresse expirée ; ou
                    média illisible) est remontée à l'appelant, qui décide (le mode direct
                    revient à la page). Les erreurs non fatales, hls.js les rattrape seul. */
@@ -161,6 +165,24 @@ function registreDirect() { return safeStorageGetJSON('direct_media', {}) || {};
 /* Le pont du script utilisateur pour ce manifeste, s'il sait lire en binaire (≥ 1.14,
    sous un gestionnaire de scripts) ; null sinon, et hls.js lit lui-même, ce que les CDN
    de ces flux refusent presque tous (js/directmedia.js, chargeurParPont). */
+/* « Le mode direct… ça part en mode câble sur ma télé » ; « y marche pas à date, et ça
+   chie avec le reste du UI » (25 octobre 2026). Dans l'APK, le flux direct joue dans sa
+   tuile, comme sur le site, par hls.js ; il n'ouvre plus le lecteur natif plein écran.
+   Ce qui le rend possible : Capacitor fait passer les requêtes de la page par le réseau
+   d'Android (CapacitorHttp, adresse « /_capacitor_http_interceptor_ »), sans CORS, et
+   Android y pose le `Referer` que porte l'en-tête `X-Footy-Referer` (RelaisReferer.java,
+   appelé par BloqueurWebViewClient) — ce qu'aucune page ne sait faire elle-même. */
+export var ENTETE_RELAIS_REFERER = 'X-Footy-Referer';
+export var ENTETE_RELAIS_ORIGINE = 'X-Footy-Origin';
+function relaisApk() { return !!pluginNatif(); }
+export function entetesRelais(media) {
+    var ref = refererPourDirect(media);
+    var h = {};
+    h[ENTETE_RELAIS_REFERER] = ref;
+    h[ENTETE_RELAIS_ORIGINE] = origineDe(ref);
+    return h;
+}
+
 function pontPourDirect(media) {
     var pont = (typeof getBridgeStatus === 'function') ? getBridgeStatus() : null;
     if (!pont || !pont.available || !pont.binaire) return null;
@@ -177,7 +199,7 @@ function texteDebut(octets) {
 }
 /* Le chemin qu'une lecture prendrait maintenant : un verdict obtenu par l'autre ne vaut
    plus (le script qui s'annonce après coup avec la lecture binaire). */
-function cheminDirect(media) { return pontPourDirect(media) ? 'pont' : 'fetch'; }
+function cheminDirect(media) { return pontPourDirect(media) ? 'pont' : (relaisApk() ? 'relais' : 'fetch'); }
 function finSonde(media, ok, raison, chemin) {
     sondesDirect[media.url] = { ok: ok, at: Date.now(), raison: raison || '', chemin: chemin };
     mvFlux.forEach(function(f, i) {
@@ -193,7 +215,7 @@ function sonderDirect(media) {
     var pont = pontPourDirect(media);
     var lecture = pont
         ? lireOctetsViaPont(media.url, { referer: pont.referer, origine: origineDe(pont.referer), timeoutMs: 8000 }).then(function(r) { return { status: r.status, debut: texteDebut(r.octets) }; })
-        : fetch(media.url, { credentials: 'omit' }).then(function(r) { return r.text().then(function(x) { return { status: r.status, debut: x.slice(0, 64) }; }); });
+        : fetch(media.url, { credentials: 'omit', headers: relaisApk() ? entetesRelais(media) : undefined }).then(function(r) { return r.text().then(function(x) { return { status: r.status, debut: x.slice(0, 64) }; }); });
     lecture.then(function(r) {
         var v = verdictSonde(r.status, r.debut);
         finSonde(media, v.ok, v.raison, chemin);
@@ -202,13 +224,12 @@ function sonderDirect(media) {
     });
 }
 /* Le bouton ▶ direct de cette tuile est-il à montrer ? En mode direct, oui toujours : c'est
-   lui qui ramène à la page. Le lecteur natif de l'APK pose ses propres `Referer` : il
-   essaie sans sonde. */
+   lui qui ramène à la page. Sinon, la sonde dit si le flux répond par le chemin que
+   prendra la lecture (le pont du script, le relais de l'APK, ou fetch). */
 function directDisponible(s) {
     if (s && s.mode === 'direct') return true;
     var media = s && (s._media || mediaDirectPour(registreDirect(), s.url));
     if (!media) return false;
-    if (pluginNatif()) return true;
     var so = sondesDirect[media.url];
     if (so && !so.enCours && so.chemin === cheminDirect(media) && Date.now() - so.at < SONDE_VALIDE_MS) return so.ok;
     sonderDirect(media);
@@ -223,15 +244,13 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
 
 function poserDirect(media, url, container, cell, s) {
     container.innerHTML = '';
-    var natif = pluginNatif();
-    var pont = natif ? null : pontPourDirect(media);
+    var pont = pontPourDirect(media);
+    var entetes = (!pont && relaisApk()) ? entetesRelais(media) : null;
     s._currentUrl = url;
     s._playing = false;
     var idx = parseInt(cell.dataset.index, 10);
     var fini = false;
-    var revenir = function(raison) {
-        if (fini) return;
-        fini = true;
+    var versPage = function(raison) {
         if (s._currentUrl !== url || s.mode !== 'direct') return;
         safeStorageSetJSON('direct_media', noterEchecDirect(registreDirect(), url));
         sondesDirect[media.url] = { ok: false, at: Date.now(), raison: raison, chemin: cheminDirect(media) };
@@ -239,12 +258,27 @@ function poserDirect(media, url, container, cell, s) {
         s._currentUrl = null;
         s._playing = false;
         showToast('Direct refusé (' + raison + ') : retour à la page'
-            + ((pont || natif) ? '' : ' — le script utilisateur à jour (1.14, Tampermonkey) fait passer le direct'));
+            + ((pont || entetes) ? '' : ' — le script utilisateur à jour (1.14, Tampermonkey) fait passer le direct'));
         saveMultivisionState();
         updateMultivisionLayout();
     };
-    if (natif) { poserDirectNatif(natif, media, url, container, s, idx, revenir); return; }
-    var video = creerLecteurVideo(media.url, revenir, pont);
+    /* Refusé dans la tuile : dans l'APK, le lecteur d'Android a sa chance (poserDirectNatif),
+       puis seulement la page. */
+    var revenir = function(raison) {
+        if (fini) return;
+        fini = true;
+        if (s._currentUrl !== url || s.mode !== 'direct') return;
+        var natif = entetes ? pluginNatif() : null;
+        if (natif) {
+            if (video && video._hls) { try { video._hls.destroy(); } catch (e) {} }
+            container.innerHTML = '';
+            showToast('Direct refusé dans la tuile (' + raison + ') : essai au lecteur d\'Android');
+            poserDirectNatif(natif, media, url, container, s, idx, function(r) { versPage(r + ', lecteur d\'Android compris'); });
+            return;
+        }
+        versPage(raison);
+    };
+    var video = creerLecteurVideo(media.url, revenir, pont, entetes);
     video.id = 'mv-iframe-' + idx;
     video.style.transform = s.cropped ? 'scale(1.15)' : 'scale(1)';
     video.addEventListener('playing', function() {
@@ -257,15 +291,15 @@ function poserDirect(media, url, container, cell, s) {
     setTimeout(function() { if (!s._playing) revenir('rien en ' + Math.round(DELAI_DIRECT_MS / 1000) + ' s'); }, DELAI_DIRECT_MS);
 }
 
-/* ─── Le lecteur natif d'Android (APK de mobile/, js/tele.js) ───
-   Dans l'APK, le flux direct n'est pas joué par hls.js dans la WebView mais par le
-   lecteur d'Android (LecteurNatifPlugin → LecteurActivity, ExoPlayer), en plein écran
-   par-dessus l'application. Il essaie les `Referer` de `referersPour`, qu'aucun
-   navigateur ne peut poser. La tuile garde sa place et montre de quoi le relancer.
-   La télécommande, dans le lecteur natif, revient ici : ▲▼ zappe (`zapperChaine`),
-   ◀▶ change de source (`changerSourceTuile`), comme les flèches du mode câble ; c'est
-   l'application qui choisit, le lecteur natif ne fait que jouer. Quand plus aucun
-   `Referer` ne passe, il le dit (`echec`) et la tuile revient à la page, comme hls.js. */
+/* ─── Le lecteur natif d'Android, en repli (APK de mobile/, js/tele.js) ───
+   « Je suis pas fermé au lecteur natif… S'il marche, c'est ça l'important » (25 octobre
+   2026). Le direct joue d'abord dans la tuile (poserDirect) ; s'il y échoue, l'APK
+   essaie le lecteur d'Android (LecteurNatifPlugin → LecteurActivity, ExoPlayer, plein
+   écran) avant de revenir à la page. Il essaie les `Referer` de `referersPour` et lit
+   les segments déguisés en image. La tuile garde sa place et montre de quoi le
+   relancer. Dans le lecteur natif, ◀▶ change de source (`changerSourceTuile`) ; ▲▼ ne
+   zappe plus de match (« ça part en mode câble »). Quand plus aucun `Referer` ne passe,
+   il le dit (`echec`) et la tuile revient à la page. */
 var natifCourant = null;    // { s, url, idx, revenir } : la tuile que joue le lecteur natif
 var natifEcoute = false;
 function ecouterNatif(natif) {
@@ -276,7 +310,6 @@ function ecouterNatif(natif) {
         if (!c || !ev || mvFlux[c.idx] !== c.s || c.s._currentUrl !== c.url) return;
         if (ev.type === 'joue') { c.s._playing = true; rafraichirPastille(c.idx); }
         else if (ev.type === 'echec') { natifCourant = null; c.revenir(ev.raison || 'lecteur natif'); }
-        else if (ev.type === 'chaine') zapperChaine(c.idx, ev.sens < 0 ? -1 : 1);
         else if (ev.type === 'source') changerSourceTuile(c.idx, ev.sens < 0 ? -1 : 1);
     });
 }
@@ -308,6 +341,7 @@ function fermerNatif() {
     var natif = pluginNatif();
     if (natif && typeof natif.fermer === 'function') { try { natif.fermer(); } catch (e) {} }
 }
+
 
 /* Bascule une tuile entre « page » (la page du site, nettoyée par le script) et
    « direct » (le manifeste vidéo dans notre lecteur). Les deux restent à un clic. */
@@ -1095,7 +1129,15 @@ export function showFluxSelector(idx, mid, event) {
             var dom = getDomain(s.url);
             var isActive = mvFlux[idx].url === s.url;
 
+            /* Une source est un arrêt de la télécommande, et OK la lance (« choisir une source
+               permet juste de upvote ou downvote, pas de choisir le stream », 25 octobre 2026 :
+               la ligne n'était qu'un bloc, seuls ⭐ et 👎 prenaient le focus). ⭐ et 👎 restent
+               pour la souris et le doigt (tabindex -1, ignorés par js/tv-navigation.js). */
             var btn = document.createElement('div');
+            btn.className = 'mv-flux-choix' + (isActive ? ' actif' : '');
+            btn.setAttribute('role', 'button');
+            btn.setAttribute('tabindex', '0');
+            if (isActive) btn.setAttribute('data-focus-depart', '');
             btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.15s;background:' + (isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? 'rgba(255,255,255,0.3)' : 'transparent') + ';';
 
             btn.onmouseenter = function() { if(!isActive) this.style.background = 'rgba(255,255,255,0.1)'; };
@@ -1124,8 +1166,8 @@ export function showFluxSelector(idx, mid, event) {
                             (isActive ? '<div style="font-size:9px;background:var(--accent);color:#fff;padding:2px 4px;border-radius:4px;font-weight:bold;margin-right:4px;">ACTIF</div>' : '') +
                             '<span class="sbadge ' + (QC[s.quality]||'bSD') + '" style="font-size:9px;padding:2px 4px;margin-right:8px;">' + (s.quality||'SD') + '</span>' +
                             '<div style="display:flex; align-items:center; gap:4px;">' +
-                                '<button title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="' + favEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === 1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>' +
-                                '<button title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="' + depEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === -1 ? 'var(--red)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === -1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>' +
+                                '<button tabindex="-1" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" onclick="' + favEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === 1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">⭐</button>' +
+                                '<button tabindex="-1" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" onclick="' + depEv + '" style="width:28px; height:28px; border-radius:8px; background:' + (pref === -1 ? 'var(--red)' : 'rgba(255,255,255,0.05)') + '; border:none; color:' + (pref === -1 ? '#fff' : 'var(--muted)') + '; cursor:pointer; font-size:12px; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">👎</button>' +
                             '</div>';
 
             streamsContainer.appendChild(btn);
@@ -1133,98 +1175,8 @@ export function showFluxSelector(idx, mid, event) {
         selector.appendChild(streamsContainer);
     }
 
-    // Section 2: Other Live Matches
-    var titleMatches = document.createElement('div');
-    titleMatches.style.cssText = 'font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;margin-top:8px;';
-    titleMatches.textContent = 'Remplacer par un autre match';
-    selector.appendChild(titleMatches);
-
-    var matchesContainer = document.createElement('div');
-    matchesContainer.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
-
-
-    var availableMatches = S.matches.filter(function(x) {
-        return x.streamsLoaded && compterFluxUtiles(x) > 0 && String(x.id) !== String(mid);
-    });
-
-    availableMatches.sort(function(a, b) {
-        var f1 = (favTeams[a.homeTeam] || favTeams[a.awayTeam]) ? -1 : 0;
-        var f2 = (favTeams[b.homeTeam] || favTeams[b.awayTeam]) ? -1 : 0;
-        if (f1 !== f2) return f1 - f2;
-
-        if (a.status === 'live' && b.status !== 'live') return -1;
-        if (a.status !== 'live' && b.status === 'live') return 1;
-        return a.startTime.localeCompare(b.startTime);
-    });
-
-
-    if (availableMatches.length === 0) {
-        var empty = document.createElement('div');
-        empty.style.cssText = 'padding:10px;text-align:center;color:var(--muted);font-size:12px;background:rgba(255,255,255,0.02);border-radius:8px;';
-        empty.innerHTML = 'Aucun autre match avec flux disponible.';
-        matchesContainer.appendChild(empty);
-    } else {
-        availableMatches.forEach(function(sm) {
-            // Already in multiview?
-            var alreadyIn = mvFlux.some(function(ms) { return String(ms.mid) === String(sm.id); });
-
-            var btn = document.createElement('div');
-            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;transition:all 0.15s;background:rgba(255,255,255,0.05);' + (alreadyIn ? 'opacity:0.5;pointer-events:none;' : '');
-
-            btn.onmouseenter = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.1)'; };
-            btn.onmouseleave = function() { if(!alreadyIn) this.style.background = 'rgba(255,255,255,0.05)'; };
-
-            var thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; font-size:16px;">' + (sm.flag || '⚽') + '</div>';
-            if(sm.homeLogo) {
-                thumb = '<div style="width:36px; height:36px; border-radius:4px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; overflow:hidden; padding:2px;flex-shrink:0;">'
-                  +'<img src="'+esc(sm.homeLogo)+'" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.style.display=\\\'none\\\'">'
-                +'</div>';
-            }
-
-            var score = sm.score ? '<div style="font-size:13px; font-weight:bold; color:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;flex-shrink:0;"><span>'+esc(sm.score[0])+'</span><span>'+esc(sm.score[1])+'</span></div>' : '';
-
-            btn.innerHTML = thumb +
-                '<div style="flex:1; overflow:hidden;">' +
-                    '<div style="font-size:10px; color:var(--red); font-weight:bold; margin-bottom:2px;">🔴 '+(sm.minute?esc(sm.minute)+"'":'EN DIRECT')+' <span style="color:var(--muted); font-weight:normal; margin-left:4px;">'+esc(sm.flag)+' '+esc(sm.league)+'</span></div>' +
-                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.homeTeam)+'</div>' +
-                    '<div style="font-size:12px; font-weight:bold; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">'+esc(sm.awayTeam)+'</div>' +
-                '</div>' + score + (alreadyIn ? '<div style="font-size:10px;background:rgba(255,255,255,0.2);color:#fff;padding:2px 4px;border-radius:4px;margin-left:4px;">AJOUTÉ</div>' : '');
-
-            btn.onclick = function(e) {
-                e.stopPropagation();
-                if(sm.streamsLoaded && compterFluxUtiles(sm) > 0) {
-                    var sortedSmLinks = sortFluxLinks(sm.streamLinks);
-                    mvFlux[idx].url = sortedSmLinks[0].url;
-                    mvFlux[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
-                    mvFlux[idx].mid = sm.id;
-                    saveMultivisionState(); updateMultivisionLayout();
-                    selector.remove();
-                } else {
-                    // Si pas chargé
-                    showToast('Chargement des streams...');
-                    scrapeMatchFlux(sm).then(function() {
-                        sm.streamsLoaded = true;
-                        if(sm.streamLinks && sm.streamLinks.length > 0) {
-                            var sortedSmLinks = sortFluxLinks(sm.streamLinks);
-                            mvFlux[idx].url = sortedSmLinks[0].url;
-                            mvFlux[idx].name = sm.homeTeam + ' vs ' + sm.awayTeam;
-                            mvFlux[idx].mid = sm.id;
-                            saveMultivisionState(); updateMultivisionLayout();
-                        } else {
-                            showToast('Aucun flux trouvé pour ce match.');
-                        }
-                        selector.remove();
-                    }).catch(function() {
-                        showToast('Erreur lors du chargement des streams.');
-                        selector.remove();
-                    });
-                }
-            };
-
-            matchesContainer.appendChild(btn);
-        });
-    }
-    selector.appendChild(matchesContainer);
+    /* « Remplacer par un autre match » est parti avec « Changer de match » (25 octobre 2026 :
+       « juste possible après avoir fermé le match ») : fermer la vidéo, puis + Ajouter. */
 
     document.body.appendChild(selector);
 
@@ -2824,15 +2776,18 @@ export function updateMultivisionLayout() {
             ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-cable-btn' + (s._gestesSuspendus ? '' : ' on') + '" title="' + (s._gestesSuspendus ? 'Reprendre les gestes de zapping' : 'Suspendre les gestes tant qu\'on travaille dans la page (un simple appui les rend quatre secondes)') + '" aria-label="Gestes de zapping" onclick="basculerGestesTuile(' + idx + '); event.stopPropagation();">' + (s._gestesSuspendus ? '🖐' : '📺') + '</button>'
             : '';
 
-        /* À droite, la croix ; et, sur deux écrans, ⇄ : le second écran n'a pas la barre.
-           Le reste des actions vit dans le menu ⋮ de la barre (ouvrirMenuTuile). */
-        var boutonEchange = (idx > 0 && (grid2 || etire))
+        /* ⇄ et ✕ seulement sur le second écran (deux fenêtres), qui n'a pas la barre : dans
+           la page, ils doublaient « Échanger avec la vidéo principale » et « Fermer cette
+           vidéo » du menu ⋮ de la barre (ouvrirMenuTuile), qui a tout le reste (« tous
+           les doublons », 25 octobre 2026). */
+        var surSecondEcran = !!grid2 && idx > 0;
+        var boutonEchange = surSecondEcran
             ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-swap-btn" title="Échanger avec la vidéo principale" aria-label="Échanger avec la vidéo principale" onclick="mettreSurEcranPrincipal(' + idx + '); event.stopPropagation();">⇄ <span class="mv-hdr-lb">Principal</span></button>'
             : '';
         var controlsHtml = '<div class="mv-hdr-right">'
             + boutonEchange
             + boutonGestes
-            + '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>'
+            + (surSecondEcran ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>' : '')
             + '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
@@ -3324,8 +3279,7 @@ export function addToMultivision(url, name, mid) {
     }
     mvFlux.push({url: url, name: name, mid: mid, cropped: false, _autoTried: 0});
     /* La première vidéo du mode câble prend, elle aussi, le flux direct connu : elle
-       passait à côté de `poserLienSurTuile`, et seul le premier zapping le trouvait.
-       Sur la télé, c'est ce qui l'envoie au lecteur natif (js/tele.js). */
+       passait à côté de `poserLienSurTuile`, et seul le premier zapping le trouvait. */
     if (modeCable) poserLienSurTuile(mvFlux[mvFlux.length - 1], url);
 
     // Make the newly added stream the active one (unmuted and focused)
@@ -3760,12 +3714,13 @@ export function ouvrirMenuTuile(idx, bouton, event) {
     var empile = window.innerHeight > window.innerWidth;
     ouvrirMenu(bouton, [
         { titre: 'Si la vidéo ne joue pas' },
-        pos ? { icon: '⏭', label: 'Source suivante', detail: 'Source ' + pos.k + ' sur ' + pos.n + ' pour ce match', onSelect: function() { nextFluxForTile(idx); } } : null,
         s.mid ? { icon: '🔁', label: 'Choisir une autre source', detail: 'La liste des liens du match', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
         { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
-        media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', detail: s.mode === 'direct' ? 'La page complète, comme le site la sert' : 'La vidéo seule, sans la page du site', onSelect: function() { toggleDirectMode(idx); } } : null,
+        /* « Pas de doublons » (25 octobre 2026) : « Source suivante » et « Lire le flux
+           direct » / « Revenir à la page du site » sont ⏭ et ▶ Direct de la barre ;
+           « Infos et statistiques » est ⚙ Réglages → Scores et statistiques (les stats du
+           match de la vidéo choisie, que focusStream met à jour). */
         { titre: 'Cette tuile' },
-        s.mid ? { icon: '📊', label: 'Infos et statistiques', onSelect: function() { openGlobalStatsFromMatch(s.mid); } } : null,
         { icon: fitInfo.icon, label: 'Cadrage de l\'image', detail: 'Actuellement : ' + fitInfo.label + ' (étiré → ajusté → rempli)', onSelect: function() { cycleMvFit(idx); } },
         (idx > 0 && (deuxEcransActif() || mvLayout === 'ecrans')) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
         idx > 0 ? { icon: empile ? '▲' : '◀', label: empile ? 'Monter' : 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
@@ -4824,7 +4779,15 @@ export function viderCachesApplication() {
 
 export function mettreAJourApplication() {
     showToast('Mise à jour de l\'application…');
-    return viderCachesApplication().then(function(bilan) {
+    /* Dans l'APK, qui sert le site en ligne (25 octobre 2026) : pas de service worker,
+       mais le cache HTTP de la WebView, que seul Android peut vider (viderCache,
+       LecteurNatifPlugin). Un APK plus ancien n'a pas la méthode : on passe outre. */
+    var natif = pluginNatif();
+    var cacheNatif = (natif && typeof natif.viderCache === 'function')
+        ? Promise.resolve().then(function() { return natif.viderCache(); }).catch(function() {})
+        : Promise.resolve();
+    return Promise.all([viderCachesApplication(), cacheNatif]).then(function(r) {
+        var bilan = r[0];
         lg('Mise à jour', bilan.serviceWorkers + ' service worker(s) retiré(s), ' + bilan.caches + ' cache(s) vidé(s)');
         /* Adresse neuve : sans cela le cache HTTP peut resservir la même page et le bouton
            semblerait ne rien faire. `replace` pour ne pas empiler d'historique. */
@@ -4840,7 +4803,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v70';
+export var VERSION_APP = 'sports-guide-v79';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

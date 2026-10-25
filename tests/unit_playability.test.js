@@ -206,6 +206,25 @@ async function main() {
         C.notePlayability({ url: 'https://neuf.test/1', source: 'nouvelle' }, 'plays');
         assert.deepStrictEqual(C.sourcePlayLedger().nouvelle, { tested: 1, plays: 1 }, 'le navigateur note aussi la source');
         ok('sortFluxLinks : réputation de l\'hôte ou de la source dans le palier, avant la qualité');
+
+        /* « Les sites les plus célèbres en premier » (25 octobre 2026) : Streamed et
+           DaddyLive devant un hôte inconnu vu jouer ; jamais devant un choix ⭐ / 👎, jamais
+           un lien vu mort ; et un nom connu qui ne joue jamais perd son rang. */
+        assert.strictEqual(P.rangNotoriete({ url: 'https://embed.st/x', source: 'sportsurge' }), 1, 'le lecteur de Streamed, même venu d\'un agrégateur');
+        assert.strictEqual(P.rangNotoriete({ url: 'https://dlive.sx/1', source: 'daddylive' }), 1);
+        assert.strictEqual(P.rangNotoriete({ url: 'https://inconnu.test/1', source: 'sportsurge' }), P.RANG_INCONNU, 'un agrégateur connu vers un hôte inconnu');
+        assert.strictEqual(P.rangNotoriete({ url: 'https://x.test/1', source: 'methstreams' }, { methstreams: { tested: 12, plays: 0 } }), P.RANG_INCONNU, 'connu mais éprouvé mort');
+        globalThis.window.sourcePlayLedger = {};
+        globalThis.window.hostPlayLedger = {};
+        const tri4 = C.sortFluxLinks([
+            { name: 'Inconnu vu jouer', url: 'https://hasard.test/1', verified: 'plays', source: 'footybite' },
+            { name: 'Streamed mort', url: 'https://embed.st/mort', verified: 'blocked', source: 'streamed' },
+            { name: 'DaddyLive', url: 'https://dlive.sx/1', source: 'daddylive' },
+            { name: 'Streamed', url: 'https://embed.st/1', source: 'streamed', quality: '720p' },
+            { name: 'Meth', url: 'https://meth.test/1', source: 'methstreams' },
+        ]);
+        assert.deepStrictEqual(tri4.map((l) => l.name), ['Streamed', 'DaddyLive', 'Meth', 'Inconnu vu jouer', 'Streamed mort']);
+        ok('sortFluxLinks : les sites connus en premier, sauf vus morts');
     }
 
     // ── 9. L'appareil corrige le serveur (24 octobre 2026) ──────────────────

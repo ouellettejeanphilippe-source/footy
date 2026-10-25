@@ -265,7 +265,7 @@ export function ficheMatch(m, now, jourGrille, maintenant) {
   };
 }
 
-/* Icônes des dispositions, dans le menu Look du groupe flottant (basculerMenuLook). La
+/* Icônes des dispositions, dans le menu Look (Plus → Look, basculerMenuLook). La
    rangée de pastilles en tête de page est retirée : « enlever choix de look en haut car
    maintenant en bas » (13 octobre 2026). */
 var ICONES_DISPOSITION = {
@@ -308,10 +308,15 @@ export function choisirDisposition(nom, vue) {
 }
 
 /* Couleur des équipes, la même que Options → Couleur des cartes, pour les huit vues. */
+/* Les six couleurs de cartes : Look est le seul endroit où les choisir depuis que la liste
+   d'Options, qui en avait deux de plus, est partie (25 octobre 2026, « tous les
+   doublons »). */
 var COULEURS_LOOK = [
   ['home', 'Uni', 'La couleur de l\'équipe à domicile'],
   ['gradient-45', 'Dégradé', 'Les deux équipes, en fondu'],
+  ['gradient', 'Dégradé de côté', 'De l\'équipe à l\'extérieur vers celle à domicile'],
   ['split', 'Deux couleurs', 'Les deux équipes, coupure nette'],
+  ['league', 'Ligue', 'La couleur de la ligue'],
   ['dark', 'Neutre', 'Sans couleur d\'équipe']
 ];
 export function choisirCouleurs(v) {
@@ -322,7 +327,7 @@ export function choisirCouleurs(v) {
   majMenuLook();
 }
 
-/* Menu « Look » du groupe flottant (à côté d'Actualiser) : disposition du Live, du Guide,
+/* Menu « Look » (Plus → Look) : disposition du Live, du Guide,
    et couleurs. Se ferme par Échap ou un clic ailleurs. */
 function menuLookHtml() {
   var ligne = function(vue, titre) {
@@ -334,10 +339,10 @@ function menuLookHtml() {
       }).join('') + '</div>';
   };
   var actuelle = (userPrefs && userPrefs.cardColor) || 'gradient-45';
-  var apercu = { home: '#c41230', 'gradient-45': 'linear-gradient(135deg,#c41230 0 36%,#00468b 64%)', split: 'linear-gradient(135deg,#c41230 50%,#00468b 50%)', dark: 'var(--bg3)' };
+  var apercu = { home: '#c41230', 'gradient-45': 'linear-gradient(135deg,#c41230 0 36%,#00468b 64%)', gradient: 'linear-gradient(90deg,#00468b,#c41230)', split: 'linear-gradient(135deg,#c41230 50%,#00468b 50%)', league: '#2f6bff', dark: 'var(--bg3)' };
   return ligne('live', 'Live') + ligne('guide', 'Guide')
     + '<div class="ml-titre">Couleurs</div><div class="ml-col" role="radiogroup" aria-label="Couleurs">' + COULEURS_LOOK.map(function(c) {
-      var choisi = c[0] === actuelle || (c[0] === 'gradient-45' && (actuelle === 'gradient' || actuelle === 'league'));
+      var choisi = c[0] === actuelle;
       return '<button type="button" role="radio" aria-checked="' + choisi + '" data-look-couleur="' + c[0] + '"><span class="ml-pastille" style="background:' + apercu[c[0]] + '"></span><span>' + esc(c[1]) + '<small>' + esc(c[2]) + '</small></span></button>';
     }).join('') + '</div>';
 }
@@ -453,6 +458,19 @@ function brancherDispositions(c) {
   });
 }
 
+var grilleARefaire;
+function grilleCachee() {
+  return typeof document !== 'undefined' && !!document.body && document.body.getAttribute('data-view') === 'player';
+}
+/* Redessine la grille si un rendu a été retenu pendant le lecteur. */
+export function grilleEnAttente() {
+  if (grilleARefaire === undefined || grilleCachee()) return false;
+  var m = grilleARefaire || (S && S.matches) || [];
+  grilleARefaire = undefined;
+  buildEPG(m);
+  return true;
+}
+
 export function buildEPG(matches){
   /* Compteur de rendus, lu par les tests : « la grille est stable » veut dire que ce
      nombre n'a pas bougé depuis un moment. Le premier chargement dessine la grille
@@ -460,6 +478,13 @@ export function buildEPG(matches){
      (js/main.js) ; un test qui lisait le DOM entre les deux tenait des éléments
      détachés — c'est ce qui rendait « chaque section repliable… » instable. */
   if (typeof window !== 'undefined') window.rendusGrille = (window.rendusGrille || 0) + 1;
+  /* « Optimiser pour la RAM et le CPU du Chromecast » (25 octobre 2026). Pendant qu'on
+     regarde le lecteur, la grille est cachée : la redessiner (scores chaque minute, passe
+     complète toutes les cinq minutes) volait du temps aux vidéos. On la marque à refaire,
+     et elle l'est au retour (grilleEnAttente, appelée par syncNavState, js/utils.js,
+     dès que la vue n'est plus le lecteur). */
+  if (grilleCachee()) { grilleARefaire = matches || null; return; }
+  grilleARefaire = undefined;
   try {
     buildEPGInner(matches);
   } catch (e) {
@@ -1173,45 +1198,29 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               if (tColorsH) homeColor = tColorsH[0];
               if (tColorsA) awayColor = tColorsA[0];
 
-              if (userPrefs.cardColor === 'home') {
-                  b.style.background = homeColor;
-              } else if (userPrefs.cardColor === 'league') {
-                  b.style.background = lgCol;
-              } else if (userPrefs.cardColor === 'dark') {
-                  b.style.background = 'rgba(255,255,255,0.05)';
-              } else if (userPrefs.cardColor === 'split') {
-                  b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
-              } else if (userPrefs.cardColor === 'gradient') {
-                  b.style.background = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-              } else {
-                  b.style.background = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-              }
+              /* Le Guide façon câble (25 octobre 2026, « plus clean et plein écran, comme le
+                 câble dans le temps ») : une case plate, et les couleurs ne sont plus qu'un
+                 liseré à gauche (styles.css §14), qui suit toujours « Couleur des cartes ». */
+              var c1 = homeColor, c2 = m.awayTeam ? awayColor : homeColor;
+              if (userPrefs.cardColor === 'home') c2 = c1;
+              else if (userPrefs.cardColor === 'league') c1 = c2 = lgCol;
+              else if (userPrefs.cardColor === 'dark') c1 = c2 = 'rgba(255,255,255,0.25)';
+              b.style.setProperty('--mb-c1', c1);
+              b.style.setProperty('--mb-c2', c2);
 
               var timeBadge = timelineBadgeHtml(m);
 
               var streamsBadge = m.streamLinks && m.streamLinks.length>0 ? '<div class="mb-sn">'+m.streamLinks.length+' flux</div>' : '';
 
-              if (m.awayTeam) {
-                  b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 12px;">'
-                              +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-end; text-align: right; width: auto;">'
-                              +     '<div class="mb-t" style="text-align: right;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                              +     homeLogoHtml
-                              +   '</div>'
-                              +   '<div class="mb-team-row" style="flex: 1; justify-content: flex-start; text-align: left; width: auto;">'
-                              +     awayLogoHtml
-                              +     '<div class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</div>'
-                              +   '</div>'
-                              + '</div>'
-                              + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
-              } else {
-                  b.innerHTML = '<div class="mb-teams" style="flex-direction: row; justify-content: center; align-items: center; gap: 12px;">'
-                              +   '<div class="mb-team-row" style="flex: 1; justify-content: center; text-align: center; width: auto;">'
-                              +     homeLogoHtml
-                              +     '<div class="mb-t" style="text-align: center;" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</div>'
-                              +   '</div>'
-                              + '</div>'
-                              + '<div class="mb-m" style="justify-content: center; margin-top: 4px;">'+timeBadge+streamsBadge+'</div>';
-              }
+              /* Une ligne, comme un titre d'émission : « Domicile – Extérieur », chacun avec son
+                 logo (« je veux logos quand même »), puis l'heure (ou le direct, le score) et
+                 le nombre de liens. */
+              var logoMb = function(h) { return h.replace(/chan-logo/g, 'mb-logo'); };
+              b.innerHTML = '<div class="mb-tt">'
+                          +   logoMb(homeLogoHtml) + '<span class="mb-t" title="'+esc(m.homeTeam)+'">'+esc(m.homeTeam)+'</span>'
+                          +   (m.awayTeam ? '<span class="mb-vs">–</span>' + logoMb(awayLogoHtml) + '<span class="mb-t" title="'+esc(m.awayTeam)+'">'+esc(m.awayTeam)+'</span>' : '')
+                          + '</div>'
+                          + '<div class="mb-m">'+timeBadge+streamsBadge+'</div>';
 
               /* Position : les minutes comptées depuis le minuit de la grille
                  (`minutesDansLaJournee`, js/nuit.js) — négatives pour un match d'hier
@@ -1628,15 +1637,6 @@ export function renderFluxItem(s, i, m, ledger) {
        de l'application est parti. Le classement lui-même vient du moteur d'extraction
        (js/extractors.js) et du registre appris, pas d'une supposition de l'interface. */
 
-    var addMvEv = "";
-    if (window.multiviewPendingAction && window.multiviewPendingAction.type === 'replace') {
-        addMvEv = "mvFlux[" + window.multiviewPendingAction.replaceIdx + "].url='" + escJs(s.url||'#') + "'; mvFlux[" + window.multiviewPendingAction.replaceIdx + "].name='" + escJs(m.homeTeam) + " vs " + escJs(m.awayTeam) + "'; mvFlux[" + window.multiviewPendingAction.replaceIdx + "].mid='" + escJs(m.id) + "'; saveMultivisionState(); updateMultivisionLayout(); window.multiviewPendingAction=null; closeMod(); if(document.getElementById('mv-container') && document.getElementById('mv-container').classList.contains('mv-pip')){ toggleMultiviewPip(); } event.stopPropagation(); event.preventDefault();";
-    } else if (window.multiviewPendingAction && window.multiviewPendingAction.type === 'add') {
-        addMvEv = "addToMultivision('"+escJs(s.url||'#')+"','"+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+"', '"+escJs(m.id)+"'); window.multiviewPendingAction=null; closeMod(); if(document.getElementById('mv-container') && document.getElementById('mv-container').classList.contains('mv-pip')){ toggleMultiviewPip(); } event.stopPropagation(); event.preventDefault();";
-    } else {
-        addMvEv = "addToMultivision('"+escJs(s.url||'#')+"','"+escJs(m.homeTeam)+' vs '+escJs(m.awayTeam)+"', '"+escJs(m.id)+"'); closeMod(); event.stopPropagation(); event.preventDefault();";
-    }
-
     var dom = getDomain(s.url);
     var pref = domainPrefs[dom] || 0;
     var favEv = "toggleDomainPref('"+escJs(dom)+"', 'fav', '"+escJs(m.id)+"');event.stopPropagation();event.preventDefault();";
@@ -1670,7 +1670,6 @@ export function renderFluxItem(s, i, m, ledger) {
       +'<div class="si-actions">'
         +'<button type="button" class="si-btn'+(pref===1?' on-fav':'')+'" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" aria-pressed="'+(pref===1)+'" onclick="'+favEv+'">⭐</button>'
         +'<button type="button" class="si-btn'+(pref===-1?' on-dep':'')+'" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" aria-pressed="'+(pref===-1)+'" onclick="'+depEv+'">👎</button>'
-        +'<button type="button" class="si-btn si-add" title="Ajouter au Multivision" aria-label="Ajouter au Multivision" onclick="'+addMvEv+'">⊞</button>'
       +'</div>'
       +'</div>';
 }
@@ -2126,10 +2125,11 @@ export function openMod(m,col){
   var hasEnoughStreams = compterFluxUtiles(m) > 0;
   var needsScraping = !hasEnoughStreams && m.matchUrl;
 
-  // Barre d'actions de la colonne des flux : rafraîchir, et « meilleur flux au Multivision »
+  /* Barre d'actions de la colonne des flux : rafraîchir. Son ⊞ « meilleur flux au
+     Multivision » doublait « ▶ Regarder » et est parti (25 octobre 2026, « tous les
+     doublons »). */
   var rightHeaderHtml = '<div class="flux-head"><span class="flux-title">Flux</span><div class="flux-actions">'
       + '<button id="mv-refresh-btn" class="icon-btn" aria-label="Mettre à jour les flux" title="Mettre à jour les flux"' + (!m.matchUrl ? ' disabled' : '') + '>🔄</button>'
-      + '<button id="mv-random-btn" class="icon-btn" aria-label="Ajouter le meilleur flux au Multivision" title="Ajouter le meilleur flux au Multivision">⊞</button>'
       + '</div></div>';
 
   // This will attach events to the header buttons once rightCol.innerHTML is set
@@ -2154,22 +2154,6 @@ export function openMod(m,col){
                       openMod(m, col);
                   }
               });
-          };
-      }
-      var randomBtn = document.getElementById('mv-random-btn');
-      if (randomBtn) {
-          randomBtn.onclick = function(e) {
-              e.stopPropagation();
-              e.preventDefault();
-              if (m && m.streamLinks && m.streamLinks.length > 0) {
-                  var sList = m.streamLinks;
-                  var s4k = sList.filter(function(s) {
-                      return (s.quality && s.quality.toUpperCase() === '4K') || (s.name && s.name.toUpperCase().indexOf('4K') > -1);
-                  });
-                  var sel = s4k.length > 0 ? s4k[0] : sList[Math.floor(Math.random() * sList.length)];
-                  addToMultivision(sel.url || '#', m.homeTeam + ' vs ' + m.awayTeam, m.id);
-                  closeMod();
-              }
           };
       }
   }
@@ -2507,6 +2491,7 @@ export function migrerGuideChaines() {
 window.diagnosticScrape = diagnosticScrape;
 window.getOriginalMatchId = getOriginalMatchId;
 window.buildEPG = buildEPG;
+window.grilleEnAttente = grilleEnAttente;
 window.timelineBadgeHtml = timelineBadgeHtml;
 window.belongsToLive = belongsToLive;
 window.renderSportChips = renderSportChips;

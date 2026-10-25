@@ -345,7 +345,8 @@ function guideChaines(tout, o) {
   });
   var ordre = [];
   ligues.forEach(function (l) { ordre = ordre.concat(par[l].sort(function (a, b) { return (a.etat !== 'live') - (b.etat !== 'live') || a.debut - b.debut; })); });
-  var sel = choisi(ordre);
+  /* « Pas de en direct en haut » (25 octobre 2026) : le Guide n'a plus d'aperçu du match
+     choisi au-dessus de la grille ; une case ouvre la fiche, du premier coup. */
   var regle = '';
   for (var t = debut; t < fin;) {
     var nx = Math.min(fin, (Math.floor(t / 30) + 1) * 30);
@@ -357,12 +358,12 @@ function guideChaines(tout, o) {
     if (f.ligue !== ligue) { ligue = f.ligue; lignes += '<div class="dsp-lgh">' + esc(ligue) + '</div>'; }
     var x0 = Math.max(f.debut, debut), suite = f.debut < debut;
     var w = Math.min(fin, Math.max(f.debut + f.duree, suite ? x0 + 50 : 0)) - x0;
-    lignes += '<div class="dsp-er"><div class="dsp-en">' + logo(f.logoDom, f.dom) + '<span>' + esc(f.abDom) + (f.seul ? '' : ' – ' + esc(f.abExt)) + '</span></div>'
-      + '<div class="dsp-lane"><div class="dsp-pg dsp-' + f.etat.replace('?', '') + (suite ? ' dsp-suite' : '') + (f === sel ? ' dsp-sel' : '') + '" data-dsp="choix" data-v="' + esc(f.id) + '" tabindex="0" role="button" style="--a:' + (x0 - debut) + ';--w:' + Math.max(10, w) + '">'
+    lignes += '<div class="dsp-er"><div class="dsp-en">' + logo(f.logoDom, f.dom) + (f.seul ? '' : logo(f.logoExt, f.ext)) + '<span>' + esc(f.abDom) + (f.seul ? '' : ' – ' + esc(f.abExt)) + '</span></div>'
+      + '<div class="dsp-lane"><div class="dsp-pg dsp-' + f.etat.replace('?', '') + (suite ? ' dsp-suite' : '') + '" ' + attrs(f) + ' style="--a:' + (x0 - debut) + ';--w:' + Math.max(10, w) + '">'
       + '<span class="dsp-lbl">' + (f.sDom != null ? '<b>' + score(f, 'd') + '–' + score(f, 'e') + '</b> · ' : '') + esc(f.etat === 'live' ? etiquetteEtat(f) : f.heure)
       + ' · <span class="dsp-long">' + titre(f) + '</span><span class="dsp-court">' + esc(f.abDom) + (f.seul ? '' : '–' + esc(f.abExt)) + '</span></span></div></div></div>';
   });
-  return filtre.html + apercu(sel, o, true)
+  return filtre.html
     + '<div class="dsp-epg" style="--larg:' + largeur + '"><div class="dsp-epg-in"><div class="dsp-ruler"><div class="dsp-corner"></div>' + regle + '</div>' + lignes
     + '<div class="dsp-nowv" style="--a:' + (o.maintenant - debut) + '"></div></div></div>'
     + (termines.length ? '<div class="dsp-dlist">' + boutonTermines(termines.length) + (etatDisposition.termines ? '<div class="dsp-dl">' + termines.map(function (f) {

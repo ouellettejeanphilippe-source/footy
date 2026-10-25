@@ -68,14 +68,14 @@ Elle fait deux choses que la version hébergée ne pouvait pas faire :
 
 ### `mobile/` — l'application Android (téléphone et Chromecast avec Google TV)
 
-Le même APK s'installe sur un téléphone et sur un Chromecast avec Google TV, où il apparaît dans le lanceur. C'est le site tel quel (« site = APK », `AGENTS.md`) : sur la télé, seulement la navigation à la télécommande (ou à la manette), la page à l'échelle d'un écran d'ordinateur (Options → Taille de l'interface), et Retour qui passe par la barre de navigation ; fermée (Retour sur la dernière page, ou Accueil), l'application repart de zéro. Partout, le mode direct passe par le lecteur natif d'Android (`docs/ARCHITECTURE.md` §12.2).
+Le même APK s'installe sur un téléphone et sur un Chromecast avec Google TV, où il apparaît dans le lanceur. C'est le site tel quel (« site = APK », `AGENTS.md`) : sur la télé, seulement la navigation à la télécommande (ou à la manette), la page à l'échelle d'une appli de télé, comme Netflix ou Prime Video (Options → Taille de l'interface), et Retour qui passe par la barre de navigation ; fermée (Retour sur la dernière page, ou Accueil), l'application repart de zéro. Partout, le mode direct joue dans la tuile, comme sur le site, avec le `Referer` posé par Android (`docs/ARCHITECTURE.md` §12.2).
 
 ```bash
 cd mobile && npm install
 powershell -ExecutionPolicy Bypass -File mobile\fabriquer-apk.ps1   # mobile\Guide-des-Sports.apk
 ```
 
-Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins). L'APK embarque une copie de l'application : refaites-le pour suivre le site. Il fait ce que fait le site avec l'extension ou Tampermonkey (blocage, script dans chaque lecteur, pages qui refusent l'iframe, mode direct par le lecteur natif), et se pilote à la télécommande ou à la manette. L'APK n'embarque qu'un **instantané** des données : quand `data/schedule.json` n'est pas du jour, le client interroge ESPN lui-même (`js/api.js`, `apiOuCacheLocal`), donc il n'a besoin d'aucun serveur. Lancez le pipeline avant de fabriquer, sinon l'APK part avec des liens non vérifiés.
+Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins). L'APK ouvre le site publié (`https://ouellettejeanphilippe-source.github.io/footy/`, `mobile/capacitor.config.json`) au lieu d'en embarquer une copie : il suit le site sans être refait, et « Mettre à jour » y marche comme sur le site. On ne le refait que pour sa partie Android (`mobile/android/`, blocage, script des lecteurs). Sans réseau au démarrage, il le dit et réessaie seul. Il fait ce que fait le site avec l'extension ou Tampermonkey (blocage, script dans chaque lecteur, pages qui refusent l'iframe, mode direct dans la tuile, avec le `Referer` posé par Android), et se pilote à la télécommande ou à la manette. Les données (`data/schedule.json`, `data/streams.json`) viennent donc du site, comme dans un navigateur.
 
 ### `tv/` — l'application Android TV (Chromecast avec Google TV)
 

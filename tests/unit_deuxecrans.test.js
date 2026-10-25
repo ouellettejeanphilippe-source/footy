@@ -186,10 +186,13 @@ async function main() {
   mv.mettreSurEcranPrincipal(1);   // remet l'ordre d'avant pour la suite
   ok('après un échange, les deux vidéos déplacées repartent seules (lecture, son, pastille)');
 
-  // Le bouton ⇄ est dans l'en-tête des tuiles du second écran, pas de la principale.
+  /* ⇄ et ✕ sont dans l'en-tête des tuiles du second écran, qui n'a pas la barre ; pas
+     sur la principale, dont le menu ⋮ de la barre porte les mêmes gestes (« tous les
+     doublons », 25 octobre 2026). */
   assert.ok(mv.celluleDeTuile(1).querySelector('.mv-swap-btn'));
-  assert.ok(!mv.celluleDeTuile(0).querySelector('.mv-swap-btn'));
-  ok('le bouton ⇄ est sur les tuiles du second écran');
+  assert.ok(mv.celluleDeTuile(1).querySelector('.mv-close-btn'));
+  assert.ok(!mv.celluleDeTuile(0).querySelector('.mv-swap-btn, .mv-close-btn'));
+  ok('⇄ et ✕ sont sur les tuiles du second écran seulement');
 
   // Glisser-déposer d'un écran à l'autre : rien au survol, l'échange au dépôt.
   const etat = noms();                        // [C, B, A, D]
@@ -226,7 +229,7 @@ async function main() {
   const nbCol = grille.style.gridTemplateColumns.split(' ').length;
   assert.strictEqual(nbCol, 2, 'deux colonnes : ' + grille.style.gridTemplateColumns);
   assert.strictEqual(mv.celluleDeTuile(0).style.gridRow, 'span ' + (mv.mvFlux.length - 1), 'la principale occupe toute la hauteur du premier écran');
-  assert.ok(mv.celluleDeTuile(1).querySelector('.mv-swap-btn'), 'le bouton ⇄ est là aussi');
+  assert.ok(!mv.celluleDeTuile(1).querySelector('.mv-swap-btn, .mv-close-btn'), 'dans la même fenêtre, ⇄ et ✕ sont au menu ⋮ de la barre, pas sur la tuile');
   await new Promise(r => setTimeout(r, 30));
   mv.mvFlux.forEach(s => { s._playing = true; });
   const cadres = mv.mvFlux.map((s, i) => mv.cadreDeTuile(i));

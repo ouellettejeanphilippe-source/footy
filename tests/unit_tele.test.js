@@ -25,13 +25,13 @@ async function main() {
   assert.strictEqual(tele.reglagesImposesADefaire(stock({ [tele.CLE_APK_COMME_SITE]: '1', 'pref-tv-mode': 'true' })), null, 'une seule fois : ensuite, le mode TV est un choix');
   /* L'échelle : la télé à la largeur d'un écran d'ordinateur, le mode TV un peu plus
      gros, et rien ailleurs. Un choix d'Options l'emporte. */
-  assert.strictEqual(tele.zoomInterface(960, 'auto', { tele: true }), 0.5, 'Chromecast : le site comme sur 1920 px');
+  assert.strictEqual(tele.zoomInterface(960, 'auto', { tele: true }), 0.8, 'Chromecast : l\'échelle d\'une appli de télé (page de 1200 px)');
   assert.strictEqual(tele.zoomInterface(960, 'auto', { tele: true, modeTv: true }), 0.65, 'Chromecast en mode TV : 0,65 (au lieu de 1,3)');
   assert.strictEqual(tele.zoomInterface(1920, 'auto', { modeTv: true }), 1.3, 'ordinateur en mode TV : comme avant');
   assert.strictEqual(tele.zoomInterface(1920, 'auto', {}), 1, 'ailleurs : rien');
   assert.strictEqual(tele.zoomInterface(390, null, { tele: true }), 0.5, 'jamais sous 0,5');
   assert.strictEqual(tele.zoomInterface(960, '80', { tele: true }), 0.8, 'le choix d\'Options');
-  assert.strictEqual(tele.zoomInterface(960, 'n\'importe', { tele: true }), 0.5, 'un choix illisible : automatique');
+  assert.strictEqual(tele.zoomInterface(960, 'n\'importe', { tele: true }), 0.8, 'un choix illisible : automatique');
   ok('APK = site : modes imposés défaits une fois, échelle d\'un écran d\'ordinateur sur la télé');
 
   // 2. Retour : du plus proche au plus loin, et ne quitte que depuis le Live.
@@ -134,6 +134,27 @@ async function main() {
   assert.match(lire('mobile/android/app/src/main/java/ca/local/footy/MainActivity.java'), /setAcceptThirdPartyCookies\(vue, true\)/);
   assert.strictEqual(JSON.parse(lire('mobile/capacitor.config.json')).android.allowMixedContent, true);
   ok('APK : cookies tiers acceptés et contenu mixte permis, comme dans Chrome');
+
+  /* 9. « L'APK peut pas juste servir le site ? » (25 octobre 2026) : il ouvre le site
+     publié, en https, avec une page embarquée quand le réseau manque au démarrage ; pas de
+     service worker là (Capacitor pose son pont dans les pages qu'il relaie) ; « Mettre à
+     jour » vide aussi le cache de la WebView. */
+  const config = JSON.parse(lire('mobile/capacitor.config.json'));
+  assert.strictEqual(config.server.url, 'https://ouellettejeanphilippe-source.github.io/footy/');
+  assert.strictEqual(config.server.errorPath, 'hors-ligne.html');
+  const horsLigne = lire('mobile/hors-ligne.html');
+  assert.ok(horsLigne.includes("var SITE = '" + config.server.url + "'"), 'la page hors ligne relance le même site');
+  assert.match(lire('mobile/assembler-www.mjs'), /copyFile\(path\.join\(ICI, 'hors-ligne\.html'\), path\.join\(WWW, 'hors-ligne\.html'\)\)/, 'et elle est dans l\'APK');
+  assert.strictEqual(config.server.cleartext, undefined, 'pas de http en clair');
+  const plugin = lire('mobile/android/app/src/main/java/ca/local/footy/LecteurNatifPlugin.java');
+  assert.match(plugin, /@PluginMethod\s+public void viderCache\(PluginCall call\)/);
+  assert.match(plugin, /getBridge\(\)\.getWebView\(\)\.clearCache\(true\)/);
+  const nav = { serviceWorker: {} };
+  assert.strictEqual(tele.doitEnregistrerServiceWorker({ navigator: nav }), true, 'le site : oui');
+  assert.strictEqual(tele.doitEnregistrerServiceWorker({ navigator: nav, Capacitor: { isNativePlatform: () => true } }), false, 'l\'APK : non');
+  assert.strictEqual(tele.doitEnregistrerServiceWorker({ navigator: {} }), false, 'sans service worker possible : non');
+  assert.match(lire('js/main.js'), /if \(doitEnregistrerServiceWorker\(\)\) \{\n  window\.addEventListener\('load'/);
+  ok('APK : le site en ligne, page hors ligne embarquée, pas de service worker, cache vidable');
 
   console.log(`unit_tele : ${n} groupes réussis`);
 }

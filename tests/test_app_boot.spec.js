@@ -261,7 +261,7 @@ test('les onglets Live et Guide se rendent sans exception', async ({ page }) => 
 
   expect(pageErrors, 'aucune exception en changeant d\'onglet :\n' + pageErrors.join('\n---\n')).toEqual([]);
   expect(guide.timelineClass, 'le Guide active la grille temporelle').toBeTruthy();
-  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb, #marea [data-mid]').length)).toBeGreaterThan(0);
 });
 
 test('les boutons de navigation atteignent chaque vue', async ({ page }) => {
@@ -277,7 +277,7 @@ test('les boutons de navigation atteignent chaque vue', async ({ page }) => {
     await page.waitForTimeout(600);
     expect(await page.evaluate(() => window.S.filter), `#${id} doit activer le filtre ${filter}`).toBe(filter);
     await expect(button).toHaveClass(/active-toggle/);
-    expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length),
+    expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb, #marea [data-mid]').length),
       `la vue ${filter} doit afficher des matchs`).toBeGreaterThan(0);
   }
 
@@ -607,7 +607,7 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
 
   await page.evaluate(() => window.applyFilter('all'));
   await page.waitForTimeout(400);
-  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb').length), 'le Guide reste peuplé').toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb, #marea [data-mid]').length), 'le Guide reste peuplé').toBeGreaterThan(0);
   expect(pageErrors).toEqual([]);
 });
 
@@ -657,6 +657,12 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   // « Pas de liens vers le vrai site, jamais » ; « Changer de match » : après avoir fermé la vidéo.
   expect(etat.items).not.toContain('Ouvrir sur le site');
   expect(etat.items).not.toContain('Changer de match');
+  // « Pas de doublons » : les stats sont sous ⚙ Réglages → Scores et statistiques, seulement.
+  expect(etat.items).not.toContain('Infos et statistiques');
+  // Ni ce que la barre porte déjà : ⏭ Source suivante, ▶ Direct.
+  expect(etat.items).not.toContain('Source suivante');
+  expect(etat.items).not.toContain('Lire le flux direct');
+  await expect(page.locator('.mv-cell .mv-close-btn, .mv-cell .mv-swap-btn'), 'ni ✕ ni ⇄ sur les tuiles de la page : ils sont au menu ⋮').toHaveCount(0);
   await expect(page.locator('#mv-bar-site')).toHaveCount(0);
 
   await page.mouse.click(4, 4);
@@ -1034,30 +1040,19 @@ test('la page Live n\'a qu\'un fond : aucune section n\'en repeint une copie', a
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
-test('le bouton Actualiser est devant la grille, pas sur les pages, et dit qu\'il travaille', async ({ page }) => {
+/* « Look, mettre à jour et actualiser… dans le Plus » (25 octobre 2026) : plus de boutons
+   flottants posés sur la grille ; les trois sont dans le menu Plus, sur toutes les vues. */
+test('Actualiser est dans le menu Plus, et dit qu\'il travaille', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
-  /* `offsetParent` est TOUJOURS nul pour un élément en position fixe : c'est le style
-     calculé qui dit s'il est affiché, pas lui. */
-  const surGrille = await page.evaluate(() => {
-    const b = document.getElementById('btn-actualiser');
-    const r = b.getBoundingClientRect();
-    const nav = document.getElementById('nav-links').getBoundingClientRect();
-    return { affiche: getComputedStyle(b).display !== 'none', bas: r.bottom, navHaut: nav.top, droite: r.right, largeur: window.innerWidth };
-  });
-  expect(surGrille.affiche, 'le bouton est offert devant la grille').toBeTruthy();
-  expect(surGrille.bas, 'et posé AU-DESSUS de la barre d\'onglets, pas dessous').toBeLessThanOrEqual(surGrille.navHaut);
-  expect(surGrille.droite, 'sans déborder de l\'écran').toBeLessThanOrEqual(surGrille.largeur);
-
-  await page.evaluate(() => window.applyFilter('logs'));
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('btn-actualiser')).display),
-    'rien à rafraîchir sur la page Logs').toBe('none');
-
-  await page.evaluate(() => window.applyFilter('live'));
-  await page.waitForTimeout(300);
+  expect(await page.locator('#fab-groupe, .fab-actualiser').count(), 'plus de boutons flottants').toBe(0);
+  await page.locator('#menu-btn').click();
+  await expect(page.locator('#main-menu #btn-actualiser')).toBeVisible();
+  await expect(page.locator('#main-menu #btn-look')).toBeVisible();
+  await expect(page.locator('#main-menu #btn-maj-app')).toBeVisible();
+  await page.locator('#menu-btn').click();
 
   /* L'état « je travaille » est posé AVANT le premier aller-retour : on le lit dans la
      même évaluation que le clic, donc sans course. */
@@ -1121,7 +1116,10 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(fiche.fondEquipes, 'le fond de l\'en-tête est aux couleurs des équipes').toBeTruthy();
   expect(fiche.corpsSansDoublon, 'le corps ne répète plus la vignette').toBe(0);
   expect(fiche.barre, 'la barre d\'actions des flux est présente').toBeTruthy();
-  if (fiche.flux > 0) expect(fiche.actions, 'trois actions par ligne de flux (⭐ 👎 ⊞)').toBe(fiche.flux * 3);
+  /* Deux actions par ligne (⭐ 👎) : ⊞ doublait le clic sur la ligne, et le ⊞ de la barre
+     « Flux » doublait « ▶ Regarder » (« tous les doublons », 25 octobre 2026). */
+  if (fiche.flux > 0) expect(fiche.actions, 'deux actions par ligne de flux (⭐ 👎)').toBe(fiche.flux * 2);
+  expect(await page.locator('#mv-random-btn, #mbg .si-add').count(), 'ni ⊞ en tête des flux, ni ⊞ par ligne').toBe(0);
   expect(fiche.versLeSite, 'aucun lien vers le site').toBe(0);
 
   await page.keyboard.press('Escape');
@@ -1135,11 +1133,11 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
    faire déborder la page sur un téléphone ; un clic ouvre la fiche, et revenir à
    « Actuelle » rend les cartes d'avant. */
 async function choisirDisposition(page, nom, vue) {
+  // Le choix passe par Look (window.choisirDisposition), le seul endroit depuis le 25 octobre 2026.
   await page.evaluate(([n, v]) => {
     applyFilter(v);
-    document.getElementById('pref-disposition-live').value = n;
-    document.getElementById('pref-disposition-guide').value = n;
-    applyUserPrefs();
+    window.choisirDisposition(n, 'live');
+    window.choisirDisposition(n, 'guide');
   }, [nom, vue]);
 }
 
@@ -1272,20 +1270,19 @@ test('rien ne sort de son cadre, et les cartes des dispositions sont les cartes 
 
 /* « Séparer guide et live pour pouvoir mix and match » et « ajouter bouton pour changer
    look, proche de actualiser, ainsi que le mettre à jour l'app » (13 octobre 2026). */
-test('Live et Guide ont chacun leur disposition, et le bouton Look les change à côté d\'Actualiser', async ({ page }) => {
+test('Live et Guide ont chacun leur disposition, et Look (menu Plus) les change', async ({ page }) => {
   const pageErrors = await bootOffline(page);
-  const groupe = await page.evaluate(() => ['btn-look', 'btn-maj-fab', 'btn-actualiser'].map((id) => {
-    const b = document.getElementById(id);
-    return b && getComputedStyle(b).display !== 'none' && b.closest('#fab-groupe') !== null;
-  }));
-  expect(groupe, 'Look, Mettre à jour et Actualiser côte à côte').toEqual([true, true, true]);
-
-  await page.locator('#btn-look').click();
+  // Look est dans le menu Plus depuis le 25 octobre 2026 ; ouvrir Look ferme Plus.
+  await page.locator('#menu-btn').click();
+  await page.locator('#main-menu #btn-look').click();
+  await expect(page.locator('#main-menu')).not.toHaveClass(/open/);
   await expect(page.locator('#menu-look')).toBeVisible();
   await page.locator('#menu-look [data-look-vue="live"][data-look-nom="tableau"]').click();
   await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
   await page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]').click();
   await expect(page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]')).toHaveAttribute('aria-checked', 'true');
+  // Les six couleurs de cartes sont là (Options ne les répète plus).
+  await expect(page.locator('#menu-look [data-look-couleur]')).toHaveCount(6);
   await page.locator('#menu-look [data-look-couleur="home"]').click();
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu-look')).toBeHidden();
@@ -1297,10 +1294,8 @@ test('Live et Guide ont chacun leur disposition, et le bouton Look les change à
 
   const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'));
   expect([prefs.dispositionLive, prefs.dispositionGuide, prefs.cardColor]).toEqual(['tableau', 'chaines', 'home']);
-  expect(await page.evaluate(() => document.getElementById('pref-card-color').value)).toBe('home');
-
-  await page.evaluate(() => applyFilter('logs'));
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('fab-groupe')).display), 'pas de boutons flottants sur Logs').toBe('none');
+  // Pas de doublons : Options ne répète pas Look.
+  expect(await page.locator('#pref-card-color, #pref-disposition-live, #pref-disposition-guide').count()).toBe(0);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
@@ -2176,7 +2171,7 @@ test('les scores des matchs en cours se rafraîchissent chaque minute, sans rede
    première fois, la touche Retour ferme ce qui est ouvert, et un flux direct part au
    lecteur NATIF d'Android (js/tele.js) — ici un faux plugin Capacitor qui note ce qu'on
    lui demande. */
-test('sur la télé Android : le site tel quel (modes imposés défaits), Retour qui ferme, flux direct au lecteur natif', async ({ page }) => {
+test('sur la télé Android : le site tel quel (modes imposés défaits), Retour qui ferme, flux direct dans la tuile', async ({ page }) => {
   await page.addInitScript((o) => {
     const appels = [];
     const ecouteurs = [];
@@ -2192,6 +2187,24 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
         [o + '/__faux-lecteur?a']: { url: 'https://cdn.test/a/index.m3u8', pageUrl: o + '/__faux-lecteur?a', referer: 'https://cadre.test/', at: Date.now(), echecs: 0 }
       }));
     } catch (e) {}
+    /* hls.js remplacé par un double : il note les en-têtes que `xhrSetup` pose sur ses
+       requêtes, ceux que l'APK (RelaisReferer.java) change en Referer. */
+    window.__hls = [];
+    window.Hls = class {
+      static isSupported() { return true; }
+      static get Events() { return { ERROR: 'hlsError' }; }
+      constructor(config) { this.config = config || {}; this.ecouteurs = []; window.__hls.push(this); }
+      on(ev, f) { if (ev === 'hlsError') this.ecouteurs.push(f); }
+      loadSource(u) { this.u = u; }
+      attachMedia(video) {
+        const entetes = {};
+        if (this.config.xhrSetup) this.config.xhrSetup({ setRequestHeader: (k, v) => { entetes[k] = v; } }, this.u);
+        this.entetes = entetes;
+        this.video = video;
+      }
+      echouer() { this.ecouteurs.forEach((f) => f('hlsError', { fatal: true, details: 'manifestLoadError', response: { code: 403 } })); }
+      destroy() {}
+    };
   }, origin);
   const pageErrors = await bootOffline(page);
 
@@ -2205,8 +2218,8 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await expect(page.locator('body')).toHaveClass(/android-tv/);
   await expect(page.locator('body')).toHaveClass(/manette/);
   expect(await page.evaluate(() => ({ cable: localStorage.getItem('mode_cable'), fait: localStorage.getItem('apk_comme_site') }))).toEqual({ cable: '0', fait: '1' });
-  const echelle = await page.evaluate(() => ({ zoom: Number(getComputedStyle(document.body).zoom), attendu: Math.round(Math.min(Math.max(innerWidth / 1920, 0.5), 1) * 100) / 100 }));
-  expect(echelle.zoom, 'la page à la largeur d\'un écran d\'ordinateur').toBeCloseTo(echelle.attendu, 2);
+  const echelle = await page.evaluate(() => ({ zoom: Number(getComputedStyle(document.body).zoom), attendu: Math.round(Math.min(Math.max(innerWidth / 1200, 0.5), 1) * 100) / 100 }));
+  expect(echelle.zoom, 'la page à l\'échelle d\'une appli de télé (1200 px)').toBeCloseTo(echelle.attendu, 2);
   // Comme sur Netflix : le focus de départ est un match, et les cartes du Guide s'atteignent.
   await expect.poll(() => page.evaluate(() => !!(document.activeElement && document.activeElement.closest('.match-card, .mb, [data-mid]'))),
     { message: 'le focus de départ est sur un match', timeout: 10000 }).toBe(true);
@@ -2219,27 +2232,45 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await expect(page.locator('body')).toHaveClass(/tv-mode/);
   await page.evaluate(() => { window.toggleTvMode(false); });
 
-  /* Un flux direct connu part au lecteur natif, avec les Referer dans l'ordre, sans
-     <video>. Sans mode câble imposé, la tuile montre d'abord la page, comme sur le site ;
-     le bouton ▶ direct (toggleDirectMode) passe au lecteur natif. */
+  /* « Le mode direct… ça part en mode câble sur ma télé » ; « y marche pas à date, et ça
+     chie avec le reste du UI » (25 octobre 2026). Un flux direct connu joue DANS SA
+     TUILE, par hls.js, comme sur le site ; le lecteur natif plein écran n'est plus
+     ouvert. Ses requêtes portent le Referer du lecteur en en-tête, qu'Android remet à sa
+     place (RelaisReferer.java). */
   await page.evaluate((o) => { window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA'); window.openMultiviewTab(); }, origin);
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
   await page.evaluate(() => window.toggleDirectMode(0));
+  await expect(page.locator('.mv-cell[data-index="0"] video.mv-video')).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(1);
+  const hls = await page.evaluate(() => ({ u: window.__hls[0].u, entetes: window.__hls[0].entetes }));
+  expect(hls.u).toBe('https://cdn.test/a/index.m3u8');
+  expect(hls.entetes, 'le Referer et l\'origine du lecteur, pour le relais d\'Android').toEqual({ 'X-Footy-Referer': 'https://cadre.test/', 'X-Footy-Origin': 'https://cadre.test' });
+  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'pas de lecteur natif plein écran d\'emblée').toBe(0);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+
+  /* Refusé dans la tuile : le lecteur d'Android a sa chance, avec les Referer dans l'ordre
+     (« je suis pas fermé au lecteur natif… s'il marche, c'est ça l'important »). */
+  await page.evaluate(() => window.__hls[0].echouer());
   await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(1);
   const jouer = await page.evaluate(() => window.__natif.appels.find((a) => a[0] === 'jouer')[1]);
   expect(jouer.media).toBe('https://cdn.test/a/index.m3u8');
   expect(jouer.referers).toEqual(['https://cadre.test/', origin + '/__faux-lecteur?a', '']);
   await expect(page.locator('.mv-cell[data-index="0"] .mv-natif')).toBeVisible();
-  await expect(page.locator('.mv-cell video, .mv-cell iframe')).toHaveCount(0);
-
-  // Le lecteur natif a vu jouer : la pastille le dit.
-  await page.evaluate(() => window.__natif.emettre({ type: 'joue' }));
-  expect(await page.evaluate(() => window.mvFlux[0]._playing)).toBe(true);
-
-  // Plus aucun Referer ne passe : la tuile revient à la page, comme avec hls.js.
+  // ▲▼ ne zappe plus de match depuis le lecteur natif.
+  const avantZap = await page.evaluate(() => window.mvFlux[0].url);
+  await page.evaluate(() => window.__natif.emettre({ type: 'chaine', sens: 1 }));
+  expect(await page.evaluate(() => window.mvFlux[0].url)).toBe(avantZap);
+  // Refusé là aussi : la page, comme sur le site.
   await page.evaluate(() => window.__natif.emettre({ type: 'echec', raison: 'ERROR_CODE_IO_BAD_HTTP_STATUS' }));
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('page');
+
+  // Un nouvel essai qui joue : la pastille le dit.
+  await page.evaluate(() => window.toggleDirectMode(0));
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(2);
+  await page.evaluate(() => window.__hls[1].video.dispatchEvent(new Event('playing')));
+  expect(await page.evaluate(() => window.mvFlux[0]._playing)).toBe(true);
+  await page.evaluate(() => window.toggleDirectMode(0));
 
   /* Retour : le lecteur revient au Live ; sur le Live, la barre de navigation prend
      d'abord le focus (comme sur Netflix), puis Retour laisse quitter. */
@@ -2821,6 +2852,98 @@ test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fic
   // Le Guide s'ouvre sur « Chaînes ».
   await page.evaluate(() => window.applyFilter('all'));
   await expect(page.locator('#marea .dsp-chaines')).toHaveCount(1);
-  expect(await page.evaluate(() => document.getElementById('pref-disposition-guide').value)).toBe('chaines');
+  expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('chaines');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Rendre le guide Basique et celui qu'on a récemment mis de base plus clean et plein
+   écran, comme le câble dans le temps » ; « pas de en direct en haut » ; « je veux logos
+   quand même » (25 octobre 2026). */
+test('le Guide façon câble : cases plates avec logos, Chaînes plein écran sans aperçu', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => { window.applyFilter('all'); window.choisirDisposition('actuelle', 'guide'); });
+  await page.waitForSelector('#marea .mb');
+  const bloc = await page.evaluate(() => {
+    const b = document.querySelector('#marea .mb');
+    const cs = getComputedStyle(b);
+    return { image: cs.backgroundImage, rayon: parseFloat(cs.borderTopLeftRadius), liseré: b.style.getPropertyValue('--mb-c1'), logos: b.querySelectorAll('.mb-logo').length, titre: !!b.querySelector('.mb-tt .mb-t') };
+  });
+  expect(bloc.image, 'une case plate : le liseré des équipes, pas un dégradé plein').toMatch(/^linear-gradient\(/);
+  expect(bloc.liseré, 'aux couleurs des équipes').not.toBe('');
+  expect(bloc.rayon, 'coins presque droits').toBeLessThanOrEqual(4);
+  expect(bloc.logos, 'avec les logos').toBeGreaterThan(0);
+  expect(bloc.titre).toBe(true);
+
+  await page.evaluate(() => window.choisirDisposition('chaines', 'guide'));
+  await page.waitForSelector('#marea .dsp-chaines.dsp-vue-guide .dsp-pg');
+  const geo = await page.evaluate(() => {
+    const g = document.querySelector('#marea .dsp-epg').getBoundingClientRect();
+    const c = document.getElementById('marea').getBoundingClientRect();
+    return { apercu: document.querySelectorAll('#marea .dsp-pv, #marea .match-card').length, basGrille: g.bottom, basZone: c.bottom, largeur: g.width, zone: c.width };
+  });
+  expect(geo.apercu, 'pas d\'aperçu « en direct » en haut').toBe(0);
+  expect(geo.largeur, 'toute la largeur').toBeGreaterThanOrEqual(geo.zone - 20);
+  expect(geo.basZone - geo.basGrille, 'la grille descend jusqu\'en bas (Terminés compris)').toBeLessThan(80);
+  // Une case ouvre la fiche du premier coup.
+  await page.locator('#marea .dsp-pg').first().click();
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Optimiser pour la RAM et le CPU du Chromecast » (25 octobre 2026) : pendant le
+   lecteur, la grille cachée n'est pas redessinée (scores, passes de cinq minutes) ; elle
+   l'est en revenant, par quelque chemin que ce soit. Sur la télé, pas de flou
+   d'arrière-plan. */
+test('pendant le lecteur, la grille cachée attend ; sur la télé, pas de flou', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => { window.addToMultivision(o + '/__lecteur-calme?a', 'A', 'mA'); window.openMultiviewTab(); }, origin);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  await page.evaluate(() => { window.__marque = document.querySelector('#marea .match-card, #marea .mb, #marea [data-mid]'); window.buildEPG(window.S.matches); });
+  expect(await page.evaluate(() => window.__marque.isConnected), 'rien n\'est redessiné derrière le lecteur').toBe(true);
+  await page.evaluate(() => window.applyFilter('live'));
+  await expect.poll(() => page.evaluate(() => window.__marque.isConnected), { message: 'redessinée en revenant' }).toBe(false);
+  expect(await page.locator('#marea .match-card, #marea .mb, #marea [data-mid]').count()).toBeGreaterThan(0);
+
+  // Retour par Retour (toggleMultiviewPip) : même chose.
+  await page.evaluate(() => window.openMultiviewTab());
+  await page.evaluate(() => { window.__marque = document.querySelector('#marea .match-card'); window.buildEPG(window.S.matches); });
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__marque.isConnected)).toBe(false);
+
+  await page.evaluate(() => { window.__ANDROID_TV__ = true; window.activerTeleAndroid(); window.openMod(window.S.matches[0]); });
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('mbg')).backdropFilter)).toBe('none');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Choisir une source dans le lecteur permet juste de upvote ou downvote, pas de choisir
+   le maudit stream » (25 octobre 2026, à la télécommande) : la ligne d'une source n'était
+   qu'un bloc, seuls ⭐ et 👎 prenaient le focus. */
+test('à la télécommande, « Choisir une autre source » choisit la source ; Retour ferme', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  const mid = await page.evaluate(() => {
+    const m = window.S.matches.find((x) => (x.streamLinks || []).length >= 3);
+    const l = window.sortFluxLinks(m.streamLinks)[0];
+    window.addToMultivision(l.url, m.homeTeam + ' vs ' + m.awayTeam, m.id);
+    window.openMultiviewTab();
+    return m.id;
+  });
+  await page.evaluate((mid) => window.showFluxSelector(0, mid), mid);
+  await expect(page.locator('#mv-flux-selector')).toBeVisible();
+  await expect(page.locator('#mv-flux-selector')).not.toContainText('Remplacer par un autre match');
+  await expect.poll(() => page.evaluate(() => document.activeElement.classList.contains('actif')), { message: 'le focus entre sur la source active' }).toBe(true);
+  const avant = await page.evaluate(() => window.mvFlux[0].url);
+  await page.keyboard.press('ArrowDown');
+  expect(await page.evaluate(() => document.activeElement.classList.contains('mv-flux-choix')), 'une autre source, pas ⭐ ni 👎').toBe(true);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#mv-flux-selector')).toHaveCount(0);
+  expect(await page.evaluate(() => window.mvFlux[0].url), 'OK lance la source choisie').not.toBe(avant);
+
+  await page.evaluate((mid) => window.showFluxSelector(0, mid), mid);
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect(page.locator('#mv-flux-selector'), 'Retour ferme la fenêtre').toHaveCount(0);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

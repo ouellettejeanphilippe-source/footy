@@ -59,9 +59,9 @@
     }
 
     /* Les fenêtres qui gardent le focus, de la plus haute à la plus basse : le menu du
-       lecteur (js/mv-menu.js), le guide des scripts, l'enquêteur, la fiche d'un match,
+       lecteur (js/mv-menu.js), le choix d'une source (showFluxSelector), le guide des scripts, l'enquêteur, la fiche d'un match,
        le menu Look, le menu ⋯ Plus. */
-    const ZONES = ['.mv-menu', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look', '#main-menu.open'];
+    const ZONES = ['.mv-menu', '#mv-flux-selector', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look', '#main-menu.open'];
 
     function estVisible(el) {
         if (!el || !el.isConnected) return false;
@@ -170,10 +170,13 @@
         return bestCandidate;
     }
 
+    /* Sur la télé Android, sans animation : un défilement doux coûte une image par pas sur
+       un Chromecast, et la touche suivante arrive avant la fin (« optimiser pour le CPU du
+       Chromecast », 25 octobre 2026). */
     function focaliser(el) {
         if (!el) return;
         el.focus();
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.scrollIntoView({ behavior: document.body.classList.contains('android-tv') ? 'auto' : 'smooth', block: 'center' });
     }
 
     /* ◀ ▶ sur une liste déroulante : le choix précédent ou suivant (un clic de programme

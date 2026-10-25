@@ -28,6 +28,20 @@ export function pluginNatif(win) {
     return p && typeof p.jouer === 'function' ? p : null;
 }
 
+/* « L'APK peut pas juste servir le site ? » (25 octobre 2026). L'APK ouvre le site EN
+   LIGNE (capacitor.config.json, `server.url`) au lieu d'en embarquer une copie : chaque
+   lancement prend la version publiée et les liens de la dernière demi-heure. Sans service
+   worker là : Capacitor relaie les pages du site pour y poser son pont (window.Capacitor,
+   le lecteur natif), ce qu'une copie servie par un service worker sauterait, et une
+   copie gardée sur l'appareil est justement ce qu'on ne veut plus. */
+export function doitEnregistrerServiceWorker(win) {
+    var w = win || (typeof window !== 'undefined' ? window : null);
+    if (!w || !w.navigator || !('serviceWorker' in w.navigator)) return false;
+    var cap = w.Capacitor;
+    if (cap && (typeof cap.isNativePlatform !== 'function' || cap.isNativePlatform())) return false;
+    return true;
+}
+
 export function surTeleAndroid(win) {
     var w = win || (typeof window !== 'undefined' ? window : null);
     return !!(w && w.__ANDROID_TV__);
@@ -65,14 +79,16 @@ export function actionRetour(etat) {
    voudrais », 25 octobre 2026). Sur Android TV, la page ne fait que 960 px de large
    (1920 pixels à densité 2) : le site y paraît deux fois plus gros que sur un écran
    d'ordinateur, et le mode TV ajoutait 1,3 par-dessus. En automatique :
-     - dans l'APK sur une télé, hors mode TV : la page à LARGEUR_SITE px, comme sur un
-       écran d'ordinateur (0,5 sur un Chromecast) ;
+     - dans l'APK sur une télé, hors mode TV : la page à LARGEUR_SITE px (0,8 sur un
+       Chromecast). C'était 1920 px, un écran d'ordinateur (0,5) ; « zoom plus, niveau
+       Prime Video ou Netflix sur CCGTV » (25 octobre 2026) : 1200 px, soit 1,6 fois plus
+       gros, l'échelle d'une appli de télé, sans revenir aux 2,6 fois jugées trop ;
      - en mode TV (textes plus gros) : la page à LARGEUR_CIBLE_TV px, entre 0,5 et 1,3
        (1,3 comme avant sur un écran de 1920 px, 0,65 sur un Chromecast) ;
      - ailleurs : 1, rien ne change.
    `reglage` : 'auto' (ou rien), ou un pourcentage choisi dans Options.
    `ctx` : { modeTv, tele }. */
-export var LARGEUR_SITE = 1920;
+export var LARGEUR_SITE = 1200;
 export var LARGEUR_CIBLE_TV = 1480;
 function arrondi(x) { return Math.round(x * 100) / 100; }
 export function zoomInterface(largeur, reglage, ctx) {

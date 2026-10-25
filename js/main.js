@@ -1,7 +1,7 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
-import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface } from './tele.js';
+import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
 import { closeMod, fermerMenuLook, migrerGuideChaines } from './ui.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
@@ -957,7 +957,8 @@ var guideDemarrageFait = false;
 
 /* ══ INIT ═══════════════════════════════ */
 
-if ('serviceWorker' in navigator) {
+/* Pas dans l'APK, qui sert le site en ligne (doitEnregistrerServiceWorker, js/tele.js). */
+if (doitEnregistrerServiceWorker()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => {
       console.error('SW registration failed: ', err);
@@ -1871,20 +1872,22 @@ window.retourTele = function() {
     var guide = document.getElementById('tm-modal');
     var enqueteur = document.getElementById('investigator-modal');
     var look = document.getElementById('menu-look');
+    var choixSource = document.getElementById('mv-flux-selector');
     var barre = document.getElementById('nav-links');
     var boutonVue = document.querySelector('#nav-links .nav-btn.active-toggle') || document.getElementById('filter-live');
     var action = actionRetour({
         navVisible: !!(boutonVue && boutonVue.getClientRects().length),
         dansNav: !!(barre && barre.contains(document.activeElement)),
         menuLecteur: menuEstOuvert(),
-        fenetre: !!(guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
+        fenetre: !!(choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
         fiche: !!(mbg && mbg.classList.contains('open')),
         menuPlus: !!(menu && menu.classList.contains('open')),
         vue: document.body.getAttribute('data-view') === 'player' ? 'player' : (S.filter === 'live' ? 'live' : 'autre')
     });
     if (action === 'menu') fermerMenus();
     else if (action === 'fenetre') {
-        if (guide) guide.remove();
+        if (choixSource) choixSource.remove();
+        else if (guide) guide.remove();
         else if (enqueteur && enqueteur.style.display === 'flex') { enqueteur.style.display = 'none'; var ic = document.getElementById('investigator-content'); if (ic) ic.innerHTML = ''; }
         else fermerMenuLook();
     }

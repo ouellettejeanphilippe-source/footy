@@ -70,6 +70,11 @@ for (const f of FICHIERS_MOBILE) {
   }
 }
 
+/* La page montrée quand le site en ligne ne répond pas au démarrage
+   (capacitor.config.json, `server.errorPath`). L'APK sert le site en ligne depuis le
+   25 octobre 2026 ; la copie ci-dessus reste le contenu de `webDir`, que Capacitor exige. */
+await fs.copyFile(path.join(ICI, 'hors-ligne.html'), path.join(WWW, 'hors-ligne.html'));
+
 async function peser(dossier) {
   let n = 0;
   let octets = 0;
