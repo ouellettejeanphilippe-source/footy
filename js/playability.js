@@ -677,8 +677,8 @@ export function reputationParSource(matches, ledger) {
    Footybite…) qui renvoient vers des hôtes pris au hasard, même quand leur nom est connu.
    Le rang se lit sur la SOURCE du lien, ou sur son hôte quand celui-ci est le lecteur
    d'un site connu (un agrégateur qui pointe vers embed.st donne un lien de Streamed).
-   `sortFluxLinks` (js/config.js) l'applique après les choix de l'utilisateur et après
-   avoir écarté ce qui a été vu mort, et avant ce qui a été vu jouer ailleurs. */
+   `sortFluxLinks` (js/config.js) l'applique après les choix de l'utilisateur et le palier
+   de jouabilité (un lien vu jouer passe devant un nom connu), avant la réputation. */
 export var NOTORIETE_SOURCES = {
     streamed: 1, daddylive: 1,
     methstreams: 2, streameast: 2, totalsportek: 2, crichd: 2, cdnlivetv: 2, vipleague: 2, mybuffstreams: 2
