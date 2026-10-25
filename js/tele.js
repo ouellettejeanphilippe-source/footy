@@ -89,6 +89,7 @@ export function diagnosticAndroidHtml(d, esc) {
     html += ligne('Script des lecteurs', etats.script || 'pas encore posé');
     html += ligne('Bloqueur', (etats.bloqueur || '?') + ' · ' + (j.requetesBloquees | 0) + ' requêtes bloquées');
     html += ligne('Navigations refusées', String(j.navigationsRefusees | 0));
+    if (etats.cadres) html += ligne('Pages qui refusent l\'iframe', etats.cadres);
     var hotes = Array.isArray(j.hotesBloques) ? j.hotesBloques : [];
     if (hotes.length) {
         html += '<div style="font-size:12px; margin-top:6px; opacity:0.85;">Les plus bloqués : '

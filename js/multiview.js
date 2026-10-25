@@ -15,6 +15,7 @@ import { loadAll, loadPrefetchedStreams } from './main.js';
 import { initEmbedBridge, getBridgeStatus, waitForBridge, lireOctetsViaPont } from './embed-bridge.js';
 import { etatProtection, doitProposerGuide, GUIDE_VU, VERSION_SCRIPT, VERSION_EXTENSION, telechargerExtension } from './installation.js';
 import { ouvrirMenu, fermerMenus, menuEstOuvert } from './mv-menu.js';
+import { brancherManette, tuileVoisine } from './manette.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
@@ -1705,6 +1706,7 @@ export function appliquerRepos(grille, barre, cacher) {
 
 export function setupMultivisionUI() {
     if(document.getElementById('mv-container')) return;
+    brancherManetteApplication();
 
     // Create Multivision Container
 
@@ -5257,6 +5259,83 @@ export function proposerGuideAuDemarrage() {
 export function installerScriptUtilisateur() {
     autoriserSortie();
     window.location.href = './multiview-cleaner.user.js';
+}
+
+/* ── La manette (js/manette.js) ────────────────────────────────────────────────
+   La manette est la télécommande, plus quelques boutons : les flèches passent par les
+   mêmes écouteurs que le clavier et la télécommande (navigation du mode TV, mode câble
+   du lecteur), A clique ce qui a le focus, B est le Retour de la télécommande
+   (window.retourTele). Le reste agit sur la tuile active du lecteur. */
+var manetteBranchee = null;
+function tuileActive() {
+    return (activeMvIdx !== null && activeMvIdx < mvFlux.length) ? activeMvIdx : 0;
+}
+function conteneurQuiDefile(el) {
+    for (var n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+        var oy = getComputedStyle(n).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight) return n;
+    }
+    var epg = document.getElementById('epg');
+    if (epg && epg.offsetParent && epg.scrollHeight > epg.clientHeight) return epg;
+    return document.scrollingElement || document.documentElement;
+}
+export function brancherManetteApplication() {
+    if (manetteBranchee || typeof window === 'undefined' || !window.navigator || typeof window.navigator.getGamepads !== 'function') return manetteBranchee;
+    var lecteurVisible = function() { return document.body.getAttribute('data-view') === 'player'; };
+    manetteBranchee = brancherManette({
+        win: window,
+        /* Une horloge monotone : une heure système qui saute (ou figée par un test) ne doit
+           ni répéter une flèche ni confondre deux appuis éloignés. */
+        maintenant: function() { return performance.now(); },
+        contexte: function() { return { lecteur: lecteurVisible(), modeCable: modeCable }; },
+        aide: function(texte) { showToast(texte); },
+        actions: {
+            eveil: function() {
+                if (typeof window.activerNavigationManette === 'function') window.activerNavigationManette();
+                if (lecteurVisible() && typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
+            },
+            fleche: function(direction) {
+                var cle = { haut: 'ArrowUp', bas: 'ArrowDown', gauche: 'ArrowLeft', droite: 'ArrowRight' }[direction];
+                var cible = document.activeElement || document.body;
+                cible.dispatchEvent(new KeyboardEvent('keydown', { key: cle, code: cle, bubbles: true, cancelable: true }));
+            },
+            ok: function() {
+                var el = document.activeElement;
+                if (el && el !== document.body && typeof el.click === 'function') el.click();
+                else document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true }));
+            },
+            retour: function() { if (typeof window.retourTele === 'function') window.retourTele(); },
+            lecteur: function() { if (typeof window.openMultiviewTab === 'function') window.openMultiviewTab(); },
+            live: function() { applyFilter('live'); },
+            menu: function() { if (typeof window.toggleMenu === 'function') window.toggleMenu(); },
+            tuile: function(sens) { if (mvFlux.length) focusStream(tuileVoisine(activeMvIdx, mvFlux.length, sens)); },
+            chaine: function(sens) {
+                var i = tuileActive();
+                if (mvFlux[i] && !mvFlux[i]._gestesSuspendus) zapperChaine(i, sens);
+            },
+            source: function(sens) { if (mvFlux.length) changerSourceTuile(tuileActive(), sens); },
+            /* Un bouton de manette ne compte pas toujours comme un geste, et le navigateur
+               refuse alors le plein écran. Le mode Cinéma (plein cadre dans la page) ne
+               demande rien : c'est lui sans activation. */
+            pleinEcran: function() {
+                var w = document.getElementById('mv-grid-wrapper');
+                if (!w) return;
+                if (document.fullscreenElement || document.webkitFullscreenElement) { toggleFullscreen(w); return; }
+                if (w.classList.contains('mv-theater')) { toggleTheaterMode(w); return; }
+                var actif = !!(navigator.userActivation && navigator.userActivation.isActive);
+                if (actif) toggleFullscreen(w); else toggleTheaterMode(w);
+            },
+            modeCable: function() {
+                var actif = setModeCable(!modeCable);
+                showToast(actif ? '📺 Mode câble : une vidéo, LB/RB change de match' : '▦ Mode câble coupé : toutes les vidéos');
+            },
+            defiler: function(dy) {
+                var c = conteneurQuiDefile(document.activeElement);
+                if (c) c.scrollBy(0, Math.round(dy * 22));
+            }
+        }
+    });
+    return manetteBranchee;
 }
 
 /* Le bouton du panneau Chrome du guide (index.html). */

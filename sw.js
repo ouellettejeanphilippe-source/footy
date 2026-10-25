@@ -59,6 +59,7 @@ const APP_SHELL = [
   './js/ui.js',
   './js/multiview.js',
   './js/mv-menu.js',
+  './js/manette.js',
   './js/debit.js',
   './js/alignements.js',
   './js/directmedia.js',

@@ -58,11 +58,13 @@ public class MainActivity extends BridgeActivity {
         NettoyeurLecteurs.installer(vue, nettoyeur);
         client.setNettoyeur(nettoyeur);
 
+        // `retourTeleNatif` d'abord : la manette (js/manette.js) dont le B a déclenché ce
+        // Retour sait ainsi qu'Android s'en est chargé, et ne le rejoue pas.
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 getBridge().getWebView().evaluateJavascript(
-                        "(function(){try{return !!(window.retourTele && window.retourTele());}catch(e){return false;}})()",
+                        "(function(){try{window.dispatchEvent(new Event('retourTeleNatif'));return !!(window.retourTele && window.retourTele());}catch(e){return false;}})()",
                         reponse -> {
                             if ("true".equals(reponse)) return;
                             // Plus rien à fermer : on rend la main au système, qui quitte.

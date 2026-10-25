@@ -2192,6 +2192,77 @@ test('sur la télé Android : modes TV et câble d\'office, Retour qui ferme, fl
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* La manette (js/manette.js) : « je veux l'APK avec les mêmes fonctions que le site, mais
+   avec contrôle à la manette ; la manette pourrait marcher sur PC et Android aussi »
+   (25 octobre 2026). Aucun navigateur ne branche une manette sans matériel : le test tient
+   une manette « standard » par navigator.getGamepads, ce que lit l'application, et la
+   vraie application fait le reste (navigation du mode TV, lecteur, Retour). */
+test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, Y plein cadre, B revient, Select le menu', async ({ page }) => {
+  await page.addInitScript(() => {
+    const pad = { index: 0, id: 'Manette de test', connected: true, mapping: 'standard', timestamp: 0,
+      buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })), axes: [0, 0, 0, 0] };
+    window.__manette = {
+      appuyer(i) { pad.buttons[i] = { pressed: true, touched: true, value: 1 }; },
+      relacher(i) { pad.buttons[i] = { pressed: false, touched: false, value: 0 }; }
+    };
+    Object.defineProperty(Navigator.prototype, 'getGamepads', { configurable: true, value: () => [pad, null, null, null] });
+  });
+  const pageErrors = await bootOffline(page);
+  const presser = async (b) => {
+    await page.evaluate((i) => window.__manette.appuyer(i), b);
+    await page.waitForTimeout(250);
+    await page.evaluate((i) => window.__manette.relacher(i), b);
+    await page.waitForTimeout(150);
+  };
+  const BAS = 13, A = 0, B = 1, Y = 3, SELECT = 8, START = 9, RB = 5;
+
+  // La croix : la navigation aux flèches se charge (sans le zoom du mode TV), l'aide s'affiche.
+  await presser(BAS);
+  await expect(page.locator('body')).toHaveClass(/manette/);
+  await expect(page.locator('body')).not.toHaveClass(/tv-mode/);
+  await expect(page.locator('#toasttxt')).toContainText('Manette');
+  await expect(page.locator('#tv-nav-script')).toHaveCount(1);
+  await presser(BAS);
+  expect(await page.evaluate(() => document.activeElement && document.activeElement !== document.body), 'un élément a le focus').toBe(true);
+
+  // A : le bouton qui a le focus.
+  await page.evaluate(() => document.getElementById('filter-all').focus());
+  await presser(A);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'all');
+
+  // Start : le lecteur ; RB : la tuile suivante (le son la suit).
+  await page.evaluate((o) => {
+    window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA');
+    window.addToMultivision(o + '/__faux-lecteur?b', 'Match B', 'mB');
+  }, origin);
+  await page.evaluate(() => window.applyFilter('live'));
+  await presser(START);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  await page.evaluate(() => window.focusStream(0));
+  await presser(RB);
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('.mv-cell[data-index="1"]')).boxShadow)).toContain('inset');
+
+  /* Y : plein cadre. Le vrai plein écran quand le navigateur compte l'appui comme un geste
+     (ici oui : page.evaluate en donne un), sinon le mode Cinéma ; Y encore, on en sort. */
+  const cadre = () => page.evaluate(() => ({ plein: !!document.fullscreenElement, cinema: document.getElementById('mv-grid-wrapper').classList.contains('mv-theater') }));
+  await presser(Y);
+  await expect.poll(async () => { const c = await cadre(); return c.plein || c.cinema; }).toBe(true);
+  await presser(Y);
+  await expect.poll(cadre).toEqual({ plein: false, cinema: false });
+
+  // B : le Retour de la télécommande (du lecteur, on revient au Live).
+  await presser(B);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+
+  // Select : le menu ⋯ Plus ; B le referme.
+  await presser(SELECT);
+  await expect(page.locator('#main-menu')).toHaveClass(/open/);
+  await presser(B);
+  await expect(page.locator('#main-menu')).not.toHaveClass(/open/);
+
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 /* « garder vieux guide plutôt que nouveau » (13 octobre 2026). Au premier lancement sans
    protection, la fenêtre du début montre l'ancien guide (Firefox recommandé, uBlock
    Origin, Tampermonkey, le script), le même que la page Plus → 🧩 Script, une seule fois.

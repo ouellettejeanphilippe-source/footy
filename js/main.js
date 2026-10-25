@@ -1768,28 +1768,31 @@ window.changeTargetDate = changeTargetDate;
 window.setTargetDate = setTargetDate;
 
 
+/* La navigation aux flèches (js/tv-navigation.js) et le contour du focus (tv.css). Le
+   mode TV les charge, et la manette aussi (activerNavigationManette) : sans elles, la
+   croix ne saurait pas aller d'un bouton à l'autre. */
+function chargerNavigationSpatiale() {
+    if (!document.getElementById('tv-css')) {
+        const link = document.createElement('link');
+        link.id = 'tv-css';
+        link.rel = 'stylesheet';
+        link.href = 'tv.css';
+        document.head.appendChild(link);
+    }
+    if (!document.getElementById('tv-nav-script')) {
+        const script = document.createElement('script');
+        script.id = 'tv-nav-script';
+        script.src = 'js/tv-navigation.js';
+        document.body.appendChild(script);
+    }
+}
+
 window.toggleTvMode = function(enabled) {
     localStorage.setItem('pref-tv-mode', enabled ? 'true' : 'false');
 
     if (enabled) {
         document.body.classList.add('tv-mode');
-
-        // Charger tv.css s'il n'est pas déjà là
-        if (!document.getElementById('tv-css')) {
-            const link = document.createElement('link');
-            link.id = 'tv-css';
-            link.rel = 'stylesheet';
-            link.href = 'tv.css';
-            document.head.appendChild(link);
-        }
-
-        // Charger tv-navigation.js s'il n'est pas déjà là
-        if (!document.getElementById('tv-nav-script')) {
-            const script = document.createElement('script');
-            script.id = 'tv-nav-script';
-            script.src = 'js/tv-navigation.js';
-            document.body.appendChild(script);
-        }
+        chargerNavigationSpatiale();
     } else {
         document.body.classList.remove('tv-mode');
 
@@ -1807,6 +1810,14 @@ window.toggleTvMode = function(enabled) {
         const script = document.getElementById('tv-nav-script');
         if (script) script.remove();
     }
+};
+
+/* La manette (js/manette.js) : la navigation aux flèches et le contour du focus, sans le
+   zoom du mode TV ni son réglage. Rien n'est enregistré : c'est la manette qui sert, pas
+   un choix d'affichage. */
+window.activerNavigationManette = function() {
+    document.body.classList.add('manette');
+    chargerNavigationSpatiale();
 };
 
 /* ── La télé Android (js/tele.js) ──────────────────────────────────────────────

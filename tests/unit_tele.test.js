@@ -65,6 +65,15 @@ async function main() {
   const main = lire('mobile/android/app/src/main/java/ca/local/footy/MainActivity.java');
   assert.ok(main.indexOf('registerPlugin(LecteurNatifPlugin.class)') < main.indexOf('super.onCreate(etat)'), 'Capacitor exige le plugin avant super.onCreate');
   assert.match(main, /window\.retourTele/);
+  assert.match(main, /dispatchEvent\(new Event\('retourTeleNatif'\)\);return !!\(window\.retourTele/, 'la manette apprend qu\'Android a fait le Retour (js/manette.js)');
+  /* La manette dans le lecteur natif : les mêmes boutons que dans l'application en mode
+     câble (js/manette.js) — LB/RB le match, LT/RT la source. */
+  const lecteurNatif = lire('mobile/android/app/src/main/java/ca/local/footy/LecteurActivity.java');
+  const bloc = (signal) => { const i = lecteurNatif.indexOf(signal); return lecteurNatif.slice(lecteurNatif.lastIndexOf('case KeyEvent.KEYCODE_DPAD', i), i); };
+  assert.match(bloc('signaler("chaine", -1'), /KEYCODE_BUTTON_L1/);
+  assert.match(bloc('signaler("chaine", 1'), /KEYCODE_BUTTON_R1/);
+  assert.match(bloc('signaler("source", -1'), /KEYCODE_BUTTON_L2/);
+  assert.match(bloc('signaler("source", 1'), /KEYCODE_BUTTON_R2/);
   assert.match(lire('mobile/android/app/src/main/java/ca/local/footy/BloqueurWebViewClient.java'), /window\.__ANDROID_TV__ = true; window\.activerTeleAndroid/);
   assert.match(lire('mobile/android/app/src/main/java/ca/local/footy/LecteurNatifPlugin.java'), /@CapacitorPlugin\(name = "LecteurNatif"\)/);
   ok('APK : lanceur Google TV, bannière, lecteur natif, Retour et télé signalés à l\'application');
@@ -72,7 +81,7 @@ async function main() {
   // 7. Le diagnostic Android de la page Logs : lisible, échappé, les lignes récentes d'abord.
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const html = tele.diagnosticAndroidHtml({
-    etats: { webview: 'com.google.android.webview 140.0', script: 'posé dans tous les cadres (60 Ko)', bloqueur: '99113 hôtes' },
+    etats: { webview: 'com.google.android.webview 140.0', script: 'posé dans tous les cadres (60 Ko)', bloqueur: '99113 hôtes', cadres: '4 pages de lecteur ouvertes sans refus d\'encadrement' },
     requetesBloquees: 412, navigationsRefusees: 3,
     hotesBloques: [{ hote: 'regie.example', n: 300 }, { hote: '<img src=x>', n: 2 }],
     lignes: ['15:00:01  premier', '15:00:02  lecteur natif : ERROR_CODE_IO_BAD_HTTP_STATUS']
@@ -83,7 +92,17 @@ async function main() {
   assert.match(html, /regie\.example \(300\)/);
   assert.ok(!html.includes('<img src=x>'), 'un nom d\'hôte n\'injecte rien');
   assert.ok(html.indexOf('ERROR_CODE_IO_BAD_HTTP_STATUS') < html.indexOf('premier'), 'le plus récent en haut');
+  assert.match(html, /Pages qui refusent l&#39;iframe|Pages qui refusent l'iframe/);
+  assert.match(html, /4 pages de lecteur ouvertes sans refus/);
+  assert.ok(!tele.diagnosticAndroidHtml(null, esc).includes('refusent l'), 'rien tant qu\'aucune page n\'a été reprise');
   assert.match(tele.diagnosticAndroidHtml(null, esc), /pas encore posé/);
+  /* « Je veux l'APK avec les mêmes fonctions que le site » (25 octobre 2026) : la page d'un
+     lecteur qui refuse l'iframe est reprise sans son refus (CadreSansRefus.java, testé
+     sur la JVM par CadreSansRefusTest), seulement pour la page d'un cadre. */
+  const bloqueur = lire('mobile/android/app/src/main/java/ca/local/footy/BloqueurWebViewClient.java');
+  assert.match(bloqueur, /CadreSansRefus\.estPageDeCadre\(requete\.getMethod\(\), requete\.isForMainFrame\(\), requete\.getRequestHeaders\(\), url\)/);
+  assert.match(bloqueur, /new WebResourceResponse\(r\.mime, r\.encodage, r\.statut, r\.raison, r\.entetes, r\.corps\)/);
+  assert.ok(bloqueur.indexOf('l.estBloque(hote)') < bloqueur.indexOf('cadreSansRefus(requete, url, hote)'), 'une régie bloquée ne se télécharge jamais');
   ok('diagnostic Android : WebView, script, bloqueur, hôtes bloqués, journal récent d\'abord');
 
   // 8. Les deux écarts de la WebView avec Chrome, corrigés dans l'APK.
