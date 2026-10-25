@@ -103,6 +103,8 @@ S'ouvre au clic sur une carte ou un bloc. Se ferme par la croix `✕` en haut à
 
 Fond aux couleurs des équipes ; blason, nom et ★ de chaque côté ; au centre la ligue, le score (ou `VS`), et l'état (`Direct`, la minute, `Fin`, `Fin ?`).
 
+Dessous, comme une page de film : un gros bouton blanc **`▶ Regarder`** qui lance la meilleure source de la liste (filtres de site compris), avec son nom à côté. À la télécommande ou à la manette, c'est lui qui a le focus à l'ouverture. Sans source : `🔎 Chercher des liens`, ou `Aucun lien pour l'instant`.
+
 ### 4.2 Compléments (matchs ESPN seulement)
 
 Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant un direct :
@@ -133,6 +135,8 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 ## 5. Lecteur (Multivision)
 
 ### 5.1 Barre d'outils
+
+En bas, par-dessus la vidéo, comme sur Netflix : elle porte le match regardé, s'efface avec les en-têtes après trois secondes sans un geste et revient au moindre mouvement ou toucher. Au clavier, à la télécommande ou à la manette, la première touche ne fait que la ramener (focus sur `⏭`), la suivante agit ; en mode câble, les flèches zappent quand même. `⏮` `⏭` : source précédente / suivante de la vidéo active.
 
 | Bouton | Effet |
 |---|---|

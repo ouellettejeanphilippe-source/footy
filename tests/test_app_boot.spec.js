@@ -850,9 +850,15 @@ test('sur téléphone, les menus du lecteur sont une feuille qu\'on peut parcour
   }, origin);
   await expect(page.locator('.mv-cell')).toHaveCount(2);
 
-  /* Le repos ne touche plus la barre : elle a sa propre bande, l'effacer ne rendait rien. */
+  /* Depuis le 25 octobre 2026 (« interface moderne », comme Netflix), la barre est posée
+     par-dessus la vidéo et s'efface au repos ; le moindre geste sur le lecteur la ramène
+     (ici le pointeur qui passe : un clic, lui, irait au faux lecteur hostile, qui emmène
+     l'onglet), puis « Plus » s'ouvre. */
+  await page.evaluate(() => window.openMultiviewTab());
   await page.waitForTimeout(3300);
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('mv-toolbar')).opacity), 'la barre reste visible au repos').toBe('1');
+  await expect(page.locator('#mv-toolbar'), 'la barre s\'efface au repos').toHaveClass(/mv-cachee/);
+  await page.locator('#mv-grid-wrapper').hover();
+  await expect(page.locator('#mv-toolbar'), 'un geste la ramène').not.toHaveClass(/mv-cachee/);
 
   await page.locator('#mv-more-btn').click();
   const feuille = page.locator('.mv-menu.feuille');
@@ -2289,6 +2295,74 @@ test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* La fiche façon page de film (« Go 1-2 », 25 octobre 2026). Sous le bandeau, « ▶ Regarder »
+   lance la meilleure source affichée (la première de la liste, déjà classée) ; le nom de
+   cette source est à côté. Sans aucun lien ni page de match : le bouton le dit, inactif. */
+test('la fiche façon page de film : « ▶ Regarder » lance la meilleure source', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const id = await page.evaluate(() => { const m = window.S.matches.find((x) => (x.streamLinks || []).length); window.openMod(m); return m.id; });
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  const bouton = page.locator('#mbody .btn-regarder');
+  await expect(bouton).toHaveText('▶ Regarder');
+  const premiere = await page.evaluate(() => {
+    const a = Array.from(document.querySelectorAll('#modal-right-col .si .si-main')).find((x) => x.getClientRects().length);
+    return a.querySelector('.si-n span').textContent;
+  });
+  await expect(page.locator('#mbody .fiche-cta-info')).toHaveText('Meilleure source : ' + premiere);
+  const avant = await page.evaluate(() => window.mvFlux.length);
+  await bouton.click();
+  await expect.poll(() => page.evaluate(() => window.mvFlux.length), { message: 'une vidéo de plus au lecteur' }).toBe(avant + 1);
+  expect(await page.evaluate((mid) => String(window.mvFlux[window.mvFlux.length - 1].mid), id), 'celle de ce match').toBe(String(id));
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+
+  // Sans lien ni page de match : rien à lancer, et le bouton le dit.
+  await page.evaluate(() => window.openMod({ id: 'sans-lien', homeTeam: 'A', awayTeam: 'B', league: 'Test', status: 'upcoming', startTime: '20:00', streamLinks: [] }));
+  await expect(bouton).toHaveText('Aucun lien pour l\'instant');
+  await expect(bouton).toBeDisabled();
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* Le lecteur façon Netflix (« Go 1-2 », 25 octobre 2026 : une interface moderne, sans tout
+   refaire). La barre est en bas, par-dessus la vidéo, et porte le match regardé ; au repos,
+   elle s'efface avec les en-têtes ; la première touche ne fait que la ramener, focus sur
+   ⏭ ; la suivante agit. Au clavier ici : c'est le chemin de la télécommande. */
+test('le lecteur façon Netflix : barre en bas qui s\'efface, première touche qui la ramène, ⏭ source', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => {
+    window.addToMultivision(o.replace('127.0.0.1', 'localhost') + '/__lecteur-calme?a', 'Match A', 'mA');
+    window.addToMultivision(o.replace('127.0.0.1', 'localhost') + '/__lecteur-calme?b', 'Match B', 'mB');
+    window.openMultiviewTab();
+    window.focusStream(0);
+  }, origin);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  const position = await page.evaluate(() => {
+    const b = document.getElementById('mv-toolbar').getBoundingClientRect();
+    const c = document.getElementById('mv-container').getBoundingClientRect();
+    return { basBarre: Math.round(b.bottom), basLecteur: Math.round(c.bottom), hautBarre: Math.round(b.top), milieu: Math.round(c.top + c.height / 2) };
+  });
+  expect(Math.abs(position.basBarre - position.basLecteur), 'la barre est au bas du lecteur').toBeLessThanOrEqual(2);
+  expect(position.hautBarre, 'dans sa moitié basse').toBeGreaterThan(position.milieu);
+  await expect(page.locator('#mv-toolbar .mv-title')).toHaveText('Match A');
+
+  // Au repos, elle s'efface avec les en-têtes.
+  await page.waitForTimeout(3400);
+  await expect(page.locator('#mv-toolbar')).toHaveClass(/mv-cachee/);
+  await page.evaluate(() => document.body.focus());
+
+  // La première touche ne fait que la ramener, focus sur ⏭.
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#mv-toolbar')).not.toHaveClass(/mv-cachee/);
+  expect(await page.evaluate(() => document.activeElement.id), 'focus sur la source suivante').toBe('mv-src-next');
+  // La suivante agit : ⏭ passe à la source suivante de la vidéo active (ici aucune autre).
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#toast')).toHaveClass(/show/);
+
+  // Le match regardé suit la tuile active.
+  await page.evaluate(() => window.focusStream(1));
+  await expect(page.locator('#mv-toolbar .mv-title')).toHaveText('Match B');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 /* « La manette suit pas dans les modals », « après toast et sortie du multiview, plus de
    manette » (25 octobre 2026, sur le Chromecast). La navigation aux flèches reste dans la
    fenêtre ouverte et y prend le focus, B la ferme et rend le focus où il était ; un focus
@@ -2316,11 +2390,13 @@ test('à la manette : les fenêtres gardent le focus, B les ferme, et la page re
   await presser(BAS);
   await expect(page.locator('#tv-nav-script')).toHaveCount(1);
 
-  // La fiche d'un match : le focus y entre et n'en sort pas ; B la ferme et le rend.
+  /* La fiche d'un match : le focus y entre, sur « ▶ Regarder » (comme le bouton Lecture
+     de Netflix), et n'en sort pas ; B la ferme et le rend. */
   await page.evaluate(() => document.getElementById('filter-live').focus());
-  await page.evaluate(() => window.openMod(window.S.matches[0]));
+  await page.evaluate(() => window.openMod(window.S.matches.find((m) => (m.streamLinks || []).length) || window.S.matches[0]));
   await expect(page.locator('#mbg')).toHaveClass(/open/);
   await expect.poll(() => focusDans('#mbg'), { message: 'le focus entre dans la fiche' }).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.activeElement.className), { message: 'sur « ▶ Regarder »' }).toContain('btn-regarder');
   for (const b of [BAS, BAS, HAUT, BAS]) {
     await presser(b);
     expect(await focusDans('#mbg'), 'et n\'en sort pas').toBe(true);

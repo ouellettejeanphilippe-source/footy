@@ -1575,6 +1575,45 @@ function badgeJouabilite(s, ledger) {
     return '<span class="' + mq.classe + '" title="' + esc(mq.infobulle) + '">' + esc(mq.texte) + '</span>';
 }
 
+/* La première source visible de la fiche (déjà classée), ou rien. */
+function meilleurLienAffiche() {
+  var col = document.getElementById('modal-right-col');
+  if (!col) return null;
+  return Array.prototype.find.call(col.querySelectorAll('.si .si-main'), function(a) { return a.getClientRects().length > 0; }) || null;
+}
+
+/* « ▶ Regarder » : la meilleure source affichée ; sans source, la recherche. */
+export function regarderMeilleurFlux() {
+  var lien = meilleurLienAffiche();
+  if (lien) { lien.click(); return true; }
+  var maj = document.getElementById('mv-refresh-btn');
+  if (maj && !maj.disabled) { maj.click(); return false; }
+  if (window.showToast) window.showToast('Aucun lien pour ce match pour l\'instant.');
+  return false;
+}
+
+function majBoutonRegarder() {
+  var bouton = document.querySelector('#mbody .btn-regarder');
+  if (!bouton) return;
+  var info = document.querySelector('#mbody .fiche-cta-info');
+  var lien = meilleurLienAffiche();
+  var maj = document.getElementById('mv-refresh-btn');
+  var texte, detail = '', inactif = false;
+  if (lien) {
+    texte = '▶ Regarder';
+    var nom = lien.querySelector('.si-n span');
+    detail = nom ? 'Meilleure source : ' + nom.textContent : '';
+  } else if (maj && !maj.disabled) {
+    texte = '🔎 Chercher des liens';
+  } else {
+    texte = 'Aucun lien pour l\'instant';
+    inactif = true;
+  }
+  if (bouton.textContent !== texte) bouton.textContent = texte;
+  if (bouton.disabled !== inactif) bouton.disabled = inactif;
+  if (info && info.textContent !== detail) info.textContent = detail;
+}
+
 export function renderFluxItem(s, i, m, ledger) {
     /* Le registre est passé par la liste quand elle en rend plusieurs : `playLedger`
        relit localStorage et refusionne les deux registres à chaque appel, ce qui, sur
@@ -2048,6 +2087,17 @@ export function openMod(m,col){
 
   body.innerHTML = wrapperHtml;
 
+  /* La fiche façon page de film (« Go 1-2 », 25 octobre 2026 : une interface moderne,
+     comme Netflix). Sous le bandeau, un gros bouton « ▶ Regarder » qui lance la meilleure
+     source affichée (la première de la liste, déjà classée, filtres de site compris), et
+     que la navigation aux flèches choisit d'emblée (data-focus-depart,
+     js/tv-navigation.js). Sans source : « 🔎 Chercher des liens » (le 🔄 des flux). */
+  var cta = document.createElement('div');
+  cta.className = 'fiche-cta';
+  cta.innerHTML = '<button type="button" class="btn-regarder" data-focus-depart onclick="regarderMeilleurFlux()">▶ Regarder</button>'
+      + '<span class="fiche-cta-info"></span>';
+  body.insertBefore(cta, body.firstChild);
+
   /* Les compléments (buteurs, classement, statistiques) n'arrivent qu'après coup, pour
      les matchs ESPN seulement : la colonne qui les porte ne s'affiche que quand l'un
      d'eux a quelque chose à montrer (classe has-content, lue par la feuille de style),
@@ -2065,6 +2115,11 @@ export function openMod(m,col){
   }
 
   var rightCol = document.getElementById('modal-right-col');
+  /* Le bouton suit la liste des flux, qui arrive et se filtre après coup. */
+  if (rightCol && window.MutationObserver) {
+      new MutationObserver(majBoutonRegarder).observe(rightCol, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'hidden', 'class'] });
+  }
+  majBoutonRegarder();
 
   // When a user clicks a match, we ALWAYS fetch streams if there are none available yet,
   // bypassing background state checks that might erroneously be true.
@@ -2452,6 +2507,7 @@ window.QI = QI;
 window.renderFluxItem = renderFluxItem;
 window.renderDomainChips = renderDomainChips;
 window.openMod = openMod;
+window.regarderMeilleurFlux = regarderMeilleurFlux;
 window.closeMod = closeMod;
 window.userPrefs = userPrefs;
 

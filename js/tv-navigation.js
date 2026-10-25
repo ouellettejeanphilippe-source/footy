@@ -74,9 +74,12 @@
             .filter(el => !el.disabled && estVisible(el));
     }
 
-    /* Le point de départ : dans une fenêtre, son premier élément ; dans la page, le
-       bouton de la vue affichée. */
+    /* Le point de départ : l'élément qui le demande (data-focus-depart : « ▶ Regarder »
+       de la fiche, comme le bouton Lecture de Netflix) ; sinon, dans une fenêtre, son
+       premier élément ; dans la page, le bouton de la vue affichée. */
     function premier(racine) {
+        const voulu = (racine || document).querySelector('[data-focus-depart]');
+        if (estVisible(voulu) && !voulu.disabled) return voulu;
         if (racine === document) {
             const actif = document.querySelector('.nav-btn.active-toggle, .tab-btn.active');
             if (estVisible(actif)) return actif;

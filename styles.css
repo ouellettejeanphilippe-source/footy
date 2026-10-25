@@ -478,6 +478,13 @@ body.view-timeline .zoom-controls { display: flex; }
 /* Titre « Ligues secondaires » dans le Guide (style inline dans js/ui.js) */
 
 /* ── 8. Fiche de match ────────────────────────────────────────────────────── */
+/* La fiche façon page de film (25 octobre 2026) : le bouton principal, comme « Lecture »
+   sur Netflix, sous le bandeau ; la meilleure source à côté. */
+.fiche-cta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 4px 2px 14px; }
+.btn-regarder { appearance: none; border: 0; border-radius: 10px; background: #fff; color: #111; font-size: 18px; font-weight: 800; padding: 12px 30px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.45); transition: transform var(--t-fast), background var(--t-fast); }
+.btn-regarder:hover, .btn-regarder:focus-visible { background: #e8e8e8; transform: scale(1.04); }
+.btn-regarder:disabled { opacity: 0.5; cursor: default; transform: none; }
+.fiche-cta-info { color: var(--muted); font-size: 13px; }
 .mbg { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); align-items: center; justify-content: center; padding: 20px; }
 .mbg.open { display: flex; }
 .modal { background: var(--bg-elev); border: 1px solid var(--border2); border-radius: 18px; width: 100%; max-width: 1080px; max-height: min(92vh, 900px); overflow: hidden; animation: mopen var(--t-med) var(--ease); box-shadow: 0 30px 80px rgba(0,0,0,0.75); display: flex; flex-direction: column; }
@@ -706,6 +713,14 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 #mv-container.mv-full { position: fixed; top: calc(var(--hdr-height) + var(--safe-top)); left: 0; right: 0; bottom: 0; background: #000; z-index: 90; display: flex; flex-direction: column; }
 #mv-toolbar { position: relative; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; direction: ltr; transition: opacity var(--t-fast); }
 .mv-title { font-weight: 800; font-size: 15px; color: var(--text); padding: 0 4px; white-space: nowrap; }
+/* Le lecteur façon Netflix (25 octobre 2026, « interface moderne ») : la barre est posée
+   en bas, par-dessus la vidéo, sur un dégradé ; elle s'efface avec les en-têtes des tuiles
+   (appliquerRepos, classe mv-cachee) et revient au moindre geste ou à la première touche.
+   La grille prend toute la hauteur. */
+#mv-container.mv-full #mv-toolbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; min-height: 64px; padding: 30px 16px 14px; background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 55%, rgba(0,0,0,0) 100%); border-bottom: 0; transition: opacity var(--t-med), transform var(--t-med); }
+#mv-container.mv-full #mv-toolbar.mv-cachee { transform: translateY(14px); }
+#mv-container.mv-full #mv-toolbar .mv-title { color: #fff; font-size: 17px; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.mv-source-nav { display: flex; gap: 6px; }
 .mv-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .mv-tb-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border2); background: rgba(255,255,255,0.06); color: var(--text); font-weight: 600; font-size: 14px; white-space: nowrap; transition: background var(--t-fast), filter var(--t-fast); }
 .mv-tb-btn:hover { background: rgba(255,255,255,0.12); }
@@ -995,7 +1010,7 @@ body[data-icon-pack="rounded"] .ic-close {
   .mv-tb-btn .mv-tb-lb-long { display: none; }
   .mv-hdr { padding: 6px 8px; }
 }
-@media (max-width: 768px) { .mv-title { display: none; } }
+@media (max-width: 768px) { .mv-title { display: none; } #mv-container.mv-full #mv-toolbar { padding: 20px 8px 8px; min-height: 0; } .mv-source-nav .mv-tb-lb { display: none; } }
 @keyframes sheetup { from { opacity: 0; transform: translateY(40px) } to { opacity: 1; transform: none } }
 
 /* ── 11 bis. Dispositions (Options → Disposition, js/dispositions.js) ──────────

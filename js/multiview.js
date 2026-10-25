@@ -1688,6 +1688,7 @@ export function appliquerRepos(grille, barre, cacher) {
     if (barre) {
         barre.style.opacity = cacher ? '0' : '1';
         barre.style.pointerEvents = cacher ? 'none' : 'auto';
+        barre.classList.toggle('mv-cachee', !!cacher);
     }
     if (!grille) return 0;
     grille.style.cursor = cacher ? 'none' : 'default';
@@ -1722,7 +1723,13 @@ export function setupMultivisionUI() {
   /* Barre du lecteur : quatre gestes, nommés en clair, et tout le reste sous « Plus ».
      Les anciens menus déroulants posés dans la barre (disposition, modes PiP) passaient
      sous les tuiles ; ils s'ouvrent désormais par-dessus tout (js/mv-menu.js). */
+  /* ⏮ ⏭ : la source de la vidéo active, à portée de télécommande (« interface moderne »,
+     25 octobre 2026) ; ⏭ prend le focus quand la barre revient (focaliserCommandes). */
   var mvToolbarHtml = '<span class="mv-title">Lecteur</span>'
+      + '<div class="mv-source-nav">'
+      + '<button type="button" class="mv-tb-btn" id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo active"><span class="mv-tb-ic" aria-hidden="true">⏮</span><span class="mv-tb-lb">Source</span></button>'
+      + '<button type="button" class="mv-tb-btn" id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo active"><span class="mv-tb-ic" aria-hidden="true">⏭</span><span class="mv-tb-lb">Source suivante</span></button>'
+      + '</div>'
       + '<div class="sp"></div>'
       + '<div id="mv-actions-menu" class="mv-actions">'
       + '<button type="button" class="mv-tb-btn primary" onclick="showMatchSelector(event)" title="Choisir un match à ajouter"><span class="mv-tb-ic" aria-hidden="true">➕</span><span class="mv-tb-lb">Ajouter</span></button>'
@@ -1985,12 +1992,12 @@ window.resetMvIdleTimer = function() {
                la barre elle-même. On repousse le repos d'autant. */
             if (menuEstOuvert() || (!horsPage && reposRetenu())) { window.resetMvIdleTimer(); return; }
             if (!horsPage && mvc) mvc.style.cursor = 'none';
-            /* La barre du lecteur n'est PAS posée sur la vidéo : elle a sa propre bande,
-               au-dessus de la grille. L'effacer ne rendait aucune place, laissait une
-               bande noire, et sur téléphone le premier appui sur « Plus » ne faisait que
-               la réveiller (10 octobre 2026). Seuls les en-têtes de tuiles, eux par-dessus
-               l'image, s'effacent. */
-            appliquerRepos(g, null, true);
+            /* Depuis le 25 octobre 2026 (« interface moderne », comme Netflix), la barre
+               est posée en bas, PAR-DESSUS la vidéo (styles.css) : l'effacer rend l'image
+               entière, et elle s'efface donc avec les en-têtes. Elle n'avait pas lieu de
+               l'être quand elle avait sa propre bande au-dessus de la grille (10 octobre).
+               Une grille déplacée dans une autre fenêtre laisse la barre ici : elle reste. */
+            appliquerRepos(g, horsPage ? null : document.getElementById('mv-toolbar'), true);
         }, 3000);
     }
 
@@ -2004,6 +2011,23 @@ window.resetMvIdleTimer = function() {
     mvToolbar.addEventListener('mouseenter', function() { mvToolbar._survolee = true; });
     mvToolbar.addEventListener('mouseleave', function() { mvToolbar._survolee = false; });
     mvContainer.addEventListener('touchstart', window.resetMvIdleTimer, {passive: true});
+
+    /* La première touche, commandes effacées, ne fait que les montrer (comme Netflix) :
+       une flèche ou OK n'agit pas à l'aveugle sur un bouton invisible. En mode câble, les
+       flèches zappent quand même, comme un décodeur. Retour garde son chemin
+       (window.retourTele). En capture : avant la navigation aux flèches. */
+    window.addEventListener('keydown', function(e) {
+        if (document.body.getAttribute('data-view') !== 'player') return;
+        var etaientCachees = commandesCachees();
+        window.resetMvIdleTimer();
+        if (!etaientCachees) return;
+        var fleche = /^Arrow/.test(e.key);
+        if (!(fleche || e.key === 'Enter' || e.key === ' ')) return;
+        if (fleche && modeCable) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        focaliserCommandes();
+    }, true);
 
 }
 
@@ -2163,6 +2187,7 @@ export function focusStream(idx) {
 }
 
 export function applyMvFocusStyling() {
+    majTitreLecteur();
     var cells = toutesLesCellules();
     cells.forEach(function(cell) {
         var idx = parseInt(cell.dataset.index);
@@ -5261,6 +5286,34 @@ export function installerScriptUtilisateur() {
     window.location.href = './multiview-cleaner.user.js';
 }
 
+/* Les commandes du lecteur sont-elles effacées (appliquerRepos) ? */
+export function commandesCachees() {
+    var barre = document.getElementById('mv-toolbar');
+    return !!(barre && barre.classList.contains('mv-cachee'));
+}
+
+/* Les commandes reviennent : si le focus n'y est pas déjà, ⏭ (la source suivante). */
+export function focaliserCommandes() {
+    var barre = document.getElementById('mv-toolbar');
+    if (barre && barre.contains(document.activeElement)) return;
+    var b = document.getElementById('mv-src-next');
+    if (b) b.focus();
+}
+
+/* ⏮ ⏭ de la barre : la source de la vidéo active. */
+export function changerSourceActive(sens) {
+    if (!mvFlux.length) { showToast('Aucune vidéo dans le lecteur : ➕ Ajouter.'); return false; }
+    return changerSourceTuile(tuileActive(), sens);
+}
+
+/* Le titre de la barre : le match regardé, comme le titre d'un film. */
+function majTitreLecteur() {
+    var t = document.querySelector('#mv-toolbar .mv-title');
+    if (!t) return;
+    var s = mvFlux[tuileActive()];
+    t.textContent = (s && s.name) ? s.name : 'Lecteur';
+}
+
 /* ── La manette (js/manette.js) ────────────────────────────────────────────────
    La manette est la télécommande, plus quelques boutons : les flèches passent par les
    mêmes écouteurs que le clavier et la télécommande (navigation du mode TV, mode câble
@@ -5282,6 +5335,9 @@ function conteneurQuiDefile(el) {
 export function brancherManetteApplication() {
     if (manetteBranchee || typeof window === 'undefined' || !window.navigator || typeof window.navigator.getGamepads !== 'function') return manetteBranchee;
     var lecteurVisible = function() { return document.body.getAttribute('data-view') === 'player'; };
+    /* Les commandes du lecteur étaient-elles effacées avant ce bouton ? Alors A et les
+       flèches ne font que les montrer, comme la première touche du clavier. */
+    var commandesEtaientCachees = false;
     manetteBranchee = brancherManette({
         win: window,
         /* Une horloge monotone : une heure système qui saute (ou figée par un test) ne doit
@@ -5292,9 +5348,11 @@ export function brancherManetteApplication() {
         actions: {
             eveil: function() {
                 if (typeof window.activerNavigationManette === 'function') window.activerNavigationManette();
+                commandesEtaientCachees = lecteurVisible() && commandesCachees();
                 if (lecteurVisible() && typeof window.resetMvIdleTimer === 'function') window.resetMvIdleTimer();
             },
             fleche: function(direction) {
+                if (commandesEtaientCachees && !modeCable) { focaliserCommandes(); return; }
                 var cle = { haut: 'ArrowUp', bas: 'ArrowDown', gauche: 'ArrowLeft', droite: 'ArrowRight' }[direction];
                 var cible = document.activeElement || document.body;
                 cible.dispatchEvent(new KeyboardEvent('keydown', { key: cle, code: cle, bubbles: true, cancelable: true }));
@@ -5302,6 +5360,7 @@ export function brancherManetteApplication() {
             /* Un élément devenu invisible (un bouton du lecteur, une fois le lecteur
                quitté) ne se clique pas : la flèche ramène le focus sur la page. */
             ok: function() {
+                if (commandesEtaientCachees) { focaliserCommandes(); return; }
                 var el = document.activeElement;
                 var visible = el && el !== document.body && el.getClientRects().length > 0;
                 if (!visible) { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true })); return; }
@@ -5623,6 +5682,7 @@ window.openScriptPage = openScriptPage;
 window.installTampermonkey = installTampermonkey;
 window.installerScriptUtilisateur = installerScriptUtilisateur;
 window.telechargerExtension = telechargerExtensionGuide;
+window.changerSourceActive = changerSourceActive;
 
 export function exportSettings() {
     var settings = {
