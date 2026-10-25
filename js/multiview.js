@@ -8,7 +8,8 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
-import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
+import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
+import { BIBLIOTHEQUES, typeDeMedia, configHls, decisionErreurHls, relanceAutorisee, RELANCES_MAX, DELAI_STAGNATION_MS, PERMISSIONS_CADRE } from './lecteurdirect.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
@@ -86,22 +87,31 @@ function demanderNettoyage(iframe) {
    aussi, à cette occasion, une meilleure réponse à « sandbox toujours cassé » —
    pour tout flux qui se résout en adresse directe, le problème du bac à sable ne
    se pose simplement plus. */
-var CHARGEMENT_HLS = null;
 export function estMediaDirecte(url) {
-    return /\.(m3u8|mp4|webm|mov|m4v)(\?|#|$)/i.test(String(url || ''));
+    return /\.(m3u8|mpd|mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(String(url || ''));
 }
-function chargerHlsJs() {
-    if (window.Hls) return Promise.resolve(window.Hls);
-    if (CHARGEMENT_HLS) return CHARGEMENT_HLS;
-    CHARGEMENT_HLS = new Promise(function(resolve, reject) {
-        var s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js';
-        s.onload = function() { resolve(window.Hls); };
-        s.onerror = function() { reject(new Error('hls.js indisponible')); };
-        document.head.appendChild(s);
+/* Une bibliothèque de lecture (hls.js, dash.js : js/lecteurdirect.js, BIBLIOTHEQUES),
+   chargée à la demande, miroir après miroir : un CDN bloqué ne condamne plus le direct.
+   Un échec complet n'est pas retenu — le réseau peut revenir. */
+var CHARGEMENTS = {};
+function chargerBibliotheque(nom) {
+    var b = BIBLIOTHEQUES[nom];
+    if (window[b.global]) return Promise.resolve(window[b.global]);
+    if (CHARGEMENTS[nom]) return CHARGEMENTS[nom];
+    CHARGEMENTS[nom] = new Promise(function(resolve, reject) {
+        var essayer = function(i) {
+            if (i >= b.adresses.length) { CHARGEMENTS[nom] = null; reject(new Error(nom + ' indisponible')); return; }
+            var s = document.createElement('script');
+            s.src = b.adresses[i];
+            s.onload = function() { if (window[b.global]) resolve(window[b.global]); else essayer(i + 1); };
+            s.onerror = function() { s.remove(); essayer(i + 1); };
+            document.head.appendChild(s);
+        };
+        essayer(0);
     });
-    return CHARGEMENT_HLS;
+    return CHARGEMENTS[nom];
 }
+function chargerHlsJs() { return chargerBibliotheque('hls'); }
 /* Rend un `<video>` prêt à jouer `url`, avec les mêmes classe et style que
    l'iframe qu'il remplace — la mise en page (taille, recadrage, glisser-déposer)
    ne fait ainsi aucune différence entre les deux.
@@ -109,14 +119,67 @@ function chargerHlsJs() {
    `pont` (voir `pontPourDirect`) fait passer manifeste et segments par le script
    utilisateur, avec le `Referer` du lecteur et sans CORS. hls.js est alors pris même
    quand le navigateur lit le HLS lui-même : le lecteur natif ne laisse pas choisir par
-   où passent ses requêtes. */
-/* `entetes` : dans l'APK, les en-têtes du relais (entetesRelais) posés sur chaque requête
-   de hls.js ; Android y remplace le `Referer` (RelaisReferer.java). */
-function creerLecteurVideo(url, surEchec, pont, entetes) {
+   où passent ses requêtes.
+   `entetes` : dans l'APK, les en-têtes du relais (entetesRelais) posés sur chaque requête
+   de hls.js ; Android y remplace le `Referer` (RelaisReferer.java).
+   `type` : `hls`, `dash` ou `fichier` quand la sonde l'a lu dans les premiers octets
+   (js/lecteurdirect.js, typeDeMedia) ; sinon déduit de l'extension.
+
+   Pendant la lecture (25 octobre 2026, « qualité maximale et compatibilité maximale ») :
+   - une erreur fatale de hls.js est d'abord REPRISE (decisionErreurHls : décodeur, puis
+     codec audio ; réseau relancé si le flux avait joué) et n'est remontée à l'appelant
+     qu'ensuite ;
+   - un flux qui s'arrête après avoir joué (ré-tampon, réseau muet, `ended` sur un
+     direct) est relancé, la même source, au plus RELANCES_MAX fois par OUBLI_RELANCE_MS,
+     comme le mode page (armerRepriseTuile) ; au-delà, l'appelant décide ;
+   - DASH joue par dash.js (sans pont : dash.js n'a pas de chargeur à remplacer ; les
+     en-têtes du relais de l'APK passent par son RequestModifier) ;
+   - `detruireLecteur` arrête tout : moteur, minuteurs, décodeur. */
+export function creerLecteurVideo(url, surEchec, pont, entetes, type, opts) {
+    var o = opts || {};
     var video = document.createElement('video');
-    var echec = function(raison) { if (typeof surEchec === 'function') surEchec(raison); };
+    var fini = false;
+    var aJoue = false;
+    var gere = false;       // hls.js ou dash.js tient la vidéo : ses erreurs passent par lui
+    var relancer = null;    // relance la même source, posé par le lecteur choisi
+    var minuteur = null;
+    var etatRelance = { relances: 0, depuis: Date.now() };
+    function arreterVeille() { if (minuteur) { clearTimeout(minuteur); minuteur = null; } }
+    var echec = function(raison) {
+        if (fini) return;
+        fini = true;
+        arreterVeille();
+        if (typeof surEchec === 'function') surEchec(raison);
+    };
+    /* Un arrêt après la lecture : on laisse le temps à la vidéo de revenir seule, puis on
+       relance la MÊME source tant que le budget le permet. Une pause volontaire (vidéo en
+       pause, pas finie) n'est pas un arrêt. */
+    function surArret(cause) {
+        if (fini || !aJoue || minuteur) return;
+        minuteur = setTimeout(function() {
+            minuteur = null;
+            if (fini || !video.isConnected) return;
+            if (video.paused && !video.ended) return;
+            var r = relanceAutorisee(etatRelance);
+            etatRelance = r.etat;
+            if (!r.autorisee) { echec('arrêté (' + cause + ') après ' + RELANCES_MAX + ' relances'); return; }
+            if (typeof relancer === 'function') relancer();
+        }, o.delaiStagnationMs || DELAI_STAGNATION_MS);
+    }
+    video._arreter = function() { fini = true; arreterVeille(); };
+    video.addEventListener('playing', function() { aJoue = true; arreterVeille(); });
+    video.addEventListener('timeupdate', function() { if (!video.paused) arreterVeille(); });
+    video.addEventListener('waiting', function() { surArret('attente'); });
+    video.addEventListener('stalled', function() { surArret('réseau muet'); });
+    video.addEventListener('ended', function() { surArret('fin du flux'); });
     video.addEventListener('error', function() {
+        if (gere) return; // hls.js / dash.js rapportent eux-mêmes leurs erreurs
         var code = video.error && video.error.code;
+        if (aJoue && typeof relancer === 'function') {
+            var r = relanceAutorisee(etatRelance);
+            etatRelance = r.etat;
+            if (r.autorisee) { relancer(); return; }
+        }
         echec('erreur vidéo' + (code ? ' ' + code : ''));
     });
     video.className = 'mv-media mv-video';
@@ -128,32 +191,85 @@ function creerLecteurVideo(url, surEchec, pont, entetes) {
     // les contrôles natifs (video.controls = true) laissent l'utilisateur réactiver.
     video.muted = true;
 
-    var estM3u8 = /\.m3u8(\?|#|$)/i.test(url);
-    if (estM3u8 && (pont || entetes || !video.canPlayType('application/vnd.apple.mpegurl'))) {
+    var genre = type || typeDeMedia(url, '');
+    var poserEntetes = entetes ? function(xhr) { Object.keys(entetes).forEach(function(k) { try { xhr.setRequestHeader(k, entetes[k]); } catch (e) {} }); return xhr; } : null;
+    if (genre === 'hls' && (pont || entetes || !video.canPlayType('application/vnd.apple.mpegurl'))) {
         chargerHlsJs().then(function(Hls) {
-            if (Hls && Hls.isSupported()) {
-                var hls = new Hls(pont ? { loader: chargeurParPont(pont.lire, { referer: pont.referer }) }
-                    : entetes ? { xhrSetup: function(xhr) { Object.keys(entetes).forEach(function(k) { try { xhr.setRequestHeader(k, entetes[k]); } catch (e) {} }); } }
-                    : undefined);
-                /* Une erreur FATALE (manifeste refusé : CORS, 403, adresse expirée ; ou
-                   média illisible) est remontée à l'appelant, qui décide (le mode direct
-                   revient à la page). Les erreurs non fatales, hls.js les rattrape seul. */
-                hls.on(Hls.Events.ERROR, function(ev, d) {
-                    if (!d || !d.fatal) return;
-                    var code = d.response && d.response.code;
-                    echec(String(d.details || d.type || 'hls') + (code ? ' HTTP ' + code : ''));
-                });
-                hls.loadSource(url);
-                hls.attachMedia(video);
-                video._hls = hls; // pour destruction propre (voir plus bas)
-            } else {
-                video.src = url; // dernier recours : certains navigateurs y arrivent quand même
+            if (fini) return;
+            if (!(Hls && Hls.isSupported())) { video.src = url; return; } // dernier recours : certains navigateurs y arrivent quand même
+            var hls = new Hls(configHls({
+                tele: surTeleAndroid(),
+                loader: pont ? chargeurParPont(pont.lire, { referer: pont.referer }) : null,
+                xhrSetup: poserEntetes
+            }));
+            var etatErreur = { media: 0, reseau: 0, aJoue: false };
+            hls.on(Hls.Events.ERROR, function(ev, d) {
+                etatErreur.aJoue = aJoue;
+                var r = decisionErreurHls(d, etatErreur);
+                etatErreur = r.etat;
+                if (r.action === 'ignorer') return;
+                var code = d && d.response && d.response.code;
+                var quoi = String((d && (d.details || d.type)) || 'hls') + (code ? ' HTTP ' + code : '');
+                try {
+                    if (r.action === 'recoverMedia') hls.recoverMediaError();
+                    else if (r.action === 'swapCodec') { hls.swapAudioCodec(); hls.recoverMediaError(); }
+                    else if (r.action === 'startLoad') hls.startLoad();
+                    else echec(quoi);
+                } catch (e) { echec(quoi); }
+            });
+            relancer = function() {
+                try { if (typeof hls.stopLoad === 'function') hls.stopLoad(); hls.startLoad(); } catch (e) { echec('relance impossible'); }
+            };
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            video._hls = hls; // pour destruction propre (detruireLecteur)
+            gere = true;
+        }).catch(function() { if (!fini) video.src = url; });
+    } else if (genre === 'dash') {
+        chargerBibliotheque('dash').then(function(dashjs) {
+            if (fini) return;
+            var player = dashjs.MediaPlayer().create();
+            if (poserEntetes && typeof player.extend === 'function') {
+                player.extend('RequestModifier', function() {
+                    return { modifyRequestHeader: poserEntetes, modifyRequestURL: function(u) { return u; } };
+                }, true);
             }
-        }).catch(function() { video.src = url; });
+            player.on(dashjs.MediaPlayer.events.ERROR, function(e) {
+                var err = e && e.error;
+                echec('dash ' + String((err && typeof err === 'object') ? (err.code || err.message || '') : (err || '')).trim());
+            });
+            player.initialize(video, url, true);
+            video._dash = player;
+            gere = true;
+            relancer = function() { try { player.attachSource(url); } catch (e) { echec('relance impossible'); } };
+        }).catch(function() { echec('dash.js indisponible'); });
     } else {
         video.src = url; // HLS nativement supporté (Safari/iOS), ou format progressif (mp4, webm…)
+        relancer = function() {
+            try { video.load(); var p = video.play(); if (p && typeof p.catch === 'function') p.catch(function() {}); } catch (e) {}
+        };
     }
     return video;
+}
+/* Arrête un lecteur vidéo pour de bon : la veille, le moteur (hls.js ou dash.js, qui
+   sinon continue de télécharger des segments pour une vidéo qui n'est plus là) et le
+   décodeur du navigateur (source retirée, `load()`). À appeler AVANT de vider ou de
+   retirer la cellule d'une tuile. */
+export function detruireLecteur(video) {
+    if (!video) return;
+    if (typeof video._arreter === 'function') video._arreter();
+    if (video._hls) { try { video._hls.destroy(); } catch (e) {} video._hls = null; }
+    if (video._dash) {
+        var p = video._dash;
+        try { if (typeof p.destroy === 'function') p.destroy(); else if (typeof p.reset === 'function') p.reset(); } catch (e) {}
+        video._dash = null;
+    }
+    try { video.pause(); } catch (e) {}
+    try { video.removeAttribute('src'); if (typeof video.load === 'function') video.load(); } catch (e) {}
+}
+export function detruireLecteursDe(el) {
+    if (!el || typeof el.querySelectorAll !== 'function') return;
+    Array.prototype.forEach.call(el.querySelectorAll('video.mv-video'), detruireLecteur);
 }
 /* ─── Mode direct : la deuxième façon d'utiliser un lien (voir js/directmedia.js) ───
    La tuile joue dans son propre <video> le manifeste que le script utilisateur a vu
@@ -200,8 +316,8 @@ function texteDebut(octets) {
 /* Le chemin qu'une lecture prendrait maintenant : un verdict obtenu par l'autre ne vaut
    plus (le script qui s'annonce après coup avec la lecture binaire). */
 function cheminDirect(media) { return pontPourDirect(media) ? 'pont' : (relaisApk() ? 'relais' : 'fetch'); }
-function finSonde(media, ok, raison, chemin) {
-    sondesDirect[media.url] = { ok: ok, at: Date.now(), raison: raison || '', chemin: chemin };
+function finSonde(media, ok, raison, chemin, type) {
+    sondesDirect[media.url] = { ok: ok, at: Date.now(), raison: raison || '', chemin: chemin, type: type || '' };
     mvFlux.forEach(function(f, i) {
         var m = f && (f._media || mediaDirectPour(registreDirect(), f.url));
         if (m && m.url === media.url) rafraichirPastille(i);
@@ -218,7 +334,7 @@ function sonderDirect(media) {
         : fetch(media.url, { credentials: 'omit', headers: relaisApk() ? entetesRelais(media) : undefined }).then(function(r) { return r.text().then(function(x) { return { status: r.status, debut: x.slice(0, 64) }; }); });
     lecture.then(function(r) {
         var v = verdictSonde(r.status, r.debut);
-        finSonde(media, v.ok, v.raison, chemin);
+        finSonde(media, v.ok, v.raison, chemin, typeDeMedia(media.url, r.debut));
     }, function(e) {
         finSonde(media, false, (e && e.status) ? 'HTTP ' + e.status : (pont ? ((e && e.message) || 'refus') : 'refusé par le navigateur (CORS)'), chemin);
     });
@@ -243,6 +359,7 @@ if (typeof window !== 'undefined' && typeof window.addEventListener === 'functio
 }
 
 function poserDirect(media, url, container, cell, s) {
+    detruireLecteursDe(container);
     container.innerHTML = '';
     var pont = pontPourDirect(media);
     var entetes = (!pont && relaisApk()) ? entetesRelais(media) : null;
@@ -270,7 +387,7 @@ function poserDirect(media, url, container, cell, s) {
         if (s._currentUrl !== url || s.mode !== 'direct') return;
         var natif = entetes ? pluginNatif() : null;
         if (natif) {
-            if (video && video._hls) { try { video._hls.destroy(); } catch (e) {} }
+            detruireLecteur(video);
             container.innerHTML = '';
             showToast('Direct refusé dans la tuile (' + raison + ') : essai au lecteur d\'Android');
             poserDirectNatif(natif, media, url, container, s, idx, function(r) { versPage(r + ', lecteur d\'Android compris'); });
@@ -278,7 +395,8 @@ function poserDirect(media, url, container, cell, s) {
         }
         versPage(raison);
     };
-    var video = creerLecteurVideo(media.url, revenir, pont, entetes);
+    var sonde = sondesDirect[media.url];
+    var video = creerLecteurVideo(media.url, revenir, pont, entetes, sonde && sonde.type);
     video.id = 'mv-iframe-' + idx;
     video.style.transform = s.cropped ? 'scale(1.15)' : 'scale(1)';
     video.addEventListener('playing', function() {
@@ -1078,6 +1196,7 @@ export function chargerQuandMeme(idx) {
 
 function poserAvertissementSortie(container, cell, s) {
     var idx = parseInt(cell.dataset.index, 10);
+    detruireLecteursDe(container);
     container.innerHTML = '';
     var box = document.createElement('div');
     box.className = 'mv-sortie-forcee';
@@ -2320,10 +2439,11 @@ export function updateMultivisionLayout() {
                 + '</div>';
         } else {
             // keep it
-            if (grid2) Array.from(grid2.children).forEach(function(c) { c.remove(); });
+            if (grid2) Array.from(grid2.children).forEach(function(c) { detruireLecteursDe(c); c.remove(); });
             var children = Array.from(grid.children);
             children.forEach(function(child) {
                 if (child.id !== 'mv-empty-msg') {
+                    detruireLecteursDe(child);
                     grid.removeChild(child);
                 }
             });
@@ -2487,6 +2607,7 @@ export function updateMultivisionLayout() {
                 s.mode = 'page';
             }
             if (natifCourant && natifCourant.s === s) fermerNatif();
+            detruireLecteursDe(container);
             container.innerHTML = '';
             s._currentUrl = url;
             if (s._sortieForcee) {
@@ -2521,7 +2642,11 @@ export function updateMultivisionLayout() {
                    nettoie, ou le bouton ⤢ de la tuile qui recadre sur la vidéo. */
                 iframe.style.cssText = 'width:100%;height:100%;border:none;pointer-events:auto;transition:transform 0.15s;background:#000;color-scheme:dark;';
                 iframe.setAttribute('allowfullscreen', 'true');
-                iframe.setAttribute('allow', 'fullscreen; autoplay; presentation');
+                /* Permissions du cadre (js/lecteurdirect.js, PERMISSIONS_CADRE) : plein écran,
+                   lecture automatique, présentation, déchiffrement par le navigateur
+                   (encrypted-media : un lecteur ClearKey ou Widevine se tait sans elle),
+                   image dans l'image. */
+                iframe.setAttribute('allow', PERMISSIONS_CADRE);
                 /* Aucun attribut `sandbox` : retiré le 5 septembre 2026 sur demande répétée de
                    l'utilisateur (« Sandbox detected, please remove sandbox attributes »). Le test
                    « aucune iframe de lecteur ne porte d'attribut sandbox » le verrouille. */
@@ -2822,6 +2947,7 @@ export function updateMultivisionLayout() {
     existingCells.forEach(function(cell) {
         var cellId = cell.getAttribute('data-internal-id');
         if (!mvFlux.find(function(s) { return s._internalId === cellId; })) {
+            detruireLecteursDe(cell);
             cell.remove();
         }
     });
@@ -4807,7 +4933,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v81';
+export var VERSION_APP = 'sports-guide-v82';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
