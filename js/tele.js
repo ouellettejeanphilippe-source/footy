@@ -28,6 +28,20 @@ export function pluginNatif(win) {
     return p && typeof p.jouer === 'function' ? p : null;
 }
 
+/* « L'APK peut pas juste servir le site ? » (25 octobre 2026). L'APK ouvre le site EN
+   LIGNE (capacitor.config.json, `server.url`) au lieu d'en embarquer une copie : chaque
+   lancement prend la version publiée et les liens de la dernière demi-heure. Sans service
+   worker là : Capacitor relaie les pages du site pour y poser son pont (window.Capacitor,
+   le lecteur natif), ce qu'une copie servie par un service worker sauterait, et une
+   copie gardée sur l'appareil est justement ce qu'on ne veut plus. */
+export function doitEnregistrerServiceWorker(win) {
+    var w = win || (typeof window !== 'undefined' ? window : null);
+    if (!w || !w.navigator || !('serviceWorker' in w.navigator)) return false;
+    var cap = w.Capacitor;
+    if (cap && (typeof cap.isNativePlatform !== 'function' || cap.isNativePlatform())) return false;
+    return true;
+}
+
 export function surTeleAndroid(win) {
     var w = win || (typeof window !== 'undefined' ? window : null);
     return !!(w && w.__ANDROID_TV__);

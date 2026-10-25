@@ -1,7 +1,7 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
 import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
-import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface } from './tele.js';
+import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
 import { closeMod, fermerMenuLook, migrerGuideChaines } from './ui.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
@@ -957,7 +957,8 @@ var guideDemarrageFait = false;
 
 /* ══ INIT ═══════════════════════════════ */
 
-if ('serviceWorker' in navigator) {
+/* Pas dans l'APK, qui sert le site en ligne (doitEnregistrerServiceWorker, js/tele.js). */
+if (doitEnregistrerServiceWorker()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => {
       console.error('SW registration failed: ', err);

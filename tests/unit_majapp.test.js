@@ -63,6 +63,21 @@ async function main() {
   assert.deepStrictEqual(vide, { serviceWorkers: 0, caches: 0 }, 'rien à retirer, et aucune exception');
   ok('sans service worker ni caches, la mise à jour ne lève rien');
 
+  // ── 3 bis. Dans l'APK, qui sert le site en ligne : le cache de la WebView aussi ─
+  const appels = [];
+  document.body.insertAdjacentHTML('beforeend', '<div id="toast"><span id="toasttxt"></span></div>');
+  globalThis.lg = w.lg;   // global dans le navigateur (window.lg, js/utils.js)
+  w.Capacitor = { Plugins: { LecteurNatif: { jouer() {}, viderCache() { appels.push('viderCache'); return Promise.resolve(); } } } };
+  const remplace = [];
+  try { Object.defineProperty(w.location, 'replace', { value: (u) => remplace.push(u), configurable: true }); } catch (e) {}
+  await mv.mettreAJourApplication();
+  assert.deepStrictEqual(appels, ['viderCache'], 'le plugin natif vide le cache HTTP de la WebView');
+  // Un APK plus ancien, sans la méthode : la mise à jour se fait quand même.
+  w.Capacitor = { Plugins: { LecteurNatif: { jouer() {}, viderCache() { return Promise.reject(new Error('not implemented')); } } } };
+  await mv.mettreAJourApplication();
+  delete w.Capacitor;
+  ok('dans l\'APK, « Mettre à jour » vide aussi le cache de la WebView, et un APK ancien ne bloque rien');
+
   // ── 4. Le bouton est bien offert dans la page Logs ─────────────────────────
   const html = mv.diagnosticAppareilHtml();
   assert.ok(/mettreAJourApplication\(\)/.test(html), 'le bloc « Cet appareil » porte le bouton');

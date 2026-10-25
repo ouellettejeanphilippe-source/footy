@@ -135,6 +135,27 @@ async function main() {
   assert.strictEqual(JSON.parse(lire('mobile/capacitor.config.json')).android.allowMixedContent, true);
   ok('APK : cookies tiers acceptés et contenu mixte permis, comme dans Chrome');
 
+  /* 9. « L'APK peut pas juste servir le site ? » (25 octobre 2026) : il ouvre le site
+     publié, en https, avec une page embarquée quand le réseau manque au démarrage ; pas de
+     service worker là (Capacitor pose son pont dans les pages qu'il relaie) ; « Mettre à
+     jour » vide aussi le cache de la WebView. */
+  const config = JSON.parse(lire('mobile/capacitor.config.json'));
+  assert.strictEqual(config.server.url, 'https://ouellettejeanphilippe-source.github.io/footy/');
+  assert.strictEqual(config.server.errorPath, 'hors-ligne.html');
+  const horsLigne = lire('mobile/hors-ligne.html');
+  assert.ok(horsLigne.includes("var SITE = '" + config.server.url + "'"), 'la page hors ligne relance le même site');
+  assert.match(lire('mobile/assembler-www.mjs'), /copyFile\(path\.join\(ICI, 'hors-ligne\.html'\), path\.join\(WWW, 'hors-ligne\.html'\)\)/, 'et elle est dans l\'APK');
+  assert.strictEqual(config.server.cleartext, undefined, 'pas de http en clair');
+  const plugin = lire('mobile/android/app/src/main/java/ca/local/footy/LecteurNatifPlugin.java');
+  assert.match(plugin, /@PluginMethod\s+public void viderCache\(PluginCall call\)/);
+  assert.match(plugin, /getBridge\(\)\.getWebView\(\)\.clearCache\(true\)/);
+  const nav = { serviceWorker: {} };
+  assert.strictEqual(tele.doitEnregistrerServiceWorker({ navigator: nav }), true, 'le site : oui');
+  assert.strictEqual(tele.doitEnregistrerServiceWorker({ navigator: nav, Capacitor: { isNativePlatform: () => true } }), false, 'l\'APK : non');
+  assert.strictEqual(tele.doitEnregistrerServiceWorker({ navigator: {} }), false, 'sans service worker possible : non');
+  assert.match(lire('js/main.js'), /if \(doitEnregistrerServiceWorker\(\)\) \{\n  window\.addEventListener\('load'/);
+  ok('APK : le site en ligne, page hors ligne embarquée, pas de service worker, cache vidable');
+
   console.log(`unit_tele : ${n} groupes réussis`);
 }
 

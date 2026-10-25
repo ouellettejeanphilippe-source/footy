@@ -29,7 +29,7 @@ Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), 
 
 ## Site = APK
 
-« En gros, site = APK. Si on refait le site pour améliorer le fonctionnement, on le fait pour l'APK et vice-versa » (25 octobre 2026). L'APK (`mobile/`) embarque le site tel quel : aucun comportement, réglage ni apparence propre à l'APK, hors ce qu'Android impose (navigation à la télécommande, lecteur natif pour le mode direct, blocage et script posés par la WebView, échelle d'un écran d'ordinateur sur une télé). Une amélioration se fait dans le site et vaut pour les deux ; une demande faite « pour l'APK » se fait dans le site.
+« En gros, site = APK. Si on refait le site pour améliorer le fonctionnement, on le fait pour l'APK et vice-versa » (25 octobre 2026). L'APK (`mobile/`) ouvre le site publié tel quel (depuis le 25 octobre 2026 ; avant, il en embarquait une copie) : aucun comportement, réglage ni apparence propre à l'APK, hors ce qu'Android impose (navigation à la télécommande, lecteur natif pour le mode direct, blocage et script posés par la WebView, échelle d'un écran d'ordinateur sur une télé). Une amélioration se fait dans le site et vaut pour les deux ; une demande faite « pour l'APK » se fait dans le site.
 
 ## Le dépôt en bref
 

@@ -64,6 +64,19 @@ public class LecteurNatifPlugin extends Plugin {
         }
     }
 
+    /**
+     * « Mettre à jour l'app » (mettreAJourApplication, js/multiview.js). L'APK sert le site
+     * en ligne (capacitor.config.json, {@code server.url}) : la page rechargée doit venir du
+     * réseau, pas du cache HTTP de la WebView, que seul Android peut vider.
+     */
+    @PluginMethod
+    public void viderCache(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            try { getBridge().getWebView().clearCache(true); } catch (Exception e) { /* rien à vider */ }
+            call.resolve();
+        });
+    }
+
     @PluginMethod
     public void fermer(PluginCall call) {
         LecteurActivity.fermerSiOuvert();

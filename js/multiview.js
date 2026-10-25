@@ -4828,7 +4828,15 @@ export function viderCachesApplication() {
 
 export function mettreAJourApplication() {
     showToast('Mise à jour de l\'application…');
-    return viderCachesApplication().then(function(bilan) {
+    /* Dans l'APK, qui sert le site en ligne (25 octobre 2026) : pas de service worker,
+       mais le cache HTTP de la WebView, que seul Android peut vider (viderCache,
+       LecteurNatifPlugin). Un APK plus ancien n'a pas la méthode : on passe outre. */
+    var natif = pluginNatif();
+    var cacheNatif = (natif && typeof natif.viderCache === 'function')
+        ? Promise.resolve().then(function() { return natif.viderCache(); }).catch(function() {})
+        : Promise.resolve();
+    return Promise.all([viderCachesApplication(), cacheNatif]).then(function(r) {
+        var bilan = r[0];
         lg('Mise à jour', bilan.serviceWorkers + ' service worker(s) retiré(s), ' + bilan.caches + ' cache(s) vidé(s)');
         /* Adresse neuve : sans cela le cache HTTP peut resservir la même page et le bouton
            semblerait ne rien faire. `replace` pour ne pas empiler d'historique. */
@@ -4844,7 +4852,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v72';
+export var VERSION_APP = 'sports-guide-v73';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
