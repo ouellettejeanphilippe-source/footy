@@ -657,6 +657,8 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   // « Pas de liens vers le vrai site, jamais » ; « Changer de match » : après avoir fermé la vidéo.
   expect(etat.items).not.toContain('Ouvrir sur le site');
   expect(etat.items).not.toContain('Changer de match');
+  // « Pas de doublons » : les stats sont sous ⚙ Réglages → Scores et statistiques, seulement.
+  expect(etat.items).not.toContain('Infos et statistiques');
   await expect(page.locator('#mv-bar-site')).toHaveCount(0);
 
   await page.mouse.click(4, 4);

@@ -5,7 +5,7 @@ import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, tailleStockageKo, plusGrossesCles } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
-import { sortFluxLinks, getDomain, openGlobalStatsFromMatch, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
+import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml } from './tele.js';
@@ -3764,8 +3764,11 @@ export function ouvrirMenuTuile(idx, bouton, event) {
         s.mid ? { icon: '🔁', label: 'Choisir une autre source', detail: 'La liste des liens du match', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
         { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
         media ? { icon: s.mode === 'direct' ? '🖼' : '▶', label: s.mode === 'direct' ? 'Revenir à la page du site' : 'Lire le flux direct', detail: s.mode === 'direct' ? 'La page complète, comme le site la sert' : 'La vidéo seule, sans la page du site', onSelect: function() { toggleDirectMode(idx); } } : null,
+        /* « Pourquoi scores et stats sont dans deux menus ? Pas de doublons » (25 octobre
+           2026) : « Infos et statistiques » est parti ; ⚙ Réglages → Scores et
+           statistiques montre les stats du match de la vidéo choisie (focusStream le
+           met à jour), plus les scores en direct. */
         { titre: 'Cette tuile' },
-        s.mid ? { icon: '📊', label: 'Infos et statistiques', onSelect: function() { openGlobalStatsFromMatch(s.mid); } } : null,
         { icon: fitInfo.icon, label: 'Cadrage de l\'image', detail: 'Actuellement : ' + fitInfo.label + ' (étiré → ajusté → rempli)', onSelect: function() { cycleMvFit(idx); } },
         (idx > 0 && (deuxEcransActif() || mvLayout === 'ecrans')) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
         idx > 0 ? { icon: empile ? '▲' : '◀', label: empile ? 'Monter' : 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
@@ -4840,7 +4843,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v70';
+export var VERSION_APP = 'sports-guide-v71';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

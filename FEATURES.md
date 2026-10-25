@@ -184,7 +184,7 @@ En-tête : poignée de glissement et, dès deux vidéos, le numéro (`Touche N`)
 
 - **Au repos** : trois secondes sans un geste et les en-têtes de tuiles s'effacent, pour laisser la vidéo seule (la barre, elle, reste). Un mouvement les rappelle, de même que l'entrée du pointeur dans une tuile. Elles restent tant qu'un menu du lecteur est ouvert ou que le pointeur est sur la barre, et reviennent quand on rouvre le lecteur. En fenêtre détachée, elles s'effacent comme en plein écran.
 - **Ajustement** (`⋮ → Cadrage de l'image`, ou `⚙ Réglages → ⤢` pour toutes) : *étiré* (le cadre prend toute la tuile), *ajusté* (16:9 entier, centré), *rempli* (16:9 couvrant la tuile). Retenu par tuile.
-- **Menu ⋮** (de la barre, pour la vidéo choisie) : source suivante, choisir une autre source, recharger la vidéo, infos et statistiques ; l'ajustement ; lire le flux direct ou revenir à la page ; échanger avec la vidéo principale (en mode deux écrans) ; déplacer à gauche ou à droite ; préférer ou éviter ce site ; fermer cette vidéo. Plus de « Changer de match » (25 octobre 2026) : fermer la vidéo, puis `+ Ajouter`.
+- **Menu ⋮** (de la barre, pour la vidéo choisie) : source suivante, choisir une autre source, recharger la vidéo ; l'ajustement ; lire le flux direct ou revenir à la page ; échanger avec la vidéo principale (en mode deux écrans) ; déplacer à gauche ou à droite ; préférer ou éviter ce site ; fermer cette vidéo. Plus de « Changer de match » (25 octobre 2026) : fermer la vidéo, puis `+ Ajouter`.
 - **Réordonner** : glisser-déposer entre tuiles (poignée masquée sur écran tactile), ou le menu.
 - **Son** : une seule tuile a le son, celle qui a le focus, sinon la première. On donne le focus en cliquant dans la tuile ; un liseré le signale.
 - **Clavier** (hors champ de saisie) : `1` à `4` amènent la tuile en tête et lui donnent le son ; `5` à `8` l'amènent en tête sans toucher au son ; Échap ferme un menu.
@@ -231,7 +231,7 @@ Un glissement de moins de 48 px, une diagonale ou un doigt qui traîne plus d'un
 
 ### 5.7 Panneau « Scores et statistiques »
 
-Colonne de 350 px accolée au lecteur, deux onglets (`Stats du Match`, `Scores Live`), matchs épinglables, rafraîchie toutes les 5 minutes.
+`⚙ Réglages → 📊 Scores et statistiques`. Colonne de 350 px accolée au lecteur, deux onglets (`Stats du Match`, celles du match de la vidéo choisie, qui suivent quand on en choisit une autre ; `Scores Live`), matchs épinglables, rafraîchie toutes les 5 minutes. C'est le seul endroit du lecteur pour les stats : « Infos et statistiques » du menu ⋮ faisait doublon et est parti (25 octobre 2026).
 
 ## 6. Favoris (menu Plus → ⭐ Favoris)
 
