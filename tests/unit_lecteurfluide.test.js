@@ -98,10 +98,13 @@ async function main() {
   const second = repos;
   second();
   assert.ok(enTetes().every((o) => o === '0'), 'menu fermé : le repos efface les en-têtes, posés sur la vidéo');
-  assert.strictEqual(barre.style.opacity, '1', 'mais jamais la barre, qui a sa propre bande : l\'effacer ne rendait aucune place');
+  /* Depuis le 25 octobre 2026, la barre est posée par-dessus la vidéo (comme Netflix) :
+     elle s'efface avec les en-têtes. Elle restait quand elle avait sa propre bande. */
+  assert.strictEqual(barre.style.opacity, '0', 'et la barre aussi, posée par-dessus la vidéo');
+  assert.ok(barre.classList.contains('mv-cachee'));
   w.resetMvIdleTimer();
   globalThis.setTimeout = vraiSet;
-  ok('le repos n\'efface pas la barre sous un menu ouvert');
+  ok('le repos n\'efface pas la barre sous un menu ouvert, et l\'efface menu fermé');
 
   // ── 5. Le lecteur qui revient au premier plan revient avec ses commandes ───
   mv.toggleMultiviewPip();   // on part sur le Live : le lecteur est masqué

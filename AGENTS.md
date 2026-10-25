@@ -27,6 +27,10 @@ Avant toute modification : lire `docs/ARCHITECTURE.md` (référence technique), 
 - **Faire dépendre un test du réseau ou de l'heure.** Les tests de démarrage coupent le réseau et figent l'horloge ; suivre le même modèle.
 - **Traiter un test qui tombe comme une instabilité.** Reproduire (`--repeat-each`), trouver la cause, corriger la cause.
 
+## Site = APK
+
+« En gros, site = APK. Si on refait le site pour améliorer le fonctionnement, on le fait pour l'APK et vice-versa » (25 octobre 2026). L'APK (`mobile/`) embarque le site tel quel : aucun comportement, réglage ni apparence propre à l'APK, hors ce qu'Android impose (navigation à la télécommande, lecteur natif pour le mode direct, blocage et script posés par la WebView, échelle d'un écran d'ordinateur sur une télé). Une amélioration se fait dans le site et vaut pour les deux ; une demande faite « pour l'APK » se fait dans le site.
+
 ## Le dépôt en bref
 
 - Application statique (PWA) : `index.html` + modules `js/`, sans framework. L'interface classique (`legacy.html`) a été retirée le 30 septembre 2026.

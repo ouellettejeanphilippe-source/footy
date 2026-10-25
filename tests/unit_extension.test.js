@@ -167,7 +167,11 @@ test('la fenêtre du début : quand elle s\'ouvre', () => {
 });
 
 /* « garder vieux guide plutôt que nouveau » (13 octobre 2026) : la page et la fenêtre
-   montrent l'ancien guide (Firefox recommandé, uBlock Origin, Tampermonkey, le script). */
+   montrent l'ancien guide (Firefox recommandé, uBlock Origin, Tampermonkey, le script).
+   « Les mêmes fonctions sur Firefox et Chrome » (25 octobre 2026) : il garde tout cela, et
+   mène Chrome à ce qui s'y installe vraiment. Les boutons uBlock Origin pour Chrome et Edge
+   menaient à une extension retirée (Manifest V2) ; Tampermonkey n'y tourne qu'avec
+   « Autoriser les scripts utilisateur ». */
 test('l\'ancien guide : la page Script, reprise par la fenêtre du début', () => {
   const html = lire('index.html');
   const debut = html.indexOf('<section id="script-page"');
@@ -176,7 +180,14 @@ test('l\'ancien guide : la page Script, reprise par la fenêtre du début', () =
     'Étape 2 : le gestionnaire de scripts (Tampermonkey)', 'Étape 3 : le script de nettoyage', 'multiview-cleaner.user.js', 'about:config', 'id="guide-installation"']) {
     assert.ok(page.includes(texte), texte);
   }
-  assert.ok(!page.includes('Charger l\'extension non empaquetée'), 'plus le guide de l\'extension');
+  assert.ok(page.includes('Charger l\'extension non empaquetée') && page.includes('onclick="telechargerExtension()"'), 'le panneau Chrome mène à l\'extension');
+  assert.ok(page.includes('Autoriser les scripts utilisateur'), 'le réglage sans lequel Tampermonkey ne tourne pas sur Chrome');
+  for (const retire of ['cjpalhdlnbpafiamejdnhcphjbkeiagm', 'odfafepnkmbhccpbejgmiehpchacaeak']) {
+    assert.ok(!page.includes(retire), `plus de lien vers uBlock Origin (Manifest V2) : ${retire}`);
+  }
+  assert.ok(page.includes('chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh'), 'uBlock Origin Lite pour Chrome');
+  assert.ok(page.includes('microsoftedge.microsoft.com/addons/detail/ublock-origin-lite/cimighlppcgcoapaliogpjjdehbnofhn'), 'uBlock Origin Lite pour Edge');
+  assert.ok(page.includes('addons.mozilla.org/fr/firefox/addon/ublock-origin/'), 'Firefox garde uBlock Origin');
   assert.ok(html.includes('>🧩 Script</button>'), 'menu Plus');
   const mv = lire('js/multiview.js');
   assert.ok(mv.includes("document.getElementById('guide-installation')"), 'la fenêtre reprend la page');
@@ -188,4 +199,5 @@ test('le module est précaché, et les fonctions du guide sont exposées', () =>
   for (const f of ['installTampermonkey', 'installerScriptUtilisateur']) {
     assert.ok(mv.includes(`window.${f} = ${f};`), f);
   }
+  assert.ok(mv.includes('window.telechargerExtension = telechargerExtensionGuide;'), 'le bouton du panneau Chrome');
 });

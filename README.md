@@ -10,7 +10,7 @@ Toutes les heures sont celles de New York (heure de l'Est).
 - **Guide** : le programme complet du jour sur une grille de 24 h, par ligue, avec la ligne de l'heure courante. Un match commencé la veille qui joue encore après minuit reste affiché.
 - **Fiche de match** : buteurs, classement, statistiques de saison (matchs ESPN), et la liste des flux avec leurs actions.
 - **Lecteur** : jusqu'à quatre vidéos, dispositions automatiques, vidéos gardées en arrière-plan pendant qu'on navigue, bascule automatique de source quand une vidéo ne démarre pas (avec le script utilisateur).
-- **Mode câble** (facultatif, `⋯ Plus → 📺`) : le lecteur se zappe au doigt — glisser ↑↓ change le match qui joue, ←→ change la source du match en cours, avec l'incrustation du décodeur.
+- **Mode câble** (facultatif, `Lecteur → ⚙ Réglages → 📺`) : le lecteur se zappe au doigt — glisser ↑↓ change le match qui joue, ←→ change la source du match en cours, avec l'incrustation du décodeur.
 - **Favoris, ligues, apparence** : équipes et ligues favorites, niveaux de ligue (principale, secondaire, ignorée), palettes et formes de cartes.
 
 Le détail, onglet par onglet, est dans [FEATURES.md](FEATURES.md).
@@ -27,7 +27,7 @@ Dans le navigateur, « Installer l'application » (ou « Ajouter à l'écran d'a
 
 Les pages des lecteurs vidéo sont chargées telles quelles dans le lecteur. Sans aide, elles gardent leurs fenêtres surgissantes et leurs calques, et certaines refusent de s'afficher dans un cadre. Le script **Multiview Stream Cleaner** (`multiview-cleaner.user.js`) règle cela :
 
-- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script. Dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier `extension/` du dépôt. Le guide de l'application (`Plus → 🧩 Script`) ne la mentionne pas : c'est l'ancien guide, uBlock Origin + Tampermonkey + le script.
+- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script, avec les mêmes fonctions que sur Firefox, mode direct compris. `Plus → 🧩 Script → ⬇ Télécharger l'extension` (panneau Chrome) en fabrique le zip ; décompresser, puis dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier `guide-des-sports-extension` (ou le dossier `extension/` du dépôt). Sans elle : uBlock Origin Lite, Tampermonkey avec « Autoriser les scripts utilisateur » (dans ses détails), et le script.
 - **Firefox** :
   1. installez **uBlock Origin** (bloqueur de publicités) ;
   2. installez **Tampermonkey** (gestionnaire de scripts) ;
@@ -68,14 +68,14 @@ Elle fait deux choses que la version hébergée ne pouvait pas faire :
 
 ### `mobile/` — l'application Android (téléphone et Chromecast avec Google TV)
 
-Le même APK s'installe sur un téléphone et sur un Chromecast avec Google TV, où il apparaît dans le lanceur. Sur la télé, le mode TV et le mode câble s'allument d'eux-mêmes ; partout, un flux direct est joué par le lecteur natif d'Android (`docs/ARCHITECTURE.md` §12.2).
+Le même APK s'installe sur un téléphone et sur un Chromecast avec Google TV, où il apparaît dans le lanceur. C'est le site tel quel (« site = APK », `AGENTS.md`) : sur la télé, seulement la navigation à la télécommande (ou à la manette), la page à l'échelle d'un écran d'ordinateur (Options → Taille de l'interface), et Retour qui passe par la barre de navigation ; fermée (Retour sur la dernière page, ou Accueil), l'application repart de zéro. Partout, le mode direct passe par le lecteur natif d'Android (`docs/ARCHITECTURE.md` §12.2).
 
 ```bash
 cd mobile && npm install
 powershell -ExecutionPolicy Bypass -File mobile\fabriquer-apk.ps1   # mobile\Guide-des-Sports.apk
 ```
 
-Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins). L'APK n'embarque qu'un **instantané** des données : quand `data/schedule.json` n'est pas du jour, le client interroge ESPN lui-même (`js/api.js`, `apiOuCacheLocal`), donc il n'a besoin d'aucun serveur. Lancez le pipeline avant de fabriquer, sinon l'APK part avec des liens non vérifiés.
+Demande un JDK 21 et le SDK Android (voir l'en-tête du script pour les chemins). L'APK embarque une copie de l'application : refaites-le pour suivre le site. Il fait ce que fait le site avec l'extension ou Tampermonkey (blocage, script dans chaque lecteur, pages qui refusent l'iframe, mode direct par le lecteur natif), et se pilote à la télécommande ou à la manette. L'APK n'embarque qu'un **instantané** des données : quand `data/schedule.json` n'est pas du jour, le client interroge ESPN lui-même (`js/api.js`, `apiOuCacheLocal`), donc il n'a besoin d'aucun serveur. Lancez le pipeline avant de fabriquer, sinon l'APK part avec des liens non vérifiés.
 
 ### `tv/` — l'application Android TV (Chromecast avec Google TV)
 

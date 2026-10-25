@@ -160,6 +160,13 @@ export function ouvrirMenu(ancre, elements, options) {
         tete.querySelector('.mv-menu-tete-lb').textContent = options.label || '';
         tete.querySelector('.mv-menu-fermer').addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); fermerMenus(); });
         menu.appendChild(tete);
+    } else if (options.label) {
+        /* Hors téléphone aussi, le menu dit de quoi il parle : le match, « Réglages du
+           lecteur » ; ouvert depuis la barre, il n'est plus posé sur sa tuile. */
+        var entete = doc.createElement('div');
+        entete.className = 'mv-menu-entete';
+        entete.textContent = options.label;
+        menu.appendChild(entete);
     }
     var corps = feuille ? doc.createElement('div') : menu;
     if (feuille) { corps.className = 'mv-menu-corps'; menu.appendChild(corps); }

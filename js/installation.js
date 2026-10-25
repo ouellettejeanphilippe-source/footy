@@ -4,19 +4,21 @@
    Le guide lui-même est l'ancien (uBlock Origin, Tampermonkey, le script ; Firefox
    recommandé), écrit dans index.html (#guide-installation, page Plus → 🧩 Script) et
    repris par la fenêtre du début : « garder vieux guide plutôt que nouveau »
-   (13 octobre 2026). Le guide par navigateur qui menait à l'extension a été retiré ;
-   l'extension reste dans le dépôt et se charge depuis son dossier.
+   (13 octobre 2026). Depuis le 25 octobre 2026 (« les mêmes fonctions sur Firefox et
+   Chrome »), un panneau Chrome y mène à l'extension (`telechargerExtension`) : uBlock
+   Origin ne s'installe plus sur Chrome, et l'extension y fait ce que font sur Firefox
+   uBlock Origin, Tampermonkey et le script.
 
    Sans import : `getBridgeStatus` est passé par l'appelant. */
 
 /* Doit suivre "version" de extension/manifest.json (vérifié par unit_extension). */
-export var VERSION_EXTENSION = '1.4';
+export var VERSION_EXTENSION = '1.5';
 
 /* Doit suivre @version de multiview-cleaner.user.js (vérifié par unit_extension). Un script
    plus ancien s'annonce « pas à jour » (18 octobre 2026 : le recul de l'onglet n'est bloqué
    dans les vidéos que depuis la 1.17, et rien ne disait que Tampermonkey tournait encore
    sur l'ancienne). */
-export var VERSION_SCRIPT = '1.17';
+export var VERSION_SCRIPT = '1.18';
 
 /* La valeur de `hasSeenScriptModal` posée après la fenêtre du début. Toute valeur non
    vide veut dire « déjà vue » (« 2 » vient du guide retiré). */
@@ -122,6 +124,24 @@ export function fabriquerZip(fichiers) {
   var sortie = new Uint8Array(total), pos = 0;
   tout.forEach(function (m) { sortie.set(m, pos); pos += m.length; });
   return sortie;
+}
+
+/* Le bouton du panneau Chrome du guide : fabrique le zip et le fait télécharger. Rend le
+   nom du fichier. Le lien est cliqué par programme : la fenêtre du guide ne se ferme que
+   sur un vrai clic (`isTrusted`, installTampermonkey). */
+export function telechargerExtension(lire, doc) {
+  var d = doc || document;
+  return zipExtension(lire).then(function (octets) {
+    var url = URL.createObjectURL(new Blob([octets], { type: 'application/zip' }));
+    var a = d.createElement('a');
+    a.href = url;
+    a.download = DOSSIER_EXTENSION + '-' + VERSION_EXTENSION + '.zip';
+    d.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    return a.download;
+  });
 }
 
 /* Télécharge les fichiers de l'extension servis avec l'application et rend le zip. */

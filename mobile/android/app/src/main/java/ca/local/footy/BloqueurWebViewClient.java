@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.util.Log;
 import android.net.Uri;
+import android.webkit.CookieManager;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -51,6 +52,9 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
     private volatile ListeDeBlocage liste = null;
 
     private int bloquees = 0;
+
+    /** Les pages de cadre rendues sans leur refus d'encadrement (CadreSansRefus). */
+    private int cadresRepris = 0;
 
     /** Une télé (Chromecast avec Google TV) : décidé une fois, par le système. */
     private final boolean tele;
@@ -115,8 +119,33 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
             }
 
             signalerSiManifeste(vue, url, requete);
+
+            WebResourceResponse cadre = cadreSansRefus(requete, url, hote);
+            if (cadre != null) return cadre;
         }
         return super.shouldInterceptRequest(vue, requete);
+    }
+
+    /**
+     * La page d'un lecteur, sans {@code X-Frame-Options} ni {@code frame-ancestors}
+     * (CadreSansRefus) : la tuile s'affiche, comme avec l'extension sur ordinateur. Les
+     * fichiers de l'application elle-même restent à Capacitor ; une redirection ou une
+     * erreur réseau, à la WebView ({@code null}).
+     */
+    private WebResourceResponse cadreSansRefus(WebResourceRequest requete, String url, String hote) {
+        String hoteAppli = null;
+        try { hoteAppli = Uri.parse(pont.getAppUrl()).getHost(); } catch (Exception e) {}
+        if (hote == null || hote.equalsIgnoreCase(hoteAppli)) return null;
+        if (!CadreSansRefus.estPageDeCadre(requete.getMethod(), requete.isForMainFrame(), requete.getRequestHeaders(), url)) return null;
+        final CookieManager cookies = CookieManager.getInstance();
+        CadreSansRefus.Reponse r = CadreSansRefus.charger(url, requete.getRequestHeaders(), new CadreSansRefus.Cookies() {
+            @Override public String lire(String u) { return cookies.getCookie(u); }
+            @Override public void ecrire(String u, String v) { cookies.setCookie(u, v); }
+        }, CadreSansRefus.DELAI_MS);
+        if (r == null) return null;
+        cadresRepris++;
+        Journal.etat("cadres", cadresRepris + " pages de lecteur ouvertes sans refus d'encadrement");
+        return new WebResourceResponse(r.mime, r.encodage, r.statut, r.raison, r.entetes, r.corps);
     }
 
     /**

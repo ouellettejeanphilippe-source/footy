@@ -336,6 +336,17 @@
         <div class="field-label">Mode TV / tablette<small>Textes plus gros, navigation à la télécommande.</small></div>
         <label class="switch"><input type="checkbox" id="pref-tv-mode" onchange="toggleTvMode(this.checked)"><span class="slider"></span></label>
       </div>
+      <div class="field row">
+        <div class="field-label">Taille de l'interface<small>En mode TV, et dans l'application sur une télé. Automatique : selon la largeur de l'écran.</small></div>
+        <select id="pref-zoom-tv" class="btn select" onchange="changerZoomTv(this.value)">
+          <option value="auto">Automatique</option>
+          <option value="50">50 %</option>
+          <option value="65">65 %</option>
+          <option value="80">80 %</option>
+          <option value="100">100 %</option>
+          <option value="130">130 %</option>
+        </select>
+      </div>
     </div>
 
     <!-- Réseau (avancé, replié) -->
@@ -444,7 +455,7 @@
   <div class="stack prose" id="guide-installation">
     <div class="panel accent">
       <strong class="accent-text">🦊 Recommandation : Firefox + uBlock Origin</strong>
-      <p>Nous recommandons <strong>Firefox</strong>. L'application fonctionne sur Chrome ou Edge, mais uBlock Origin y est bien moins efficace depuis les restrictions de Google (Manifest V3).</p>
+      <p>Nous recommandons <strong>Firefox</strong>. Sur Chrome, Edge ou Brave, uBlock Origin ne s'installe plus depuis les restrictions de Google (Manifest V3) : l'extension du Guide des Sports y fait le même travail (panneau Chrome ci-dessous).</p>
     </div>
 
     <div class="panel warn-panel">
@@ -458,14 +469,27 @@
       <p class="help">Après ces trois réglages, recharger l'application. Si une tuile reste vide, son bouton ⏭ passe à la source suivante.</p>
     </div>
 
+    <div class="panel warn-panel">
+      <div class="panel-title"><span>🌐 Chrome, Edge, Brave : l'extension du Guide des Sports</span></div>
+      <p class="help">Elle fait sur Chrome ce que font uBlock Origin, Tampermonkey et le script sur Firefox : publicités et fenêtres surgissantes bloquées, tuiles nettoyées, mode direct. Elle ouvre en plus les pages qui refusent l'iframe. Elle remplace les étapes 1 à 3.</p>
+      <ol>
+        <li><button type="button" class="btn store chrome" onclick="telechargerExtension()">⬇ Télécharger l'extension (.zip)</button>, puis décompresser le fichier.</li>
+        <li>Ouvrir <code>chrome://extensions</code> (Edge : <code>edge://extensions</code>) et activer le <strong>Mode développeur</strong>.</li>
+        <li>Cliquer <strong>Charger l'extension non empaquetée</strong> et choisir le dossier <code>guide-des-sports-extension</code>.</li>
+        <li>Recharger l'application. Pour une mise à jour : retélécharger, remplacer le dossier, puis ↻ sur la fiche de l'extension.</li>
+      </ol>
+      <p class="help">Sans l'extension : uBlock Origin Lite (étape 1), puis Tampermonkey (étape 2) en activant <strong>Autoriser les scripts utilisateur</strong> dans ses détails (<code>chrome://extensions</code> → Tampermonkey → Détails), et le script (étape 3). Les pages qui refusent l'iframe ne s'ouvrent alors pas toujours.</p>
+    </div>
+
     <div class="panel">
       <div class="panel-title"><span>Étape 1 : le bloqueur de publicités (uBlock Origin)</span></div>
       <p class="help">Essentiel pour bloquer les publicités intrusives des sites de streaming.</p>
       <div class="btn-row">
         <a href="https://addons.mozilla.org/fr/firefox/addon/ublock-origin/" target="_blank" rel="noopener" class="btn store firefox">Firefox (uBlock)</a>
-        <a href="https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm" target="_blank" rel="noopener" class="btn store chrome">Chrome (uBlock)</a>
-        <a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin/odfafepnkmbhccpbejgmiehpchacaeak" target="_blank" rel="noopener" class="btn store edge">Edge (uBlock)</a>
+        <a href="https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh" target="_blank" rel="noopener" class="btn store chrome">Chrome (uBlock Lite)</a>
+        <a href="https://microsoftedge.microsoft.com/addons/detail/ublock-origin-lite/cimighlppcgcoapaliogpjjdehbnofhn" target="_blank" rel="noopener" class="btn store edge">Edge (uBlock Lite)</a>
       </div>
+      <p class="help">Sur Chrome et Edge, uBlock Origin ne s'installe plus : c'est uBlock Origin Lite, du même auteur. L'extension du Guide des Sports (panneau Chrome) bloque aussi.</p>
     </div>
 
     <div class="panel">
@@ -476,6 +500,7 @@
         <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener" class="btn store chrome">Chrome (Tampermonkey)</a>
         <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" rel="noopener" class="btn store edge">Edge (Tampermonkey)</a>
       </div>
+      <p class="help">Chrome et Edge : dans <code>chrome://extensions</code> (<code>edge://extensions</code>) → Tampermonkey → Détails, activer <strong>Autoriser les scripts utilisateur</strong>. Sans ce réglage, le script ne tourne pas.</p>
     </div>
 
     <div class="panel">

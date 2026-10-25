@@ -10,12 +10,19 @@
  *     n'est pas l'application (une vidéo YouTube sur un blogue, un formulaire de
  *     connexion) n'est pas touché ; Tampermonkey nettoyait toutes les iframes du web ;
  *   - `GM_xmlhttpRequest` passe par relais.js et fond.js, présents dans la seule
- *     fenêtre de l'application. Ailleurs, il échoue tout de suite, proprement. */
+ *     fenêtre de l'application. Ailleurs, il échoue tout de suite, proprement.
+ *
+ * Pour le reste, depuis 1.5 (25 octobre 2026, « les mêmes fonctions sur Firefox et
+ * Chrome »), ce `GM_xmlhttpRequest` fait ce que fait celui de Tampermonkey pour le
+ * script : texte ou binaire (`responseType: 'arraybuffer'`), avec les en-têtes
+ * `Referer`, `Origin` et `Range` (fond.js). Le script n'annonce la lecture binaire,
+ * donc le mode direct, que sous un vrai gestionnaire de scripts, qu'il reconnaît à
+ * `GM_info` : on le lui donne. */
 (function () {
     'use strict';
     if (window.__footyNettoyeur) return;
 
-    var VERSION_EXTENSION = '1.4';
+    var VERSION_EXTENSION = '1.5';
     var HOTES_APPLICATION = ['127.0.0.1', 'localhost', 'ouellettejeanphilippe-source.github.io'];
 
     /* La fenêtre du haut, vue d'ici. `ancestorOrigins` la donne même depuis un cadre
@@ -43,9 +50,22 @@
         try {
             if (d.erreur === 'timeout') { if (typeof o.ontimeout === 'function') o.ontimeout({ error: 'timeout' }); }
             else if (d.erreur) { if (typeof o.onerror === 'function') o.onerror({ error: d.erreur }); }
-            else if (typeof o.onload === 'function') o.onload({ status: d.status, statusText: d.statusText, responseText: d.responseText, finalUrl: d.finalUrl, responseHeaders: '' });
+            else if (typeof o.onload === 'function') o.onload({ status: d.status, statusText: d.statusText, responseText: d.responseText || '', response: d.octets || d.responseText, finalUrl: d.finalUrl, responseHeaders: '' });
         } catch (err) {}
     });
+
+    /* Les seuls en-têtes que le script demande, et que fond.js sait poser. */
+    function entetesDuPont(h) {
+        var e = {};
+        Object.keys(h || {}).forEach(function (k) {
+            var v = h[k], n = k.toLowerCase();
+            if (typeof v !== 'string') return;
+            if (n === 'referer') e.referer = v;
+            else if (n === 'origin') e.origine = v;
+            else if (n === 'range') e.plage = v;
+        });
+        return e;
+    }
 
     function gmXhr(options) {
         var o = options || {};
@@ -56,12 +76,13 @@
         }
         var id = 'fx' + (++suite) + '_' + Date.now();
         attente[id] = o;
-        window.postMessage({ __footyExt: 'requete', id: id, url: o.url, method: o.method || 'GET', timeout: o.timeout || 15000 }, '*');
+        window.postMessage({ __footyExt: 'requete', id: id, url: o.url, method: o.method || 'GET', timeout: o.timeout || 15000, binaire: o.responseType === 'arraybuffer', entetes: entetesDuPont(o.headers) }, '*');
         return { abort: function () { delete attente[id]; } };
     }
 
+    var GM_info = { scriptHandler: 'Guide des Sports (extension)', version: VERSION_EXTENSION };
     var GM_xmlhttpRequest = gmXhr;
-    var GM = { xmlHttpRequest: gmXhr };
+    var GM = { xmlHttpRequest: gmXhr, info: GM_info };
 
     try {
 /*__SCRIPT__*/

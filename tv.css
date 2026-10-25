@@ -4,11 +4,13 @@
  * sans altérer la mise en page CSS relative.
  */
 
+/* --zoom-interface : zoomInterface (js/tele.js), selon la largeur de l'écran ou le
+   réglage d'Options. */
 body.tv-mode {
-    zoom: 1.3;
+    zoom: var(--zoom-interface, 1.3);
 }
 
-/* Spatial Navigation Focus Styles */
+/* Spatial Navigation Focus Styles (mode TV, et manette : body.manette, js/manette.js) */
 body.tv-mode [tabindex="0"]:focus,
 body.tv-mode button:focus,
 body.tv-mode a:focus,
@@ -16,7 +18,15 @@ body.tv-mode input:focus,
 body.tv-mode .match-card:focus,
 body.tv-mode .tab-btn:focus,
 body.tv-mode .icon-btn:focus,
-body.tv-mode .stream-link:focus {
+body.tv-mode .stream-link:focus,
+body.manette [tabindex="0"]:focus,
+body.manette button:focus,
+body.manette a:focus,
+body.manette input:focus,
+body.manette .match-card:focus,
+body.manette .tab-btn:focus,
+body.manette .icon-btn:focus,
+body.manette .stream-link:focus {
     outline: 4px solid #4CAF50 !important;
     outline-offset: 2px;
     box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
@@ -25,8 +35,42 @@ body.tv-mode .stream-link:focus {
     z-index: 10;
 }
 
-body.tv-mode .match-card:focus {
-    transform: scale(1.02);
+/* La carte qui a le focus grossit et ressort, comme une affiche sur Netflix. */
+body.tv-mode .match-card:focus,
+body.manette .match-card:focus,
+body.tv-mode .mb:focus,
+body.manette .mb:focus,
+body.tv-mode [data-mid]:focus,
+body.manette [data-mid]:focus {
+    transform: scale(1.06);
+    outline: 3px solid #fff !important;
+    outline-offset: 0;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7), 0 0 0 6px rgba(255, 255, 255, 0.18);
+    position: relative;
+    z-index: 20;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Le lecteur et ses menus : le focus façon Netflix, contour blanc et léger
+   grossissement, au lieu du vert (illisible sur la pastille blanche de la vidéo choisie). */
+body.tv-mode #mv-toolbar button:focus,
+body.manette #mv-toolbar button:focus {
+    outline: 3px solid #fff !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.16);
+    background-color: rgba(255, 255, 255, 0.26);
+    transform: scale(1.07);
+}
+body.tv-mode #mv-toolbar .mv-chip.actif:focus,
+body.manette #mv-toolbar .mv-chip.actif:focus { background-color: #fff; }
+body.tv-mode #mv-toolbar .mv-tb-btn.primary:focus,
+body.manette #mv-toolbar .mv-tb-btn.primary:focus { background-color: var(--accent); }
+body.tv-mode .mv-menu-item:focus,
+body.manette .mv-menu-item:focus {
+    outline: 3px solid #fff !important;
+    outline-offset: -3px;
+    box-shadow: none;
+    background-color: rgba(255, 255, 255, 0.14);
 }
 
 /* Ensure modal contents behave appropriately */

@@ -111,6 +111,18 @@ public class LecteurActivity extends Activity {
         if (lecteur != null) { lecteur.release(); lecteur = null; }
     }
 
+    /*
+     * Accueil pendant une vidéo, sur une télé : l'utilisateur quitte l'application, qui
+     * repart de zéro à la prochaine ouverture (MainActivity.fermer). finishAndRemoveTask
+     * termine toute la tâche, page de l'application comprise.
+     */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        android.app.UiModeManager ui = (android.app.UiModeManager) getSystemService(UI_MODE_SERVICE);
+        if (ui != null && ui.getCurrentModeType() == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) finishAndRemoveTask();
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -293,26 +305,40 @@ public class LecteurActivity extends Activity {
 
     private final Runnable cacherBandeau = () -> bandeau.setVisibility(View.GONE);
 
+    /*
+     * La manette (25 octobre 2026), avec les mêmes boutons que dans l'application
+     * (js/manette.js, mode câble) : LB / RB match précédent / suivant, LT / RT source
+     * précédente / suivante, A et Y le bandeau, X et Start lecture / pause. La croix et le
+     * stick arrivent ici comme les flèches de la télécommande ; B est le Retour d'Android.
+     */
     @Override
     public boolean onKeyDown(int code, KeyEvent e) {
         switch (code) {
             case KeyEvent.KEYCODE_DPAD_RIGHT:
             case KeyEvent.KEYCODE_MEDIA_NEXT:
+            case KeyEvent.KEYCODE_BUTTON_R2:
                 LecteurNatifPlugin.signaler("source", 1, null); return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+            case KeyEvent.KEYCODE_BUTTON_L2:
                 LecteurNatifPlugin.signaler("source", -1, null); return true;
             // ▲ (CH +) : la chaîne suivante, comme ↑ dans le mode câble (actionDuGeste, js/cable.js).
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_CHANNEL_UP:
+            case KeyEvent.KEYCODE_BUTTON_R1:
                 LecteurNatifPlugin.signaler("chaine", 1, null); return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
+            case KeyEvent.KEYCODE_BUTTON_L1:
                 LecteurNatifPlugin.signaler("chaine", -1, null); return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_INFO:
+            case KeyEvent.KEYCODE_BUTTON_A:
+            case KeyEvent.KEYCODE_BUTTON_Y:
                 montrerBandeau(); return true;
+            case KeyEvent.KEYCODE_BUTTON_X:
+            case KeyEvent.KEYCODE_BUTTON_START:
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (lecteur != null) lecteur.setPlayWhenReady(!lecteur.getPlayWhenReady());
                 return true;

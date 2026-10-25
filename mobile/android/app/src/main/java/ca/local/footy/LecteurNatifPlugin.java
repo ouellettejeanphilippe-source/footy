@@ -44,6 +44,8 @@ public class LecteurNatifPlugin extends Plugin {
         if (referers.isEmpty()) referers.add("");
         Intent intent = new Intent(getContext(), LecteurActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                // Ouvrir le lecteur n'est pas « l'utilisateur quitte » (MainActivity.onUserLeaveHint).
+                .addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
                 .putExtra(LecteurActivity.EXTRA_MEDIA, media)
                 .putStringArrayListExtra(LecteurActivity.EXTRA_REFERERS, referers)
                 .putExtra(LecteurActivity.EXTRA_TITRE, call.getString("titre", ""))
