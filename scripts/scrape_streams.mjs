@@ -717,10 +717,21 @@ await Promise.all(hostsToProbe.map(async (host) => {
     try {
         const r = await realFetch(sample, { headers: { 'User-Agent': UA }, redirect: 'follow' });
         const p = readFramePolicy(r.headers);
-        hostPolicy[host] = { embeddable: p.embeddable, reason: p.reason, status: r.status };
-        try { if (r.body && r.body.cancel) await r.body.cancel(); } catch (e) {}
+        const pol = { embeddable: p.embeddable, reason: p.reason, status: r.status };
+        /* Un 403 ou 503 peut être une page de défi (Cloudflare) : le site bloque cette
+           adresse, pas le lecteur. Noté `defi` : le lien reste publié, non vérifiable d'ici
+           (nonVerifiableDepuisServeur, js/playability.js). */
+        if (r.status === 403 || r.status === 503) {
+            try { if (play.estPageDeDefi((await r.text()).slice(0, 20000), r.headers)) pol.defi = true; } catch (e) {}
+        } else {
+            try { if (r.body && r.body.cancel) await r.body.cancel(); } catch (e) {}
+        }
+        hostPolicy[host] = pol;
     } catch (e) {
-        hostPolicy[host] = { embeddable: null, reason: 'injoignable : ' + String(e && e.message ? e.message : e).slice(0, 60) };
+        /* La cause (ENOTFOUND, ECONNRESET, ETIMEDOUT…) départage un nom disparu d'un hôte
+           qui refuse les centres de données. */
+        const cause = e && e.cause && e.cause.code ? ' (' + e.cause.code + ')' : '';
+        hostPolicy[host] = { embeddable: null, reason: ('injoignable : ' + String(e && e.message ? e.message : e)).slice(0, 60) + cause };
     }
 }));
 
@@ -821,6 +832,9 @@ if ((out.hostPlayCritere | 0) === play.CRITERE_VERDICT) {
        de témoin dans ce fichier : on garde l'ancien, sinon il ne pourrait plus revenir. */
     for (const [h, r] of Object.entries(avant)) {
         if (!out.hotesEcartes[h] && play.hoteMort(out.hostPlay[h]) && r && r.echantillon) out.hotesEcartes[h] = Object.assign({}, r, { liens: 0 });
+    }
+    if (ecart.nonVerifiables) {
+        console.log(`Liens gardés non vérifiables d'ici : ${ecart.nonVerifiables} sur ${Object.keys(ecart.hotesNonVerifiables).length} hôte(s) que ce serveur ne peut pas joindre (${Object.keys(ecart.hotesNonVerifiables).slice(0, 8).join(', ')}).`);
     }
     if (ecart.retires) {
         console.log(`Liens morts écartés : ${ecart.retires} sur ${Object.keys(ecart.hotes).length} hôtes à zéro lecture en ${play.SEUIL_HOTE_MORT} essais ou plus (`

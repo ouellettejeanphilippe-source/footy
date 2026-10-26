@@ -1573,6 +1573,7 @@ function noterDans(cle, nom, verdict) {
   var e = l[nom] || { tested: 0, plays: 0 };
   e.tested += 1;
   if (verdict === 'plays') e.plays += 1;
+  e.at = Date.now();   // l'heure de la dernière observation : le veto de l'appareil expire (fusionAppareil)
   if (e.tested > 40) { e.tested = Math.round(e.tested / 2); e.plays = Math.round(e.plays / 2); }
   l[nom] = e;
   safeStorageSetJSON(cle, l);
@@ -1608,7 +1609,7 @@ export function sortFluxLinks(links) {
        liens vus jouer et changeait le haut des listes (« les sources chargent moins bien
        aujourd'hui… pas les domaines que je suis habitué » : sur les données du jour, le
        premier lien proposé était vu jouer pour 46 matchs au lieu de 68). */
-    var rangA = rangNotoriete(a, sources), rangB = rangNotoriete(b, sources);
+    var rangA = rangNotoriete(a, sources, ledger), rangB = rangNotoriete(b, sources, ledger);
     if (rangA !== rangB) return rangA - rangB;
     /* Dans un même palier, la réputation : le taux de lecture estimé de l'hôte, ou à
        défaut de la source qui a fourni le lien (reputationLien, js/playability.js). Elle

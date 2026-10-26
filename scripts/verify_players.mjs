@@ -98,6 +98,23 @@ const context = await browser.newContext({
     userAgent: USER_AGENT,
     locale: 'en-US'
 });
+/* Les pages de cadre sont servies SANS leur refus d'encadrement (sansRefusDeCadre,
+   js/playability.js), comme l'APK et l'extension les voient : un lecteur qui porte
+   X-Frame-Options ou frame-ancestors valait « bloqué » ici alors qu'il joue là-bas
+   (foxiy.st, fxtrend.st, gooz.aapmains.net : les lecteurs de Methstreams et de
+   MyBuffstreams, 26 octobre 2026). Seuls les documents passent par ici ; le reste
+   (segments, scripts, images) file tel quel. Enregistrée AVANT la route de la sonde,
+   qui a donc priorité (Playwright essaie la dernière route enregistrée d'abord). */
+await context.route('**/*', async (route) => {
+    const requete = route.request();
+    if (requete.resourceType() !== 'document' || requete.url().startsWith(PROBE_ORIGIN)) { await route.fallback(); return; }
+    try {
+        const r = await route.fetch();
+        await route.fulfill({ response: r, headers: play.sansRefusDeCadre(r.headers()) });
+    } catch (e) {
+        try { await route.continue(); } catch (e2) {}
+    }
+});
 await context.route(PROBE_ORIGIN + '/**', (route) => {
     const u = new URL(route.request().url());
     const target = decodeURIComponent(u.searchParams.get('u') || '');

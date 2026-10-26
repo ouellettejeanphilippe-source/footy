@@ -2238,9 +2238,12 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
      ouvert. Ses requêtes portent le Referer du lecteur en en-tête, qu'Android remet à sa
      place (RelaisReferer.java). */
   await page.evaluate((o) => { window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA'); window.openMultiviewTab(); }, origin);
-  await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
-  await page.evaluate(() => window.toggleDirectMode(0));
+  /* Sur la télé, un lien dont le flux direct est connu part DIRECTEMENT en mode direct
+     (26 octobre 2026, « je veux qu'un max de streams marchent ») : pas la page du site et
+     ses centaines de cadres de régie. */
   await expect(page.locator('.mv-cell[data-index="0"] video.mv-video')).toHaveCount(1);
+  await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(0);
+  expect(await page.evaluate(() => window.mvFlux[0].mode), 'd\'emblée en mode direct').toBe('direct');
   await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(1);
   const hls = await page.evaluate(() => ({ u: window.__hls[0].u, entetes: window.__hls[0].entetes }));
   expect(hls.u).toBe('https://cdn.test/a/index.m3u8');

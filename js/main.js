@@ -415,6 +415,8 @@ function appliquerCacheServeur(data) {
     window.prefetchedStreamsInfo = { generatedAt: data.generatedAt, ageMin: ageMin, count: list.length, sources: data.sources || [], hostPolicy: data.hostPolicy || {}, verifiedAt: data.verifiedAt || null };
     // Jouabilité observée par le serveur (scripts/verify_players.mjs) : lue par sortFluxLinks.
     window.hostPlayLedger = (data.hostPlay && typeof data.hostPlay === 'object') ? data.hostPlay : {};
+    // Les hôtes que le serveur a écartés : la relecture d'une page de match ne les ramène pas (js/scrapers.js).
+    window.hotesEcartes = (data.hotesEcartes && typeof data.hotesEcartes === 'object') ? data.hotesEcartes : {};
     // Le registre par source : départage, dans un palier, les hôtes jamais éprouvés (reputationLien).
     window.sourcePlayLedger = (data.sourcePlay && typeof data.sourcePlay === 'object' && Object.keys(data.sourcePlay).length)
         ? data.sourcePlay

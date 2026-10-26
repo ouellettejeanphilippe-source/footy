@@ -587,13 +587,16 @@ body.view-timeline .zoom-controls { display: flex; }
    que .si-tab, mais teinté : ces deux marques répondent à « est-ce que ça va jouer ? »,
    pas à « comment ça s'ouvre ? ». La couleur passe par currentColor sur la bordure,
    pour rester lisible dans les deux thèmes et pour les palettes personnalisées. */
-.si-joue, .si-mort, .si-rare { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 4px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; opacity: .85; }
+.si-joue, .si-mort, .si-rare, .si-essai { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 4px; padding: 1px 5px; white-space: nowrap; flex-shrink: 0; opacity: .85; }
 .si-joue { color: #3fbf6f; }
 /* Les deux comptes sont des chiffres à comparer d'une ligne à l'autre : chasse fixe,
    et pas de majuscules forcées qui déformeraient la barre de fraction. */
 .si-mort, .si-rare { font-variant-numeric: tabular-nums; text-transform: none; }
 .si-mort { color: #d9534f; }
 .si-rare { color: #d7952b; }
+/* « À essayer » : le serveur ne peut pas joindre cet hôte (il bloque les centres de
+   données) ; rien ne dit qu'il ne joue pas ici. */
+.si-essai { color: #8fa6c8; text-transform: none; }
 /* Le nom du flux s'efface quand son hôte n'a jamais joué : le coup d'œil doit suffire,
    sans avoir à lire chaque pastille. La ligne reste cliquable — un hôte peut revenir.
    « Joue parfois » n'est PAS estompé : il marche, simplement pas à tous les coups. */

@@ -9,6 +9,7 @@ import { S, addScrapeLog, favTeams, matchCardCache } from './state.js';
 import { renderFluxItem } from './ui.js';
 import { adaptateurPour } from './sources/index.js';
 import { extraireMatchsGeneriques } from './genericlist.js';
+import { filtrerHotesEcartes } from './playability.js';
 
 
 export function extractQuality(text) {
@@ -3414,17 +3415,37 @@ export function extractStreamLinks(html, m) {
     return links;
 }
 
+/* Les pages annexes d'un match (altUrls) que la fiche relit depuis le navigateur.
+
+   « Ya pas moyen que l'application en direct du browser humain trouve les liens ? »
+   (26 octobre 2026). Elle le fait déjà ; mesuré ce jour-là en réseau réel, elle ramenait
+   surtout du bruit : 243 chaînes de bintv sur un Barcelone–Real (le point d'API de la
+   source, lu comme une page de match, rend TOUT son programme), 61 liens taifood-blog.asia
+   sur un NFL (un hôte que le serveur sait mort). Et les pages Streameast étaient interdites
+   d'office, alors que la page principale, elle, les tente déjà par le pont (plus bas). Donc :
+   pas de point d'API (isApiEndpoint), pas de page bloquée sans le pont, quatre au plus. */
+export function pagesAnnexesARelire(m, pont) {
+  var urls = (m && Array.isArray(m.altUrls)) ? m.altUrls : [];
+  return urls.filter(function(u) { return u && !isApiEndpoint(u) && (pont || !isMatchPageBlocked(u)); }).slice(0, 4);
+}
+/* Les hôtes que le serveur a écartés (data/streams.json, `hotesEcartes`) : il peut les
+   joindre et n'y a jamais vu jouer. La relecture ne les ramène pas. */
+function sansHotesEcartes(links) {
+  var morts = (typeof window !== 'undefined' && window.hotesEcartes) || null;
+  return morts ? filtrerHotesEcartes(links, morts) : links;
+}
+
 export function scrapeMatchFlux(m, forceRefresh, deep){
   // deep=true (fiche de match ouverte) : on lit aussi les pages du même match sur les autres sources (altUrls)
   if (deep && Array.isArray(m.altUrls) && m.altUrls.length) {
-      // On n'interroge pas les hôtes qui refusent systématiquement (voir js/config.js) :
-      // c'était jusqu'ici jusqu'à 4 attentes de proxy pour rien à l'ouverture d'une fiche.
-      var extra = m.altUrls.filter(function(u) { return !isMatchPageBlocked(u); }).slice(0, 4);
+      var pontDeep = false;
+      try { var etatPontDeep = getBridgeStatus(); pontDeep = !!(etatPontDeep && etatPontDeep.available); } catch (e) {}
+      var extra = pagesAnnexesARelire(m, pontDeep);
       var mainP = scrapeMatchFlux(m, forceRefresh, false);
       return mainP.catch(function() {}).then(function() {
           return Promise.allSettled(extra.map(function(u) {
               return fetchPage(u, { force: !!forceRefresh }).then(function(html) {
-                  var links = extractStreamLinks(html, { id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam, league: m.league, matchUrl: u, source: null, streamLinks: [] });
+                  var links = sansHotesEcartes(extractStreamLinks(html, { id: m.id, homeTeam: m.homeTeam, awayTeam: m.awayTeam, league: m.league, matchUrl: u, source: null, streamLinks: [] }));
                   m.streamLinks = m.streamLinks || [];
                   links.forEach(function(l) { if (!m.streamLinks.some(function(e) { return e.url === l.url; })) m.streamLinks.push(l); });
               });
@@ -3490,7 +3511,7 @@ export function scrapeMatchFlux(m, forceRefresh, deep){
     return new Promise(function(resolve, reject) {
       setTimeout(function() {
         try {
-    var links = extractStreamLinks(html, m);
+    var links = sansHotesEcartes(extractStreamLinks(html, m));
 
     // Preserve existing streams and avoid duplicates
     var existingLinks = m.streamLinks || [];

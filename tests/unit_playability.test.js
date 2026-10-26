@@ -215,8 +215,15 @@ async function main() {
         assert.strictEqual(P.rangNotoriete({ url: 'https://dlive.sx/1', source: 'daddylive' }), 1);
         assert.strictEqual(P.rangNotoriete({ url: 'https://inconnu.test/1', source: 'sportsurge' }), P.RANG_INCONNU, 'un agrégateur connu vers un hôte inconnu');
         assert.strictEqual(P.rangNotoriete({ url: 'https://x.test/1', source: 'methstreams' }, { methstreams: { tested: 12, plays: 0 } }), P.RANG_INCONNU, 'connu mais éprouvé mort');
+        /* 26 octobre 2026 : un hôte connu MESURÉ mauvais perd son rang aussi (embed.st à 1/38
+           passait en tête de 26 matchs, devant des liens jamais éprouvés). */
+        assert.strictEqual(P.rangNotoriete({ url: 'https://embed.st/x', source: 'streamed' }, {}, { 'embed.st': { tested: 38, plays: 1 } }), P.RANG_INCONNU, 'connu mais mesuré à 3 % : plus de rang');
+        assert.strictEqual(P.rangNotoriete({ url: 'https://embed.st/x', source: 'streamed' }, {}, { 'embed.st': { tested: 38, plays: 20 } }), 1, 'mesuré bon : garde son rang');
+        assert.strictEqual(P.rangNotoriete({ url: 'https://embed.st/x', source: 'streamed' }, {}, { 'embed.st': { tested: 5, plays: 0 } }), 1, 'trop peu éprouvé pour juger');
+        assert.strictEqual(P.rangNotoriete({ url: 'https://dlive.sx/1', source: 'daddylive' }, {}, { 'dlive.sx': { tested: 9, plays: 0, appareilMort: true, appareil: { tested: 5, plays: 0 } } }), P.RANG_INCONNU, 'mort sur cet appareil : plus de rang');
         globalThis.window.sourcePlayLedger = {};
         globalThis.window.hostPlayLedger = {};
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
         const tri4 = C.sortFluxLinks([
             { name: 'Inconnu vu jouer', url: 'https://hasard.test/1', verified: 'plays', source: 'footybite' },
             { name: 'Streamed mort', url: 'https://embed.st/mort', verified: 'blocked', source: 'streamed' },
@@ -226,7 +233,45 @@ async function main() {
             { name: 'Inconnu', url: 'https://hasard.test/2', source: 'footybite' },
         ]);
         assert.deepStrictEqual(tri4.map((l) => l.name), ['Inconnu vu jouer', 'Streamed', 'DaddyLive', 'Meth', 'Inconnu', 'Streamed mort']);
-        ok('sortFluxLinks : le lien vu jouer, puis les sites connus, sauf vus morts');
+        globalThis.window.hostPlayLedger = { 'embed.st': { tested: 38, plays: 1 }, 'hasard.test': { tested: 12, plays: 5 } };
+        const tri5 = C.sortFluxLinks([
+            { name: 'Streamed', url: 'https://embed.st/1', source: 'streamed', quality: '720p' },
+            { name: 'Inconnu', url: 'https://hasard.test/2', source: 'footybite' },
+            { name: 'DaddyLive', url: 'https://dlive.sx/1', source: 'daddylive' },
+        ]);
+        assert.deepStrictEqual(tri5.map((l) => l.name), ['DaddyLive', 'Inconnu', 'Streamed'], 'Streamed mesuré à 1/38 : derrière un hôte mesuré à 5/12, le rang ne le sauve plus');
+        ok('sortFluxLinks : le lien vu jouer, puis les sites connus, sauf vus morts ou mesurés mauvais');
+    }
+
+    // ── 8 bis. Non vérifiable depuis le serveur : l'appareil tranche (26 octobre 2026) ──
+    /* « Ya pas moyen que l'application en direct du browser humain trouve les liens ? »
+       Un lien d'un hôte que GitHub ne peut pas joindre reste publié, sans verdict ; son
+       registre serveur (0/39) ne le juge pas ; seul ce que cet appareil a vu compte. */
+    {
+        const nv = { url: 'https://foxiy.test/event/1', source: 'methstreams', nonVerifiable: true, verified: 'blocked' };
+        const serveurSeul = { 'foxiy.test': { tested: 39, plays: 0 } };
+        assert.strictEqual(P.playabilityScore(nv, serveurSeul), 1, 'inconnu, à essayer : ni le verdict ni le 0/39 du serveur ne comptent');
+        assert.strictEqual(P.rangNotoriete(nv, {}, serveurSeul), 2, 'Methstreams garde son rang : le 0/39 n\'est pas une mesure');
+        assert.ok(Math.abs(P.reputationLien(nv, serveurSeul, {}) - P.REPUTATION_A_PRIORI) < 1e-9, 'réputation a priori');
+        assert.deepStrictEqual(P.marqueJouabilite(nv, serveurSeul).classe, 'si-essai');
+        const t = Date.now();
+        const joueIci = P.fusionAppareil(serveurSeul, { 'foxiy.test': { tested: 4, plays: 3, at: t } }, t);
+        assert.strictEqual(P.playabilityScore(nv, joueIci), 2, 'joue ici : fiable');
+        assert.strictEqual(P.marqueJouabilite(nv, joueIci).texte, 'ici 3/4');
+        const mortIci = P.fusionAppareil(serveurSeul, { 'foxiy.test': { tested: 4, plays: 0, at: t } }, t);
+        assert.strictEqual(P.playabilityScore(nv, mortIci), 0, 'mort ici : en bas');
+        assert.strictEqual(P.rangNotoriete(nv, {}, mortIci), P.RANG_INCONNU);
+        globalThis.window.hostPlayLedger = { 'foxiy.test': { tested: 39, plays: 0 }, 'mort.test': { tested: 20, plays: 0 } };
+        globalThis.window.sourcePlayLedger = {};
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
+        const tri = C.sortFluxLinks([
+            { name: 'Mort', url: 'https://mort.test/1', verified: 'none' },
+            { name: 'Non vérifiable', url: 'https://foxiy.test/event/1', source: 'methstreams', nonVerifiable: true },
+            { name: 'Vu jouer', url: 'https://ok.test/1', verified: 'plays' },
+            { name: 'Inconnu', url: 'https://hasard.test/1', source: 'footybite' },
+        ]);
+        assert.deepStrictEqual(tri.map((l) => l.name), ['Vu jouer', 'Non vérifiable', 'Inconnu', 'Mort'], 'derrière le vu jouer, devant l\'inconnu (site connu) et loin devant le mort');
+        ok('non vérifiable depuis le serveur : à essayer, puis ce que l\'appareil a vu ; jamais jugé par le serveur');
     }
 
     // ── 9. L'appareil corrige le serveur (24 octobre 2026) ──────────────────
@@ -235,14 +280,23 @@ async function main() {
        n'avait jamais joué ; et un ⏭ manuel n'apprenait rien. */
     {
         const serveur = { 'serveurok.test': { tested: 40, plays: 30 }, 'neuf.test': { tested: 2, plays: 0 } };
-        const f = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 5, plays: 0 }, 'peu.test': { tested: 2, plays: 0 } });
+        const maintenant = Date.now();
+        const f = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 5, plays: 0, at: maintenant - 60000 }, 'peu.test': { tested: 2, plays: 0, at: maintenant } }, maintenant);
         assert.strictEqual(f['serveurok.test'].appareilMort, true, '0 sur 5 ici : mort sur cet appareil');
         assert.deepStrictEqual([f['serveurok.test'].tested, f['serveurok.test'].plays], [9, 3], 'le serveur ne pèse plus que quatre essais');
         assert.deepStrictEqual(f['peu.test'], { tested: 2, plays: 0 }, 'sous le seuil : simple somme');
         assert.deepStrictEqual(f['neuf.test'], { tested: 2, plays: 0 }, 'le serveur seul reste tel quel');
         assert.deepStrictEqual(serveur['serveurok.test'], { tested: 40, plays: 30 }, 'le registre du serveur n\'est pas modifié');
-        const g = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 4, plays: 3 } });
+        const g = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 4, plays: 3, at: maintenant } }, maintenant);
         assert.ok(!g['serveurok.test'].appareilMort && P.playabilityScore({ url: 'https://serveurok.test/1' }, g) === 2, 'joue ici aussi : reste fiable');
+        /* Le veto expire (26 octobre 2026) : sans observation depuis 24 h, ou sans heure (registre
+           d'avant), l'appareil ne compte plus que comme une somme et l'hôte a droit à un essai. */
+        const vieux = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 5, plays: 0, at: maintenant - P.OUBLI_APPAREIL_MS - 1 } }, maintenant);
+        assert.ok(!vieux['serveurok.test'].appareilMort, 'jugé mort il y a plus de 24 h : plus de veto');
+        assert.deepStrictEqual([vieux['serveurok.test'].tested, vieux['serveurok.test'].plays], [45, 30], '… simple somme, le serveur mène');
+        assert.strictEqual(P.playabilityScore({ url: 'https://serveurok.test/1', verified: 'plays' }, vieux), 3, 'et le verdict du serveur compte de nouveau');
+        const sansHeure = P.fusionAppareil(serveur, { 'serveurok.test': { tested: 5, plays: 0 } }, maintenant);
+        assert.ok(!sansHeure['serveurok.test'].appareilMort, 'un registre sans heure (d\'avant) ne pose plus de veto');
 
         const vu = { url: 'https://serveurok.test/1', verified: 'plays' };
         assert.strictEqual(P.playabilityScore(vu, f), 0, 'vu jouer par le serveur, jamais ici : ne passe plus devant');
@@ -257,6 +311,7 @@ async function main() {
         assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Serveur', 'au départ, le verdict du serveur mène');
         for (let i = 0; i < 3; i++) C.notePlayability({ url: 'https://serveurok.test/1' }, 'none');
         assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Inconnu', 'trois échecs ici : il descend tout seul');
+        assert.strictEqual(typeof JSON.parse(globalThis.localStorage.getItem('play_ledger'))['serveurok.test'].at, 'number', 'chaque observation porte son heure');
         C.notePlayability({ url: 'https://serveurok.test/1' }, 'plays');
         assert.strictEqual(C.sortFluxLinks(liens)[0].name, 'Serveur', 'et remonte dès qu\'il joue ici');
 
