@@ -3406,7 +3406,7 @@ export function addToMultivision(url, name, mid) {
     mvFlux.push({url: url, name: name, mid: mid, cropped: false, _autoTried: 0});
     /* La première vidéo du mode câble prend, elle aussi, le flux direct connu : elle
        passait à côté de `poserLienSurTuile`, et seul le premier zapping le trouvait. */
-    if (modeCable) poserLienSurTuile(mvFlux[mvFlux.length - 1], url);
+    if (modeCable || surTeleAndroid()) poserLienSurTuile(mvFlux[mvFlux.length - 1], url);
 
     // Make the newly added stream the active one (unmuted and focused)
     activeMvIdx = mvFlux.length - 1;
@@ -3506,7 +3506,14 @@ function poserLienSurTuile(s, url) {
        cette page — le mode câble le lui demande : son `<video>` porte `autoplay`, `muted`
        et `playsinline`, donc il démarre sans clic et sans script utilisateur. Pour une
        page, c'est `relancerLectureTuile` qui demande, faute de pouvoir agir dedans. */
-    if (modeCable && (estMediaDirecte(url) || mediaDirectPour(registreDirect(), url))) s.mode = 'direct';
+    /* Sur la télé Android aussi (26 octobre 2026, « je veux qu'un max de streams
+       marchent ») : la page DaddyLive, en tête de la plupart des matchs, ouvre 180 à 385
+       cadres de régie — trop pour un Chromecast —, alors que son flux direct est connu
+       (semé depuis la vérification du serveur, `media`). On part sur le flux ; refusé, la
+       tuile revient d'elle-même à la page (poserDirect), et un direct qui a échoué deux
+       fois pour ce lien n'est plus tenté d'office (aProposer). */
+    var connu = mediaDirectPour(registreDirect(), url);
+    if ((modeCable || surTeleAndroid()) && (estMediaDirecte(url) || (connu && aProposer(connu)))) s.mode = 'direct';
 }
 
 /* Trois rappels, à 1,2 s d'intervalle : le lecteur d'un site apparaît souvent APRÈS le
@@ -4933,7 +4940,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v84';
+export var VERSION_APP = 'sports-guide-v85';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
