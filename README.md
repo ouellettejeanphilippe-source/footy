@@ -87,6 +87,8 @@ Il n'y a **pas de tâche planifiée**. Tant que l'application de bureau est ouve
 
 Cela demande que l'application travaille **dans le dépôt** (menu → « Travailler dans un dépôt… ») : la vérification charge les lecteurs dans le Chromium de Playwright, qui n'est pas embarqué dans l'exécutable. Sans dépôt, seul le calendrier est rafraîchi.
 
+**La vérification faite chez vous vaut plus que celle de GitHub** (26 octobre 2026). Les sites connus (Streameast, Methstreams, MyBuffstreams…) bloquent les centres de données, dont les machines de GitHub : de là, leurs lecteurs passent pour morts. Depuis votre machine, c'est la même adresse que celle qui regarde, et la sonde voit les pages comme l'APK et l'extension les voient (les en-têtes qui interdisent le cadre sont retirés). Pour que la télé et le téléphone, qui lisent le site publié, en profitent : menu → « Publier les données après chaque passe » (un `git commit` et un `git push` de `data/` et `domains.json` après chaque passe, `scripts/publier_donnees.mjs` ; il faut un dépôt cloné avec des droits de push). GitHub Actions continue de tourner en secours quand l'application est fermée ; ce qu'il ne peut pas joindre n'est plus retiré des liens.
+
 ### `npm run liens` — la mise à jour à la main, partout
 
 Si GitHub Actions ne tourne pas (ou pour ne pas attendre), une seule commande fait tout, sous Windows, macOS ou Linux :

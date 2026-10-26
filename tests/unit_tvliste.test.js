@@ -78,7 +78,7 @@ async function main() {
     assert.match(v, /writeFileSync\('data\/tv\.json'/);
     assert.match(lire('scripts/scrape_streams.mjs'), /mediaReferer: l\.mediaReferer/);
     assert.match(lire('.github/workflows/scrape_streams.yml'), /file_pattern: "data\/streams\.json data\/tv\.json"/);
-    assert.match(lire('scripts/maj_liens.mjs'), /'data\/tv\.json'/);
+    assert.match(lire('scripts/publier_donnees.mjs'), /'data\/tv\.json'/);   // la publication (maj_liens --publier, app de bureau) passe par ce script
     ok('le Referer est capturé, data/tv.json écrit et publié');
   }
 

@@ -815,3 +815,28 @@ export function rangNotoriete(link, sources, ledger) {
     var parSource = src ? NOTORIETE_SOURCES[src] : undefined;
     return Math.min(parHote || RANG_INCONNU, parSource || RANG_INCONNU);
 }
+
+/* ─── Éprouver comme l'APK et l'extension voient les pages ──────────────────────────
+   « Je veux la solution la plus efficace et pérenne » (26 octobre 2026). La vérification
+   charge chaque lecteur dans un cadre ; une page qui porte `X-Frame-Options` ou
+   `frame-ancestors` le refuse, et le verdict disait « bloqué » — alors que l'APK
+   (CadreSansRefus.java) et l'extension Chrome (extension/fond.js) retirent justement
+   ces en-têtes, et que ces lecteurs y jouent. La sonde fait pareil : même règle, le
+   reste de la CSP est gardé. Rend un NOUVEL objet d'en-têtes (clés en minuscules
+   attendues, comme Playwright les rend). Pure. */
+export function sansRefusDeCadre(entetes) {
+    var out = {};
+    Object.keys(entetes || {}).forEach(function (k) {
+        var nom = String(k).toLowerCase();
+        var v = entetes[k];
+        if (nom === 'x-frame-options') return;
+        if (nom === 'content-security-policy' || nom === 'content-security-policy-report-only') {
+            var reste = String(v || '').split(';').map(function (d) { return d.trim(); })
+                .filter(function (d) { return d && !/^frame-ancestors(\s|$)/i.test(d); });
+            if (reste.length) out[k] = reste.join('; ');
+            return;
+        }
+        out[k] = v;
+    });
+    return out;
+}

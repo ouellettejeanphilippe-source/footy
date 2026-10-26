@@ -88,6 +88,22 @@ function lireDepotEnregistre() {
 
 const DEPOT = app.isPackaged ? depotConfigure() : null;
 
+/* « Je veux la solution la plus efficace et pérenne » (26 octobre 2026). La vérification
+   faite ICI vaut plus que celle de GitHub : même adresse que celle qui regarde, et les
+   sites connus ne la bloquent pas. Publier ce que la passe produit (git commit et push de
+   data/ et domains.json, scripts/publier_donnees.mjs) la donne à la télé et au téléphone,
+   qui lisent le site publié. Un réglage, parce que ça demande un dépôt et des droits de
+   push ; retenu dans publier.txt à côté de depot.txt. */
+function fichierPublier() {
+  return path.join(app.getPath('userData'), 'publier.txt');
+}
+function publicationVoulue() {
+  try { return fs.readFileSync(fichierPublier(), 'utf8').trim() === '1'; } catch (e) { return false; }
+}
+function reglerPublication(oui) {
+  try { fs.writeFileSync(fichierPublier(), oui ? '1' : '0'); } catch (e) {}
+}
+
 // En développement on travaille dans le dépôt ; empaqueté, dans le dépôt
 // configuré s'il y en a un, sinon sur une copie inscriptible.
 const RACINE = DEPOT || (app.isPackaged ? path.join(app.getPath('userData'), 'site') : SOURCE);
@@ -435,6 +451,10 @@ function relireLesSources() {
   });
 }
 
+function publierLesDonnees() {
+  return lancerScript('publier_donnees.mjs', ['--message', 'chore: update stream links (desktop)'], { nom: 'publier-donnees' });
+}
+
 function eprouverLesLecteurs(budgetMs, total) {
   /* La vérification charge les lecteurs dans un vrai Chromium, celui de Playwright.
      Elle n'est donc possible que dans le dépôt, qui a `node_modules` et le navigateur
@@ -532,6 +552,15 @@ async function passeComplete({ force = false } = {}) {
     titre('vérification des lecteurs…');
     const verif = await eprouverLesLecteurs(VERIF_BUDGET_MS, VERIF_TOTAL);
     if (verif.code === 0) fenetre?.webContents.reload();
+
+    /* Quatrième étape, sur demande : ce que cette machine vient de vérifier part sur le
+       site publié, pour la télé et le téléphone. Un échec (pas de droits, pas de réseau)
+       ne casse rien : les fichiers restent commités ici, à pousser plus tard. */
+    if (publicationVoulue()) {
+      titre('publication…');
+      const pub = await publierLesDonnees();
+      if (pub.code !== 0) console.warn('[publier] code ' + pub.code + '\n' + pub.journal);
+    }
   } finally {
     passeEnCours = false;
     titre('');
@@ -651,6 +680,13 @@ function menu() {
             enabled: travailPossible(),
             accelerator: 'CmdOrCtrl+Shift+U',
             click: () => passeComplete({ force: true }),
+          },
+          {
+            label: 'Publier les données après chaque passe (git push, pour la télé et le téléphone)',
+            type: 'checkbox',
+            checked: publicationVoulue(),
+            enabled: travailPossible(),
+            click: (item) => reglerPublication(item.checked),
           },
           {
             label: 'Vider le cache hors ligne et recharger',
