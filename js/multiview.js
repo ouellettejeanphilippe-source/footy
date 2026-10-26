@@ -6,7 +6,7 @@ import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSO
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
-import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec } from './playability.js';
+import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
 import { BIBLIOTHEQUES, typeDeMedia, configHls, decisionErreurHls, relanceAutorisee, RELANCES_MAX, DELAI_STAGNATION_MS, PERMISSIONS_CADRE } from './lecteurdirect.js';
@@ -4933,7 +4933,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v82';
+export var VERSION_APP = 'sports-guide-v83';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5022,6 +5022,20 @@ export function diagnosticAppareilHtml() {
         sondes.forEach(function(x) { if (!x.ok) raisons[x.raison || '?'] = (raisons[x.raison || '?'] || 0) + 1; });
         var detail = Object.keys(raisons).map(function(r) { return raisons[r] + ' × ' + r; }).join(', ');
         html += ligne('Flux directs', bons ? 'ok' : 'warn', bons + ' sur ' + sondes.length + ' répondent' + (detail ? ' · refusés : ' + detail : ''));
+    }
+    /* Ce que CET appareil a appris (fusionAppareil, js/playability.js) : les hôtes jugés
+       morts ici passent derrière tout le reste, et ça ne se voyait nulle part (26 octobre
+       2026, « le pourcentage de streams qui marchent est vraiment plus bas »). */
+    var registreLocal = safeStorageGetJSON('play_ledger', {}) || {};
+    var hotesLocaux = Object.keys(registreLocal);
+    if (hotesLocaux.length) {
+        var fusion = playLedger();
+        var morts = hotesLocaux.filter(function(h) { return fusion[h] && fusion[h].appareilMort; });
+        var anciens = hotesLocaux.filter(function(h) { var e = registreLocal[h]; return !(e && typeof e.at === 'number' && Date.now() - e.at < OUBLI_APPAREIL_MS); }).length;
+        html += ligne('Registre de l\'appareil', morts.length > hotesLocaux.length / 2 ? 'warn' : 'ok',
+            hotesLocaux.length + ' hôte(s) éprouvé(s) ici · ' + morts.length + ' jugé(s) mort(s) ici (classés en bas pendant 24 h)'
+            + (morts.length ? ' : ' + morts.slice(0, 5).map(esc).join(', ') + (morts.length > 5 ? '…' : '') : '')
+            + (anciens ? ' · ' + anciens + ' sans essai depuis 24 h (plus de veto)' : ''));
     }
     /* La garde contre les redirections, coupée par le menu ⚙ Réglages du lecteur, ne se voyait nulle
        part ailleurs (18 octobre 2026). */

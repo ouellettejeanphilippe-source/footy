@@ -199,16 +199,29 @@ export function mergeLedgers(a, b) {
    seuil, la somme d'avant : deux essais ratés peuvent être une panne passagère.
 
    Sert pour les hôtes comme pour les sources (js/config.js, `playLedger`,
-   `sourcePlayLedger`). Pure. */
+   `sourcePlayLedger`). Pure.
+
+   **Le veto de l'appareil expire** (26 octobre 2026). Un hôte jugé mort ici était
+   rétrogradé pour toujours : classé en bas, il n'était plus jamais essayé, donc ne
+   jouait plus jamais ici, donc restait mort — une panne d'un soir le condamnait, et
+   le registre ne faisait que grossir (le serveur, lui, réhabilite ses hôtes écartés,
+   `ciblesDeRehabilitation`). Chaque observation locale porte maintenant son heure
+   (`at`, posée par `notePlayability`) ; sans observation depuis `OUBLI_APPAREIL_MS`
+   (24 h), ou sans heure du tout (registre d'avant), l'appareil ne compte plus que comme
+   une somme : plus de `appareilMort`, le serveur mène, l'hôte a droit à un nouvel essai —
+   qui, s'il échoue, le remet mort pour 24 h. */
 export var SEUIL_APPAREIL = 3;
 export var POIDS_SERVEUR_APPAREIL = 4;
-export function fusionAppareil(serveur, local) {
+export var OUBLI_APPAREIL_MS = 24 * 3600 * 1000;
+export function fusionAppareil(serveur, local, now) {
+    var t = (typeof now === 'number') ? now : Date.now();
     var out = mergeLedgers(serveur, null);
     Object.keys(local || {}).forEach(function (k) {
         var l = local[k] || {};
         var lt = l.tested | 0, lp = l.plays | 0;
         var s = out[k] || { tested: 0, plays: 0 };
-        if (lt < SEUIL_APPAREIL) {
+        var recent = typeof l.at === 'number' && t - l.at < OUBLI_APPAREIL_MS;
+        if (lt < SEUIL_APPAREIL || !recent) {
             out[k] = { tested: s.tested + lt, plays: s.plays + lp };
             return;
         }
@@ -689,15 +702,25 @@ export var NOTORIETE_HOTES = {
 };
 export var RANG_INCONNU = 3;
 /* Un nom connu ne protège pas une source qui, éprouvée, ne joue jamais : `sources` est le
-   registre par source (sourcePlayLedger). */
+   registre par source (sourcePlayLedger). Ni un HÔTE mesuré mauvais (26 octobre 2026, « le
+   pourcentage de streams qui marchent est vraiment plus bas ») : embed.st, rang 1, était
+   à 1 lecture sur 38 au registre du serveur et passait quand même en tête de 26 matchs
+   sur 287, devant des liens jamais éprouvés ; sondé ce jour-là, rien n'y jouait en 20 s.
+   `ledger` est le registre par hôte (playLedger) : dès `ESSAIS_SANS_LECTURE` essais, un
+   taux sous `TAUX_NOTORIETE_MIN` fait perdre le rang, et la réputation décide. */
 export var ESSAIS_SANS_LECTURE = 10;
+export var TAUX_NOTORIETE_MIN = 0.2;
 
-export function rangNotoriete(link, sources) {
+export function rangNotoriete(link, sources, ledger) {
     if (!link) return RANG_INCONNU;
     var src = link.source ? String(link.source).toLowerCase() : '';
     var e = src && sources ? sources[src] : null;
     if (e && (e.tested | 0) >= ESSAIS_SANS_LECTURE && (e.plays | 0) === 0) return RANG_INCONNU;
-    var parHote = NOTORIETE_HOTES[hostOfUrl(link.url)];
+    var hote = hostOfUrl(link.url);
+    var eh = ledger && ledger[hote];
+    if (eh && (eh.tested | 0) >= ESSAIS_SANS_LECTURE && (eh.plays | 0) / eh.tested < TAUX_NOTORIETE_MIN) return RANG_INCONNU;
+    if (eh && eh.appareilMort) return RANG_INCONNU;
+    var parHote = NOTORIETE_HOTES[hote];
     var parSource = src ? NOTORIETE_SOURCES[src] : undefined;
     return Math.min(parHote || RANG_INCONNU, parSource || RANG_INCONNU);
 }
