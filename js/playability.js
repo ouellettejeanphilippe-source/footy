@@ -258,10 +258,26 @@ export function sautManuelEstEchec(opts) {
      1  jamais éprouvé ;
      0  hôte éprouvé qui ne joue à peu près jamais, ou lien observé sans vidéo ;
     -1  cadre refusé ou hôte mort. */
+/* La part de l'APPAREIL seule dans une entrée fusionnée (fusionAppareil) : ce qu'il a vu
+   lui-même, récemment ; null s'il n'a pas de quoi juger. */
+function entreeAppareil(e) {
+    if (!e || !e.appareil) return null;
+    return { tested: e.appareil.tested | 0, plays: e.appareil.plays | 0, appareilMort: !!e.appareilMort };
+}
+
 export function playabilityScore(link, ledger) {
     if (!link) return 0;
     var host = hostOfUrl(tileTarget(link));
     var e = ledger && ledger[host];
+    /* Non vérifiable depuis le serveur (nonVerifiableDepuisServeur) : son verdict et son
+       registre ne disent rien de cet hôte ; seul ce que CET appareil a vu compte. Sans
+       rien : un inconnu, à essayer. */
+    if (link.nonVerifiable) {
+        var ea = entreeAppareil(e);
+        if (!ea) return 1;
+        if (ea.appareilMort) return 0;
+        return (ea.tested >= 3 && ea.plays / ea.tested >= 0.5) ? 2 : 1;
+    }
     /* Jamais joué sur cet appareil (fusionAppareil) : ni le verdict du serveur ni son
        taux ne le remontent. */
     if (e && e.appareilMort) return link.verified === 'blocked' ? -1 : 0;
@@ -319,6 +335,23 @@ export function marqueJouabilite(link, ledger) {
             texte: 'ici 0/' + ea.appareil.tested,
             infobulle: 'Cet hôte a été essayé ' + ea.appareil.tested + ' fois sur cet appareil sans '
                 + "qu'aucune vidéo ne démarre. Il est classé en bas de la liste ; il remontera s'il se met à jouer.",
+        };
+    }
+    if (link.nonVerifiable) {
+        var eap = entreeAppareil(ea);
+        if (eap && eap.tested >= 3) {
+            return {
+                classe: eap.plays / eap.tested >= 0.5 ? 'si-joue' : 'si-rare',
+                texte: 'ici ' + eap.plays + '/' + eap.tested,
+                infobulle: 'Le serveur de vérification ne peut pas joindre cet hôte ; sur cet appareil, il a joué '
+                    + eap.plays + ' fois sur ' + eap.tested + '.',
+            };
+        }
+        return {
+            classe: 'si-essai',
+            texte: 'à essayer',
+            infobulle: 'Le serveur de vérification ne peut pas joindre cet hôte (il bloque les centres de données) : '
+                + "rien ne dit qu'il ne joue pas chez toi. Cet appareil apprendra en l'essayant.",
         };
     }
     if (link.verified === 'plays') {
@@ -565,8 +598,52 @@ export function nextLinkAfter(links, currentUrl) {
 
    Un hôte écarté peut revenir : il est rendu avec UN lien témoin (`hotes[h].echantillon`),
    que `verify_players.mjs` continue d'éprouver (`ciblesDeRehabilitation`). Une seule lecture
-   observée, et `plays` cesse d'être nul : ses liens reviennent au passage suivant. */
+   observée, et `plays` cesse d'être nul : ses liens reviennent au passage suivant.
+
+   **Ce que le serveur ne peut pas atteindre n'est pas mort** (26 octobre 2026, « ya pas
+   moyen que l'application en direct du browser humain trouve les liens ? »). La
+   vérification tourne sur les machines de GitHub, que plusieurs sites bloquent : foxiy.st
+   et fxtrend.st (les lecteurs de Methstreams) et gooz.aapmains.net (MyBuffstreams) y sont
+   « injoignables » et répondent 200 ailleurs ; les miroirs Streameast rendent un 403 de
+   défi Cloudflare. Zéro lecture en quarante essais ne dit alors rien du lien : il était
+   pourtant retiré, et avec lui des sources entières. `nonVerifiableDepuisServeur(politique)`
+   reconnaît ces hôtes (injoignable sans que le nom soit inconnu, ou page de défi) ; leurs
+   liens restent publiés, marqués `nonVerifiable`, sans verdict, et c'est l'APPAREIL qui
+   tranche : `playabilityScore`, `reputationLien`, `rangNotoriete` et `marqueJouabilite`
+   n'y regardent que la part de l'appareil (« à essayer », puis « ici p/n »), jamais le
+   registre du serveur. Un hôte dont le nom n'existe plus (ENOTFOUND) reste mort. */
 export var SEUIL_HOTE_MORT = 8;
+
+/* Une page de défi (Cloudflare « Just a moment… », « Attention Required ») servie en 403
+   ou 503 : le site bloque l'adresse, il ne dit rien du lecteur. `entetes` : un objet
+   Headers (`get`) ou un dictionnaire. */
+export function estPageDeDefi(texte, entetes) {
+    var cf = '';
+    if (entetes) {
+        if (typeof entetes.get === 'function') cf = entetes.get('cf-mitigated') || '';
+        else cf = entetes['cf-mitigated'] || '';
+    }
+    if (/challenge/i.test(String(cf))) return true;
+    return /just a moment|cf-chl|cf-browser-verification|challenge-platform|attention required|checking your browser|__cf_chl/i.test(String(texte || '').slice(0, 20000));
+}
+export function nonVerifiableDepuisServeur(p) {
+    if (!p) return false;
+    if (p.defi) return true;
+    if (p.embeddable === null && !/ENOTFOUND|getaddrinfo|EAI_AGAIN/i.test(String(p.reason || ''))) return true;
+    return false;
+}
+
+/* Dans le navigateur : la relecture d'une page de match ramène aussi des liens d'hôtes
+   que le serveur sait morts (il peut les joindre et n'y a jamais vu jouer). Mesuré le
+   26 octobre 2026 sur un match NFL : 61 liens taifood-blog.asia sur 66. `hotesEcartes`
+   est celui de data/streams.json. Pure. */
+export function filtrerHotesEcartes(links, hotesEcartes) {
+    if (!Array.isArray(links) || !hotesEcartes || typeof hotesEcartes !== 'object') return links;
+    return links.filter(function (l) {
+        var h = l && l.url ? hostOfUrl(tileTarget(l)) : '';
+        return !(h && hotesEcartes[h]);
+    });
+}
 
 export function hoteMort(entree, seuil) {
     var s = seuil || SEUIL_HOTE_MORT;
@@ -577,7 +654,9 @@ export function ecarterLiensMorts(matches, ledger, opts) {
     var o = opts || {};
     var politique = o.politique || {};
     var hotes = {};
+    var hotesNonVerifiables = {};
     var retires = 0;
+    var nonVerifiables = 0;
     (matches || []).forEach(function (m) {
         if (!m || !Array.isArray(m.streamLinks)) return;
         m.streamLinks = m.streamLinks.filter(function (l) {
@@ -588,8 +667,16 @@ export function ecarterLiensMorts(matches, ledger, opts) {
             if (typeof o.estSource === 'function' && o.estSource(h)) return true;
             var e = ledger && ledger[h];
             if (!hoteMort(e, o.seuil)) return true;
+            var pol = politique[h] || politique[h.replace(/^v2\./, '')];
+            if (nonVerifiableDepuisServeur(pol)) {
+                l.nonVerifiable = true;
+                delete l.verified; delete l.verifiedAt;
+                nonVerifiables++;
+                hotesNonVerifiables[h] = (hotesNonVerifiables[h] | 0) + 1;
+                return true;
+            }
             if (l.topLevel) {
-                var p = politique[h] || politique[h.replace(/^v2\./, '')];
+                var p = pol;
                 var pageMorte = !!p && (p.embeddable === null || (p.status | 0) >= 400);
                 if (!pageMorte) return true;
             }
@@ -599,7 +686,7 @@ export function ecarterLiensMorts(matches, ledger, opts) {
             return false;
         });
     });
-    return { retires: retires, hotes: hotes };
+    return { retires: retires, hotes: hotes, nonVerifiables: nonVerifiables, hotesNonVerifiables: hotesNonVerifiables };
 }
 
 /* Témoins des hôtes écartés à éprouver pendant un passage : au plus `max`, le moins
@@ -649,6 +736,10 @@ function tauxLisse(e) {
 export function reputationLien(link, ledger, sources) {
     if (!link) return 0;
     var eh = ledger && ledger[hostOfUrl(tileTarget(link))];
+    if (link.nonVerifiable) {
+        var ta = tauxLisse(entreeAppareil(eh));
+        return ta !== null ? ta : REPUTATION_A_PRIORI;
+    }
     if (link.verified === 'plays' && !(eh && eh.appareilMort)) return 1;
     var hote = tauxLisse(eh);
     if (hote !== null) return hote;
@@ -718,7 +809,7 @@ export function rangNotoriete(link, sources, ledger) {
     if (e && (e.tested | 0) >= ESSAIS_SANS_LECTURE && (e.plays | 0) === 0) return RANG_INCONNU;
     var hote = hostOfUrl(link.url);
     var eh = ledger && ledger[hote];
-    if (eh && (eh.tested | 0) >= ESSAIS_SANS_LECTURE && (eh.plays | 0) / eh.tested < TAUX_NOTORIETE_MIN) return RANG_INCONNU;
+    if (!link.nonVerifiable && eh && (eh.tested | 0) >= ESSAIS_SANS_LECTURE && (eh.plays | 0) / eh.tested < TAUX_NOTORIETE_MIN) return RANG_INCONNU;
     if (eh && eh.appareilMort) return RANG_INCONNU;
     var parHote = NOTORIETE_HOTES[hote];
     var parSource = src ? NOTORIETE_SOURCES[src] : undefined;

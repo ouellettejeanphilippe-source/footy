@@ -243,6 +243,37 @@ async function main() {
         ok('sortFluxLinks : le lien vu jouer, puis les sites connus, sauf vus morts ou mesurés mauvais');
     }
 
+    // ── 8 bis. Non vérifiable depuis le serveur : l'appareil tranche (26 octobre 2026) ──
+    /* « Ya pas moyen que l'application en direct du browser humain trouve les liens ? »
+       Un lien d'un hôte que GitHub ne peut pas joindre reste publié, sans verdict ; son
+       registre serveur (0/39) ne le juge pas ; seul ce que cet appareil a vu compte. */
+    {
+        const nv = { url: 'https://foxiy.test/event/1', source: 'methstreams', nonVerifiable: true, verified: 'blocked' };
+        const serveurSeul = { 'foxiy.test': { tested: 39, plays: 0 } };
+        assert.strictEqual(P.playabilityScore(nv, serveurSeul), 1, 'inconnu, à essayer : ni le verdict ni le 0/39 du serveur ne comptent');
+        assert.strictEqual(P.rangNotoriete(nv, {}, serveurSeul), 2, 'Methstreams garde son rang : le 0/39 n\'est pas une mesure');
+        assert.ok(Math.abs(P.reputationLien(nv, serveurSeul, {}) - P.REPUTATION_A_PRIORI) < 1e-9, 'réputation a priori');
+        assert.deepStrictEqual(P.marqueJouabilite(nv, serveurSeul).classe, 'si-essai');
+        const t = Date.now();
+        const joueIci = P.fusionAppareil(serveurSeul, { 'foxiy.test': { tested: 4, plays: 3, at: t } }, t);
+        assert.strictEqual(P.playabilityScore(nv, joueIci), 2, 'joue ici : fiable');
+        assert.strictEqual(P.marqueJouabilite(nv, joueIci).texte, 'ici 3/4');
+        const mortIci = P.fusionAppareil(serveurSeul, { 'foxiy.test': { tested: 4, plays: 0, at: t } }, t);
+        assert.strictEqual(P.playabilityScore(nv, mortIci), 0, 'mort ici : en bas');
+        assert.strictEqual(P.rangNotoriete(nv, {}, mortIci), P.RANG_INCONNU);
+        globalThis.window.hostPlayLedger = { 'foxiy.test': { tested: 39, plays: 0 }, 'mort.test': { tested: 20, plays: 0 } };
+        globalThis.window.sourcePlayLedger = {};
+        try { globalThis.localStorage.removeItem('play_ledger'); globalThis.localStorage.removeItem('play_ledger_sources'); } catch (e) {}
+        const tri = C.sortFluxLinks([
+            { name: 'Mort', url: 'https://mort.test/1', verified: 'none' },
+            { name: 'Non vérifiable', url: 'https://foxiy.test/event/1', source: 'methstreams', nonVerifiable: true },
+            { name: 'Vu jouer', url: 'https://ok.test/1', verified: 'plays' },
+            { name: 'Inconnu', url: 'https://hasard.test/1', source: 'footybite' },
+        ]);
+        assert.deepStrictEqual(tri.map((l) => l.name), ['Vu jouer', 'Non vérifiable', 'Inconnu', 'Mort'], 'derrière le vu jouer, devant l\'inconnu (site connu) et loin devant le mort');
+        ok('non vérifiable depuis le serveur : à essayer, puis ce que l\'appareil a vu ; jamais jugé par le serveur');
+    }
+
     // ── 9. L'appareil corrige le serveur (24 octobre 2026) ──────────────────
     /* « Je voudrais que ça se corrige et adapte de lui-même. » Avant, la somme
        serveur + appareil laissait 30/40 + 0/5 = 30/45 en tête sur un appareil où l'hôte
