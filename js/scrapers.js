@@ -2834,11 +2834,18 @@ var JUNK_LABEL_PREFIX = /^(voir tous|see all|more games|autres matchs|home|accue
    toujours ; et inversement un lien sans nom exploitable garde son chemin. */
 var JUNK_LABEL_LEGAL = /^(privacy( policy)?|politique de confidentialit|dmca|contact(ez[- ]nous| us)?|terms( of (use|service))?|conditions|mentions l|about( us)?|à propos|a propos|faq|aide|help|support|advertise|publicit)/i;
 var JUNK_PATH_LEGAL = /^\/(privacy|privacidad|confidentialite|dmca|copyright|contact|terms|tos|conditions|mentions|legal|about|apropos|faq|help|support|advertise)([.\-\/]|$)/i;
+/* Le bandeau « Follow the guide → » de VIPLeague, de Liveleagues et d'Olympicweb mène à un
+   guide de VPN (imgcdnngx.com/free-vpn-guide-with-localization.html), jamais à un flux.
+   Relevé le 27 octobre 2026 : 239 liens, une seule adresse, le seul « lien » de 178 matchs
+   (145 de Liveleagues, 33 d'Olympicweb) — qui paraissaient pourvus et n'offraient qu'une
+   publicité, sans que le rattrapage ni une autre source ne les cherchent. */
+var JUNK_LABEL_GUIDE = /^follow the guide\b/i;
+var JUNK_PATH_VPN = /(^|[\/_-])vpn([._\/-]|$)/i;
 
 function isJunkStreamLabel(name) {
     var t = String(name || '').trim();
     if (!t) return false;
-    return JUNK_LABEL_ANYWHERE.test(t) || JUNK_LABEL_PREFIX.test(t) || JUNK_LABEL_LEGAL.test(t);
+    return JUNK_LABEL_ANYWHERE.test(t) || JUNK_LABEL_PREFIX.test(t) || JUNK_LABEL_LEGAL.test(t) || JUNK_LABEL_GUIDE.test(t);
 }
 
 /* Zone de régie publicitaire, reconnue à la FORME de son adresse.
@@ -2869,7 +2876,7 @@ export function isJunkStreamPath(url) {
     /* L'iframe VIDE du moteur de mybuffstreams/isportsurge (…/new-stream-embed/ sans
        identifiant) : un lecteur sans flux, que le moteur générique ramasse. */
     if (/\/new-stream-embed\/?$/i.test(path)) return true;
-    return JUNK_PATH_LEGAL.test(path) || ZONE_DE_REGIE.test(path);
+    return JUNK_PATH_LEGAL.test(path) || ZONE_DE_REGIE.test(path) || JUNK_PATH_VPN.test(path);
 }
 
 /* Adresses qui pointent vers l'accueil ou une page d'index d'un site de lecteurs plutôt

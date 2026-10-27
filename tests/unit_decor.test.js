@@ -121,6 +121,42 @@ async function main() {
     assert.strictEqual(S.isJunkStreamPath('pas-une-url'), false);
     ok('les zones de régie sont reconnues à leur forme, sans toucher aux vrais lecteurs');
 
+    // ── 7. Le guide de VPN de VIPLeague, ouvert dans un onglet ─────────────────
+    /* 27 octobre 2026 : « Follow the guide → » (imgcdnngx.com/free-vpn-guide-with-localization.html)
+       était le seul lien de 178 matchs, 239 fois la même adresse. Marqué `topLevel`, il
+       échappait au retrait du décor ; et ni son libellé ni son chemin n'étaient connus. */
+    const VPN = 'https://imgcdnngx.com/free-vpn-guide-with-localization.html';
+    const HOME = 'https://vipleague.vg/watch-now';
+    const guide = { name: 'Follow the guide →', url: VPN, topLevel: true, nonVerifiable: true };
+    const repli = (u) => ({ name: 'Page du match sur onhockey.tv', url: u, topLevel: true, fallback: true });
+    const MIROIR = 'https://miroir.test/live/psg-nantes';
+    const grille = [
+        { league: 'NHL', matchUrl: 'https://onhockey.tv/schedule_table.php', streamLinks: [guide, repli('https://onhockey.tv/schedule_table.php')] },
+        { league: 'MLB', matchUrl: 'https://onhockey.tv/schedule_table.php', streamLinks: [guide, repli('https://onhockey.tv/schedule_table.php')] },
+        { league: 'Tennis', matchUrl: 'https://vipleague.vg/m/a', streamLinks: [Object.assign({}, guide), { name: 'Accueil', url: HOME, topLevel: true }] },
+        { league: 'La Liga', matchUrl: 'https://vipleague.vg/m/b', streamLinks: [{ name: 'Accueil', url: HOME, topLevel: true }, { name: 'Miroir', url: MIROIR, topLevel: true }] }
+    ];
+    const decor7 = M.adressesNonSpecifiques(grille);
+    assert.ok(decor7[VPN], 'le guide de VPN traverse les sports même ouvert dans un onglet : écarté');
+    assert.ok(decor7[HOME], 'l\'accueil d\'une source aussi');
+    assert.ok(!decor7['https://onhockey.tv/schedule_table.php'], 'le repli « Page du match » (l\'adresse du match) reste, même partagé entre sports');
+    assert.ok(!decor7[MIROIR], 'une page de miroir propre à un match reste');
+    assert.strictEqual(M.retirerLiensDeDecor(grille, decor7), 5);
+    assert.strictEqual(grille[0].streamLinks.length, 1, 'le repli reste');
+    ok('un lien d\'onglet qui traverse les sports est du décor, le repli « Page du match » non');
+
+    assert.strictEqual(S.isJunkStreamPath(VPN), true, 'chemin de guide de VPN');
+    assert.strictEqual(S.isJunkStreamPath('https://x.test/best-vpn/'), true);
+    assert.strictEqual(S.isJunkStreamPath('https://x.test/vpn'), true);
+    assert.strictEqual(S.isJunkStreamPath('https://x.test/embed/vpnfree-fc/1'), false, 'un mot qui contient « vpn » n\'est pas un guide');
+    const finis = S.finalizeStreamLinks([
+        { name: 'Follow the guide →', url: 'https://x.test/anything/1', topLevel: true },
+        { name: 'Stream 1', url: VPN },
+        { name: 'Stream 1', url: 'https://olympiclive.me/be1-nfa-vs-dainava-alytus-live-stream/1/', topLevel: true }
+    ]);
+    assert.deepStrictEqual(finis.map((l) => l.url), ['https://olympiclive.me/be1-nfa-vs-dainava-alytus-live-stream/1/'], 'libellé ou chemin : le guide de VPN ne passe pas l\'entonnoir');
+    ok('le guide de VPN est écarté par son libellé et par son chemin');
+
     console.log(`unit_decor: ${n} groupes de tests OK`);
     process.exit(0);
 }
