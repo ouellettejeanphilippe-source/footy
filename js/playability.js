@@ -101,6 +101,34 @@ export function verdictFromObservation(obs) {
     return 'none';
 }
 
+/* ARRÊTER D'ATTENDRE QUAND LE VERDICT NE PEUT PLUS CHANGER (27 octobre 2026, « revoir les
+   github actions pour les rendre plus efficaces et rapides »).
+
+   La vérification regardait chaque lecteur `ATTENTE_LECTEUR_MS` (12 s), sans exception : sur
+   le passage de 22 h 49, 86 cibles sur 103 en 312 s (le budget de 5 min), 17 laissées de côté.
+   Deux cas ont un verdict que rien de ce qui suit ne peut défaire — `verdictFromObservation`
+   teste d'abord la vidéo prête :
+
+   - une vidéo est prête ET sa hauteur n'a pas bougé depuis `STABILITE_HAUTEUR_MS` : le verdict
+     est « plays » quoi qu'il arrive ensuite, et la hauteur (qui départage les liens qui jouent)
+     a fini de monter — un flux adaptatif démarre en basse définition ;
+   - le cadre du lecteur lui-même (l'enfant direct de la page de sonde, pas une publicité à
+     l'intérieur) est une page d'erreur du navigateur et rien n'a été demandé : aucune vidéo ne
+     peut venir d'un document qui n'a pas chargé.
+
+   `obs` : { videoReady, hauteur, mediaRequests, cadreEnErreur }. `ecoule` : ms depuis le
+   début de l'attente ; `stableDepuis` : ms depuis que `hauteur` n'a pas changé. Pure. */
+export var ATTENTE_LECTEUR_MS = 12000;
+export var ATTENTE_MIN_MS = 3000;
+export var STABILITE_HAUTEUR_MS = 2000;
+export function verdictAcquis(obs, ecoule, stableDepuis) {
+    var o = obs || {};
+    if ((ecoule | 0) < ATTENTE_MIN_MS) return false;
+    if (o.videoReady && (o.hauteur | 0) > 0 && (stableDepuis | 0) >= STABILITE_HAUTEUR_MS) return true;
+    if (o.cadreEnErreur && !o.videoReady && (o.mediaRequests | 0) === 0) return true;
+    return false;
+}
+
 /* Registre par hôte : { hôte: { tested, plays } }. Les observations s'additionnent d'un
    passage à l'autre ; au-delà de `cap` essais, les deux compteurs sont divisés par deux,
    pour que le passé lointain pèse moins que la dernière heure. */

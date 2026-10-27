@@ -113,6 +113,10 @@ jobs:
           # morte, qu'il lit dans ce fichier au démarrage. data/schedule.json n'y figure
           # que les fois où l'étape « Regenerate the schedule cache » l'a produit.
           file_pattern: "data/streams.json data/schedule.json domains.json"
+          # Déjà sur main, déjà à jour (étape de rebase ci-dessus) : l'action n'a ni à
+          # re-télécharger les ~40 branches du dépôt ni à se replacer sur la branche.
+          skip_fetch: true
+          skip_checkout: true
 
       # Verification observee des lecteurs (scripts/verify_players.mjs) : un vrai
       # Chromium charge les lecteurs des matchs en direct et note ce qui joue
@@ -142,6 +146,8 @@ jobs:
           commit_message: "chore: note which players actually play"
           # data/tv.json : la liste de l'appli Android TV (tv/), écrite par la vérification.
           file_pattern: "data/streams.json data/tv.json"
+          skip_fetch: true
+          skip_checkout: true
 
   # ══ RELAIS : deux passages par heure, malgré le cron ═══════════════════════════
   # GitHub retarde ou saute les crons fréquents (cinq à six exécutions par jour au lieu
