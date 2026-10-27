@@ -3,7 +3,7 @@ import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJ
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
-import { closeMod, fermerMenuLook, migrerGuideChaines } from './ui.js';
+import { closeMod, fermerMenuLook, migrerGuideActuelle } from './ui.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
 import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee, isLiveNow, startsWithin, minutesUntilStart, isMatchPageBlocked, LIVE_WINDOW_MIN } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
@@ -1902,7 +1902,7 @@ window.retourTele = function() {
 
 // Auto-init at boot
 document.addEventListener('DOMContentLoaded', () => {
-    migrerGuideChaines();
+    migrerGuideActuelle();
     const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
     const tvCheckbox = document.getElementById('pref-tv-mode');
     if (tvCheckbox) tvCheckbox.checked = isTvMode;

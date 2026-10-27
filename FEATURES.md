@@ -34,13 +34,14 @@ Entrent dans le Live : les matchs en cours (annoncés en direct par la source, o
 
 ### 2.1 Sections
 
-Dans l'ordre, toutes repliables d'un clic, d'Entrée ou d'Espace sur leur titre (chevron et état mémorisés) :
+Le Live s'ouvre sur un **bandeau vedette** (27 octobre 2026, « pages plus proches des services de streaming… dans le sens de navigation ») : un match en grand, aux couleurs des équipes, avec la ligue, le score ou l'heure, et un seul bouton **▶ Regarder** qui ouvre sa fiche ; c'est le premier arrêt de la télécommande. Le match mis en avant est un favori en direct, sinon le direct le plus fourni en flux, sinon le prochain à commencer. Pas de bandeau pendant une recherche.
+
+Dessous, dans l'ordre, toutes repliables d'un clic, d'Entrée ou d'Espace sur leur titre (chevron et état mémorisés) :
 
 | Section | Contenu | Par défaut |
 |---|---|---|
 | **Favoris** | Les matchs dont une équipe ou la ligue est favorite. | Dépliée |
-| **Live** | Les matchs en cours. | Dépliée |
-| **À venir dans l'heure** | Le reste. | Dépliée |
+| **Une section par ligue** | Les matchs en cours et ceux qui commencent dans l'heure, ligue par ligue dans l'ordre des ligues (« fait des sections par ligue dans LIVE », 27 octobre 2026) ; dans chaque section, le direct d'abord, puis l'heure. Les anciennes sections « Live » et « À venir dans l'heure » à plat n'existent plus. | Dépliée |
 | **Ligues secondaires (n)** | Les ligues classées « secondaire » dans Favoris → Ligues, sous-groupées par ligue. | Dépliée |
 | **Autres streams (n)** | Les flux que les sources annoncent sans qu'ESPN ait le match (ligue « Autres Flux »), sous-groupés par ligue annoncée. | Repliée |
 
@@ -61,7 +62,7 @@ Un clic ouvre la fiche du match (section 4).
 
 ### 2.3 Affiches et rails sur téléphone
 
-Sous 900 px, les cartes deviennent des affiches verticales (2:3). Chaque section porte un bouton **`⇥ Rail`** / **`⊞ Grille`** : en grille (par défaut), trois affiches par ligne ; en rail, une seule ligne qui défile horizontalement. Le choix est retenu par section. Options → Forme des cartes force l'un ou l'autre format sur tous les écrans.
+Sous 900 px, les cartes deviennent des affiches verticales (2:3). Chaque section porte un bouton **`⇥ Rail`** / **`⊞ Grille`** : au téléphone, en grille par défaut (trois affiches par ligne, un seul axe au pouce) ; **sur un grand écran, en rangée par défaut** (27 octobre 2026) : chaque ligue est une rangée horizontale, comme sur Netflix, ◀ ▶ la parcourent et ▲ ▼ changent de rangée, la carte qui a le focus grossit. Le choix est retenu par section. Options → Forme des cartes force l'un ou l'autre format de carte sur tous les écrans. Le Live et les huit vues des dispositions prennent toute la largeur de l'écran (plus de bloc centré de 1 200 ou 1 480 px).
 
 ## 3. Onglet Guide
 
@@ -80,7 +81,7 @@ Une grille horaire de **48 heures** — de 00:00 aujourd'hui à 00:00 après-dem
 
 ## 3 bis. Dispositions (Plus → Look)
 
-« Actuelle » est l'interface décrite aux sections 2 et 3, et reste le réglage par défaut du Live ; le Guide s'ouvre sur **Chaînes** (25 octobre 2026, « Guide par défaut : Chaînes » ; un Guide resté sur « Actuelle » y passe une fois, ensuite c'est un réglage comme un autre). **Le Live et le Guide ont chacun leur disposition** : on peut mélanger, par exemple Tableau pour le Live et Chaînes pour le Guide. On change :
+« Actuelle » est l'interface décrite aux sections 2 et 3, et c'est le réglage par défaut du Live **et** du Guide (27 octobre 2026, « les deux Actuelles… par défaut » ; du 25 au 27 octobre, le Guide s'ouvrait sur Chaînes : un Guide resté sur Chaînes revient une fois à Actuelle, ensuite c'est un réglage comme un autre). **Le Live et le Guide ont chacun leur disposition** : on peut mélanger, par exemple Tableau pour le Live et Chaînes pour le Guide. On change :
 
 - **par Plus → 🎨 Look** : un menu, sous l'en-tête à droite (au-dessus de la barre du bas sur téléphone), avec la disposition du Live, celle du Guide, et la couleur des cartes (Uni, Dégradé, Dégradé de côté, Deux couleurs, Ligue, Neutre). Échap ou un clic ailleurs le ferme. C'est le seul endroit pour ces réglages, et ce **Mettre à jour** est le seul hors de Logs (25 octobre 2026, « tous les doublons » : Options et le menu Plus les répétaient).
 
@@ -99,7 +100,7 @@ Le choix est enregistré. **Le look des cartes d'« Actuelle » est la base de t
 
 ## 4. Fiche de match
 
-S'ouvre au clic sur une carte ou un bloc. Se ferme par la croix `✕` en haut à droite, par Échap, ou par un clic sur le fond. Sur téléphone, c'est une feuille qui monte du bas, avec un bouton `✕ Fermer` permanent en pied.
+S'ouvre au clic sur une carte, un bloc ou le bouton **▶ Regarder** du bandeau vedette, et occupe **tout l'écran**, sur tous les écrans (27 octobre 2026 : une page, comme la fiche d'un film sur un service de streaming, plus une boîte au milieu). Se ferme par la croix `✕` en haut à droite, par Échap ou Retour. Sur téléphone, elle monte du bas, avec un bouton `✕ Fermer` permanent en pied. À la télécommande, le focus entre sur **▶ Regarder** et reste dans la fiche.
 
 ### 4.1 Bannière
 
@@ -164,7 +165,7 @@ Une vidéo : plein cadre. Deux : deux colonnes. Trois : une grande à gauche, de
 
 ### 5.3 En arrière-plan
 
-Le lecteur ne se pose plus sur le Live ni le Guide (9 octobre 2026). Passer à un autre onglet le **masque** : ses vidéos restent chargées (le son continue), et l'onglet **Lecteur**, souligné tant qu'une vidéo tourne, les rend telles quelles, sans rechargement. Les anciens modes réduits (panneau latéral, fenêtre flottante, barre dans un coin) sont retirés ; pour garder un œil sur un match ailleurs, il reste `🖼 Fenêtre détachée`.
+Le lecteur ne se pose plus sur le Live ni le Guide (9 octobre 2026). Passer à un autre onglet le **masque** : ses vidéos restent chargées (le son continue), et l'onglet **Lecteur**, souligné tant qu'une vidéo tourne, les rend telles quelles, sans rechargement — « si tu quittes le lecteur, ça continue de jouer jusqu'à ton retour » (27 octobre 2026 : c'était déjà le cas, confirmé). Les anciens modes réduits (panneau latéral, fenêtre flottante, barre dans un coin) sont retirés ; pour garder un œil sur un match ailleurs, il reste `🖼 Fenêtre détachée`.
 
 Au démarrage de l'application, les vidéos de la séance précédente ne se chargent qu'à la première ouverture du lecteur, pas derrière le guide.
 
