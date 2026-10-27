@@ -756,7 +756,11 @@ export function adressesNonSpecifiques(matches) {
     if (!m) return;
     var fam = sportFamily(sportOfLeague(m.league || ''));
     (m.streamLinks || []).forEach(function(l) {
-      if (!l || !l.url || l.topLevel) return; // un lien « Page du match » est déjà marqué comme tel
+      if (!l || !l.url) return;
+      /* Le repli « Page du match » (l'adresse du match lui-même) est déjà marqué comme tel. Tout
+         autre lien ouvert dans un onglet qui traverse les sports est du décor, comme le guide de
+         VPN de VIPLeague (239 liens, une adresse, 27 octobre 2026) que cette ligne épargnait. */
+      if (l.topLevel && (l.url === m.matchUrl || /^Page du match/.test(l.name || ''))) return;
       /* Une chaîne rattachée à l'événement par le PROGRAMME de la source (ppv, daddylive) :
          Sky Sports Main Event passe du cricket le matin et du golf l'après-midi. Le
          partage entre sports y est la nature d'une chaîne, pas la marque d'un décor. */
