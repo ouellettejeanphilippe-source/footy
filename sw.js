@@ -24,7 +24,7 @@
    gestionnaire `fetch` ci-dessous les range de toute façon dès leur première lecture,
    ce qui suffit au repli hors ligne. */
 
-const CACHE_NAME = 'sports-guide-v86';
+const CACHE_NAME = 'sports-guide-v87';
 
 const APP_SHELL = [
   './index.html',
@@ -45,6 +45,7 @@ const APP_SHELL = [
   './js/cable.js',
   './js/deuxecrans.js',
   './js/dispositions.js',
+  './js/vedette.js',
   './js/rattrapage.js',
   './js/sondage.js',
   './js/tvliste.js',

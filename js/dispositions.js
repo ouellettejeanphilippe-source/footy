@@ -202,7 +202,7 @@ function liveTableau(fiches, o) {
   var pastille = function (v, lib) { return '<button type="button" data-dsp="filtre" data-v="' + v + '" aria-pressed="' + (filtre === v) + '">' + lib + '</button>'; };
   return '<div class="dsp-filtres">' + pastille('tout', 'Tout · ' + fiches.length) + pastille('live', '<span class="dsp-point"></span>En direct · ' + nLive)
     + pastille('bientot', 'Dans l\'heure · ' + (fiches.length - nLive)) + '</div>'
-    + '<div class="dsp-cols" style="--ncol:' + Math.max(1, Math.min(3, groupes.length)) + '">' + groupes.map(function (g) {
+    + '<div class="dsp-cols" style="--ncol:' + Math.max(1, Math.min(4, groupes.length)) + '">' + groupes.map(function (g) {
       return '<section class="dsp-grp"><div class="dsp-gh' + (g[2] ? ' dsp-gh-fav' : '') + '">' + esc(g[0]) + '<span>' + g[1].length + '</span></div>' + g[1].map(ligne).join('') + '</section>';
     }).join('') + '</div>';
 }
@@ -249,11 +249,13 @@ function liveMaintenant(fiches, o) {
   var autres = lives.filter(function (f) { return f !== une; });
   var reste = autres.filter(function (f) { return f.fav; }).concat(autres.filter(function (f) { return !f.fav; }).sort(function (a, b) { return b.flux - a.flux; }));
   var bientot = fiches.filter(function (f) { return f.etat !== 'live'; }).sort(function (a, b) { return a.debut - b.debut; });
+  /* Sur un grand écran, l'affiche à gauche et le reste à droite (.dsp-mnt, styles.css) :
+     « chacune des 8 variations doit prendre plus large de l'écran » (27 octobre 2026). */
   var html = '';
-  if (une) html += '<h2 class="dsp-h2">En ce moment</h2><div class="dsp-une-hote">' + carte(une, o, 'dsp-une') + '</div>';
   if (reste.length) html += '<h2 class="dsp-h2">En direct</h2><div class="dsp-cartes">' + reste.map(function (f) { return carte(f, o); }).join('') + '</div>';
   if (bientot.length) html += '<h2 class="dsp-h2">Commence bientôt</h2><div class="dsp-rail">' + bientot.map(function (f) { return carte(f, o); }).join('') + '</div>';
-  return html;
+  if (!une) return html;
+  return '<div class="dsp-mnt"><div><h2 class="dsp-h2">En ce moment</h2><div class="dsp-une-hote">' + carte(une, o, 'dsp-une') + '</div></div><div class="dsp-mnt-reste">' + html + '</div></div>';
 }
 
 function guideMaintenant(fiches, o) {

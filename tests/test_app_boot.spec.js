@@ -195,12 +195,13 @@ async function bootOffline(page) {
   return pageErrors;
 }
 
-/* « Guide par défaut : Chaînes » (25 octobre 2026). Les tests de la grille horaire
-   classique (blocs `.mb`, ligne du direct, frontière de minuit) la choisissent. */
+/* La grille horaire classique (blocs `.mb`, ligne du direct, frontière de minuit) est de
+   nouveau le Guide par défaut (27 octobre 2026) ; les tests qui en dépendent la
+   choisissent quand même, pour ne pas dépendre du réglage du jour. */
 async function guideClassique(page) {
   await page.addInitScript(() => {
     try {
-      localStorage.setItem('guide_chaines', '1');
+      localStorage.setItem('guide_actuelle', '1');
       const p = JSON.parse(localStorage.getItem('user_prefs') || '{}');
       p.dispositionGuide = 'actuelle';
       localStorage.setItem('user_prefs', JSON.stringify(p));
@@ -2821,7 +2822,9 @@ test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fic
   await page.evaluate(() => window.activerNavigationManette());
   await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
   const carte = await page.evaluate(() => {
-    const c = Array.from(document.querySelectorAll('#marea .match-card')).find((x) => x.querySelector('.card-streams') && x.getClientRects().length);
+    /* Une carte qui a des liens : la fiche s'ouvre alors sur « ▶ Regarder » (sans lien, le
+       bouton est désactivé et la télécommande entre sur la croix). */
+    const c = Array.from(document.querySelectorAll('#marea .match-card')).find((x) => x.querySelector('.card-streams') && /\d/.test(x.querySelector('.card-streams').textContent) && x.getClientRects().length);
     c.focus();
     return c.id;
   });
@@ -2852,10 +2855,10 @@ test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fic
   await page.keyboard.press('ArrowDown');
   expect(await page.evaluate(() => !!document.activeElement.closest('#nav-links')), 'la flèche suivante reste dans la grille').toBe(false);
 
-  // Le Guide s'ouvre sur « Chaînes ».
+  // Le Guide s'ouvre sur « Actuelle » (27 octobre 2026 : les deux Actuelles par défaut).
   await page.evaluate(() => window.applyFilter('all'));
-  await expect(page.locator('#marea .dsp-chaines')).toHaveCount(1);
-  expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('chaines');
+  await expect(page.locator('#marea .epg-wrapper').first()).toBeVisible();
+  expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('actuelle');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
@@ -2948,5 +2951,82 @@ test('à la télécommande, « Choisir une autre source » choisit la source ; R
   expect(await page.evaluate(() => window.retourTele())).toBe(true);
   await expect(page.locator('#mv-flux-selector'), 'Retour ferme la fenêtre').toHaveCount(0);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Faire que les deux Actuelles soient les vues par défaut de live et guide. Chacune des
+   8 variations doit prendre plus large de l'écran… et fait des sections par ligue dans
+   LIVE » ; puis « pages plus proches des services de streaming, avec plein écran… dans le
+   sens de navigation » (27 octobre 2026). */
+test('le Live comme un service de streaming : vedette, rangées par ligue, fiche plein écran, huit vues pleine largeur', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const pageErrors = await bootOffline(page);
+
+  // Les deux vues par défaut sont « Actuelle ».
+  expect(await page.evaluate(() => [window.dispositionChoisie('live'), window.dispositionChoisie('guide')])).toEqual(['actuelle', 'actuelle']);
+
+  // Le bandeau vedette ouvre le Live ; « Regarder » est le premier arrêt et ouvre la fiche.
+  await expect(page.locator('#marea .vedette')).toHaveCount(1);
+  const vedette = page.locator('#marea .vedette .vedette-go[data-focus-depart]');
+  await expect(vedette).toHaveCount(1);
+  const live = await page.evaluate(() => {
+    const titres = [...document.querySelectorAll('#marea .section-title')].map((t) => t.innerText.split('\n')[0].trim());
+    const grilles = [...document.querySelectorAll('#marea .match-grid')].filter((g) => g.querySelector('.match-card'));
+    const zone = document.getElementById('marea').getBoundingClientRect();
+    return {
+      titres,
+      rangees: grilles.length > 0 && grilles.every((g) => g.classList.contains('rangee') && getComputedStyle(g).overflowX === 'auto'),
+      largeurVedette: document.querySelector('#marea .vedette').getBoundingClientRect().width, zone: zone.width,
+      ligues: [...new Set((window.S.matches || []).map((m) => m.league))]
+    };
+  });
+  expect(live.titres.join(' | '), 'plus de section « Live » ni « À venir » à plat : une section par ligue').not.toMatch(/^Live$|À venir dans l'heure/);
+  const liguesEnTitre = live.titres.filter((t) => live.ligues.some((l) => t.endsWith(l)));
+  expect(liguesEnTitre.length, 'des sections portent un nom de ligue').toBeGreaterThan(0);
+  expect(live.rangees, 'sur un grand écran, chaque section est une rangée horizontale').toBe(true);
+  expect(live.largeurVedette, 'le bandeau prend toute la largeur').toBeGreaterThanOrEqual(live.zone - 2);
+
+  await vedette.click();
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  const fiche = await page.evaluate(() => {
+    const r = document.querySelector('#mbg .modal').getBoundingClientRect();
+    return { w: r.width, h: r.height, vw: window.innerWidth, vh: window.innerHeight };
+  });
+  expect(fiche.w, 'la fiche couvre toute la largeur').toBeGreaterThanOrEqual(fiche.vw - 2);
+  expect(fiche.h, 'et toute la hauteur').toBeGreaterThanOrEqual(fiche.vh - 2);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+
+  // Les huit vues des dispositions prennent toute la largeur de la zone.
+  for (const vue of ['live', 'all']) {
+    for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
+      await page.evaluate(([n, v]) => { applyFilter(v); choisirDisposition(n); }, [nom, vue]);
+      await page.waitForSelector('#marea .dsp-' + nom);
+      const geo = await page.evaluate(() => {
+        const d = document.querySelector('#marea .dsp').getBoundingClientRect();
+        const z = document.getElementById('marea').getBoundingClientRect();
+        return { d: d.width, z: z.width };
+      });
+      expect(geo.d, nom + ' / ' + vue + ' : toute la largeur').toBeGreaterThanOrEqual(geo.z - 2);
+    }
+  }
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* Le Guide passé d'office à « Chaînes » le 25 octobre revient une fois à « Actuelle » ;
+   un choix fait après ce retour est respecté. */
+test('un Guide sur « Chaînes » revient une fois à « Actuelle », puis le choix est respecté', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('user_prefs', JSON.stringify({ dispositionGuide: 'chaines', dispositionLive: 'actuelle' })); } catch (e) {}
+  });
+  const pageErrors = await bootOffline(page);
+  expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('actuelle');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs')).dispositionGuide)).toBe('actuelle');
+  expect(await page.evaluate(() => localStorage.getItem('guide_actuelle'))).toBe('1');
+
+  await page.evaluate(() => window.choisirDisposition('chaines', 'guide'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.dispositionChoisie && window.S && window.S.matches && window.S.matches.length > 0, null, { timeout: 30000 });
+  expect(await page.evaluate(() => window.dispositionChoisie('guide')), 'le choix refait après la migration tient').toBe('chaines');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

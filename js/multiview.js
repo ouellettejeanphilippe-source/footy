@@ -4612,7 +4612,7 @@ export function initPrefs() {
   ['live', 'guide'].forEach(function(v) {
       var sel = document.getElementById('pref-disposition-' + v);
       var cle = v === 'guide' ? 'dispositionGuide' : 'dispositionLive';
-      if(sel) sel.value = userPrefs[cle] || userPrefs.disposition || (v === 'guide' ? 'chaines' : 'actuelle');
+      if(sel) sel.value = userPrefs[cle] || userPrefs.disposition || 'actuelle';
   });
   if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
   if(selAccentColor) {
@@ -4940,7 +4940,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v86';
+export var VERSION_APP = 'sports-guide-v87';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

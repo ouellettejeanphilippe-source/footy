@@ -18,6 +18,7 @@ import { extraireAlignements, extraireEffectifs, alignementsHtml } from './align
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 import { dispositionValide, rendreDisposition, etatDisposition, DISPOSITIONS } from './dispositions.js';
+import { choisirVedette, bandeauVedette } from './vedette.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
    dans les boucles de rendu. Alias stable pour pouvoir journaliser depuis celles-ci. */
@@ -185,6 +186,12 @@ export function cardShapePref() {
 export function applyCardShape() {
   if (typeof document === 'undefined') return;
   document.body.classList.toggle('cards-poster', cardShapePref() === 'poster');
+}
+
+/* Les sections du Live sont des rangées horizontales (comme Netflix) sur un grand écran,
+   où la carte est « large » ; sur un téléphone (affiche), la grille reste le défaut. */
+export function railParDefaut() {
+  return S.filter === 'live' && cardShapePref() === 'wide';
 }
 
 /* Le mode « auto » dépend de la largeur : une rotation d'écran doit changer la forme
@@ -616,8 +623,10 @@ function buildEPGInner(matches){
   epgContainer.style.display = 'flex';
   epgContainer.style.flexDirection = 'column';
   epgContainer.style.gap = '24px';
-  epgContainer.style.maxWidth = '1200px';
-  epgContainer.style.margin = '0 auto';
+  /* Toute la largeur (« chacune des 8 variations doit prendre plus large de l'écran »,
+     27 octobre 2026) : plus de 1 200 px au centre d'un écran de 4K. */
+  epgContainer.style.maxWidth = 'none';
+  epgContainer.style.margin = '0';
   epgContainer.style.width = '100%';
 
   var ovElement = document.getElementById('ov');
@@ -652,7 +661,18 @@ function buildEPGInner(matches){
              offert, il n'est simplement plus le défaut. */
           var railId = sectionId || ('sec_' + String(titleStr || '').replace(/[^a-zA-Z0-9]/g, ''));
           if (titleStr) grid.setAttribute('data-rail', railId);
-          if (titleStr && !S.railSections[railId]) grid.classList.add('expanded');
+          /* Depuis le 27 octobre 2026 (« navigation… comme les services de streaming ») :
+             sur un grand écran (bureau, télé), le Live est en RANGÉES par ligue, comme
+             Netflix — ◀ ▶ parcourent une rangée, ▲ ▼ changent de rangée. Le téléphone
+             garde la grille (un seul axe au pouce, ci-dessus) ; le bouton du titre
+             permet toujours l'autre choix. */
+          var enRail = function() { return S.railSections[railId] === undefined ? railParDefaut() : !!S.railSections[railId]; };
+          var poserRail = function() {
+            var r = !!titleStr && enRail();
+            grid.classList.toggle('expanded', !!titleStr && !r);
+            grid.classList.toggle('rangee', r);
+          };
+          poserRail();
 
           if (titleStr) {
               var secTitle = document.createElement('div');
@@ -714,16 +734,16 @@ function buildEPGInner(matches){
               railBtn.type = 'button';
               railBtn.className = 'rail-toggle';
               var syncRailBtn = function() {
-                  var enRail = !!S.railSections[railId];
-                  railBtn.textContent = enRail ? '⊞ Grille' : '⇥ Rail';
-                  railBtn.setAttribute('aria-pressed', enRail ? 'true' : 'false');
-                  grid.classList.toggle('expanded', !enRail);
+                  var r = enRail();
+                  railBtn.textContent = r ? '⊞ Grille' : '⇥ Rail';
+                  railBtn.setAttribute('aria-pressed', r ? 'true' : 'false');
+                  poserRail();
               };
               syncRailBtn();
               grid._railBtn = railBtn;
               railBtn.addEventListener('click', function(ev) {
                   ev.stopPropagation();
-                  S.railSections[railId] = !S.railSections[railId];
+                  S.railSections[railId] = !enRail();
                   syncRailBtn();
               });
               secTitle.appendChild(railBtn);
@@ -1043,9 +1063,48 @@ function buildEPGInner(matches){
       /* Repliables comme les autres : l'onglet mêlait jusqu'ici des titres qui
          réagissaient au clic et d'autres non, sans rien qui les distingue à l'œil.
          Chaque section porte donc son chevron et retient son état. */
+      /* Le bandeau vedette (js/vedette.js, 27 octobre 2026) : comme sur Netflix ou Prime
+         Video, le Live s'ouvre sur UN match en grand avec « Regarder », premier arrêt de
+         la télécommande. Pas pendant une recherche : la liste est la réponse. */
+      var principaux = liveNow.concat(upNext);
+      if (principaux.length && !S.searchQuery) {
+          var maintenantLive = minutesMaintenant(now, jourGrille);
+          var fichesLive = [];
+          principaux.forEach(function(m) {
+              try { fichesLive.push(ficheMatch(m, now, jourGrille, maintenantLive)); }
+              catch (e) { logLine('Match ignoré (vedette)', (m && m.id ? m.id + ' — ' : '') + (e && e.message || e)); }
+          });
+          var vedette = choisirVedette(fichesLive);
+          if (vedette) {
+              var hoteVedette = document.createElement('div');
+              hoteVedette.innerHTML = bandeauVedette(vedette, maintenantLive);
+              var secVedette = hoteVedette.firstChild;
+              secVedette.addEventListener('click', function(e) {
+                  var b = e.target.closest && e.target.closest('[data-mid]');
+                  ouvrirFicheParId(b ? b.getAttribute('data-mid') : vedette.id);
+              });
+              fragment.appendChild(secVedette);
+          }
+      }
       if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, fragment, "Favoris", true, 'liveFavoris');
-      if (liveNow.length > 0) renderMatches(liveNow, fragment, "Live", true, 'liveNow');
-      if (upNext.length > 0) renderMatches(upNext, fragment, "À venir dans l'heure", true, 'liveUpNext');
+      /* « Fait des sections par ligue dans LIVE » (27 octobre 2026) : une section par
+         ligue, dans l'ordre des ligues (favorites et principales d'abord, comme
+         `filtered`), le direct avant ce qui vient, puis l'heure. Les sections « Live » et
+         « À venir dans l'heure » à plat n'existent plus. */
+      var parLigueLive = {}, ordreLiguesLive = [];
+      principaux.forEach(function(m) {
+          var k = m.league || 'Autres';
+          if (!parLigueLive[k]) { parLigueLive[k] = []; ordreLiguesLive.push(k); }
+          parLigueLive[k].push(m);
+      });
+      ordreLiguesLive.forEach(function(k) {
+          var liste = parLigueLive[k].slice().sort(function(a, b) {
+              var la = isLiveNow(a, now) ? 0 : 1, lb = isLiveNow(b, now) ? 0 : 1;
+              if (la !== lb) return la - lb;
+              return comparerHeures(a, b, jourGrille);
+          });
+          renderMatches(liste, fragment, k, true, 'liveLg_' + k.replace(/[^a-zA-Z0-9]/g, ''));
+      });
       if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
           var vide = document.createElement('div');
           vide.className = 'empty-state';
@@ -2462,16 +2521,18 @@ export var userPrefs = {
 var storedPrefs = safeStorageGetJSON('user_prefs');
 if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
 
-/* « Guide par défaut : Chaînes » (25 octobre 2026). Une seule fois (`guide_chaines`), le
-   Guide resté sur « Actuelle », ou jamais choisi, passe à « Chaînes » ; ensuite, c'est
-   un réglage comme un autre. Appelée au démarrage (js/main.js), pas au chargement de ce
-   module : le cycle d'imports peut l'évaluer avant que js/utils.js ait fini le sien, et
-   l'écriture dans un stockage plein plantait alors. */
-export var DISPOSITION_GUIDE_DEFAUT = 'chaines';
-export function migrerGuideChaines() {
-  if (safeStorageGetJSON('guide_chaines')) return false;
+/* « Faire que les deux Actuelles soient les vues par défaut de live et guide » (27 octobre
+   2026). Le Guide valait « Chaînes » depuis le 25 octobre (migration `guide_chaines`, qui
+   y avait passé d'office un Guide resté sur « Actuelle »). Une seule fois (`guide_actuelle`),
+   un Guide sur « Chaînes » revient à « Actuelle » ; ensuite, c'est un réglage comme un
+   autre. Appelée au démarrage (js/main.js), pas au chargement de ce module : le cycle
+   d'imports peut l'évaluer avant que js/utils.js ait fini le sien, et l'écriture dans un
+   stockage plein plantait alors. */
+export var DISPOSITION_GUIDE_DEFAUT = 'actuelle';
+export function migrerGuideActuelle() {
+  if (safeStorageGetJSON('guide_actuelle')) return false;
   var guideAvant = userPrefs.dispositionGuide || userPrefs.disposition;
-  var change = !guideAvant || guideAvant === 'actuelle';
+  var change = guideAvant === 'chaines';
   if (change) {
     if (userPrefs.disposition && !userPrefs.dispositionLive) userPrefs.dispositionLive = userPrefs.disposition;
     delete userPrefs.disposition;
@@ -2480,7 +2541,7 @@ export function migrerGuideChaines() {
     var sel = typeof document !== 'undefined' && document.getElementById('pref-disposition-guide');
     if (sel) sel.value = DISPOSITION_GUIDE_DEFAUT;
   }
-  safeStorageSetJSON('guide_chaines', 1);
+  safeStorageSetJSON('guide_actuelle', 1);
   return change;
 }
 
