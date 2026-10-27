@@ -25,7 +25,7 @@ const args = process.argv.slice(2);
 const arg = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
 const BUDGET_MS = arg('--budget-ms', 5 * 60 * 1000);
 const TOTAL = arg('--total', 150);
-const PER_MATCH = 3, PER_HOST = 4, CONCURRENCY = 4, WATCH_MS = 12000, NAV_TIMEOUT_MS = 20000;
+const PER_MATCH = 3, PER_HOST = 4, CONCURRENCY = 4, NAV_TIMEOUT_MS = 20000;
 const IMMINENT_MIN = 120;
 const REHAB_MAX = 6;   // témoins d'hôtes écartés éprouvés par passage
 
@@ -42,6 +42,7 @@ globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} 
 await import('../js/scrapers.js');   // fixe l'ordre d'évaluation des modules circulaires
 const config = await import('../js/config.js');
 const play = await import('../js/playability.js');
+const WATCH_MS = play.ATTENTE_LECTEUR_MS;   // la durée entière ; verdictAcquis peut conclure avant
 const media = await import('../js/directmedia.js');   // estManifeste : un manifeste, pas un segment
 const tv = await import('../js/tvliste.js');           // data/tv.json, la liste de l'appli Android TV
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36';
@@ -121,6 +122,20 @@ await context.route(PROBE_ORIGIN + '/**', (route) => {
     route.fulfill({ status: 200, contentType: 'text/html', body: probeHtml(target) });
 });
 
+/* Les vidéos de tous les cadres (sauf la page de sonde) : prête, et sa hauteur réelle. Les
+   cadres en erreur sont notés ; un cadre inaccessible ne conclut rien. */
+async function lireVideos(page, obs) {
+    for (const f of page.frames()) {
+        if (f === page.mainFrame()) continue;
+        if (/^chrome-error:/.test(f.url())) { obs.frameError = true; continue; }
+        try {
+            const v = await f.evaluate(() => Array.from(document.querySelectorAll('video')).map((x) => ({ rs: x.readyState, t: x.currentTime, src: !!(x.currentSrc || x.src), h: x.videoHeight | 0 })));
+            if (v.some((x) => x.rs >= 2 || x.t > 0)) obs.videoReady = true;
+            for (const x of v) if ((x.rs >= 2 || x.t > 0) && x.h > obs.hauteur) obs.hauteur = x.h;
+        } catch (e) { /* cadre inaccessible : on ne conclut rien */ }
+    }
+}
+
 async function observe(target) {
     const page = await context.newPage();
     const obs = {
@@ -168,16 +183,24 @@ async function observe(target) {
     });
     try {
         await page.goto(PROBE_ORIGIN + '/probe.html?u=' + encodeURIComponent(target), { waitUntil: 'load', timeout: NAV_TIMEOUT_MS });
-        await page.waitForTimeout(WATCH_MS);
-        for (const f of page.frames()) {
-            if (f === page.mainFrame()) continue;
-            if (/^chrome-error:/.test(f.url())) { obs.frameError = true; continue; }
-            try {
-                const v = await f.evaluate(() => Array.from(document.querySelectorAll('video')).map((x) => ({ rs: x.readyState, t: x.currentTime, src: !!(x.currentSrc || x.src), h: x.videoHeight | 0 })));
-                if (v.some((x) => x.rs >= 2 || x.t > 0)) obs.videoReady = true;
-                for (const x of v) if ((x.rs >= 2 || x.t > 0) && x.h > obs.hauteur) obs.hauteur = x.h;
-            } catch (e) { /* cadre inaccessible : on ne conclut rien */ }
+        /* On regarde par pas d'une seconde et on s'arrête dès que le verdict est acquis
+           (play.verdictAcquis) : une vidéo prête dont la hauteur ne bouge plus, ou un cadre
+           de lecteur en erreur. Le reste attend toute la durée, comme avant. La lecture des
+           vidéos de tous les cadres coûte (DaddyLive en ouvre des centaines) : elle n'a lieu
+           qu'une fois de la vidéo arrivée, pas à chaque pas. */
+        const debut = Date.now();
+        let hauteurVue = -1, stableDepuis = Date.now();
+        while (Date.now() - debut < WATCH_MS) {
+            await page.waitForTimeout(Math.min(1000, WATCH_MS - (Date.now() - debut)));
+            const enfant = page.frames().find((f) => f.parentFrame() === page.mainFrame());
+            obs.cadreEnErreur = !!enfant && /^chrome-error:/.test(enfant.url());
+            if (obs.mediaOk >= 2) {
+                await lireVideos(page, obs);
+                if (obs.hauteur !== hauteurVue) { hauteurVue = obs.hauteur; stableDepuis = Date.now(); }
+            }
+            if (play.verdictAcquis(obs, Date.now() - debut, Date.now() - stableDepuis)) { obs.tot = true; break; }
         }
+        await lireVideos(page, obs);
         const frames = page.frames();
         if (frames.length <= 1 && obs.mediaRequests === 0) obs.frameError = true;   // l'iframe n'a jamais produit de document
     } catch (e) {
@@ -189,7 +212,7 @@ async function observe(target) {
 }
 
 const t0 = Date.now();
-let cursor = 0, done = 0, horsBudget = 0;
+let cursor = 0, done = 0, horsBudget = 0, concluTot = 0;
 const compte = { plays: 0, blocked: 0, none: 0 };
 /* LE REGISTRE REPART DE ZÉRO QUAND LA RÈGLE DU VERDICT A CHANGÉ.
 
@@ -231,6 +254,7 @@ async function worker() {
         const obs = await observe(t.target);
         const verdict = play.verdictFromObservation(obs);
         compte[verdict]++;
+        if (obs.tot) concluTot++;
         if (t.ecarte) {
             // Témoin d'un hôte écarté : aucun lien publié à marquer, seulement le registre.
             data.hotesEcartes[t.host].essaiAt = new Date().toISOString();
@@ -284,7 +308,7 @@ log(`verify_players : data/tv.json, ${listeTv.matchs.length} matchs jouables sur
 
 const resume = Object.entries(parHote).sort((a, b) => b[1].tested - a[1].tested).slice(0, 15)
     .map(([h, c]) => `${h} ${c.plays}/${c.tested}`).join(', ');
-log(`verify_players : ${done} cibles observees en ${((Date.now() - t0) / 1000).toFixed(0)} s — joue ${compte.plays}, rien ${compte.none}, bloque ${compte.blocked}`
+log(`verify_players : ${done} cibles observees en ${((Date.now() - t0) / 1000).toFixed(0)} s — joue ${compte.plays}, rien ${compte.none}, bloque ${compte.blocked} (${concluTot} conclues avant les ${play.ATTENTE_LECTEUR_MS / 1000} s)`
     + (horsBudget ? ` — ${horsBudget} laissees de cote, budget epuise` : ''));
 log('  par hote : ' + resume);
 process.exit(0);
