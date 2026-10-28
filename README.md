@@ -166,7 +166,8 @@ Ces workflows GitHub tournent et commitent les données sur `main` ; `npm run li
 |---|---|---|
 | Tests | chaque push et chaque PR sur `main` | `npm test` |
 | Calendrier ESPN | chaque jour à 09:00 UTC (et, s'il est en retard, au premier passage des liens du jour), et sur un push sur `main` qui touche le script du calendrier | `data/schedule.json` commité |
-| Liens de diffusion | toutes les 30 min, par relais (le workflow se relance lui-même ; le cron à :17 et :47 amorce et rattrape) ; un ping de surveillance part à chaque publication si le secret `HC_PING_URL` est posé | `data/streams.json` et `domains.json` commités |
+| Veille des liens | chaque jour à 6 h et à 18 h (heure de Toronto) | si `data/streams.json` a plus de 3 h et qu'aucun passage des liens n'est en route, le workflow des liens est relancé et le relais reprend |
+| Liens de diffusion | toutes les 30 min, par relais (le workflow se relance lui-même ; le cron à :17 et :47 amorce et rattrape) | `data/streams.json` et `domains.json` commités |
 | Surveillance des domaines | chaque jour à 05:00 UTC | rapport seulement |
 
 ### Règles à retenir
