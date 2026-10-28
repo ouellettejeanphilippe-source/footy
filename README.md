@@ -48,7 +48,7 @@ L'application n'héberge ni ne diffuse aucune vidéo ; elle rassemble des liens 
 
 ## Faire tourner l'application en local
 
-GitHub Pages ne sert plus le site et les Actions ne tournent plus. Trois dossiers prennent leur place.
+GitHub Pages sert le site et les Actions produisent les données (voir « Automatisations »). Trois dossiers permettent aussi de tout faire sur sa machine, sans dépendre de GitHub.
 
 ### `desktop/` — l'application de bureau
 
@@ -158,15 +158,15 @@ Un nouveau domaine à essayer ? `npm run sonder -- streamed.st autre-site.xyz` d
 | `docs/WORKLOG.md` | Le journal des changements, daté et argumenté (avant octobre 2026 : `docs/WORKLOG-archive.md`). |
 | `AGENTS.md` | Les règles de travail dans ce dépôt (pour les humains et les agents). |
 
-### Automatisations (historiques)
+### Automatisations
 
-Ces workflows GitHub **ne tournent plus** : le dépôt vit hors de GitHub, et `local/pipeline.ps1` les remplace (voir « Faire tourner l'application en local »). Le tableau reste pour mémoire — les commentaires des fichiers de `.github/workflows/` expliquent des décisions qui valent toujours, notamment ce que le planificateur de GitHub livrait réellement.
+Ces workflows GitHub tournent et commitent les données sur `main` ; `npm run liens` et `local/pipeline.ps1` font les mêmes étapes sur sa machine (voir « Faire tourner l'application en local ») et peuvent publier à leur tour. Les commentaires des fichiers de `.github/workflows/` expliquent les décisions prises, notamment ce que le planificateur de GitHub livre réellement.
 
 | Workflow | Quand | Résultat |
 |---|---|---|
 | Tests | chaque push et chaque PR sur `main` | `npm test` |
 | Calendrier ESPN | chaque jour à 09:00 UTC (et, s'il est en retard, au premier passage des liens du jour), et sur un push sur `main` qui touche le script du calendrier | `data/schedule.json` commité |
-| Liens de diffusion | toutes les 30 min, par relais (le workflow se relance lui-même ; le cron à :17 et :47 amorce et rattrape) | `data/streams.json` et `domains.json` commités |
+| Liens de diffusion | toutes les 30 min, par relais (le workflow se relance lui-même ; le cron à :17 et :47 amorce et rattrape) ; un ping de surveillance part à chaque publication si le secret `HC_PING_URL` est posé | `data/streams.json` et `domains.json` commités |
 | Surveillance des domaines | chaque jour à 05:00 UTC | rapport seulement |
 
 ### Règles à retenir

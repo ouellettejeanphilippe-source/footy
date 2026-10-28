@@ -122,6 +122,31 @@ function main() {
         'aucune relance hors de la boucle');
     ok('le relais réessaie sa relance au lieu de casser la chaîne');
 
+    // ── 7. La surveillance est prévenue dès que le cache est publié ──────────
+    /* La chaîne s'est déjà arrêtée sans prévenir (cron mort du 20 septembre au 9 octobre
+       2026, relance en HTTP 500 le 6 octobre), et on l'a appris par le bandeau « Liens
+       datant de 9 h ». Un ping vers un « dead man's switch » part juste après le commit
+       du cache — AVANT la vérification des lecteurs, qui peut traîner cinq minutes et
+       ferait croire à un créneau manqué. Sans le secret, l'étape ne fait rien ; une panne
+       du service de surveillance ne fait pas échouer le passage. Un passage qui échoue
+       avant de publier le signale lui-même (`/fail`). */
+    const ping = position('ping the watchdog');
+    assert.ok(ping >= 0, 'l\'étape de ping existe');
+    assert.ok(ping > commitLiens && ping < chromium,
+        'le ping part après le commit du cache et avant la vérification des lecteurs');
+    const blocPing = source.slice(source.indexOf('Ping the watchdog'), source.indexOf('Install Chromium'));
+    assert.ok(/secrets\.HC_PING_URL/.test(blocPing), 'l\'adresse vient du secret HC_PING_URL');
+    assert.ok(/-z "\$HC_PING_URL"/.test(blocPing), 'sans secret, l\'étape ne fait rien');
+    assert.ok(/continue-on-error:\s*true/.test(blocPing), 'une panne de la surveillance ne fait pas échouer le passage');
+    assert.ok(/curl .*--retry \d/.test(blocPing), 'le ping est réessayé');
+    const echec = position('tell the watchdog the run failed');
+    assert.ok(echec > commitVerif, 'le signal d\'échec est la dernière étape du job');
+    const blocEchec = source.slice(source.indexOf('Tell the watchdog'), source.indexOf('\n  relais:'));
+    assert.ok(/if:\s*failure\(\)/.test(blocEchec), 'le signal d\'échec ne part que sur un échec');
+    assert.ok(/\$HC_PING_URL\/fail/.test(blocEchec), 'il va sur /fail');
+    assert.ok(/continue-on-error:\s*true/.test(blocEchec), 'et ne peut pas non plus faire échouer le passage');
+    ok('la surveillance est prévenue dès que le cache est publié, et dès qu\'un passage échoue');
+
     console.log(`unit_workflowliens: ${n} groupes de tests OK`);
 }
 
