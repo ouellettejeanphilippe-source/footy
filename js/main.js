@@ -1903,7 +1903,19 @@ window.retourTele = function() {
     else if (action === 'plein') window.quitterPleinCadre();
     else if (action === 'nav') { window.activerNavigationManette(); boutonVue.focus(); }
     else if (action === 'plus') { if (typeof window.toggleMenu === 'function') window.toggleMenu(); }
-    else if (action === 'live') window.applyFilter('live');
+    else if (action === 'live') {
+        /* Dans l'APK, Retour hors du lecteur FERME les vidéos (28 octobre 2026, « revenir en arrière
+           avec la touche ferme le stream dans l'APK, pour limiter les ressources ») : sur un
+           Chromecast, une vidéo cachée garde son décodeur, sa mémoire et son flux. Sur le site, le
+           lecteur continue en arrière-plan jusqu'au retour (9 octobre 2026). */
+        var avaitDesVideos = document.body.getAttribute('data-view') === 'player' && typeof window.dansApk === 'function' && window.dansApk() && typeof window.fermerToutesLesVideos === 'function';
+        if (avaitDesVideos) {
+            var n = (window.mvFlux && window.mvFlux.length) || 0;
+            window.fermerToutesLesVideos();
+            if (n) showToast(n > 1 ? 'Vidéos fermées' : 'Vidéo fermée');
+        }
+        window.applyFilter('live');
+    }
     return action !== 'quitter';
 };
 

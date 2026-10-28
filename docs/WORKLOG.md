@@ -7,6 +7,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-28 - **« Je veux que revenir en arrière avec la touche ferme le stream dans l'APK, pour limiter les ressources »**
+
+  - **Fait.** `retourTele` (`js/main.js`) : quand le pas est « Live » depuis la vue Lecteur et qu'on est dans l'APK (`dansApk()`, `js/multiview.js` : le plugin natif existe), les vidéos sont fermées (`fermerToutesLesVideos` : décodeurs, mémoire, flux) avant le retour au Live, avec un toast. Le Retour qui sort d'abord du plein écran ou d'un menu (pas d'avant) ne ferme rien. Sur le site, rien ne change (le lecteur continue en arrière-plan, 9 octobre 2026) ; les onglets, LB/RB et Start, dans l'APK aussi, masquent comme avant — « la touche » est lue comme Retour, à dire si Start devait fermer aussi. `CACHE_NAME` et `VERSION_APP` à v94.
+  - **Exception à « site = APK »**, voulue et nommée : les ressources d'un Chromecast. Notée dans `FEATURES.md` §5.3 et `docs/ARCHITECTURE.md` §7.5.
+  - **Tests** : `test_app_boot` « Retour hors du lecteur ferme les vidéos dans l'APK / les garde sur le site » (le premier échoue sans la correction ; 3 exécutions sur 3). `npm test` : 140 unitaires ; Playwright 100 passés, 1 ignoré (Chromium préinstallé de la session, configuration hors dépôt).
+  - **Fichiers** : `js/main.js`, `js/multiview.js`, `sw.js`, `tests/test_app_boot.spec.js`, `FEATURES.md`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`.
+  - **Ce qui reste.** Les vidéos fermées ne reviennent pas au retour dans le lecteur (il faut les rajouter) ; si on veut qu'elles reviennent à la demande (comme à la reprise d'une séance), c'est une autre décision. Pas essayé sur le Chromecast.
 - 2026-10-28 - **« Aussi, sur CCGTV, juste une vidéo, mode câble, plein écran que Back recule »** (lu : que Retour fasse UN pas en arrière, comme Netflix)
 
   - **Mesuré** (une vidéo, mode câble, `body.android-tv`). Mode Cinéma : `retourTele` mène d'un coup au Live (le lecteur est quitté). Plein écran du navigateur : il mène au Live ET laisse `document.fullscreenElement` posé sur la grille cachée. `actionRetour` ne connaissait pas le plein cadre.

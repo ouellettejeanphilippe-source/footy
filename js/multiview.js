@@ -292,6 +292,8 @@ function registreDirect() { return safeStorageGetJSON('direct_media', {}) || {};
 export var ENTETE_RELAIS_REFERER = 'X-Footy-Referer';
 export var ENTETE_RELAIS_ORIGINE = 'X-Footy-Origin';
 function relaisApk() { return !!pluginNatif(); }
+/* Dans l'application Android (APK) : son plugin natif est là. Sur le site, non. */
+export function dansApk() { return !!pluginNatif(); }
 export function entetesRelais(media) {
     var ref = refererPourDirect(media);
     var h = {};
@@ -4979,7 +4981,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v93';
+export var VERSION_APP = 'sports-guide-v94';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5860,6 +5862,7 @@ window.toggleTheaterMode = toggleTheaterMode;
 window.quitterModeCinema = quitterModeCinema;
 window.quitterPleinEcranLecteur = quitterPleinEcranLecteur;
 window.toggleFullscreen = toggleFullscreen;
+window.dansApk = dansApk;
 window.pleinCadreActif = pleinCadreActif;
 window.quitterPleinCadre = quitterPleinCadre;
 window.openFlux = openFlux;

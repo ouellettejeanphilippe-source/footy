@@ -3095,6 +3095,45 @@ test('Retour sort du plein écran et du mode Cinéma avant de quitter le lecteur
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* « Je veux que revenir en arrière avec la touche ferme le stream dans l'APK, pour limiter les
+   ressources » (28 octobre 2026). Sur le site, le lecteur continue en arrière-plan jusqu'au
+   retour (9 octobre 2026) ; dans l'APK (le plugin natif est là), Retour hors du lecteur ferme
+   les vidéos — leur décodeur, leur mémoire, leur flux. */
+for (const apk of [true, false]) {
+  test('Retour hors du lecteur ' + (apk ? 'ferme les vidéos dans l\'APK' : 'les garde sur le site'), async ({ page }) => {
+    if (apk) {
+      await page.addInitScript(() => {
+        window.Capacitor = { Plugins: { LecteurNatif: {
+          jouer: () => Promise.resolve(), fermer: () => Promise.resolve(), diagnostic: () => Promise.resolve({}),
+          addListener: () => Promise.resolve({ remove() {} })
+        } } };
+      });
+    }
+    const pageErrors = await bootOffline(page);
+    const autre = origin.replace('127.0.0.1', 'localhost');
+    await page.route(autre + '/**', (route) => route.continue());
+    await page.evaluate((o) => {
+      window.addToMultivision(o + '/__lecteur-calme?a', 'Match A', 'mA');
+      window.addToMultivision(o + '/__lecteur-calme?b', 'Match B', 'mB');
+      window.openMultiviewTab();
+    }, autre);
+    await expect(page.locator('.mv-cell iframe')).toHaveCount(2);
+    expect(await page.evaluate(() => window.dansApk())).toBe(apk);
+
+    expect(await page.evaluate(() => window.retourTele())).toBe(true);
+    await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+    if (apk) {
+      expect(await page.evaluate(() => window.mvFlux.length), 'les vidéos sont fermées').toBe(0);
+      await expect(page.locator('.mv-cell iframe'), 'et leurs lecteurs détruits').toHaveCount(0);
+    } else {
+      expect(await page.evaluate(() => window.mvFlux.length), 'sur le site, le lecteur continue en arrière-plan').toBe(2);
+      await expect(page.locator('.mv-cell iframe')).toHaveCount(2);
+    }
+    // Retour depuis le Live (ou une autre vue) ne ferme rien de plus que ce qu'il quitte.
+    expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  });
+}
+
 /* « Faire que les deux Actuelles soient les vues par défaut de live et guide. Chacune des
    8 variations doit prendre plus large de l'écran… et fait des sections par ligue dans
    LIVE » ; puis « pages plus proches des services de streaming, avec plein écran… dans le
