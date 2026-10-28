@@ -1227,7 +1227,7 @@ export function showFluxSelector(idx, mid, event) {
 
     var selector = document.createElement('div');
     selector.id = 'mv-flux-selector';
-    selector.style.cssText = 'position:fixed;z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:16px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:360px;top:50%;left:50%;transform:translate(-50%, -50%);';
+    selector.style.cssText = 'position:fixed;z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:360px;top:50%;left:50%;transform:translate(-50%, -50%);';
 
     // Add close button for mobile
     var closeBtn = document.createElement('div');
@@ -1844,7 +1844,7 @@ export function setupMultivisionUI() {
     var exitTheaterBtn = document.createElement('button');
     exitTheaterBtn.id = 'mv-exit-theater';
     exitTheaterBtn.innerHTML = 'Quitter le Plein Onglet';
-    exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.15s;';
+    exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.15s;';
 
 
     window.addEventListener('message', function(e) {
@@ -3698,7 +3698,7 @@ export function annoncerCable(idx, note) {
         osd.className = 'mv-cable-osd';
         osd.style.cssText = 'position:absolute;left:12px;right:12px;bottom:12px;z-index:7;pointer-events:none;'
             + 'background:rgba(8,8,10,0.82);border:1px solid rgba(255,255,255,0.18);border-radius:10px;'
-            + 'padding:10px 12px;color:#fff;backdrop-filter:blur(8px);opacity:0;transition:opacity 0.18s;';
+            + 'padding:10px 12px;color:#fff;opacity:0;transition:opacity 0.18s;';
         cell.appendChild(osd);
     }
     osd.innerHTML = (e.numero ? '<div style="font-size:11px;letter-spacing:1px;opacity:0.7;">' + esc(e.numero) + '</div>' : '')
@@ -4064,7 +4064,7 @@ export function toggleTheaterMode(elem) {
           closeBtn.className = 'theater-close-btn';
           closeBtn.innerHTML = '<span class="ic ic-close"></span>';
           closeBtn.title = 'Quitter le mode Cinéma';
-          closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:1;';
+          closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:1;';
           closeBtn.onclick = function() { toggleTheaterMode(elem); };
           elem.appendChild(closeBtn);
       }
@@ -4102,7 +4102,7 @@ export function toggleFullscreen(elem) {
             closeFsBtn = document.createElement('button');
             closeFsBtn.id = 'mv-close-fs';
             closeFsBtn.innerHTML = '<span class="ic ic-close" style="background-color: currentColor; display: inline-block; width: 24px; height: 24px;"></span>';
-            closeFsBtn.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99999; background:rgba(255,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(5px); box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.15s;';
+            closeFsBtn.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99999; background:rgba(255,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.15s;';
             closeFsBtn.onclick = function() { toggleFullscreen(); };
             elem.appendChild(closeFsBtn);
 
@@ -5418,7 +5418,7 @@ export function installTampermonkey() {
     modal.id = 'tm-modal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-label', 'Installation des scripts');
-    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.97);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:14px;max-height:85vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:92%;max-width:620px;-webkit-overflow-scrolling:touch;color:#fff;';
+    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.97);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;max-height:85vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:92%;max-width:620px;-webkit-overflow-scrolling:touch;color:#fff;';
 
     var closeBtn = document.createElement('div');
     closeBtn.innerHTML = '<span class="ic ic-close"></span>';

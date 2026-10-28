@@ -916,6 +916,21 @@ test('rien n\'est peint par-dessus un lecteur Twitch, au démarrage, au repos, a
   expect(pageErrors).toEqual([]);
 });
 
+/* « Quand ya des modals, l'interface gèle… nickel avec Firefox » (28 octobre 2026) : la
+   fiche, le toast et les fenêtres du lecteur floutaient ce qu'il y avait dessous, que
+   Chrome et Vivaldi recalculent à chaque image d'une vidéo, pour un fond déjà opaque. */
+test('la fiche et le toast ne floutent pas ce qui est dessous, sur ordinateur aussi', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => { window.openMod(window.S.matches[0]); window.showToast('Un message'); });
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  const flous = await page.evaluate(() => ['mbg', 'toast'].map((id) => {
+    const c = getComputedStyle(document.getElementById(id));
+    return id + ':' + (c.backdropFilter || 'none');
+  }));
+  expect(flous).toEqual(['mbg:none', 'toast:none']);
+  expect(pageErrors).toEqual([]);
+});
+
 /* Le pendant : sans lecteur Twitch, la présentation façon Netflix reste (barre posée sur
    la vidéo, 25 octobre 2026). */
 test('sans lecteur Twitch, la barre reste posée sur la vidéo', async ({ page }) => {
