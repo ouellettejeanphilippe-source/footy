@@ -7,6 +7,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-28 - **« La manette est bloquée par les modals on dirait »**
+
+  - **Reproduit** avec une manette simulée sur la vraie application : sept fenêtres ouvertes une à une, quatre pas de croix, puis Retour. Fiche, menu Plus, Look, installation du script, enquêteur, choix d'une source, menus du lecteur : le focus entre, reste dedans, Retour ferme. Une seule fenêtre échappait à la navigation : le panneau Scores et statistiques (`#global-stats-sidebar`, z-index 999999, au-dessus de la fiche), qui n'était pas dans `ZONES`. Ouvert depuis la fiche (un logo d'équipe), le focus restait DANS la fiche, derrière le panneau, et `retourTele` fermait la fiche en laissant le panneau ouvert. Fermé, le panneau reste dans la page hors de l'écran (`translateX(100%)`) : sa croix comptait comme un arrêt visible (largeur > 0).
+  - **Fait.** `js/tv-navigation.js` : le panneau est une zone (la plus haute après le menu du lecteur), « ouvert » selon son style (`translateX(0px)`, comme `config.js`), et `estVisible` tient pour invisible tout ce qui est dans le panneau fermé. `js/main.js` : `retourTele` le ferme d'abord (`toggleGlobalStats`). `CACHE_NAME` et `VERSION_APP` à v92.
+  - **Tests** : `test_app_boot` « à la manette, le panneau des statistiques est une fenêtre… » (fiche puis panneau : le focus y passe, Retour le ferme avant la fiche, fermé il n'est jamais atteint ; échoue sans la correction). `npm test` : 139 unitaires ; Playwright 96 passés, 1 ignoré (Chromium préinstallé de la session, configuration hors dépôt).
+  - **Fichiers** : `js/tv-navigation.js`, `js/main.js`, `js/multiview.js`, `sw.js`, `tests/test_app_boot.spec.js`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`.
+  - **Ce qui reste.** Je n'ai pas essayé sur le Chromecast, ni avec une vraie manette ; si le blocage vu était ailleurs (une autre fenêtre, une autre manette), dis laquelle. Pas touché : les boutons de la manette (LB/RB, LT/RT, Y, X) agissent sur le lecteur même quand une fenêtre est ouverte par-dessus lui.
 - 2026-10-28 - **« Ya moyen d'extraire des pages de liens pour vérifier si on garde le vidéo avec le script et cie »**
 
   - **Constaté.** `verify_players.mjs` chargeait chaque page BRUTE dans un cadre, sans le script de nettoyage que l'application fait tourner dans la tuile (lancement sans clic, calques retirés, fenêtres surgissantes bloquées). Deux biais opposés : un lecteur qui attend un clic valait « rien » (et trois essais par hôte suffisent à l'écarter du cache), et une vidéo seulement prête (`readyState` ≥ 2, en pause derrière un calque) valait « joue ».

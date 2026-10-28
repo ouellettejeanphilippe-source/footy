@@ -1875,20 +1875,24 @@ window.retourTele = function() {
     var enqueteur = document.getElementById('investigator-modal');
     var look = document.getElementById('menu-look');
     var choixSource = document.getElementById('mv-flux-selector');
+    var stats = document.getElementById('global-stats-sidebar');
+    var statsOuvert = !!(stats && stats.style.transform === 'translateX(0px)');
     var barre = document.getElementById('nav-links');
     var boutonVue = document.querySelector('#nav-links .nav-btn.active-toggle') || document.getElementById('filter-live');
     var action = actionRetour({
         navVisible: !!(boutonVue && boutonVue.getClientRects().length),
         dansNav: !!(barre && barre.contains(document.activeElement)),
         menuLecteur: menuEstOuvert(),
-        fenetre: !!(choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
+        fenetre: !!(statsOuvert || choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
         fiche: !!(mbg && mbg.classList.contains('open')),
         menuPlus: !!(menu && menu.classList.contains('open')),
         vue: document.body.getAttribute('data-view') === 'player' ? 'player' : (S.filter === 'live' ? 'live' : 'autre')
     });
     if (action === 'menu') fermerMenus();
     else if (action === 'fenetre') {
-        if (choixSource) choixSource.remove();
+        /* Le panneau des statistiques est la plus haute (z-index 999999) : il part d'abord. */
+        if (statsOuvert && typeof window.toggleGlobalStats === 'function') window.toggleGlobalStats();
+        else if (choixSource) choixSource.remove();
         else if (guide) guide.remove();
         else if (enqueteur && enqueteur.style.display === 'flex') { enqueteur.style.display = 'none'; var ic = document.getElementById('investigator-content'); if (ic) ic.innerHTML = ''; }
         else fermerMenuLook();

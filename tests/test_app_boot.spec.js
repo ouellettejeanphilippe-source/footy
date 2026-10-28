@@ -2954,6 +2954,50 @@ test('à la télécommande, « Choisir une autre source » choisit la source ; R
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* « La manette est bloquée par les modals » (28 octobre 2026). Le panneau Scores et
+   statistiques (z-index 999999, au-dessus de la fiche) n'était pas une fenêtre pour la
+   navigation : ouvert depuis la fiche, le focus restait derrière, et Retour fermait la fiche
+   en le laissant. Fermé, il reste dans la page hors de l'écran, et sa croix comptait comme un
+   arrêt. Reproduit d'abord avec une manette simulée sur la vraie application (fiche, puis
+   panneau). */
+test('à la manette, le panneau des statistiques est une fenêtre : le focus y entre, Retour le ferme avant la fiche, fermé il est hors d\'atteinte', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  const dans = (sel) => page.evaluate((s) => !!(document.activeElement && document.activeElement.closest(s)), sel);
+  const ouvert = () => page.evaluate(() => document.getElementById('global-stats-sidebar').style.transform === 'translateX(0px)');
+
+  // Fermé, le panneau est dans la page mais hors de l'écran : jamais un arrêt de la navigation.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('ArrowDown');
+    expect(await dans('#global-stats-sidebar'), 'le panneau fermé n\'a pas le focus (flèche ' + (i + 1) + ')').toBe(false);
+  }
+
+  // La fiche, puis le panneau par-dessus (un logo d'équipe).
+  await page.evaluate(() => window.openMod(window.S.matches.find((x) => (x.streamLinks || []).length >= 2) || window.S.matches[0]));
+  await expect.poll(() => dans('#mbg'), { message: 'le focus entre dans la fiche' }).toBe(true);
+  await page.evaluate(() => window.openGlobalStats('Arsenal'));
+  await expect.poll(() => dans('#global-stats-sidebar'), { message: 'le focus passe dans le panneau, au-dessus de la fiche' }).toBe(true);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  expect(await dans('#global-stats-sidebar'), 'les flèches restent dans le panneau').toBe(true);
+
+  // Retour : le panneau d'abord (la plus haute), la fiche ensuite.
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect(await ouvert(), 'Retour ferme le panneau').toBe(false);
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await expect.poll(() => dans('#mbg'), { message: 'le focus revient dans la fiche' }).toBe(true);
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+
+  // Et sa croix, hors écran, ne reçoit jamais le focus.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('ArrowDown');
+    expect(await dans('#global-stats-sidebar'), 'le panneau refermé n\'a pas le focus (flèche ' + (i + 1) + ')').toBe(false);
+  }
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 /* « Faire que les deux Actuelles soient les vues par défaut de live et guide. Chacune des
    8 variations doit prendre plus large de l'écran… et fait des sections par ligue dans
    LIVE » ; puis « pages plus proches des services de streaming, avec plein écran… dans le
