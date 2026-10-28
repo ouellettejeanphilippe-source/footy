@@ -715,8 +715,10 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   expect(await page.evaluate(() => window.gardeSortieArmee()), 'une vidéo chargée arme la garde, sans attendre de geste : un cadre peut emmener l\'onglet tout seul').toBe(true);
 
   await cadre.locator('#b').click();
-  await page.waitForTimeout(800);
-  expect(dialogues, 'le navigateur demande « Quitter le site ? »').toContain('beforeunload');
+  /* On attend le dialogue, pas 800 ms : sous charge (suite complète, huit exécutions à la fois)
+     il arrivait après le délai, une exécution sur huit (28 octobre 2026) — la garde était là. */
+  await expect.poll(() => dialogues, { message: 'le navigateur demande « Quitter le site ? »', timeout: 8000 }).toContain('beforeunload');
+  await page.waitForTimeout(300);
   expect(page.url(), 'refuser garde l\'application').toContain(origin);
   await expect(page.locator('.mv-cell'), 'et ses vidéos').toHaveCount(1);
   expect(pageErrors).toEqual([]);
@@ -2951,6 +2953,145 @@ test('à la télécommande, « Choisir une autre source » choisit la source ; R
   expect(await page.evaluate(() => window.retourTele())).toBe(true);
   await expect(page.locator('#mv-flux-selector'), 'Retour ferme la fenêtre').toHaveCount(0);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « En multiview, je contrôle rien sur chromecast » (28 octobre 2026). Un lecteur d'une autre
+   origine qui prend le focus (il se le donne, ou le script a cliqué son gros bouton) garde
+   toutes les touches : le cadre couvre l'écran, la navigation aux flèches n'a rien « à droite »
+   ni « en dessous » depuis lui, et la croix de la manette ne faisait plus rien. Sur la télé
+   (APK), où il n'y a ni souris ni clavier, la télécommande n'atteignait même plus
+   l'application. Reproduit avec un VRAI clic dans un faux lecteur d'une autre origine, la
+   manette simulée, puis la classe de la télé. */
+test('en multiview, un lecteur qui a le focus ne prend pas la manette ni la télécommande', async ({ page }) => {
+  await page.addInitScript(() => {
+    const pad = { index: 0, id: 'Manette de test', connected: true, mapping: 'standard', timestamp: 0,
+      buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })), axes: [0, 0, 0, 0] };
+    window.__manette = {
+      appuyer(i) { pad.buttons[i] = { pressed: true, touched: true, value: 1 }; },
+      relacher(i) { pad.buttons[i] = { pressed: false, touched: false, value: 0 }; }
+    };
+    Object.defineProperty(Navigator.prototype, 'getGamepads', { configurable: true, value: () => [pad, null, null, null] });
+  });
+  const pageErrors = await bootOffline(page);
+  const autre = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autre + '/**', (route) => route.continue());
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  await page.evaluate((o) => { window.addToMultivision(o + '/__lecteur-calme', 'Match A', 'mA'); window.openMultiviewTab(); }, autre);
+  await expect(page.locator('.mv-cell iframe')).toHaveCount(1);
+  const sur = (sel) => page.evaluate((s) => !!(document.activeElement && document.activeElement.closest(s)), sel);
+  const cadre = () => page.evaluate(() => document.activeElement && document.activeElement.tagName === 'IFRAME');
+  const cliquerDansLeCadre = async () => {
+    const box = await page.locator('.mv-cell iframe').first().boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  const presser = async (b) => {
+    await page.evaluate((i) => window.__manette.appuyer(i), b);
+    await page.waitForTimeout(250);
+    await page.evaluate((i) => window.__manette.relacher(i), b);
+    await page.waitForTimeout(150);
+  };
+  const DROITE = 15;
+
+  // 1. La manette : le cadre a le focus, la croix ramène aux commandes.
+  await cliquerDansLeCadre();
+  await expect.poll(cadre, { message: 'le clic donne le focus au cadre' }).toBe(true);
+  await presser(DROITE);
+  expect(await sur('#mv-toolbar'), 'la croix ramène le focus à la barre du lecteur').toBe(true);
+  await presser(DROITE);
+  expect(await sur('#mv-toolbar'), 'et la suivante navigue dans la barre').toBe(true);
+
+  // 2. Sur la télé (APK) : le cadre rend le focus, la télécommande atteint l'application.
+  await page.evaluate(() => { document.activeElement.blur(); document.body.classList.add('android-tv'); });
+  await cliquerDansLeCadre();
+  await expect.poll(cadre, { message: 'le cadre prend le focus' }).toBe(false);
+  await page.keyboard.press('ArrowRight');
+  expect(await sur('#mv-toolbar'), 'une flèche de la télécommande atteint la barre').toBe(true);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « La manette est bloquée par les modals » (28 octobre 2026). Le panneau Scores et
+   statistiques (z-index 999999, au-dessus de la fiche) n'était pas une fenêtre pour la
+   navigation : ouvert depuis la fiche, le focus restait derrière, et Retour fermait la fiche
+   en le laissant. Fermé, il reste dans la page hors de l'écran, et sa croix comptait comme un
+   arrêt. Reproduit d'abord avec une manette simulée sur la vraie application (fiche, puis
+   panneau). */
+test('à la manette, le panneau des statistiques est une fenêtre : le focus y entre, Retour le ferme avant la fiche, fermé il est hors d\'atteinte', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  const dans = (sel) => page.evaluate((s) => !!(document.activeElement && document.activeElement.closest(s)), sel);
+  const ouvert = () => page.evaluate(() => document.getElementById('global-stats-sidebar').style.transform === 'translateX(0px)');
+
+  // Fermé, le panneau est dans la page mais hors de l'écran : jamais un arrêt de la navigation.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('ArrowDown');
+    expect(await dans('#global-stats-sidebar'), 'le panneau fermé n\'a pas le focus (flèche ' + (i + 1) + ')').toBe(false);
+  }
+
+  // La fiche, puis le panneau par-dessus (un logo d'équipe).
+  await page.evaluate(() => window.openMod(window.S.matches.find((x) => (x.streamLinks || []).length >= 2) || window.S.matches[0]));
+  await expect.poll(() => dans('#mbg'), { message: 'le focus entre dans la fiche' }).toBe(true);
+  await page.evaluate(() => window.openGlobalStats('Arsenal'));
+  await expect.poll(() => dans('#global-stats-sidebar'), { message: 'le focus passe dans le panneau, au-dessus de la fiche' }).toBe(true);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  expect(await dans('#global-stats-sidebar'), 'les flèches restent dans le panneau').toBe(true);
+
+  // Retour : le panneau d'abord (la plus haute), la fiche ensuite.
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect(await ouvert(), 'Retour ferme le panneau').toBe(false);
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await expect.poll(() => dans('#mbg'), { message: 'le focus revient dans la fiche' }).toBe(true);
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+
+  // Et sa croix, hors écran, ne reçoit jamais le focus.
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('ArrowDown');
+    expect(await dans('#global-stats-sidebar'), 'le panneau refermé n\'a pas le focus (flèche ' + (i + 1) + ')').toBe(false);
+  }
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Sur CCGTV, juste une vidéo, mode câble, plein écran : que Back recule » (28 octobre 2026).
+   Mesuré avant : en mode Cinéma, Retour quittait le lecteur d'un coup (Live) ; en plein écran du
+   navigateur, il envoyait au Live en LAISSANT le plein écran sur la grille cachée. Un pas en
+   arrière à la fois, comme Netflix : d'abord le plein cadre, puis le Live. */
+test('Retour sort du plein écran et du mode Cinéma avant de quitter le lecteur (une vidéo, mode câble)', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const autre = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autre + '/**', (route) => route.continue());
+  await page.evaluate(() => { document.body.classList.add('android-tv'); window.activerNavigationManette(); });
+  await page.evaluate((o) => { window.addToMultivision(o + '/__lecteur-calme', 'Match A', 'mA'); window.openMultiviewTab(); }, autre);
+  await expect(page.locator('.mv-cell')).toHaveCount(1);
+  await page.evaluate(() => { if (!document.getElementById('mv-container').classList.contains('mv-cable')) window.toggleModeCable(); });
+  await expect(page.locator('#mv-container')).toHaveClass(/mv-cable/);
+  const etat = () => page.evaluate(() => ({
+    vue: document.body.dataset.view,
+    cinema: !!document.querySelector('.mv-theater'),
+    plein: !!document.fullscreenElement
+  }));
+
+  // Mode Cinéma : un Retour en sort, le lecteur reste ; le suivant va au Live.
+  await page.evaluate(() => window.toggleTheaterMode());
+  expect(await etat()).toEqual({ vue: 'player', cinema: true, plein: false });
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect(await etat(), 'Retour sort du mode Cinéma et reste dans le lecteur').toEqual({ vue: 'player', cinema: false, plein: false });
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect((await etat()).vue, 'le Retour suivant mène au Live').toBe('live');
+
+  // Plein écran du navigateur : Retour en sort aussi, au lieu de le laisser sur une grille cachée.
+  await page.evaluate(() => window.openMultiviewTab());
+  await expect.poll(async () => (await etat()).vue).toBe('player');
+  await page.locator('#mv-grid-wrapper').evaluate((e) => e.requestFullscreen());
+  await expect.poll(async () => (await etat()).plein, { message: 'le lecteur est en plein écran' }).toBe(true);
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect.poll(async () => (await etat()).plein, { message: 'Retour sort du plein écran' }).toBe(false);
+  expect((await etat()).vue, 'et reste dans le lecteur').toBe('player');
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect((await etat()).vue).toBe('live');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 

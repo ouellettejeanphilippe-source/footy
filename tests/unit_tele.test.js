@@ -38,6 +38,9 @@ async function main() {
   assert.strictEqual(tele.actionRetour({ menuLecteur: true, fiche: true, vue: 'autre' }), 'menu');
   assert.strictEqual(tele.actionRetour({ fiche: true, menuPlus: true }), 'fiche');
   assert.strictEqual(tele.actionRetour({ menuPlus: true, vue: 'autre' }), 'plus');
+  assert.strictEqual(tele.actionRetour({ pleinCadre: true, vue: 'player' }), 'plein', 'plein écran du lecteur : on en sort, on ne quitte pas le lecteur');
+  assert.strictEqual(tele.actionRetour({ pleinCadre: true, menuLecteur: true, vue: 'player' }), 'menu', 'un menu ouvert dans le plein écran part d\'abord');
+  assert.strictEqual(tele.actionRetour({ vue: 'player' }), 'live', 'sorti du plein écran, le suivant mène au Live');
   assert.strictEqual(tele.actionRetour({ vue: 'autre' }), 'live');
   assert.strictEqual(tele.actionRetour({ vue: 'live' }), 'quitter');
   assert.strictEqual(tele.actionRetour({ fenetre: true, fiche: true }), 'fenetre', 'le guide ou le menu Look, par-dessus la fiche');

@@ -103,14 +103,16 @@ export function getEspnPath(leagueName) {
     return path;
 }
 
+/* Formateur construit une fois (voir getEstDateStrFromDate, js/config.js). */
+var formatDateEspn = null;   // paresseux : cycle d'imports (voir getEstDateStrFromDate)
 export function getEspnDateStr(d) {
-  var formatter = new Intl.DateTimeFormat('en-CA', {
+  if (!formatDateEspn) formatDateEspn = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/New_York',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
   });
-  return formatter.format(d).replace(/-/g, '');
+  return formatDateEspn.format(d).replace(/-/g, '');
 }
 
 /* Santé des appels à ESPN, par appareil.

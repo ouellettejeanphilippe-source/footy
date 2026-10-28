@@ -60,7 +60,8 @@ export function reglagesImposesADefaire(lire) {
 
 /* La touche Retour (et le B de la manette), du plus proche au plus loin : un menu, une
    fenêtre (le guide des scripts, l'enquêteur, le menu Look), la fiche d'un match, le
-   menu « Plus » ; puis, comme sur Netflix, la barre de navigation (« donner accès facile
+   menu « Plus » ; le plein écran ou le mode Cinéma du lecteur (un seul pas en arrière : on reste dans
+   le lecteur, 28 octobre 2026) ; puis, comme sur Netflix, la barre de navigation (« donner accès facile
    aux boutons pour changer la vue », 25 octobre 2026) : le focus y va, sauf depuis le
    lecteur, qui revient au Live ; puis le retour au Live ; sur le Live, on quitte.
    `vue` : 'live', 'player' ou 'autre'. */
@@ -70,6 +71,7 @@ export function actionRetour(etat) {
     if (e.fenetre) return 'fenetre';
     if (e.fiche) return 'fiche';
     if (e.menuPlus) return 'plus';
+    if (e.pleinCadre) return 'plein';
     if (e.navVisible && !e.dansNav && e.vue !== 'player') return 'nav';
     if (e.vue && e.vue !== 'live') return 'live';
     return 'quitter';

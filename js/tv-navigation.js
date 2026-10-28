@@ -61,10 +61,24 @@
     /* Les fenêtres qui gardent le focus, de la plus haute à la plus basse : le menu du
        lecteur (js/mv-menu.js), le choix d'une source (showFluxSelector), le guide des scripts, l'enquêteur, la fiche d'un match,
        le menu Look, le menu ⋯ Plus. */
-    const ZONES = ['.mv-menu', '#mv-flux-selector', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look', '#main-menu.open'];
+    const ZONES = ['.mv-menu', '#global-stats-sidebar', '#mv-flux-selector', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look', '#main-menu.open'];
+
+    /* « La manette est bloquée par les modals » (28 octobre 2026). Le panneau Scores et
+       statistiques (#global-stats-sidebar, z-index 999999 : au-dessus de tout, fiche
+       comprise) n'était pas une fenêtre : ouvert depuis la fiche (un logo d'équipe), le
+       focus restait dans la fiche, derrière lui, et Retour fermait la fiche en laissant le
+       panneau. Fermé, il reste dans la page, poussé hors de l'écran (translateX(100%)) : sa
+       croix comptait comme un arrêt visible (largeur > 0) et le focus pouvait s'y perdre.
+       Il est ouvert quand son style le dit (config.js : `translateX(0px)`), pas selon sa
+       géométrie, qui change pendant l'animation. */
+    function dansPanneauFerme(el) {
+        const p = el.closest ? el.closest('#global-stats-sidebar') : null;
+        return !!p && p.style.transform !== 'translateX(0px)';
+    }
 
     function estVisible(el) {
         if (!el || !el.isConnected) return false;
+        if (dansPanneauFerme(el)) return false;
         const rect = el.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0 && window.getComputedStyle(el).visibility !== 'hidden';
     }

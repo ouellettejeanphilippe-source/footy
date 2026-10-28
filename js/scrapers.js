@@ -1025,9 +1025,11 @@ export function parseVipleague(html) {
 }
 
 /* Décalage (minutes) d'un fuseau IANA par rapport à UTC à une date donnée. */
+var formatsParZone = null;
 export function zoneOffsetMinutes(date, tz) {
     try {
-        var f = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        if (!formatsParZone) formatsParZone = {};   // paresseux : cycle d'imports
+        var f = formatsParZone[tz] || (formatsParZone[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }));
         var p = {};
         f.formatToParts(date).forEach(function(x) { p[x.type] = x.value; });
         var asUTC = Date.UTC(parseInt(p.year, 10), parseInt(p.month, 10) - 1, parseInt(p.day, 10), parseInt(p.hour, 10) % 24, parseInt(p.minute, 10));
