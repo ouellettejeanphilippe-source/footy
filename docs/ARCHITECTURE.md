@@ -1,6 +1,6 @@
 # Architecture de Guide des Sports
 
-Référence technique, organisée par sujet. Elle décrit le code tel qu'il est ; l'histoire des décisions, datée et argumentée, est dans [WORKLOG.md](WORKLOG.md). Ce que l'interface montre est décrit dans [FEATURES.md](../FEATURES.md), la prise en main dans le [README](../README.md).
+Référence technique, organisée par sujet. Elle décrit le code tel qu'il est ; l'histoire des décisions, datée et argumentée, est dans [WORKLOG.md](WORKLOG.md) ; ce qui a été trouvé ailleurs et pas fait, dans [PISTES.md](PISTES.md). Ce que l'interface montre est décrit dans [FEATURES.md](../FEATURES.md), la prise en main dans le [README](../README.md).
 
 ## 1. Vue d'ensemble
 
