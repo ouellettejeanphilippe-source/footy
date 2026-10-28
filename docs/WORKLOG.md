@@ -7,6 +7,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-28 - **« Chercher sur github comment rendre plusieurs rapide et meilleur qualité taux de fonctionnement des streams, ainsi que bien meilleure performance sur ccgtv »**
+
+  - **Cherché** (recherche web restreinte à github.com : hls.js, Media3, WebView Android TV, vérificateurs IPTV, multivisions). Le lecteur natif est déjà réglé comme le font les projets lus ; les gains sont dans le mode direct, la vérification et la WebView de la télé.
+  - **Fait.** `docs/PISTES.md`, section « Vitesse, qualité, taux de lecture et CCGTV » : 15 pistes en quatre groupes (CCGTV, hls.js, taux de lecture, lecteur natif), chacune reliée au code qu'elle toucherait et à sa source, avec un ordre proposé. Rien d'intégré (« Intègre rien sans mon aval »).
+  - **Vu en chemin.** La première idée retenue (ne pas redessiner la grille cachée pendant le lecteur) existait déjà (`grilleCachee`, 25 octobre) : la piste est devenue « la passe de chargement rend la main », le gel de 0,4 à 0,5 s par passe venant de la passe elle-même.
+  - **Fichiers** : `docs/PISTES.md`, `docs/WORKLOG.md`. Aucun fichier de l'application touché : pas de bump de `CACHE_NAME`.
+  - **Ce qui reste.** Chaque piste attend un « go ». Ordre proposé : A.2, B.6 + B.7, A.1 avec C.11, C.10.
 - 2026-10-28 - **« Aussi, quand ya des modals, l'interface gèle, j'hais ça. Genre les x domaines sont pas rejoignables, chargement etc. Mais ça marche nickel avec Firefox »** (PC, Vivaldi)
 
   - **Cherché, pas reproduit.** Aucune boîte de dialogue du navigateur (`alert`, `confirm`) dans le code : les « modals » sont la fiche, le toast « Sources injoignables », les fenêtres du lecteur et le chargement. Chromium sans écran, lecteur à deux vidéos animées : la fiche ou le choix de source ouverts, aucune tâche longue, 60 images par seconde. Un vrai chargement avec le réseau : deux tâches longues, 151 ms en tout ; mais les sources ne répondent pas d'ici comme chez l'utilisateur. Le processus graphique, lui, travaille un sixième de plus avec le flou du choix de source ouvert sur les vidéos (51 % d'un cœur contre 44 %, rendu logiciel). La télé avait perdu ce flou le 25 octobre pour la même raison (styles.css §15).
