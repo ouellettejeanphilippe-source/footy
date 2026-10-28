@@ -1,15 +1,16 @@
 name: Veille des liens
 
-# « Check à 6h Toronto ? » (28 octobre 2026). GitHub ne connaît que l'UTC : 6 h à
-# Toronto, c'est 10:00 UTC à l'heure avancée et 11:00 UTC à l'heure normale. Les deux
-# créneaux sont posés ; l'autre tombe à 5 h ou 7 h et ne fait rien si les liens sont
-# frais. Minute 6 pour éviter la congestion des runners à l'heure pile. Le cron est
+# « Check à 6h Toronto ? » puis « 18h » (28 octobre 2026) : avant les matchs du jour, et
+# avant ceux du soir. GitHub ne connaît que l'UTC : 6 h et 18 h à Toronto, c'est 10:00
+# et 22:00 UTC à l'heure avancée, 11:00 et 23:00 UTC à l'heure normale. Les quatre
+# créneaux sont posés ; ceux de l'autre saison tombent une heure à côté et ne font rien
+# si les liens sont frais. Minute 6 pour éviter la congestion des runners à l'heure pile. Le cron est
 # retardé ou sauté par GitHub comme les autres (.github/workflows/scrape_streams.yml le
 # documente) : c'est un filet, pas une horloge.
 on:
   schedule:
-    - cron: '6 10 * * *'
-    - cron: '6 11 * * *'
+    - cron: '6 10,22 * * *'
+    - cron: '6 11,23 * * *'
   workflow_dispatch:
 
 permissions:

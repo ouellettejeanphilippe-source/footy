@@ -1,7 +1,7 @@
 /* Veille des liens sans service externe (28 octobre 2026, « Je veux pas faire rien
    d'externe ») : scripts/age_liens.mjs dit l'âge de data/streams.json, et le job `veille`
    de .github/workflows/veille_liens.yml relance la chaîne des liens d'après sa réponse,
-   à 6 h de Toronto (« Check à 6h Toronto ? »). Sans réseau, sans GitHub : le script est appelé sur des fichiers fabriqués, et
+   à 6 h et 18 h de Toronto (« Check à 6h Toronto ? », « 18h »). Sans réseau, sans GitHub : le script est appelé sur des fichiers fabriqués, et
    le workflow est lu comme du texte. */
 const assert = require('assert');
 const fs = require('fs');
@@ -60,10 +60,10 @@ async function main() {
     assert.ok(veille.length > 20, 'le job veille existe');
     assert.ok(!/needs:|always\(\)/.test(veille), 'il a son propre cron, il ne suit plus le calendrier');
     assert.ok(!/veille/.test(fs.readFileSync(CALENDRIER, 'utf8')), 'le workflow du calendrier n\'en porte plus de copie');
-    /* 6 h à Toronto : 10:00 UTC à l'heure avancée, 11:00 UTC à l'heure normale ; les deux
-       créneaux, hors de l'heure pile. */
+    /* 6 h et 18 h à Toronto : 10:00 et 22:00 UTC à l'heure avancée, 11:00 et 23:00 UTC à
+       l'heure normale ; les deux saisons, hors de l'heure pile. */
     const crons = [...source.matchAll(/cron:\s*'([^']+)'/g)].map((m) => m[1]);
-    assert.deepStrictEqual(crons, ['6 10 * * *', '6 11 * * *'], '6 h de Toronto, été comme hiver');
+    assert.deepStrictEqual(crons, ['6 10,22 * * *', '6 11,23 * * *'], '6 h et 18 h de Toronto, été comme hiver');
     assert.ok(/workflow_dispatch/.test(source), 'et à la demande');
     assert.ok(/vars\.SCRAPE_RELAIS != 'off'/.test(veille), 'il respecte l\'arrêt volontaire du relais');
     assert.ok(/actions:\s*write/.test(veille) && /contents:\s*read/.test(veille), 'il relance un workflow et ne commite rien');
