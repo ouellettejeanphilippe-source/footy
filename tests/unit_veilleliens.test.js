@@ -50,20 +50,24 @@ async function main() {
     assert.strictEqual(mod.ageDuCache('{"generatedAt":"2026-10-29T08:59:00Z"}', Date.parse(MAINTENANT)).perime, true, '181 min : périmé');
     ok('ageDuCache : le seuil est strict, et importable');
 
-    // ── 3. Le workflow : un job de veille après le calendrier, qui ne fait rien échouer ─
+    // ── 3. Le workflow : un job de veille qui relance la chaîne, sans rien d'externe ──
+    /* « Je veux pas le faire manuellement » : pas d'issue à lire, pas de clic. Liens périmés
+       → relance de scrape_streams.yml, sauf si un passage est déjà en route ou en attente
+       (le cron des liens a pu reprendre de lui-même) ou si le relais est arrêté exprès. */
     const source = fs.readFileSync(WORKFLOW, 'utf8');
     const veille = source.slice(source.indexOf('\n  veille:'));
     assert.ok(veille.length > 20, 'le job veille existe');
     assert.ok(/needs:\s*scrape/.test(veille) && /if:\s*always\(\)/.test(veille), 'il suit le calendrier, même échoué');
-    assert.ok(/issues:\s*write/.test(veille) && /contents:\s*read/.test(veille), 'il écrit des issues et ne commite rien');
+    assert.ok(/vars\.SCRAPE_RELAIS != 'off'/.test(veille), 'il respecte l\'arrêt volontaire du relais');
+    assert.ok(/actions:\s*write/.test(veille) && /contents:\s*read/.test(veille), 'il relance un workflow et ne commite rien');
     assert.ok(/node scripts\/age_liens\.mjs data\/streams\.json/.test(veille), 'il lit l\'âge par le script');
-    assert.ok(/gh issue create/.test(veille) && /gh issue comment/.test(veille) && /gh issue close/.test(veille),
-        'il ouvre, commente ou ferme une issue');
-    assert.ok(veille.indexOf('gh issue list') < veille.indexOf('gh issue create'), 'il cherche l\'issue ouverte avant d\'en créer une');
-    assert.ok(!/scrape_schedule\.mjs|scrape_streams\.mjs|git-auto-commit/.test(veille), 'il ne produit ni ne commite rien');
-    assert.strictEqual((veille.match(/\|\| true/g) || []).length >= 4, true, 'chaque appel à GitHub est toléré en échec');
+    assert.strictEqual((veille.match(/gh workflow run scrape_streams\.yml --ref main/g) || []).length, 1, 'il relance la chaîne des liens, une fois');
+    assert.ok(veille.indexOf('gh run list') < veille.indexOf('gh workflow run'), 'il vérifie d\'abord qu\'aucun passage n\'est déjà en route');
+    assert.ok(veille.indexOf('perime') < veille.indexOf('gh run list'), 'et avant cela que les liens sont bien périmés');
+    assert.ok(!/gh issue|scrape_schedule\.mjs|scrape_streams\.mjs|git-auto-commit/.test(veille), 'ni issue, ni production, ni commit');
+    assert.ok(!/exit 1/.test(veille) && /::warning::/.test(veille), 'une relance impossible est un avertissement, pas un échec du passage');
     assert.ok(!/healthchecks|hc-ping|workers\.dev/i.test(source), 'rien d\'externe à GitHub');
-    ok('scrape_schedule.yml : le job veille, après le calendrier, sans rien d\'externe ni rien qui échoue');
+    ok('scrape_schedule.yml : le job veille relance la chaîne des liens, sans issue, sans rien d\'externe ni rien qui échoue');
 
     fs.rmSync(dossier, { recursive: true, force: true });
     console.log(`unit_veilleliens: ${n} groupes de tests OK`);
