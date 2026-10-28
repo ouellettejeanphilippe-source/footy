@@ -118,29 +118,6 @@ jobs:
           skip_fetch: true
           skip_checkout: true
 
-      # ══ SURVEILLANCE : un ping quand le cache est publié ═════════════════════════
-      # La chaîne des 30 minutes s'est déjà arrêtée sans prévenir (cron mort du 20
-      # septembre au 9 octobre 2026, relance en HTTP 500 le 6 octobre : liens figés deux
-      # jours et demi), et on l'a appris par le bandeau « Liens datant de 9 h » un jour de
-      # match. Un service « dead man's switch » (Healthchecks.io ou équivalent) attend un
-      # ping toutes les 30 min et prévient quand il manque ; on lui envoie le ping ICI,
-      # juste après le commit du cache, pas en fin de passage : la vérification des
-      # lecteurs peut traîner cinq minutes, et ce qu'on surveille c'est la fraîcheur des
-      # liens publiés, pas la fin du passage. Sans le secret HC_PING_URL, l'étape ne fait
-      # rien ; une panne du service de surveillance ne fait pas échouer le passage.
-      # Mise en place : Settings → Secrets and variables → Actions → New repository secret
-      # HC_PING_URL = l'adresse de ping du contrôle (période 30 min, grâce 20 min).
-      - name: Ping the watchdog once the cache is published
-        env:
-          HC_PING_URL: ${{ secrets.HC_PING_URL }}
-        continue-on-error: true
-        run: |
-          if [ -z "$HC_PING_URL" ]; then
-            echo "Pas de secret HC_PING_URL : surveillance désactivée"
-            exit 0
-          fi
-          curl -fsS -m 10 --retry 3 -o /dev/null "$HC_PING_URL" && echo "Surveillance prévenue : cache publié"
-
       # Verification observee des lecteurs (scripts/verify_players.mjs) : un vrai
       # Chromium charge les lecteurs des matchs en direct et note ce qui joue
       # (`verified` par lien, `hostPlay` par hote, `verifiedAt`). Le navigateur est
@@ -171,19 +148,6 @@ jobs:
           file_pattern: "data/streams.json data/tv.json"
           skip_fetch: true
           skip_checkout: true
-
-      # Le passage a échoué avant de publier (sources, rebase, commit) : on le dit tout de
-      # suite à la surveillance, avec l'adresse du passage, plutôt que d'attendre que le
-      # ping manque. Les étapes de vérification sont en continue-on-error : elles ne
-      # passent jamais par ici.
-      - name: Tell the watchdog the run failed
-        if: failure()
-        env:
-          HC_PING_URL: ${{ secrets.HC_PING_URL }}
-        continue-on-error: true
-        run: |
-          [ -n "$HC_PING_URL" ] || exit 0
-          curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "Passage échoué : $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" "$HC_PING_URL/fail" || true
 
   # ══ RELAIS : deux passages par heure, malgré le cron ═══════════════════════════
   # GitHub retarde ou saute les crons fréquents (cinq à six exécutions par jour au lieu
