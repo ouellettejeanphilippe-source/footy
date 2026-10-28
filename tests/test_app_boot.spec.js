@@ -2492,10 +2492,18 @@ test('le lecteur n\'a qu\'une barre : les vidéos, la vidéo choisie, le lecteur
   const place = await page.evaluate(() => {
     const c = document.getElementById('mv-container');
     const r = c.getBoundingClientRect();
-    return { position: getComputedStyle(c).position, haut: Math.round(r.top), bas: Math.round(r.bottom), entete: Math.round(document.getElementById('app-header').getBoundingClientRect().bottom), vh: innerHeight };
+    /* Le bandeau « Liens datant de… » (#bandeau-cache) se pose entre l'en-tête et la page quand
+       le cache des liens paraît vieux à l'instant GELÉ du test : son âge dépend de l'heure du
+       dernier passage du serveur, qui republie toutes les 30 minutes (28 octobre 2026 : 9 h 34,
+       le conteneur à 109 px au lieu de 56, sur main aussi). Le test mesure « dans le flux, sous
+       ce qui le précède », pas l'âge du cache : le dessus est l'en-tête, ou le bandeau s'il est là. */
+    const bandeau = document.getElementById('bandeau-cache');
+    const bandeauVisible = !!bandeau && getComputedStyle(bandeau).display !== 'none' && bandeau.getBoundingClientRect().height > 0;
+    const dessus = Math.round((bandeauVisible ? bandeau : document.getElementById('app-header')).getBoundingClientRect().bottom);
+    return { position: getComputedStyle(c).position, haut: Math.round(r.top), bas: Math.round(r.bottom), entete: dessus, vh: innerHeight };
   });
   expect(place.position, 'pas une couche fixée par-dessus la page').not.toBe('fixed');
-  expect(place.haut, 'sous l\'en-tête').toBe(place.entete);
+  expect(place.haut, 'sous l\'en-tête (et le bandeau du cache, s\'il est affiché)').toBe(place.entete);
   expect(place.bas, 'jusqu\'au bas de la fenêtre').toBe(place.vh);
 
   /* Les tuiles : leur numéro et la croix ; ni nom, ni source, ni ⋮ (dans la barre : « pas
