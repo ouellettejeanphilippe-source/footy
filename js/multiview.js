@@ -4033,6 +4033,24 @@ export function toggleTheaterMode(elem) {
   }
 }
 
+/* Le lecteur occupe tout l'écran : plein écran du navigateur, ou mode Cinéma (plein cadre dans
+   la page). Retour (js/main.js, retourTele) en sort d'abord, comme Netflix : avant, il envoyait
+   au Live et laissait le plein écran du navigateur sur une grille cachée (28 octobre 2026, « sur
+   CCGTV, une vidéo, mode câble, plein écran : Back recule »). */
+export function pleinCadreActif() {
+    var fs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+    return !!fs || !!document.querySelector('.mv-theater');
+}
+export function quitterPleinCadre() {
+    var fait = false;
+    if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+        toggleFullscreen();   // sa branche de sortie ne regarde pas l'élément
+        fait = true;
+    }
+    if (quitterModeCinema()) fait = true;
+    return fait;
+}
+
 export function toggleFullscreen(elem) {
   elem = elem || document.documentElement;
   if (!document.fullscreenElement && !document.mozFullScreenElement &&
@@ -5842,6 +5860,8 @@ window.toggleTheaterMode = toggleTheaterMode;
 window.quitterModeCinema = quitterModeCinema;
 window.quitterPleinEcranLecteur = quitterPleinEcranLecteur;
 window.toggleFullscreen = toggleFullscreen;
+window.pleinCadreActif = pleinCadreActif;
+window.quitterPleinCadre = quitterPleinCadre;
 window.openFlux = openFlux;
 window.toggleDirectMode = toggleDirectMode;
 /* Appelée par la couche native Android (BloqueurWebViewClient.java) quand elle voit

@@ -7,6 +7,13 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-28 - **« Aussi, sur CCGTV, juste une vidéo, mode câble, plein écran que Back recule »** (lu : que Retour fasse UN pas en arrière, comme Netflix)
+
+  - **Mesuré** (une vidéo, mode câble, `body.android-tv`). Mode Cinéma : `retourTele` mène d'un coup au Live (le lecteur est quitté). Plein écran du navigateur : il mène au Live ET laisse `document.fullscreenElement` posé sur la grille cachée. `actionRetour` ne connaissait pas le plein cadre.
+  - **Fait.** `actionRetour` (`js/tele.js`) : `pleinCadre` après le menu Plus et avant la barre de navigation ; `retourTele` (`js/main.js`) sort du plein cadre (`quitterPleinCadre`, `js/multiview.js` : plein écran du navigateur et mode Cinéma) et reste dans le lecteur ; le Retour suivant mène au Live, puis quitte. Un menu ou une fenêtre ouverts dans le plein écran partent d'abord. La manette (B) et la touche Retour d'Android passent par le même chemin.
+  - **Tests** : `unit_tele` (priorités), `test_app_boot` « Retour sort du plein écran et du mode Cinéma avant de quitter le lecteur » (échoue sans la correction ; 3 exécutions sur 3). `npm test` : 140 unitaires ; Playwright 98 passés, 1 ignoré (Chromium préinstallé de la session, configuration hors dépôt).
+  - **Fichiers** : `js/tele.js`, `js/main.js`, `js/multiview.js`, `tests/unit_tele.test.js`, `tests/test_app_boot.spec.js`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`.
+  - **Ce qui reste.** Si « Back recule » voulait dire autre chose — revenir à la chaîne PRÉCÉDENTE en mode câble, comme la touche « Last » d'un décodeur — ce n'est pas fait : à dire. Pas essayé sur le Chromecast : l'APK peut gérer le plein écran HTML5 lui-même (`WebChromeClient`), à vérifier.
 - 2026-10-28 - **« Ça gèle beaucoup et souvent dans l'APK sur CCGTV »**
 
   - **Mesuré** (Chromium, processeur ralenti six fois, 960 px, `body.android-tv`, navigation TV active ; réseau coupé, donc le calcul seul). Veille de 12 s : 0 à 1 tâche longue (72 ms au plus), avec ou sans la navigation à la télécommande. Lecteur à deux tuiles, veille : 0. Dix flèches : 0. La seule vraie pause : `loadAll(true, false)`, la passe complète d'arrière-plan toutes les cinq minutes (`js/main.js`), 414 ms dans le Live et 518 ms PENDANT le lecteur. Le profil de cette passe : plus de la moitié dans `new Intl.DateTimeFormat` (le chiffre exagère : l'horloge simulée de Playwright enveloppe `Intl`) — `minutesUntilStart` construisait un formateur par appel, 399 fois au démarrage, 244 par chargement, 125 par relecture des scores en direct.

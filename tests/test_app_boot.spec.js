@@ -3055,6 +3055,46 @@ test('à la manette, le panneau des statistiques est une fenêtre : le focus y e
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* « Sur CCGTV, juste une vidéo, mode câble, plein écran : que Back recule » (28 octobre 2026).
+   Mesuré avant : en mode Cinéma, Retour quittait le lecteur d'un coup (Live) ; en plein écran du
+   navigateur, il envoyait au Live en LAISSANT le plein écran sur la grille cachée. Un pas en
+   arrière à la fois, comme Netflix : d'abord le plein cadre, puis le Live. */
+test('Retour sort du plein écran et du mode Cinéma avant de quitter le lecteur (une vidéo, mode câble)', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const autre = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autre + '/**', (route) => route.continue());
+  await page.evaluate(() => { document.body.classList.add('android-tv'); window.activerNavigationManette(); });
+  await page.evaluate((o) => { window.addToMultivision(o + '/__lecteur-calme', 'Match A', 'mA'); window.openMultiviewTab(); }, autre);
+  await expect(page.locator('.mv-cell')).toHaveCount(1);
+  await page.evaluate(() => { if (!document.getElementById('mv-container').classList.contains('mv-cable')) window.toggleModeCable(); });
+  await expect(page.locator('#mv-container')).toHaveClass(/mv-cable/);
+  const etat = () => page.evaluate(() => ({
+    vue: document.body.dataset.view,
+    cinema: !!document.querySelector('.mv-theater'),
+    plein: !!document.fullscreenElement
+  }));
+
+  // Mode Cinéma : un Retour en sort, le lecteur reste ; le suivant va au Live.
+  await page.evaluate(() => window.toggleTheaterMode());
+  expect(await etat()).toEqual({ vue: 'player', cinema: true, plein: false });
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect(await etat(), 'Retour sort du mode Cinéma et reste dans le lecteur').toEqual({ vue: 'player', cinema: false, plein: false });
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect((await etat()).vue, 'le Retour suivant mène au Live').toBe('live');
+
+  // Plein écran du navigateur : Retour en sort aussi, au lieu de le laisser sur une grille cachée.
+  await page.evaluate(() => window.openMultiviewTab());
+  await expect.poll(async () => (await etat()).vue).toBe('player');
+  await page.locator('#mv-grid-wrapper').evaluate((e) => e.requestFullscreen());
+  await expect.poll(async () => (await etat()).plein, { message: 'le lecteur est en plein écran' }).toBe(true);
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect.poll(async () => (await etat()).plein, { message: 'Retour sort du plein écran' }).toBe(false);
+  expect((await etat()).vue, 'et reste dans le lecteur').toBe('player');
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  expect((await etat()).vue).toBe('live');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 /* « Faire que les deux Actuelles soient les vues par défaut de live et guide. Chacune des
    8 variations doit prendre plus large de l'écran… et fait des sections par ligue dans
    LIVE » ; puis « pages plus proches des services de streaming, avec plein écran… dans le

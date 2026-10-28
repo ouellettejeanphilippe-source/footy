@@ -1887,6 +1887,7 @@ window.retourTele = function() {
         fenetre: !!(statsOuvert || choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
         fiche: !!(mbg && mbg.classList.contains('open')),
         menuPlus: !!(menu && menu.classList.contains('open')),
+        pleinCadre: document.body.getAttribute('data-view') === 'player' && typeof window.pleinCadreActif === 'function' && window.pleinCadreActif(),
         vue: document.body.getAttribute('data-view') === 'player' ? 'player' : (S.filter === 'live' ? 'live' : 'autre')
     });
     if (action === 'menu') fermerMenus();
@@ -1899,6 +1900,7 @@ window.retourTele = function() {
         else fermerMenuLook();
     }
     else if (action === 'fiche') closeMod();
+    else if (action === 'plein') window.quitterPleinCadre();
     else if (action === 'nav') { window.activerNavigationManette(); boutonVue.focus(); }
     else if (action === 'plus') { if (typeof window.toggleMenu === 'function') window.toggleMenu(); }
     else if (action === 'live') window.applyFilter('live');
