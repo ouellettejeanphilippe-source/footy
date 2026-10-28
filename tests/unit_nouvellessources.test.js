@@ -239,6 +239,39 @@ async function main() {
     ok('watchfooty : matchs avec lecteurs, statut in/pre, instant en millisecondes');
   }
 
+  // ── damitv (28 octobre 2026) ───────────────────────────────────────────
+  {
+    const maintenant = Date.UTC(2026, 9, 28, 20, 0);
+    const s = (h, m) => Math.floor(Date.UTC(2026, 9, 28, h, m) / 1000);
+    const api = JSON.stringify({ success: true, streams: [
+      { category: 'football', id: 1, streams: [
+        { id: 'dl-orenburg-vs-rodina-moskva', name: 'orenburg vs rodina moskva', starts_at: s(19, 0), ends_at: s(21, 0), status: 'live', league: '⚽ russia premier league',
+          sources: [{ source: 'hls', id: 's1', name: 'Server 1', embed: '/embed/?id=dl-orenburg-vs-rodina-moskva' }, { source: 'hls', id: 's2', name: 'Server 2', embed: '/embed/?id=dl-orenburg-vs-rodina-moskva&s=2' }] },
+        { id: 'mm-a-b', name: 'Beltinci vs Triglav', starts_at: s(22, 30), ends_at: s(23, 59), category_name: 'football', embed: '/embed/?id=mm-a-b' },
+        { id: 'fini', name: 'Vieux vs Match', starts_at: s(10, 0), ends_at: s(12, 0), embed: '/embed/?id=fini' },
+        { id: 'loin', name: 'Dans vs Dix jours', starts_at: s(22, 0) + 10 * 86400, embed: '/embed/?id=loin' },
+        { id: 'sans-lien', name: 'Sans vs Lecteur', starts_at: s(21, 0), sources: [] },
+        { id: 'chaine', name: 'Sky Sports Main Event', starts_at: s(19, 0), always_live: true, embed: '/embed/?id=chaine' },
+        { id: 'sans-heure', name: 'Pas vs Heure', embed: '/embed/?id=x' },
+        { id: 'dl-autre-jour', name: 'tyson fury vs anthony joshua fight live on friday, december 11, 2026', starts_at: s(19, 0), embed: '/embed/?id=dl-autre-jour' }
+      ] }
+    ] });
+    const dm = S.parseDamitv(api, 'https://damitv.test/papi/api/streams', maintenant);
+    assert.deepStrictEqual(dm.map((m) => m.homeTeam + ' / ' + m.awayTeam), ['orenburg / rodina moskva', 'Beltinci / Triglav'],
+      'finis depuis plus de 6 h, à plus de 48 h, sans lecteur, chaînes permanentes, sans heure et « Upcoming Events » d\'un autre jour (date dans le nom) écartés');
+    assert.deepStrictEqual(dm[0].streamLinks.map((l) => l.url), ['https://damitv.test/embed/?id=dl-orenburg-vs-rodina-moskva', 'https://damitv.test/embed/?id=dl-orenburg-vs-rodina-moskva&s=2'],
+      'les adresses relatives sont résolues sur le site');
+    assert.deepStrictEqual(dm[0].streamLinks.map((l) => l.name), ['Server 1', 'Server 2']);
+    assert.strictEqual(dm[0].status, 'live');
+    assert.strictEqual(dm[1].status, 'upcoming');
+    assert.strictEqual(dm[0].league, 'Russia Premier League', 'l\'emoji de la ligue est retiré');
+    assert.strictEqual(dm[0].matchUrl, 'https://damitv.test/papi/api/streams', 'le match pointe vers la source : le serveur ne le relit pas');
+    assert.strictEqual(dm[1].streamLinks[0].url, 'https://damitv.test/embed/?id=mm-a-b', 'sans liste de serveurs, l\'embed de l\'événement');
+    assert.ok(S.SOURCES_SERVEUR_SEULEMENT.includes('damitv'), 'API d\'un autre domaine : lue par le serveur seulement');
+    assert.deepStrictEqual(S.parseDamitv('pas du JSON'), []);
+    ok('damitv : un match par événement dans la fenêtre, lecteurs relatifs résolus, chaînes permanentes écartées');
+  }
+
   // ── mybuffstreams et le moteur new-stream-embed ──────────────────────────
   {
     const grille = `<div class="top-tournament"><h2 class="league-name">Upcoming NHL Streams Links</h2><ul class="competitions">

@@ -1,7 +1,7 @@
 import { pad, getLeagueDuration, lg, fetchPage, safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
 import { extractPlayers, canonical, createRegistry } from './extractors.js';
 import { getBridgeStatus } from './embed-bridge.js';
-import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, PPV_URL, DADDYLIVE_URL, WATCHSPORTS_URL, ISPORTSURGE_URL, CRICHD_URL, CDNLIVETV_URL, BINTV_URL, OLYMPICWEB_URL, FBSTREAM_URL, TOTALSPORTEK_URL, WATCHFOOTY_URL, MYBUFFSTREAMS_URL, FREESTREAMS_URL, ROXIESTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague, playLedger } from './config.js';
+import { STREAMEAST_URL, SPORTSURGE_URL, ONHOCKEY_URL, getEstDateStrFromDate, getEstTimeStrFromDate, BUFFSTREAMS_URL, MLBBITE_PLUS_URL, SITE, VIPLEAGUE_URL, METHSTREAMS_URL, STREAMED_URL, FLEXFITNESS_URL, LIVELEAGUES_URL, PPV_URL, DADDYLIVE_URL, WATCHSPORTS_URL, ISPORTSURGE_URL, CRICHD_URL, CDNLIVETV_URL, BINTV_URL, OLYMPICWEB_URL, FBSTREAM_URL, TOTALSPORTEK_URL, WATCHFOOTY_URL, DAMITV_URL, MYBUFFSTREAMS_URL, FREESTREAMS_URL, ROXIESTREAMS_URL, sortFluxLinks, resolveUrl, isMatchPageBlocked, isApiEndpoint, sportOfLeague, playLedger } from './config.js';
 import { formatLeagueName, lgFlag, lgColor, getOfficialTeamName, leagueOfTeamName } from './db.js';
 import { TARGET_DATE } from './api.js';
 import { getTeamInfo, isMatchPair } from './match.js';
@@ -1387,6 +1387,55 @@ export function parseCdnlivetv(json, pageUrl, maintenant) {
             if (!liens.length) return;
             var statut = ecart <= 0 ? 'live' : 'upcoming';
             out.push(matchDeSource('cdnlivetv', ev.tournament || sport, affiche, quand, statut, pageUrl || CDNLIVETV_URL, liens, 'cdn_' + out.length));
+        });
+    });
+    return out;
+}
+
+/* ── damitv (damitv.st, 28 octobre 2026) ─────────────────────────────────────
+   API publique, lecteurs fournis avec la grille, comme ppv :
+     { streams: [ { category, id, streams: [ { id, name, starts_at, ends_at, status,
+         league, category_name, always_live, teams: { home: { name }, away: { name } },
+         sources: [ { id, name, embed: "/embed/?id=…" } ], embed, iframe } ] } ] }
+   `starts_at` / `ends_at` en secondes Unix (un instant). `embed` est une adresse RELATIVE
+   au site : la page de lecteur de DamiTV, qui monte son flux elle-même. Une partie des
+   événements (identifiants « dl-… ») redistribue DaddyLive, qu'on lit déjà ; le reste
+   (« mm-… », les ligues) est à lui. Relevé le 28 octobre 2026 : 446 événements, 184 dans
+   la fenêtre -4 h / +24 h, dont 31 sans aucun lien chez nous. Les chaînes permanentes
+   (`always_live`) n'ont pas de match : écartées. Fenêtre [-6 h, +48 h], comme cdnlivetv.
+   Lue par le script serveur seulement (API d'un autre domaine). */
+export function parseDamitv(json, pageUrl, maintenant) {
+    var data;
+    try { data = JSON.parse(json); } catch (e) { return []; }
+    var cats = data && Array.isArray(data.streams) ? data.streams : [];
+    var base = pageUrl || DAMITV_URL;
+    var now = (maintenant || Date.now()) / 1000;
+    var out = [];
+    cats.forEach(function(c) {
+        (c && Array.isArray(c.streams) ? c.streams : []).forEach(function(ev) {
+            if (!ev || ev.always_live || !(ev.starts_at > 0)) return;
+            /* Les « Upcoming Events » de DaddyLive y arrivent avec l'heure du jour et la date de
+               l'événement dans le NOM (« …fight live on friday, december 11, 2026 »), comme
+               parseDaddylive les écarte : une date complète dans le nom, ce n'est pas un match du jour. */
+            if (/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+20\d\d\b/i.test(String(ev.name || ''))) return;
+            var ecart = ev.starts_at - now;
+            if (ecart < -6 * 3600 || ecart > 48 * 3600) return;
+            var liens = [];
+            var ajouter = function(embed, nom) {
+                if (!embed) return;
+                var url = resolveUrl(String(embed), base);
+                if (!/^https?:\/\//.test(url) || liens.some(function(l) { return l.url === url; })) return;
+                liens.push({ name: nom || 'DamiTV', url: url, source: 'damitv' });
+            };
+            (Array.isArray(ev.sources) ? ev.sources : []).forEach(function(s) { if (s) ajouter(s.embed || s.iframe, s.name); });
+            if (!liens.length) ajouter(ev.embed || ev.iframe, 'DamiTV');
+            if (!liens.length) return;
+            var affiche = separerAffiche(ev.name);
+            if (!affiche && ev.teams && ev.teams.home && ev.teams.away && ev.teams.home.name && ev.teams.away.name) affiche = { home: ev.teams.home.name, away: ev.teams.away.name };
+            if (!affiche || String(affiche.home).length < 2) return;
+            var league = String(ev.league || ev.category_name || c.category || 'Sports').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim() || 'Sports';
+            var statut = ev.ends_at > 0 && ev.ends_at < now ? 'finished' : (ev.starts_at <= now ? 'live' : 'upcoming');
+            out.push(matchDeSource('damitv', league, affiche, new Date(ev.starts_at * 1000), statut, base, liens, 'dami_' + out.length));
         });
     });
     return out;
@@ -3806,6 +3855,7 @@ export var PARSEURS = {
     watchfooty: parseWatchfooty,
     mybuffstreams: parseMybuffstreams,
     freestreams: parseFreestreams,
-    roxiestreams: parseRoxiestreams
+    roxiestreams: parseRoxiestreams,
+    damitv: parseDamitv
 };
-export var SOURCES_SERVEUR_SEULEMENT = ['streamed', 'ppv', 'daddylive', 'cdnlivetv', 'watchfooty'];
+export var SOURCES_SERVEUR_SEULEMENT = ['streamed', 'ppv', 'daddylive', 'cdnlivetv', 'watchfooty', 'damitv'];

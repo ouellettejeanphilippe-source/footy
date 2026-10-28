@@ -56,6 +56,7 @@ export var OLYMPICWEB_URL = 'https://olympicweb.me/home';
 export var FBSTREAM_URL = 'https://fbstream.is/';
 export var TOTALSPORTEK_URL = 'https://total-sportekk.st/daily';   // totalsportek.es y mène
 export var WATCHFOOTY_URL = 'https://api.watchfooty.st/';            // l'API que lit sportsbite.org
+export var DAMITV_URL = 'https://damitv.st/papi/api/streams';          // l'API publique de DamiTV (28 octobre 2026)
 export var MYBUFFSTREAMS_URL = 'https://mybuffstreams.plus/home6';  // buffstreams.ir y mène
 export var FREESTREAMS_URL = 'https://freestreams-live1i.pk/football-streamz5/';   // freestreams-live1h.pk y mène
 export var ROXIESTREAMS_URL = 'https://roxiestreams.su/';
@@ -100,6 +101,7 @@ export var SOURCE_MIRRORS = {
     // ww1.sportsurge.st n'est pas Sportsurge : c'est le gabarit de TotalSportek, sous /all.
     totalsportek: ['https://total-sportekk.st/daily', 'https://totalsportek.es/', 'https://ww1.sportsurge.st/all'],
     watchfooty: ['https://api.watchfooty.st/'],
+    damitv: ['https://damitv.st/papi/api/streams'],
     mybuffstreams: ['https://mybuffstreams.plus/home6'],
     freestreams: ['https://freestreams-live1i.pk/football-streamz5/', 'https://freestreams-live1h.pk/football-streamz5/'],
     roxiestreams: ['https://roxiestreams.su/', 'https://roxiestreams.biz/']   // .cc : certificat expiré
@@ -116,7 +118,8 @@ export var SOURCE_VAR_NAMES = {
     liveleagues: 'LIVELEAGUES_URL', ppv: 'PPV_URL', daddylive: 'DADDYLIVE_URL', watchsports: 'WATCHSPORTS_URL',
     isportsurge: 'ISPORTSURGE_URL', crichd: 'CRICHD_URL', cdnlivetv: 'CDNLIVETV_URL', bintv: 'BINTV_URL',
     olympicweb: 'OLYMPICWEB_URL', fbstream: 'FBSTREAM_URL', totalsportek: 'TOTALSPORTEK_URL',
-    watchfooty: 'WATCHFOOTY_URL', mybuffstreams: 'MYBUFFSTREAMS_URL', freestreams: 'FREESTREAMS_URL', roxiestreams: 'ROXIESTREAMS_URL'
+    watchfooty: 'WATCHFOOTY_URL', mybuffstreams: 'MYBUFFSTREAMS_URL', freestreams: 'FREESTREAMS_URL', roxiestreams: 'ROXIESTREAMS_URL',
+    damitv: 'DAMITV_URL'
 };
 
 /* Change l'URL d'une source (variable exportée, window.*, SCRAPERS_CONFIG) de façon cohérente,
@@ -164,6 +167,7 @@ export function applySourceUrl(id, url) {
         case 'fbstream': FBSTREAM_URL = url; break;
         case 'totalsportek': TOTALSPORTEK_URL = url; break;
         case 'watchfooty': WATCHFOOTY_URL = url; break;
+        case 'damitv': DAMITV_URL = url; break;
         case 'mybuffstreams': MYBUFFSTREAMS_URL = url; break;
         case 'freestreams': FREESTREAMS_URL = url; break;
         case 'roxiestreams': ROXIESTREAMS_URL = url; break;
@@ -548,6 +552,8 @@ export const SCRAPERS_CONFIG = [
     /* API JSON, lecteurs fournis avec la grille, comme ppv : cdnlivetv (derrière
        streamsports99.su) et bintv (bintv.cc, sans heure de coup d'envoi). */
     { name: 'CDN Live TV', url: CDNLIVETV_URL, id: 'cdnlivetv' },
+    // API publique, lecteurs fournis avec la grille, comme ppv (parseDamitv).
+    { name: 'DamiTV', url: DAMITV_URL, id: 'damitv' },
     { name: 'BINTV', url: BINTV_URL, id: 'bintv' },
     /* Même moteur que VIPLeague, une page par sport, heure de Londres (parseOlympicweb) ;
        leurs pages de match portent les flux en boutons data-uri (js/sources/olympicweb.js). */
@@ -1706,6 +1712,7 @@ window.OLYMPICWEB_URL = OLYMPICWEB_URL;
 window.FBSTREAM_URL = FBSTREAM_URL;
 window.TOTALSPORTEK_URL = TOTALSPORTEK_URL;
 window.WATCHFOOTY_URL = WATCHFOOTY_URL;
+window.DAMITV_URL = DAMITV_URL;
 window.MYBUFFSTREAMS_URL = MYBUFFSTREAMS_URL;
 window.FREESTREAMS_URL = FREESTREAMS_URL;
 window.ROXIESTREAMS_URL = ROXIESTREAMS_URL;

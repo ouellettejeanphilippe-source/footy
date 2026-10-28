@@ -167,6 +167,8 @@ Une vidéo : plein cadre. Deux : deux colonnes. Trois : une grande à gauche, de
 
 Le lecteur ne se pose plus sur le Live ni le Guide (9 octobre 2026). Passer à un autre onglet le **masque** : ses vidéos restent chargées (le son continue), et l'onglet **Lecteur**, souligné tant qu'une vidéo tourne, les rend telles quelles, sans rechargement — « si tu quittes le lecteur, ça continue de jouer jusqu'à ton retour » (27 octobre 2026 : c'était déjà le cas, confirmé). Les anciens modes réduits (panneau latéral, fenêtre flottante, barre dans un coin) sont retirés ; pour garder un œil sur un match ailleurs, il reste `🖼 Fenêtre détachée`.
 
+**Dans l'APK, Retour ferme les vidéos** (28 octobre 2026, « pour limiter les ressources ») : la touche Retour (ou B de la manette) qui quitte le lecteur pour le Live les ferme au lieu de les masquer — sur un Chromecast, une vidéo cachée garde son décodeur, sa mémoire et son flux. Sur le site, rien ne change. Les autres façons de quitter (les onglets, LB/RB, Start) masquent comme avant.
+
 Au démarrage de l'application, les vidéos de la séance précédente ne se chargent qu'à la première ouverture du lecteur, pas derrière le guide.
 
 ### 5.3 bis Deux écrans
