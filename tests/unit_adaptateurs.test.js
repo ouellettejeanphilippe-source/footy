@@ -63,22 +63,41 @@ async function main() {
     assert.ok(urls.includes('https://goomdstea.click/stream.php?ch=12'), 'iframeStreams lu : ' + urls.join(' '));
     ok('l\'adaptateur footybite lit les deux formes de sa charge Next.js');
 
-    // ── 3. Le second point d'entrée : filtrer plutôt qu'extraire ─────────────
-    /* VIPLeague ne sert AUCUN lecteur dans son HTML : il charge tout en JavaScript
-       derrière un jeton CSRF. Ce domaine n'apporte donc pas un extracteur mais un filtre
-       sur la récolte du moteur générique — d'où deux points d'entrée au contrat. */
+    // ── 3. VIPLeague : ses serveurs sont des boutons data-uri ─────────────────
+    /* Le lecteur est monté en JavaScript (jeton CSRF lié à l'IP) : rien à extraire de ce côté.
+       Mais la page annonce ses serveurs en `data-uri="/view-live/<sport>/<match>-link-N"`, et
+       l'adaptateur ne les lisait pas — la page de match rendait un seul « lien », l'onglet de
+       navigation « Live Games » (27 octobre 2026). Il fournit maintenant les deux points
+       d'entrée du contrat : extraire les serveurs, filtrer le reste. */
     const vip = registre.adaptateurPour('vipleague.me');
     assert.ok(vip && typeof vip.filtrerLiens === 'function', 'vipleague fournit un filtre');
-    assert.strictEqual(typeof vip.extraireLiens, 'undefined', 'et pas d\'extracteur');
+    assert.strictEqual(typeof vip.extraireLiens, 'function', 'et un extracteur');
+    assert.strictEqual(vip.seulementSesLiens, true, 'les serveurs sont les seules diffusions de la page');
+    const pageVip = `<div class="stream-dropdown">
+      <a class="btn btn-sm me-2 stream-dropdown-item" data-uri="/view-live/football/ceara-vs-goias-link-1" data-open="_self"> Video 1</a>
+      <a class="btn btn-sm me-2 stream-dropdown-item" data-uri="/view-live/football/ceara-vs-goias-link-2" data-open="_self"> Video 2</a>
+      <a class="menu" data-uri="/view-live/football/ceara-vs-goias-link-1">Video 1</a>
+      <a data-uri="/watch-now">Live Games</a>
+      <button data-openuri="|BTN_URL|" data-open="_blank">Play Now in 1080p</button>
+    </div>`;
+    const liensVip = vip.extraireLiens({
+        html: pageVip, doc: new DOMParser().parseFromString(pageVip, 'text/html'),
+        match: { matchUrl: 'https://vipleague.me/now-playing/football/ceara-vs-goias' }, pageText: '', pageLiens: []
+    });
+    assert.deepStrictEqual(liensVip.map((l) => l.name + ' ' + l.url), [
+        'Video 1 https://vipleague.me/view-live/football/ceara-vs-goias-link-1',
+        'Video 2 https://vipleague.me/view-live/football/ceara-vs-goias-link-2'
+    ], 'les deux serveurs, la répétition du menu, l\'onglet « Live Games » et le bouton publicitaire écartés');
     const garde = vip.filtrerLiens([
         { url: 'https://vipleague.me/now-playing/football/a-vs-b' },
         { url: 'https://vipleague.me/vl' },
+        { url: 'https://vipleague.me/watch-now' },
         { url: 'https://pub.exemple.test/banniere' },
         null
     ]).map((l) => l.url);
     assert.deepStrictEqual(garde, ['https://vipleague.me/now-playing/football/a-vs-b'],
-        'seuls les liens du domaine restent, sa page d\'index exclue');
-    ok('un domaine peut n\'apporter qu\'un filtre (VIPLeague)');
+        'seuls les liens du domaine restent, ses pages d\'index et d\'onglet exclues');
+    ok('VIPLeague extrait ses serveurs (data-uri link-N) et filtre le reste');
 
     // ── 3 bis. Liveleagues : extraire ET filtrer ──────────────────────────────
     /* Même moteur que VIPLeague, mais ce domaine annonce ses diffusions en `data-uri`
@@ -114,6 +133,28 @@ async function main() {
     assert.deepStrictEqual(gardeLl, ['https://www.liveleagues.me/fiba/nigeria-w-vs-france-w-1-live-streaming'],
         'seules les diffusions du domaine restent');
     ok('Liveleagues extrait ses diffusions (data-uri) et filtre le reste');
+
+    // ── 3 ter. Liveleagues : la forme refaite du site (ancres href) ───────────
+    /* 27 octobre 2026 : les diffusions ne sont plus des `data-uri` mais des ancres
+       `a.stream-link-item[href]`, le numéro avant le libellé. L'adaptateur ne rendait rien et
+       la fiche n'offrait que « Page du match ». Relevé sur une page en direct. */
+    const pageLl2 = `<div class="stream-link-items">
+      <a href="/copa-libertadores/corinthians-w-vs-santa-fe-w-1-live-streaming" class="stream-link-item"><span class="stream-link-number">1</span> <span class="stream-link-info"><span class="txt">Broadcast</span> <span class="lang"></span> </span><span class="stream-quality">HD</span></a>
+      <a href="/copa-libertadores/corinthians-w-vs-santa-fe-w-2-live-streaming" class="stream-link-item"><span class="stream-link-number">2</span> <span class="stream-link-info"><span class="txt">Broadcast</span> <span class="lang"></span> </span><span class="stream-quality"></span></a>
+      <a href="/copa-libertadores/tag-corinthians-w-live">tag</a>
+      <a href="/copa-libertadores-federation-stream" class="stream-link-item">Copa</a>
+    </div>`;
+    const liensLl2 = ll.extraireLiens({
+        html: pageLl2, doc: new DOMParser().parseFromString(pageLl2, 'text/html'),
+        match: { matchUrl: 'https://liveleagues.st/copa-libertadores/tag-corinthians-w-vs-santa-fe-w-live' },
+        pageText: '', pageLiens: [],
+        aides: { estPageDeMatchOuLigue: () => false, qualite: (t) => (/hd/i.test(t) ? 'HD' : 'SD') }
+    });
+    assert.deepStrictEqual(liensLl2.map((l) => l.name + ' ' + l.quality + ' ' + l.url), [
+        'Broadcast 1 HD https://liveleagues.st/copa-libertadores/corinthians-w-vs-santa-fe-w-1-live-streaming',
+        'Broadcast 2 SD https://liveleagues.st/copa-libertadores/corinthians-w-vs-santa-fe-w-2-live-streaming'
+    ], 'les deux diffusions en ancres href, le numéro replacé après le libellé, la page de ligue écartée');
+    ok('Liveleagues lit aussi sa nouvelle forme (a.stream-link-item[href])');
 
     // ── 4. Aucun adaptateur ne remonte vers le module central ────────────────
     /* Un adaptateur qui importerait js/scrapers.js créerait un cycle : le module central
