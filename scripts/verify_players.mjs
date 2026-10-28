@@ -19,9 +19,12 @@
   Usage : node scripts/verify_players.mjs [--budget-ms N] [--total N]
 */
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { JSDOM } from 'jsdom';
 
 const args = process.argv.slice(2);
+const sansScript = args.includes('--sans-script');   // diagnostic : comparer avec l'ancienne vérification, page brute
 const arg = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
 const BUDGET_MS = arg('--budget-ms', 5 * 60 * 1000);
 const TOTAL = arg('--total', 150);
@@ -86,6 +89,7 @@ if (!targets.length) process.exit(0);
 // ── Observation ───────────────────────────────────────────────────────────────
 const PROBE_ORIGIN = 'https://guide-des-sports.local';
 const probeHtml = (target) => '<!doctype html><html><body style="margin:0;background:#000">'
+    + '<script>window.addEventListener("message",function(e){var d=e.data;if(d&&d.__mv==="video_state"&&d.playing)window.__mvJoue=true;});</script>'
     + '<iframe id="f" src="' + target.replace(/"/g, '&quot;') + '" style="width:100vw;height:100vh;border:0" allow="autoplay; fullscreen"></iframe>'
     + '</body></html>';
 
@@ -99,6 +103,20 @@ const context = await browser.newContext({
     userAgent: USER_AGENT,
     locale: 'en-US'
 });
+/* LA PAGE EST VÉRIFIÉE COMME L'APPLICATION LA MONTRE : AVEC LE SCRIPT (28 octobre 2026,
+   « ya moyen d'extraire des pages de liens pour vérifier si on garde le vidéo avec le script
+   et cie »). Dans une tuile, la page du site tourne sous multiview-cleaner.user.js : il lance
+   la vidéo sans clic (play() appelé, relancé muet si refusé, gros bouton cliqué une fois),
+   retire les calques de publicité et bloque les fenêtres surgissantes. La sonde chargeait la
+   page BRUTE : un lecteur qui attend un clic, ou dont un calque recouvre la vidéo, valait
+   « rien » ici alors qu'il joue dans l'application — et trois essais de ce genre par hôte
+   suffisaient à l'écarter du cache. Le script est injecté dans chaque cadre au début du
+   document (comme @allFrames / @run-at document-start) ; il ne fait rien dans la page de
+   sonde elle-même (window.self === window.top). Son propre signal `video_state` (celui que
+   l'application lit pour la pastille) est relevé : `obs.scriptJoue`. `--sans-script` rend
+   l'ancienne sonde, pour comparer. */
+const SCRIPT_NETTOYEUR = sansScript ? '' : fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'multiview-cleaner.user.js'), 'utf8');
+if (SCRIPT_NETTOYEUR) await context.addInitScript(SCRIPT_NETTOYEUR);
 /* Les pages de cadre sont servies SANS leur refus d'encadrement (sansRefusDeCadre,
    js/playability.js), comme l'APK et l'extension les voient : un lecteur qui porte
    X-Frame-Options ou frame-ancestors valait « bloqué » ici alors qu'il joue là-bas
@@ -143,6 +161,7 @@ async function observe(target) {
         mediaOk: 0,         // ARRIVÉ    — c'est lui qui décide (voir verdictFromObservation)
         mediaEchecs: 0,     // demandé, refusé (403, 404, 5xx)
         videoReady: false,
+        scriptJoue: false,  // le script de nettoyage a signalé une vidéo qui joue (video_state), comme l'application le lit
         frameError: false,
         status: 0,
         sample: '',
@@ -194,6 +213,7 @@ async function observe(target) {
             await page.waitForTimeout(Math.min(1000, WATCH_MS - (Date.now() - debut)));
             const enfant = page.frames().find((f) => f.parentFrame() === page.mainFrame());
             obs.cadreEnErreur = !!enfant && /^chrome-error:/.test(enfant.url());
+            if (!obs.scriptJoue) obs.scriptJoue = !!(await page.evaluate(() => window.__mvJoue).catch(() => false));
             if (obs.mediaOk >= 2) {
                 await lireVideos(page, obs);
                 if (obs.hauteur !== hauteurVue) { hauteurVue = obs.hauteur; stableDepuis = Date.now(); }
@@ -212,7 +232,7 @@ async function observe(target) {
 }
 
 const t0 = Date.now();
-let cursor = 0, done = 0, horsBudget = 0, concluTot = 0;
+let cursor = 0, done = 0, horsBudget = 0, concluTot = 0, parScript = 0;
 const compte = { plays: 0, blocked: 0, none: 0 };
 /* LE REGISTRE REPART DE ZÉRO QUAND LA RÈGLE DU VERDICT A CHANGÉ.
 
@@ -255,6 +275,7 @@ async function worker() {
         const verdict = play.verdictFromObservation(obs);
         compte[verdict]++;
         if (obs.tot) concluTot++;
+        if (obs.scriptJoue) parScript++;
         if (t.ecarte) {
             // Témoin d'un hôte écarté : aucun lien publié à marquer, seulement le registre.
             data.hotesEcartes[t.host].essaiAt = new Date().toISOString();
@@ -308,7 +329,7 @@ log(`verify_players : data/tv.json, ${listeTv.matchs.length} matchs jouables sur
 
 const resume = Object.entries(parHote).sort((a, b) => b[1].tested - a[1].tested).slice(0, 15)
     .map(([h, c]) => `${h} ${c.plays}/${c.tested}`).join(', ');
-log(`verify_players : ${done} cibles observees en ${((Date.now() - t0) / 1000).toFixed(0)} s — joue ${compte.plays}, rien ${compte.none}, bloque ${compte.blocked} (${concluTot} conclues avant les ${play.ATTENTE_LECTEUR_MS / 1000} s)`
+log(`verify_players : ${done} cibles observees en ${((Date.now() - t0) / 1000).toFixed(0)} s — joue ${compte.plays}, rien ${compte.none}, bloque ${compte.blocked} (${concluTot} conclues avant les ${play.ATTENTE_LECTEUR_MS / 1000} s, ${parScript} signalées par le script ${SCRIPT_NETTOYEUR ? 'v' + ((/@version\s+(\S+)/.exec(SCRIPT_NETTOYEUR) || [])[1] || '?') : '(désactivé)'})`
     + (horsBudget ? ` — ${horsBudget} laissees de cote, budget epuise` : ''));
 log('  par hote : ' + resume);
 process.exit(0);

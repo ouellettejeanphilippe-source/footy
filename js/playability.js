@@ -57,8 +57,11 @@ export function tileTarget(link) {
    et les laisser vieillir tout seuls prendrait des semaines pendant lesquelles le
    classement continuerait de se tromper.
 
-   v2 (26 septembre 2026) : la vidéo doit être ARRIVÉE, pas seulement demandée. */
-export var CRITERE_VERDICT = 2;
+   v2 (26 septembre 2026) : la vidéo doit être ARRIVÉE, pas seulement demandée.
+   v3 (28 octobre 2026) : la page est éprouvée SOUS LE SCRIPT de nettoyage, comme dans une
+   tuile (lancement sans clic, calques retirés) ; les compteurs de la page brute sous-estimaient
+   les lecteurs qui attendent un clic. */
+export var CRITERE_VERDICT = 3;
 
 /* Verdict d'une observation en navigateur.
    - `plays`   : un <video> a des données prêtes, ou de la vidéo est vraiment arrivée ;
