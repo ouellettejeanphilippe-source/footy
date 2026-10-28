@@ -7,6 +7,11 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-10-28 - **« Note dans un fichier les autres trucs github pour utilisation future »**
+
+  - **Fait.** `docs/PISTES.md` (nouveau) : les pistes retenues de la recherche du jour (sources officielles NHL et NBA en repli, points ESPN non utilisés, critère de lecteur figé, manifeste capté à la vérification, décalage des scores et fenêtre Picture-in-Picture, outillage de qualité, régularité des crons) et les pistes écartées avec leur raison, sous les trois règles posées ce jour-là (rien d'externe, rien de manuel, rien sans aval). Relié depuis le README (« Où est quoi ») et l'en-tête de `docs/ARCHITECTURE.md`.
+  - **Fichiers** : `docs/PISTES.md` (nouveau), `README.md`, `docs/ARCHITECTURE.md`, `docs/WORKLOG.md`.
+  - **Ce qui reste.** Rien : chaque piste attend un « go ».
 - 2026-10-28 - **« Je veux pas faire rien d'externe » → « Go pour ça » → « Enlève » → « Je veux pas ça, je veux pas le faire manuellement » → « Check à 6h Toronto ? » → « 18h »** (veille des liens : relance automatique de la chaîne, à 6 h et 18 h)
 
   - **Contexte.** Le ping vers Healthchecks (PR #634, fusionnée) demandait un service hors de GitHub : refusé, il reste inerte (sans le secret `HC_PING_URL`, rien ne part). Proposé à la place : un contrôle d'âge dans le passage quotidien du calendrier, qui ne sort pas de GitHub ; accepté. Première forme : ouvrir une issue et relancer à la main ; refusée (« je veux pas le faire manuellement ») : la veille relance la chaîne elle-même.
