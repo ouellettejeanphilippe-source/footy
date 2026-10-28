@@ -156,6 +156,7 @@ Un nouveau domaine à essayer ? `npm run sonder -- streamed.st autre-site.xyz` d
 | `local/` | `pipeline.ps1`, le rattrapage à la main du pipeline de données. |
 | `docs/ARCHITECTURE.md` | La référence technique : modules, flux de données, algorithmes, stockage, conventions. |
 | `docs/WORKLOG.md` | Le journal des changements, daté et argumenté (avant octobre 2026 : `docs/WORKLOG-archive.md`). |
+| `docs/PISTES.md` | Ce que la recherche sur GitHub a trouvé et qui n'est pas fait : pistes retenues, pistes écartées et pourquoi. |
 | `AGENTS.md` | Les règles de travail dans ce dépôt (pour les humains et les agents). |
 
 ### Automatisations
