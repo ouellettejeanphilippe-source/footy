@@ -715,8 +715,10 @@ test('un lecteur qui tente de détourner l\'onglet est retenu par « Quitter le 
   expect(await page.evaluate(() => window.gardeSortieArmee()), 'une vidéo chargée arme la garde, sans attendre de geste : un cadre peut emmener l\'onglet tout seul').toBe(true);
 
   await cadre.locator('#b').click();
-  await page.waitForTimeout(800);
-  expect(dialogues, 'le navigateur demande « Quitter le site ? »').toContain('beforeunload');
+  /* On attend le dialogue, pas 800 ms : sous charge (suite complète, huit exécutions à la fois)
+     il arrivait après le délai, une exécution sur huit (28 octobre 2026) — la garde était là. */
+  await expect.poll(() => dialogues, { message: 'le navigateur demande « Quitter le site ? »', timeout: 8000 }).toContain('beforeunload');
+  await page.waitForTimeout(300);
   expect(page.url(), 'refuser garde l\'application').toContain(origin);
   await expect(page.locator('.mv-cell'), 'et ses vidéos').toHaveCount(1);
   expect(pageErrors).toEqual([]);
@@ -2951,6 +2953,61 @@ test('à la télécommande, « Choisir une autre source » choisit la source ; R
   expect(await page.evaluate(() => window.retourTele())).toBe(true);
   await expect(page.locator('#mv-flux-selector'), 'Retour ferme la fenêtre').toHaveCount(0);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « En multiview, je contrôle rien sur chromecast » (28 octobre 2026). Un lecteur d'une autre
+   origine qui prend le focus (il se le donne, ou le script a cliqué son gros bouton) garde
+   toutes les touches : le cadre couvre l'écran, la navigation aux flèches n'a rien « à droite »
+   ni « en dessous » depuis lui, et la croix de la manette ne faisait plus rien. Sur la télé
+   (APK), où il n'y a ni souris ni clavier, la télécommande n'atteignait même plus
+   l'application. Reproduit avec un VRAI clic dans un faux lecteur d'une autre origine, la
+   manette simulée, puis la classe de la télé. */
+test('en multiview, un lecteur qui a le focus ne prend pas la manette ni la télécommande', async ({ page }) => {
+  await page.addInitScript(() => {
+    const pad = { index: 0, id: 'Manette de test', connected: true, mapping: 'standard', timestamp: 0,
+      buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })), axes: [0, 0, 0, 0] };
+    window.__manette = {
+      appuyer(i) { pad.buttons[i] = { pressed: true, touched: true, value: 1 }; },
+      relacher(i) { pad.buttons[i] = { pressed: false, touched: false, value: 0 }; }
+    };
+    Object.defineProperty(Navigator.prototype, 'getGamepads', { configurable: true, value: () => [pad, null, null, null] });
+  });
+  const pageErrors = await bootOffline(page);
+  const autre = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autre + '/**', (route) => route.continue());
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  await page.evaluate((o) => { window.addToMultivision(o + '/__lecteur-calme', 'Match A', 'mA'); window.openMultiviewTab(); }, autre);
+  await expect(page.locator('.mv-cell iframe')).toHaveCount(1);
+  const sur = (sel) => page.evaluate((s) => !!(document.activeElement && document.activeElement.closest(s)), sel);
+  const cadre = () => page.evaluate(() => document.activeElement && document.activeElement.tagName === 'IFRAME');
+  const cliquerDansLeCadre = async () => {
+    const box = await page.locator('.mv-cell iframe').first().boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  const presser = async (b) => {
+    await page.evaluate((i) => window.__manette.appuyer(i), b);
+    await page.waitForTimeout(250);
+    await page.evaluate((i) => window.__manette.relacher(i), b);
+    await page.waitForTimeout(150);
+  };
+  const DROITE = 15;
+
+  // 1. La manette : le cadre a le focus, la croix ramène aux commandes.
+  await cliquerDansLeCadre();
+  await expect.poll(cadre, { message: 'le clic donne le focus au cadre' }).toBe(true);
+  await presser(DROITE);
+  expect(await sur('#mv-toolbar'), 'la croix ramène le focus à la barre du lecteur').toBe(true);
+  await presser(DROITE);
+  expect(await sur('#mv-toolbar'), 'et la suivante navigue dans la barre').toBe(true);
+
+  // 2. Sur la télé (APK) : le cadre rend le focus, la télécommande atteint l'application.
+  await page.evaluate(() => { document.activeElement.blur(); document.body.classList.add('android-tv'); });
+  await cliquerDansLeCadre();
+  await expect.poll(cadre, { message: 'le cadre prend le focus' }).toBe(false);
+  await page.keyboard.press('ArrowRight');
+  expect(await sur('#mv-toolbar'), 'une flèche de la télécommande atteint la barre').toBe(true);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 

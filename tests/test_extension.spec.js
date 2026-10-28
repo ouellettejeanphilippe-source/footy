@@ -129,8 +129,15 @@ async function lancer(avecExtension) {
 async function cadreDuSite(page) {
   await page.goto(`http://127.0.0.1:${port}/`);
   await page.evaluate((p) => { document.getElementById('tuile').src = `http://127.0.0.2:${p}/lecteur`; }, port);
-  await page.waitForTimeout(1500);
-  return page.frames().find((f) => f.url().includes('127.0.0.2'));
+  /* On attend le cadre, pas un délai : 1,5 s fixes ne suffisaient pas quand la machine était
+     chargée (28 octobre 2026, `cadre` indéfini une fois sur un passage complet, 3 sur 3 réussis
+     seul) — le test mesure ce que fait l'extension, pas la vitesse du chargement. Sans
+     l'extension le cadre est refusé et n'a jamais cette adresse : on rend alors `undefined`
+     au bout de 8 s, ce que le différentiel attend. */
+  const trouve = () => page.frames().find((f) => f.url().includes('127.0.0.2'));
+  for (let i = 0; i < 32 && !trouve(); i++) await page.waitForTimeout(250);
+  await page.waitForTimeout(300);
+  return trouve();
 }
 
 test('sans l\'extension, le site de flux refuse la tuile (le différentiel)', async () => {

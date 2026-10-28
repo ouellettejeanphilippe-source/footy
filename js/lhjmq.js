@@ -28,11 +28,12 @@ export function urlScorebarLhjmq(avant, apres) {
         + '&numberofdaysahead=' + (apres === undefined ? 2 : apres);
 }
 
+var formatPartiesNY = null;
 function partiesNY(d) {
-    var f = new Intl.DateTimeFormat('en-US', {
+    var f = formatPartiesNY || (formatPartiesNY = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/New_York', hourCycle: 'h23',
         year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-    });
+    }));
     var p = {};
     f.formatToParts(d).forEach(function(x) { p[x.type] = x.value; });
     return { date: p.year + '-' + p.month + '-' + p.day, heure: (p.hour === '24' ? '00' : p.hour) + ':' + p.minute };

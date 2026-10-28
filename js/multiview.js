@@ -9,6 +9,7 @@ import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayabilit
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
+import { bilan as bilanFluidite, ligneFluidite, noterArret as noterArretVideo } from './fluidite.js';
 import { BIBLIOTHEQUES, typeDeMedia, configHls, decisionErreurHls, relanceAutorisee, RELANCES_MAX, DELAI_STAGNATION_MS, PERMISSIONS_CADRE } from './lecteurdirect.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
@@ -1941,6 +1942,7 @@ export function setupMultivisionUI() {
             } else if (!joue && s._playing) {
                 s._playing = false;
                 armerRepriseTuile(s, e.data);
+                if (window.__fluidite) noterArretVideo(window.__fluidite.m, e.data && e.data.cause, Date.now());
             }
             rafraichirPastille(idx);
         }
@@ -1958,6 +1960,16 @@ export function setupMultivisionUI() {
                 }
             }
         }, 100);
+        /* Sur la télé (APK), il n'y a ni souris ni clavier : un lecteur qui prend le focus
+           (il s'y donne lui-même, ou le script a cliqué son gros bouton) garde alors TOUTES
+           les touches de la télécommande, qui n'atteignent plus l'application. On reprend le
+           focus, après que le son a suivi la tuile ; la première touche montre les commandes. */
+        setTimeout(function() {
+            var a = document.activeElement;
+            if (document.body.classList.contains('android-tv') && a && a.tagName === 'IFRAME' && a.classList.contains('mv-iframe')) {
+                try { a.blur(); } catch (e) {}
+            }
+        }, 160);
     });
 
     // Auto-hide the exit theater button after 3 seconds
@@ -2097,11 +2109,20 @@ window.resetMvIdleTimer = function() {
        une flèche ou OK n'agit pas à l'aveugle sur un bouton invisible. En mode câble, les
        flèches zappent quand même, comme un décodeur. Retour garde son chemin
        (window.retourTele). En capture : avant la navigation aux flèches. */
+    /* Le focus dans une tuile (28 octobre 2026, « en multiview, je contrôle rien sur
+       chromecast »). Un lecteur d'une autre origine garde ses touches : le cadre est alors
+       l'élément qui a le focus, et la navigation aux flèches n'a nulle part où aller depuis
+       lui (il couvre l'écran : rien « à droite » ni « en dessous »). Les touches que ce
+       gestionnaire voit encore — les flèches et A de la manette, envoyées sur l'élément qui a
+       le focus — ramènent donc le focus aux commandes, comme si elles étaient effacées. */
     window.addEventListener('keydown', function(e) {
         if (document.body.getAttribute('data-view') !== 'player') return;
         var etaientCachees = commandesCachees();
         window.resetMvIdleTimer();
-        if (!etaientCachees) return;
+        var a = document.activeElement;
+        var surCadre = !!(a && a.tagName === 'IFRAME' && a.classList.contains('mv-iframe'));
+        var sansFocus = !a || a === document.body;   // le cadre vient de rendre le focus : rien à suivre
+        if (!etaientCachees && !surCadre && !sansFocus) return;
         var fleche = /^Arrow/.test(e.key);
         if (!(fleche || e.key === 'Enter' || e.key === ' ')) return;
         if (fleche && modeCable) return;
@@ -4940,7 +4961,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v92';
+export var VERSION_APP = 'sports-guide-v93';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5043,6 +5064,12 @@ export function diagnosticAppareilHtml() {
             hotesLocaux.length + ' hôte(s) éprouvé(s) ici · ' + morts.length + ' jugé(s) mort(s) ici (classés en bas pendant 24 h)'
             + (morts.length ? ' : ' + morts.slice(0, 5).map(esc).join(', ') + (morts.length > 5 ? '…' : '') : '')
             + (anciens ? ' · ' + anciens + ' sans essai depuis 24 h (plus de veto)' : ''));
+    }
+    /* Les gels de l'interface et les arrêts de vidéo des dix dernières minutes (js/fluidite.js) :
+       ce que l'appareil a vraiment subi, quand on dit « ça gèle ». */
+    if (window.__fluidite) {
+        var fl = ligneFluidite(bilanFluidite(window.__fluidite.m, Date.now()), window.__fluidite.observe);
+        html += ligne('Fluidité', fl.etat, fl.texte);
     }
     /* La garde contre les redirections, coupée par le menu ⚙ Réglages du lecteur, ne se voyait nulle
        part ailleurs (18 octobre 2026). */

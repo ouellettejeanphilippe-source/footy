@@ -1381,14 +1381,21 @@ export var estFormatter = new Intl.DateTimeFormat('en-GB', {
     minute: 'numeric'
 });
 
+/* Construit UNE fois : `new Intl.DateTimeFormat` coûte ~60 µs contre ~1 µs pour `format` (mesuré
+   sous Node), et `minutesUntilStart` l'appelait pour chaque match, à chaque passe : 399
+   constructions au démarrage, 244 par chargement, 125 par relecture des scores en direct
+   (28 octobre 2026, « ça gèle beaucoup » sur CCGTV). */
+var formatDateEst = null;
 export function getEstDateStrFromDate(d) {
-    var formatter = new Intl.DateTimeFormat('en-CA', {
+    /* Paresseux : ces modules forment un cycle d'imports (AGENTS.md), et la fonction peut être
+       appelée avant que cette ligne ait été évaluée. */
+    if (!formatDateEst) formatDateEst = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/New_York',
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
     });
-    return formatter.format(d);
+    return formatDateEst.format(d);
 }
 
 /* Minutes signées entre maintenant et le coup d'envoi : négatif = déjà commencé.

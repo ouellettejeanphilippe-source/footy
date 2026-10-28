@@ -18,6 +18,7 @@ import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId, majBandeauCache, dispositionChoisie, redessinerDisposition } from './ui.js';
 import { setMatches } from './state.js';
 import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
+import { brancherMoniteur } from './fluidite.js';
 
 /* ══ MAIN ═══════════════════════════════ */
 
@@ -1906,6 +1907,7 @@ window.retourTele = function() {
 
 // Auto-init at boot
 document.addEventListener('DOMContentLoaded', () => {
+    brancherMoniteur(window);
     migrerGuideActuelle();
     const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
     const tvCheckbox = document.getElementById('pref-tv-mode');
