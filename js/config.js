@@ -751,6 +751,7 @@ export function toggleGlobalStats() {
     var sidebar = document.getElementById('global-stats-sidebar');
     if (!sidebar) return;
     sidebar.style.transform = 'translateX(100%)';
+    sidebar.classList.remove('ouvert');
     gstatsHistory = [];
     updateGstatsBackBtn();
 }
@@ -787,6 +788,7 @@ export function openGlobalStatsFromMatch(mid, isBack) {
     if (!m) return;
     var sidebar = document.getElementById('global-stats-sidebar');
     sidebar.style.transform = 'translateX(0px)';
+    sidebar.classList.add('ouvert');
     var content = document.getElementById('gstats-content');
     var title = document.getElementById('gstats-title');
 
@@ -964,6 +966,7 @@ export function openGlobalStatsFromMatch(mid, isBack) {
 export function openGlobalStats(teamName, isBack) {
     var sidebar = document.getElementById('global-stats-sidebar');
     sidebar.style.transform = 'translateX(0px)';
+    sidebar.classList.add('ouvert');
     var content = document.getElementById('gstats-content');
     var title = document.getElementById('gstats-title');
 

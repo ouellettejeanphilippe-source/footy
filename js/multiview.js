@@ -21,7 +21,7 @@ import { brancherManette, tuileVoisine } from './manette.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
-import { estLecteurOfficiel } from './esports.js';
+import { estLecteurOfficiel, exigeVisibiliteTotale } from './esports.js';
 import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml } from './sorties.js';
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 
@@ -1772,7 +1772,11 @@ export function appliquerRepos(grille, barre, cacher) {
     }
     var ovs = grille.querySelectorAll('.mv-idle-overlay');
     for (var j = 0; j < ovs.length; j++) {
-        ovs[j].style.display = cacher ? 'block' : 'none';
+        /* Pas sur un lecteur Twitch : ce calque transparent, posé au repos, suffit à
+           l'arrêter (exigeVisibiliteTotale, js/esports.js). Le pointeur qui revient
+           sur la tuile se voit quand même : `mouseover` sur l'iframe. */
+        var strict = ovs[j].parentElement && ovs[j].parentElement.classList.contains('mv-strict');
+        ovs[j].style.display = (cacher && !strict) ? 'block' : 'none';
         if (cacher) ovs[j].style.pointerEvents = 'auto';
     }
     return hdrs.length;
@@ -2624,6 +2628,9 @@ export function updateMultivisionLayout() {
            au navigateur qu'on s'adresse (extension qui ignore X-Frame-Options, voir la
            page d'installation), pas à la tuile. */
         function fallbackToIframe(url, container, cell, s) {
+            /* Rien par-dessus un lecteur Twitch (exigeVisibiliteTotale, js/esports.js) :
+               la classe suit ce que la tuile porte, posée plus bas avec le cadre. */
+            cell.classList.remove('mv-strict');
             if (s.mode === 'direct') {
                 var mediaDirect = s._media || mediaDirectPour(registreDirect(), url);
                 if (mediaDirect) { poserDirect(mediaDirect, url, container, cell, s); return; }
@@ -2674,6 +2681,7 @@ export function updateMultivisionLayout() {
                    l'utilisateur (« Sandbox detected, please remove sandbox attributes »). Le test
                    « aucune iframe de lecteur ne porte d'attribut sandbox » le verrouille. */
                 container.appendChild(iframe);
+                cell.classList.toggle('mv-strict', exigeVisibiliteTotale(finalUrl));
                 if (!estLecteurOfficiel(finalUrl)) demanderNettoyage(iframe);
 
                 s._posedAt = Date.now(); // pour reconnaître une sortie forcée (pagehide juste après)
@@ -4460,6 +4468,10 @@ export function initPrefs() {
   if (overlayBgs.length > 0) {
       effectOverlay.style.background = overlayBgs.join(', ');
   }
+  /* Vide, il couvrait quand même toute la page, lecteur compris (z-index 9999) : assez
+     pour que le lecteur Twitch se croie caché et refuse de démarrer (28 octobre 2026,
+     exigeVisibiliteTotale, js/esports.js). Il n'existe donc que s'il porte un effet. */
+  effectOverlay.style.display = overlayBgs.length > 0 ? 'block' : 'none';
 
 
   // Btn Shape and Custom Button Styles
@@ -4981,7 +4993,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v95';
+export var VERSION_APP = 'sports-guide-v96';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

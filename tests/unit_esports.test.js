@@ -121,6 +121,15 @@ async function main() {
     });
     ok('estLecteurOfficiel : Twitch et YouTube encadrés, rien d\'autre');
 
+    /* « twitch est brisé? » (28 octobre 2026) : le lecteur Twitch refuse de démarrer, ou
+       s'arrête, dès qu'un élément est peint par-dessus lui. YouTube, non. */
+    assert.ok(E.exigeVisibiliteTotale(E.lienFluxEsports('twitch', 'riotgames', HOTE)));
+    [E.lienFluxEsports('youtube', 'poQCaeQpQu8', HOTE), 'https://www.twitch.tv/riotgames',
+     'https://player.twitch.tv.example.com/?channel=x', '', null, 'pas une adresse'].forEach(function (x) {
+        assert.ok(!E.exigeVisibiliteTotale(x), 'pas strict : ' + x);
+    });
+    ok('exigeVisibiliteTotale : le lecteur Twitch seul');
+
     console.log(`unit_esports: ${n} groupes de tests OK`);
     process.exit(0);
 }

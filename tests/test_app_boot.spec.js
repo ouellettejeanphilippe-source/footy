@@ -877,6 +877,56 @@ test('le mode direct lit le flux par le pont du script, avec le Referer du lecte
    enFeuille). Ce qui la faisait échouer avant : défiler dans la liste la refermait
    (l'écouteur `scroll` ne distinguait pas), et la barre du lecteur s'effaçait au repos,
    si bien que le premier appui sur « Plus » ne faisait que la réveiller. */
+/* « twitch est brisé? » (28 octobre 2026, Vivaldi ; « parfait sur Firefox »). Le lecteur
+   Twitch mesure sa propre visibilité avec l'IntersectionObserver v2, que Chromium a et
+   Firefox non : le moindre élément peint au-dessus de lui (même transparent, même sans
+   clics, même l'ombre d'un panneau hors de l'écran) et il ne démarre pas ; recouvert
+   ensuite, il s'arrête. Avant la correction, cinq éléments suffisaient chacun : l'ombre
+   du panneau des statistiques fermé, le trait de l'onglet actif, le calque d'effets vide,
+   le calque de repos de la tuile, la barre posée sur la vidéo. On fait ici la même
+   mesure que le lecteur, depuis la page, à chaque étape de la vie de la tuile. */
+async function cadreVisible(page) {
+  return page.evaluate(() => new Promise((res) => {
+    const f = document.querySelector('.mv-cell iframe.mv-iframe');
+    const io = new IntersectionObserver((es) => { io.disconnect(); res(es[es.length - 1].isVisible); }, { trackVisibility: true, delay: 100 });
+    io.observe(f);
+  }));
+}
+
+test('rien n\'est peint par-dessus un lecteur Twitch, au démarrage, au repos, avec la barre et un toast', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.route('https://player.twitch.tv/**', (route) => route.fulfill({
+    status: 200, contentType: 'text/html',
+    body: '<!doctype html><body style="margin:0;background:#123"><div id="b" style="color:#fff">lecteur</div></body>'
+  }));
+  await page.evaluate(() => window.addToMultivision('https://player.twitch.tv/?channel=essai&parent=127.0.0.1', 'Match Twitch', 'mT'));
+  await expect(page.frameLocator('.mv-cell iframe.mv-iframe').locator('#b')).toBeVisible();
+  await expect(page.locator('.mv-cell')).toHaveClass(/mv-strict/);
+  await expect(page.locator('.mv-chargement')).toHaveCount(0);
+
+  expect(await cadreVisible(page), 'au démarrage').toBe(true);
+  await page.evaluate(() => window.resetMvIdleTimer());
+  await expect(page.locator('#mv-toolbar')).not.toHaveClass(/mv-cachee/);
+  expect(await cadreVisible(page), 'barre et en-tête de tuile affichés').toBe(true);
+  await expect(page.locator('#mv-toolbar'), 'puis le repos').toHaveClass(/mv-cachee/, { timeout: 6000 });
+  expect(await cadreVisible(page), 'au repos (calque de repos)').toBe(true);
+  await page.evaluate(() => window.showToast('Un message'));
+  await expect(page.locator('#toast')).toHaveClass(/show/);
+  expect(await cadreVisible(page), 'pendant un toast').toBe(true);
+  expect(pageErrors).toEqual([]);
+});
+
+/* Le pendant : sans lecteur Twitch, la présentation façon Netflix reste (barre posée sur
+   la vidéo, 25 octobre 2026). */
+test('sans lecteur Twitch, la barre reste posée sur la vidéo', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => window.addToMultivision(o + '/__lecteur-calme', 'Match calme', 'mC'), origin);
+  await expect(page.locator('.mv-cell')).toHaveCount(1);
+  await expect(page.locator('.mv-cell')).not.toHaveClass(/mv-strict/);
+  expect(await page.locator('#mv-toolbar').evaluate((b) => getComputedStyle(b).position)).toBe('absolute');
+  expect(pageErrors).toEqual([]);
+});
+
 test('sur téléphone, les menus du lecteur sont une feuille qu\'on peut parcourir', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const pageErrors = await bootOffline(page);

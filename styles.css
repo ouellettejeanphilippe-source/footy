@@ -219,7 +219,10 @@ select.btn, .select {
 .nav-btn .nav-ic { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; }
 .nav-btn .nav-ic svg { width: 20px; height: 20px; }
 .nav-btn.active-toggle { color: var(--text) !important; background: rgba(255,255,255,0.1) !important; border: none !important; box-shadow: none !important; }
-.nav-btn.active-toggle::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -10px; height: 2px; border-radius: 2px; background: var(--accent); }
+/* Le trait reste DANS l'en-tête (bas du bouton à 49 px, en-tête de 56) : à -10 px, il
+   débordait de 3 px sur le lecteur, au-dessus de lui — assez pour arrêter Twitch
+   (exigeVisibiliteTotale, js/esports.js). */
+.nav-btn.active-toggle::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -7px; height: 2px; border-radius: 2px; background: var(--accent); }
 /* Lecteur : rouge tant que des flux jouent, pour retrouver la Multivision d'un coup d'œil */
 .nav-btn.has-streams { color: #fff !important; }
 .nav-btn.has-streams .nav-ic { color: var(--red); }
@@ -730,6 +733,21 @@ body[data-view="player"] #epg, body[data-view="player"] .page { display: none !i
    La grille prend toute la hauteur. */
 #mv-container.mv-full #mv-toolbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; min-height: 64px; padding: 30px 16px 14px; background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 55%, rgba(0,0,0,0) 100%); border-bottom: 0; transition: opacity var(--t-med), transform var(--t-med); }
 #mv-container.mv-full #mv-toolbar.mv-cachee { transform: translateY(14px); }
+/* Une tuile Twitch (`mv-strict`) : rien par-dessus la vidéo. Le lecteur Twitch mesure sa
+   visibilité (IntersectionObserver v2, Chrome et Vivaldi) : recouvert, même par la barre
+   ou l'en-tête de tuile, il refuse de démarrer, ou s'arrête. La barre passe donc SOUS la
+   grille et reste affichée, l'en-tête de la tuile passe au-dessus de sa vidéo, et les
+   toasts descendent sur la barre. Voir exigeVisibiliteTotale (js/esports.js). */
+#mv-container.mv-full:has(.mv-cell.mv-strict) #mv-grid-wrapper { order: 1; }
+/* `padding` de 12 px : la rangée des vidéos a une marge de -12 px (de quoi loger l'anneau de
+   focus) et débordait de 4 px sur le bas de la vidéo avec moins. `z-index: auto` : ce qui
+   dépasse encore passe SOUS les tuiles. */
+#mv-container.mv-full:has(.mv-cell.mv-strict) #mv-toolbar { position: relative; z-index: auto; order: 2; min-height: 56px; padding: 12px 16px; background: #000; opacity: 1 !important; transform: none; pointer-events: auto !important; }
+.mv-cell.mv-strict .mv-hdr { position: relative; flex-shrink: 0; background: #000; opacity: 1 !important; }
+.mv-cell.mv-strict .mv-cable-surface { display: none !important; }
+body:has(.mv-cell.mv-strict) .app-header { box-shadow: none; }
+body:has(.mv-cell.mv-strict) #ui-effect-overlay { display: none !important; }
+body[data-view="player"]:has(.mv-cell.mv-strict) .toast { bottom: calc(12px + var(--safe-bottom)); box-shadow: none; }
 #mv-container.mv-full #mv-toolbar .mv-title { color: #fff; font-size: 17px; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 /* Une seule barre (25 octobre 2026, « moins all over the place ») : les vidéos, ce qu'on
    fait à la vidéo choisie, ce qu'on fait au lecteur — trois groupes, de gauche à droite.
@@ -882,7 +900,12 @@ body.manette .mv-hdr-right, body.manette .mv-drag-handle { display: none; }
 }
 
 /* Panneau Scores & Stats */
-.side-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 100%; background: rgba(18, 18, 20, 0.97); border-left: 1px solid var(--border2); transform: translateX(100%); transition: transform var(--t-med) var(--ease); z-index: 999999; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.6); border-radius: 16px 0 0 16px; }
+/* Fermé, le panneau est poussé hors de l'écran, mais son ombre (z-index 999999) restait
+   peinte sur le bord droit de toute la page : Twitch s'y croyait caché et ne démarrait
+   pas (28 octobre 2026, exigeVisibiliteTotale, js/esports.js). Fermé, il n'est donc plus
+   peint du tout, une fois sa sortie animée ; `ouvert` est posé par js/config.js. */
+.side-panel.ouvert { visibility: visible; transition: transform var(--t-med) var(--ease), visibility 0s; }
+.side-panel { visibility: hidden; position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 100%; background: rgba(18, 18, 20, 0.97); border-left: 1px solid var(--border2); transform: translateX(100%); transition: transform var(--t-med) var(--ease), visibility 0s linear var(--t-med); z-index: 999999; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.6); border-radius: 16px 0 0 16px; }
 .side-head { padding: 14px 16px; border-bottom: 1px solid var(--border2); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .side-head-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .side-head h3 { margin: 0; font-size: 17px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1026,6 +1049,7 @@ body[data-view="player"] .toast { bottom: calc(96px + var(--safe-bottom)); }
   .ov { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 16px); right: 50%; transform: translateX(50%); width: calc(100% - 32px); max-width: 400px; padding: 12px 14px; }
   .toast { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 16px); }
   body[data-view="player"] .toast { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 132px); }
+  body[data-view="player"]:has(.mv-cell.mv-strict) .toast { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 12px); }
 
   .page { padding: 14px 12px calc(20px + var(--safe-bottom)); gap: 12px; }
   .page-head h2 { font-size: 19px; }
