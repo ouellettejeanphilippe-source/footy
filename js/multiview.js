@@ -1817,6 +1817,7 @@ export function setupMultivisionUI() {
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo choisie" aria-label="Source précédente"><span class="mv-tb-ic" aria-hidden="true">⏮</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⏭</span><span class="mv-tb-lb">Source<span class="mv-tb-lb-long"> suivante</span></span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-bar-direct" onclick="basculerDirectActif()" title="Basculer entre la page du site et le flux direct" hidden><span class="mv-tb-ic" aria-hidden="true">▶</span><span class="mv-tb-lb">Direct</span></button>'
+      + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">🔊</span><span class="mv-tb-lb mv-tb-lb-tel">Son</span></button>'
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⋮</span><span class="mv-tb-lb mv-tb-lb-tel">Vidéo</span></button>'
       + '</div>'
       + '<div class="sp"></div>'
@@ -2313,11 +2314,37 @@ export function applyMvAudioState() {
     var targetIdx = activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : (mvFlux.length > 0 ? 0 : null);
 
     mvFlux.forEach(function(s, idx) {
+        /* Une vidéo dont on a coupé le son (basculerSonTuile) reste muette, même choisie. */
+        var son = idx === targetIdx && !s._sonCoupe;
         var iframe = cadreDeTuile(idx);
-        if (iframe && iframe.tagName === 'VIDEO') { iframe.muted = (idx !== targetIdx); return; }
-        if (iframe && iframe.contentWindow) posterATuile(iframe, idx === targetIdx ? 'mv_unmute' : 'mv_mute');
+        if (iframe && iframe.tagName === 'VIDEO') { iframe.muted = !son; return; }
+        if (iframe && iframe.contentWindow) posterATuile(iframe, son ? 'mv_unmute' : 'mv_mute');
     });
 }
+
+/* Couper le son d'UNE vidéo (28 octobre 2026, « ya plus accès sur tous pour mettre le son
+   à off pour un stream »). Le son suit la vidéo choisie, et rien ne permettait de la
+   rendre muette : avec une seule vidéo, on ne pouvait pas la faire taire du tout. Le
+   bouton 🔊 de la barre (vidéo choisie) et le menu ⋮ de chaque vidéo passent par ici.
+   Les lecteurs officiels (Twitch, YouTube) n'écoutent pas nos ordres : leur propre
+   bouton de son reste le seul moyen. */
+export function basculerSonTuile(idx) {
+    fermerMenus();
+    var s = mvFlux[idx];
+    if (!s) return null;
+    var cadre = cadreDeTuile(idx);
+    if (cadre && cadre.tagName !== 'VIDEO' && estLecteurOfficiel(cadre.src)) {
+        showToast('Ce lecteur a son propre bouton de son : utilisez celui de la vidéo.');
+        return null;
+    }
+    s._sonCoupe = !s._sonCoupe;
+    if (!s._sonCoupe) s._sonBloque = false; // un geste : le navigateur l'accepte
+    applyMvAudioState();
+    majBarreVideos();
+    showToast(s._sonCoupe ? '🔇 Son coupé : ' + (s.name || ('vidéo ' + (idx + 1))) : '🔊 Son remis : ' + (s.name || ('vidéo ' + (idx + 1))));
+    return s._sonCoupe;
+}
+export function basculerSonActif() { return basculerSonTuile(tuileActive()); }
 
 
 /* ── SON AUTOMATIQUE ─────────────────────────────────────────────────────────────
@@ -2367,7 +2394,7 @@ export function toggleSonAuto() {
 export function donnerLeSon(idx, raison) {
     if (!sonAuto) return false;
     var s = mvFlux[idx];
-    if (!s) return false;
+    if (!s || s._sonCoupe) return false;
     var cible = (activeMvIdx !== null && activeMvIdx < mvFlux.length) ? activeMvIdx : (mvFlux.length ? 0 : -1);
     if (idx !== cible) return false;
     if (s._sonBloque && raison !== 'geste') return false;
@@ -3883,6 +3910,7 @@ export function ouvrirMenuTuile(idx, bouton, event) {
     ouvrirMenu(bouton, [
         { titre: 'Si la vidéo ne joue pas' },
         s.mid ? { icon: '🔁', label: 'Choisir une autre source', detail: 'La liste des liens du match', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
+        { icon: s._sonCoupe ? '🔊' : '🔇', label: s._sonCoupe ? 'Remettre le son' : 'Couper le son', detail: 'Pour cette vidéo seulement', onSelect: function() { basculerSonTuile(idx); } },
         { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
         /* « Pas de doublons » (25 octobre 2026) : « Source suivante » et « Lire le flux
            direct » / « Revenir à la page du site » sont ⏭ et ▶ Direct de la barre ;
@@ -5528,7 +5556,18 @@ function majBarreVideos() {
         if (lb) lb.textContent = (s && s.mode === 'direct') ? 'Page du site' : 'Direct';
         if (ic) ic.textContent = (s && s.mode === 'direct') ? '🖼' : '▶';
     }
-    ['mv-src-prev', 'mv-src-next', 'mv-bar-video-menu'].forEach(function(id) {
+    var son = document.getElementById('mv-bar-son');
+    if (son) {
+        var coupe = !!(s && s._sonCoupe);
+        son.classList.toggle('on', coupe);
+        son.setAttribute('aria-pressed', coupe ? 'true' : 'false');
+        var texte = coupe ? 'Remettre le son de la vidéo choisie' : 'Couper le son de la vidéo choisie';
+        son.title = texte;
+        son.setAttribute('aria-label', texte);
+        var icSon = son.querySelector('.mv-tb-ic');
+        if (icSon) icSon.textContent = coupe ? '🔇' : '🔊';
+    }
+    ['mv-src-prev', 'mv-src-next', 'mv-bar-son', 'mv-bar-video-menu'].forEach(function(id) {
         var b = document.getElementById(id);
         if (b) b.disabled = !s;
     });
@@ -5905,6 +5944,8 @@ window.installTampermonkey = installTampermonkey;
 window.installerScriptUtilisateur = installerScriptUtilisateur;
 window.telechargerExtension = telechargerExtensionGuide;
 window.changerSourceActive = changerSourceActive;
+window.basculerSonActif = basculerSonActif;
+window.basculerSonTuile = basculerSonTuile;
 window.choisirVideo = choisirVideo;
 window.ouvrirMenuVideoActive = ouvrirMenuVideoActive;
 window.basculerDirectActif = basculerDirectActif;
