@@ -71,3 +71,61 @@ jobs:
         with:
           commit_message: "chore: update daily ESPN schedule cache"
           file_pattern: "data/schedule.json"
+
+  # ══ VEILLE : les liens sont-ils encore produits ? ═══════════════════════════════
+  # « Je veux pas faire rien d'externe » (28 octobre 2026) : pas de service de
+  # surveillance hors de GitHub. La chaîne des 30 minutes des liens s'est déjà arrêtée
+  # sans prévenir (cron mort du 20 septembre au 9 octobre 2026, relance en HTTP 500 le
+  # 6 octobre : liens figés deux jours et demi), et on l'a appris par le bandeau « Liens
+  # datant de 9 h » un jour de match. Ce job lit l'âge de data/streams.json
+  # (scripts/age_liens.mjs) : au-delà du seuil, il ouvre une issue du dépôt — ou y
+  # ajoute un commentaire si elle est déjà ouverte — et GitHub envoie son courriel
+  # habituel ; quand les liens sont de nouveau frais, il la ferme. Il tourne après le
+  # calendrier, même si celui-ci a échoué (`always()`), et ne fait jamais échouer le
+  # passage. Il dépend du même cron que le calendrier, donc on apprend une panne dans
+  # la journée, pas dans l'heure : c'est le prix d'une veille qui ne sort pas de GitHub.
+  veille:
+    needs: scrape
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
+      TITRE: "Liens de diffusion figés"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Open, update or close the issue according to the cache age
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          etat=$(node scripts/age_liens.mjs data/streams.json)
+          echo "$etat"
+          perime=$(node -e "console.log(JSON.parse(process.argv[1]).perime)" "$etat")
+          age=$(node -e "const r=JSON.parse(process.argv[1]);console.log(r.ageMin==null?(r.raison||'inconnu'):r.ageMin+' min')" "$etat")
+          numero=$(gh issue list --state open --search "\"$TITRE\" in:title" --json number,title \
+            -q "[.[] | select(.title == \"$TITRE\")][0].number // empty" 2>/dev/null || true)
+          passages="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/scrape_streams.yml"
+          if [ "$perime" = "true" ]; then
+            corps="Le cache des liens (\`data/streams.json\`) date de **$age** ($etat). La chaîne des 30 minutes est probablement arrêtée : voir les passages $passages et, au besoin, relancer à la main (Actions → « Run workflow »). Cette issue est fermée automatiquement quand les liens redeviennent frais."
+            if [ -n "$numero" ]; then
+              gh issue comment "$numero" --body "Toujours figés : $age." || true
+            else
+              gh issue create --title "$TITRE" --body "$corps" || true
+            fi
+          elif [ -n "$numero" ]; then
+            gh issue close "$numero" --comment "Les liens sont de nouveau frais ($age)." || true
+          else
+            echo "Liens frais ($age) : rien à signaler."
+          fi
