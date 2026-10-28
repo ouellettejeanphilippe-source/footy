@@ -107,6 +107,26 @@ async function main() {
     assert.strictEqual(mv.noterSonBloque(7), false);
     ok('un index hors liste est refusé sans exception');
 
+    // ── 6. Couper le son d'UNE vidéo (28 octobre 2026) ─────────────────────
+    /* « ya plus accès sur tous pour mettre le son à off pour un stream » : le son suivait
+       la vidéo choisie, sans aucun moyen de la faire taire. */
+    vider();
+    assert.strictEqual(mv.basculerSonTuile(0), true, 'le son de la vidéo choisie est coupé');
+    assert.strictEqual(ordres[0][ordres[0].length - 1], 'mv_mute', 'la vidéo choisie reçoit l\'ordre de se taire');
+    assert.ok(!ordres[1].includes('mv_unmute'), 'l\'autre ne prend pas le son pour autant');
+    vider();
+    assert.strictEqual(mv.donnerLeSon(0, 'joue'), false, 'la vidéo qui démarre ne reprend pas le son');
+    assert.strictEqual(mv.donnerLeSon(0, 'geste'), false, 'un clic dans la vidéo non plus');
+    assert.deepStrictEqual(ordres[0].filter((m) => m === 'mv_unmute'), [], 'aucune demande de son');
+    const bouton = document.getElementById('mv-bar-son');
+    assert.strictEqual(bouton.getAttribute('aria-pressed'), 'true', 'le bouton 🔊 de la barre le montre');
+    vider();
+    assert.strictEqual(mv.basculerSonTuile(0), false, 'remis');
+    assert.strictEqual(ordres[0][ordres[0].length - 1], 'mv_unmute', 'la vidéo choisie reprend le son');
+    assert.strictEqual(bouton.getAttribute('aria-pressed'), 'false');
+    assert.strictEqual(mv.basculerSonTuile(7), null, 'index hors liste');
+    ok('le son d\'une vidéo se coupe et se remet, et rien ne le rend en douce');
+
     console.log(`unit_sonauto: ${n} groupes de tests OK`);
     process.exit(0);
 }

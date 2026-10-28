@@ -61,18 +61,44 @@ async function main() {
     ok('la ligne dit combien, le pire, et se met en alerte à trois gels graves ou trois arrêts');
 
     // ── 4. Le moniteur se branche sur longtask, une seule fois ───────────────
-    let rappel = null, vu = null;
-    const faux = { PerformanceObserver: function (cb) { rappel = cb; this.observe = (o) => { vu = o; }; } };
+    const rappels = {};
+    const faux = { PerformanceObserver: function (cb) { this.observe = (o) => { rappels[o.type] = cb; }; } };
     const etat = F.brancherMoniteur(faux);
     assert.strictEqual(etat.observe, true);
-    assert.deepStrictEqual(vu, { type: 'longtask' });
-    rappel({ getEntries: () => [{ duration: 230.4 }] });
+    assert.deepStrictEqual(Object.keys(rappels).sort(), ['long-animation-frame', 'longtask']);
+    rappels.longtask({ getEntries: () => [{ duration: 230.4 }] });
     assert.strictEqual(etat.m.gels.length, 1);
     assert.strictEqual(etat.m.gels[0].d, 230);
+    rappels['long-animation-frame']({ getEntries: () => [{ duration: 640, scripts: [{ duration: 500, invoker: 'TimerHandler:setTimeout', sourceURL: 'https://x.test/footy/js/main.js' }] }] });
+    assert.deepStrictEqual(etat.m.cadres.map((c) => c.c), ['TimerHandler:setTimeout (main.js)']);
     assert.strictEqual(F.brancherMoniteur(faux), etat, 'un seul moniteur par fenêtre');
     const sans = F.brancherMoniteur({});
     assert.strictEqual(sans.observe, false, 'sans PerformanceObserver : non mesurée, pas d\'exception');
     ok('brancherMoniteur écoute longtask et ne s\'arme qu\'une fois');
+
+    // ── 4 bis. Ce qui a tenu la page (long-animation-frame, Chrome et Vivaldi) ──
+    /* « quand ya des modals, l'interface gèle… nickel avec Firefox » (28 octobre 2026) :
+       `longtask` disait combien, pas quoi. */
+    assert.deepStrictEqual(F.resumerCadreLong({ duration: 812.6, scripts: [
+        { duration: 90, sourceFunctionName: 'petit', sourceURL: 'https://x.test/footy/js/ui.js' },
+        { duration: 610, sourceFunctionName: 'loadAll', sourceURL: 'https://x.test/footy/js/main.js?v=3#a' }] }),
+        { d: 813, cause: 'loadAll (main.js)' }, 'le script le plus long, par son fichier');
+    assert.strictEqual(F.resumerCadreLong({ duration: 700, scripts: [{ duration: 600, invoker: 'x', sourceURL: 'chrome-extension://abc/content.js' }] }).cause, 'x (extension)', 'une extension est nommée comme telle');
+    assert.strictEqual(F.resumerCadreLong({ duration: 700, scripts: [{ duration: 600, sourceURL: 'https://x.test/userscript.html?name=Nettoyeur' }] }).cause, 'script (script utilisateur)');
+    assert.strictEqual(F.resumerCadreLong({ duration: 700, scripts: [{ duration: 100 }] }).cause, 'mise en page et rendu', 'des scripts courts : le rendu a tenu l\'image');
+    assert.strictEqual(F.resumerCadreLong(null), null);
+    const m3 = F.creerMoniteur();
+    F.noterCadreLong(m3, { duration: 150, scripts: [] }, t0);                                         // trop court
+    F.noterCadreLong(m3, { duration: 900, scripts: [{ duration: 800, sourceFunctionName: 'a' }] }, t0 - 11 * 60 * 1000); // trop ancien
+    [600, 500].forEach((d) => F.noterCadreLong(m3, { duration: d, scripts: [{ duration: d, sourceFunctionName: 'loadAll', sourceURL: '/js/main.js' }] }, t0));
+    F.noterCadreLong(m3, { duration: 400, scripts: [] }, t0);
+    const b3 = F.bilan(m3, t0);
+    assert.deepStrictEqual(b3.coupables, [
+        { cause: 'loadAll (main.js)', total: 1100, fois: 2 },
+        { cause: 'mise en page et rendu', total: 400, fois: 1 }]);
+    assert.ok(/causes des gels : 1100 ms loadAll \(main\.js\) \(2 fois\), 400 ms mise en page et rendu/.test(F.ligneFluidite(b3, true).texte), F.ligneFluidite(b3, true).texte);
+    assert.ok(!/causes des gels/.test(F.ligneFluidite(b, true).texte), 'rien à nommer : rien d\'écrit');
+    ok('les gels de Chrome sont attribués : script et fichier, extension, ou rendu');
 
     // ── 5. Les formateurs de date ne se reconstruisent plus à chaque appel ───
     const Orig = Intl.DateTimeFormat;

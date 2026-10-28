@@ -97,6 +97,26 @@ export function estLecteurOfficiel(url) {
     return false;
 }
 
+/* Les lecteurs qui exigent d'être ENTIÈREMENT visibles : Twitch.
+
+   « twitch est brisé? » (28 octobre 2026, Vivaldi ; « parfait sur Firefox »). Le lecteur
+   Twitch mesure sa propre visibilité avec l'IntersectionObserver v2 (`trackVisibility`),
+   que Chrome et Vivaldi ont et que Firefox n'a pas. Le moindre élément peint au-dessus
+   de lui — même transparent, même sans clics, même l'ombre d'un panneau hors de l'écran —
+   et il refuse de démarrer (« Autoplay disabled… style visibility ») ; recouvert APRÈS
+   avoir démarré, il s'arrête et revient à zéro. Mesuré ce jour-là sur le direct de
+   riotgames : la barre du lecteur posée sur la vidéo, l'en-tête de tuile, le calque de
+   repos, le calque d'effets et l'ombre du panneau des statistiques suffisaient chacun.
+
+   Une tuile qui porte un tel lecteur prend la classe `mv-strict` (js/multiview.js), et
+   la feuille de style range alors la barre et l'en-tête À CÔTÉ de la vidéo plutôt que
+   dessus. YouTube ne fait pas cette mesure : il garde la présentation par-dessus. */
+export function exigeVisibiliteTotale(url) {
+    var u;
+    try { u = new URL(String(url || '')); } catch (e) { return false; }
+    return u.hostname.toLowerCase() === 'player.twitch.tv';
+}
+
 /* Les flux d'UN match, lus dans la réponse de `getLive`.
 
    « Aucun flux trouvé pour l'instant » sur Karmine Corp – MVK (Mondiaux, 16 octobre 2026),

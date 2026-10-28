@@ -21,7 +21,7 @@ import { brancherManette, tuileVoisine } from './manette.js';
 import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexDeChaine, lienVoisin, etiquetteChaine, liensCable, lienJouable } from './cable.js';
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
-import { estLecteurOfficiel } from './esports.js';
+import { estLecteurOfficiel, exigeVisibiliteTotale } from './esports.js';
 import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml } from './sorties.js';
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 
@@ -1227,7 +1227,7 @@ export function showFluxSelector(idx, mid, event) {
 
     var selector = document.createElement('div');
     selector.id = 'mv-flux-selector';
-    selector.style.cssText = 'position:fixed;z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:16px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:360px;top:50%;left:50%;transform:translate(-50%, -50%);';
+    selector.style.cssText = 'position:fixed;z-index:9999;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:90%;max-width:360px;top:50%;left:50%;transform:translate(-50%, -50%);';
 
     // Add close button for mobile
     var closeBtn = document.createElement('div');
@@ -1772,7 +1772,11 @@ export function appliquerRepos(grille, barre, cacher) {
     }
     var ovs = grille.querySelectorAll('.mv-idle-overlay');
     for (var j = 0; j < ovs.length; j++) {
-        ovs[j].style.display = cacher ? 'block' : 'none';
+        /* Pas sur un lecteur Twitch : ce calque transparent, posé au repos, suffit à
+           l'arrêter (exigeVisibiliteTotale, js/esports.js). Le pointeur qui revient
+           sur la tuile se voit quand même : `mouseover` sur l'iframe. */
+        var strict = ovs[j].parentElement && ovs[j].parentElement.classList.contains('mv-strict');
+        ovs[j].style.display = (cacher && !strict) ? 'block' : 'none';
         if (cacher) ovs[j].style.pointerEvents = 'auto';
     }
     return hdrs.length;
@@ -1813,6 +1817,7 @@ export function setupMultivisionUI() {
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo choisie" aria-label="Source précédente"><span class="mv-tb-ic" aria-hidden="true">⏮</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⏭</span><span class="mv-tb-lb">Source<span class="mv-tb-lb-long"> suivante</span></span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-bar-direct" onclick="basculerDirectActif()" title="Basculer entre la page du site et le flux direct" hidden><span class="mv-tb-ic" aria-hidden="true">▶</span><span class="mv-tb-lb">Direct</span></button>'
+      + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">🔊</span><span class="mv-tb-lb mv-tb-lb-tel">Son</span></button>'
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⋮</span><span class="mv-tb-lb mv-tb-lb-tel">Vidéo</span></button>'
       + '</div>'
       + '<div class="sp"></div>'
@@ -1839,7 +1844,7 @@ export function setupMultivisionUI() {
     var exitTheaterBtn = document.createElement('button');
     exitTheaterBtn.id = 'mv-exit-theater';
     exitTheaterBtn.innerHTML = 'Quitter le Plein Onglet';
-    exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.15s;';
+    exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.15s;';
 
 
     window.addEventListener('message', function(e) {
@@ -2309,11 +2314,37 @@ export function applyMvAudioState() {
     var targetIdx = activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : (mvFlux.length > 0 ? 0 : null);
 
     mvFlux.forEach(function(s, idx) {
+        /* Une vidéo dont on a coupé le son (basculerSonTuile) reste muette, même choisie. */
+        var son = idx === targetIdx && !s._sonCoupe;
         var iframe = cadreDeTuile(idx);
-        if (iframe && iframe.tagName === 'VIDEO') { iframe.muted = (idx !== targetIdx); return; }
-        if (iframe && iframe.contentWindow) posterATuile(iframe, idx === targetIdx ? 'mv_unmute' : 'mv_mute');
+        if (iframe && iframe.tagName === 'VIDEO') { iframe.muted = !son; return; }
+        if (iframe && iframe.contentWindow) posterATuile(iframe, son ? 'mv_unmute' : 'mv_mute');
     });
 }
+
+/* Couper le son d'UNE vidéo (28 octobre 2026, « ya plus accès sur tous pour mettre le son
+   à off pour un stream »). Le son suit la vidéo choisie, et rien ne permettait de la
+   rendre muette : avec une seule vidéo, on ne pouvait pas la faire taire du tout. Le
+   bouton 🔊 de la barre (vidéo choisie) et le menu ⋮ de chaque vidéo passent par ici.
+   Les lecteurs officiels (Twitch, YouTube) n'écoutent pas nos ordres : leur propre
+   bouton de son reste le seul moyen. */
+export function basculerSonTuile(idx) {
+    fermerMenus();
+    var s = mvFlux[idx];
+    if (!s) return null;
+    var cadre = cadreDeTuile(idx);
+    if (cadre && cadre.tagName !== 'VIDEO' && estLecteurOfficiel(cadre.src)) {
+        showToast('Ce lecteur a son propre bouton de son : utilisez celui de la vidéo.');
+        return null;
+    }
+    s._sonCoupe = !s._sonCoupe;
+    if (!s._sonCoupe) s._sonBloque = false; // un geste : le navigateur l'accepte
+    applyMvAudioState();
+    majBarreVideos();
+    showToast(s._sonCoupe ? '🔇 Son coupé : ' + (s.name || ('vidéo ' + (idx + 1))) : '🔊 Son remis : ' + (s.name || ('vidéo ' + (idx + 1))));
+    return s._sonCoupe;
+}
+export function basculerSonActif() { return basculerSonTuile(tuileActive()); }
 
 
 /* ── SON AUTOMATIQUE ─────────────────────────────────────────────────────────────
@@ -2363,7 +2394,7 @@ export function toggleSonAuto() {
 export function donnerLeSon(idx, raison) {
     if (!sonAuto) return false;
     var s = mvFlux[idx];
-    if (!s) return false;
+    if (!s || s._sonCoupe) return false;
     var cible = (activeMvIdx !== null && activeMvIdx < mvFlux.length) ? activeMvIdx : (mvFlux.length ? 0 : -1);
     if (idx !== cible) return false;
     if (s._sonBloque && raison !== 'geste') return false;
@@ -2624,6 +2655,9 @@ export function updateMultivisionLayout() {
            au navigateur qu'on s'adresse (extension qui ignore X-Frame-Options, voir la
            page d'installation), pas à la tuile. */
         function fallbackToIframe(url, container, cell, s) {
+            /* Rien par-dessus un lecteur Twitch (exigeVisibiliteTotale, js/esports.js) :
+               la classe suit ce que la tuile porte, posée plus bas avec le cadre. */
+            cell.classList.remove('mv-strict');
             if (s.mode === 'direct') {
                 var mediaDirect = s._media || mediaDirectPour(registreDirect(), url);
                 if (mediaDirect) { poserDirect(mediaDirect, url, container, cell, s); return; }
@@ -2674,6 +2708,7 @@ export function updateMultivisionLayout() {
                    l'utilisateur (« Sandbox detected, please remove sandbox attributes »). Le test
                    « aucune iframe de lecteur ne porte d'attribut sandbox » le verrouille. */
                 container.appendChild(iframe);
+                cell.classList.toggle('mv-strict', exigeVisibiliteTotale(finalUrl));
                 if (!estLecteurOfficiel(finalUrl)) demanderNettoyage(iframe);
 
                 s._posedAt = Date.now(); // pour reconnaître une sortie forcée (pagehide juste après)
@@ -3663,7 +3698,7 @@ export function annoncerCable(idx, note) {
         osd.className = 'mv-cable-osd';
         osd.style.cssText = 'position:absolute;left:12px;right:12px;bottom:12px;z-index:7;pointer-events:none;'
             + 'background:rgba(8,8,10,0.82);border:1px solid rgba(255,255,255,0.18);border-radius:10px;'
-            + 'padding:10px 12px;color:#fff;backdrop-filter:blur(8px);opacity:0;transition:opacity 0.18s;';
+            + 'padding:10px 12px;color:#fff;opacity:0;transition:opacity 0.18s;';
         cell.appendChild(osd);
     }
     osd.innerHTML = (e.numero ? '<div style="font-size:11px;letter-spacing:1px;opacity:0.7;">' + esc(e.numero) + '</div>' : '')
@@ -3875,6 +3910,7 @@ export function ouvrirMenuTuile(idx, bouton, event) {
     ouvrirMenu(bouton, [
         { titre: 'Si la vidéo ne joue pas' },
         s.mid ? { icon: '🔁', label: 'Choisir une autre source', detail: 'La liste des liens du match', onSelect: function() { showFluxSelector(idx, s.mid); } } : null,
+        { icon: s._sonCoupe ? '🔊' : '🔇', label: s._sonCoupe ? 'Remettre le son' : 'Couper le son', detail: 'Pour cette vidéo seulement', onSelect: function() { basculerSonTuile(idx); } },
         { icon: '↻', label: 'Recharger la vidéo', onSelect: function() { rechargerTuile(idx); } },
         /* « Pas de doublons » (25 octobre 2026) : « Source suivante » et « Lire le flux
            direct » / « Revenir à la page du site » sont ⏭ et ▶ Direct de la barre ;
@@ -4028,7 +4064,7 @@ export function toggleTheaterMode(elem) {
           closeBtn.className = 'theater-close-btn';
           closeBtn.innerHTML = '<span class="ic ic-close"></span>';
           closeBtn.title = 'Quitter le mode Cinéma';
-          closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;backdrop-filter:blur(5px);font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:1;';
+          closeBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:1;';
           closeBtn.onclick = function() { toggleTheaterMode(elem); };
           elem.appendChild(closeBtn);
       }
@@ -4066,7 +4102,7 @@ export function toggleFullscreen(elem) {
             closeFsBtn = document.createElement('button');
             closeFsBtn.id = 'mv-close-fs';
             closeFsBtn.innerHTML = '<span class="ic ic-close" style="background-color: currentColor; display: inline-block; width: 24px; height: 24px;"></span>';
-            closeFsBtn.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99999; background:rgba(255,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(5px); box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.15s;';
+            closeFsBtn.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:99999; background:rgba(255,0,0,0.8); color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:50%; width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.15s;';
             closeFsBtn.onclick = function() { toggleFullscreen(); };
             elem.appendChild(closeFsBtn);
 
@@ -4460,6 +4496,10 @@ export function initPrefs() {
   if (overlayBgs.length > 0) {
       effectOverlay.style.background = overlayBgs.join(', ');
   }
+  /* Vide, il couvrait quand même toute la page, lecteur compris (z-index 9999) : assez
+     pour que le lecteur Twitch se croie caché et refuse de démarrer (28 octobre 2026,
+     exigeVisibiliteTotale, js/esports.js). Il n'existe donc que s'il porte un effet. */
+  effectOverlay.style.display = overlayBgs.length > 0 ? 'block' : 'none';
 
 
   // Btn Shape and Custom Button Styles
@@ -4981,7 +5021,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v95';
+export var VERSION_APP = 'sports-guide-v96';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5378,7 +5418,7 @@ export function installTampermonkey() {
     modal.id = 'tm-modal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-label', 'Installation des scripts');
-    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.97);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;backdrop-filter:blur(15px);display:flex;flex-direction:column;gap:14px;max-height:85vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:92%;max-width:620px;-webkit-overflow-scrolling:touch;color:#fff;';
+    modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);z-index:9999;background:rgba(20,20,20,0.97);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;max-height:85vh;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,0.8);width:92%;max-width:620px;-webkit-overflow-scrolling:touch;color:#fff;';
 
     var closeBtn = document.createElement('div');
     closeBtn.innerHTML = '<span class="ic ic-close"></span>';
@@ -5516,7 +5556,18 @@ function majBarreVideos() {
         if (lb) lb.textContent = (s && s.mode === 'direct') ? 'Page du site' : 'Direct';
         if (ic) ic.textContent = (s && s.mode === 'direct') ? '🖼' : '▶';
     }
-    ['mv-src-prev', 'mv-src-next', 'mv-bar-video-menu'].forEach(function(id) {
+    var son = document.getElementById('mv-bar-son');
+    if (son) {
+        var coupe = !!(s && s._sonCoupe);
+        son.classList.toggle('on', coupe);
+        son.setAttribute('aria-pressed', coupe ? 'true' : 'false');
+        var texte = coupe ? 'Remettre le son de la vidéo choisie' : 'Couper le son de la vidéo choisie';
+        son.title = texte;
+        son.setAttribute('aria-label', texte);
+        var icSon = son.querySelector('.mv-tb-ic');
+        if (icSon) icSon.textContent = coupe ? '🔇' : '🔊';
+    }
+    ['mv-src-prev', 'mv-src-next', 'mv-bar-son', 'mv-bar-video-menu'].forEach(function(id) {
         var b = document.getElementById(id);
         if (b) b.disabled = !s;
     });
@@ -5893,6 +5944,8 @@ window.installTampermonkey = installTampermonkey;
 window.installerScriptUtilisateur = installerScriptUtilisateur;
 window.telechargerExtension = telechargerExtensionGuide;
 window.changerSourceActive = changerSourceActive;
+window.basculerSonActif = basculerSonActif;
+window.basculerSonTuile = basculerSonTuile;
 window.choisirVideo = choisirVideo;
 window.ouvrirMenuVideoActive = ouvrirMenuVideoActive;
 window.basculerDirectActif = basculerDirectActif;
