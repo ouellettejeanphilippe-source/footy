@@ -1,0 +1,76 @@
+name: Veille des liens
+
+# « Check à 6h Toronto ? » (28 octobre 2026). GitHub ne connaît que l'UTC : 6 h à
+# Toronto, c'est 10:00 UTC à l'heure avancée et 11:00 UTC à l'heure normale. Les deux
+# créneaux sont posés ; l'autre tombe à 5 h ou 7 h et ne fait rien si les liens sont
+# frais. Minute 6 pour éviter la congestion des runners à l'heure pile. Le cron est
+# retardé ou sauté par GitHub comme les autres (.github/workflows/scrape_streams.yml le
+# documente) : c'est un filet, pas une horloge.
+on:
+  schedule:
+    - cron: '6 10 * * *'
+    - cron: '6 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veille-liens
+  cancel-in-progress: false
+
+jobs:
+  # ══ VEILLE : relancer la chaîne des liens si elle s'est arrêtée ═════════════════
+  # « Je veux pas faire rien d'externe » ; « je veux pas le faire manuellement » (28
+  # octobre 2026). La chaîne des 30 minutes des liens s'est déjà arrêtée sans prévenir
+  # (cron mort du 20 septembre au 9 octobre 2026, relance en HTTP 500 le 6 octobre :
+  # liens figés deux jours et demi), et seul un clic dans Actions la rétablissait. Ce job
+  # lit l'âge de data/streams.json (scripts/age_liens.mjs) : au-delà du seuil, et si
+  # aucun passage des liens n'est déjà en route ou en attente, il relance
+  # scrape_streams.yml lui-même (`gh workflow run`, ce que le GITHUB_TOKEN a le droit de
+  # faire), et le relais reprend de là. C'est un second cron, indépendant de celui des
+  # liens, qui sert de filet : une panne de la nuit est réparée avant les matchs du
+  # jour, et personne n'a rien à faire. Il ne fait jamais échouer le passage et respecte
+  # l'arrêt volontaire du relais (variable de dépôt SCRAPE_RELAIS = off).
+  veille:
+    if: vars.SCRAPE_RELAIS != 'off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Restart the links workflow if the cache is stale
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          etat=$(node scripts/age_liens.mjs data/streams.json)
+          echo "$etat"
+          perime=$(node -e "console.log(JSON.parse(process.argv[1]).perime)" "$etat")
+          if [ "$perime" != "true" ]; then
+            echo "Liens frais : rien à faire."
+            exit 0
+          fi
+          en_route=$(gh run list --workflow scrape_streams.yml --limit 20 --json status \
+            -q '[.[] | select(.status == "in_progress" or .status == "queued" or .status == "waiting" or .status == "requested" or .status == "pending")] | length' \
+            2>/dev/null || echo 0)
+          if [ "${en_route:-0}" -gt 0 ]; then
+            echo "Liens périmés, mais un passage est déjà en route ou en attente ($en_route) : il s'en charge."
+            exit 0
+          fi
+          if gh workflow run scrape_streams.yml --ref main; then
+            echo "Liens périmés : chaîne relancée."
+          else
+            echo "::warning::Liens périmés et relance impossible (voir le journal ci-dessus)."
+          fi
