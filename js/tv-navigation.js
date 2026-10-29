@@ -61,7 +61,7 @@
     /* Les fenêtres qui gardent le focus, de la plus haute à la plus basse : le menu du
        lecteur (js/mv-menu.js), le choix d'une source (showFluxSelector), le guide des scripts, l'enquêteur, la fiche d'un match,
        le menu Look, le menu ⋯ Plus. */
-    const ZONES = ['.mv-menu', '#global-stats-sidebar', '#mv-choix', '#mv-flux-selector', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look'];
+    const ZONES = ['.mv-menu', '#global-stats-sidebar', '#mv-choix', '#mv-flux-selector', '#tm-modal', '#mbg', '#menu-look'];
 
     /* « La manette est bloquée par les modals » (28 octobre 2026). Le panneau Scores et
        statistiques (#global-stats-sidebar, z-index 999999 : au-dessus de tout, fiche
@@ -97,7 +97,13 @@
        data-mid), ni les ★ de ses équipes. Dans la fiche, un flux est un seul arrêt (OK le
        lance) : ses petits boutons ⭐ 👎 ⊞ et les ★ du bandeau sont pour la souris. */
     const CARTE = '.match-card, .mb, [data-mid]';
-    const IGNORES = '.si-btn, .fb-fav';
+    /* « La navigation manette doit être super efficace, positionnements pas ambigus »
+       (29 octobre 2026). Entre deux rangées du Live, le titre de la section et son bouton
+       Rail / Grille étaient deux arrêts de plus : ▼ allait au titre, puis au bouton, puis
+       enfin à la rangée. Comme sur Netflix, ▼ passe d'une rangée à l'autre ; seul le titre
+       d'une section REPLIÉE reste un arrêt, pour pouvoir la rouvrir. Les ★ de la colonne
+       des équipes du Guide aussi : le favori se choisit dans la fiche. */
+    const IGNORES = '.si-btn, .fb-fav, .section-title:not(.collapsed), .rail-toggle, .chan-team button';
     const CARTES = '#marea .match-card, #marea .mb, #marea [data-mid]';
     function ignore(el) {
         if (el.matches(IGNORES)) return true;
@@ -125,63 +131,65 @@
         return focusables(racine)[0] || null;
     }
 
-    // Fonction pour trouver l'élément le plus proche dans une direction
+    /* L'élément suivant dans une direction (29 octobre 2026, « positionnements pas
+       ambigus »). D'abord la rangée la plus proche dans cette direction — jamais une
+       rangée sautée parce qu'un élément plus lointain tombait mieux en face, comme avant,
+       où la distance mêlait les deux axes —, puis, dans cette rangée, l'élément le mieux
+       aligné, centre contre centre. ◀ ▶ restent dans la même rangée (l'élément doit la
+       chevaucher). Un élément agrandi par le focus (scale) est mesuré sans l'agrandissement
+       grâce à la tolérance de 12 px. */
+    const TOLERANCE = 12;
     function findNextFocusable(current, direction, racine) {
         const candidats = focusables(racine);
 
         if (candidats.length === 0) return null;
         if (!current) return candidats[0];
 
-        const currentRect = current.getBoundingClientRect();
-        let bestDistance = Infinity;
-        let bestCandidate = null;
-
+        const c = current.getBoundingClientRect();
+        const cx = (c.left + c.right) / 2, cy = (c.top + c.bottom) / 2;
+        const mesures = [];
         candidats.forEach(candidate => {
-            if (candidate === current) return;
-
-            const rect = candidate.getBoundingClientRect();
-
-            let isCandidate = false;
-            let distance = 0;
-
+            if (candidate === current || current.contains(candidate)) return;
+            const r = candidate.getBoundingClientRect();
+            let primaire = null, secondaire = 0;
             switch (direction) {
                 case 'UP':
-                    if (rect.bottom <= currentRect.top + 10) {
-                        isCandidate = true;
-                        distance = Math.pow(currentRect.top - rect.bottom, 2) + Math.pow(currentRect.left - rect.left, 2);
-                    }
+                    if (r.bottom <= c.top + TOLERANCE) { primaire = c.top - r.bottom; secondaire = Math.abs((r.left + r.right) / 2 - cx); }
                     break;
                 case 'DOWN':
-                    if (rect.top >= currentRect.bottom - 10) {
-                        isCandidate = true;
-                        distance = Math.pow(rect.top - currentRect.bottom, 2) + Math.pow(currentRect.left - rect.left, 2);
-                    }
+                    if (r.top >= c.bottom - TOLERANCE) { primaire = r.top - c.bottom; secondaire = Math.abs((r.left + r.right) / 2 - cx); }
                     break;
                 case 'LEFT':
-                    if (rect.right <= currentRect.left + 10) {
-                        if (rect.bottom > currentRect.top && rect.top < currentRect.bottom) {
-                            isCandidate = true;
-                            distance = Math.pow(currentRect.left - rect.right, 2) + Math.pow(currentRect.top - rect.top, 2) * 5;
-                        }
-                    }
+                    if (r.right <= c.left + TOLERANCE && r.bottom > c.top && r.top < c.bottom) { primaire = c.left - r.right; secondaire = Math.abs((r.top + r.bottom) / 2 - cy); }
                     break;
                 case 'RIGHT':
-                    if (rect.left >= currentRect.right - 10) {
-                        if (rect.bottom > currentRect.top && rect.top < currentRect.bottom) {
-                            isCandidate = true;
-                            distance = Math.pow(rect.left - currentRect.right, 2) + Math.pow(currentRect.top - rect.top, 2) * 5;
-                        }
-                    }
+                    if (r.left >= c.right - TOLERANCE && r.bottom > c.top && r.top < c.bottom) { primaire = r.left - c.right; secondaire = Math.abs((r.top + r.bottom) / 2 - cy); }
                     break;
             }
-
-            if (isCandidate && distance < bestDistance) {
-                bestDistance = distance;
-                bestCandidate = candidate;
-            }
+            /* Hors de la direction : pas un candidat (une valeur négative passait la
+               tolérance, et ◀ pouvait partir à droite). */
+            if (primaire !== null) mesures.push({ el: candidate, primaire: Math.max(0, primaire), secondaire });
         });
+        if (!mesures.length) return null;
+        const plusPres = Math.min.apply(null, mesures.map(m => m.primaire));
+        /* La rangée la plus proche : tout ce qui commence à moins d'une demi-hauteur de
+           l'élément courant (ou d'une demi-largeur, en horizontal) au-delà du plus proche. */
+        const marge = Math.max(TOLERANCE, ((direction === 'UP' || direction === 'DOWN') ? c.height : c.width) / 2);
+        const rangee = mesures.filter(m => m.primaire <= plusPres + marge);
+        rangee.sort((x, y) => (x.secondaire - y.secondaire) || (x.primaire - y.primaire));
+        return rangee[0].el;
+    }
 
-        return bestCandidate;
+    /* Revenir d'où l'on vient : ▼ puis ▲ ramène à la carte de départ, pas à la mieux
+       alignée (Netflix). Retenu par élément, pour la direction inverse seulement. */
+    const INVERSE = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
+    function suivant(actif, direction, racine) {
+        const retour = actif.__tvRetour;
+        if (retour && retour.direction === direction && retour.el.isConnected && estVisible(retour.el) && !ignore(retour.el)
+            && (!racine.contains || racine.contains(retour.el))) return retour.el;
+        const cible = findNextFocusable(actif, direction, racine);
+        if (cible && (direction === 'UP' || direction === 'DOWN')) cible.__tvRetour = { el: actif, direction: INVERSE[direction] };
+        return cible;
     }
 
     /* Sur la télé Android, sans animation : un défilement doux coûte une image par pas sur
@@ -310,7 +318,7 @@
             changerChoix(actif, direction === 'RIGHT' ? 1 : -1);
             return;
         }
-        focaliser(findNextFocusable(actif, direction, racine));
+        focaliser(suivant(actif, direction, racine));
     }
 
     window.addEventListener('keydown', handleKeyDown);

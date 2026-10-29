@@ -1,5 +1,7 @@
 # Guide des Sports — l'interface, onglet par onglet
 
+**L'identité visuelle** (29 octobre 2026, « le ui et le ux font cheap… style streaming ») : un fond noir bleuté et neutre, la couleur venant des équipes (vignettes, bandeau vedette, bannière de la fiche) ; les textes en Inter, les scores, minutes et heures en Barlow Condensed ; des icônes au trait à la place des emoji ; le rouge ne dit que « en direct ».
+
 Ce document décrit ce que l'application montre et ce que chaque commande fait, tel que le code le fait aujourd'hui. Pour le fonctionnement interne (modules, données, algorithmes), voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Pour la prise en main et l'installation, voir le [README](README.md).
 
 Toutes les heures affichées sont celles de New York (heure de l'Est), qui est le fuseau des sources.
@@ -13,7 +15,7 @@ L'en-tête porte quatre onglets, comme un service de vidéo (29 octobre 2026, «
 | **Live** | Les matchs en cours et ceux qui commencent dans l'heure, en cartes. |
 | **Guide** | Le programme sur une grille horaire de **48 h** : aujourd'hui et demain, d'une seule traite. |
 | **Favoris** | Les équipes et ligues favorites (section 6). |
-| **Réglages** | Ce que portait le menu « Plus » jusqu'au 29 octobre 2026, en sous-onglets en tête de page : `⚙️ Options`, `🎨 Look`, `🧩 Script`, `📋 Logs`, et à droite `↻ Actualiser`, `⬇ Mettre à jour l'app`. L'onglet reste allumé sur chacune de ces pages ; le bandeau de l'état des liens n'y est pas. |
+| **Réglages** | Ce que portait le menu « Plus » jusqu'au 29 octobre 2026, en sous-onglets en tête de page : `Options`, `Look`, `Script`, `Logs`, et à droite `Actualiser`, `Mettre à jour l'app`, chacun avec son icône. L'onglet reste allumé sur chacune de ces pages ; le bandeau de l'état des liens n'y est pas. |
 | **▶ Lecteur** | Le Multivision, en plein écran (section 5). Il dit combien de vidéos tournent quand on est ailleurs. Ce n'est plus un onglet : le lecteur couvre tout l'écran, onglets compris. |
 
 Autres éléments toujours présents :
@@ -35,7 +37,7 @@ Entrent dans le Live : les matchs en cours (annoncés en direct par la source, o
 
 ### 2.1 Sections
 
-Le Live s'ouvre sur un **bandeau vedette** (27 octobre 2026, « pages plus proches des services de streaming… dans le sens de navigation ») : un match en grand, aux couleurs des équipes, avec la ligue, le score ou l'heure, et un seul bouton **▶ Regarder** qui ouvre sa fiche ; c'est le premier arrêt de la télécommande. Le match mis en avant est un favori en direct, sinon le direct le plus fourni en flux, sinon le prochain à commencer. Pas de bandeau pendant une recherche.
+Le Live s'ouvre sur un **bandeau vedette** (27 octobre 2026, « pages plus proches des services de streaming… dans le sens de navigation ») : un match en grand, aux couleurs des équipes, avec la ligue, le score ou l'heure, et un seul bouton blanc **Regarder** qui ouvre sa fiche ; c'est le premier arrêt de la télécommande. Comme l'affiche d'un film (29 octobre 2026) : les deux blasons en grand à droite, sur les couleurs des équipes ; à gauche « À la une », la ligue, le titre, l'état. Le match mis en avant est un favori en direct, sinon le direct le plus fourni en flux, sinon le prochain à commencer.
 
 Dessous, dans l'ordre, toutes repliables d'un clic, d'Entrée ou d'Espace sur leur titre (chevron et état mémorisés) :
 
@@ -50,20 +52,22 @@ Les ligues classées « ignorée » n'apparaissent nulle part. Quand rien n'est 
 
 ### 2.2 La carte d'un match
 
-De haut en bas :
+Une vignette 16:9 (29 octobre 2026, comme une tuile de service de streaming), le texte dessous :
 
-1. **Bandeau d'état** : `Direct` avec une pastille rouge clignotante, ou l'heure du coup d'envoi, ou `Fin`, ou **`Fin ?`** en ambre ; précédé de **`hier`** pour un match de la veille encore dans la journée (ou `demain`). Le score d'un match en cours est redemandé **chaque minute**, et dès l'ouverture de l'application. « Fin ? » veut dire : ESPN ne donne plus de nouvelles de ce match depuis plus de 12 minutes et il a dépassé la durée normale de son sport de plus de 45 minutes (120 en prolongation connue). Le survol explique le calcul. Une nouvelle d'ESPN efface la présomption.
-2. **Compteur de flux** à droite : `▶ N`. Sans aucun lien, le badge devient un bouton : **`🔎`** lance la recherche de liens pour ce match tout de suite ; **`⚠`** signale que le fichier des liens du serveur n'a pas pu être lu et le relit d'un toucher.
-3. **Vignette** aux couleurs des deux équipes, avec leurs blasons.
-4. **Ligue** (drapeau ou icône, nom).
-5. **Équipes et score**, avec une ★ par équipe pour la mettre en favori. Une épreuve sans adversaire (course, gala, séance d'essais) n'a qu'une ligne.
-6. **Sport et minute de jeu** quand la minute est parlante (période, manche, chrono).
+1. **Sur la vignette, à gauche, l'état** : `DIRECT` en pastille rouge, ou l'heure du coup d'envoi, ou `FIN`, ou **`Fin ?`** en ambre ; précédé de **`hier`** pour un match de la veille encore dans la journée (ou `demain`). Le score d'un match en cours est redemandé **chaque minute**, et dès l'ouverture de l'application. « Fin ? » veut dire : ESPN ne donne plus de nouvelles de ce match depuis plus de 12 minutes et il a dépassé la durée normale de son sport de plus de 45 minutes (120 en prolongation connue). Le survol explique le calcul. Une nouvelle d'ESPN efface la présomption.
+2. **Sur la vignette, à droite, le nombre de flux** : triangle de lecture et nombre. Sans aucun lien, la pastille devient un bouton : la **loupe** lance la recherche de liens pour ce match tout de suite ; le **triangle d'alerte** signale que le fichier des liens du serveur n'a pas pu être lu et le relit d'un toucher.
+3. **La vignette** aux couleurs des deux équipes (selon Réglages → Look), sous un voile, avec leurs blasons dans un disque blanc (les initiales de l'équipe quand il n'y a pas de blason). Un match terminé a une vignette grisée.
+4. **La ligue** en surtitre, avec sa pastille de couleur — sauf dans la rangée d'une ligue, qui la porte déjà en titre.
+5. **Équipes et score** (chiffres compacts). L'étoile de favori suit le nom : pleine et dorée pour un favori ; sinon elle n'apparaît qu'au survol (à la souris ; au doigt, le favori se choisit dans la fiche). Une épreuve sans adversaire (course, gala, séance d'essais) n'a qu'une ligne.
+6. **La minute de jeu**, en rouge, quand elle est parlante (période, manche, chrono).
 
 Un clic ouvre la fiche du match (section 4).
 
 ### 2.3 Affiches et rails sur téléphone
 
-Sous 900 px, les cartes deviennent des affiches verticales (2:3). Chaque section porte un bouton **`⇥ Rail`** / **`⊞ Grille`** : au téléphone, en grille par défaut (trois affiches par ligne, un seul axe au pouce) ; **sur un grand écran, en rangée par défaut** (27 octobre 2026) : chaque ligue est une rangée horizontale, comme sur Netflix, ◀ ▶ la parcourent et ▲ ▼ changent de rangée, la carte qui a le focus grossit. Le choix est retenu par section. Options → Forme des cartes force l'un ou l'autre format de carte sur tous les écrans. Le Live et les huit vues des dispositions prennent toute la largeur de l'écran (plus de bloc centré de 1 200 ou 1 480 px).
+Sous 900 px, les cartes prennent la forme « affiche » : la vignette en 4:3, la carte en portrait, deux par ligne au téléphone. Chaque section porte un bouton **Rail** / **Grille** : au téléphone, en grille par défaut (un seul axe au pouce) ; **sur un grand écran, en rangée par défaut** (27 octobre 2026) : chaque ligue est une rangée horizontale, comme sur Netflix. Le choix est retenu par section. Options → Forme des cartes force l'un ou l'autre format de carte sur tous les écrans.
+
+**À la manette et à la télécommande** (29 octobre 2026, « positionnements pas ambigus ») : ▼ va de « Regarder » à la première rangée, puis d'une rangée à l'autre, sans s'arrêter sur le titre de la section ni sur son bouton Rail / Grille (le titre d'une section repliée reste un arrêt, pour la rouvrir) ; il prend la carte la mieux alignée de la rangée suivante, jamais une rangée plus loin. ◀ ▶ parcourent la rangée. ▲ ramène à la carte d'où l'on venait. La carte qui a le focus : sa vignette grossit, cerclée de blanc, avec la lueur de l'équipe.
 
 ## 3. Onglet Guide
 
@@ -80,24 +84,13 @@ Une grille horaire de **48 heures** — de 00:00 aujourd'hui à 00:00 après-dem
 - **Un match de demain** porte `demain · ` devant son heure, sur la case comme sur la carte. Les liens de demain sont là aussi : le cache du serveur couvre les deux journées.
 - **Ligues secondaires (n)** : leur propre grille, sous un titre repliable. **Autres streams (n)** : en cartes, repliée.
 
-## 3 bis. Dispositions (Réglages → Look)
+## 3 bis. Look (Réglages → Look)
 
-« Actuelle » est l'interface décrite aux sections 2 et 3, et c'est le réglage par défaut du Live **et** du Guide (27 octobre 2026, « les deux Actuelles… par défaut » ; du 25 au 27 octobre, le Guide s'ouvrait sur Chaînes : un Guide resté sur Chaînes revient une fois à Actuelle, ensuite c'est un réglage comme un autre). **Le Live et le Guide ont chacun leur disposition** : on peut mélanger, par exemple Tableau pour le Live et Chaînes pour le Guide. On change :
+Un menu, sous la barre des Réglages : **la couleur des cartes** (Uni, Dégradé, Dégradé de côté, Deux couleurs, Ligue, Neutre), pour les vignettes du Live, la bannière de la fiche et le liseré des cases du Guide. Échap ou un clic ailleurs le ferme ; depuis les Réglages, un choix montre le Live.
 
-- **par Réglages → 🎨 Look** : un menu, sous la barre des Réglages, avec la disposition du Live, celle du Guide, et la couleur des cartes (Uni, Dégradé, Dégradé de côté, Deux couleurs, Ligue, Neutre). Échap ou un clic ailleurs le ferme. C'est le seul endroit pour ces réglages, et ce **Mettre à jour** est le seul hors de Logs (25 octobre 2026, « tous les doublons » : Options et le menu Plus, devenu Réglages, les répétaient).
+Les dispositions (Tableau, Maintenant, Affiches, Chaînes, pour le Live et le Guide) sont parties le 29 octobre 2026 (« Tout retirer ») : une seule vue par onglet. Un ancien choix resté dans le stockage ne change plus rien.
 
-Le choix est enregistré. **Le look des cartes d'« Actuelle » est la base de tout** : les cartes des dispositions (la une et la rangée de Maintenant, le mur des Affiches et ses colonnes du Guide, l'aperçu des Chaînes) SONT ces cartes — bandeau d'état, vignette aux couleurs des équipes, blasons ronds, ligue, équipes et score, sport en pied — ; ce qui reste en liste (Tableau, Chaînes, programme du Guide) en prend la palette : panneau bleu nuit en dégradé, liseré indigo, bandeau en petites capitales, blasons ronds, compteur « ▶ 48 », rose-rouge du direct. Les boutons flottants, les menus, le bandeau des liens, les filtres, les messages, le zoom, les panneaux des pages et la fiche prennent le même panneau, le même liseré et le même rayon. Quand une disposition est active, l'en-tête, le bandeau des liens, le bouton Actualiser et les messages prennent le même style (pilules, même échelle) ; « Actuelle » garde son apparence. Les quatre autres rangent les mêmes matchs autrement, Live et Guide ensemble. Partout : pas de titre, l'état (direct, chrono) et le score d'abord, puis les équipes, un seul bouton (▶ et le nombre de flux, ou 🔎 sans lien), la ligue en dernier. Un toucher ouvre la fiche du match. La couleur des équipes suit **Couleur des cartes** (Couleur de l'équipe à domicile = unie, Foncé = neutre, dégradés). Le texte et la mise en page grandissent avec l'écran, du téléphone à la télé 4K, et chaque tuile ou ligne s'ajuste à sa propre largeur : une petite tuile réduit son texte, un bloc court de la grille des Chaînes montre les abréviations (MTL–BUF), une colonne étroite du Tableau garde ▶ et le nombre de flux sans le mot « Regarder ». Les flux « Autres streams » et les ligues ignorées n'y figurent pas.
-
-**Le Guide façon câble** (25 octobre 2026, « plus clean et plein écran, comme le câble dans le temps ») : « Actuelle » et « Chaînes » prennent la grille d'un guide de câblodistributeur, fond bleu nuit, cases plates aux coins presque droits séparées par un filet, la case choisie en jaune. Dans « Actuelle », une case porte « Domicile – Extérieur » sur une ligne avec les deux logos, puis l'heure (ou le direct, le score) et le nombre de liens ; les couleurs des équipes (selon Look → couleur des cartes) ne sont plus qu'un liseré à gauche.
-
-**Dans le Guide, un match en cours n'est jamais rangé avant l'heure actuelle** : le Guide commence par « En cours », puis ce qui vient heure par heure (« Demain 12 h » pour le lendemain), et les matchs terminés sont à part, repliés sous « ▸ Terminés ». Un match sans nouvelles dont la fin prévue est passée compte comme terminé.
-
-| Disposition | Live | Guide |
-|---|---|---|
-| **Tableau** | Liste de scores groupée par ligue, Favoris en tête, filtres Tout / En direct / Dans l'heure. L'équipe qui perd est en gris. | Le programme en liste, filtrable par ligue (pastilles en tête : Toutes, puis une par ligue). |
-| **Maintenant** | Le favori en direct (sinon le match le plus suivi) en grande affiche avec « Regarder », trois matchs à côté, puis En direct, puis « Commence bientôt » avec un compte à rebours. | Un agenda vertical, une rangée par heure, une barre de progression par match en cours. |
-| **Affiches** | Un mur de tuiles aux couleurs des équipes ; favoris et matchs les plus suivis deux fois plus grands. | Une colonne par heure, qu'on fait défiler de côté. |
-| **Chaînes** | Comme un guide télé : chaque match est une chaîne numérotée avec sa barre de progression, et un aperçu à droite. Un premier toucher choisit, un second ouvre la fiche. | Une grille horaire qui commence à l'heure actuelle, sur tout l'écran ; un match en cours y entre par le bord gauche (liseré rouge). Les mêmes pastilles de ligue que le Tableau, en tête, pour trouver vite un match. Pas d'aperçu au-dessus : une case ouvre la fiche du premier coup. |
+**Le Guide façon câble** (25 octobre 2026, « plus clean et plein écran, comme le câble dans le temps ») : la grille d'un guide de câblodistributeur, fond bleu nuit, cases plates aux coins presque droits séparées par un filet, la case choisie en jaune. Une case porte « Domicile – Extérieur » sur une ligne avec les deux logos, puis l'heure (ou le direct, le score) et le nombre de liens ; les couleurs des équipes ne sont qu'un liseré à gauche. À la manette, les ★ de la colonne des équipes ne sont pas des arrêts.
 
 ## 4. Fiche de match
 
@@ -107,7 +100,7 @@ S'ouvre au clic sur une carte, un bloc ou le bouton **▶ Regarder** du bandeau 
 
 Fond aux couleurs des équipes ; blason, nom et ★ de chaque côté ; au centre la ligue, le score (ou `VS`), et l'état (`Direct`, la minute, `Fin`, `Fin ?`).
 
-Dessous, comme une page de film : un gros bouton blanc **`▶ Regarder`** qui lance la meilleure source de la liste (filtres de site compris), avec son nom à côté. À la télécommande ou à la manette, c'est lui qui a le focus à l'ouverture. Sans source : `🔎 Chercher des liens`, ou `Aucun lien pour l'instant`.
+Dessous, comme une page de film : un gros bouton blanc **Regarder** (triangle de lecture) qui lance la meilleure source de la liste (filtres de site compris), avec son nom à côté. À la télécommande ou à la manette, c'est lui qui a le focus à l'ouverture. Sans source : `Chercher des liens` (loupe), ou `Aucun lien pour l'instant`. Les blasons sont grands, le score en chiffres compacts.
 
 ### 4.2 Compléments (matchs ESPN seulement)
 
@@ -115,19 +108,17 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 
 - buteurs par équipe (`⚽ Joueur 45' (passeur)`),
 - classement et forme récente (`#rang`, série),
-- **`👥 Alignements`** (football ; environ une heure avant le coup d'envoi) : un onglet par équipe, la formation (`4-2-3-1`) et **les titulaires sur un terrain** (attaque en haut, gardien en bas, chacun à son côté), une pastille par joueur : numéro, nom, `⚽` (`⚽×2`), `🅰️`, `🟨` ou `🟥`, `🔻 63'` s'il est sorti ; le survol donne le nom complet, le poste et les minutes. Puis la liste des remplaçants, ceux qui sont entrés en premier, avec `🔺 63'` et leurs buts. Si la formation ne correspond pas aux titulaires, la liste remplace le terrain,
-- **`👥 Feuille de match`** (hockey, football américain, baseball, basket) : un onglet par équipe, un tableau par groupe (attaquants, défenseurs, gardiens ; passes, courses, réceptions… ; frappeurs, lanceurs) avec les six colonnes les plus parlantes d'ESPN (`G`, `A`, `TOI`, `SV%`, `IP`, `ERA`…),
-- **`👥 Effectif`**, à défaut des deux précédents (avant le match) : les joueurs de chaque équipe par position (centres, ailiers gauches et droits, défenseurs, gardiens au hockey ; attaque, défense, unités spéciales en NFL ; gardiens, défenseurs, milieux, attaquants au football), avec `🚑` sur un blessé. ESPN ne publie pas les trios et paires du hockey,
+- les **alignements** ne sont plus ici (29 octobre 2026, « alignements seulement lorsque stats en direct dans le multiview, pas dans la carte des streams ») : voir le panneau des stats du lecteur (§5.7),
 - `📰 Stats complètes sur ESPN`,
 - `📊 Voir les statistiques de la saison` : comparatif des deux équipes adapté au sport (buts et passes au football ; points, victoires, défaites et défaites en prolongation au hockey ; victoires, défaites, pourcentage et retard en MLB ; victoires, défaites, pourcentage et séquence ailleurs), et `Ouvrir le panneau complet` vers le panneau « Scores & Stats ».
 
 ### 4.3 Colonne des flux
 
-- **Barre `Flux`** : **`🔄`** relit la page du match et refait la liste (grisé quand aucune page de match n'est connue). Son ancien `⊞` (« meilleur flux au Multivision ») doublait « ▶ Regarder » et est parti.
+- **Barre `Flux`** : le bouton rond **actualiser** relit la page du match et refait la liste (grisé quand aucune page de match n'est connue). Son ancien `⊞` (« meilleur flux au Multivision ») doublait « ▶ Regarder » et est parti.
 - **Pastilles par domaine** quand il y a au moins deux domaines et six liens : `Tous N`, les six premiers domaines, `Autres (k)`. Elles filtrent la liste sous les yeux.
-- **Une ligne par flux** : icône, nom, badge `onglet` si la page refuse souvent l'iframe, chaîne, site, langue, et le débit ou la définition réellement mesurés quand le script utilisateur les a vus. Deux actions par ligne, à la souris et au doigt :
-  1. `⭐` préférer ce domaine (il remonte dans tous les classements),
-  2. `👎` l'éviter (il descend).
+- **Une ligne par flux** : icône (triangle de lecture, ou maillon pour une page qui s'ouvre souvent en onglet), nom, badge `onglet` si la page refuse souvent l'iframe, chaîne, site, langue, et le débit ou la définition réellement mesurés quand le script utilisateur les a vus. Deux actions par ligne, à la souris et au doigt :
+  1. l'étoile : préférer ce domaine (il remonte dans tous les classements ; dorée quand c'est fait),
+  2. le pouce vers le bas : l'éviter (il descend ; rouge quand c'est fait).
   Le clic sur la ligne elle-même envoie le flux au Multivision (le `⊞` qui faisait la même chose est parti) ; à la télécommande et à la manette, la ligne est un seul arrêt et OK la lance. **Aucun lien ne mène au site lui-même** (25 octobre 2026, « pas de liens vers le vrai site, jamais ») : ni `↗` par flux, ni « Ouvrir la page du match », ni liens vers les sites sources.
 - **Les sites connus d'abord** (25 octobre 2026, « pour être fiables ») : après tes ⭐ / 👎 et ce qui a été vu jouer (un lien vu jouer passe devant un nom connu ; ce qui a été vu mort reste derrière), à jouabilité égale, les liens de Streamed et DaddyLive passent en tête, puis ceux de Methstreams, Streameast, TotalSportek, CricHD, CDNLiveTV, VIPLeague et MyBuffstreams, puis le reste (dont les agrégateurs comme Sportsurge ou Footybite, qui renvoient vers des hôtes pris au hasard). Les liens que le serveur de vérification ne peut pas atteindre (les sites qui bloquent les centres de données : Methstreams, MyBuffstreams, les miroirs Streameast) ne sont plus retirés depuis le 26 octobre 2026 : ils restent, marqués « à essayer » dans la fiche, classés derrière ce qui a été vu jouer et devant ce qui a été vu mort, et c'est ton appareil qui apprend s'ils jouent chez toi (« ici 3/4 »). Un site connu qui, essayé dix fois, n'a jamais joué perd sa place ; un hôte connu que la vérification mesure sous 20 % de lectures aussi (26 octobre 2026 : embed.st, à 1 sur 38, passait en tête devant des liens jamais essayés), et un hôte jugé mort sur cet appareil.
 - **L'ordre apprend de ton appareil.** Les liens sont rangés d'après ce qui a été vu jouer : par le serveur d'abord, puis par ton appareil, qui prend le dessus dès qu'il a essayé un site trois fois. Un site qui n'a jamais joué chez toi descend tout seul, marqué `ici 0/N`, même si le serveur l'a vu jouer ; il remonte dès qu'il joue. Quand la vérification a vu un lien jouer, sa définition réelle (« 1080p ») s'affiche et sert au tri à la place de la qualité annoncée. Un `⏭` appuyé sur une source qui n'a rien montré (entre 8 s et 90 s après son chargement) compte comme un échec, avec ou sans script utilisateur.
@@ -139,17 +130,17 @@ Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant u
 
 ### 5.1 Barre d'outils
 
-**Le lecteur couvre tout l'écran** (29 octobre 2026, « multiview devrait pas juste être plein écran… comme les plateformes de streaming normales ») : ni onglets, ni bandeau, ni barre du bas au-dessus de lui (du 25 au 29 octobre, c'était un onglet, sous l'en-tête). On en sort par **← Retour**, le premier bouton de la barre (une flèche seule sur téléphone), par Échap quand aucun menu du lecteur n'est ouvert (sinon Échap ferme d'abord le menu), ou par la touche Retour : vers la page d'où l'on venait (la touche Retour, vers le Live). La seule barre du lecteur (25 octobre 2026 : « moins all over the place »), en bas, par-dessus la vidéo, comme sur Netflix ; ses boutons sont blancs, sans capsule derrière, et le bouton qui a le focus grossit et se souligne. Elle s'efface avec les en-têtes après trois secondes sans un geste et revient au moindre mouvement ou toucher. **Avec une vidéo Twitch** (28 octobre 2026), la barre passe sous les vidéos et reste affichée, et l'en-tête de la tuile Twitch passe au-dessus de son image : sur Chrome et Vivaldi, le lecteur Twitch refuse de jouer, ou s'arrête, dès que quoi que ce soit est posé sur lui. Ouvrir un menu du lecteur par-dessus l'arrête encore. Au clavier, à la télécommande ou à la manette, la première touche ne fait que la ramener (focus sur `⏭`), la suivante agit ; en mode câble, les flèches zappent quand même. Trois groupes, de gauche à droite :
+**Le lecteur couvre tout l'écran** (29 octobre 2026, « multiview devrait pas juste être plein écran… comme les plateformes de streaming normales ») : ni onglets, ni bandeau, ni barre du bas au-dessus de lui (du 25 au 29 octobre, c'était un onglet, sous l'en-tête). On en sort par **← Retour**, le premier bouton de la barre (une flèche seule sur téléphone), par Échap quand aucun menu du lecteur n'est ouvert (sinon Échap ferme d'abord le menu), ou par la touche Retour : vers la page d'où l'on venait (la touche Retour, vers le Live). **Des commandes de service de streaming** (29 octobre 2026, « refaire la row de boutons dans le lecteur plus proche des streaming platforms ») : des boutons ronds à icône au trait, leur nom en infobulle au survol et au focus (sauf quand un lecteur Twitch est à l'écran : rien ne doit être peint sur lui), un séparateur entre la vidéo choisie et le lecteur, et un seul bouton plein, blanc : **+ Ajouter**, tout à droite. La seule barre du lecteur (25 octobre 2026 : « moins all over the place »), en bas, par-dessus la vidéo, comme sur Netflix ; ses boutons sont blancs, sans capsule derrière, et le bouton qui a le focus grossit et se souligne. Elle s'efface avec les en-têtes après trois secondes sans un geste et revient au moindre mouvement ou toucher. **Avec une vidéo Twitch** (28 octobre 2026), la barre passe sous les vidéos et reste affichée, et l'en-tête de la tuile Twitch passe au-dessus de son image : sur Chrome et Vivaldi, le lecteur Twitch refuse de jouer, ou s'arrête, dès que quoi que ce soit est posé sur lui. Ouvrir un menu du lecteur par-dessus l'arrête encore. Au clavier, à la télécommande ou à la manette, la première touche ne fait que la ramener (focus sur `⏭`), la suivante agit ; en mode câble, les flèches zappent quand même. Trois groupes, de gauche à droite :
 
 1. **Les vidéos**, une pastille chacune : numéro et match. La vidéo choisie est en blanc et dit sa source (`● source 2/5 · direct`) ; à partir de trois vidéos, les autres ne gardent que leur numéro. Une pastille (ou un clic dans la tuile, ou `1` à `4`) choisit la vidéo sur qui agit le groupe suivant.
-2. **La vidéo choisie** : `⏮` `⏭` source précédente / suivante, `▶ Direct` / `🖼 Page du site` quand un flux direct répond (§5.4), `⤢ Seule` / `⊞ Toutes` (29 octobre 2026, façon Prime Video, dès deux vidéos : la vidéo choisie prend tout le lecteur, les autres restent chargées ; une pastille change la vidéo vue seule ; Retour ramène la grille ; aussi dans le menu `⋮`), `🔊` / `🔇` couper ou remettre son son (28 octobre 2026 ; aussi dans son menu `⋮`, « Couper le son » ; une vidéo coupée reste muette même choisie ; les lecteurs Twitch et YouTube gardent leur propre bouton de son), `⋮` son menu.
+2. **La vidéo choisie** : source précédente / suivante, `Direct` / `Page du site` quand un flux direct répond (§5.4), `Seule` / `Toutes` (29 octobre 2026, façon Prime Video, dès deux vidéos : la vidéo choisie prend tout le lecteur, les autres restent chargées ; une pastille change la vidéo vue seule ; Retour ramène la grille ; aussi dans le menu `⋮`), `Son` (haut-parleur / barré) couper ou remettre son son (28 octobre 2026 ; aussi dans son menu `⋮`, « Couper le son » ; une vidéo coupée reste muette même choisie ; les lecteurs Twitch et YouTube gardent leur propre bouton de son), `⋮` son menu.
 3. **Le lecteur** :
 
 | Bouton | Effet |
 |---|---|
 | **+ Ajouter** | Ouvre **Choisir les matchs** (29 octobre 2026, façon Prime Video) : les matchs en direct qui ont un lien, en cartes (ligue, logos, score, nombre de liens), ceux du lecteur en tête et déjà cochés. On en coche jusqu'à quatre, puis **Regarder (n)** : les vidéos décochées partent, les matchs cochés arrivent avec leur meilleur lien jouable, celles qui restent ne rechargent pas. **Annuler**, ✕, Échap ou Retour ne changent rien ; **Tous les matchs** mène au Live. |
-| **⛶ Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
-| **⚙ Réglages** (« ⋯ Plus » jusqu'au 25 octobre 2026) | `⊞ Disposition`, un sous-menu (le bouton de la barre est parti le 25 octobre 2026) : `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`, puis, sous « Autres fenêtres » et seulement là, `🖼 Fenêtre détachée` (navigateurs qui le permettent ; dès deux vidéos, la vidéo 1 reste dans la page et les autres s'y empilent, une par-dessus l'autre), `🖥 Deux écrans` (ordinateur : la fenêtre étirée, §5.3 bis) et `🗗 Deux écrans : deux fenêtres` (ordinateur) ; en portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. Puis `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `▶ Direct automatique` (allumé par défaut, 29 octobre 2026 : une vidéo dont le flux direct répond le joue sans la page du site, plus léger, une fois par lien ; remise en page à la main, elle y reste ; un toast le dit), `🛡 Bloquer les redirections des sites` (allumé par défaut : si une vidéo tente d'emmener l'onglet sur son site juste après un clic dedans, le navigateur demande « Quitter le site ? » ; répondre non. Sans clic, Firefox la bloque déjà lui-même. Le script (1.17) empêche en plus les pages des vidéos de faire reculer ou avancer l'onglet dans l'historique, sans rien demander ; sur ordinateur, l'appli l'absorbe aussi d'elle-même, script ou pas, et l'affiche brièvement (« ⛔ Une vidéo a voulu faire reculer l'onglet : bloqué »). Reculer soi-même passe toujours : ← du navigateur, Alt+←, boutons de la souris, balayage du pavé tactile. La garde ne s'arme que si une tuile affiche la page d'un site, pas en mode direct ni pendant le chargement, et se lève d'elle-même quand c'est toi qui pars : pointeur monté vers les onglets ou la croix, boutons Précédent et Suivant de la souris, Ctrl+W, Ctrl+R, F5, onglet en arrière-plan. Fermer ou recharger l'onglet ne demande donc rien), `✕ Fermer toutes les vidéos`. |
+| **Plein écran** | Le lecteur seul, en plein écran. La barre et les en-têtes s'effacent après 3 s sans souris. |
+| **Réglages** (engrenage ; « ⋯ Plus » jusqu'au 25 octobre 2026) | `⊞ Disposition`, un sous-menu (le bouton de la barre est parti le 25 octobre 2026) : `Automatique`, `Une grande, les autres à côté`, `Les unes sous les autres`, `Côte à côte`, puis, sous « Autres fenêtres » et seulement là, `🖼 Fenêtre détachée` (navigateurs qui le permettent ; dès deux vidéos, la vidéo 1 reste dans la page et les autres s'y empilent, une par-dessus l'autre), `🖥 Deux écrans` (ordinateur : la fenêtre étirée, §5.3 bis) et `🗗 Deux écrans : deux fenêtres` (ordinateur) ; en portrait, deux vidéos ou plus sont toujours empilées, sans perdre le choix. Puis `⤢ Ajuster toutes les images`, `🎬 Mode cinéma`, `📊 Scores et statistiques`, `📺 Mode câble (une seule vidéo, zapping au doigt)`, `🔊 Son automatique`, `▶ Direct automatique` (allumé par défaut, 29 octobre 2026 : une vidéo dont le flux direct répond le joue sans la page du site, plus léger, une fois par lien ; remise en page à la main, elle y reste ; un toast le dit), `🛡 Bloquer les redirections des sites` (allumé par défaut : si une vidéo tente d'emmener l'onglet sur son site juste après un clic dedans, le navigateur demande « Quitter le site ? » ; répondre non. Sans clic, Firefox la bloque déjà lui-même. Le script (1.17) empêche en plus les pages des vidéos de faire reculer ou avancer l'onglet dans l'historique, sans rien demander ; sur ordinateur, l'appli l'absorbe aussi d'elle-même, script ou pas, et l'affiche brièvement (« ⛔ Une vidéo a voulu faire reculer l'onglet : bloqué »). Reculer soi-même passe toujours : ← du navigateur, Alt+←, boutons de la souris, balayage du pavé tactile. La garde ne s'arme que si une tuile affiche la page d'un site, pas en mode direct ni pendant le chargement, et se lève d'elle-même quand c'est toi qui pars : pointeur monté vers les onglets ou la croix, boutons Précédent et Suivant de la souris, Ctrl+W, Ctrl+R, F5, onglet en arrière-plan. Fermer ou recharger l'onglet ne demande donc rien), `✕ Fermer toutes les vidéos`. |
 
 Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois, avec leur titre (le match, « Réglages du lecteur », « Disposition des vidéos »). Ils sont rangés en sections (⚙ : Affichage, Lecture ; Disposition : les dispositions, puis Autres fenêtres ; ⋮ : Si la vidéo ne joue pas, Cette tuile, Le site), et chaque entrée dit en petit ce qu'elle fait.
 
@@ -158,7 +149,7 @@ Les menus s'ouvrent par-dessus les tuiles, entiers, un seul à la fois, avec leu
 
 Sur téléphone, la barre tient sur deux rangées : ← et les pastilles des vidéos, qui défilent de côté, puis les boutons, de même largeur, un libellé court sous chaque icône (Source, Vidéo, Ajouter, Plein écran, Réglages) ; `⏮` se fait par le menu de la vidéo (`Vidéo`).
 
-**À la télécommande et à la manette**, le focus reste dans la barre (◀ ▶ la parcourent, OK agit, ▲ mène à la barre de navigation) : il ne saute plus en haut de chaque tuile. Le bouton qui a le focus grossit et se souligne de blanc ; la pastille d'une vidéo prend un contour blanc. Une pression, un pas : dans un menu ou ailleurs, une touche n'est plus traitée deux fois.
+**À la télécommande et à la manette**, le focus reste dans la barre (◀ ▶ la parcourent, OK agit, ▲ mène à la barre de navigation) : il ne saute plus en haut de chaque tuile. Le bouton qui a le focus devient blanc, icône sombre, et grossit, son nom au-dessus ; la pastille d'une vidéo prend un contour blanc. Une pression, un pas : dans un menu ou ailleurs, une touche n'est plus traitée deux fois.
 
 ### 5.2 Dispositions automatiques
 
@@ -239,62 +230,50 @@ Un glissement de moins de 48 px, une diagonale ou un doigt qui traîne plus d'un
 
 ### 5.7 Panneau « Scores et statistiques »
 
-`⚙ Réglages → 📊 Scores et statistiques`. Colonne de 350 px accolée au lecteur, deux onglets (`Stats du Match`, celles du match de la vidéo choisie, qui suivent quand on en choisit une autre ; `Scores Live`), matchs épinglables, rafraîchie toutes les 5 minutes. C'est le seul endroit du lecteur pour les stats : « Infos et statistiques » du menu ⋮ faisait doublon et est parti (25 octobre 2026).
+`⚙ Réglages → 📊 Scores et statistiques`. Colonne de 350 px accolée au lecteur, deux onglets (`Stats du Match`, celles du match de la vidéo choisie, qui suivent quand on en choisit une autre ; `Scores Live`), matchs épinglables, rafraîchie toutes les 5 minutes. C'est le seul endroit du lecteur pour les stats : « Infos et statistiques » du menu ⋮ faisait doublon et est parti (25 octobre 2026). **Les alignements** y sont, sous les statistiques du match (29 octobre 2026 ; ils ont quitté la fiche) : football, un onglet par équipe, la formation (`4-2-3-1`) et les titulaires sur un terrain, une pastille par joueur avec ses buts, passes, cartons et sa sortie, puis les remplaçants ; ailleurs (hockey, football américain, baseball, basket), la feuille de match, un tableau par groupe avec les six colonnes les plus parlantes d'ESPN.
 
-## 6. Favoris (onglet ⭐ Favoris)
+## 6. Favoris (onglet Favoris)
 
 Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 
 - **Équipes** : la liste par ligue avec une ★ par équipe, une recherche instantanée, et `⭐️ MES FAVORIS` en tête. Un favori met ses matchs dans la section Favoris du Live et en avant dans le Guide.
 - **Ligues** : glisser-déposer (ou ▲/▼) pour l'ordre d'affichage, et pour chaque ligue trois niveaux, **Principale**, **Secondaire**, **Ignorée**, plus `↺` pour revenir au réglage par défaut. `Réinitialiser l'ordre` et `Réinitialiser le classement` remettent tout d'aplomb.
 
-## 7. Options (Réglages → ⚙️ Options)
+## 7. Options (Réglages → Options)
 
-« L'apparence d'abord ; le réseau et les outils avancés sont repliés plus bas. » Chaque changement est enregistré aussitôt (« Préférences sauvegardées »).
+« L'apparence d'abord ; les liens du serveur sont repliés plus bas. » Chaque changement est enregistré aussitôt (« Préférences sauvegardées »).
 
 ### 7.1 Apparence
 
 | Option | Choix |
 |---|---|
-| **Palettes rapides** | 37 palettes nommées, plus une palette par équipe favorite. |
-| **Style du fond** | Couleur unie, Dégradé doux, Grille subtile, Maillage aléatoire. |
-| **Couleurs du fond** | Trois couleurs (base, intermédiaire, extrémité). |
-| **Couleur d'accentuation** | La couleur des boutons et des mises en avant. |
-| **Assombrissement du fond** | Curseur 0 à 100. |
-| **Retirer le noir des maillages** | Interrupteur. |
-| **Forme des boutons** | Arrondis, Doux, Rectangulaires. |
-| **Disposition et couleurs** | Un renvoi à Réglages → Look (section 3 bis), seul endroit où les choisir depuis le 25 octobre 2026. |
-| **Forme des cartes** | Automatique (affiche sous 900 px), Affiche verticale (2:3), Carte large (2,4:1). |
+| **Palette** | 37 palettes nommées, plus une palette par équipe favorite : le fond de l'application, en dégradé doux, et sa couleur d'accent. La palette en cours est cerclée. (« Simplifier, mais garder les palettes, pas le reste », 29 octobre 2026 : styles de fond, couleurs du fond et d'accent à la pipette, assombrissement, « retirer le noir des maillages », formes des boutons et effets sont partis.) |
+| **Couleur des cartes** | Un renvoi à Réglages → Look (section 3 bis). |
+| **Forme des cartes** | Automatique (affiche sous 900 px), Affiche (vignette 4:3), Carte large (vignette 16:9). |
 | **Manette** | Une manette Xbox, PlayStation ou générique, sur ordinateur, Android, l'APK et la version de bureau : ✚ ou stick gauche naviguer, A ok, B retour, Start lecteur (ou retour au Live), Select Réglages, stick droit défiler ; dans le lecteur, LB/RB tuile voisine (le son la suit ; en mode câble, match voisin), LT/RT source précédente / suivante, Y plein écran (ou mode Cinéma si le navigateur refuse), X mode câble ; hors du lecteur, LB/RB onglet précédent / suivant (Live, Guide, Favoris, Réglages, sans boucler). L'aide s'affiche à la première pression ; une manette qui disparaît un instant (lecteur natif, perte de focus) est retrouvée seule. Dans le lecteur natif de l'APK : LB/RB match, LT/RT source, A/Y bandeau, X/Start pause. |
 | **Mode TV / tablette** | Textes plus gros (selon la largeur de l'écran : 1,3× sur un écran de 1920 px, 0,65 sur un Chromecast ; Options → Taille de l'interface), contour de focus très visible, navigation aux flèches et Entrée (télécommande). Un choix : rien ne l'allume d'office, pas même l'APK. |
 | **Télécommande et manette** | Les flèches restent dans la fenêtre ouverte (fiche, guide, menus) et y entrent seules ; à la fermeture, le focus revient sur la carte d'où l'on venait, même si la grille s'est redessinée entre-temps (25 octobre 2026 : avant, la flèche suivante repartait de la barre du haut). Une carte est un seul arrêt (ni son compteur « ▶ 105 », ni les ★), un flux de la fiche aussi (ni ⭐ 👎 ⊞, ni les ★ du bandeau). Le focus de départ est le premier match ; la carte qui a le focus grossit, comme une affiche. Retour : d'abord la barre de navigation (Live, Guide, Favoris, Réglages), puis le Live, puis quitter ; depuis le lecteur, le Live. ◀ ▶ change le choix d'une liste. Les cartes du Guide, les interrupteurs et les sections repliables s'atteignent. |
 | **APK sur une télé** | Le site tel quel : ni mode TV ni mode câble imposés (ceux d'une version précédente sont éteints une fois), la page à l'échelle d'une appli de télé comme Netflix ou Prime Video (1200 px de large, 1,6 fois l'écran d'ordinateur ; Options → Taille de l'interface), la navigation à la télécommande. Fermée (Retour sur la dernière page, ou Accueil), l'application repart de zéro au lancement suivant. |
 | **Télé Android : Retour et flux direct** | La touche Retour ferme un menu, la fiche, puis revient au Live ; depuis le Live, elle quitte. Sur la télé, un lien dont le flux direct est connu (relevé par la vérification du serveur) part d'emblée sur ce flux, pas sur la page du site et ses centaines de cadres de régie ; refusé, il revient à la page. Dans l'APK (télé ou téléphone), un flux direct joue dans sa tuile, comme sur le site (depuis le 25 octobre 2026 ; avant, il ouvrait le lecteur d'Android en plein écran, qui zappait comme le mode câble) ; Android pose le `Referer` que le serveur vidéo exige. S'il refuse dans la tuile, le lecteur d'Android prend le relais en plein écran (◀▶ y change de source ; ▲▼ ne zappe plus de match) ; s'il refuse là aussi, la tuile revient à la page du site. |
 
-### 7.2 Réseau & proxys (replié, avancé)
+### 7.2 Liens du serveur (replié, avancé)
 
-- **État** : le cache serveur des liens (matchs, liens, sources, âge), chaque proxy CORS avec une pastille de santé, et le **pont du script utilisateur** (« actif (v1.8) » ou « absent »).
-- `Proxy personnalisé`, `Clé API cors.sh`, `Clé API corsproxy.io`, puis `💾 Enregistrer et retester`.
-- `♻️ Réinitialiser l'historique` des proxys.
-- `▶️ Lancer le calcul sur GitHub` ouvre le workflow qui régénère les liens ; `🔄 Recharger les liens serveur` les relit tout de suite.
+- `Lancer le calcul sur GitHub` ouvre le workflow qui régénère les liens ; `Recharger les liens serveur` les relit tout de suite.
 
-### 7.3 Outils (replié, avancé)
+Le proxy personnalisé, les clés d'API, l'état des proxys et la section **Outils** (Scraper Investigator, export et import des réglages) sont partis le 29 octobre 2026 (« j'utilise pas les proxy »). L'application garde ses relais publics, automatiques, pour lire elle-même les pages des sources quand le serveur se tait.
 
-- **Scraper Investigator** : analyse l'adresse d'une page de lecteur, enregistre la séquence de clics qui mène à la vidéo et sauvegarde des règles réutilisées ensuite.
-- **Sauvegarde** : `Exporter (.json)` (préférences, favoris, ordre des ligues) et `Importer`.
-
-## 8. Logs (Réglages → 📋 Logs)
+## 8. Logs (Réglages → Logs)
 
 - **Cet appareil** : six lignes ✅ / ⚠️ / ❌ pour comparer deux appareils qui ne voient pas la même chose. Calendrier (nombre de matchs, source, âge), ESPN (réponses sur tentatives, dernière erreur), Liens (`data/streams.json`, âge en clair, en orange dès 45 min et avec la raison — passage manqué ou serveur muet), Fusion (« N matchs sur M ont des liens »), Stockage local (Ko, écritures refusées ; plein, il se vide d'abord de ses caches refaisables — liens, dernier scraping, calendriers — et nomme ceux qu'il a vidés et les plus grosses clés), Version (`sports-guide-v14`, service worker actif ou non), Script de nettoyage (version, et s'il faut le mettre à jour) ou Extension de nettoyage (version, et comment la mettre à jour), Garde « Quitter le site ? » (active, ou coupée et où la rallumer), Registre de l'appareil (combien d'hôtes cet appareil a essayés, lesquels il juge morts ici et classe en bas pendant 24 h, combien n'ont plus de veto faute d'essai récent), Fluidité (les gels de l'interface et les arrêts de vidéo des dix dernières minutes ; sur Chrome et Vivaldi, depuis le 28 octobre 2026, aussi ce qui a tenu la page pendant les gels : une fonction et son fichier, une extension, un script utilisateur, ou « mise en page et rendu »), Images perdues (29 octobre 2026 : la part d'images perdues de chaque vidéo, et « décroche à partir de N vidéos à la fois » ou « tient N vidéos » ; une vidéo qui en perd plus d'un quart le dit aussi par un toast, au plus toutes les 5 minutes), Décodage vidéo (H.264 1080p et 720p : matériel ou logiciel probable). Dans l'APK, le journal d'Android dit en plus quel décodeur le lecteur natif a pris (matériel ou LOGICIEL). Puis `↻ Mettre à jour l'application`.
 
 Ce que l'appareil a appris **expire** (26 octobre 2026) : un hôte jugé mort ici l'était pour toujours, puisque classé en bas il n'était plus jamais essayé ; sans nouvel essai depuis 24 h, il reprend la place que le serveur lui donne et a droit à une nouvelle chance — qui, si elle échoue, le remet en bas pour 24 h.
 - **Sorties de l'appli (vidéos chargées)** : les douze dernières fois où la page a été quittée ou a failli l'être, avec l'heure, « page quittée » ou « page restée », si la garde « Quitter le site ? » était armée et sinon pourquoi (réglage coupé, pointeur monté vers les onglets, Ctrl tenu, F5, onglet en arrière-plan), puis le dernier geste dans la page, la vidéo qui avait le focus, la fenêtre sans focus, la dernière position du pointeur et l'endroit où il est sorti de la fenêtre, la dernière touche de raccourci, l'âge du dernier clic dans une vidéo, les sites des vidéos et depuis combien de temps chacune est chargée ; les reculs de l'onglet demandés par une vidéo et bloqués (⛔), et les retours par « Précédent ». C'est ce qu'il faut regarder quand l'onglet est parti sur une pub.
-- **État des sources** du dernier scraping : pastille, nom, bouton 🕵️ vers l'Investigator, message, nombre de matchs, heure.
+- **État des sources** du dernier scraping : pastille, nom, message, nombre de matchs, heure.
 - **Liens par domaine primaire** (`↻ Recalculer`) : combien de liens, d'intégrables, de pages et de matchs par fournisseur, sous-domaines repliés sur le domaine principal.
 - **Historique des requêtes** : journal horodaté, `📋 Copier le log` sur les entrées longues, `📥 Exporter` (fichier `jmtv-debug-logs-<date>.json`).
 - **Diagnostics des flux manuels** : les rapports produits par la recherche manuelle de la fiche.
 
-## 9. Installation des scripts (Réglages → 🧩 Script)
+## 9. Installation des scripts (Réglages → Script)
 
 L'ancien guide, gardé à la demande de l'utilisateur, avec un chemin Chrome qui marche (25 octobre 2026). La même chose s'ouvre en fenêtre au premier démarrage, une seule fois, et seulement si rien ne protège déjà les lecteurs (extension, script, bureau, APK).
 

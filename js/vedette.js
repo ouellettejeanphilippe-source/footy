@@ -30,7 +30,10 @@ function esc(s) {
 
 function logo(l, nom) {
   if (l && l.url) return '<img class="vedette-logo" src="' + esc(l.url) + '" alt="" decoding="async" onerror="this.style.visibility=\'hidden\'">';
-  return '<span class="vedette-logo vedette-emoji" aria-hidden="true">' + esc(l && l.emoji ? l.emoji : '🛡️') + '</span>';
+  if (l && l.emoji) return '<span class="vedette-logo vedette-emoji" aria-hidden="true">' + esc(l.emoji) + '</span>';
+  var mots = String(nom || '').trim().split(/\s+/).filter(Boolean);
+  var ini = mots.length > 1 ? mots[0][0] + mots[mots.length - 1][0] : String(nom || '?').slice(0, 2);
+  return '<span class="vedette-logo vedette-emoji vedette-initiales" aria-hidden="true">' + esc(ini.toUpperCase()) + '</span>';
 }
 
 /* L'état en une ligne : « ● Direct 75′ », « dans 12 min », « 20:30 », « Fin ». */
@@ -44,9 +47,23 @@ export function etatVedette(f, maintenant) {
   return (f.jour ? f.jour + ' ' : '') + f.heure;
 }
 
+
 /* Le bandeau : fond aux couleurs des équipes (--v1, --v2), ligue, les deux équipes avec
    leurs logos et le score, l'état, et « Regarder » (data-mid, `data-focus-depart` : c'est
-   le premier arrêt de la télécommande, comme sur Netflix). */
+   le premier arrêt de la télécommande, comme sur Netflix).
+
+   Comme une affiche de service de streaming (29 octobre 2026, « le ui fait cheap ») : à
+   droite, les deux blasons en grand servent d'image (`vedette-art`, décor, caché aux
+   lecteurs d'écran) ; à gauche, le texte sur un voile sombre. Plus d'emoji : la ligue
+   est un surtitre, le triangle de « Regarder » un tracé (le ▶ du texte devient une
+   pastille bleue sur Android). */
+var LECTURE = '<svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" fill="currentColor"/></svg>';
+
+function art(l) {
+  if (l && l.url) return '<img class="vedette-art-logo" src="' + esc(l.url) + '" alt="" decoding="async" onerror="this.remove()">';
+  return '';
+}
+
 export function bandeauVedette(f, maintenant) {
   if (!f) return '';
   var live = f.etat === 'live';
@@ -55,12 +72,14 @@ export function bandeauVedette(f, maintenant) {
     ? '<span class="vedette-eq">' + logo(f.logoDom, f.dom) + '<span class="vedette-nom">' + esc(f.dom) + '</span></span>'
     : '<span class="vedette-eq">' + logo(f.logoDom, f.dom) + '<span class="vedette-nom">' + esc(f.dom) + '</span></span>' + score
       + '<span class="vedette-eq">' + logo(f.logoExt, f.ext) + '<span class="vedette-nom">' + esc(f.ext) + '</span></span>';
+  var decor = art(f.logoDom) + (f.seul ? '' : art(f.logoExt));
   return '<section class="vedette' + (live ? ' vedette-live' : '') + '" style="--v1:' + esc(f.cDom) + ';--v2:' + esc(f.cExt) + '" aria-label="À la une">'
+    + (decor ? '<div class="vedette-art" aria-hidden="true">' + decor + '</div>' : '')
     + '<div class="vedette-corps">'
-    + '<div class="vedette-ligue">' + (f.drapeau ? '<span>' + esc(f.drapeau) + '</span> ' : '') + esc(f.ligue) + (f.fav ? ' <span class="vedette-fav">★</span>' : '') + '</div>'
+    + '<div class="vedette-ligue"><span class="vedette-une">À la une</span><span>' + esc(f.ligue) + '</span>' + (f.fav ? ' <span class="vedette-fav" title="Favori">★</span>' : '') + '</div>'
     + '<div class="vedette-titre">' + equipes + '</div>'
     + '<div class="vedette-etat' + (live ? ' vedette-direct' : '') + '">' + esc(etatVedette(f, maintenant))
     + (f.flux ? ' <span class="vedette-flux">· ' + f.flux + ' flux</span>' : '') + '</div>'
-    + '<div class="vedette-actions"><button type="button" class="vedette-go" data-mid="' + esc(f.id) + '" data-focus-depart>▶ Regarder</button></div>'
+    + '<div class="vedette-actions"><button type="button" class="vedette-go" data-mid="' + esc(f.id) + '" data-focus-depart>' + LECTURE + '<span>Regarder</span></button></div>'
     + '</div></section>';
 }

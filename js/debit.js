@@ -23,24 +23,10 @@
 
 export var TTL_MESURE_MS = 3 * 3600 * 1000;
 
-/* Débit moyen, en kilobits par seconde, à partir des entrées de chronologie de ressources
-   des `fenetreMs` dernières millisecondes. Rend 0 si rien n'est mesurable. */
-export function debitDepuisEntrees(entrees, fenetreMs, maintenant) {
-    var fen = fenetreMs || 10000;
-    var t = (maintenant === undefined) ? 0 : maintenant;
-    var octets = 0;
-    (entrees || []).forEach(function (e) {
-        if (!e) return;
-        if (t && e.startTime !== undefined && (t - e.startTime) > fen) return;
-        /* `transferSize` compte l'octet réseau ; `encodedBodySize` prend le relais quand le
-           premier est masqué mais que le corps est connu. Les deux valent 0 sans
-           Timing-Allow-Origin : dans ce cas on ne mesure rien, et on le dit. */
-        var n = (e.transferSize | 0) || (e.encodedBodySize | 0);
-        if (n > 0) octets += n;
-    });
-    if (!octets) return 0;
-    return Math.round((octets * 8) / (fen / 1000) / 1000);
-}
+/* Le débit lui-même est calculé par le script utilisateur, dans le cadre du lecteur, où
+   il voit la chronologie des ressources ; ce module ne fait que le ranger et l'afficher.
+   (`debitDepuisEntrees`, sa copie ici, n'avait d'appelant que les tests : retirée le
+   29 octobre 2026.) */
 
 /* « 5,2 Mb/s », « 820 kb/s », ou '' quand rien n'a été mesuré. */
 export function formaterDebit(kbps) {

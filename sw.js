@@ -24,7 +24,7 @@
    gestionnaire `fetch` ci-dessous les range de toute façon dès leur première lecture,
    ce qui suffit au repli hors ligne. */
 
-const CACHE_NAME = 'sports-guide-v101';
+const CACHE_NAME = 'sports-guide-v102';
 
 const APP_SHELL = [
   './index.html',
@@ -44,7 +44,6 @@ const APP_SHELL = [
   './js/nuit.js',
   './js/cable.js',
   './js/deuxecrans.js',
-  './js/dispositions.js',
   './js/vedette.js',
   './js/rattrapage.js',
   './js/sondage.js',
@@ -87,7 +86,11 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './js/sorties.js',
   './js/tampon.js',
-  './js/tv-navigation.js'
+  './js/tv-navigation.js',
+  './js/icones.js',
+  './fonts/inter-latin.woff2',
+  './fonts/inter-latin-ext.woff2',
+  './fonts/barlow-condensed-700.woff2'
 ];
 
 /* Adresse de rangement : même origine → on ignore la chaîne de requête, qui ne sert

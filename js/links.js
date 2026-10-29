@@ -156,57 +156,11 @@ export function searchLinksForMatch(matchId) {
   });
 }
 
-/* Balayage groupé : relance la recherche sur les matchs sans lien, du plus proche dans
-   le temps au plus lointain, en série (les sources répondent mal en parallèle) et
-   plafonné — sans plafond, un guide de 300 matchs lancerait 300 séquences de requêtes.
-   `onProgress(done, total, found)` alimente la barre d'avancement de l'interface. */
-export var MISSING_SCAN_LIMIT = 12;
-
-var scanRunning = false;
-export function isMissingScanRunning() { return scanRunning; }
-
-export function searchMissingLinks(options) {
-  options = options || {};
-  var limit = options.limit || MISSING_SCAN_LIMIT;
-  var onProgress = options.onProgress || function () {};
-
-  if (scanRunning) return Promise.resolve({ scanned: 0, found: 0, busy: true });
-
-  var candidates = matchesWithoutLinks((window.S && window.S.matches) || [])
-    .sort(function (a, b) {
-      var wa = a.status === 'live' ? 0 : 1;
-      var wb = b.status === 'live' ? 0 : 1;
-      if (wa !== wb) return wa - wb;
-      return String(a.startTime || '99:99').localeCompare(String(b.startTime || '99:99'));
-    })
-    .slice(0, limit);
-
-  if (candidates.length === 0) return Promise.resolve({ scanned: 0, found: 0, empty: true });
-
-  scanRunning = true;
-  var found = 0;
-  var done = 0;
-  onProgress(0, candidates.length, 0);
-
-  var chain = Promise.resolve();
-  candidates.forEach(function (m) {
-    chain = chain.then(function () {
-      m.streamsLoaded = false;
-      return scrapeFlux(m, true, true).catch(function () {});
-    }).then(function () {
-      done++;
-      if (m.streamLinks && m.streamLinks.length > 0) found++;
-      onProgress(done, candidates.length, found);
-    });
-  });
-
-  return chain.then(function () {
-    scanRunning = false;
-    return { scanned: candidates.length, found: found };
-  }).catch(function (e) {
-    scanRunning = false;
-    throw e;
-  });
+/* Un badge des cartes : le tracé de js/icones.js, posé sur `window` par js/ui.js (ce
+   module reste sans import), sinon le caractère d'avant. */
+function badge(el, nom, repli) {
+  if (typeof window !== 'undefined' && typeof window.icone === 'function') el.innerHTML = window.icone(nom);
+  else el.textContent = repli;
 }
 
 /* Poignée du badge 🔎 des cartes (js/ui.js). Le badge lui-même sert d'indicateur
@@ -216,20 +170,21 @@ export function cardSearchLinks(ev, matchId) {
   if (ev) { ev.stopPropagation(); ev.preventDefault(); }
   var btn = ev && ev.currentTarget;
   if (btn && btn.disabled) return;
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (btn) { btn.disabled = true; badge(btn, 'refresh', '⏳'); }
 
   return searchLinksForMatch(matchId).then(function (n) {
     if (!btn || !btn.parentNode) return n;
     if (n > 0) {
-      var badge = document.createElement('div');
-      badge.className = 'card-streams';
-      badge.setAttribute('data-mid', String(matchId));
-      badge.title = n + ' flux disponibles';
-      badge.textContent = '▶ ' + n;
-      btn.parentNode.replaceChild(badge, btn);
+      var compte = document.createElement('div');
+      compte.className = 'card-streams';
+      compte.setAttribute('data-mid', String(matchId));
+      compte.title = n + ' flux disponibles';
+      badge(compte, 'play', '▶ ');
+      compte.appendChild(document.createTextNode(String(n)));
+      btn.parentNode.replaceChild(compte, btn);
     } else {
       btn.disabled = false;
-      btn.textContent = '🔎';
+      badge(btn, 'search', '🔎');
       btn.title = 'Aucun lien trouvé — réessayer';
     }
     return n;
@@ -245,7 +200,7 @@ export function cardRetryLinks(ev) {
   if (ev) { ev.stopPropagation(); ev.preventDefault(); }
   var boutons = Array.prototype.slice.call(document.querySelectorAll('.card-streams-retry'));
   if (boutons.some(function (b) { return b.disabled; })) return Promise.resolve();
-  boutons.forEach(function (b) { b.disabled = true; b.textContent = '⏳'; });
+  boutons.forEach(function (b) { b.disabled = true; badge(b, 'refresh', '⏳'); });
   var relire = (typeof window !== 'undefined' && typeof window.reloadPrefetchedStreams === 'function')
     ? window.reloadPrefetchedStreams()
     : Promise.resolve();
@@ -256,7 +211,7 @@ export function cardRetryLinks(ev) {
       window.buildEPG(window.S.matches);
       return;
     }
-    document.querySelectorAll('.card-streams-retry').forEach(function (b) { b.disabled = false; b.textContent = '⚠'; });
+    document.querySelectorAll('.card-streams-retry').forEach(function (b) { b.disabled = false; badge(b, 'alerte', '⚠'); });
   });
 }
 
@@ -303,44 +258,6 @@ export function renderDomainStats() {
   el.innerHTML = head + '<div class="domain-stats">' + rows + '</div>';
 }
 
-/* Balayage groupé piloté depuis la barre d'outils du Guide. */
-export function findMissingLinks() {
-  var btn = document.getElementById('btn-find-missing');
-  var bar = document.getElementById('missing-scan-progress');
-  var setBar = function (html) { if (bar) { bar.innerHTML = html; bar.style.display = html ? 'flex' : 'none'; } };
-
-  if (isMissingScanRunning()) {
-    if (window.showToast) window.showToast('Recherche déjà en cours…');
-    return Promise.resolve();
-  }
-  if (btn) btn.disabled = true;
-
-  return searchMissingLinks({
-    onProgress: function (done, total, found) {
-      setBar('<span>🔎 ' + done + '/' + total + ' · ' + found + ' pourvus</span>'
-        + '<span class="ms-bar"><i style="width:' + Math.round((done / total) * 100) + '%"></i></span>');
-    }
-  }).then(function (res) {
-    if (btn) btn.disabled = false;
-    setBar('');
-    if (res.empty) {
-      if (window.showToast) window.showToast('Tous les matchs à venir ont déjà des liens.');
-      return res;
-    }
-    if (window.showToast) {
-      window.showToast(res.found + ' match' + (res.found > 1 ? 's' : '') + ' pourvu' + (res.found > 1 ? 's' : '')
-        + ' sur ' + res.scanned + ' recherché' + (res.scanned > 1 ? 's' : '') + '.');
-    }
-    if (typeof window.buildEPG === 'function' && window.S) window.buildEPG(window.S.matches);
-    renderDomainStats();
-    return res;
-  }).catch(function (e) {
-    if (btn) btn.disabled = false;
-    setBar('');
-    if (window.showToast) window.showToast('Recherche interrompue : ' + (e && e.message ? e.message : e));
-  });
-}
-
 /* Filtre la liste des flux d'une fiche de match sur un ou plusieurs domaines primaires
    (`doms` : liste séparée par des virgules ; vide = tout afficher). La pastille « Autres »
    en porte plusieurs, d'où la liste plutôt qu'un domaine unique.
@@ -372,10 +289,8 @@ if (typeof window !== 'undefined') {
   window.matchDomainStats = matchDomainStats;
   window.matchesWithoutLinks = matchesWithoutLinks;
   window.searchLinksForMatch = searchLinksForMatch;
-  window.searchMissingLinks = searchMissingLinks;
   window.cardSearchLinks = cardSearchLinks;
   window.cardRetryLinks = cardRetryLinks;
   window.renderDomainStats = renderDomainStats;
-  window.findMissingLinks = findMissingLinks;
   window.filterFluxByDomain = filterFluxByDomain;
 }

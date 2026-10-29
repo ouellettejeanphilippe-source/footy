@@ -5,7 +5,8 @@ import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, ongletDeLaVue, tailleStockageKo, plusGrossesCles } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
-import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
+import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlignements } from './ui.js';
+import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
@@ -313,7 +314,6 @@ function pontPourDirect(media) {
    manifeste: { ok, at, raison, enCours } }, en mémoire seulement : un verdict dépend du
    réseau et du moment. */
 var sondesDirect = {};
-export function etatSondesDirect() { return sondesDirect; }
 function texteDebut(octets) {
     try { return new TextDecoder().decode(new Uint8Array(octets).slice(0, 64)); } catch (e) { return ''; }
 }
@@ -535,14 +535,8 @@ export var activeMvStatsCards = [];
 export function toggleMvGameMode() {
     mvGameModeActive = !mvGameModeActive;
     var mvContainer = document.getElementById('mv-container');
-    var gmBtn = document.getElementById('mv-gm-btn');
 
     if (mvGameModeActive) {
-        if (gmBtn) {
-            gmBtn.style.background = 'rgba(255,69,58,0.2)';
-            gmBtn.style.borderColor = 'rgba(255,69,58,0.4)';
-            gmBtn.style.color = '#fff';
-        }
 
         // Add stats sidebar to multiview if not present
         if (!document.getElementById('mv-stats-sidebar')) {
@@ -575,11 +569,6 @@ export function toggleMvGameMode() {
         if (typeof mvGameModeInterval !== 'undefined' && mvGameModeInterval) clearInterval(mvGameModeInterval);
         mvGameModeInterval = setInterval(updateGmCurrentTab, 300000); // Update every 5m
     } else {
-        if (gmBtn) {
-            gmBtn.style.background = '';
-            gmBtn.style.borderColor = '';
-            gmBtn.style.color = '';
-        }
 
         var statsSidebar = document.getElementById('mv-stats-sidebar');
         if (statsSidebar) {
@@ -837,8 +826,6 @@ export function updateMvGameModeStats() {
             if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
                 var ts = res.data.boxscore.teams;
                 if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
-                    var hStats = ts[0].statistics;
-                    var aStats = ts[1].statistics;
 
                     // Always try to put home team on the left, away on the right. Usually ts[0] is home if homeAway == 'home', else we need to swap
                     var hIsTs0 = ts[0].homeAway === 'home';
@@ -880,6 +867,14 @@ export function updateMvGameModeStats() {
             }
 
             bodyEl.innerHTML = html ? '<div style="margin-top:15px;">' + html + '</div>' : '<div style="margin-top:15px; color:var(--muted); text-align:center;">Aucune statistique détaillée disponible.</div>';
+            /* Les alignements, ici seulement (29 octobre 2026, « alignements seulement
+               lorsque stats en direct dans le multiview, pas dans la carte des streams ») :
+               la composition, ou la feuille de match, du même `summary` ESPN. */
+            var al = document.createElement('div');
+            al.className = 'alignements mv-alignements';
+            al.style.display = 'none';
+            bodyEl.appendChild(al);
+            afficherAlignements(al, res.data);
         }).catch(function() {
             var bodyEl = document.getElementById('mv-stat-body-' + m.id);
             if (bodyEl) bodyEl.innerHTML = '<div style="margin-top:15px; color:var(--muted); text-align:center;">Erreur lors du chargement des statistiques.</div>';
@@ -1533,32 +1528,6 @@ export function fermerChoixMulti(appliquer) {
     return d;
 }
 
-/* ══ MULTIVISION MATCH SELECTOR ════════ */
-export function showMatchSelector(event, replaceIdx) {
-    if (event) {
-        event.stopPropagation();
-        event.preventDefault();
-    }
-
-    var isReplace = replaceIdx !== undefined;
-
-    window.multiviewPendingAction = {
-        type: isReplace ? 'replace' : 'add',
-        replaceIdx: replaceIdx
-    };
-
-    var mvc = document.getElementById('mv-container');
-    if (mvc && !mvc.classList.contains('mv-pip') && mvc.style.display !== 'none') {
-        toggleMultiviewPip();
-    }
-
-    applyFilter('live');
-
-    // Show a toast to instruct the user
-    showToast(isReplace ? 'Sélectionnez un match en direct pour remplacer' : 'Sélectionnez un match en direct pour ajouter');
-}
-
-
 /* Le lecteur revient au premier plan : ses commandes avec lui. Le repos les avait peut-être
    effacées juste avant qu'on le quitte, et rien ne les rendait avant le prochain geste
    au-dessus de la barre — on arrivait devant une barre vide. */
@@ -2125,21 +2094,31 @@ export function setupMultivisionUI() {
   /* ← Retour, à gauche (29 octobre 2026) : le lecteur couvre tout l'écran, plus d'onglet
      au-dessus de lui pour en sortir. Le même chemin que la touche Retour (quitterLecteur,
      js/main.js). */
-  var mvToolbarHtml = '<button type="button" class="mv-tb-btn mv-tb-retour" id="mv-bar-retour" onclick="quitterLecteur()" title="Revenir à la page d\'avant (Échap)" aria-label="Retour"><span class="mv-tb-ic" aria-hidden="true">←</span><span class="mv-tb-lb">Retour</span></button>'
+  /* Les commandes comme sur un service de streaming (29 octobre 2026, « refaire la row de
+     boutons dans le lecteur plus proche des streaming platforms ») : des boutons ronds à
+     icône au trait, leur nom en infobulle au survol et au focus (styles.css §17), et un
+     seul bouton plein, blanc : Ajouter. Les glyphes (⏮ ⏭ ⛶ ⚙ ⋮) et les emoji (🔊) que
+     chaque système dessinait à sa façon sont partis. Sur téléphone, le nom reste écrit
+     sous l'icône. */
+  var bouton = function(attrs, ic, lb, cls) {
+      return '<button type="button" class="mv-tb-btn' + (cls ? ' ' + cls : '') + '" ' + attrs + '><span class="mv-tb-ic" aria-hidden="true">' + icone(ic) + '</span><span class="mv-tb-lb">' + lb + '</span></button>';
+  };
+  var mvToolbarHtml = bouton('id="mv-bar-retour" onclick="quitterLecteur()" title="Revenir à la page d\'avant (Échap)" aria-label="Retour"', 'retour', 'Retour', 'mv-tb-retour')
       + '<div class="mv-bar-videos" id="mv-bar-videos" role="group" aria-label="Vidéos du lecteur"><span class="mv-title">Lecteur</span></div>'
-      + '<div class="mv-bar-groupe mv-source-nav" role="group" aria-label="Vidéo choisie">'
-      + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo choisie" aria-label="Source précédente"><span class="mv-tb-ic" aria-hidden="true">⏮</span></button>'
-      + '<button type="button" class="mv-tb-btn" id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⏭</span><span class="mv-tb-lb">Source<span class="mv-tb-lb-long"> suivante</span></span></button>'
-      + '<button type="button" class="mv-tb-btn" id="mv-bar-direct" onclick="basculerDirectActif()" title="Basculer entre la page du site et le flux direct" hidden><span class="mv-tb-ic" aria-hidden="true">▶</span><span class="mv-tb-lb">Direct</span></button>'
-      + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-seule" onclick="basculerSeule()" aria-pressed="false" title="Voir la vidéo choisie seule" aria-label="Voir la vidéo choisie seule" hidden><span class="mv-tb-ic" aria-hidden="true">⤢</span><span class="mv-tb-lb mv-tb-lb-tel">Seule</span></button>'
-      + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">🔊</span><span class="mv-tb-lb mv-tb-lb-tel">Son</span></button>'
-      + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⋮</span><span class="mv-tb-lb mv-tb-lb-tel">Vidéo</span></button>'
-      + '</div>'
       + '<div class="sp"></div>'
+      + '<div class="mv-bar-groupe mv-source-nav" role="group" aria-label="Vidéo choisie">'
+      + bouton('id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo choisie" aria-label="Source précédente"', 'precedent', 'Source précédente', 'mv-tb-ic-seul')
+      + bouton('id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo choisie" aria-label="Source suivante"', 'suivant', 'Source<span class="mv-tb-lb-long"> suivante</span>', 'mv-tb-ic-seul')
+      + bouton('id="mv-bar-direct" onclick="basculerDirectActif()" title="Basculer entre la page du site et le flux direct" hidden', 'direct', 'Direct', 'mv-tb-ic-seul')
+      + bouton('id="mv-bar-seule" onclick="basculerSeule()" aria-pressed="false" title="Voir la vidéo choisie seule" aria-label="Voir la vidéo choisie seule" hidden', 'seule', 'Seule', 'mv-tb-ic-seul')
+      + bouton('id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"', 'son', 'Son', 'mv-tb-ic-seul')
+      + bouton('id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"', 'points', 'Vidéo', 'mv-tb-ic-seul')
+      + '</div>'
+      + '<span class="mv-bar-sep" aria-hidden="true"></span>'
       + '<div id="mv-actions-menu" class="mv-bar-groupe mv-actions" role="group" aria-label="Lecteur">'
-      + '<button type="button" class="mv-tb-btn primary" onclick="ouvrirChoixMulti(event)" title="Choisir les matchs du lecteur"><span class="mv-tb-ic mv-tb-plus" aria-hidden="true">+</span><span class="mv-tb-lb">Ajouter</span></button>'
-      + '<button type="button" class="mv-tb-btn" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" title="Plein écran"><span class="mv-tb-ic" aria-hidden="true">⛶</span><span class="mv-tb-lb">Plein écran</span></button>'
-      + '<button type="button" class="mv-tb-btn" id="mv-more-btn" onclick="ouvrirMenuBarre(this, event)" aria-haspopup="menu" aria-expanded="false" title="Réglages du lecteur"><span class="mv-tb-ic" aria-hidden="true">⚙</span><span class="mv-tb-lb">Réglages</span></button>'
+      + bouton('onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" title="Plein écran" aria-label="Plein écran"', 'pleinEcran', 'Plein écran', 'mv-tb-ic-seul')
+      + bouton('id="mv-more-btn" onclick="ouvrirMenuBarre(this, event)" aria-haspopup="menu" aria-expanded="false" title="Réglages du lecteur" aria-label="Réglages du lecteur"', 'engrenage', 'Réglages', 'mv-tb-ic-seul')
+      + bouton('onclick="ouvrirChoixMulti(event)" title="Choisir les matchs du lecteur"', 'plus', 'Ajouter', 'primary')
       + '</div>';
 
     mvToolbar.innerHTML = mvToolbarHtml;
@@ -2950,7 +2929,6 @@ export function updateMultivisionLayout() {
     var nouvellesTuiles = 0;
     mvFlux.forEach(function(s, idx) {
         var cellId = s._internalId;
-        var cellClass = 'mv-cell';
         var cell = existingCells.find(function(c) { return c.getAttribute('data-internal-id') === cellId; });
 
         if (!cell) {
@@ -3317,7 +3295,7 @@ export function updateMultivisionLayout() {
                vidéos. */
             + (mvFlux.length >= 2 ? '<div class="mv-stream-number" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' : '')
             + '<span class="mv-hdr-son" title="On entend cette vidéo" aria-label="On entend cette vidéo"'
-            +   ((mvFlux.length >= 2 && idx === (activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : 0) && !s._sonCoupe) ? '' : ' hidden') + '>🔊</span>'
+            +   ((mvFlux.length >= 2 && idx === (activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : 0) && !s._sonCoupe) ? '' : ' hidden') + '>' + icone('son') + '</span>'
             + '</div>';
 
         /* En mode câble, l'échappatoire est à portée de pouce : suspendre les gestes de
@@ -4368,8 +4346,6 @@ export function toggleMultiview() {
     var mvc = document.getElementById('mv-container');
     var epg = document.getElementById('epg');
 
-    // Clear pending actions when manually toggling multiview state
-    window.multiviewPendingAction = null;
     if(!mvc || !epg) return;
 
     if(mvc.style.display === 'none') {
@@ -4682,26 +4658,6 @@ export function openFlux(e, eu, en, mid, isPage){
      chaque flux restent le moyen explicite de sortir de l'application pour qui le
      souhaite, mais ce n'est plus jamais automatique. */
 
-  if (window.multiviewPendingAction) {
-      var action = window.multiviewPendingAction;
-
-      if(action.type === 'replace' && action.replaceIdx !== undefined) {
-          mvFlux[action.replaceIdx].url = url;
-          mvFlux[action.replaceIdx].name = matchName;
-          mvFlux[action.replaceIdx].mid = mid;
-          saveMultivisionState(); updateMultivisionLayout();
-      } else {
-          addToMultivision(url, matchName, mid);
-      }
-
-      window.multiviewPendingAction = null;
-      closeMod();
-      if(document.getElementById('mv-container') && document.getElementById('mv-container').classList.contains('mv-pip')){
-          toggleMultiviewPip();
-      }
-      return;
-  }
-
   // Close modal if open
   var mbg = document.getElementById('mbg');
   if(mbg) mbg.classList.remove('open');
@@ -4709,24 +4665,19 @@ export function openFlux(e, eu, en, mid, isPage){
   addToMultivision(url, matchName, mid);
 }
 
+/* Le fond de la page : la palette choisie (Options → Palettes), en dégradé doux.
+   Les autres styles de fond (uni, grille, maillages), l'assombrissement, le flou et le
+   « noir des maillages » sont partis le 29 octobre 2026 : « Simplifier, mais garder les
+   palettes, pas le reste ». Le fond vit dans un conteneur fixe, unique pour la page. */
 export function applyBgStyle() {
   if (!userPrefs) return; // voir initPrefs : cycle d'imports ui <-> multiview
-  var s = userPrefs.bgStyle || 'gradient';
-
-  // Icon Pack
-  document.body.setAttribute('data-icon-pack', userPrefs.iconPack || 'standard');
-
-  var c1 = userPrefs.c1 || '#000000';
-  var c2 = userPrefs.c2 || '#111111';
-  var c3 = userPrefs.c3 || '#222222';
-  var blurVal = userPrefs.bgBlur || 0;
-  var darkenVal = userPrefs.bgDarken || 0;
-
+  var c1 = userPrefs.c1 || '#0b0d12';
+  var c2 = userPrefs.c2 || '#151b2b';
+  var c3 = userPrefs.c3 || '#0b0d12';
   document.documentElement.style.setProperty('--bg', c1);
 
-  // Use a dedicated background container
   var appBg = document.getElementById('app-bg-container');
-  if(!appBg) {
+  if (!appBg) {
       appBg = document.createElement('div');
       appBg.id = 'app-bg-container';
       appBg.style.position = 'fixed';
@@ -4738,72 +4689,9 @@ export function applyBgStyle() {
       appBg.style.pointerEvents = 'none';
       document.body.appendChild(appBg);
   }
-
-  // Clear body background styles to avoid interference
   document.body.style.background = 'transparent';
   document.body.style.backgroundColor = 'transparent';
-
-  appBg.style.backgroundColor = '';
-  appBg.style.backgroundBlendMode = '';
-
-  // Handle Blur and Darken via a dynamic pseudo-element or overlay
-  var bgModifier = document.getElementById('bg-modifier-overlay');
-  if(!bgModifier) {
-      bgModifier = document.createElement('div');
-      bgModifier.id = 'bg-modifier-overlay';
-      bgModifier.style.position = 'fixed';
-      bgModifier.style.top = '0';
-      bgModifier.style.left = '0';
-      bgModifier.style.width = '100vw';
-      bgModifier.style.height = '100vh';
-      bgModifier.style.pointerEvents = 'none';
-      bgModifier.style.zIndex = '-1'; // just above the app-bg-container and behind content
-      document.body.appendChild(bgModifier);
-  }
-
-  bgModifier.style.backdropFilter = blurVal > 0 ? 'blur(' + (blurVal / 5) + 'px)' : 'none';
-  bgModifier.style.webkitBackdropFilter = blurVal > 0 ? 'blur(' + (blurVal / 5) + 'px)' : 'none';
-  bgModifier.style.backgroundColor = darkenVal > 0 ? 'rgba(0, 0, 0, ' + (darkenVal / 100) + ')' : 'transparent';
-
-  var fallbackBaseColor = userPrefs.removeBlack ? c1 : '#000';
-
-  if (s === 'solid') {
-    appBg.style.background = c1;
-  } else if (s === 'gradient') {
-    appBg.style.background = 'radial-gradient(circle at top right, ' + c2 + ' 0%, ' + c1 + ' 60%, ' + c3 + ' 100%)';
-  } else if (s === 'grid') {
-    appBg.style.backgroundColor = c1;
-    appBg.style.backgroundImage = 'radial-gradient(' + c2 + ' 1px, transparent 1px)';
-    appBg.style.backgroundSize = '24px 24px';
-    appBg.style.backgroundPosition = '0 0';
-  } else if (s === 'mesh_flou_1') {
-    appBg.style.background = 'radial-gradient(at 20% 20%, '+c1+' 0, transparent 40%), radial-gradient(at 80% 10%, '+c2+' 0, transparent 40%), radial-gradient(at 90% 80%, '+c3+' 0, transparent 50%), radial-gradient(at 10% 90%, '+c1+' 0, transparent 40%)';
-    appBg.style.backgroundColor = fallbackBaseColor;
-  } else if (s === 'mesh_random') {
-    var p1x = Math.floor(Math.random() * 100); var p1y = Math.floor(Math.random() * 100);
-    var p2x = Math.floor(Math.random() * 100); var p2y = Math.floor(Math.random() * 100);
-    var p3x = Math.floor(Math.random() * 100); var p3y = Math.floor(Math.random() * 100);
-    var p4x = Math.floor(Math.random() * 100); var p4y = Math.floor(Math.random() * 100);
-    appBg.style.background = 'radial-gradient(at '+p1x+'% '+p1y+'%, '+c1+' 0, transparent 50%), radial-gradient(at '+p2x+'% '+p2y+'%, '+c2+' 0, transparent 50%), radial-gradient(at '+p3x+'% '+p3y+'%, '+c3+' 0, transparent 50%), radial-gradient(at '+p4x+'% '+p4y+'%, '+c1+' 0, transparent 50%)';
-    appBg.style.backgroundColor = fallbackBaseColor;
-  } else if (s === 'mesh_diagonal') {
-    appBg.style.background = 'radial-gradient(at 0% 0%, '+c1+' 0, transparent 60%), radial-gradient(at 50% 50%, '+c2+' 0, transparent 60%), radial-gradient(at 100% 100%, '+c3+' 0, transparent 60%), radial-gradient(at 100% 0%, '+c2+' 0, transparent 50%)';
-    appBg.style.backgroundColor = fallbackBaseColor;
-  } else if (s === 'mesh_center') {
-    appBg.style.background = 'radial-gradient(at 50% 50%, '+c1+' 0, transparent 40%), radial-gradient(at 30% 70%, '+c2+' 0, transparent 50%), radial-gradient(at 70% 30%, '+c3+' 0, transparent 50%), radial-gradient(at 10% 10%, '+c1+' 0, transparent 20%)';
-    appBg.style.backgroundColor = fallbackBaseColor;
-  } else if (s === 'mesh_corner') {
-    appBg.style.background = 'radial-gradient(at 0% 0%, '+c1+' 0, transparent 30%), radial-gradient(at 100% 0%, '+c2+' 0, transparent 30%), radial-gradient(at 100% 100%, '+c3+' 0, transparent 30%), radial-gradient(at 0% 100%, '+c1+' 0, transparent 30%)';
-    appBg.style.backgroundColor = fallbackBaseColor;
-  } else if (s === 'glow') {
-    appBg.style.background = 'radial-gradient(circle at top left, '+c2+' 0%, transparent 40%), radial-gradient(circle at bottom right, '+c3+' 0%, transparent 40%), '+c1;
-  } else if (s === 'aurora') {
-    appBg.style.background = 'linear-gradient(to bottom, '+c1+', '+c1+'), radial-gradient(ellipse at top left, '+c2+' 0%, transparent 50%), radial-gradient(ellipse at top right, '+c3+' 0%, transparent 50%), radial-gradient(ellipse at bottom center, '+c2+' 0%, transparent 50%)';
-    appBg.style.backgroundBlendMode = 'screen, screen, screen, normal';
-    appBg.style.backgroundColor = c1;
-  } else {
-    appBg.style.background = c1 + ' radial-gradient(circle at 50% -20%, rgba(255,255,255,0.05) 0%, transparent 70%)';
-  }
+  appBg.style.background = 'radial-gradient(circle at top right, ' + c2 + ' 0%, ' + c1 + ' 60%, ' + c3 + ' 100%)';
 }
 
 export function initPrefs() {
@@ -4817,371 +4705,42 @@ export function initPrefs() {
   var saved = safeStorageGetJSON('user_prefs');
   if (saved) { Object.assign(userPrefs, saved); }
 
-  if(document.getElementById('pref-bg-darken')) document.getElementById('pref-bg-darken').value = userPrefs.bgDarken || 0;
-
   applyBgStyle();
 
-  // Accent Color
-  var accent = userPrefs.accent || '#0a84ff';
-  document.documentElement.style.setProperty('--accent', accent);
+  /* La couleur d'accent vient de la palette. Formes des boutons, style des cartes, des
+     onglets, du survol et de l'en-tête, et effets (verre, néon) sont partis le
+     29 octobre 2026 : l'identité de styles.css §17 vaut pour tous. */
+  document.documentElement.style.setProperty('--accent', userPrefs.accent || '#0a84ff');
 
-
-  // Special UI Effects overlay
-  var effectOverlay = document.getElementById('ui-effect-overlay');
-  if(!effectOverlay) {
-      effectOverlay = document.createElement('div');
-      effectOverlay.id = 'ui-effect-overlay';
-      effectOverlay.style.position = 'fixed';
-      effectOverlay.style.top = '0';
-      effectOverlay.style.left = '0';
-      effectOverlay.style.width = '100vw';
-      effectOverlay.style.height = '100vh';
-      effectOverlay.style.pointerEvents = 'none';
-      effectOverlay.style.zIndex = '9999';
-      document.body.appendChild(effectOverlay);
-  }
-
-  effectOverlay.style.background = 'none';
-  effectOverlay.style.backdropFilter = 'none';
-  effectOverlay.style.boxShadow = 'none';
-  effectOverlay.style.animation = 'none';
-  effectOverlay.innerHTML = '';
-  document.body.classList.remove('neon-glow-effect', 'glassmorphism-effect');
-
-  var effects = userPrefs.uiEffects || [];
-  // Migrate old setting if needed
-  if (userPrefs.uiEffect && userPrefs.uiEffect !== 'none') {
-      if (!effects.includes(userPrefs.uiEffect)) {
-          effects.push(userPrefs.uiEffect);
-      }
-      delete userPrefs.uiEffect;
-  }
-
-  var overlayBgs = [];
-
-  if (effects.includes('glassmorphism')) {
-      document.body.classList.add('glassmorphism-effect');
-      overlayBgs.push('url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.05\'/%3E%3C/svg%3E")');
-  }
-  if (effects.includes('neon_glow')) {
-      document.body.classList.add('neon-glow-effect');
-  }
-
-  if (overlayBgs.length > 0) {
-      effectOverlay.style.background = overlayBgs.join(', ');
-  }
-  /* Vide, il couvrait quand même toute la page, lecteur compris (z-index 9999) : assez
-     pour que le lecteur Twitch se croie caché et refuse de démarrer (28 octobre 2026,
-     exigeVisibiliteTotale, js/esports.js). Il n'existe donc que s'il porte un effet. */
-  effectOverlay.style.display = overlayBgs.length > 0 ? 'block' : 'none';
-
-
-  // Btn Shape and Custom Button Styles
-  var br = '12px';
-  var btnBg = 'rgba(255,255,255,0.05)';
-  var btnBorder = '1px solid rgba(255,255,255,0.15)';
-  var btnShadow = '0 4px 10px rgba(0,0,0,0.3)';
-  var btnBlur = 'blur(12px)';
-  var cr = '16px';
-
-  if(userPrefs.btnShape === 'square') { br = '4px'; cr = '8px'; }
-  else if(userPrefs.btnShape === 'pill') br = '24px';
-  else if(userPrefs.btnShape === 'soft') {
-      br = '16px';
-      cr = '16px';
-      btnBg = 'rgba(255,255,255,0.08)';
-      btnBorder = '1px solid rgba(255,255,255,0.05)';
-      btnShadow = '0 2px 8px rgba(0,0,0,0.1)';
-  }
-  else if(userPrefs.btnShape === 'ghost') {
-      br = '8px';
-      cr = '12px';
-      btnBg = 'transparent';
-      btnBorder = '1px solid rgba(255,255,255,0.3)';
-      btnShadow = 'none';
-      btnBlur = 'none';
-  }
-  else if(userPrefs.btnShape === 'apple') {
-      br = '18px';
-      cr = '20px';
-      btnBg = 'rgba(255,255,255,0.1)';
-      btnBorder = '1px solid rgba(255,255,255,0.2)';
-      btnBlur = 'blur(20px)';
-      btnShadow = '0 8px 24px rgba(0,0,0,0.15)';
-  } else if(userPrefs.btnShape === 'windows') {
-      br = '4px';
-      cr = '8px';
-      btnBg = 'rgba(255,255,255,0.05)';
-      btnBorder = '1px solid rgba(255,255,255,0.1)';
-      btnBlur = 'blur(30px)';
-  } else if(userPrefs.btnShape === 'steam') {
-      br = '2px';
-      cr = '4px';
-      btnBg = 'linear-gradient(to bottom, #3a3f44, #272b30)';
-      btnBorder = '1px solid #1a1c1f';
-      btnShadow = 'inset 0 1px 0 rgba(255,255,255,0.1)';
-  }
-
-  document.documentElement.style.setProperty('--radius-btn', br);
-  document.documentElement.style.setProperty('--btn-bg', btnBg);
-  document.documentElement.style.setProperty('--btn-border', btnBorder);
-  document.documentElement.style.setProperty('--btn-shadow', btnShadow);
-  document.documentElement.style.setProperty('--btn-blur', btnBlur);
-  document.documentElement.style.setProperty('--radius-card', cr);
-
-  document.documentElement.style.setProperty('--card-opacity', (userPrefs.cardOpacity || 15) / 100);
-
-  // Match Card Styles
-  var cStyle = userPrefs.cardStyle || 'glass';
-  var cardBorder = 'none';
-  var cardBgOpac = (userPrefs.cardOpacity || 15) / 100;
-  var cardShadow = '0 8px 20px rgba(0,0,0,0.5)';
-
-  if (cStyle === 'solid') {
-      cardBgOpac = Math.max(cardBgOpac, 0.8); // Ensure it's mostly solid
-      document.documentElement.style.setProperty('--card-opacity', cardBgOpac);
-      cardShadow = '0 4px 12px rgba(0,0,0,0.3)';
-  } else if (cStyle === 'bordered') {
-      cardBorder = '1px solid rgba(255,255,255,0.1)';
-      cardShadow = 'none';
-      document.documentElement.style.setProperty('--card-opacity', Math.min(cardBgOpac, 0.1)); // Very light bg
-  } else if (cStyle === 'elevated') {
-      cardBorder = '1px solid rgba(255,255,255,0.05)';
-      cardShadow = '0 10px 30px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)';
-  }
-
-  document.documentElement.style.setProperty('--card-border', cardBorder);
-  document.documentElement.style.setProperty('--card-shadow', cardShadow);
-
-
-  // Nav Layout Styles
-  // Removed dynamic JS nav layout injection to rely on CSS media queries for responsiveness.
-
-  // Toggle Button Styles
-  var tStyle = userPrefs.toggleStyle || 'default';
-  var tGlow = 'none';
-  var tBg = 'rgba(255,255,255,0.2)';
-  var tBorder = '1px solid var(--accent)';
-
-  if (tStyle === 'solid') {
-      tBg = 'var(--accent)';
-      tBorder = '1px solid var(--accent)';
-      tGlow = '0 4px 12px rgba(0,0,0,0.5)';
-  } else if (tStyle === 'underlined') {
-      tBg = 'rgba(255,255,255,0.05)';
-      tBorder = 'none';
-      tGlow = 'inset 0 -3px 0 var(--accent)';
-  } else if (tStyle === 'dot') {
-      tBg = 'transparent';
-      tBorder = 'none';
-      tGlow = 'inset 0 -4px 0 -2px var(--accent)'; // Simulate a dot using inset shadow trick or just a subtle bottom border
-  }
-
-  document.documentElement.style.setProperty('--toggle-glow', tGlow);
-  document.documentElement.style.setProperty('--toggle-bg-active', tBg);
-  document.documentElement.style.setProperty('--toggle-border-active', tBorder);
-
-  // Hover Effects
-  var hoverStyle = userPrefs.hoverStyle || 'default';
-  var hTransform = 'translateY(-1px)';
-  var hShadow = 'none';
-  var hBrightness = 'brightness(1.1)';
-
-  if (hoverStyle === 'float') {
-      hTransform = 'translateY(-3px)';
-      hShadow = '0 10px 20px rgba(0,0,0,0.6)';
-  } else if (hoverStyle === 'glow') {
-      hShadow = '0 0 15px var(--accent)';
-      hBrightness = 'brightness(1.3)';
-  } else if (hoverStyle === 'scale') {
-      hTransform = 'scale(1.05)';
-      hShadow = '0 5px 15px rgba(0,0,0,0.4)';
-  } else if (hoverStyle === 'none') {
-      hTransform = 'none';
-      hBrightness = 'none';
-  }
-
-  document.documentElement.style.setProperty('--btn-hover-transform', hTransform);
-  document.documentElement.style.setProperty('--btn-hover-shadow', hShadow);
-  document.documentElement.style.setProperty('--btn-hover-brightness', hBrightness);
-
-  // Header Style
-  var hStyle = userPrefs.hdrStyle || 'transparent';
-  var hBg = 'transparent';
-  var hBlur = 'blur(0px)';
-  var hShadow = 'none';
-  var hBorder = 'none';
-
-  if (hStyle === 'glass') {
-      hBg = 'rgba(10, 10, 12, 0.65)';
-      hBlur = 'blur(20px)';
-      hBorder = '1px solid rgba(255,255,255,0.05)';
-  } else if (hStyle === 'solid') {
-      hBg = 'var(--bg)';
-      hBorder = '1px solid var(--border)';
-  } else if (hStyle === 'floating') {
-      hBg = 'rgba(20,20,22,0.85)';
-      hBlur = 'blur(15px)';
-      hShadow = '0 10px 30px rgba(0,0,0,0.8)';
-      hBorder = '1px solid rgba(255,255,255,0.1)';
-  }
-
-  document.documentElement.style.setProperty('--hdr-bg', hBg);
-  document.documentElement.style.setProperty('--hdr-blur', hBlur);
-  document.documentElement.style.setProperty('--hdr-shadow', hShadow);
-  document.documentElement.style.setProperty('--hdr-border', hBorder);
-
-
-  // Update DOM selectors
-  var selBgStyle = document.getElementById('pref-bg-style');
-  var selC1 = document.getElementById('pref-c1');
-  var selC2 = document.getElementById('pref-c2');
-  var selC3 = document.getElementById('pref-c3');
-  var selCard = document.getElementById('pref-card-color');
-  var selCardStyle = document.getElementById('pref-card-style');
-  var selBtn = document.getElementById('pref-btn-shape');
-  var selAccentColor = document.getElementById('pref-accent-color');
-  var selOpacity = document.getElementById('pref-card-opacity');
-
-  if(selBgStyle) selBgStyle.value = userPrefs.bgStyle || 'gradient';
-  if(selC1) {
-      selC1.value = userPrefs.c1 || '#000000';
-      var hexC1 = document.getElementById('hex-c1');
-      if(hexC1) hexC1.textContent = selC1.value;
-  }
-  if(selC2) {
-      selC2.value = userPrefs.c2 || '#111111';
-      var hexC2 = document.getElementById('hex-c2');
-      if(hexC2) hexC2.textContent = selC2.value;
-  }
-  if(selCard) selCard.value = userPrefs.cardColor || 'gradient-45';
-  if(selC3) {
-      selC3.value = userPrefs.c3 || '#222222';
-      var hexC3 = document.getElementById('hex-c3');
-      if(hexC3) hexC3.textContent = selC3.value;
-  }
-
-  if(selCardStyle) selCardStyle.value = userPrefs.cardStyle || 'glass';
   var selCardShape = document.getElementById('pref-card-shape');
-  if(selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
-  ['live', 'guide'].forEach(function(v) {
-      var sel = document.getElementById('pref-disposition-' + v);
-      var cle = v === 'guide' ? 'dispositionGuide' : 'dispositionLive';
-      if(sel) sel.value = userPrefs[cle] || userPrefs.disposition || 'actuelle';
-  });
-  if(selBtn) selBtn.value = userPrefs.btnShape || 'rounded';
-  if(selAccentColor) {
-      selAccentColor.value = userPrefs.accent || '#0a84ff';
-      var hexAccent = document.getElementById('hex-accent-color');
-      if(hexAccent) hexAccent.textContent = selAccentColor.value;
-  }
-  if(selOpacity) selOpacity.value = userPrefs.cardOpacity || 15;
-
-  var cbRemoveBlack = document.getElementById('pref-remove-black');
-  if(cbRemoveBlack) cbRemoveBlack.checked = !!userPrefs.removeBlack;
-
-  var selHover = document.getElementById('pref-hover-style');
-  if(selHover) selHover.value = userPrefs.hoverStyle || 'default';
-  var selToggle = document.getElementById('pref-toggle-style');
-  if(selToggle) selToggle.value = userPrefs.toggleStyle || 'default';
-  var selHdr = document.getElementById('pref-hdr-style');
-  if(selHdr) selHdr.value = userPrefs.hdrStyle || 'transparent';
-
-  var cbDeepResolve = document.getElementById('pref-deep-resolve');
-  if(cbDeepResolve) cbDeepResolve.checked = !!userPrefs.deepResolve;
-
-  var effectsContainer = document.getElementById('pref-ui-effects-container');
-  if(effectsContainer) {
-      var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
-      var effects = userPrefs.uiEffects || [];
-      // migrate if needed
-      if (userPrefs.uiEffect && userPrefs.uiEffect !== 'none') {
-          if (!effects.includes(userPrefs.uiEffect)) {
-              effects.push(userPrefs.uiEffect);
-          }
-      }
-      checkboxes.forEach(cb => {
-          cb.checked = effects.includes(cb.value);
-      });
-
-      var glassCb = document.getElementById('pref-glassmorphism');
-      if (glassCb) {
-          glassCb.checked = effects.includes('glassmorphism');
-      }
-  }
+  if (selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
 }
 
 export function applyUserPrefs() {
-  var bgStyleSel = document.getElementById('pref-bg-style');
-  var c1Sel = document.getElementById('pref-c1');
-  var c2Sel = document.getElementById('pref-c2');
-  var c3Sel = document.getElementById('pref-c3');
-  var cardSel = document.getElementById('pref-card-color');
-  var cardStyleSel = document.getElementById('pref-card-style');
-  var btnSel = document.getElementById('pref-btn-shape');
-  var accentColorSel = document.getElementById('pref-accent-color');
-  var opacSel = document.getElementById('pref-card-opacity');
-  var effectsContainer = document.getElementById('pref-ui-effects-container');
-  var removeBlackCb = document.getElementById('pref-remove-black');
-  var deepResolveCb = document.getElementById('pref-deep-resolve');
-
-  if(bgStyleSel) userPrefs.bgStyle = bgStyleSel.value;
-  if(c1Sel) userPrefs.c1 = c1Sel.value;
-  if(c2Sel) userPrefs.c2 = c2Sel.value;
-  if(c3Sel) userPrefs.c3 = c3Sel.value;
-  if(cardSel) userPrefs.cardColor = cardSel.value;
-  userPrefs.cardStyle = 'glass';
   var cardShapeSel = document.getElementById('pref-card-shape');
-  if(cardShapeSel) userPrefs.cardShape = cardShapeSel.value;
-  var dispLive = document.getElementById('pref-disposition-live');
-  var dispGuide = document.getElementById('pref-disposition-guide');
-  if(dispLive) userPrefs.dispositionLive = dispLive.value;
-  if(dispGuide) userPrefs.dispositionGuide = dispGuide.value;
-  if(dispLive && dispGuide) delete userPrefs.disposition;
-  if(btnSel) userPrefs.btnShape = btnSel.value;
-  if(accentColorSel) userPrefs.accent = accentColorSel.value;
-  var hoverSel = document.getElementById('pref-hover-style');
-  if(hoverSel) userPrefs.hoverStyle = hoverSel.value;
-  var toggleSel = document.getElementById('pref-toggle-style');
-  if(toggleSel) userPrefs.toggleStyle = toggleSel.value;
-  var hdrSel = document.getElementById('pref-hdr-style');
-  if(hdrSel) userPrefs.hdrStyle = hdrSel.value;
-  userPrefs.cardOpacity = '15';
-
-  var darkenSel = document.getElementById('pref-bg-darken');
-  if(darkenSel) userPrefs.bgDarken = darkenSel.value;
-
-  if(removeBlackCb) userPrefs.removeBlack = removeBlackCb.checked;
-  if(deepResolveCb) userPrefs.deepResolve = deepResolveCb.checked;
-
-  if(effectsContainer) {
-      var checkboxes = effectsContainer.querySelectorAll('input[type="checkbox"]');
-      var activeEffects = [];
-      checkboxes.forEach(cb => {
-          if(cb.checked) activeEffects.push(cb.value);
-      });
-
-      var glassCb = document.getElementById('pref-glassmorphism');
-      if (glassCb && glassCb.checked) {
-          activeEffects.push('glassmorphism');
-      }
-
-      userPrefs.uiEffects = activeEffects;
-  }
-
+  if (cardShapeSel) userPrefs.cardShape = cardShapeSel.value;
+  /* Les clés des options retirées le 29 octobre 2026 ne sont plus lues : on les oublie. */
+  ['bgStyle', 'bgDarken', 'bgBlur', 'removeBlack', 'btnShape', 'cardStyle', 'cardOpacity', 'hoverStyle', 'toggleStyle', 'hdrStyle', 'uiEffects', 'uiEffect', 'iconPack', 'deepResolve'].forEach(function(k) { delete userPrefs[k]; });
   safeStorageSetJSON('user_prefs', userPrefs);
   initPrefs();
   setTimeout(function() { buildEPG(S.matches); }, 0); // Rebuild to apply card colors
   showToast('Préférences sauvegardées');
 }
 
-export function markCustomTheme() {
-  // when a user changes a color manually, we save
+/* Une palette : les trois couleurs du fond et l'accent, appliqués d'un coup. */
+export function choisirPalette(p) {
+  userPrefs.c1 = p.c1; userPrefs.c2 = p.c2; userPrefs.c3 = p.c3; userPrefs.accent = p.accent;
   applyUserPrefs();
+  majPaletteChoisie();
 }
 
-export function applyUserBgStyleOnly() {
-  applyUserPrefs();
+function majPaletteChoisie() {
+  var items = document.querySelectorAll('.swatches-container .swatch-item');
+  Array.prototype.forEach.call(items, function(el) {
+    var on = el.dataset.c1 === userPrefs.c1 && el.dataset.accent === userPrefs.accent;
+    el.classList.toggle('on', on);
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
 }
 
 
@@ -5269,7 +4828,7 @@ export function buildSwatches() {
                     }
 
                     palettesToRender.push({
-                        name: '⭐️ ' + esc(teamName),
+                        name: teamName,
                         c1: c1,
                         c2: c2,
                         c3: c3,
@@ -5284,47 +4843,19 @@ export function buildSwatches() {
     PALETTES.forEach(function(p) { palettesToRender.push(p); });
 
     palettesToRender.forEach(function(p) {
-        var swatch = document.createElement('div');
+        var swatch = document.createElement('button');
+        swatch.type = 'button';
         swatch.className = 'swatch-item';
         swatch.title = p.name;
-        swatch.style.width = '32px';
-        swatch.style.height = '32px';
-        swatch.style.borderRadius = '50%';
-        swatch.style.cursor = 'pointer';
-        swatch.style.border = '2px solid ' + p.accent;
-        swatch.style.background = 'linear-gradient(135deg, ' + p.c1 + ' 0%, ' + p.c2 + ' 50%, ' + p.c3 + ' 100%)';
-        swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
-        swatch.style.transition = 'transform 0.2s, box-shadow 0.2s';
-
-        swatch.onmouseenter = function() {
-            swatch.style.transform = 'scale(1.15)';
-            swatch.style.boxShadow = '0 0 8px ' + p.accent;
-        };
-        swatch.onmouseleave = function() {
-            swatch.style.transform = 'scale(1)';
-            swatch.style.boxShadow = '0 2px 4px rgba(0,0,0,0.5)';
-        };
-
-        swatch.onclick = function() {
-            document.getElementById('pref-c1').value = p.c1.length === 7 ? p.c1 : '#000000';
-            document.getElementById('pref-c2').value = p.c2.length === 7 ? p.c2 : '#111111';
-            document.getElementById('pref-c3').value = p.c3.length === 7 ? p.c3 : '#222222';
-            document.getElementById('pref-accent-color').value = p.accent.length === 7 ? p.accent : '#0a84ff';
-
-            var hexC1 = document.getElementById('hex-c1');
-            if(hexC1) hexC1.textContent = p.c1;
-            var hexC2 = document.getElementById('hex-c2');
-            if(hexC2) hexC2.textContent = p.c2;
-            var hexC3 = document.getElementById('hex-c3');
-            if(hexC3) hexC3.textContent = p.c3;
-            var hexAccent = document.getElementById('hex-accent-color');
-            if(hexAccent) hexAccent.textContent = p.accent;
-
-            markCustomTheme();
-        };
-
+        swatch.setAttribute('aria-label', 'Palette ' + p.name);
+        swatch.dataset.c1 = p.c1;
+        swatch.dataset.accent = p.accent;
+        swatch.style.setProperty('--sw-fond', 'linear-gradient(135deg, ' + p.c1 + ' 0%, ' + p.c2 + ' 50%, ' + p.c3 + ' 100%)');
+        swatch.style.setProperty('--sw-accent', p.accent);
+        swatch.onclick = function() { choisirPalette(p); };
         container.appendChild(swatch);
     });
+    majPaletteChoisie();
 }
 
 
@@ -5395,7 +4926,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v101';
+export var VERSION_APP = 'sports-guide-v102';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5555,7 +5086,6 @@ export function renderSourcesStatus() {
                   '<div style="display:flex; align-items:center; gap: 8px;">' +
                       '<span style="font-size: 14px;">' + icon + '</span>' +
                       '<span style="font-weight: bold; color: var(--text);">' + esc(s.name) + '</span>' +
-                      '<button class="btn o" title="Investigate" style="padding: 2px 6px; font-size: 11px; margin-left: 4px;" onclick="window.openInvestigatorModal(); window.investigateUrl(\'https://' + escJs(s.name) + '\');">🕵️</button>' +
                   '</div>' +
                   '<div style="display:flex; align-items:center; gap: 10px; font-size: 12px;">' +
                       '<span style="color: ' + color + ';">' + esc(s.message) + '</span>' +
@@ -5681,48 +5211,7 @@ export function openOptionsPage() {
         buildSwatches();
 
         initPrefs();
-        initProxySettings();
     }
-}
-
-/* ── Réglages réseau (proxy personnalisé, clés API) ─────────────────────── */
-export function initProxySettings() {
-    var st = (typeof window.getProxySettings === 'function') ? window.getProxySettings() : {};
-    var a = document.getElementById('pref-custom-proxy'); if (a) a.value = st.customProxy || '';
-    var b = document.getElementById('pref-cors-sh-key'); if (b) b.value = st.corsShKey || '';
-    var c = document.getElementById('pref-corsproxy-io-key'); if (c) c.value = st.corsProxyIoKey || '';
-    renderProxyStatus();
-}
-
-export function renderProxyStatus() {
-    var el = document.getElementById('proxy-status');
-    if (!el) return;
-    var list = window.PROXIES || [];
-    var health = (typeof window.getProxyHealth === 'function') ? window.getProxyHealth() : {};
-    var parts = list.filter(function(p) { return !p.direct; }).map(function(p) {
-        var h = health[p.id];
-        var state = '⚪';
-        if (h && h.lastOk && (!h.lastFail || h.lastOk >= h.lastFail)) state = '🟢';
-        else if (h && h.lastFail) state = (Date.now() - h.lastFail < 3 * 60 * 1000) ? '🔴' : '🟠';
-        return state + ' ' + esc(p.label || p.id);
-    });
-    var info = window.prefetchedStreamsInfo;
-    var pre = 'Cache serveur : indisponible. ';
-    if (info && info.generatedAt) {
-        var srcOk = (info.sources || []).filter(function(s) { return s && s.ok; }).length;
-        var srcAll = (info.sources || []).length;
-        var streams = 0;
-        (window.prefetchedStreamMatches || []).forEach(function(m) { streams += (m.streamLinks || []).length; });
-        pre = 'Cache serveur : ' + info.count + ' matchs, ' + streams + ' liens, ' + srcOk + '/' + srcAll + ' sources, généré il y a ' + info.ageMin + ' min. ';
-    }
-    /* État du pont d'affichage : c'est lui qui décide si une page non intégrable pourra
-       être reconstruite dans le Multivision plutôt qu'ouverte en onglet (js/embed-bridge.js). */
-    var b = getBridgeStatus();
-    var bridgeTxt = b.available
-        ? '🎩 Pont script utilisateur : actif (v' + esc(String(b.version)) + ') — les pages non intégrables sont reconstruites.'
-        : '🎩 Pont script utilisateur : absent — repli sur les proxys CORS pour les pages non intégrables.';
-
-    el.innerHTML = pre + 'Proxys : ' + (parts.join(' · ') || 'aucun') + '<br>' + bridgeTxt;
 }
 
 /* Ouvre la page GitHub Actions du workflow horaire : le bouton « Run workflow » y lance
@@ -5742,7 +5231,6 @@ export function reloadPrefetchedStreams() {
     var before = window.prefetchedStreamsInfo ? window.prefetchedStreamsInfo.generatedAt : null;
     return loadPrefetchedStreams(true).then(function(list) {
         var info = window.prefetchedStreamsInfo || {};
-        renderProxyStatus();
         if (!info.generatedAt) showToast('Cache serveur indisponible pour le moment.');
         else if (before && info.generatedAt === before) showToast('Cache serveur inchangé (généré il y a ' + info.ageMin + ' min). Le workflow tourne encore ?');
         else showToast('Liens serveur rechargés : ' + list.length + ' matchs (il y a ' + info.ageMin + ' min).');
@@ -5750,22 +5238,6 @@ export function reloadPrefetchedStreams() {
     }).catch(function(e) {
         showToast('Rechargement impossible : ' + (e && e.message ? e.message : e));
     }).then(function() { if (btn) btn.disabled = false; });
-}
-
-export function saveProxySettings() {
-    var read = function(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
-    var custom = read('pref-custom-proxy');
-    if (custom && !/^https?:\/\//i.test(custom)) { showToast('Le proxy doit commencer par http(s)://'); return; }
-    try {
-        localStorage.setItem('custom_proxy_url', custom);
-        localStorage.setItem('cors_sh_api_key', read('pref-cors-sh-key'));
-        localStorage.setItem('corsproxy_io_api_key', read('pref-corsproxy-io-key'));
-    } catch (e) {}
-    if (typeof window.rebuildProxies === 'function') window.rebuildProxies();
-    if (typeof window.resetProxyHealth === 'function') window.resetProxyHealth();
-    renderProxyStatus();
-    showToast('Réglages réseau enregistrés. Nouvelle recherche de streams...');
-    loadAll(true, true);
 }
 
 export function openLogsPage() {
@@ -5843,11 +5315,6 @@ export function proposerGuideAuDemarrage() {
         installTampermonkey();
         return true;
     });
-}
-
-export function installerScriptUtilisateur() {
-    autoriserSortie();
-    window.location.href = './multiview-cleaner.user.js';
 }
 
 /* Les commandes du lecteur sont-elles effacées (appliquerRepos) ? */
@@ -5933,7 +5400,7 @@ function majBarreVideos() {
         var lb = direct.querySelector('.mv-tb-lb');
         var ic = direct.querySelector('.mv-tb-ic');
         if (lb) lb.textContent = (s && s.mode === 'direct') ? 'Page du site' : 'Direct';
-        if (ic) ic.textContent = (s && s.mode === 'direct') ? '🖼' : '▶';
+        if (ic) ic.innerHTML = icone((s && s.mode === 'direct') ? 'page' : 'direct');
     }
     var btnSeule = document.getElementById('mv-bar-seule');
     if (btnSeule) {
@@ -5944,7 +5411,7 @@ function majBarreVideos() {
         btnSeule.title = actif ? 'Revoir toutes les vidéos' : 'Voir la vidéo choisie seule';
         btnSeule.setAttribute('aria-label', btnSeule.title);
         var icS = btnSeule.querySelector('.mv-tb-ic'), lbS = btnSeule.querySelector('.mv-tb-lb');
-        if (icS) icS.textContent = actif ? '⊞' : '⤢';
+        if (icS) icS.innerHTML = icone(actif ? 'grille' : 'seule');
         if (lbS) lbS.textContent = actif ? 'Toutes' : 'Seule';
     }
     var son = document.getElementById('mv-bar-son');
@@ -5956,7 +5423,7 @@ function majBarreVideos() {
         son.title = texte;
         son.setAttribute('aria-label', texte);
         var icSon = son.querySelector('.mv-tb-ic');
-        if (icSon) icSon.textContent = coupe ? '🔇' : '🔊';
+        if (icSon) icSon.innerHTML = icone(coupe ? 'sourdine' : 'son');
     }
     ['mv-src-prev', 'mv-src-next', 'mv-bar-son', 'mv-bar-video-menu'].forEach(function(id) {
         var b = document.getElementById(id);
@@ -6079,172 +5546,6 @@ export function telechargerExtensionGuide() {
 
 
 
-/* ══ SCRAPER INVESTIGATOR ══════════════ */
-export var investigatorSequence = [];
-export var investigatorCurrentUrl = '';
-
-export function openInvestigatorModal() {
-    var modal = document.getElementById('investigator-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        investigatorClearSequence();
-    }
-}
-
-export function investigatorClearSequence() {
-    investigatorSequence = [];
-    investigatorCurrentUrl = '';
-    document.getElementById('investigator-url').value = '';
-    document.getElementById('investigator-content').innerHTML = '<div style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 40px;">Entrez une URL pour commencer l\'investigation du DOM.</div>';
-    renderInvestigatorSequence();
-}
-
-function renderInvestigatorSequence() {
-    var seqContainer = document.getElementById('investigator-sequence');
-    if (!seqContainer) return;
-
-    if (investigatorSequence.length === 0) {
-        seqContainer.innerHTML = '<div style="color: rgba(255,255,255,0.5);">Aucune action (Démarrez l\'analyse)</div>';
-        return;
-    }
-
-    var html = '';
-    investigatorSequence.forEach(function(step, idx) {
-        var actionText = step.type === 'click_link' ? '🔗 Clic lien: ' + esc(step.textMatch || step.href) : '📺 Sélection iframe (Index ' + step.iframeIndex + ')';
-        html += '<div style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border-left: 2px solid #ffcc00; font-size: 11px;">' +
-                   '<span style="opacity: 0.6; margin-right: 8px;">Étape ' + (idx+1) + '</span>' + actionText +
-                '</div>';
-    });
-    seqContainer.innerHTML = html;
-}
-
-export function investigateUrl(url) {
-    if (!url || !url.startsWith('http')) {
-        showToast('URL invalide (doit commencer par http)');
-        return;
-    }
-
-    investigatorCurrentUrl = url;
-    document.getElementById('investigator-url').value = url;
-    document.getElementById('investigator-content').innerHTML = '<div style="color: var(--muted); text-align: center;">Chargement de ' + esc(url) + '...</div>';
-
-    fetchPage(url).then(function(html) {
-        renderInvestigatorDom(html, url);
-    }).catch(function(e) {
-        document.getElementById('investigator-content').innerHTML = '<div style="color: var(--red); text-align: center;">Erreur de chargement: ' + esc(e.message) + '</div>';
-    });
-}
-
-export function renderInvestigatorDom(html, baseUrl) {
-    var doc = new DOMParser().parseFromString(html, 'text/html');
-    var container = document.getElementById('investigator-content');
-
-    var outHtml = '<div style="margin-bottom: 12px; font-size: 14px; font-weight: bold;">Éléments interactifs trouvés sur la page :</div>';
-
-    // Find all links that look like stream links or overlays
-    var links = doc.querySelectorAll('a[href]');
-    var validLinks = [];
-    for (var i=0; i<links.length; i++) {
-        var h = links[i].getAttribute('href');
-        if (!h || h.startsWith('javascript') || h === '#') continue;
-        validLinks.push(links[i]);
-    }
-
-    if (validLinks.length > 0) {
-        outHtml += '<div style="margin-bottom: 8px; color: #a1a1aa; font-weight: bold;">Liens (<a>)</div>';
-        outHtml += '<div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px;">';
-        validLinks.forEach(function(link) {
-            var href = link.getAttribute('href');
-            var text = link.textContent.replace(/\s+/g, ' ').trim() || '(Lien sans texte)';
-            outHtml += '<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; border-left: 2px solid #0a84ff;">' +
-                          '<div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;">' +
-                              '<div style="font-weight: bold; color: #fff;">' + esc(text) + '</div>' +
-                              '<div style="font-size: 10px; color: #a1a1aa;">' + esc(href) + '</div>' +
-                          '</div>' +
-                          '<button class="btn o" style="font-size: 11px; padding: 4px 8px;" onclick="window.investigatorClickLink(\'' + escJs(href) + '\', \'' + escJs(text) + '\')">Simuler Clic</button>' +
-                       '</div>';
-        });
-        outHtml += '</div>';
-    }
-
-    // Find iframes (the ultimate goal usually)
-    var iframes = doc.querySelectorAll('iframe');
-    if (iframes.length > 0) {
-        outHtml += '<div style="margin-bottom: 8px; color: #ffcc00; font-weight: bold;">Lecteurs Vidéo (<iframe>)</div>';
-        outHtml += '<div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px;">';
-        [].forEach.call(iframes, function(ifr, idx) {
-            var src = ifr.getAttribute('src') || '(Pas de src)';
-            outHtml += '<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,165,0,0.1); padding: 8px; border-radius: 4px; border-left: 2px solid #ffcc00;">' +
-                          '<div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;">' +
-                              '<div style="font-weight: bold; color: #ffcc00;">Iframe #' + idx + '</div>' +
-                              '<div style="font-size: 10px; color: #a1a1aa;">' + esc(src) + '</div>' +
-                          '</div>' +
-                          '<button class="btn g" style="font-size: 11px; padding: 4px 8px;" onclick="window.investigatorSelectIframe(' + idx + ')">Sélectionner Lecteur</button>' +
-                       '</div>';
-        });
-        outHtml += '</div>';
-    }
-
-    if (validLinks.length === 0 && iframes.length === 0) {
-        outHtml += '<div style="color: var(--muted); text-align: center; padding: 20px;">Aucun lien ni iframe pertinent trouvé.</div>';
-    }
-
-    container.innerHTML = outHtml;
-}
-
-export function investigatorClickLink(href, textMatch) {
-    investigatorSequence.push({
-        type: 'click_link',
-        href: href,
-        textMatch: textMatch
-    });
-    renderInvestigatorSequence();
-
-    // Navigate to next page
-    var fullUrl = typeof resolveUrl === 'function' ? resolveUrl(href, investigatorCurrentUrl) : (href.startsWith('http') ? href : new URL(href, investigatorCurrentUrl).href);
-    investigateUrl(fullUrl);
-}
-
-export function investigatorSelectIframe(iframeIndex) {
-    investigatorSequence.push({
-        type: 'iframe_select',
-        iframeIndex: iframeIndex
-    });
-    renderInvestigatorSequence();
-    showToast('Iframe sélectionnée. N\'oubliez pas de sauvegarder.');
-}
-
-export function investigatorSaveRules() {
-    if (investigatorSequence.length === 0) {
-        showToast('La séquence est vide.');
-        return;
-    }
-
-    var domain = getDomain(investigatorCurrentUrl);
-    if (!domain) {
-        showToast('Impossible de déterminer le domaine.');
-        return;
-    }
-
-    var customRules = safeStorageGetJSON('custom_scraper_rules', {});
-    customRules[domain] = {
-        updatedAt: Date.now(),
-        steps: investigatorSequence
-    };
-    safeStorageSetJSON('custom_scraper_rules', customRules);
-
-    showToast('Règles sauvegardées pour ' + domain);
-    document.getElementById('investigator-modal').style.display = 'none';
-}
-
-// Global bindings for HTML compatibility
-
-window.openInvestigatorModal = openInvestigatorModal;
-window.investigatorClearSequence = investigatorClearSequence;
-window.investigateUrl = investigateUrl;
-window.investigatorClickLink = investigatorClickLink;
-window.investigatorSelectIframe = investigatorSelectIframe;
-window.investigatorSaveRules = investigatorSaveRules;
 
 window.mvGameModeActive = mvGameModeActive;
 window.mvGameModeInterval = mvGameModeInterval;
@@ -6262,7 +5563,6 @@ window.openPinnedStats = openPinnedStats;
 window.updateMvGameModeStats = updateMvGameModeStats;
 window.mvFlux = mvFlux;
 window.showFluxSelector = showFluxSelector;
-window.showMatchSelector = showMatchSelector;
 window.toggleMultiviewPip = toggleMultiviewPip;
 window.setupMultivisionUI = setupMultivisionUI;
 window.moveMultiviewStream = moveMultiviewStream;
@@ -6319,23 +5619,18 @@ window.mediaVuParAndroid = mediaVuParAndroid;
 window.applyBgStyle = applyBgStyle;
 window.initPrefs = initPrefs;
 window.applyUserPrefs = applyUserPrefs;
-window.markCustomTheme = markCustomTheme;
-window.applyUserBgStyleOnly = applyUserBgStyleOnly;
+window.choisirPalette = choisirPalette;
 window.PALETTES = PALETTES;
 window.buildSwatches = buildSwatches;
 window.renderSourcesStatus = renderSourcesStatus;
-window.initProxySettings = initProxySettings;
-window.renderProxyStatus = renderProxyStatus;
 window.openStreamsWorkflow = openStreamsWorkflow;
 window.reloadPrefetchedStreams = reloadPrefetchedStreams;
-window.saveProxySettings = saveProxySettings;
 window.renderScrapeLogs = renderScrapeLogs;
 window.exportDebugLogs = exportDebugLogs;
 window.openOptionsPage = openOptionsPage;
 window.openLogsPage = openLogsPage;
 window.openScriptPage = openScriptPage;
 window.installTampermonkey = installTampermonkey;
-window.installerScriptUtilisateur = installerScriptUtilisateur;
 window.telechargerExtension = telechargerExtensionGuide;
 window.changerSourceActive = changerSourceActive;
 window.basculerSonActif = basculerSonActif;
@@ -6351,66 +5646,4 @@ window.choisirVideo = choisirVideo;
 window.ouvrirMenuVideoActive = ouvrirMenuVideoActive;
 window.basculerDirectActif = basculerDirectActif;
 
-export function exportSettings() {
-    var settings = {
-        user_prefs: userPrefs,
-        fav_teams: favTeams,
-        custom_lg_order: customLgOrder
-    };
-    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
-    var downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "multivision_settings.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-    showToast("Paramètres exportés !");
-}
 
-export function importSettings(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            var imported = JSON.parse(e.target.result);
-
-            if (imported.user_prefs) {
-                Object.assign(userPrefs, imported.user_prefs);
-                safeStorageSetJSON('user_prefs', userPrefs);
-            }
-            if (imported.fav_teams) {
-                // Clear existing properties and assign new ones
-                for (var key in favTeams) {
-                  if (favTeams.hasOwnProperty(key)) {
-                      delete favTeams[key];
-                  }
-                }
-                Object.assign(favTeams, imported.fav_teams);
-                safeStorageSetJSON('fav_teams', favTeams);
-            }
-            if (imported.custom_lg_order) {
-                setCustomLgOrder(imported.custom_lg_order);
-            }
-
-            initPrefs();
-            setTimeout(function() { buildEPG(S.matches); }, 0);
-            showToast("Paramètres importés avec succès !");
-
-            // Re-apply visual preferences if needed
-            if (imported.user_prefs) {
-                applyUserPrefs();
-            }
-
-        } catch (err) {
-            console.error("Erreur d'importation", err);
-            showToast("Erreur: fichier invalide");
-        }
-        event.target.value = ''; // Reset input
-    };
-    reader.readAsText(file);
-}
-
-window.exportSettings = exportSettings;
-window.importSettings = importSettings;

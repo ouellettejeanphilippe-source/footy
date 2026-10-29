@@ -1,9 +1,9 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal, sansLiensDuServeur } from './utils.js';
+import { esc, showToast, fetchPage, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal, sansLiensDuServeur } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
-import { closeMod, fermerMenuLook, migrerGuideActuelle } from './ui.js';
+import { closeMod, fermerMenuLook } from './ui.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
 import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee, isLiveNow, startsWithin, minutesUntilStart, isMatchPageBlocked, LIVE_WINDOW_MIN } from './config.js';
 import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
@@ -15,7 +15,7 @@ import { mergeMatches } from './match.js';
 import { appartientALaFenetre, jourDepasse, DUREE_LARGE_MIN } from './nuit.js';
 import { etatCacheServeur, rattrapageNecessaire, ciblesDeRattrapage, CIBLES_AVEC_PONT, CIBLES_SANS_PONT, INTERVALLE_RATTRAPAGE_MS } from './rattrapage.js';
 import { isMatchPair } from './match.js';
-import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId, majBandeauCache, dispositionChoisie, redessinerDisposition } from './ui.js';
+import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId, majBandeauCache } from './ui.js';
 import { setMatches } from './state.js';
 import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
 import { brancherMoniteur } from './fluidite.js';
@@ -111,7 +111,6 @@ export function reevaluerFinsPresumees(now) {
 /* Les identifiants des cartes rendues dans le Live, et ceux qui devraient l'être. */
 function liveViewIsStale(matches) {
     if (S.filter !== 'live') return false;
-    if (dispositionChoisie('live') !== 'actuelle') return false;   // updateLiveScores redessine déjà
     var container = document.getElementById('marea');
     if (!container) return false;
     var now = new Date();
@@ -153,13 +152,6 @@ function poserMinuteAuPied(card, texte) {
 }
 
 export function updateLiveScores(matches) {
-    /* Une disposition autre qu'« actuelle » (js/dispositions.js) n'a pas les cartes
-       `mb-<id>` que la mise à jour en place sait modifier : on la redessine entière,
-       défilement conservé. C'est une fois par minute au plus. */
-    if ((S.filter === 'live' || S.filter === 'all') && dispositionChoisie() !== 'actuelle') {
-        redessinerDisposition();
-        return;
-    }
     var i = 0;
     function patchCard(m, cached) {
         var card = cached.el;
@@ -591,7 +583,6 @@ async function loadAllRun(isBackground, forceScrape){
   }
   setupMultivisionUI();
 
-  var btn=document.getElementById('relBtn');if(btn) btn.disabled=true;
   var errbox = document.getElementById('errbox'); if(errbox) errbox.classList.remove('show');
   if (!isBackground && !window.hasLoadedOnce) {
       var ovElement = document.getElementById('ov');
@@ -877,8 +868,6 @@ async function loadAllRun(isBackground, forceScrape){
           noterFusion(S.matches);
           if (!isBackground) { hideLoadingOverlay(); }
 
-          // Les pastilles de ligues sont rendues par buildEPG → renderSportChips (js/ui.js).
-
           setTimeout(function() {
               if (isBackground && window.hasLoadedOnce) {
                   updateLiveScores(S.matches);
@@ -936,7 +925,6 @@ async function loadAllRun(isBackground, forceScrape){
       if (!isBackground) { hideLoadingOverlay(); }
       showLoadError(err && err.message);
   }).finally(function(){
-      if(btn) btn.disabled=false;
             if (!isBackground) { hideLoadingOverlay(); }
       if (!guideDemarrageFait) {
           guideDemarrageFait = true;
@@ -1051,27 +1039,12 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
 
 
 
-export function toggleSportFilters(e) {
-    if (e) e.stopPropagation();
-    var sf = document.getElementById('sport-filters');
-    if(sf) {
-        sf.classList.toggle('open');
-    }
-}
-
-
 // Close menus when clicking elsewhere
 document.addEventListener('click', function(e) {
     var mvActions = document.getElementById('mv-actions-menu');
     var mvBtn = document.getElementById('mv-menu-btn');
     if(mvActions && mvActions.classList.contains('open') && !mvActions.contains(e.target) && (!mvBtn || !mvBtn.contains(e.target))) {
         mvActions.classList.remove('open');
-    }
-
-    var layoutDropdown = document.getElementById('mv-layout-dropdown');
-    var layoutToggleBtn = document.getElementById('mv-layout-toggle-btn');
-    if(layoutDropdown && layoutDropdown.style.display === 'flex' && !layoutDropdown.contains(e.target) && (!layoutToggleBtn || !layoutToggleBtn.contains(e.target))) {
-        layoutDropdown.style.display = 'none';
     }
 });
 
@@ -1544,7 +1517,6 @@ window.rebuildPreservingScroll = rebuildPreservingScroll;
 window.reevaluerFinsPresumees = reevaluerFinsPresumees;
 window.loadAll = loadAll;
 window.actualiserMaintenant = actualiserMaintenant;
-window.toggleSportFilters = toggleSportFilters;
 window.currentZoomLevel = currentZoomLevel;
 window.updateZoomDisplay = updateZoomDisplay;
 window.zoomIn = zoomIn;
@@ -1567,40 +1539,6 @@ window.resetLeagueTiersPref = resetLeagueTiersPref;
 window.filterFavTeams = filterFavTeams;
 window.switchFavTab = switchFavTab;
 
-/* L'étiquette de date et la marque `data-today`, seules — la bascule de minuit
-   (`verifierBasculeDeJour`) s'en sert aussi, mais sans recharger l'interface. La
-   comparaison se fait en jours de New YORK, fuseau de toute l'application : comparer
-   des `toDateString()` locaux faisait mentir l'étiquette pour qui n'y vit pas. */
-export function majLibelleDate(d) {
-    var jour = getEstDateStrFromDate(d);
-    var maintenant = new Date();
-    var isToday = jour === getEstDateStrFromDate(maintenant);
-
-    var d2 = new Date(maintenant); d2.setDate(maintenant.getDate() - 1);
-    var d3 = new Date(maintenant); d3.setDate(maintenant.getDate() + 1);
-    var isYesterday = jour === getEstDateStrFromDate(d2);
-    var isTomorrow = jour === getEstDateStrFromDate(d3);
-
-    var text = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
-    text = text.charAt(0).toUpperCase() + text.slice(1);
-
-    if (isToday) text = "Aujourd'hui";
-    else if (isYesterday) text = "Hier";
-    else if (isTomorrow) text = "Demain";
-
-    var displayEl = document.getElementById('current-date-display');
-    if (displayEl) displayEl.textContent = text;
-    document.body.setAttribute('data-today', isToday ? 'true' : 'false');
-    return isToday;
-}
-
-export function applyTargetDate(d) {
-    setApiTargetDate(d);
-    majLibelleDate(d);
-
-    window.hasLoadedOnce = false; // Force a full reload sequence with UI
-    loadAll(false, false);
-}
 
 /* ══ QUAND LE SERVEUR SE TAIT : L'APPLICATION CHERCHE ELLE-MÊME ═══════════════════
 
@@ -1699,45 +1637,23 @@ window.lancerRattrapage = lancerRattrapage;
    tout l'intérêt de la règle.
 
    Deux déclencheurs, parce qu'un téléphone gèle ses minuteries en arrière-plan et peut
-   traverser la nuit d'un coup : la demi-minute, et le retour au premier plan. Et un
-   garde-fou : si l'utilisateur a navigué vers un autre jour (`data-today` à `false`), on
-   ne lui reprend pas sa navigation. */
+   traverser la nuit d'un coup : la demi-minute, et le retour au premier plan. (Le
+   garde-fou « l'utilisateur a navigué vers un autre jour » est parti avec la navigation
+   de date, retirée avec l'interface classique.) */
 export function verifierBasculeDeJour() {
     if (!window.hasLoadedOnce) return false;
-    if (document.body && document.body.getAttribute('data-today') === 'false') return false;
     var jourAffiche = getEstDateStrFromDate(TARGET_DATE);
     var jourCourant = getEstDateStrFromDate(new Date());
     if (!jourDepasse(jourAffiche, jourCourant)) return false;
 
     lg('Minuit', jourAffiche + ' → ' + jourCourant + ' : le jour affiché bascule');
     setApiTargetDate(new Date());
-    majLibelleDate(new Date());
     buildEPG(S.matches);
     if (typeof window.updateNowLine === 'function') window.updateNowLine();
     loadAll(true, false);   // arrière-plan : pas d'écran d'attente sur un match en cours
     return true;
 }
 window.verifierBasculeDeJour = verifierBasculeDeJour;
-
-export function changeTargetDate(offsetDays) {
-    var newDate = new Date(TARGET_DATE);
-    newDate.setDate(newDate.getDate() + offsetDays);
-    applyTargetDate(newDate);
-}
-
-export function setTargetDate(dateStr) {
-    if (!dateStr) return;
-    // dateStr is YYYY-MM-DD
-    var parts = dateStr.split('-');
-    // Create date at noon to avoid timezone issues
-    var newDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
-    applyTargetDate(newDate);
-}
-
-window.applyTargetDate = applyTargetDate;
-window.changeTargetDate = changeTargetDate;
-window.setTargetDate = setTargetDate;
-
 
 /* La navigation aux flèches (js/tv-navigation.js) et le contour du focus (tv.css). Le
    mode TV les charge, et la manette aussi (activerNavigationManette) : sans elles, la
@@ -1839,7 +1755,6 @@ window.activerTeleAndroid = function() {
 window.retourTele = function() {
     var mbg = document.getElementById('mbg');
     var guide = document.getElementById('tm-modal');
-    var enqueteur = document.getElementById('investigator-modal');
     var look = document.getElementById('menu-look');
     var choixSource = document.getElementById('mv-flux-selector');
     var choixMatchs = document.getElementById('mv-choix');
@@ -1851,7 +1766,7 @@ window.retourTele = function() {
         navVisible: !!(boutonVue && boutonVue.getClientRects().length),
         dansNav: !!(barre && barre.contains(document.activeElement)),
         menuLecteur: menuEstOuvert(),
-        fenetre: !!(statsOuvert || choixMatchs || choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
+        fenetre: !!(statsOuvert || choixMatchs || choixSource || guide || (look && !look.hidden)),
         fiche: !!(mbg && mbg.classList.contains('open')),
         pleinCadre: document.body.getAttribute('data-view') === 'player' && typeof window.pleinCadreActif === 'function' && window.pleinCadreActif(),
         seule: document.body.getAttribute('data-view') === 'player' && typeof window.seuleActive === 'function' && window.seuleActive(),
@@ -1864,7 +1779,6 @@ window.retourTele = function() {
         else if (choixMatchs && typeof window.fermerChoixMulti === 'function') window.fermerChoixMulti(false);
         else if (choixSource) choixSource.remove();
         else if (guide) guide.remove();
-        else if (enqueteur && enqueteur.style.display === 'flex') { enqueteur.style.display = 'none'; var ic = document.getElementById('investigator-content'); if (ic) ic.innerHTML = ''; }
         else fermerMenuLook();
     }
     else if (action === 'fiche') closeMod();
@@ -1897,7 +1811,6 @@ window.quitterLecteur = function(vers) {
 // Auto-init at boot
 document.addEventListener('DOMContentLoaded', () => {
     brancherMoniteur(window);
-    migrerGuideActuelle();
     const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
     const tvCheckbox = document.getElementById('pref-tv-mode');
     if (tvCheckbox) tvCheckbox.checked = isTvMode;

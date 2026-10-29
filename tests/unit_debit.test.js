@@ -21,22 +21,9 @@ async function main() {
     let n = 0;
     const ok = (name) => { n++; console.log('  ✓ ' + name); };
 
-    // ── 1. Le débit se calcule sur les octets réellement transférés ─────────
-    const seg = (o, t) => ({ transferSize: o, startTime: t });
-    // 6,25 Mo en 10 s = 5 000 kb/s
-    assert.strictEqual(D.debitDepuisEntrees([seg(6250000, 0)], 10000, 5000), 5000);
-    assert.strictEqual(D.debitDepuisEntrees([seg(3125000, 0), seg(3125000, 1000)], 10000, 5000), 5000, 'les segments s\'additionnent');
-    // hors fenêtre : ignoré
-    assert.strictEqual(D.debitDepuisEntrees([seg(6250000, 0)], 10000, 50000), 0, 'un segment trop vieux ne compte plus');
-    assert.strictEqual(D.debitDepuisEntrees([{ encodedBodySize: 6250000, startTime: 0 }], 10000, 5000), 5000, 'encodedBodySize prend le relais');
-    ok('le débit vient des octets transférés, dans la fenêtre voulue');
-
     // ── 2. Rien de mesurable : zéro, pas une estimation ─────────────────────
     /* C'est le cas d'un CDN sans Timing-Allow-Origin : les tailles valent 0. Inventer un
        chiffre serait exactement le défaut qu'on vient de corriger sur les faux flux. */
-    assert.strictEqual(D.debitDepuisEntrees([seg(0, 0), seg(0, 1000)], 10000, 5000), 0);
-    assert.strictEqual(D.debitDepuisEntrees([], 10000, 5000), 0);
-    assert.strictEqual(D.debitDepuisEntrees(null, 10000, 5000), 0);
     assert.strictEqual(D.formaterDebit(0), '', 'zéro ne s\'affiche pas');
     assert.strictEqual(D.formaterDebit(null), '');
     ok('quand rien n\'est mesurable, on ne dit rien');

@@ -27,21 +27,37 @@ body.manette .match-card:focus,
 body.manette .tab-btn:focus,
 body.manette .icon-btn:focus,
 body.manette .stream-link:focus {
-    outline: 4px solid #4CAF50 !important;
-    outline-offset: 2px;
-    box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
-    background-color: rgba(76, 175, 80, 0.1);
-    transition: all 0.15s ease;
+    /* L'anneau blanc des télés (tvOS, Google TV) au lieu du vert (29 octobre 2026) : le vert
+       teintait le fond du bouton et rendait illisible le texte d'un bouton blanc. */
+    outline: 3px solid #fff !important;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.14);
+    transition: outline-color 0.15s ease, box-shadow 0.15s ease, transform 0.2s cubic-bezier(.2, 0, 0, 1);
     z-index: 10;
 }
 
-/* La carte qui a le focus grossit et ressort, comme une affiche sur Netflix. */
+/* La carte du Live : c'est sa VIGNETTE qui porte l'anneau et grossit (styles.css §17 :
+   la carte n'a plus de cadre, son texte est dessous), avec la lueur de l'équipe. */
 body.tv-mode .match-card:focus,
-body.manette .match-card:focus,
+body.manette .match-card:focus {
+    outline: none !important;
+    box-shadow: none;
+    transform: none;
+    z-index: 20;
+}
+body.tv-mode .match-card:focus .prime-thumbnail,
+body.manette .match-card:focus .prime-thumbnail {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 3px #0b0d12, 0 0 0 6px #fff, 0 18px 40px -8px rgba(0, 0, 0, 0.85), 0 0 36px 4px var(--c1, rgba(255, 255, 255, 0.2));
+}
+body.tv-mode .match-card:focus .prime-info,
+body.manette .match-card:focus .prime-info { color: #fff; }
+
+/* Les cases du Guide et des dispositions grossissent et ressortent, comme une affiche. */
 body.tv-mode .mb:focus,
 body.manette .mb:focus,
-body.tv-mode [data-mid]:focus,
-body.manette [data-mid]:focus {
+body.tv-mode [data-mid]:not(.match-card):focus,
+body.manette [data-mid]:not(.match-card):focus {
     transform: scale(1.06);
     outline: 3px solid #fff !important;
     outline-offset: 0;
@@ -63,14 +79,16 @@ body.manette #mv-toolbar .mv-chip:focus {
 }
 body.tv-mode #mv-toolbar .mv-chip.actif:focus,
 body.manette #mv-toolbar .mv-chip.actif:focus { background-color: #fff; }
-/* Les boutons, blancs et sans capsule : grossis et soulignés, sans fond. */
+/* Les boutons ronds du lecteur (29 octobre 2026) : au focus, ils deviennent blancs, icône
+   sombre, et grossissent, comme sur Apple TV ; leur nom s'affiche au-dessus (styles.css). */
 body.tv-mode #mv-toolbar .mv-tb-btn:focus,
 body.manette #mv-toolbar .mv-tb-btn:focus {
     outline: none !important;
     opacity: 1;
-    background: transparent;
-    box-shadow: inset 0 -3px 0 #fff;
-    transform: scale(1.15);
+    background: #fff;
+    color: #0b0d12;
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.22);
+    transform: scale(1.12);
 }
 body.tv-mode .mv-menu-item:focus,
 body.manette .mv-menu-item:focus {
@@ -83,4 +101,12 @@ body.manette .mv-menu-item:focus {
 /* Ensure modal contents behave appropriately */
 body.tv-mode .modal-content {
     max-width: 90%;
+}
+
+/* Les boutons blancs (Regarder) : l'anneau, et un léger grossissement. */
+body.tv-mode .vedette-go:focus, body.manette .vedette-go:focus,
+body.tv-mode .btn-regarder:focus, body.manette .btn-regarder:focus {
+    background-color: #fff;
+    color: #0b0d12;
+    transform: scale(1.06);
 }

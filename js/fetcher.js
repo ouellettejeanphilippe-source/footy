@@ -2,7 +2,7 @@
    Ce module ne dépend ni du DOM ni des autres modules de l'app : il est
    importable tel quel dans Node (tests unitaires, scripts serveur).
    Il fournit :
-     - buildProxyList(opts)      : la liste ordonnée des transports (direct + proxys CORS)
+     - buildProxyList()          : la liste ordonnée des transports (direct + proxys CORS)
      - inspectPageContent(text)  : détection des pages d'erreur renvoyées avec un HTTP 200
      - orderProxies(...)         : tri des transports selon leur santé récente
      - recordProxyResult(...)    : mise à jour de la santé d'un transport
@@ -17,19 +17,6 @@ export var DIRECT_TIMEOUT = 5000;
 export var JINA_TIMEOUT = 15000;
 
 function encode(u) { return encodeURIComponent(u); }
-
-// Un proxy personnalisé peut être donné sous 3 formes :
-//   https://mon-worker.workers.dev/?url={url}   -> {url} est remplacé par l'URL encodée
-//   https://mon-worker.workers.dev/?url=          -> l'URL encodée est ajoutée à la fin
-//   https://mon-worker.workers.dev/               -> l'URL brute est ajoutée (style cors-anywhere)
-export function applyProxyTemplate(template, url) {
-    if (!template) return url;
-    var t = String(template).trim();
-    if (t.indexOf('{url}') >= 0) return t.replace('{url}', encode(url));
-    if (/[=?]$/.test(t)) return t + encode(url);
-    if (!/\/$/.test(t)) t += '/';
-    return t + url;
-}
 
 /* Ce que r.jina.ai rend n'est pas toujours la page brute.
 
@@ -60,17 +47,10 @@ export function adapterJina(url) {
     return { url: r.url, headers: r.headers, parse: r.convertir };
 }
 
-export function buildProxyList(opts) {
-    opts = opts || {};
+/* Le proxy personnalisé et les clés d'API, réglés dans Options → Réseau, sont partis le
+   29 octobre 2026 (« j'utilise pas les proxy ») : la liste est fixe. */
+export function buildProxyList() {
     var list = [];
-
-    if (opts.customProxy) {
-        list.push({
-            id: 'custom',
-            label: 'Proxy personnalisé',
-            build: function(u) { return applyProxyTemplate(opts.customProxy, u); }
-        });
-    }
 
     // Tentative directe : gratuite, très rapide à échouer (CORS) dans le navigateur,
     // et c'est le chemin normal côté serveur (GitHub Actions) où il n'y a pas de CORS.
@@ -104,17 +84,8 @@ export function buildProxyList(opts) {
     list.push({
         id: 'cors.sh',
         label: 'proxy.cors.sh',
-        headers: opts.corsShKey ? { 'x-cors-api-key': opts.corsShKey } : null,
         build: function(u) { return 'https://proxy.cors.sh/' + u; }
     });
-
-    if (opts.corsProxyIoKey) {
-        list.push({
-            id: 'corsproxy.io',
-            label: 'corsproxy.io (clé API)',
-            build: function(u) { return 'https://corsproxy.io/?key=' + encode(opts.corsProxyIoKey) + '&url=' + encode(u); }
-        });
-    }
 
     list.push({ id: 'allorigins-raw', label: 'allorigins (raw)', build: function(u) { return 'https://api.allorigins.win/raw?url=' + encode(u); } });
     list.push({

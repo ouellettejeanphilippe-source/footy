@@ -641,6 +641,18 @@ var SPORT_LABELS = {
     f1: 'Formule 1', motor: 'Sports motorisés', rugby: 'Rugby', cricket: 'Cricket', tennis: 'Tennis',
     golf: 'Golf', esports: 'Esports', soccer: 'Soccer', other: 'Sport'
 };
+/* Le fond d'une vignette ou d'une bannière aux couleurs des équipes, selon Réglages →
+   Look → Couleur des cartes (`userPrefs.cardColor`). `f` porte `cDom`, `cExt` et
+   `cLigue`. Venait de js/dispositions.js, retiré le 29 octobre 2026. */
+export function fondEquipes(f, mode) {
+  if (mode === 'home') return f.cDom;
+  if (mode === 'league') return f.cLigue || f.cDom;
+  if (mode === 'dark') return 'rgba(255,255,255,0.05)';
+  if (mode === 'split') return 'linear-gradient(135deg, ' + f.cDom + ' 50%, ' + f.cExt + ' 50%)';
+  if (mode === 'gradient') return 'linear-gradient(90deg, ' + f.cDom + ' 0%, ' + f.cExt + ' 100%)';
+  return 'linear-gradient(135deg, ' + f.cDom + ' 0%, ' + f.cExt + ' 100%)';
+}
+
 export function libelleSport(league) {
     return SPORT_LABELS[sportOfLeague(league)] || SPORT_LABELS.other;
 }

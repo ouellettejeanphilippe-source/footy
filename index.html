@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0c">
+<meta name="theme-color" content="#0b0d12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Sports Guide">
@@ -18,6 +18,9 @@
 <link rel="manifest" href="./manifest.json">
 <title>Guide des Sports</title>
 <script>try{localStorage.removeItem('ui_legacy');}catch(e){}</script>
+<!-- Les polices de l'identité (29 octobre 2026), servies par l'application : Inter tout de
+     suite, pour que le premier rendu ne change pas de police une seconde plus tard. -->
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
 <!-- Les modules sont découverts en cascade depuis js/main.js : on annonce les plus lourds
      tout de suite pour que le navigateur les télécharge en parallèle (9 septembre 2026). -->
@@ -29,10 +32,6 @@
 <link rel="modulepreload" href="js/multiview.js">
 <link rel="modulepreload" href="js/db.js">
 <link rel="modulepreload" href="js/teams.js">
-<style id="custom-ui-effects">
-  .neon-glow-effect .btn { box-shadow: 0 0 10px var(--accent), inset 0 0 10px var(--accent) !important; border: 1px solid var(--accent) !important; background: rgba(0,0,0,0.6) !important; }
-  .neon-glow-effect .match-card { box-shadow: 0 0 15px var(--mc, var(--accent)) !important; }
-</style>
 </head>
 <body data-view="live">
 
@@ -83,14 +82,14 @@
      feuille de style sur ces seules pages (body[data-view]). -->
 <nav class="reglages-barre" id="reglages-barre" aria-label="Réglages">
   <div class="rb-onglets">
-    <button class="rb-btn" id="rb-options" onclick="applyFilter('options')">⚙️ Options</button>
-    <button class="rb-btn" id="btn-look" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look" onclick="basculerMenuLook(event)">🎨 Look</button>
-    <button class="rb-btn" id="rb-script" onclick="applyFilter('script')">🧩 Script</button>
-    <button class="rb-btn" id="rb-logs" onclick="applyFilter('logs')">📋 Logs</button>
+    <button class="rb-btn" id="rb-options" onclick="applyFilter('options')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg><span>Options</span></button>
+    <button class="rb-btn" id="btn-look" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look" onclick="basculerMenuLook(event)"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2.5a9.5 9.5 0 1 0 0 19c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1 0-.9.7-1.6 1.6-1.6h1.9c2.9 0 5.2-2.4 5.2-5.3C21.5 6.3 17.2 2.5 12 2.5z"/><circle cx="7.5" cy="11" r="1" fill="currentColor"/><circle cx="10" cy="7" r="1" fill="currentColor"/><circle cx="15" cy="7" r="1" fill="currentColor"/></svg><span>Look</span></button>
+    <button class="rb-btn" id="rb-script" onclick="applyFilter('script')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>Script</span></button>
+    <button class="rb-btn" id="rb-logs" onclick="applyFilter('logs')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Logs</span></button>
   </div>
   <div class="rb-actions">
-    <button class="rb-btn" id="btn-actualiser" onclick="actualiserMaintenant()" title="Actualiser les scores et les liens maintenant"><span class="menu-ic" aria-hidden="true">↻</span> Actualiser</button>
-    <button class="rb-btn" id="btn-maj-app" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">⬇ Mettre à jour l'app</button>
+    <button class="rb-btn" id="btn-actualiser" onclick="actualiserMaintenant()" title="Actualiser les scores et les liens maintenant"><span class="menu-ic" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span> Actualiser</button>
+    <button class="rb-btn" id="btn-maj-app" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés."><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>Mettre à jour l'app</span></button>
   </div>
 </nav>
 
@@ -130,40 +129,6 @@
      (25 octobre 2026), devenu l'onglet Réglages (29 octobre 2026). -->
 <div class="menu-look" id="menu-look" role="menu" aria-label="Look" hidden></div>
 
-<!-- ═══ DÉBOGAGE ══════════════════════════════════════════════════════════════ -->
-<div class="dbg" id="dbg">
-  <div class="dbg-hd">
-    <div class="dbg-title">🔬 Débogage — footybite.vc parser</div>
-    <button class="dbg-x" aria-label="Fermer le panneau de débogage" title="Fermer" onclick="closeDbg()"><span class="ic ic-close"></span></button>
-  </div>
-  <div class="dbg-body" id="dbgbody"><div class="help">Lance un chargement d'abord.</div></div>
-</div>
-
-<!-- ═══ SCRAPER INVESTIGATOR ══════════════════════════════════════════════════ -->
-<div class="mbg" id="investigator-modal" style="display:none;" onclick="if(event.target===this) { this.style.display='none'; document.getElementById('investigator-content').innerHTML=''; }">
-  <div class="modal modal-wide">
-    <div class="mhd">
-      <div class="mi"><div class="mn">🕵️ Scraper Investigator</div></div>
-      <button class="mx" aria-label="Fermer" onclick="document.getElementById('investigator-modal').style.display='none'; document.getElementById('investigator-content').innerHTML='';"><span class="ic ic-close"></span></button>
-    </div>
-    <div class="inv-bar">
-      <input type="text" id="investigator-url" class="input" placeholder="URL de la page à analyser (ex: https://site.com/match)">
-      <button class="btn g" onclick="window.investigateUrl(document.getElementById('investigator-url').value)">Analyser</button>
-    </div>
-    <div class="inv-seq">
-      <strong>Séquence enregistrée :</strong>
-      <div id="investigator-sequence"><div class="help">Aucune action (Démarrez l'analyse)</div></div>
-    </div>
-    <div id="investigator-content" class="inv-content">
-      <div class="help center">Entrez une URL pour commencer l'investigation du DOM.</div>
-    </div>
-    <div class="inv-foot">
-      <button class="btn" onclick="window.investigatorClearSequence()">Réinitialiser</button>
-      <button class="btn primary" onclick="window.investigatorSaveRules()">Sauvegarder les règles</button>
-    </div>
-  </div>
-</div>
-
 <!-- ═══ FICHE DE MATCH ════════════════════════════════════════════════════════
      Une seule croix de fermeture, dans l'en-tête ; le corps est rempli par openMod
      (js/ui.js). Sur mobile la fiche devient une feuille qui monte du bas. -->
@@ -184,7 +149,7 @@
 <!-- ═══ FAVORIS ═══════════════════════════════════════════════════════════════ -->
 <section id="fav-page" class="page" style="display:none;">
   <div class="page-head">
-    <h2>⭐ Favoris</h2>
+    <h2>Favoris</h2>
     <p class="help">Les équipes et ligues favorites remontent en tête du Live et du Guide.</p>
   </div>
 
@@ -228,75 +193,31 @@
 <!-- ═══ OPTIONS ═══════════════════════════════════════════════════════════════ -->
 <section id="options-page" class="page" style="display:none;">
   <div class="page-head">
-    <h2>⚙️ Options</h2>
-    <p class="help">L'apparence d'abord ; le réseau et les outils avancés sont repliés plus bas.</p>
+    <h2>Options</h2>
+    <p class="help">L'apparence d'abord ; les liens du serveur sont repliés plus bas.</p>
   </div>
 
   <div id="stab-options" class="stack">
 
     <!-- Apparence -->
     <div class="panel">
-      <div class="panel-title"><span>🎨 Apparence</span></div>
+      <div class="panel-title"><span>Apparence</span></div>
 
       <div class="field">
-        <div class="field-label">Palettes rapides</div>
+        <div class="field-label">Palette<small>Le fond de l'application et sa couleur d'accent.</small></div>
         <div class="swatches-container"></div>
       </div>
 
       <div class="field row">
-        <div class="field-label">Style du fond</div>
-        <select id="pref-bg-style" class="btn select" onchange="applyUserBgStyleOnly()">
-          <option value="solid">Couleur unie</option>
-          <option value="gradient">Dégradé doux</option>
-          <option disabled>— Motifs —</option>
-          <option value="grid">Grille subtile</option>
-          <option value="mesh_random">Maillage aléatoire</option>
-        </select>
+        <div class="field-label">Couleur des cartes<small>Par Réglages → Look.</small></div>
       </div>
 
       <div class="field row">
-        <div class="field-label">Couleurs du fond</div>
-        <div class="color-trio">
-          <label class="color-pick" title="Couleur 1 (base)"><input type="color" id="pref-c1" value="#000000" onchange="markCustomTheme(); document.getElementById('hex-c1').textContent=this.value;" oninput="document.getElementById('hex-c1').textContent=this.value;"><span id="hex-c1">#000000</span></label>
-          <label class="color-pick" title="Couleur 2 (intermédiaire)"><input type="color" id="pref-c2" value="#111111" onchange="markCustomTheme(); document.getElementById('hex-c2').textContent=this.value;" oninput="document.getElementById('hex-c2').textContent=this.value;"><span id="hex-c2">#111111</span></label>
-          <label class="color-pick" title="Couleur 3 (extrémité)"><input type="color" id="pref-c3" value="#222222" onchange="markCustomTheme(); document.getElementById('hex-c3').textContent=this.value;" oninput="document.getElementById('hex-c3').textContent=this.value;"><span id="hex-c3">#222222</span></label>
-        </div>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Couleur d'accentuation</div>
-        <label class="color-pick inline"><span id="hex-accent-color">#0a84ff</span><input type="color" id="pref-accent-color" value="#0a84ff" onchange="markCustomTheme(); document.getElementById('hex-accent-color').textContent=this.value;" oninput="document.getElementById('hex-accent-color').textContent=this.value;" title="Couleur d'accentuation"></label>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Assombrissement du fond</div>
-        <input type="range" id="pref-bg-darken" min="0" max="100" value="0" onchange="applyUserPrefs()" aria-label="Assombrissement du fond">
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Retirer le noir des maillages</div>
-        <label class="switch"><input type="checkbox" id="pref-remove-black" onchange="applyUserPrefs()"><span class="slider"></span></label>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Forme des boutons</div>
-        <select id="pref-btn-shape" class="btn select" onchange="applyUserPrefs()">
-          <option value="rounded">Arrondis</option>
-          <option value="soft">Doux</option>
-          <option value="square">Rectangulaires</option>
-        </select>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Disposition et couleurs<small>Par Réglages → 🎨 Look : la disposition du Live et du Guide, et la couleur des cartes.</small></div>
-      </div>
-
-      <div class="field row">
-        <div class="field-label">Forme des cartes<small>L'affiche verticale (2:3) range trois matchs par ligne sur téléphone.</small></div>
+        <div class="field-label">Forme des cartes<small>L'affiche, plus haute (vignette 4:3), range deux matchs par ligne sur téléphone.</small></div>
         <select id="pref-card-shape" class="btn select" onchange="applyUserPrefs()">
           <option value="auto" selected>Automatique</option>
-          <option value="poster">Affiche verticale (2:3)</option>
-          <option value="wide">Carte large (2,4:1)</option>
+          <option value="poster">Affiche (4:3)</option>
+          <option value="wide">Carte large (16:9)</option>
         </select>
       </div>
 
@@ -317,56 +238,20 @@
       </div>
     </div>
 
-    <!-- Réseau (avancé, replié) -->
+    <!-- Liens du serveur (avancé, replié) : relancer le calcul sur GitHub. Le proxy
+         personnalisé, les clés d'API et les Outils (Investigator, export / import) sont
+         partis le 29 octobre 2026. -->
     <details class="panel" id="panel-network">
-      <summary class="panel-title"><span>🌐 Réseau &amp; proxys</span><span class="help">avancé</span></summary>
+      <summary class="panel-title"><span>Liens du serveur</span><span class="help">avancé</span></summary>
       <p class="help">
-        Les liens sont d'abord lus depuis le cache calculé chaque heure sur GitHub (aucun proxy requis), puis rafraîchis via des proxys CORS publics.
-        Ces proxys ferment régulièrement : vous pouvez indiquer votre propre proxy (ex. un Cloudflare Worker) ou des clés API, essayés en premier.
-      </p>
-      <div id="proxy-status" class="status-box"></div>
-      <label class="field col">
-        <span class="field-label">Proxy personnalisé (URL, <code>{url}</code> optionnel)</span>
-        <input type="text" id="pref-custom-proxy" class="input" placeholder="https://mon-proxy.workers.dev/?url={url}">
-      </label>
-      <div class="two-col">
-        <label class="field col">
-          <span class="field-label">Clé API cors.sh (optionnel)</span>
-          <input type="text" id="pref-cors-sh-key" class="input" placeholder="temp_xxxxxxxx" autocomplete="off">
-        </label>
-        <label class="field col">
-          <span class="field-label">Clé API corsproxy.io (optionnel)</span>
-          <input type="text" id="pref-corsproxy-io-key" class="input" placeholder="clé du tableau de bord corsproxy.io" autocomplete="off">
-        </label>
-      </div>
-      <div class="btn-row">
-        <button class="btn" onclick="saveProxySettings()">💾 Enregistrer et retester</button>
-        <button class="btn o" onclick="resetProxyHealth(); showToast('Historique des proxys réinitialisé'); renderProxyStatus();">♻️ Réinitialiser l'historique</button>
-      </div>
-      <p class="help">
-        Le cache serveur est recalculé chaque heure (à :17 UTC). Pour le relancer tout de suite : ouvrez le workflow sur GitHub, cliquez « Run workflow », puis rechargez les liens ici environ deux minutes plus tard.
+        Les liens sont calculés sur GitHub toutes les 30 minutes. Pour relancer le calcul tout de suite : ouvrez le workflow sur GitHub, cliquez « Run workflow », puis rechargez les liens ici environ deux minutes plus tard.
       </p>
       <div class="btn-row">
-        <button class="btn o" onclick="openStreamsWorkflow()" title="Ouvre la page GitHub Actions du workflow (bouton « Run workflow »)">▶️ Lancer le calcul sur GitHub</button>
-        <button class="btn o" id="btn-reload-prefetched" onclick="reloadPrefetchedStreams()" title="Relit data/streams.json sans attendre">🔄 Recharger les liens serveur</button>
+        <button class="btn o" onclick="openStreamsWorkflow()" title="Ouvre la page GitHub Actions du workflow (bouton « Run workflow »)">Lancer le calcul sur GitHub</button>
+        <button class="btn o" id="btn-reload-prefetched" onclick="reloadPrefetchedStreams()" title="Relit data/streams.json sans attendre">Recharger les liens serveur</button>
       </div>
     </details>
 
-    <!-- Outils -->
-    <details class="panel" id="panel-tools">
-      <summary class="panel-title"><span>🧰 Outils</span><span class="help">avancé</span></summary>
-      <div class="field row">
-        <div class="field-label">Scraper Investigator<small>Configurer manuellement l'extraction d'un lecteur quand un flux reste inaccessible.</small></div>
-        <button class="btn warn" onclick="window.openInvestigatorModal()">Lancer l'Investigator</button>
-      </div>
-      <div class="field row">
-        <div class="field-label">Sauvegarde<small>Exportez vos préférences et favoris, ou importez-les depuis un autre appareil.</small></div>
-        <div class="btn-row">
-          <button class="btn" onclick="window.exportSettings()">Exporter (.json)</button>
-          <label class="btn primary">Importer<input type="file" id="import-settings-file" accept=".json" class="visually-hidden" onchange="window.importSettings(event)"></label>
-        </div>
-      </div>
-    </details>
 
   </div>
 </section>
@@ -374,7 +259,7 @@
 <!-- ═══ LOGS ══════════════════════════════════════════════════════════════════ -->
 <section id="logs-page" class="page" style="display:none;">
   <div class="page-head">
-    <h2>📋 Logs</h2>
+    <h2>Logs</h2>
     <p class="help">État des sources, inventaire des liens par fournisseur et historique des requêtes.</p>
   </div>
   <div class="stack">
@@ -416,7 +301,7 @@
 <!-- ═══ SCRIPT ════════════════════════════════════════════════════════════════ -->
 <section id="script-page" class="page" style="display:none;">
   <div class="page-head">
-    <h2>🧩 Installation des scripts</h2>
+    <h2>Installation des scripts</h2>
     <p class="help">Pour un Multivision sans publicités et avec le lecteur isolé, configurez votre navigateur en trois étapes.</p>
   </div>
   <!-- Aussi le contenu de la fenêtre du début (installTampermonkey, js/multiview.js). -->
