@@ -195,20 +195,6 @@ async function bootOffline(page) {
   return pageErrors;
 }
 
-/* La grille horaire classique (blocs `.mb`, ligne du direct, frontière de minuit) est de
-   nouveau le Guide par défaut (27 octobre 2026) ; les tests qui en dépendent la
-   choisissent quand même, pour ne pas dépendre du réglage du jour. */
-async function guideClassique(page) {
-  await page.addInitScript(() => {
-    try {
-      localStorage.setItem('guide_actuelle', '1');
-      const p = JSON.parse(localStorage.getItem('user_prefs') || '{}');
-      p.dispositionGuide = 'actuelle';
-      localStorage.setItem('user_prefs', JSON.stringify(p));
-    } catch (e) {}
-  });
-}
-
 /* Le premier chargement dessine la grille avec les liens déjà connus, puis la REDESSINE
    quand la lecture des sources finit — quelques centaines de millisecondes plus tard,
    au hasard des refus de proxys. Un test qui commençait entre les deux tenait des titres
@@ -385,6 +371,9 @@ test('une carte sans lien porte le bouton de recherche, une carte pourvue son co
     const without = document.querySelector('button.card-streams-search');
     return {
       counter: withLinks ? withLinks.textContent.trim() : null,
+      /* Le triangle est un tracé SVG depuis le 29 octobre 2026 (le ▶ du texte devenait une
+         pastille bleue sur Android) : le texte ne porte plus que le nombre. */
+      icone: withLinks ? !!withLinks.querySelector('svg.ico') : null,
       searchButton: !!without,
       searchHandler: without ? without.getAttribute('onclick') : null,
       handlerExists: typeof window.cardSearchLinks === 'function',
@@ -401,7 +390,10 @@ test('une carte sans lien porte le bouton de recherche, une carte pourvue son co
   /* Le 10 septembre 2026, le calendrier publié était de la veille (cron quotidien en
      retard) et aucun match rendu ne portait de lien : le compteur n'existait pas, sans
      qu'aucun code soit en cause. Le compteur n'est exigé que s'il y a de quoi le faire. */
-  if (badges.lienRendu) expect(badges.counter, 'le compteur de flux affiche « ▶ n »').toMatch(/^▶ \d+$/);
+  if (badges.lienRendu) {
+    expect(badges.counter, 'le compteur de flux affiche le nombre').toMatch(/^\d+$/);
+    expect(badges.icone, 'précédé du triangle de lecture').toBe(true);
+  }
   else expect(badges.counter, 'sans match pourvu, pas de compteur').toBeNull();
   expect(badges.handlerExists, 'cardSearchLinks est exposé aux attributs onclick').toBeTruthy();
   /* `data/streams.json` est régénéré chaque heure : rien ne garantit qu'un match sans
@@ -1409,177 +1401,33 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(pageErrors).toEqual([]);
 });
 
-/* Dispositions (Options → Disposition, js/dispositions.js, 13 octobre 2026) : « Les 4,
-   avec l'actuelle toujours comme default ». Chacune doit rendre le Live et le Guide sur
-   les vraies données sans exception ni titre, garder chaque match cliquable, ne pas
-   faire déborder la page sur un téléphone ; un clic ouvre la fiche, et revenir à
-   « Actuelle » rend les cartes d'avant. */
-async function choisirDisposition(page, nom, vue) {
-  // Le choix passe par Look (window.choisirDisposition), le seul endroit depuis le 25 octobre 2026.
-  await page.evaluate(([n, v]) => {
-    applyFilter(v);
-    window.choisirDisposition(n, 'live');
-    window.choisirDisposition(n, 'guide');
-  }, [nom, vue]);
-}
-
-test('les quatre dispositions rendent le Live et le Guide, et un match ouvre sa fiche', async ({ page }) => {
-  const pageErrors = await bootOffline(page);
-  for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
-    for (const vue of ['live', 'all']) {
-      await choisirDisposition(page, nom, vue);
-      await page.waitForSelector('#marea .dsp-' + nom + '.dsp-vue-' + (vue === 'live' ? 'live' : 'guide'));
-      const etat = await page.evaluate(() => {
-        const racine = document.querySelector('#marea .dsp');
-        return {
-          cliquables: racine.querySelectorAll('[data-mid], [data-dsp="choix"]').length,
-          vide: !!racine.querySelector('.dsp-vide'),
-          titre: /Guide des Sports/.test(racine.innerText),
-          cartesHistoriques: document.querySelectorAll('#marea .match-card:not(.dsp-carte), #marea .mb').length
-        };
-      });
-      expect(etat.titre, nom + ' / ' + vue + ' : pas de titre').toBe(false);
-      expect(etat.cliquables > 0 || etat.vide, nom + ' / ' + vue + ' : des matchs cliquables').toBeTruthy();
-      expect(etat.cartesHistoriques, nom + ' / ' + vue + ' : le rendu historique ne se superpose pas').toBe(0);
-    }
-  }
-
-  await choisirDisposition(page, 'tableau', 'all');
-  await page.waitForSelector('#marea .dsp-tableau .dsp-gr[data-mid]');
-  /* « On dirait que c'est passé » : après « En cours », le Guide ne liste que des heures
-     à venir — un match sans nouvelles dont la fin prévue est passée va aux terminés. */
-  const heures = await page.evaluate(() => {
-    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', hourCycle: 'h23', hour: '2-digit' }).format(new Date());
-    return { maintenant: parseInt(p, 10), lues: [...document.querySelectorAll('#marea .dsp-hr')].map((e) => e.textContent.trim()).filter((t) => /^\d+ h$/.test(t)).map((t) => parseInt(t, 10)) };
+/* Les dispositions (Tableau, Maintenant, Affiches, Chaînes) sont parties le 29 octobre 2026
+   (« Tout retirer ») : Look (Réglages) ne garde que la couleur des cartes, et un ancien
+   réglage de disposition resté dans le stockage ne change plus rien. */
+test('Look (Réglages) ne garde que la couleur des cartes ; une ancienne disposition est ignorée', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('user_prefs', JSON.stringify({ dispositionGuide: 'chaines', dispositionLive: 'tableau' })); } catch (e) {}
   });
-  for (const h of heures.lues) expect(h, 'une heure du passé dans le Guide').toBeGreaterThanOrEqual(heures.maintenant);
-
-  await page.locator('#marea .dsp-gr[data-mid]').first().click();
-  await expect(page.locator('#mbg')).toHaveClass(/open/);
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
-
-  await choisirDisposition(page, 'actuelle', 'live');
-  await page.waitForSelector('#marea .match-card');
-  expect(await page.locator('#marea .dsp').count(), 'Actuelle : plus aucune disposition').toBe(0);
-  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
-});
-
-test('sur téléphone, aucune disposition ne fait déborder la page', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   const pageErrors = await bootOffline(page);
-  for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
-    for (const vue of ['live', 'all']) {
-      await choisirDisposition(page, nom, vue);
-      await page.waitForSelector('#marea .dsp-' + nom);
-      const largeur = await page.evaluate(() => ({ scrollW: document.body.scrollWidth, innerW: window.innerWidth }));
-      expect(largeur.scrollW, nom + ' / ' + vue + ' à 390 px').toBeLessThanOrEqual(largeur.innerW + 1);
-    }
-  }
-  expect(pageErrors).toEqual([]);
-});
+  await expect(page.locator('#marea .vedette')).toHaveCount(1);
+  expect(await page.locator('#marea .dsp, #marea [class*="dsp-"]').count(), 'plus aucune disposition').toBe(0);
+  await page.evaluate(() => applyFilter('all'));
+  await expect(page.locator('#marea .epg-wrapper').first()).toBeVisible();
+  expect(await page.evaluate(() => typeof window.choisirDisposition + typeof window.dispositionChoisie)).toBe('undefinedundefined');
 
-/* L'étoile d'un favori reste visible, même au nom long (24 octobre 2026). Elle était posée
-   DANS le nom tronqué de la disposition « tableau » : « MSC Cruises United States Grand
-   Prix », favori par défaut par « F1 », la poussait hors de la zone visible, et le test
-   ci-dessous ne le voyait qu'avec les polices de la CI. Toutes les équipes du calendrier
-   sont ici favorites, pour qu'un nom long soit là quelles que soient les données du jour. */
-test('l\'étoile d\'un favori au nom long reste visible dans le tableau', async ({ page }) => {
-  const cal = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'schedule.json'), 'utf8'));
-  const favoris = {};
-  for (const m of cal.matches || []) { if (m.homeTeam) favoris[m.homeTeam] = 1; if (m.awayTeam) favoris[m.awayTeam] = 1; }
-  await page.setViewportSize({ width: 820, height: 1180 });
-  await page.addInitScript((f) => { localStorage.setItem('fav_teams', JSON.stringify(f)); }, favoris);
-  const pageErrors = await bootOffline(page);
-  await page.evaluate(() => { applyFilter('live'); choisirDisposition('tableau'); });
-  await page.waitForSelector('#marea .dsp-tableau');
-  const etat = await page.evaluate(() => {
-    const etoiles = [...document.querySelectorAll('#marea .dsp-row .dsp-fav')];
-    let longs = 0;
-    const cachees = [];
-    for (const e of etoiles) {
-      const nom = e.parentElement.matches('.dsp-n') ? e.parentElement : e.parentElement.querySelector('.dsp-n');
-      if (nom && nom.scrollWidth > nom.clientWidth) longs++;
-      // Visible = dans la boîte de chacun de ses ancêtres qui coupe ce qui dépasse.
-      const q = e.getBoundingClientRect();
-      for (let a = e.parentElement; a && !a.matches('.dsp-row'); a = a.parentElement) {
-        if (getComputedStyle(a).overflowX === 'visible') continue;
-        const R = a.getBoundingClientRect();
-        if (q.right > R.right + 1 || q.left < R.left - 1) { cachees.push(e.closest('.dsp-row').textContent.trim()); break; }
-      }
-    }
-    return { etoiles: etoiles.length, longs, cachees };
-  });
-  expect(etat.longs, 'au moins un favori au nom tronqué : le test a un sens').toBeGreaterThan(0);
-  expect(etat.cachees, 'étoiles coupées par leur cadre').toEqual([]);
-  expect(pageErrors).toEqual([]);
-});
-
-/* Le contenu des cartes et des lignes ne déborde pas de son cadre, sur tablette (« t'as
-   des tuiles que le contenu dépasse »), dans les huit vues ; et les cartes des dispositions
-   sont les cartes par défaut (« garder le look des cartes par défaut […] même style »).
-   La rangée de choix en tête de page est retirée : le bouton Look la remplace. */
-test('rien ne sort de son cadre, et les cartes des dispositions sont les cartes par défaut', async ({ page }) => {
-  await page.setViewportSize({ width: 820, height: 1180 });
-  const pageErrors = await bootOffline(page);
-  await expect(page.locator('.dsp-switch')).toHaveCount(0);
-
-  for (const vue of ['live', 'all']) {
-    for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
-      await page.evaluate(([n, v]) => { applyFilter(v); choisirDisposition(n); }, [nom, vue]);
-      await page.waitForSelector('#marea .dsp-' + nom);
-      const etat = await page.evaluate(() => {
-        const out = [];
-        for (const c of document.querySelectorAll('#marea .dsp [data-mid], #marea .dsp [data-dsp="choix"]')) {
-          const R = c.getBoundingClientRect();
-          if (!R.width) continue;
-          for (const k of c.querySelectorAll('*')) {
-            const q = k.getBoundingClientRect();
-            if (!q.width || !q.height || k.closest('.dsp-pg')) continue;
-            if (q.right > R.right + 2 || q.bottom > R.bottom + 2 || q.left < R.left - 2) { out.push(c.className + ' > ' + k.className); break; }
-          }
-        }
-        const cartes = [...document.querySelectorAll('#marea .dsp .dsp-carte')];
-        return { sorties: out, cartes: cartes.length, conformes: cartes.every((c) => c.matches('.match-card') && c.querySelector('.prime-head') && c.querySelector('.prime-thumbnail .prime-logo')) };
-      });
-      expect(etat.sorties, nom + ' / ' + vue + ' : contenu hors de son cadre').toEqual([]);
-      expect(etat.conformes, nom + ' / ' + vue + ' : cartes par défaut').toBe(true);
-      if (nom === 'affiches' || (nom === 'maintenant' && vue === 'live')) expect(etat.cartes, nom + ' / ' + vue + ' : des cartes').toBeGreaterThan(0);
-    }
-  }
-  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
-});
-
-/* « Séparer guide et live pour pouvoir mix and match » et « ajouter bouton pour changer
-   look, proche de actualiser, ainsi que le mettre à jour l'app » (13 octobre 2026). */
-test('Live et Guide ont chacun leur disposition, et Look (Réglages) les change', async ({ page }) => {
-  const pageErrors = await bootOffline(page);
-  // Look était dans le menu Plus (25 octobre 2026), devenu l'onglet Réglages (29 octobre 2026).
   await page.locator('#filter-options').click();
   await page.locator('#reglages-barre #btn-look').click();
   await expect(page.locator('#menu-look')).toBeVisible();
-  /* Depuis les Réglages, un choix montre la vue qu'il change, Look restant ouvert. */
-  await page.locator('#menu-look [data-look-vue="live"][data-look-nom="tableau"]').click();
-  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
-  await expect(page.locator('#menu-look')).toBeVisible();
-  await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
-  await page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]').click();
-  await expect(page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]')).toHaveAttribute('aria-checked', 'true');
-  // Les six couleurs de cartes sont là (Options ne les répète plus).
+  await expect(page.locator('#menu-look [data-look-nom]')).toHaveCount(0);
   await expect(page.locator('#menu-look [data-look-couleur]')).toHaveCount(6);
   await page.locator('#menu-look [data-look-couleur="home"]').click();
+  /* Depuis les Réglages, un choix montre le Live, Look restant ouvert. */
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+  await expect(page.locator('#menu-look')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu-look')).toBeHidden();
-
-  await page.evaluate(() => applyFilter('all'));
-  await page.waitForSelector('#marea .dsp-chaines.dsp-vue-guide');
-  await page.evaluate(() => applyFilter('live'));
-  await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
-
   const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'));
-  expect([prefs.dispositionLive, prefs.dispositionGuide, prefs.cardColor]).toEqual(['tableau', 'chaines', 'home']);
-  // Pas de doublons : Options ne répète pas Look.
-  expect(await page.locator('#pref-card-color, #pref-disposition-live, #pref-disposition-guide').count()).toBe(0);
+  expect(prefs.cardColor).toBe('home');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
@@ -1657,7 +1505,6 @@ test('l\'ancienne préférence d\'interface classique ne redirige plus', async (
    des cartes bougeait ; les objets restaient ceux d'il y a cinq minutes et les blocs du
    Guide gardaient leur texte de construction. */
 test('un match terminé selon ESPN quitte le Live, et le Guide suit le score', async ({ page }) => {
-  await guideClassique(page);
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
@@ -1976,7 +1823,6 @@ test('sans nouvelle d\'ESPN, un match trop long passe à « Fin ? » et quitte l
 test('minuit passe pendant qu\'on regarde : le jour affiché bascule, le match en cours reste, la ligne du direct suit', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
-  await guideClassique(page);
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
@@ -2064,7 +1910,6 @@ test('minuit passe pendant qu\'on regarde : le jour affiché bascule, le match e
 test('la grille couvre 48 h : un match de 02:00 demain est là ce soir, après la frontière de minuit', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
-  await guideClassique(page);
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
@@ -2150,7 +1995,6 @@ test('la grille couvre 48 h : un match de 02:00 demain est là ce soir, après l
 test('la nuit appartient à la veille : le match de 22:05 est encore là à 00:30, dans le Live, la grille et les scores', async ({ browser }) => {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const page = await ctx.newPage();
-  await guideClassique(page);
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
@@ -2672,7 +2516,9 @@ test('la fiche façon page de film : « ▶ Regarder » lance la meilleure sourc
   const id = await page.evaluate(() => { const m = window.S.matches.find((x) => (x.streamLinks || []).length); window.openMod(m); return m.id; });
   await expect(page.locator('#mbg')).toHaveClass(/open/);
   const bouton = page.locator('#mbody .btn-regarder');
-  await expect(bouton).toHaveText('▶ Regarder');
+  /* Le triangle est un tracé SVG depuis le 29 octobre 2026 : le texte seul reste. */
+  await expect(bouton).toHaveText('Regarder');
+  expect(await bouton.locator('svg.ico').count(), 'et son icône').toBe(1);
   const premiere = await page.evaluate(() => {
     const a = Array.from(document.querySelectorAll('#modal-right-col .si .si-main')).find((x) => x.getClientRects().length);
     return a.querySelector('.si-n span').textContent;
@@ -3156,6 +3002,43 @@ test('une tuile dont le flux répond passe seule en direct, une fois ; pas celle
   expect(pageErrors).toEqual([]);
 });
 
+/* « C'est important que la navigation manette et controller soit super efficace, donc
+   positionnements pas ambigus » (29 octobre 2026). Sur un grand écran, le Live est en
+   rangées : ▼ va de « Regarder » à la première rangée, puis d'une rangée à l'autre, sans
+   s'arrêter sur le titre de la section ni sur son bouton Rail / Grille ; ▲ ramène à la
+   carte d'où l'on venait (pas à la mieux alignée), comme sur Netflix. */
+test('à la manette, ▼ passe d\'une rangée à l\'autre sans arrêt superflu, et ▲ ramène à la carte de départ', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => window.activerNavigationManette());
+  await page.waitForFunction(() => typeof window.__tvNavigationCleanup === 'function');
+  const ou = () => page.evaluate(() => {
+    const el = document.activeElement;
+    const grille = el && el.closest('.match-grid');
+    return {
+      carte: !!(el && el.matches('.match-card')), id: el && el.id,
+      grille: grille ? Array.from(document.querySelectorAll('#marea .match-grid')).indexOf(grille) : -1,
+      titre: !!(el && el.closest('.section-title, .rail-toggle'))
+    };
+  });
+  await page.evaluate(() => document.querySelector('#marea .vedette-go').focus());
+  await page.keyboard.press('ArrowDown');
+  const premiere = await ou();
+  expect(premiere.carte, '▼ depuis « Regarder » : une carte, pas le titre de la rangée').toBe(true);
+  expect(premiere.titre).toBe(false);
+
+  const rangees = await page.evaluate(() => Array.from(document.querySelectorAll('#marea .match-grid')).filter((g) => g.querySelector('.match-card') && g.getClientRects().length).length);
+  if (rangees >= 2) {
+    await page.keyboard.press('ArrowDown');
+    const seconde = await ou();
+    expect(seconde.carte, '▼ : la carte de la rangée suivante').toBe(true);
+    expect(seconde.grille, 'une autre rangée').toBeGreaterThan(premiere.grille);
+    await page.keyboard.press('ArrowUp');
+    expect((await ou()).id, '▲ ramène à la carte de départ').toBe(premiere.id);
+  }
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 /* « La manette devrait ignorer certains éléments ; quand modal, back ramène à l'entrée ;
    juste la carte doit être cliquable, pas le chiffre » (25 octobre 2026, au Chromecast).
    À la télécommande, une carte est un seul arrêt (ni « ▶ 105 », ni ★) ; dans la fiche, un
@@ -3200,20 +3083,19 @@ test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fic
   await page.keyboard.press('ArrowDown');
   expect(await page.evaluate(() => !!document.activeElement.closest('#nav-links')), 'la flèche suivante reste dans la grille').toBe(false);
 
-  // Le Guide s'ouvre sur « Actuelle » (27 octobre 2026 : les deux Actuelles par défaut).
+  // Le Guide s'ouvre sur sa grille (la seule vue depuis le 29 octobre 2026).
   await page.evaluate(() => window.applyFilter('all'));
   await expect(page.locator('#marea .epg-wrapper').first()).toBeVisible();
-  expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('actuelle');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
 /* « Rendre le guide Basique et celui qu'on a récemment mis de base plus clean et plein
    écran, comme le câble dans le temps » ; « pas de en direct en haut » ; « je veux logos
    quand même » (25 octobre 2026). */
-test('le Guide façon câble : cases plates avec logos, Chaînes plein écran sans aperçu', async ({ page }) => {
+test('le Guide façon câble : cases plates avec logos', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   const pageErrors = await bootOffline(page);
-  await page.evaluate(() => { window.applyFilter('all'); window.choisirDisposition('actuelle', 'guide'); });
+  await page.evaluate(() => { window.applyFilter('all'); });
   await page.waitForSelector('#marea .mb');
   const bloc = await page.evaluate(() => {
     const b = document.querySelector('#marea .mb');
@@ -3226,18 +3108,8 @@ test('le Guide façon câble : cases plates avec logos, Chaînes plein écran sa
   expect(bloc.logos, 'avec les logos').toBeGreaterThan(0);
   expect(bloc.titre).toBe(true);
 
-  await page.evaluate(() => window.choisirDisposition('chaines', 'guide'));
-  await page.waitForSelector('#marea .dsp-chaines.dsp-vue-guide .dsp-pg');
-  const geo = await page.evaluate(() => {
-    const g = document.querySelector('#marea .dsp-epg').getBoundingClientRect();
-    const c = document.getElementById('marea').getBoundingClientRect();
-    return { apercu: document.querySelectorAll('#marea .dsp-pv, #marea .match-card').length, basGrille: g.bottom, basZone: c.bottom, largeur: g.width, zone: c.width };
-  });
-  expect(geo.apercu, 'pas d\'aperçu « en direct » en haut').toBe(0);
-  expect(geo.largeur, 'toute la largeur').toBeGreaterThanOrEqual(geo.zone - 20);
-  expect(geo.basZone - geo.basGrille, 'la grille descend jusqu\'en bas (Terminés compris)').toBeLessThan(80);
   // Une case ouvre la fiche du premier coup.
-  await page.locator('#marea .dsp-pg').first().click();
+  await page.locator('#marea .mb').first().click();
   await expect(page.locator('#mbg')).toHaveClass(/open/);
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
@@ -3481,12 +3353,9 @@ for (const apk of [true, false]) {
    8 variations doit prendre plus large de l'écran… et fait des sections par ligue dans
    LIVE » ; puis « pages plus proches des services de streaming, avec plein écran… dans le
    sens de navigation » (27 octobre 2026). */
-test('le Live comme un service de streaming : vedette, rangées par ligue, fiche plein écran, huit vues pleine largeur', async ({ page }) => {
+test('le Live comme un service de streaming : vedette, rangées par ligue, fiche plein écran', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   const pageErrors = await bootOffline(page);
-
-  // Les deux vues par défaut sont « Actuelle ».
-  expect(await page.evaluate(() => [window.dispositionChoisie('live'), window.dispositionChoisie('guide')])).toEqual(['actuelle', 'actuelle']);
 
   // Le bandeau vedette ouvre le Live ; « Regarder » est le premier arrêt et ouvre la fiche.
   await expect(page.locator('#marea .vedette')).toHaveCount(1);
@@ -3520,36 +3389,5 @@ test('le Live comme un service de streaming : vedette, rangées par ligue, fiche
   await page.keyboard.press('Escape');
   await expect(page.locator('#mbg')).not.toHaveClass(/open/);
 
-  // Les huit vues des dispositions prennent toute la largeur de la zone.
-  for (const vue of ['live', 'all']) {
-    for (const nom of ['tableau', 'maintenant', 'affiches', 'chaines']) {
-      await page.evaluate(([n, v]) => { applyFilter(v); choisirDisposition(n); }, [nom, vue]);
-      await page.waitForSelector('#marea .dsp-' + nom);
-      const geo = await page.evaluate(() => {
-        const d = document.querySelector('#marea .dsp').getBoundingClientRect();
-        const z = document.getElementById('marea').getBoundingClientRect();
-        return { d: d.width, z: z.width };
-      });
-      expect(geo.d, nom + ' / ' + vue + ' : toute la largeur').toBeGreaterThanOrEqual(geo.z - 2);
-    }
-  }
-  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
-});
-
-/* Le Guide passé d'office à « Chaînes » le 25 octobre revient une fois à « Actuelle » ;
-   un choix fait après ce retour est respecté. */
-test('un Guide sur « Chaînes » revient une fois à « Actuelle », puis le choix est respecté', async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.setItem('user_prefs', JSON.stringify({ dispositionGuide: 'chaines', dispositionLive: 'actuelle' })); } catch (e) {}
-  });
-  const pageErrors = await bootOffline(page);
-  expect(await page.evaluate(() => window.dispositionChoisie('guide'))).toBe('actuelle');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs')).dispositionGuide)).toBe('actuelle');
-  expect(await page.evaluate(() => localStorage.getItem('guide_actuelle'))).toBe('1');
-
-  await page.evaluate(() => window.choisirDisposition('chaines', 'guide'));
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.dispositionChoisie && window.S && window.S.matches && window.S.matches.length > 0, null, { timeout: 30000 });
-  expect(await page.evaluate(() => window.dispositionChoisie('guide')), 'le choix refait après la migration tient').toBe('chaines');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

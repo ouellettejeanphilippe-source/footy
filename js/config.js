@@ -693,25 +693,10 @@ export function getSourcePages(scraper, sports, homeHtml) {
     return out;
 }
 
-/* Transports pour fetchPage : direct + proxys CORS publics, plus, si l'utilisateur
-   les a renseignés dans les Options, un proxy personnalisé et des clés API.
-   La liste est reconstruite par rebuildProxies() quand ces réglages changent. */
-export function getProxySettings() {
-    var read = function(k) { try { return (localStorage.getItem(k) || '').trim(); } catch(e) { return ''; } };
-    return { customProxy: read('custom_proxy_url'), corsShKey: read('cors_sh_api_key'), corsProxyIoKey: read('corsproxy_io_api_key') };
-}
-export var PROXIES = buildProxyList(getProxySettings());
-export function rebuildProxies() {
-    PROXIES = buildProxyList(getProxySettings());
-    window.PROXIES = PROXIES;
-    return PROXIES;
-}
+/* Transports pour fetchPage : direct + proxys CORS publics (js/fetcher.js). Le proxy
+   personnalisé et les clés d'API des Options sont partis le 29 octobre 2026. */
+export var PROXIES = buildProxyList();
 
-/* Ces liaisons étaient collées DANS le corps de rebuildProxies : elles n'étaient donc
-   posées que si la fonction s'exécutait, et elle ne pouvait pas s'exécuter puisque son
-   seul appelant passe par window.rebuildProxies, qu'elle était censée définir.
-   Conséquences : enregistrer un proxy ou une clé d'API n'avait aucun effet avant un
-   rechargement complet, et l'écran Options n'affichait jamais les valeurs déjà saisies. */
 window.applySourceUrl = applySourceUrl;
 window.canonicalOrigin = canonicalOrigin;
 window.playLedger = playLedger;
@@ -722,8 +707,6 @@ window.getSourceCandidates = getSourceCandidates;
 window.isMatchPageBlocked = isMatchPageBlocked;
 window.SOURCE_MIRRORS = SOURCE_MIRRORS;
 window.STREAMS_WORKFLOW_URL = STREAMS_WORKFLOW_URL;
-window.rebuildProxies = rebuildProxies;
-window.getProxySettings = getProxySettings;
 window.gstatsGoBack = gstatsGoBack;
 window.toggleGlobalStats = toggleGlobalStats;
 
@@ -1143,7 +1126,6 @@ export function fetchTeamStats(teamName) {
                             };
 
                             var groupedTeamStats = {};
-                            var usedTeamKeys = new Set();
 
                             for (var cat in TEAM_STAT_CATEGORIES) {
                                 groupedTeamStats[cat] = [];

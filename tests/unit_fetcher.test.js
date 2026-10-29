@@ -6,10 +6,6 @@ async function run() {
   let passed = 0;
   function t(name, fn) { fn(); console.log('✅ [PASS] ' + name); passed++; }
 
-  t('applyProxyTemplate {url}', () => assert.strictEqual(f.applyProxyTemplate('https://p.example/?u={url}', 'https://a.b/c?d=1'), 'https://p.example/?u=https%3A%2F%2Fa.b%2Fc%3Fd%3D1'));
-  t('applyProxyTemplate trailing =', () => assert.strictEqual(f.applyProxyTemplate('https://p.example/?url=', 'https://a.b/'), 'https://p.example/?url=https%3A%2F%2Fa.b%2F'));
-  t('applyProxyTemplate cors-anywhere style', () => assert.strictEqual(f.applyProxyTemplate('https://p.example', 'https://a.b/'), 'https://p.example/https://a.b/'));
-
   t('buildProxyList default order', () => {
     const ids = f.buildProxyList({}).map(p => p.id);
     assert.deepStrictEqual(ids, ['direct', 'jina', 'cors.sh', 'allorigins-raw', 'allorigins-get', 'codetabs']);
@@ -36,15 +32,6 @@ async function run() {
     const j = f.buildProxyList({}).find(p => p.id === 'jina');
     assert.throws(() => j.parse('{"data":null,"path":"url","code":422,"name":"SubmittedDataMalformedError","status":42203,"message":"Domain could not be resolved"}'));
     assert.strictEqual(j.parse('{"score":1}'), '{"score":1}');
-  });
-  t('buildProxyList with custom proxy and keys', () => {
-    const list = f.buildProxyList({ customProxy: 'https://w.example/?url=', corsShKey: 'k1', corsProxyIoKey: 'k2' });
-    assert.strictEqual(list[0].id, 'custom');
-    assert.strictEqual(list[0].build('https://x.y/'), 'https://w.example/?url=https%3A%2F%2Fx.y%2F');
-    const sh = list.find(p => p.id === 'cors.sh');
-    assert.deepStrictEqual(sh.headers, { 'x-cors-api-key': 'k1' });
-    const io = list.find(p => p.id === 'corsproxy.io');
-    assert.ok(io.build('https://x.y/').indexOf('key=k2') > 0);
   });
   t('allorigins-get parse extracts contents', () => {
     const p = f.buildProxyList({}).find(x => x.id === 'allorigins-get');

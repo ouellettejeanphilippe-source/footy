@@ -31,7 +31,8 @@ test('la vedette : favori en direct, sinon le direct le plus fourni, sinon le pr
 test('le bandeau : « Regarder » premier arrêt (data-focus-depart, data-mid), score, direct, échappement', () => {
   const html = V.bandeauVedette(fiche('x<y', 'live', { dom: 'A & B', fav: true }), 19 * 60 + 30);
   assert.match(html, /class="vedette vedette-live"/);
-  assert.match(html, /<button type="button" class="vedette-go" data-mid="x&lt;y" data-focus-depart>▶ Regarder<\/button>/);
+  /* Le triangle est un tracé (29 octobre 2026) : le ▶ du texte devient une pastille bleue sur Android. */
+  assert.match(html, /<button type="button" class="vedette-go" data-mid="x&lt;y" data-focus-depart><svg class="ico"[^>]*>[^]*?<\/svg><span>Regarder<\/span><\/button>/);
   assert.match(html, /A &amp; B/);
   assert.match(html, /vedette-score">2 – 1</);
   assert.match(html, /● Direct · 2e · 12:00/);

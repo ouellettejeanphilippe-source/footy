@@ -307,85 +307,6 @@ export function resolveStreamUrl(url) {
             return;
         }
 
-        // Execute saved custom rules from the Scraper Investigator
-        var customRules = safeStorageGetJSON('custom_scraper_rules', {});
-        var domainKeys = Object.keys(customRules);
-        var matchingDomainId = null;
-        for (var i = 0; i < domainKeys.length; i++) {
-            if (url.indexOf(domainKeys[i]) > -1 || (typeof SCRAPERS_CONFIG !== 'undefined' && SCRAPERS_CONFIG.find(s => s.id === domainKeys[i] && url.indexOf(s.url) > -1))) {
-                matchingDomainId = domainKeys[i];
-                break;
-            }
-        }
-
-        if (matchingDomainId && customRules[matchingDomainId] && customRules[matchingDomainId].steps && customRules[matchingDomainId].steps.length > 0) {
-            lg('Executing custom rule sequence for', matchingDomainId);
-
-            function executeStep(currentUrl, stepIndex) {
-                if (stepIndex >= customRules[matchingDomainId].steps.length) {
-                    resolve(currentUrl); // Reached the end without finding iframe somehow
-                    return;
-                }
-
-                var step = customRules[matchingDomainId].steps[stepIndex];
-
-                fetchPage(currentUrl).then(function(html) {
-                    var doc = new DOMParser().parseFromString(html, 'text/html');
-
-                    if (step.type === 'click_link') {
-                        // Find matching link
-                        var links = doc.querySelectorAll('a[href]');
-                        var nextUrl = null;
-                        for (var i=0; i<links.length; i++) {
-                            var h = links[i].getAttribute('href');
-                            if (!h || h.startsWith('javascript')) continue;
-                            var t = links[i].textContent.replace(/\s+/g, ' ').trim();
-                            if (h.includes(step.href) || (step.textMatch && t.includes(step.textMatch))) {
-                                nextUrl = h;
-                                break;
-                            }
-                        }
-
-                        if (nextUrl) {
-                            var fullUrl = typeof resolveUrl === 'function' ? resolveUrl(nextUrl, currentUrl) : (nextUrl.startsWith('http') ? nextUrl : new URL(nextUrl, currentUrl).href);
-                            executeStep(fullUrl, stepIndex + 1);
-                        } else {
-                            resolve(currentUrl); // Failed to find link
-                        }
-                    } else if (step.type === 'iframe_select') {
-                        var iframes = doc.querySelectorAll('iframe');
-                        var targetIframe = null;
-
-                        if (iframes.length > step.iframeIndex) {
-                            targetIframe = iframes[step.iframeIndex];
-                        } else if (iframes.length > 0) {
-                            targetIframe = iframes[0]; // fallback to first
-                        }
-
-                        if (targetIframe && targetIframe.getAttribute('src')) {
-                            var finalSrc = targetIframe.getAttribute('src');
-                            if(typeof resolveUrl === 'function') {
-                                finalSrc = resolveUrl(finalSrc, currentUrl);
-                            } else {
-                                if (!finalSrc.startsWith('http')) finalSrc = new URL(finalSrc, currentUrl).href;
-                            }
-                            resolve(finalSrc);
-                        } else {
-                            resolve(currentUrl); // Failed to find iframe
-                        }
-                    } else {
-                        resolve(currentUrl); // Unknown step type
-                    }
-                }).catch(function(e) {
-                    lg('Rule execution failed at step ' + stepIndex, e.message);
-                    resolve(currentUrl);
-                });
-            }
-
-            executeStep(url, 0);
-            return;
-        }
-
         /* Rien d'autre à faire ici : l'adresse est rendue telle quelle.
 
            Cette fonction contenait un second moteur d'extraction, écrit à la main :
@@ -437,7 +358,6 @@ function pruneCache() {
 }
 
 export function getProxyHealth() { return proxyHealth; }
-export function resetProxyHealth() { proxyHealth = {}; safeStorageRemove('proxy_health'); }
 
 function noteProxy(proxy, url, ok) {
     recordProxyResult(proxyHealth, proxy, url, ok, Date.now());
@@ -716,118 +636,6 @@ export function openMultiviewTab() {
     }
 }
 
-/* ══ RECHERCHE ══════════════════════════ */
-/* Recherche globale (équipe, ligue), branchée sur S.searchQuery que buildEPG applique
-   déjà au Live comme au Guide. Débounce court : reconstruire la grille à chaque frappe
-   sur trois cents matchs se sentirait au clavier. */
-var searchTimer = null;
-export function setSearchQuery(value) {
-  var q = String(value || '').trim().toLowerCase();
-  var box = document.querySelector('.search-box');
-  if (box) box.classList.toggle('has-value', q.length > 0);
-  if (q === S.searchQuery) return;
-  S.searchQuery = q;
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(function() {
-    if (S.filter === 'live' || S.filter === 'all') buildEPG(S.matches || []);
-  }, 160);
-}
-
-export function applySportFilter(sport){
-  var sfContainer = document.getElementById('sport-filters');
-
-  if(sport) {
-      if (sport === 'all') {
-          S.hiddenLg = {};
-      } else {
-          // If we were previously showing 'all' (none hidden), first hide all EXCEPT the clicked one
-          // to easily select just one league to start with.
-          var allWereVisible = true;
-          var sports = {};
-          S.matches.forEach(function(m){ sports[m.league]=true; });
-          Object.keys(sports).forEach(function(k) {
-              if (S.hiddenLg[k]) allWereVisible = false;
-          });
-
-          if (allWereVisible) {
-              Object.keys(sports).forEach(function(k) {
-                  S.hiddenLg[k] = true;
-              });
-              S.hiddenLg[sport] = false; // Show only clicked
-          } else {
-              // Otherwise toggle normally
-              S.hiddenLg[sport] = !S.hiddenLg[sport];
-
-              // If user manually unhid everything one by one, effectively it's 'all'
-              var anyHidden = false;
-              Object.keys(sports).forEach(function(k) {
-                  if (S.hiddenLg[k]) anyHidden = true;
-              });
-              if (!anyHidden) S.hiddenLg = {};
-          }
-      }
-  }
-
-  if(sfContainer) {
-      var anyHidden = false;
-      Object.keys(S.hiddenLg).forEach(function(k) {
-          if (S.hiddenLg[k]) anyHidden = true;
-      });
-
-      var buttons = sfContainer.querySelectorAll('.sport-btn');
-      buttons.forEach(function(b) {
-          var onClickStr = b.getAttribute('onclick') || '';
-          if (onClickStr.indexOf("'all'") !== -1) {
-              if (!anyHidden) b.classList.add('active-toggle');
-              else b.classList.remove('active-toggle');
-          } else {
-              var m = onClickStr.match(/applySportFilter\('([^']+)'\)/);
-              if (m && m[1]) {
-                  var spName = m[1];
-                  if (!S.hiddenLg[spName]) b.classList.add('active-toggle');
-                  else b.classList.remove('active-toggle');
-              }
-          }
-      });
-  }
-  setTimeout(function() { buildEPG(S.matches); }, 0);
-}
-
-/* ══ TOGGLE ET ACCORDÉON ════════════════ */
-export function toggleLeague(lgName) {
-  S.hiddenLg[lgName] = !S.hiddenLg[lgName];
-
-  var sfContainer = document.getElementById('sport-filters');
-  if(sfContainer) {
-      var anyHidden = false;
-      Object.keys(S.hiddenLg).forEach(function(k) {
-          if (S.hiddenLg[k]) anyHidden = true;
-      });
-
-      var btns = sfContainer.querySelectorAll('.sport-filter-btn');
-      btns.forEach(function(b) {
-          var onClickStr = b.getAttribute('onclick') || '';
-          if (onClickStr.indexOf("toggleLeague('") > -1) {
-              var m = onClickStr.match(/toggleLeague\('([^']+)'\)/);
-              if (m && m[1]) {
-                  var lName = m[1];
-                  if (!S.hiddenLg[lName]) b.classList.add('active-toggle');
-                  else b.classList.remove('active-toggle');
-              }
-          }
-      });
-  }
-
-  // Hide/Show elements using CSS based on data attribute
-  var containers = document.querySelectorAll('.marea-row, .mrow, .lg-container, .match-card');
-  containers.forEach(function(c) {
-      var lg = c.getAttribute('data-lg');
-      if (lg === lgName) {
-          c.style.display = S.hiddenLg[lgName] ? 'none' : (c.classList.contains('mrow') || c.classList.contains('marea-row') || c.classList.contains('match-card') ? 'flex' : 'block');
-      }
-  });
-}
-
 export function toggleAccordion(lgName) {
   S.collapsedLg[lgName] = !S.collapsedLg[lgName];
   // Sync section state if it was an epg section
@@ -881,14 +689,10 @@ window.escJs = escJs;
 window.lg = lg;
 window.fetchPage = fetchPage;
 window.getProxyHealth = getProxyHealth;
-window.resetProxyHealth = resetProxyHealth;
 window.showToast = showToast;
 window.applyFilter = applyFilter;
 window.showPage = showPage;
-window.setSearchQuery = setSearchQuery;
 window.openMultiviewTab = openMultiviewTab;
-window.applySportFilter = applySportFilter;
-window.toggleLeague = toggleLeague;
 window.toggleAccordion = toggleAccordion;
 window.resolveStreamUrl = resolveStreamUrl;
 
@@ -956,11 +760,4 @@ export function copyToClipboard(text) {
 }
 window.copyToClipboard = copyToClipboard;
 
-/* Panneau de débogage (#dbg, styles.css .dbg.open). Son bouton de fermeture
-   (onclick="closeDbg()" dans index.html) référençait une fonction qui n'existait
-   nulle part : le clic levait une ReferenceError. */
-export function closeDbg() {
-    var dbg = document.getElementById('dbg');
-    if (dbg) dbg.classList.remove('open');
-}
-window.closeDbg = closeDbg;
+

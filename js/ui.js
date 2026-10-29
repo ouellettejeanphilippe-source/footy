@@ -5,9 +5,9 @@ import { getEstTimeStrFromDate, getEstDateStrFromDate, getDomain, domainPrefs, t
 import { marqueJouabilite } from './playability.js';
 import { minutesDansLaJournee, comparerHeures, libelleJour, FENETRE_HEURES } from './nuit.js';
 import { etatCacheServeur, rattrapageNecessaire, ageEnClair } from './rattrapage.js';
-import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
+import { normName, lgColor, getTeamColors, getLogo, libelleSport, fondEquipes } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
-import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl, ongletDeLaVue } from './utils.js';
+import { lg, esc, toggleAccordion, escJs, pad, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl, ongletDeLaVue } from './utils.js';
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
 import { liensLolDuDirect } from './esports.js';
@@ -17,8 +17,8 @@ import { mesurePour, formaterMesure } from './debit.js';
 import { extraireAlignements, extraireEffectifs, alignementsHtml } from './alignements.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
-import { dispositionValide, rendreDisposition, etatDisposition, DISPOSITIONS } from './dispositions.js';
 import { choisirVedette, bandeauVedette } from './vedette.js';
+import { icone } from './icones.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
    dans les boucles de rendu. Alias stable pour pouvoir journaliser depuis celles-ci. */
@@ -208,19 +208,9 @@ if (typeof window !== 'undefined') {
   });
 }
 
-/* ══ DISPOSITIONS (Options → Disposition, 13 octobre 2026) ══════════════════════
-   « Les 4, avec l'actuelle toujours comme default ». Le rendu des quatre dispositions vit
-   dans js/dispositions.js (sans import) ; ici, seulement le raccord : une fiche par match,
-   les clics, et la reconstruction. « actuelle » laisse buildEPGInner tel qu'il était. */
-/* Live et Guide ont chacun leur disposition (« séparer guide et live pour pouvoir mix and
-   match », 13 octobre 2026). L'ancien réglage unique `disposition` sert de repli aux deux. */
-export function vueCourante() { return S.filter === 'all' ? 'guide' : 'live'; }
-export function dispositionChoisie(vue) {
-  var p = userPrefs || {};
-  var v = vue || vueCourante();
-  return dispositionValide(v === 'guide' ? (p.dispositionGuide || p.disposition || DISPOSITION_GUIDE_DEFAUT) : (p.dispositionLive || p.disposition));
-}
-
+/* Les dispositions (Tableau, Maintenant, Affiches, Chaînes, js/dispositions.js) sont
+   parties le 29 octobre 2026 (« Tout retirer ») : une seule vue par onglet, celle de la
+   refonte (styles.css §17). Restent ici les fiches (`ficheMatch`), que lit la vedette. */
 /* Minutes écoulées depuis le minuit du jour affiché (négatif si le jour affiché est
    demain, plus de 1440 s'il est hier) : la même échelle que minutesDansLaJournee. */
 function minutesMaintenant(now, jourGrille) {
@@ -272,57 +262,26 @@ export function ficheMatch(m, now, jourGrille, maintenant) {
   };
 }
 
-/* Icônes des dispositions, dans le menu Look (Plus → Look, basculerMenuLook). La
-   rangée de pastilles en tête de page est retirée : « enlever choix de look en haut car
-   maintenant en bas » (13 octobre 2026). */
-var ICONES_DISPOSITION = {
-  actuelle: '<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/>',
-  tableau: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="17" cy="6" r="0.5"/>',
-  maintenant: '<rect x="3" y="4" width="18" height="10" rx="2"/><path d="M3 18h7M14 18h7"/>',
-  affiches: '<rect x="3" y="3" width="11" height="11" rx="1.5"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="16" y="9" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="10" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/>',
-  chaines: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M7 9h2M7 13h2M12 9h5M12 13h5"/>'
-};
-/* Change la disposition d'une vue (celle qui est affichée par défaut) sans passer par
-   Options : enregistrée tout de suite, menus d'Options tenus à jour, et la page repart du
-   haut si c'est la vue affichée (une autre disposition n'a pas les mêmes hauteurs). */
-function enregistrerPrefs() {
-  if (userPrefs.disposition) {
-    if (!userPrefs.dispositionLive) userPrefs.dispositionLive = userPrefs.disposition;
-    if (!userPrefs.dispositionGuide) userPrefs.dispositionGuide = userPrefs.disposition;
-    delete userPrefs.disposition;
-  }
-  safeStorageSetJSON('user_prefs', userPrefs);
-  ['live', 'guide'].forEach(function(v) {
-    var sel = document.getElementById('pref-disposition-' + v);
-    if (sel) sel.value = dispositionChoisie(v);
-  });
-  var selC = document.getElementById('pref-card-color');
-  if (selC && userPrefs.cardColor) selC.value = userPrefs.cardColor;
+/* Le blason d'une équipe, pour la carte du Live et la bannière de la fiche : l'image,
+   l'emoji d'une source (`emoji:⚽`), ou, faute de mieux, les initiales dans le disque
+   (29 octobre 2026 : le 🛡️ de repli faisait « cheap » à côté d'un vrai blason). */
+function initialesEquipe(nom) {
+  var mots = String(nom || '').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean);
+  if (!mots.length) return '?';
+  return (mots.length === 1 ? mots[0].slice(0, 2) : mots[0][0] + mots[mots.length - 1][0]).toUpperCase();
 }
-/* Look s'ouvre depuis les Réglages (29 octobre 2026), où la grille n'est pas : un choix ne
-   s'y voyait pas. On montre la vue qu'il change ; Look reste ouvert par-dessus, comme
-   quand il s'ouvrait du menu « Plus », au-dessus de la grille. */
-function montrerLaVue(vue) {
-  if (ongletDeLaVue(S.filter) !== 'options' || typeof window.applyFilter !== 'function') return;
-  window.applyFilter(vue === 'guide' ? 'all' : 'live');
-}
-export function choisirDisposition(nom, vue) {
-  if (!userPrefs) return;
-  var v = vue || vueCourante();
-  montrerLaVue(v);
-  if (userPrefs.disposition) enregistrerPrefs();
-  userPrefs[v === 'guide' ? 'dispositionGuide' : 'dispositionLive'] = dispositionValide(nom);
-  enregistrerPrefs();
-  if (v !== vueCourante()) { majMenuLook(); return; }
-  buildEPG(S.matches);
-  var c = document.getElementById('marea');
-  var choisie = dispositionChoisie(v);
-  if (c) { c.scrollTop = 0; if (choisie !== 'actuelle') c.scrollLeft = 0; }
-  if (choisie === 'actuelle' && v === 'guide') scrollToNow();
-  majMenuLook();
+function blasonHtml(url, nom) {
+  if (url && url.indexOf('emoji:') === 0) return '<div class="prime-logo prime-logo-texte">' + esc(url.split(':')[1]) + '</div>';
+  if (url) return '<img src="' + esc(url) + '" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="' + esc(nom) + '">';
+  return '<div class="prime-logo prime-logo-texte" aria-hidden="true">' + esc(initialesEquipe(nom)) + '</div>';
 }
 
-/* Couleur des équipes, la même que Options → Couleur des cartes, pour les huit vues. */
+/* Look s'ouvre depuis les Réglages (29 octobre 2026), où la grille n'est pas : un choix ne
+   s'y voyait pas. On montre le Live ; Look reste ouvert par-dessus. */
+function montrerLeLive() {
+  if (ongletDeLaVue(S.filter) !== 'options' || typeof window.applyFilter !== 'function') return;
+  window.applyFilter('live');
+}
 /* Les six couleurs de cartes : Look est le seul endroit où les choisir depuis que la liste
    d'Options, qui en avait deux de plus, est partie (25 octobre 2026, « tous les
    doublons »). */
@@ -336,28 +295,19 @@ var COULEURS_LOOK = [
 ];
 export function choisirCouleurs(v) {
   if (!userPrefs) return;
-  montrerLaVue('live');
+  montrerLeLive();
   userPrefs.cardColor = v;
-  enregistrerPrefs();
-  redessinerDisposition();
+  safeStorageSetJSON('user_prefs', userPrefs);
+  redessinerGrille();
   majMenuLook();
 }
 
-/* Menu « Look » (Plus → Look) : disposition du Live, du Guide,
-   et couleurs. Se ferme par Échap ou un clic ailleurs. */
+/* Menu « Look » (Réglages → Look) : la couleur des cartes. Se ferme par Échap ou un
+   clic ailleurs. */
 function menuLookHtml() {
-  var ligne = function(vue, titre) {
-    var choisie = dispositionChoisie(vue);
-    return '<div class="ml-titre">' + titre + '</div><div class="ml-rang" role="radiogroup" aria-label="' + titre + '">'
-      + DISPOSITIONS.map(function(d) {
-        return '<button type="button" role="radio" aria-checked="' + (d[0] === choisie) + '" data-look-vue="' + vue + '" data-look-nom="' + d[0] + '" title="' + esc(d[1]) + '">'
-          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES_DISPOSITION[d[0]] + '</svg><span>' + esc(d[1]) + '</span></button>';
-      }).join('') + '</div>';
-  };
   var actuelle = (userPrefs && userPrefs.cardColor) || 'gradient-45';
   var apercu = { home: '#c41230', 'gradient-45': 'linear-gradient(135deg,#c41230 0 36%,#00468b 64%)', gradient: 'linear-gradient(90deg,#00468b,#c41230)', split: 'linear-gradient(135deg,#c41230 50%,#00468b 50%)', league: '#2f6bff', dark: 'var(--bg3)' };
-  return ligne('live', 'Live') + ligne('guide', 'Guide')
-    + '<div class="ml-titre">Couleurs</div><div class="ml-col" role="radiogroup" aria-label="Couleurs">' + COULEURS_LOOK.map(function(c) {
+  return '<div class="ml-titre">Couleur des cartes</div><div class="ml-col" role="radiogroup" aria-label="Couleurs">' + COULEURS_LOOK.map(function(c) {
       var choisi = c[0] === actuelle;
       return '<button type="button" role="radio" aria-checked="' + choisi + '" data-look-couleur="' + c[0] + '"><span class="ml-pastille" style="background:' + apercu[c[0]] + '"></span><span>' + esc(c[1]) + '<small>' + esc(c[2]) + '</small></span></button>';
     }).join('') + '</div>';
@@ -386,8 +336,6 @@ if (typeof document !== 'undefined') {
   document.addEventListener('click', function(e) {
     var m = document.getElementById('menu-look');
     if (!m || m.hidden) return;
-    var vue = e.target.closest && e.target.closest('#menu-look [data-look-nom]');
-    if (vue) { e.stopPropagation(); return choisirDisposition(vue.getAttribute('data-look-nom'), vue.getAttribute('data-look-vue')); }
     var coul = e.target.closest && e.target.closest('#menu-look [data-look-couleur]');
     if (coul) { e.stopPropagation(); return choisirCouleurs(coul.getAttribute('data-look-couleur')); }
     if (!e.target.closest('#menu-look') && !e.target.closest('#btn-look')) fermerMenuLook();
@@ -398,80 +346,19 @@ if (typeof document !== 'undefined') {
   });
 }
 
-function rendreAvecDisposition(nom, matches, epgContainer, fragment, jourGrille) {
-  var now = new Date();
-  var vue = S.filter === 'live' ? 'live' : 'guide';
-  var maintenant = minutesMaintenant(now, jourGrille);
-  var fiches = [];
-  matches.forEach(function(m) {
-    var tier = leagueTier(m.league);
-    if (tier === 'ignored' || tier === 'other' || m.league === 'Autres Flux') return;
-    try { fiches.push(ficheMatch(m, now, jourGrille, maintenant)); }
-    catch (e) { logLine('Match ignoré (disposition)', (m && m.id ? m.id + ' — ' : '') + (e && e.message || e)); }
-  });
-  if (vue === 'live') fiches = fiches.filter(function(f) { return f.etat === 'live' || f.etat === 'bientot'; });
-  epgContainer.style.cssText = 'display:block;width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;';
-  var hote = document.createElement('div');
-  hote.innerHTML = rendreDisposition(nom, vue, fiches, {
-    maintenant: maintenant,
-    couleurs: (userPrefs && userPrefs.cardColor) || 'gradient-45'
-  });
-  if (hote.firstChild) fragment.appendChild(hote.firstChild);
-  epgContainer.appendChild(fragment);
-  brancherDispositions(epgContainer);
-}
-
-/* Reconstruit sans perdre le défilement — celui de #marea et ceux des bandes internes
-   (colonnes des Affiches, grille des Chaînes). */
-export function redessinerDisposition() {
+/* Reconstruit la grille sans perdre le défilement de #marea (une couleur de cartes
+   choisie dans Look). */
+export function redessinerGrille() {
   var c = document.getElementById('marea');
   var garde = c ? [c.scrollTop, c.scrollLeft] : [0, 0];
-  var internes = {};
-  if (c) ['.dsp-hcols', '.dsp-epg', '.dsp-cols'].forEach(function(sel) { var el = c.querySelector(sel); if (el) internes[sel] = [el.scrollTop, el.scrollLeft]; });
   buildEPG(S.matches);
   c = document.getElementById('marea');
-  if (!c) return;
-  c.scrollTop = garde[0]; c.scrollLeft = garde[1];
-  Object.keys(internes).forEach(function(sel) { var el = c.querySelector(sel); if (el) { el.scrollTop = internes[sel][0]; el.scrollLeft = internes[sel][1]; } });
+  if (c) { c.scrollTop = garde[0]; c.scrollLeft = garde[1]; }
 }
 
 function ouvrirFicheParId(id) {
   var m = S.matchMap && S.matchMap.get(String(id));
   if (m) openMod(m, lgColor(normName(m.homeTeam)));
-}
-
-/* Un seul écouteur, posé une fois sur #marea (qui survit aux reconstructions). Les
-   éléments des dispositions portent data-mid (ouvrir la fiche) ou data-dsp (filtre,
-   ligue, terminés, chaîne choisie). Entrée et Espace activent un élément focalisé :
-   au clavier comme à la télécommande (js/tv-navigation.js). */
-function brancherDispositions(c) {
-  if (!c || c.__dispositions) return;
-  c.__dispositions = true;
-  c.addEventListener('click', function(e) {
-    var cible = e.target.closest && e.target.closest('[data-dsp], [data-mid]');
-    if (!cible || !cible.closest('.dsp')) return;
-    var action = cible.getAttribute('data-dsp');
-    var v = cible.getAttribute('data-v');
-    if (action === 'filtre') { etatDisposition.filtre = v; return redessinerDisposition(); }
-    if (action === 'ligue') { etatDisposition.ligue = v; return redessinerDisposition(); }
-    if (action === 'termines') { etatDisposition.termines = !etatDisposition.termines; return redessinerDisposition(); }
-    if (action === 'choix') {
-      if (cible.classList.contains('dsp-sel')) return ouvrirFicheParId(v);
-      etatDisposition.choix = v;
-      redessinerDisposition();
-      var choisi = document.querySelector('.dsp [data-dsp="choix"][data-v="' + String(v).replace(/"/g, '\\"') + '"]');
-      if (choisi) choisi.focus({ preventScroll: true });
-      return;
-    }
-    ouvrirFicheParId(cible.getAttribute('data-mid'));
-  });
-  c.addEventListener('keydown', function(e) {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    var t = e.target;
-    if (!t || !t.closest || !t.closest('.dsp') || t.tagName === 'BUTTON' || t.getAttribute('role') !== 'button') return;
-    e.preventDefault();
-    t.click();
-  });
 }
 
 var grilleARefaire;
@@ -539,22 +426,6 @@ function buildEPGInner(matches){
        un de 01:00 le matin même, et 50 autres sur un statut `live` périmé — l'onglet
        affichait plus de 200 matchs pour 2 réellement en cours. */
     if (S.filter === 'live' && !isLiveNow(m, now) && !startsWithin(m, LIVE_WINDOW_MIN, now)) return false;
-
-    if(S.searchQuery) {
-        var q = normName(S.searchQuery);
-        var hN = normName(m.homeTeam);
-        var aN = normName(m.awayTeam);
-        var lN = normName(m.league);
-
-        if(hN.indexOf(q) === -1 &&
-           aN.indexOf(q) === -1 &&
-           lN.indexOf(q) === -1 &&
-           m.homeTeam.toLowerCase().indexOf(S.searchQuery) === -1 &&
-           m.awayTeam.toLowerCase().indexOf(S.searchQuery) === -1 &&
-           m.league.toLowerCase().indexOf(S.searchQuery) === -1) {
-            return false;
-        }
-    }
     return true;
   });
 
@@ -726,15 +597,11 @@ function buildEPGInner(matches){
                   });
               }
 
+              /* Le titre seul, sans l'emoji de la ligue (29 octobre 2026, « fait cheap ») :
+                 un titre de rangée, comme sur un service de streaming. */
               var textSpan = document.createElement('span');
-              var prefix = '';
-              if (window.getLeagueIcon && titleStr && titleStr !== "À venir dans l'heure" && titleStr !== "Autres streams" && titleStr !== "Favoris" && titleStr !== "Live") {
-                  var leagueIcon = window.getLeagueIcon(titleStr);
-                  if (leagueIcon && leagueIcon !== '🏆') {
-                      prefix = leagueIcon + ' ';
-                  }
-              }
-              textSpan.textContent = prefix + titleStr;
+              textSpan.className = 'section-nom';
+              textSpan.textContent = titleStr;
               secTitle.appendChild(textSpan);
 
               /* Bascule grille ↔ rail, visible seulement en affiche verticale (CSS).
@@ -744,7 +611,7 @@ function buildEPGInner(matches){
               railBtn.className = 'rail-toggle';
               var syncRailBtn = function() {
                   var r = enRail();
-                  railBtn.textContent = r ? '⊞ Grille' : '⇥ Rail';
+                  railBtn.innerHTML = r ? icone('grille') + '<span>Grille</span>' : icone('rangee') + '<span>Rail</span>';
                   railBtn.setAttribute('aria-pressed', r ? 'true' : 'false');
                   poserRail();
               };
@@ -796,7 +663,6 @@ function buildEPGInner(matches){
           lgOrder.forEach(function(lgName) {
               var lg = lgMap[lgName];
               if(!lg || lg.matches.length === 0) return;
-              if(S.hiddenLg[lg.league]) return;
               var isCollapsed = S.collapsedLg[lg.league];
 
               // League Header (Hidden via CSS but code remains for logic/state)
@@ -839,20 +705,9 @@ function buildEPGInner(matches){
                   if (tColorsH) homeColor = tColorsH[0];
                   if (tColorsA) awayColor = tColorsA[0];
 
-                  var cardBg = '';
-                  if (userPrefs.cardColor === 'home') {
-                      cardBg = homeColor;
-                  } else if (userPrefs.cardColor === 'league') {
-                      cardBg = lgCol;
-                  } else if (userPrefs.cardColor === 'dark') {
-                      cardBg = 'rgba(255,255,255,0.05)';
-                  } else if (userPrefs.cardColor === 'split') {
-                      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
-                  } else if (userPrefs.cardColor === 'gradient') {
-                      cardBg = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-                  } else {
-                      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-                  }
+                  var cardBg = fondEquipes({ cDom: homeColor, cExt: awayColor, cLigue: lgCol }, userPrefs.cardColor);
+                  b.style.setProperty('--c1', homeColor);
+                  b.style.setProperty('--c2', awayColor);
 
                   /* Bandeau d'état en tête de carte (look du 7 septembre 2026 : « j'aime ce look…
                      plus clair », capture d'une carte à bandeau LIVE, blasons ronds, lignes
@@ -889,10 +744,10 @@ function buildEPGInner(matches){
                      changerait rien). */
                   var cacheEnEchec = !!(typeof window !== 'undefined' && window.prefetchedStreamsError);
                   var streamsHtml = streamCount > 0
-                      ? '<div class="card-streams" data-mid="' + esc(String(m.id)) + '" title="' + streamCount + ' flux disponibles">▶ ' + streamCount + '</div>'
+                      ? '<div class="card-streams" data-mid="' + esc(String(m.id)) + '" title="' + streamCount + ' flux disponibles">' + icone('play') + streamCount + '</div>'
                       : (cacheEnEchec
-                          ? '<button type="button" class="card-streams card-streams-retry" data-mid="' + esc(String(m.id)) + '" title="Les liens n\'ont pas pu être chargés : toucher pour réessayer" aria-label="Liens non chargés, réessayer" onclick="cardRetryLinks(event)">⚠</button>'
-                          : '<button type="button" class="card-streams card-streams-search" data-mid="' + esc(String(m.id)) + '" title="Aucun lien : chercher maintenant" aria-label="Chercher des liens pour ce match" onclick="cardSearchLinks(event, \'' + escJs(m.id) + '\')">🔎</button>');
+                          ? '<button type="button" class="card-streams card-streams-retry" data-mid="' + esc(String(m.id)) + '" title="Les liens n\'ont pas pu être chargés : toucher pour réessayer" aria-label="Liens non chargés, réessayer" onclick="cardRetryLinks(event)">' + icone('alerte') + '</button>'
+                          : '<button type="button" class="card-streams card-streams-search" data-mid="' + esc(String(m.id)) + '" title="Aucun lien : chercher maintenant" aria-label="Chercher des liens pour ce match" onclick="cardSearchLinks(event, \'' + escJs(m.id) + '\')">' + icone('search') + '</button>');
 
                   var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
                   var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
@@ -900,25 +755,30 @@ function buildEPGInner(matches){
                   var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
                   var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
 
-                  var homeLogoHtmlPrime = homeLogoUrl ? (homeLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(homeLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(homeLogoUrl)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
-                  var awayLogoHtmlPrime = awayLogoUrl ? (awayLogoUrl.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(awayLogoUrl.split(':')[1]) + '</div>' : '<img src="'+esc(awayLogoUrl)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+                  var homeLogoHtmlPrime = blasonHtml(homeLogoUrl, m.homeTeam);
+                  var awayLogoHtmlPrime = blasonHtml(awayLogoUrl, m.awayTeam);
 
-                  // Le nom de la ligue manquait : une icône seule ne dit pas de quelle compétition il s'agit.
-                  var lgBadge = '<div class="prime-league-badge"><span class="plb-ic">' + (lg.flag || lgFlag(lg.league) || '') + '</span>'
+                  /* La ligue en surtitre, sans emoji (29 octobre 2026) : la pastille de
+                     couleur de la ligue suffit à la reconnaître d'un coup d'œil. */
+                  var lgBadge = '<div class="prime-league-badge"><span class="plb-ic" style="--lg:' + esc(lgCol) + '"></span>'
                               + '<span class="plb-name">' + esc(lg.league || '') + '</span></div>';
 
-                  var homeFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.homeTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.homeTeam)+'\'); event.stopPropagation();">★</button>';
-                  var awayFavBtn = '<button aria-label="Favori" title="Favori" style="background:transparent;border:none;font-size:14px;cursor:pointer;color:'+(favTeams[m.awayTeam]?'var(--accent)':'var(--muted)')+';flex-shrink:0;padding:0;margin-right:4px;" onclick="toggleFavTeam(\''+escJs(m.awayTeam)+'\'); event.stopPropagation();">★</button>';
+                  /* L'étoile de favori suit le nom ; pleine et à la couleur d'accent pour
+                     un favori, sinon discrète (révélée au survol, styles.css §17). */
+                  var etoileCarte = function(nom) {
+                      var on = !!favTeams[nom];
+                      return '<button type="button" class="carte-fav' + (on ? ' on' : '') + '" aria-label="Favori" aria-pressed="' + on + '" title="Favori" onclick="toggleFavTeam(\'' + escJs(nom) + '\'); event.stopPropagation();">' + icone('star') + '</button>';
+                  };
 
                   var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
 
                   var logosHtml = !isRacing ?
                                   '<div class="prime-logo-wrapper home">' + homeLogoHtmlPrime + '</div><div class="prime-logo-wrapper away">' + awayLogoHtmlPrime + '</div>' :
-                                  '<div class="prime-logo-wrapper home" style="width: 100%; display: flex; justify-content: center;">' + homeLogoHtmlPrime + '</div>';
+                                  '<div class="prime-logo-wrapper home seul">' + homeLogoHtmlPrime + '</div>';
 
                   var teamsHtml = !isRacing ?
-                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'">'+awayFavBtn+esc(m.awayTeam)+'</div>' :
-                                  '<div class="prime-team-name" style="text-align: center; justify-content: center; width: 100%;" title="'+esc(m.homeTeam)+'">'+homeFavBtn+esc(m.homeTeam) + (m.awayTeam ? ' - ' + esc(m.awayTeam) : '') + '</div>';
+                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam)+'</span>'+etoileCarte(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'"><span class="ptn">'+esc(m.awayTeam)+'</span>'+etoileCarte(m.awayTeam)+'</div>' :
+                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam) + (m.awayTeam ? ' – ' + esc(m.awayTeam) : '') + '</span>'+etoileCarte(m.homeTeam)+'</div>';
 
                   var scoresHtml = !isRacing ?
                                   '<div class="prime-score">'+homeScore+'</div><div class="prime-score">'+awayScore+'</div>' :
@@ -1018,14 +878,6 @@ function buildEPGInner(matches){
   document.body.classList.toggle('view-timeline', S.filter === 'all');
   applyCardShape();
 
-  /* Disposition choisie dans Options : tout autre choix qu'« actuelle » rend ici et sort. */
-  var disposition = dispositionChoisie();
-  document.body.classList.toggle('dsp-on', disposition !== 'actuelle');
-  if (disposition !== 'actuelle') {
-      rendreAvecDisposition(disposition, filtered, epgContainer, fragment, jourGrille);
-      return;
-  }
-
   /* Le Guide (grille temporelle) couvre déjà le programme de la journée : la vue
      « À venir », qui n'en était qu'une liste à plat, a été retirée de la navigation. */
   if (S.filter === 'live') {
@@ -1074,9 +926,9 @@ function buildEPGInner(matches){
          Chaque section porte donc son chevron et retient son état. */
       /* Le bandeau vedette (js/vedette.js, 27 octobre 2026) : comme sur Netflix ou Prime
          Video, le Live s'ouvre sur UN match en grand avec « Regarder », premier arrêt de
-         la télécommande. Pas pendant une recherche : la liste est la réponse. */
+         la télécommande. */
       var principaux = liveNow.concat(upNext);
-      if (principaux.length && !S.searchQuery) {
+      if (principaux.length) {
           var maintenantLive = minutesMaintenant(now, jourGrille);
           var fichesLive = [];
           principaux.forEach(function(m) {
@@ -1117,12 +969,10 @@ function buildEPGInner(matches){
       if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
           var vide = document.createElement('div');
           vide.className = 'empty-state';
-          vide.innerHTML = '<div style="font-size:34px;">' + (S.searchQuery ? '🔍' : '📺') + '</div>'
-            + '<div style="font-weight:700; font-size:16px; color:var(--text);">' + (S.searchQuery ? 'Aucun match ne correspond à « ' + esc(S.searchQuery) + ' »' : 'Aucun match en direct pour le moment') + '</div>'
-            + '<div>' + (S.searchQuery ? 'Essayez un autre nom d\'équipe ou de ligue.' : 'Le Guide montre tout le programme du jour.') + '</div>'
-            + (S.searchQuery
-                ? '<button class="btn sm" onclick="setSearchQuery(\'\'); var i=document.getElementById(\'search-input\'); if(i) i.value=\'\';">Effacer la recherche</button>'
-                : '<button class="btn sm" onclick="applyFilter(\'all\')">Ouvrir le Guide</button>');
+          vide.innerHTML = '<div class="empty-ic">' + icone('direct') + '</div>'
+            + '<div class="empty-titre">Aucun match en direct pour le moment</div>'
+            + '<div>Le Guide montre tout le programme du jour.</div>'
+            + '<button class="btn sm" onclick="applyFilter(\'all\')">Ouvrir le Guide</button>';
           fragment.appendChild(vide);
       }
       // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
@@ -1182,7 +1032,6 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
 
     leaguesToRender.forEach(function(lg){
       if(!lg || lg.matches.length === 0) return;
-      if(S.hiddenLg[lg.league]) return;
       var isCollapsed = S.collapsedLg[lg.league];
       var lgCol = lg.color||lgColor(lg.league);
 
@@ -1408,66 +1257,9 @@ renderGroupedSection(autresFluxMatchesEpg, fragment, "Autres streams", 'autresSt
   // Note: we can remove the old gl/glh DOM grid lines because we added repeating-linear-gradient in CSS!
   } // End of else block for timeline EPG
 
-  /* Legend Toggle Bar */
-  var bar=document.getElementById('sbar');
-  if (bar) bar.querySelectorAll('.lchip,.vsep:not(:first-child)').forEach(function(e){e.remove();});
-
-  var allLeaguesMap = {};
-  matches.forEach(function(m){
-      if(m.league !== 'EN DIRECT') {
-          allLeaguesMap[m.league] = {flag: m.flag, color: m.color};
-      }
-  });
-  var allLeagues = Object.keys(allLeaguesMap).sort();
-
-  if(bar) allLeagues.forEach(function(lgName,i){
-    if(i>0){var s=document.createElement('div');s.className='vsep';bar.appendChild(s);}
-    var ch=document.createElement('div');
-    ch.className='lchip' + (S.hiddenLg[lgName] ? ' off' : '');
-    ch.innerHTML='<div class="ldotc" style="background:'+(allLeaguesMap[lgName].color||lgColor(lgName))+'"></div>'+allLeaguesMap[lgName].flag+' '+esc(lgName);
-    ch.addEventListener('click', function() { toggleLeague(lgName); });
-    bar.appendChild(ch);
-  });
-
-
-
   epgContainer.appendChild(fragment);
-  renderSportChips(matches);
 
   updateNowLine();
-}
-
-/* Pastilles de filtre par ligue, dans la barre d'outils.
-
-   Elles n'étaient construites que dans la branche « scraping en direct » de loadAllRun :
-   dès que le cache serveur suffisait (le cas normal), la rangée restait vide. Rendues ici,
-   à chaque construction de la grille, elles suivent la journée affichée et l'état des
-   filtres. Une seule pastille active suffit à cliquer ; « Toutes » rétablit tout. */
-export function renderSportChips(matches) {
-  var sf = document.getElementById('sport-filters');
-  if (!sf) return;
-  var counts = {};
-  (matches || []).forEach(function(m) {
-      if (!m.league || m.league === 'EN DIRECT' || leagueTier(m.league) === 'ignored') return;
-      counts[m.league] = (counts[m.league] || 0) + 1;
-  });
-  var names = Object.keys(counts);
-  if (names.length < 2) { sf.innerHTML = ''; return; }
-  names.sort(function(a, b) {
-      var ra = { main: 0, secondary: 1 }[leagueTier(a)]; if (ra === undefined) ra = 2;
-      var rb = { main: 0, secondary: 1 }[leagueTier(b)]; if (rb === undefined) rb = 2;
-      if (ra !== rb) return ra - rb;
-      if (counts[b] !== counts[a]) return counts[b] - counts[a];
-      return a.localeCompare(b);
-  });
-  var anyHidden = names.some(function(n) { return S.hiddenLg[n]; });
-  var html = '<button type="button" class="btn sport-btn sport-all' + (anyHidden ? '' : ' active-toggle') + '" aria-pressed="' + !anyHidden + '" onclick="applySportFilter(\'all\')">Toutes</button>';
-  names.forEach(function(n) {
-      var on = !S.hiddenLg[n];
-      html += '<button type="button" class="btn sport-btn' + (on && anyHidden ? ' active-toggle' : '') + '" aria-pressed="' + (on && anyHidden) + '" onclick="applySportFilter(\'' + escJs(n) + '\')">'
-            + '<span>' + (lgFlag(n) || '') + '</span> ' + esc(n) + ' <span class="sb-n">' + counts[n] + '</span></button>';
-  });
-  sf.innerHTML = html;
 }
 
 // Event listeners for automatic scrolling based on the load sequence and filter changes
@@ -1600,9 +1392,6 @@ export function updateNowLine() {
 setInterval(updateNowLine, 60000);
 
 export function scrollToNow(){
-    /* Les dispositions n'ont pas de grille de 48 h à faire défiler : elles commencent
-       déjà par ce qui joue (js/dispositions.js). */
-    if (dispositionChoisie('guide') !== 'actuelle') return;
     var epgContainer = document.getElementById('marea');
     var rootContainer = document.getElementById('epg');
     if(!rootContainer || rootContainer.style.display === 'none' || !epgContainer) return;
@@ -1623,8 +1412,6 @@ export function scrollToNow(){
     var h = parseInt(parts[0], 10);
     var m = parseInt(parts[1], 10);
 
-    var viewWidth = epgContainer.clientWidth;
-    var chanW = parseFloat(rootStyles.getPropertyValue('--chan-w')) || (window.innerWidth <= 768 ? 100 : 240);
     var offsetPx = (h * hourPx) + (m * minPx);
     var scrollLeft = offsetPx - 40;
 
@@ -1675,18 +1462,19 @@ function majBoutonRegarder() {
   var info = document.querySelector('#mbody .fiche-cta-info');
   var lien = meilleurLienAffiche();
   var maj = document.getElementById('mv-refresh-btn');
-  var texte, detail = '', inactif = false;
+  var texte, ic = '', detail = '', inactif = false;
   if (lien) {
-    texte = '▶ Regarder';
+    texte = 'Regarder'; ic = 'play';
     var nom = lien.querySelector('.si-n span');
     detail = nom ? 'Meilleure source : ' + nom.textContent : '';
   } else if (maj && !maj.disabled) {
-    texte = '🔎 Chercher des liens';
+    texte = 'Chercher des liens'; ic = 'search';
   } else {
     texte = 'Aucun lien pour l\'instant';
     inactif = true;
   }
-  if (bouton.textContent !== texte) bouton.textContent = texte;
+  /* Un tracé à la place du ▶ et du 🔎 (29 octobre 2026) ; le texte seul se compare. */
+  if (bouton.textContent !== texte) bouton.innerHTML = icone(ic) + '<span>' + esc(texte) + '</span>';
   if (bouton.disabled !== inactif) bouton.disabled = inactif;
   if (info && info.textContent !== detail) info.textContent = detail;
 }
@@ -1717,7 +1505,7 @@ export function renderFluxItem(s, i, m, ledger) {
        par la source est du déclaratif souvent faux ; la mesure, elle, est constatée — et rien
        n'est affiché tant que rien n'a été mesuré. */
     var mesure = formaterMesure(mesurePour(safeStorageGetJSON('debits', {}) || {}, s.url));
-    var metaInner = (s.channel ? '<span class="si-chan">📡 '+esc(s.channel)+'</span>' : '')
+    var metaInner = (s.channel ? '<span class="si-chan">'+esc(s.channel)+'</span>' : '')
         + (s.site ? '<span>'+esc(s.site)+'</span>' : '')
         + (s.lang && !/^multi$/i.test(s.lang) ? '<span class="si-lang">'+esc(String(s.lang).toUpperCase())+'</span>' : '')
         + (mesure ? '<span class="si-mesure" title="Mesuré chez vous la dernière fois que ce flux a joué">' + esc(mesure) + '</span>'
@@ -1725,7 +1513,9 @@ export function renderFluxItem(s, i, m, ledger) {
     var meta = metaInner ? '<div class="si-meta">' + metaInner + '</div>' : '';
     return '<div class="si" data-dom="'+esc(primaryDomain(s.url))+'">'
       +'<a href="#" class="si-main" onclick="'+ev+'">'
-      +'<div class="si-ic">'+(s.icon||QI[s.quality]||'📺')+'</div>'
+      /* Un tracé, pas l'emoji de la source (📺 🔗) : lecture intégrée, ou lien qui
+         s'ouvre souvent dans un onglet (29 octobre 2026). */
+      +'<div class="si-ic">'+icone(s.topLevel ? 'lien' : 'play')+'</div>'
       +'<div class="si-inf">'
         +'<div class="si-n"><span>'+esc(s.name||'Flux '+(i+1))+'</span>'
         +(s.topLevel?'<span class="si-tab" title="Cette page refuse souvent l\'affichage intégré">onglet</span>':'')
@@ -1736,8 +1526,8 @@ export function renderFluxItem(s, i, m, ledger) {
       +(s.quality ? '<span class="sbadge '+(QC[s.quality]||'bSD')+'">'+esc(s.quality)+'</span>' : '')
       +'</a>'
       +'<div class="si-actions">'
-        +'<button type="button" class="si-btn'+(pref===1?' on-fav':'')+'" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" aria-pressed="'+(pref===1)+'" onclick="'+favEv+'">⭐</button>'
-        +'<button type="button" class="si-btn'+(pref===-1?' on-dep':'')+'" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" aria-pressed="'+(pref===-1)+'" onclick="'+depEv+'">👎</button>'
+        +'<button type="button" class="si-btn'+(pref===1?' on-fav':'')+'" title="Prioriser ce domaine" aria-label="Prioriser ce domaine" aria-pressed="'+(pref===1)+'" onclick="'+favEv+'">'+icone('star')+'</button>'
+        +'<button type="button" class="si-btn'+(pref===-1?' on-dep':'')+'" title="Déprioriser ce domaine" aria-label="Déprioriser ce domaine" aria-pressed="'+(pref===-1)+'" onclick="'+depEv+'">'+icone('pouceBas')+'</button>'
       +'</div>'
       +'</div>';
 }
@@ -1896,8 +1686,6 @@ export function openMod(m,col){
                   }
               }
 
-              afficherAlignements(document.getElementById('alignements-container'), res.data);
-
               if (res.scorers && res.scorers.length > 0) {
                   var hScorers = [], aScorers = [];
                   res.scorers.forEach(function(s) {
@@ -1952,8 +1740,6 @@ export function openMod(m,col){
                       fetchTeamInfo(m.league, mHomeId),
                       fetchTeamInfo(m.league, mAwayId)
                   ]).then(function(teamResults) {
-                      afficherAlignements(document.getElementById('alignements-container'), null,
-                          [teamResults[0].roster, teamResults[1].roster, [m.homeTeam, m.awayTeam]]);
                       var hTeam = teamResults[0].team && teamResults[0].team.team ? teamResults[0].team.team : teamResults[0].team;
                       var aTeam = teamResults[1].team && teamResults[1].team.team ? teamResults[1].team.team : teamResults[1].team;
 
@@ -2067,23 +1853,10 @@ export function openMod(m,col){
   if (tColorsA) awayColor = tColorsA[0];
   var lgCol2 = m.color || lgColor(m.league);
 
-  var cardBg = '';
-  if (userPrefs.cardColor === 'home') {
-      cardBg = homeColor;
-  } else if (userPrefs.cardColor === 'league') {
-      cardBg = lgCol2;
-  } else if (userPrefs.cardColor === 'dark') {
-      cardBg = 'rgba(255,255,255,0.05)';
-  } else if (userPrefs.cardColor === 'split') {
-      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 50%, ' + awayColor + ' 50%)';
-  } else if (userPrefs.cardColor === 'gradient') {
-      cardBg = 'linear-gradient(90deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-  } else {
-      cardBg = 'linear-gradient(135deg, ' + homeColor + ' 0%, ' + awayColor + ' 100%)';
-  }
+  var cardBg = fondEquipes({ cDom: homeColor, cExt: awayColor, cLigue: lgCol2 }, userPrefs.cardColor);
 
-  var homeLogoHtmlPrime = hLogo ? (hLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(hLogo.split(':')[1]) + '</div>' : '<img src="'+esc(hLogo)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.homeTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
-  var awayLogoHtmlPrime = aLogo ? (aLogo.startsWith('emoji:') ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">' + esc(aLogo.split(':')[1]) + '</div>' : '<img src="'+esc(aLogo)+'" class="prime-logo" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" alt="'+esc(m.awayTeam)+'">') : (m.flag === '🎮' ? '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🎮</div>' : '<div class="prime-logo" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🛡️</div>');
+  var homeLogoHtmlPrime = blasonHtml(hLogo, m.homeTeam);
+  var awayLogoHtmlPrime = blasonHtml(aLogo, m.awayTeam);
 
   var isRacing = !m.awayTeam || m.awayTeam.toLowerCase() === 'race' || m.awayTeam.toLowerCase().startsWith('fp') || m.awayTeam.toLowerCase().startsWith('qual');
 
@@ -2101,9 +1874,9 @@ export function openMod(m,col){
   var centerScoreHtml = '';
   if (!isRacing) {
       if (homeScore !== '' && awayScore !== '') {
-          centerScoreHtml = '<div style="font-size: 32px; font-weight: 800; line-height: 1; display:flex; gap: 12px; align-items:center; justify-content:center; letter-spacing:-1px;"><span>'+homeScore+'</span><span style="color:var(--muted2); font-size:24px;">-</span><span>'+awayScore+'</span></div>';
+          centerScoreHtml = '<div class="fb-score"><span>'+homeScore+'</span><span class="fb-tiret">–</span><span>'+awayScore+'</span></div>';
       } else {
-          centerScoreHtml = '<div style="font-size: 20px; font-weight: 800; line-height: 1; display:flex; align-items:center; justify-content:center; color:var(--muted2);">VS</div>';
+          centerScoreHtml = '<div class="fb-score fb-vs">VS</div>';
       }
   }
 
@@ -2118,7 +1891,7 @@ export function openMod(m,col){
   var banniereHtml = '<div class="fiche-banner' + (isRacing ? ' racing' : '') + '">'
       + '<div class="fb-team home">' + homeLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.homeTeam) + '">' + esc(m.homeTeam) + ' ' + etoile(m.homeTeam) + '</div></div>'
       + '<div class="fb-center">'
-      +   '<div class="fb-league">' + (m.flag || lgFlag(m.league) || '') + ' ' + esc(m.league || '') + '</div>'
+      +   '<div class="fb-league">' + esc(m.league || '') + '</div>'
       +   (isRacing ? '' : centerScoreHtml)
       +   (libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) ? '<span class="prime-day">' + libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) + '</span>' : '')
       +   statusHtml
@@ -2139,7 +1912,6 @@ export function openMod(m,col){
                       '<div id="away-scorers-modal" style="flex:1; font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
                   '</div>' +
                   '<div id="records-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
-                  '<div id="alignements-container" class="alignements" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="goal-stats-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="global-stats-toggle-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="espn-btn-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
@@ -2159,7 +1931,7 @@ export function openMod(m,col){
      js/tv-navigation.js). Sans source : « 🔎 Chercher des liens » (le 🔄 des flux). */
   var cta = document.createElement('div');
   cta.className = 'fiche-cta';
-  cta.innerHTML = '<button type="button" class="btn-regarder" data-focus-depart onclick="regarderMeilleurFlux()">▶ Regarder</button>'
+  cta.innerHTML = '<button type="button" class="btn-regarder" data-focus-depart onclick="regarderMeilleurFlux()">' + icone('play') + '<span>Regarder</span></button>'
       + '<span class="fiche-cta-info"></span>';
   body.insertBefore(cta, body.firstChild);
 
@@ -2197,7 +1969,7 @@ export function openMod(m,col){
      Multivision » doublait « ▶ Regarder » et est parti (25 octobre 2026, « tous les
      doublons »). */
   var rightHeaderHtml = '<div class="flux-head"><span class="flux-title">Flux</span><div class="flux-actions">'
-      + '<button id="mv-refresh-btn" class="icon-btn" aria-label="Mettre à jour les flux" title="Mettre à jour les flux"' + (!m.matchUrl ? ' disabled' : '') + '>🔄</button>'
+      + '<button id="mv-refresh-btn" class="icon-btn" aria-label="Mettre à jour les flux" title="Mettre à jour les flux"' + (!m.matchUrl ? ' disabled' : '') + '>' + icone('refresh') + '</button>'
       + '</div></div>';
 
   // This will attach events to the header buttons once rightCol.innerHTML is set
@@ -2422,7 +2194,6 @@ export function openMod(m,col){
       contentHtml += '<div class="flux-sites">';
 
       var searchQuery = encodeURIComponent(m.homeTeam + ' ' + m.awayTeam);
-      var singleTeam = encodeURIComponent(m.homeTeam);
 
       var feedCountsBySource = {};
       if (m.streamLinks) {
@@ -2508,8 +2279,6 @@ if (typeof document !== 'undefined') {
     if (e.key !== 'Escape') return;
     var mbg = document.getElementById('mbg');
     if (mbg && mbg.classList.contains('open')) { closeMod(); return; }
-    var inv = document.getElementById('investigator-modal');
-    if (inv && inv.style.display === 'flex') { inv.style.display = 'none'; return; }
     if (document.body.getAttribute('data-view') !== 'player' || e.defaultPrevented) return;
     var t = e.target && e.target.closest ? e.target : null;
     if (t && t.closest('.mv-menu, #mv-choix, #mv-flux-selector, #tm-modal, #menu-look')) return;
@@ -2520,47 +2289,17 @@ if (typeof document !== 'undefined') {
 
 /* ══ SETTINGS & PERSONALIZATION ═════════ */
 export var userPrefs = {
-  bgStyle: 'gradient',
-  iconPack: 'standard',
-  c1: '#000000',
-  c2: '#111111',
-  c3: '#222222',
+  /* Le fond de l'identité (29 octobre 2026) : noir bleuté, une lueur froide en haut à
+     droite. Les palettes d'Options le remplacent. */
+  c1: '#0b0d12',
+  c2: '#151b2b',
+  c3: '#0b0d12',
   accent: '#0a84ff',
-  cardColor: 'gradient-45',
-  btnShape: 'rounded',
-  cardOpacity: '15',
-  removeBlack: false
+  cardColor: 'gradient-45'
 };
 
 var storedPrefs = safeStorageGetJSON('user_prefs');
 if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
-
-/* « Faire que les deux Actuelles soient les vues par défaut de live et guide » (27 octobre
-   2026). Le Guide valait « Chaînes » depuis le 25 octobre (migration `guide_chaines`, qui
-   y avait passé d'office un Guide resté sur « Actuelle »). Une seule fois (`guide_actuelle`),
-   un Guide sur « Chaînes » revient à « Actuelle » ; ensuite, c'est un réglage comme un
-   autre. Appelée au démarrage (js/main.js), pas au chargement de ce module : le cycle
-   d'imports peut l'évaluer avant que js/utils.js ait fini le sien, et l'écriture dans un
-   stockage plein plantait alors. */
-export var DISPOSITION_GUIDE_DEFAUT = 'actuelle';
-export function migrerGuideActuelle() {
-  if (safeStorageGetJSON('guide_actuelle')) return false;
-  var guideAvant = userPrefs.dispositionGuide || userPrefs.disposition;
-  var change = guideAvant === 'chaines';
-  if (change) {
-    if (userPrefs.disposition && !userPrefs.dispositionLive) userPrefs.dispositionLive = userPrefs.disposition;
-    delete userPrefs.disposition;
-    userPrefs.dispositionGuide = DISPOSITION_GUIDE_DEFAUT;
-    if (safeStorageGetJSON('user_prefs')) safeStorageSetJSON('user_prefs', userPrefs);
-    var sel = typeof document !== 'undefined' && document.getElementById('pref-disposition-guide');
-    if (sel) sel.value = DISPOSITION_GUIDE_DEFAUT;
-  }
-  safeStorageSetJSON('guide_actuelle', 1);
-  return change;
-}
-
-
-
 
 // Global bindings for HTML compatibility
 window.diagnosticScrape = diagnosticScrape;
@@ -2569,11 +2308,8 @@ window.buildEPG = buildEPG;
 window.grilleEnAttente = grilleEnAttente;
 window.timelineBadgeHtml = timelineBadgeHtml;
 window.belongsToLive = belongsToLive;
-window.renderSportChips = renderSportChips;
 window.applyCardShape = applyCardShape;
 window.cardShapePref = cardShapePref;
-window.dispositionChoisie = dispositionChoisie;
-window.choisirDisposition = choisirDisposition;
 window.basculerMenuLook = basculerMenuLook;
 window.choisirCouleurs = choisirCouleurs;
 window.updateNowLine = updateNowLine;
@@ -2586,6 +2322,8 @@ window.openMod = openMod;
 window.regarderMeilleurFlux = regarderMeilleurFlux;
 window.closeMod = closeMod;
 window.userPrefs = userPrefs;
+/* Pour js/links.js, sans import : les badges des cartes qu'il réécrit. */
+window.icone = icone;
 
 export function addManualStream(matchId, rawUrl) {
     if (!rawUrl) return;
