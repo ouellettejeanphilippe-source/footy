@@ -1038,6 +1038,35 @@ async function matchsEnDirect(page, n) {
   }, [origin, n]);
 }
 
+/* « Vider multiview après fermeture du browser si plus de cinq minutes » (29 octobre
+   2026). La séance d'avant (mv_state) et la dernière fois que la page était là
+   (lecteur_vu_le), posées avant le chargement, à l'heure figée des tests. */
+for (const [minutes, garde] of [[6, false], [2, true]]) {
+  test(`le lecteur fermé depuis ${minutes} min ${garde ? 'garde ses vidéos' : 'repart vide'}`, async ({ page }) => {
+    /* L'heure de la page est celle, figée, de bootOffline : « il y a N minutes » se
+       compte depuis elle, pas depuis l'horloge de la machine. */
+    const vuLe = instantDesDonnees().getTime() - minutes * 60000;
+    await page.addInitScript(([t, o]) => {
+      /* Pas dans la tuile (même origine ici) : elle réécrirait l'état d'avant. */
+      if (window !== window.top) return;
+      try {
+        localStorage.setItem('mv_state', JSON.stringify({ flux: [{ url: o + '/__lecteur-calme?vieux', name: 'Match d\'avant', mid: 'mVieux' }], layout: 'vertical', horsCable: [] }));
+        localStorage.setItem('lecteur_vu_le', JSON.stringify(t));
+      } catch (e) {}
+    }, [vuLe, origin]);
+    const pageErrors = await bootOffline(page);
+    const etat = await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('mv_state') || '{}'); return { flux: (s.flux || []).length, layout: s.layout }; });
+    expect(etat.flux, 'vidéos enregistrées').toBe(garde ? 1 : 0);
+    // Ce que le lecteur montre à son ouverture.
+    await page.evaluate(() => window.openMultiviewTab());
+    await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+    await expect(page.locator('.mv-cell'), 'tuiles du lecteur').toHaveCount(garde ? 1 : 0);
+    expect(etat.layout, 'la disposition choisie reste').toBe('vertical');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('lecteur_vu_le'))), 'la vie de cette page est notée').toBe(await page.evaluate(() => Date.now()));
+    expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  });
+}
+
 test('façon Prime Video : + Ajouter ouvre le choix des matchs, quatre au plus, Regarder applique', async ({ page }) => {
   const pageErrors = await bootOffline(page);
   await matchsEnDirect(page, 5);

@@ -45,6 +45,17 @@ export function marquerQuittee(journal, maintenant, persistee) {
     return j;
 }
 
+/* « Vider multiview après fermeture du browser si plus de cinq minutes » (29 octobre
+   2026). `derniereVie` : la dernière fois que la page était encore là (masquée, quittée,
+   ou vue vivante à la minute) ; au chargement suivant, si elle date de plus de
+   `OUBLI_LECTEUR_MS`, le lecteur repart vide. Inconnue (première version qui la note) :
+   on garde, comme avant. Un rechargement ou une fermeture brève gardent les vidéos. */
+export var OUBLI_LECTEUR_MS = 5 * 60 * 1000;
+export function lecteurAOublier(derniereVie, maintenant) {
+    if (typeof derniereVie !== 'number' || !isFinite(derniereVie) || typeof maintenant !== 'number') return false;
+    return maintenant - derniereVie > OUBLI_LECTEUR_MS;
+}
+
 /* Un retour sur l'application par « Précédent » (ou le cache de navigation). */
 export function noterRetour(journal, maintenant, depuisCache) {
     var j = Array.isArray(journal) ? journal.slice() : [];

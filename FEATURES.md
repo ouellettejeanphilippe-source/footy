@@ -163,7 +163,7 @@ Sans vidéo Twitch, le lecteur ne se pose plus sur le Live ni le Guide (9 octobr
 
 **Dans l'APK, Retour ferme les vidéos** (28 octobre 2026, « pour limiter les ressources ») : la touche Retour (ou B de la manette), ← Retour et Échap, quand ils quittent le lecteur, les ferment au lieu de les masquer — sur un Chromecast, une vidéo cachée garde son décodeur, sa mémoire et son flux. Sur le site, rien ne change. Start, l'autre façon de quitter, masque comme avant.
 
-Au démarrage de l'application, les vidéos de la séance précédente ne se chargent qu'à la première ouverture du lecteur, pas derrière le guide.
+Au démarrage de l'application, les vidéos de la séance précédente ne se chargent qu'à la première ouverture du lecteur, pas derrière le guide. **Fermée plus de cinq minutes** (navigateur ou application fermés, onglet quitté ; 29 octobre 2026, « vider multiview après fermeture du browser si plus de cinq minutes »), elle repart avec un lecteur vide ; la disposition choisie reste. Un rechargement ou une fermeture plus brève gardent les vidéos.
 
 ### 5.3 bis Deux écrans
 
