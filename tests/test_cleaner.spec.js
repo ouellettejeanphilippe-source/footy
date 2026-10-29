@@ -267,11 +267,14 @@ test('le script rapporte la définition réelle du lecteur', async ({ page }) =>
     const v = document.getElementById('lecteur');
     Object.defineProperty(v, 'videoWidth', { value: 1920 });
     Object.defineProperty(v, 'videoHeight', { value: 1080 });
+    /* Les compteurs d'images (1.19) : l'application en tire la part perdue. */
+    v.getVideoPlaybackQuality = () => ({ totalVideoFrames: 900, droppedVideoFrames: 45 });
   });
   await expect.poll(async () => (await page.evaluate(() => window.__mesures)).length, { timeout: 12000 }).toBeGreaterThan(0);
   const m = (await page.evaluate(() => window.__mesures))[0];
   expect(m.h).toBe(1080);
   expect(m.w).toBe(1920);
+  expect(m.img).toEqual({ t: 900, p: 45 });
   /* Le banc ne sert aucun segment vidéo : le débit n'est pas mesurable, et doit valoir 0
      plutôt qu'un chiffre inventé. */
   expect(m.kbps).toBe(0);

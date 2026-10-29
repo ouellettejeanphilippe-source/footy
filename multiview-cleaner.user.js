@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.18
+// @version      1.19
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -933,7 +933,16 @@
         const w = v ? (v.videoWidth | 0) : 0;
         const h = v ? (v.videoHeight | 0) : 0;
         if (!kbps && !h) return; // rien de mesurable : on se tait
-        try { window.top.postMessage({ __mv: 'video_stats', kbps: kbps, w: w, h: h, host: location.hostname }, '*'); } catch (e) {}
+        /* Images décodées et perdues depuis le début de la vidéo (1.19) : l'application en
+           tire la part perdue, et à partir de combien de vidéos l'appareil décroche. */
+        let img = null;
+        if (v && typeof v.getVideoPlaybackQuality === 'function') {
+            try {
+                const q = v.getVideoPlaybackQuality();
+                if (q && q.totalVideoFrames > 0) img = { t: q.totalVideoFrames | 0, p: q.droppedVideoFrames | 0 };
+            } catch (e) {}
+        }
+        try { window.top.postMessage({ __mv: 'video_stats', kbps: kbps, w: w, h: h, img: img, host: location.hostname }, '*'); } catch (e) {}
     }
 
     let derniereLecture = null;
@@ -1297,7 +1306,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.18';
+    var VERSION = '1.19';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche

@@ -133,6 +133,35 @@ async function main() {
     ok('isMatchPair mémorisé : même verdict que debugMatchPair, et la clé suit nom, ligue et date');
   }
 
+  // ── 6. Le calendrier est rangé sans les liens qui reviennent du serveur ──
+  /* 590 Ko de ses 683 Ko étaient des liens de data/streams.json, relus à chaque passe :
+     52 Ko après, et le gel de la passe de 272–300 ms à 144–152 ms (même mesure). */
+  {
+    const serveur = [{ streamLinks: [{ url: 'https://s/1' }, { url: 'https://s/2' }] }];
+    const grille = [
+      { id: 'a', streamsLoaded: true, streamLinks: [{ url: 'https://s/1' }, { url: 'https://fiche/9' }] },
+      { id: 'b', streamsLoaded: true, streamLinks: [{ url: 'https://s/2' }] },
+      { id: 'c', streamLinks: [] },
+      { id: 'd', streamLinks: [{ url: 'https://lu-ici/3' }] }
+    ];
+    const r = utils.sansLiensDuServeur(grille, serveur);
+    assert.deepStrictEqual(r[0].streamLinks.map((l) => l.url), ['https://fiche/9'], 'le lien trouvé sur l\'appareil reste ; celui du serveur part');
+    assert.strictEqual(r[0].streamsLoaded, true);
+    assert.deepStrictEqual(r[1].streamLinks, [], 'tout venait du serveur');
+    assert.strictEqual(r[1].streamsLoaded, false, 'sans lien, il redevient « à charger », comme allegerCalendrier');
+    assert.strictEqual(r[2], grille[2], 'un match sans lien n\'est pas copié');
+    assert.strictEqual(r[3], grille[3], 'un match sans lien du serveur non plus');
+    assert.strictEqual(grille[0].streamLinks.length, 2, 'la grille garde ses liens : seules les copies sont allégées');
+    assert.strictEqual(grille[1].streamsLoaded, true);
+    assert.strictEqual(utils.sansLiensDuServeur(grille, []), grille, 'liste du serveur inconnue : rien n\'est retiré');
+    assert.strictEqual(utils.sansLiensDuServeur(grille, undefined), grille);
+    const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'main.js'), 'utf8');
+    const ecritures = src.match(/ecrireCacheLocal\('api_calendar_cache_'[^\n]*/g) || [];
+    assert.ok(ecritures.length >= 2 && ecritures.every((e) => /sansLiensDuServeur\(finalMatches, window\.prefetchedStreamMatches\)/.test(e)),
+      'les écritures de la grille fusionnée, dans js/main.js, passent toutes par sansLiensDuServeur');
+    ok('le calendrier rangé garde les liens propres à l\'appareil, pas ceux du serveur');
+  }
+
   console.log(`unit_cachesdifferes : ${n} groupes OK`);
 }
 

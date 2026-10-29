@@ -27,6 +27,7 @@ import androidx.media3.common.VideoSize;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.analytics.AnalyticsListener;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 
 import java.lang.ref.WeakReference;
@@ -198,6 +199,16 @@ public class LecteurActivity extends Activity {
                 .setPrioritizeTimeOverSizeThresholds(false)
                 .build();
         lecteur = new ExoPlayer.Builder(this).setLoadControl(tampons).build();
+        /* Le décodeur pris (matériel ou logiciel, Decodeur) et les images perdues, au journal :
+           un décodeur logiciel sur un Chromecast saccade sans que rien d'autre ne le dise. */
+        lecteur.addAnalyticsListener(new AnalyticsListener() {
+            @Override public void onVideoDecoderInitialized(AnalyticsListener.EventTime t, String nom, long initialiseMs, long dureeMs) {
+                Journal.noter(Decodeur.ligne(nom));
+            }
+            @Override public void onDroppedVideoFrames(AnalyticsListener.EventTime t, int perdues, long ecouleMs) {
+                Journal.noter("lecteur natif : " + perdues + " images perdues en " + Math.max(1, ecouleMs / 1000) + " s");
+            }
+        });
         lecteur.setAudioAttributes(new AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true);
         lecteur.setVideoSurfaceView(surface);

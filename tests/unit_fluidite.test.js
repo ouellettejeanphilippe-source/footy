@@ -129,6 +129,43 @@ async function main() {
         Intl.DateTimeFormat = Orig;
     }
 
+    // ── Images perdues par vidéo, et le décodage (29 octobre 2026) ─────────────
+    {
+        const F = await import('../js/fluidite.js');
+        const m = F.creerMoniteur();
+        const T = 1000000;
+        assert.strictEqual(F.noterImages(m, 'v1', 100, 0, T, 1), null, 'le premier relevé ne fait que poser le compteur');
+        assert.deepStrictEqual(F.noterImages(m, 'v1', 400, 6, T + 10000, 1), { k: 'v1', dt: 300, dp: 6, n: 1, t: T + 10000 }, 'un écart de compteurs');
+        assert.strictEqual(F.noterImages(m, 'v1', 50, 0, T + 15000, 1), null, 'un compteur qui recule : vidéo rechargée, on repart de lui');
+        F.noterImages(m, 'v1', 350, 3, T + 25000, 1);
+        F.noterImages(m, 'v2', 0, 0, T + 20000, 2);
+        F.noterImages(m, 'v2', 300, 90, T + 30000, 2);    // 30 % perdues à deux vidéos
+        F.noterImages(m, 'v3', 0, 0, T + 20000, 3);
+        F.noterImages(m, 'v3', 30, 20, T + 30000, 3);     // trop peu d'images pour un verdict
+        const r = F.pertesRecentes(m, 'v2', T + 31000, 20000);
+        assert.ok(Math.abs(r.taux - 0.3) < 1e-9 && r.images === 300);
+        assert.strictEqual(F.pertesRecentes(m, 'v1', T + 31000, 20000).images, 300, 'seules les notes de la fenêtre comptent');
+        const b = F.bilanImages(m, T + 31000);
+        assert.strictEqual(b.decroche, 2, 'décroche à partir de deux vidéos (la note de trois a trop peu d\'images)');
+        assert.strictEqual(b.maxEnCours, 3);
+        assert.strictEqual(b.videos[0].cle, 'v3', 'la pire d\'abord');
+        const l = F.ligneImages(b);
+        assert.strictEqual(l.etat, 'warn');
+        assert.ok(/décroche à partir de 2 vidéos à la fois/.test(l.texte), l.texte);
+        assert.strictEqual(F.ligneImages(F.bilanImages(F.creerMoniteur(), T)).etat, 'ok');
+        assert.strictEqual(F.bilanImages(m, T + 31000 + F.FENETRE_FLUIDITE_MS).videos.length, 0, 'dix minutes après : oublié');
+
+        assert.strictEqual(await F.sonderDecodage({}), null, 'sans mediaCapabilities : rien');
+        const nav = { mediaCapabilities: { decodingInfo: (c) => Promise.resolve({ supported: true, smooth: true, powerEfficient: c.video.height < 1000 }) } };
+        const dec = await F.sonderDecodage(nav);
+        assert.deepStrictEqual(dec.map((x) => [x.nom, x.powerEfficient]), [['1080p', false], ['720p', true]]);
+        const ld = F.ligneDecodage(dec);
+        assert.strictEqual(ld.etat, 'warn');
+        assert.strictEqual(ld.texte, 'H.264 1080p : logiciel probable · 720p : matériel');
+        assert.strictEqual(F.ligneDecodage(null).etat, 'ok');
+        ok('images perdues : écart de compteurs, vidéo rechargée, à partir de combien de vidéos ça décroche ; décodage matériel ou logiciel');
+    }
+
     console.log(`unit_fluidite: ${n} groupes de tests OK`);
     process.exit(0);
 }

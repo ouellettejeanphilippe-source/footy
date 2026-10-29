@@ -16,7 +16,7 @@
   Ne fait jamais échouer le passage : sans navigateur, sans réseau ou hors budget, le
   fichier est laissé tel quel et la raison est écrite dans le journal.
 
-  Usage : node scripts/verify_players.mjs [--budget-ms N] [--total N] [--par-hote N]
+  Usage : node scripts/verify_players.mjs [--budget-ms N] [--total N] [--par-hote N] [--par-match N]
                                          [--maintenant ISO] [--part i/N --sortie fichier.json]
           node scripts/verify_players.mjs --appliquer releves-0.json releves-1.json …
 
@@ -39,7 +39,10 @@ const argTexte = (name) => { const i = args.indexOf(name); return i >= 0 ? Strin
 const BUDGET_MS = arg('--budget-ms', 5 * 60 * 1000);
 const TOTAL = arg('--total', 150);
 const PER_HOST = arg('--par-hote', 4);
-const PER_MATCH = 3, CONCURRENCY = 4, NAV_TIMEOUT_MS = 20000;
+/* Liens éprouvés par match (29 octobre 2026) : en trois parts, chaque machine finissait en
+   2 min 30 sur ses 5 min, faute de cibles — 3 liens par match ne suffisaient plus à les occuper. */
+const PER_MATCH = arg('--par-match', 3);
+const CONCURRENCY = 4, NAV_TIMEOUT_MS = 20000;
 const SORTIE = argTexte('--sortie');
 const MAINTENANT = argTexte('--maintenant');
 // Les fichiers de relevés qui suivent --appliquer, jusqu'à la prochaine option.

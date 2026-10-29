@@ -93,6 +93,10 @@ function main() {
     assert.ok(/name:\s*cache-a-verifier/.test(J.verifier.texte) && /name:\s*cache-a-verifier/.test(J.scrape.texte),
         'le même fichier pour toutes : celui qui vient d\'être publié');
     assert.ok(/fail-fast:\s*false/.test(J.verifier.texte), 'une part qui tombe n\'arrête pas les autres');
+    /* Le premier passage en trois parts (29 octobre 2026) : chaque part finie en 2 min 30 sur 5,
+       faute de cibles. Plus de liens par match pour occuper le temps restant. */
+    const parMatch = /--par-match (\d+)/.exec(J.verifier.texte);
+    assert.ok(parMatch && Number(parMatch[1]) > 3, 'plus de 3 liens éprouvés par match');
     assert.ok(/--appliquer releves\/\*\.json/.test(J.annoter.texte) && /pattern:\s*releves-\*/.test(J.annoter.texte),
         'l\'annotation applique les relevés de toutes les parts');
     ok('N parts sur la même liste, au même instant, réunies à la fin');
