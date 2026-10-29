@@ -1583,7 +1583,7 @@ test('un cache serveur momentanément injoignable ne vide pas la liste, et le re
     grille: window.S.matches.length,
     /* Le rafraîchissement des scores, dont toutes les requêtes ESPN sont refusées ici,
        écrivait un calendrier VIDE : la passe suivante effaçait la grille. */
-    calendrier: (() => { try { return JSON.parse(localStorage.getItem('api_calendar_cache_' + Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_'))[0].slice(19))).matches.length; } catch (e) { return -1; } })()
+    calendrier: (() => { try { window.viderCachesEnAttente(); return JSON.parse(localStorage.getItem('api_calendar_cache_' + Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_'))[0].slice(19))).matches.length; } catch (e) { return -1; } })()
   }));
   expect(pendant.n, 'la liste précédente est conservée').toBe(avant.n);
   expect(pendant.grille, 'la grille n\'est pas vidée').toBeGreaterThan(0);
@@ -2086,6 +2086,7 @@ test('une passe ESPN partielle ne fait pas disparaître les ligues muettes ni le
   await attendreGrille(page);
 
   const lire = () => page.evaluate(() => {
+    window.viderCachesEnAttente();   // ce qui attend d'être écrit (js/utils.js, ecrireCacheLocal)
     const cle = Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_'))[0];
     let cache = [];
     try { cache = (JSON.parse(localStorage.getItem(cle)).matches || []).map((m) => m.id); } catch (e) {}
@@ -2195,6 +2196,7 @@ test('les scores des matchs en cours se rafraîchissent chaque minute, sans rede
   await attendreGrille(page);
 
   const lire = () => page.evaluate(() => {
+    window.viderCachesEnAttente();   // ce qui attend d'être écrit (js/utils.js, ecrireCacheLocal)
     const cle = Object.keys(localStorage).filter((k) => k.startsWith('api_calendar_cache_'))[0];
     let cache = null;
     try { cache = (JSON.parse(localStorage.getItem(cle)).matches || []).find((m) => m.id === 'espn_live1'); } catch (e) {}

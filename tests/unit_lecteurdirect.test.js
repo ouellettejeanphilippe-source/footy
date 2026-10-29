@@ -88,6 +88,16 @@ async function main() {
   assert.ok(c.backBufferLength > 0 && c.backBufferLength < 60, 'sur la télé, peu de tampon arrière');
   assert.ok(c.maxMaxBufferLength <= 120 && typeof c.loader === 'function' && !('xhrSetup' in c));
   assert.ok(ld.configHls({}).backBufferLength >= c.backBufferLength, 'un ordinateur peut garder davantage');
+  /* Démarrer vite et à la bonne qualité (29 octobre 2026) : définition plafonnée à la
+     tuile, pas de segment de mesure avant le premier vrai, premier segment préchargé. */
+  for (const cfg of [c, ld.configHls({})]) {
+    assert.strictEqual(cfg.capLevelToPlayerSize, true, 'jamais plus grand que la tuile');
+    assert.strictEqual(cfg.testBandwidth, false, 'pas de segment de mesure');
+    assert.ok(cfg.abrEwmaDefaultEstimate > 1e6 && cfg.abrEwmaDefaultEstimate <= cfg.abrEwmaDefaultEstimateMax, 'une estimation de départ réaliste, bornée');
+    assert.strictEqual(cfg.startFragPrefetch, true);
+  }
+  assert.ok(c.maxBufferSize > 0 && c.maxBufferSize < 60e6, 'sur la télé, moins de mémoire que les 60 Mo par défaut');
+  assert.ok(!('maxBufferSize' in ld.configHls({})), 'ailleurs, le défaut de hls.js');
   assert.ok(/encrypted-media/.test(ld.PERMISSIONS_CADRE) && /autoplay/.test(ld.PERMISSIONS_CADRE) && !/sandbox/.test(ld.PERMISSIONS_CADRE));
   ok('BIBLIOTHEQUES : deux miroirs https par bibliothèque, même version ; configHls borne le tampon ; permissions du cadre sans sandbox');
 

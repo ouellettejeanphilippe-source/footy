@@ -469,8 +469,27 @@ export function memeSeanceDeCourse(a, b) {
     return { isMatch: true, reason: 'Même séance d\'épreuve (' + (a.serie || b.serie || '?') + ' ' + a.epreuve + ' ' + a.seance + ')' };
 }
 
+/* Le verdict d'un couple, mémorisé (29 octobre 2026, « bien meilleure performance sur
+   CCGTV »). Chaque passe de chargement (5 min) refait la fusion, et `isMatchPair` y
+   pesait 220 ms sur 690 (Chromium, processeur ralenti six fois) pour comparer les MÊMES
+   couples qu'à la passe précédente. Le verdict ne dépend que des champs de la clé ci-dessous
+   (`debugMatchPair`, `memeMatchATraversLaNuit`, `debordeSurLaNuit`) et de tables fixées au
+   chargement, que `normName` mémorise déjà de la même façon (`_normCache`). Borné : vidé
+   au-delà de `PAIRES_MAX` entrées. */
+var PAIRES_MAX = 20000;
+var _pairCache = new Map();
+function clePaire(m) {
+  return m.league + '\u0001' + m.homeTeam + '\u0001' + m.awayTeam + '\u0001' + (m.matchDate || '') + '\u0001' + (m.startTime || '') + '\u0001' + (m.durationMinutes || '');
+}
 export function isMatchPair(m1, m2) {
-  return debugMatchPair(m1, m2).isMatch;
+  if (!m1 || !m2) return debugMatchPair(m1, m2).isMatch;
+  var cle = clePaire(m1) + '\u0002' + clePaire(m2);
+  var v = _pairCache.get(cle);
+  if (v !== undefined) return v;
+  v = debugMatchPair(m1, m2).isMatch;
+  if (_pairCache.size >= PAIRES_MAX) _pairCache.clear();
+  _pairCache.set(cle, v);
+  return v;
 }
 
 export function debugMatchPair(m1, m2) {

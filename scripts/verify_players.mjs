@@ -16,7 +16,16 @@
   Ne fait jamais échouer le passage : sans navigateur, sans réseau ou hors budget, le
   fichier est laissé tel quel et la raison est écrite dans le journal.
 
-  Usage : node scripts/verify_players.mjs [--budget-ms N] [--total N]
+  Usage : node scripts/verify_players.mjs [--budget-ms N] [--total N] [--par-hote N]
+                                         [--maintenant ISO] [--part i/N --sortie fichier.json]
+          node scripts/verify_players.mjs --appliquer releves-0.json releves-1.json …
+
+  En parts parallèles (29 octobre 2026, scrape_streams.yml) : `--part i/N` éprouve une
+  cible sur N de la même liste (`partDesCibles`, js/playability.js ; `--maintenant` fixe
+  l'instant pour que toutes les parts calculent la même) et écrit ses relevés dans
+  `--sortie` sans toucher à data/streams.json ; `--appliquer` lit ces relevés, sans
+  navigateur, et écrit data/streams.json et data/tv.json. Sans `--part` ni `--appliquer`,
+  tout se fait en un seul passage, comme avant (npm run liens, l'application de bureau).
 */
 import fs from 'fs';
 import path from 'path';
@@ -26,9 +35,17 @@ import { JSDOM } from 'jsdom';
 const args = process.argv.slice(2);
 const sansScript = args.includes('--sans-script');   // diagnostic : comparer avec l'ancienne vérification, page brute
 const arg = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? Number(args[i + 1]) : dflt; };
+const argTexte = (name) => { const i = args.indexOf(name); return i >= 0 ? String(args[i + 1] || '') : ''; };
 const BUDGET_MS = arg('--budget-ms', 5 * 60 * 1000);
 const TOTAL = arg('--total', 150);
-const PER_MATCH = 3, PER_HOST = 4, CONCURRENCY = 4, NAV_TIMEOUT_MS = 20000;
+const PER_HOST = arg('--par-hote', 4);
+const PER_MATCH = 3, CONCURRENCY = 4, NAV_TIMEOUT_MS = 20000;
+const SORTIE = argTexte('--sortie');
+const MAINTENANT = argTexte('--maintenant');
+// Les fichiers de relevés qui suivent --appliquer, jusqu'à la prochaine option.
+const APPLIQUER = args.includes('--appliquer')
+    ? args.slice(args.indexOf('--appliquer') + 1).filter((a, k, t) => !t.slice(0, k + 1).some((x) => x.startsWith('--')))
+    : null;
 const IMMINENT_MIN = 120;
 const REHAB_MAX = 6;   // témoins d'hôtes écartés éprouvés par passage
 
@@ -57,12 +74,81 @@ try { data = JSON.parse(fs.readFileSync('data/streams.json', 'utf8')); }
 catch (e) { log('verify_players : data/streams.json illisible (' + e.message + '), rien à vérifier'); process.exit(0); }
 if (!data || !Array.isArray(data.matches)) { log('verify_players : format inattendu, rien à vérifier'); process.exit(0); }
 
+const PART = argTexte('--part') ? play.lirePart(argTexte('--part')) : null;
+if (argTexte('--part') && (!PART || !SORTIE)) { log('verify_players : --part attend i/N et --sortie <fichier>'); process.exit(0); }
+
+/* LE REGISTRE REPART DE ZÉRO QUAND LA RÈGLE DU VERDICT A CHANGÉ.
+
+   Les compteurs de `hostPlay` sont des verdicts additionnés. Gagnés sous une règle
+   fausse, ils sont faux : embed.st portait 24 sur 24 « joue » parce qu'une requête
+   vidéo partie suffisait, alors que rien n'arrivait. Les garder, c'est garder en
+   tête du classement exactement les hôtes qu'on vient d'apprendre à reconnaître —
+   et `recordObservation` ne les dilue qu'à moitié tous les `cap` essais, donc il
+   faudrait des semaines pour que le passé faux cesse de peser.
+
+   Mieux vaut un registre vide, qu'un passage suffit à regarnir, qu'un registre
+   confiant et faux. Appelée au moment d'écrire, sur le fichier qu'on va écrire. */
+function registresPourEcrire() {
+    const critereStocke = data.hostPlayCritere | 0;
+    let ledger;
+    if (critereStocke !== play.CRITERE_VERDICT) {
+        log(`verify_players : le critère du verdict est passé de v${critereStocke || 1} à v${play.CRITERE_VERDICT} — le registre repart de zéro (${Object.keys(data.hostPlay || {}).length} hôtes écartés).`);
+        ledger = {};
+        // Les verdicts déjà posés sur les liens ont été gagnés sous l'ancienne règle.
+        for (const m of data.matches) {
+            for (const l of (m.streamLinks || [])) {
+                delete l.verified; delete l.verifiedAt; delete l.media; delete l.mediaAt; delete l.mediaReferer; delete l.hauteur;
+            }
+        }
+    } else {
+        ledger = play.mergeLedgers(data.hostPlay || {}, {});
+    }
+    /* Le même registre, par SOURCE (l'agrégateur qui a fourni le lien) : il classe les liens
+       dont l'hôte n'a jamais été éprouvé (reputationLien, js/playability.js). Remis à zéro
+       avec l'autre quand la règle du verdict change. */
+    let ledgerSources = critereStocke !== play.CRITERE_VERDICT ? {} : play.mergeLedgers(data.sourcePlay || {}, {});
+    // Premier passage : amorcé sur ce que le registre des hôtes dit déjà des liens de chaque source.
+    if (!Object.keys(ledgerSources).length) ledgerSources = play.reputationParSource(data.matches, ledger);
+    return { ledger, ledgerSources };
+}
+
+function ecrire(releves) {
+    const { ledger, ledgerSources } = registresPourEcrire();
+    const stats = play.appliquerReleves(data, releves, ledger, ledgerSources);
+    data.hostPlay = ledger;
+    data.sourcePlay = ledgerSources;
+    // La règle sous laquelle CE registre a été gagné. Un passage qui lira une autre
+    // valeur repartira de zéro plutôt que de faire confiance à des compteurs anciens.
+    data.hostPlayCritere = play.CRITERE_VERDICT;
+    data.verifiedAt = new Date().toISOString();
+    fs.writeFileSync('data/streams.json', JSON.stringify(data, null, 1));
+    const listeTv = tv.listeTv(data, { agent: USER_AGENT });
+    fs.writeFileSync('data/tv.json', JSON.stringify(listeTv));
+    log(`verify_players : ${stats.appliques} relevés appliqués${stats.introuvables ? `, ${stats.introuvables} sur des liens disparus du fichier` : ''}${stats.temoins ? `, ${stats.temoins} témoins` : ''} ; data/tv.json, ${listeTv.matchs.length} matchs jouables sur la télé`);
+}
+
+// ── Appliquer les relevés des parts (sans navigateur) ─────────────────────────
+if (APPLIQUER) {
+    const releves = [];
+    for (const f of APPLIQUER) {
+        let r;
+        try { r = JSON.parse(fs.readFileSync(f, 'utf8')); }
+        catch (e) { log(`verify_players : ${f} illisible (${e.message}), ignoré`); continue; }
+        if (!r || r.critere !== play.CRITERE_VERDICT || !Array.isArray(r.releves)) { log(`verify_players : ${f} écarté (critère ${r && r.critere}, attendu ${play.CRITERE_VERDICT})`); continue; }
+        releves.push(...r.releves);
+        log(`verify_players : ${f} — part ${r.part || '?'}, ${r.releves.length} relevés`);
+    }
+    if (!releves.length) { log('verify_players : aucun relevé à appliquer, fichier laissé tel quel'); process.exit(0); }
+    ecrire(releves);
+    process.exit(0);
+}
+
 let chromium;
 try { ({ chromium } = await import('playwright')); }
 catch (e) { log('verify_players : Playwright indisponible (' + e.message.split('\n')[0] + '), vérification sautée'); process.exit(0); }
 
 // ── Cibles ────────────────────────────────────────────────────────────────────
-const now = new Date();
+const now = MAINTENANT && !isNaN(Date.parse(MAINTENANT)) ? new Date(MAINTENANT) : new Date();
 for (const m of data.matches) {
     const mn = config.minutesUntilStart(m, now);
     if (m.status === 'live') m.rank = 0;
@@ -75,16 +161,18 @@ for (const m of data.matches) {
    s'il a été gagné sous une autre règle, il ne compte pas (voir plus bas). */
 const registreCibles = (data.hostPlayCritere | 0) === play.CRITERE_VERDICT ? (data.hostPlay || {}) : null;
 const sourcesCibles = registreCibles ? (data.sourcePlay || {}) : null;
-const targets = play.pickTargets(data.matches, { perMatch: PER_MATCH, perHost: PER_HOST, total: TOTAL, ledger: registreCibles, sources: sourcesCibles })
+const toutes = play.pickTargets(data.matches, { perMatch: PER_MATCH, perHost: PER_HOST, total: TOTAL, ledger: registreCibles, sources: sourcesCibles })
     .filter((t) => data.matches[t.matchIndex].rank <= 1);
 for (const m of data.matches) delete m.rank;
 /* Les hôtes écartés du fichier (ecarterLiensMorts, js/playability.js) ne sont plus dans
    aucun match : sans ces cibles, ils ne seraient plus jamais chargés et ne pourraient
    jamais revenir. Un témoin par hôte, quelques-uns par passage, à tour de rôle. */
 const rehab = data.hostPlayCritere === play.CRITERE_VERDICT ? play.ciblesDeRehabilitation(data.hotesEcartes, REHAB_MAX) : [];
-targets.push(...rehab);
-log(`verify_players : ${targets.length} cibles (matchs en direct ou a moins de ${IMMINENT_MIN} min${rehab.length ? `, dont ${rehab.length} temoins d'hotes ecartes` : ''}), budget ${Math.round(BUDGET_MS / 60000)} min`);
-if (!targets.length) process.exit(0);
+toutes.push(...rehab);
+const targets = play.partDesCibles(toutes, PART);
+log(`verify_players : ${targets.length} cibles${PART ? ` (part ${PART.i + 1} sur ${PART.n}, sur ${toutes.length})` : ''} (matchs en direct ou a moins de ${IMMINENT_MIN} min${rehab.length ? `, dont ${rehab.length} temoins d'hotes ecartes` : ''}), budget ${Math.round(BUDGET_MS / 60000)} min`);
+const ecrireSortie = (releves) => fs.writeFileSync(SORTIE, JSON.stringify({ critere: play.CRITERE_VERDICT, part: PART ? `${PART.i}/${PART.n}` : '', releves }));
+if (!targets.length) { if (PART) ecrireSortie([]); process.exit(0); }
 
 // ── Observation ───────────────────────────────────────────────────────────────
 const PROBE_ORIGIN = 'https://guide-des-sports.local';
@@ -234,37 +322,7 @@ async function observe(target) {
 const t0 = Date.now();
 let cursor = 0, done = 0, horsBudget = 0, concluTot = 0, parScript = 0;
 const compte = { plays: 0, blocked: 0, none: 0 };
-/* LE REGISTRE REPART DE ZÉRO QUAND LA RÈGLE DU VERDICT A CHANGÉ.
-
-   Les compteurs de `hostPlay` sont des verdicts additionnés. Gagnés sous une règle
-   fausse, ils sont faux : embed.st portait 24 sur 24 « joue » parce qu'une requête
-   vidéo partie suffisait, alors que rien n'arrivait. Les garder, c'est garder en
-   tête du classement exactement les hôtes qu'on vient d'apprendre à reconnaître —
-   et `recordObservation` ne les dilue qu'à moitié tous les `cap` essais, donc il
-   faudrait des semaines pour que le passé faux cesse de peser.
-
-   Mieux vaut un registre vide, qu'un passage suffit à regarnir, qu'un registre
-   confiant et faux. */
-const critereStocke = data.hostPlayCritere | 0;
-let ledger;
-if (critereStocke !== play.CRITERE_VERDICT) {
-    log(`verify_players : le critère du verdict est passé de v${critereStocke || 1} à v${play.CRITERE_VERDICT} — le registre repart de zéro (${Object.keys(data.hostPlay || {}).length} hôtes écartés).`);
-    ledger = {};
-    // Les verdicts déjà posés sur les liens ont été gagnés sous l'ancienne règle.
-    for (const m of data.matches) {
-        for (const l of (m.streamLinks || [])) {
-            delete l.verified; delete l.verifiedAt; delete l.media; delete l.mediaAt; delete l.mediaReferer; delete l.hauteur;
-        }
-    }
-} else {
-    ledger = play.mergeLedgers(data.hostPlay || {}, {});
-}
-/* Le même registre, par SOURCE (l'agrégateur qui a fourni le lien) : il classe les liens
-   dont l'hôte n'a jamais été éprouvé (reputationLien, js/playability.js). Remis à zéro
-   avec l'autre quand la règle du verdict change. */
-let ledgerSources = critereStocke !== play.CRITERE_VERDICT ? {} : play.mergeLedgers(data.sourcePlay || {}, {});
-// Premier passage : amorcé sur ce que le registre des hôtes dit déjà des liens de chaque source.
-if (!Object.keys(ledgerSources).length) ledgerSources = play.reputationParSource(data.matches, ledger);
+const releves = [];
 const parHote = {};
 
 async function worker() {
@@ -276,28 +334,10 @@ async function worker() {
         compte[verdict]++;
         if (obs.tot) concluTot++;
         if (obs.scriptJoue) parScript++;
-        if (t.ecarte) {
-            // Témoin d'un hôte écarté : aucun lien publié à marquer, seulement le registre.
-            data.hotesEcartes[t.host].essaiAt = new Date().toISOString();
-            data.hotesEcartes[t.host].verdict = verdict;
-        } else {
-            const link = data.matches[t.matchIndex].streamLinks[t.linkIndex];
-            if (link.source) play.recordObservation(ledgerSources, String(link.source), verdict);
-            link.verified = verdict;
-            link.verifiedAt = new Date().toISOString();
-            /* L'adresse du flux, quand on l'a vue arriver : elle permet au mode direct
-               (js/directmedia.js) d'être disponible dès la PREMIÈRE ouverture, au lieu
-               d'attendre que l'utilisateur ait déjà regardé la page pour l'apprendre. */
-            if (verdict === 'plays' && obs.media) {
-                link.media = obs.media;
-                link.mediaAt = link.verifiedAt;
-                if (obs.mediaReferer) link.mediaReferer = obs.mediaReferer; else delete link.mediaReferer;
-            } else {
-                delete link.media; delete link.mediaAt; delete link.mediaReferer;
-            }
-            if (verdict === 'plays' && obs.hauteur > 0) link.hauteur = obs.hauteur; else delete link.hauteur;
-        }
-        play.recordObservation(ledger, t.host, verdict);
+        /* Un relevé, appliqué au fichier à la fin (appliquerReleves) : ici, ou par l'étape
+           qui réunit les parts. Témoin d'un hôte écarté : seulement le registre. */
+        const link = t.ecarte ? null : data.matches[t.matchIndex].streamLinks[t.linkIndex];
+        releves.push(play.releveDe(t, link, obs, verdict, new Date().toISOString()));
         parHote[t.host] = parHote[t.host] || { plays: 0, tested: 0 };
         parHote[t.host].tested++;
         if (verdict === 'plays') parHote[t.host].plays++;
@@ -316,16 +356,12 @@ await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 try { await browser.close(); } catch (e) {}
 
 // ── Écriture ──────────────────────────────────────────────────────────────────
-data.hostPlay = ledger;
-data.sourcePlay = ledgerSources;
-// La règle sous laquelle CE registre a été gagné. Un passage qui lira une autre
-// valeur repartira de zéro plutôt que de faire confiance à des compteurs anciens.
-data.hostPlayCritere = play.CRITERE_VERDICT;
-data.verifiedAt = new Date().toISOString();
-fs.writeFileSync('data/streams.json', JSON.stringify(data, null, 1));
-const listeTv = tv.listeTv(data, { agent: USER_AGENT });
-fs.writeFileSync('data/tv.json', JSON.stringify(listeTv));
-log(`verify_players : data/tv.json, ${listeTv.matchs.length} matchs jouables sur la télé`);
+if (PART) {
+    ecrireSortie(releves);
+    log(`verify_players : ${releves.length} relevés écrits dans ${SORTIE}`);
+} else {
+    ecrire(releves);
+}
 
 const resume = Object.entries(parHote).sort((a, b) => b[1].tested - a[1].tested).slice(0, 15)
     .map(([h, c]) => `${h} ${c.plays}/${c.tested}`).join(', ');
