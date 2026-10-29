@@ -931,6 +931,130 @@ test('la fiche et le toast ne floutent pas ce qui est dessous, sur ordinateur au
   expect(pageErrors).toEqual([]);
 });
 
+/* « Go pour le style Prime Video » (29 octobre 2026). Des matchs en direct fictifs, chacun
+   avec une page de lecteur servie ici : l'écran de choix, l'encadré de la vidéo choisie,
+   « Voir seule » et Retour. */
+async function matchsEnDirect(page, n) {
+  await page.evaluate(([o, n]) => {
+    for (let i = 1; i <= n; i++) {
+      window.S.matches.push({ id: 'pv' + i, homeTeam: 'Équipe ' + i, awayTeam: 'Adverse ' + i, league: 'NHL', status: 'live', streamLinks: [{ url: o + '/__lecteur-calme?pv' + i, name: 'Flux' }] });
+    }
+  }, [origin, n]);
+}
+
+test('façon Prime Video : + Ajouter ouvre le choix des matchs, quatre au plus, Regarder applique', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await matchsEnDirect(page, 5);
+  await page.evaluate(() => window.openMultiviewTab());
+  await page.locator('#mv-toolbar .mv-tb-btn.primary').click();
+  const carte = (id) => page.locator('#mv-choix .mv-choix-carte[data-mid="' + id + '"]');
+  await expect(carte('pv1')).toBeVisible();
+  await expect(page.locator('#mv-choix .mv-choix-regarder')).toBeDisabled();
+  for (const id of ['pv1', 'pv2', 'pv3', 'pv4']) await carte(id).click();
+  await expect(carte('pv5'), 'la cinquième est grisée').toHaveAttribute('aria-disabled', 'true');
+  await carte('pv5').click({ force: true }); // on peut quand même la toucher
+  await expect(carte('pv5'), 'pas de cinquième').toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#toast')).toContainText('Quatre vidéos au maximum');
+  await carte('pv4').click();
+  await expect(page.locator('#mv-choix .mv-choix-regarder')).toHaveText('Regarder (3)');
+  await page.locator('#mv-choix .mv-choix-regarder').click();
+  await expect(page.locator('#mv-choix')).toHaveCount(0);
+  await expect(page.locator('.mv-cell')).toHaveCount(3);
+  expect(await page.evaluate(() => window.mvFlux.map((f) => f.mid))).toEqual(['pv1', 'pv2', 'pv3']);
+  const premiere = await page.locator('.mv-cell[data-index="0"] iframe').evaluate((f) => f.src);
+
+  // Rouvert : les trois sont cochées ; on retire la 2, on ajoute la 5 ; la 1 ne recharge pas.
+  await page.locator('#mv-toolbar .mv-tb-btn.primary').click();
+  await expect(carte('pv2')).toHaveAttribute('aria-pressed', 'true');
+  await carte('pv2').click();
+  await carte('pv5').click();
+  await page.locator('#mv-choix .mv-choix-regarder').click();
+  expect(await page.evaluate(() => window.mvFlux.map((f) => f.mid))).toEqual(['pv1', 'pv3', 'pv5']);
+  expect(await page.locator('.mv-cell[data-index="0"] iframe').evaluate((f) => f.src), 'la tuile gardée n\'a pas rechargé').toBe(premiere);
+
+  // Annuler (ou Retour) ne change rien.
+  await page.locator('#mv-toolbar .mv-tb-btn.primary').click();
+  await carte('pv1').click();
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect(page.locator('#mv-choix')).toHaveCount(0);
+  await expect(page.locator('.mv-cell')).toHaveCount(3);
+  expect(pageErrors).toEqual([]);
+});
+
+test('façon Prime Video : la vidéo choisie encadrée, 🔊 sur elle, Voir seule puis Retour ramène la grille', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => { window.addToMultivision(o + '/__lecteur-calme?a', 'Match A', 'mA'); window.addToMultivision(o + '/__lecteur-calme?b', 'Match B', 'mB'); }, origin);
+  await expect(page.locator('.mv-cell')).toHaveCount(2);
+  await page.evaluate(() => window.focusStream(0));
+  await expect(page.locator('.mv-cell[data-index="0"]')).toHaveClass(/mv-active/);
+  await expect(page.locator('.mv-cell[data-index="1"]')).not.toHaveClass(/mv-active/);
+  await expect(page.locator('.mv-cell[data-index="0"] .mv-hdr-son')).not.toHaveAttribute('hidden', '');
+  await expect(page.locator('.mv-cell[data-index="1"] .mv-hdr-son')).toHaveAttribute('hidden', '');
+  await expect.poll(() => page.locator('.mv-cell[data-index="0"]').evaluate((c) => getComputedStyle(c).borderTopColor), { message: 'encadrée de blanc' }).toBe('rgb(255, 255, 255)');
+
+  await page.evaluate(() => window.resetMvIdleTimer());
+  await page.locator('#mv-bar-seule').click();
+  await expect(page.locator('.mv-cell[data-index="1"]')).toBeHidden();
+  await expect(page.locator('.mv-cell[data-index="0"]')).toBeVisible();
+  await expect(page.locator('#mv-bar-seule')).toHaveAttribute('aria-pressed', 'true');
+  // Choisir l'autre vidéo la montre, seule elle aussi.
+  await page.evaluate(() => window.choisirVideo(1));
+  await expect(page.locator('.mv-cell[data-index="0"]')).toBeHidden();
+  await expect(page.locator('.mv-cell[data-index="1"]')).toBeVisible();
+  // Retour ramène la grille, et reste dans le lecteur.
+  expect(await page.evaluate(() => window.retourTele())).toBe(true);
+  await expect(page.locator('.mv-cell')).toHaveCount(2);
+  await expect(page.locator('.mv-cell[data-index="0"]')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+  expect(pageErrors).toEqual([]);
+});
+
+/* « Continuer lecture twitch lors de changement d'onglet aussi » (29 octobre 2026). Caché,
+   le lecteur Twitch s'arrête : avec une tuile Twitch, quitter le lecteur le réduit dans un
+   coin, et la même mesure que Twitch le dit visible. Et caché puis revu, il recharge. */
+test('Twitch continue en mini-lecteur au Live, et repart seul après avoir été couvert', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.route('https://player.twitch.tv/**', (route) => route.fulfill({
+    status: 200, contentType: 'text/html',
+    body: '<!doctype html><body style="margin:0;background:#123"><div id="b" style="color:#fff">lecteur</div></body>'
+  }));
+  await page.evaluate(() => window.addToMultivision('https://player.twitch.tv/?channel=essai&parent=127.0.0.1', 'Match Twitch', 'mT'));
+  await expect(page.frameLocator('.mv-cell iframe.mv-iframe').locator('#b')).toBeVisible();
+  await expect(page.locator('.mv-chargement')).toHaveCount(0);
+  expect(await cadreVisible(page)).toBe(true);
+
+  await page.evaluate(() => window.applyFilter('live'));
+  await expect(page.locator('#mv-container')).toHaveClass(/mv-mini/);
+  expect(await cadreVisible(page), 'au Live, le mini-lecteur est entièrement visible').toBe(true);
+  await page.evaluate(() => window.openMod(window.S.matches[0]));
+  expect(await cadreVisible(page), 'la fiche ouverte ne le couvre pas').toBe(true);
+  await page.evaluate(() => window.closeMod());
+  await page.evaluate(() => window.openMultiviewTab());
+  await expect(page.locator('#mv-container')).not.toHaveClass(/mv-mini/);
+  expect(await page.evaluate(() => window.relancesStrictes()), 'resté visible : rien à recharger').toBe(0);
+
+  // Couvert par le choix des matchs, puis revu : il recharge, une fois.
+  await page.evaluate(() => window.ouvrirChoixMulti());
+  /* Fermé seulement une fois le cadre vu caché : refermé plus tôt, sous charge, ni Twitch ni
+     la surveillance n'ont eu le temps de le voir couvert. */
+  await expect.poll(() => cadreVisible(page), { message: 'couvert par le choix des matchs' }).toBe(false);
+  await page.waitForTimeout(1000); // ouvert une seconde, comme quand on choisit
+  await page.evaluate(() => window.fermerChoixMulti(false));
+  await expect.poll(() => page.evaluate(() => window.relancesStrictes())).toBe(1);
+  await expect(page.frameLocator('.mv-cell iframe.mv-iframe').locator('#b')).toBeVisible();
+
+  // Le ✕ du mini-lecteur le cache ; sans vidéo Twitch, pas de mini-lecteur du tout.
+  await page.evaluate(() => window.applyFilter('live'));
+  await page.evaluate(() => window.fermerMini());
+  await expect(page.locator('#mv-container')).toBeHidden();
+  await page.evaluate(() => window.openMultiviewTab());
+  await page.evaluate(() => window.removeFromMultivision(0));
+  await page.evaluate((o) => window.addToMultivision(o + '/__lecteur-calme?c', 'Match calme', 'mC'), origin);
+  await page.evaluate(() => window.applyFilter('live'));
+  await expect(page.locator('#mv-container')).toBeHidden();
+  expect(pageErrors).toEqual([]);
+});
+
 /* Le pendant : sans lecteur Twitch, la présentation façon Netflix reste (barre posée sur
    la vidéo, 25 octobre 2026). */
 test('sans lecteur Twitch, la barre reste posée sur la vidéo', async ({ page }) => {
@@ -2409,7 +2533,8 @@ test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, 
   await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
   await page.evaluate(() => window.focusStream(0));
   await presser(RB);
-  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('.mv-cell[data-index="1"]')).boxShadow)).toContain('inset');
+  /* Depuis le 29 octobre 2026 (façon Prime Video), la vidéo choisie est encadrée de blanc (`mv-active`). */
+  await expect(page.locator('.mv-cell[data-index="1"]')).toHaveClass(/mv-active/);
 
   /* Y : plein cadre. Le vrai plein écran quand le navigateur compte l'appui comme un geste
      (ici oui : page.evaluate en donne un), sinon le mode Cinéma ; Y encore, on en sort. */

@@ -1,5 +1,6 @@
 import { fetchPage } from './utils.js';
-import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair } from './db.js';
+import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair, getLogo } from './db.js';
+import { MAX_VIDEOS, cartesDuChoix, basculerChoix, differenceChoix, libelleRegarder } from './choixmulti.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, tailleStockageKo, plusGrossesCles } from './utils.js';
@@ -1320,6 +1321,178 @@ export function showFluxSelector(idx, mid, event) {
 
 
 
+/* ══ UN LECTEUR TWITCH CACHÉ PUIS REVU REPART ═══════════════════════════════════
+   Le lecteur Twitch s'arrête dès qu'il n'est plus entièrement visible — couvert par une
+   fenêtre, caché par un onglet, hors de l'écran — et revient à zéro sans repartir
+   (mesuré le 29 octobre 2026 ; exigeVisibiliteTotale, js/esports.js). On le regarde comme
+   lui se regarde (IntersectionObserver v2, Chrome et Vivaldi) : vu, puis caché, puis revu,
+   la tuile recharge, et un direct rechargé reprend au présent. Le premier « caché », avant
+   d'avoir jamais été vu (la pastille de chargement), ne compte pas : Twitch attend alors
+   d'être visible pour démarrer. Firefox n'a pas cette mesure, et Twitch n'y fait pas de
+   pause : rien à faire. */
+export var RELANCES_STRICTES = 0; // pour les tests et Logs
+function surveillerLecteurStrict(iframe, s) {
+    if (typeof IntersectionObserver !== 'function') return null;
+    var vu = false, cache = false;
+    var io;
+    try {
+        io = new IntersectionObserver(function(entrees) {
+            if (!iframe.isConnected) { io.disconnect(); return; }
+            var e = entrees[entrees.length - 1];
+            if (typeof e.isVisible !== 'boolean') { io.disconnect(); return; }
+            if (!e.isVisible) { if (vu) cache = true; return; }
+            vu = true;
+            if (!cache) return;
+            cache = false;
+            var idx = mvFlux.indexOf(s);
+            if (idx < 0) { io.disconnect(); return; }
+            io.disconnect();
+            RELANCES_STRICTES++;
+            rechargerTuile(idx);
+        }, { trackVisibility: true, delay: 100 }); // le minimum permis : une fenêtre ouverte un instant suffit à arrêter Twitch
+        io.observe(iframe);
+    } catch (e) { return null; }
+    return io;
+}
+
+/* ══ CHOISIR LES MATCHS, FAÇON PRIME VIDEO ══════════════════════════════════════
+   « Go pour le style Prime Video » (29 octobre 2026). Prime Video ouvre son multiview sur
+   un écran de choix : les matchs en direct en cartes, jusqu'à quatre cochés, « Regarder ».
+   « + Ajouter » renvoyait au Live avec un toast, une vidéo à la fois. La sélection vit dans
+   js/choixmulti.js ; ici, l'écran (`#mv-choix`, posé dans le lecteur) et l'application du
+   choix : les tuiles décochées partent, les matchs cochés arrivent avec leur meilleur lien
+   jouable (le classement du mode câble, `liensCable`), celles qui restent ne rechargent
+   pas. L'écran couvre les vidéos : un lecteur Twitch s'y arrête, et repart en refermant
+   (surveillerLecteurStrict). */
+var choixMulti = null;
+var compteurTuiles = 0;
+
+function nomDuMatch(m, mid) {
+    if (m && m.homeTeam && m.awayTeam) return m.homeTeam + ' vs ' + m.awayTeam;
+    if (m && m.name) return m.name;
+    var s = mvFlux.find(function(f) { return String(f.mid) === String(mid); });
+    return (s && s.name) || 'Match';
+}
+
+function logoChoix(url, nom) {
+    if (!url) return '<span class="mv-choix-logo mv-choix-logo-vide" aria-hidden="true">' + esc(String(nom || '?').charAt(0)) + '</span>';
+    if (String(url).indexOf('emoji:') === 0) return '<span class="mv-choix-logo" aria-hidden="true">' + esc(String(url).split(':')[1]) + '</span>';
+    return '<img class="mv-choix-logo" src="' + esc(url) + '" alt="" loading="lazy" decoding="async" onerror="this.style.visibility=\'hidden\'">';
+}
+
+function carteChoixHtml(m, choisi, plein) {
+    var id = String(m.id);
+    var nom = nomDuMatch(m, id);
+    var direct = !m.inconnu && isLiveNow(m);
+    var etat = m.inconnu ? 'Dans le lecteur'
+        : direct ? (Array.isArray(m.score) && m.score.length === 2 ? m.score[0] + ' – ' + m.score[1] : 'En direct')
+        : (m.startTime ? 'À ' + m.startTime : 'Bientôt');
+    var nbLiens = (m.streamLinks || []).filter(function(l) { return l && l.url; }).length;
+    var inactif = !choisi && plein;
+    return '<div class="mv-choix-carte' + (choisi ? ' choisi' : '') + '" role="button" tabindex="0" data-mid="' + esc(id) + '"'
+        + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}"'
+        + ' aria-pressed="' + (choisi ? 'true' : 'false') + '"' + (inactif ? ' aria-disabled="true"' : '')
+        + ' onclick="basculerCarteChoix(\'' + escJs(id) + '\')"><span class="mv-choix-corps">'
+        + '<span class="mv-choix-coche" aria-hidden="true">' + (choisi ? '✓' : '') + '</span>'
+        + '<span class="mv-choix-ligue">' + esc((m.flag ? m.flag + ' ' : '') + (m.league || '')) + '</span>'
+        + '<span class="mv-choix-equipes">'
+        +   (m.inconnu ? '' : logoChoix(m.homeLogo || getLogo(m.homeTeam), m.homeTeam) + logoChoix(m.awayLogo || getLogo(m.awayTeam), m.awayTeam))
+        + '</span>'
+        + '<span class="mv-choix-nom">' + esc(nom) + '</span>'
+        + '<span class="mv-choix-etat' + (direct ? ' direct' : '') + '">' + (direct ? '<span class="mv-choix-point" aria-hidden="true"></span>' : '') + esc(etat)
+        + (nbLiens ? ' · ' + nbLiens + ' lien' + (nbLiens > 1 ? 's' : '') : '') + '</span>'
+        + '</span></div>';
+}
+
+function rendreChoixMulti() {
+    var el = document.getElementById('mv-choix');
+    if (!el || !choixMulti) return;
+    var sel = choixMulti.selection;
+    var plein = sel.length >= MAX_VIDEOS;
+    var cartes = choixMulti.cartes;
+    var grille = cartes.length
+        ? cartes.map(function(m) { return carteChoixHtml(m, sel.indexOf(String(m.id)) >= 0, plein); }).join('')
+        : '<p class="mv-choix-vide">Aucun match en direct avec un lien pour l\'instant. Le Guide montre ceux qui commencent bientôt.</p>';
+    var rien = !sel.length && !choixMulti.depart.length;
+    el.innerHTML = '<div class="mv-choix-tete">'
+        + '<div><h2 class="mv-choix-titre">Choisir les matchs</h2>'
+        + '<p class="mv-choix-sous">Jusqu\'à ' + MAX_VIDEOS + ' vidéos en même temps · ' + sel.length + ' / ' + MAX_VIDEOS + ' choisie' + (sel.length > 1 ? 's' : '') + '</p></div>'
+        + '<button type="button" class="mv-choix-fermer" onclick="fermerChoixMulti(false)" aria-label="Fermer sans rien changer" title="Fermer sans rien changer">✕</button>'
+        + '</div>'
+        + '<div class="mv-choix-grille">' + grille + '</div>'
+        + '<div class="mv-choix-pied">'
+        + '<button type="button" class="btn o" onclick="fermerChoixMulti(false); applyFilter(\'live\');">Tous les matchs</button>'
+        + '<span class="mv-choix-espace"></span>'
+        + '<button type="button" class="btn o" onclick="fermerChoixMulti(false)">Annuler</button>'
+        + '<button type="button" class="btn primary mv-choix-regarder" onclick="fermerChoixMulti(true)"' + (rien ? ' disabled' : '') + '>' + esc(libelleRegarder(choixMulti.depart, sel)) + '</button>'
+        + '</div>';
+}
+
+export function ouvrirChoixMulti(event) {
+    if (event) { event.stopPropagation(); event.preventDefault(); }
+    fermerMenus();
+    var mvc = document.getElementById('mv-container');
+    if (!mvc) return null;
+    if (lecteurEnRetrait(mvc)) toggleMultiview();
+    var ancien = document.getElementById('mv-choix');
+    if (ancien) ancien.remove();
+    var depart = mvFlux.map(function(f) { return String(f.mid); });
+    choixMulti = {
+        depart: depart,
+        selection: depart.slice(),
+        cartes: cartesDuChoix(chainesDuCable(), depart, (S && S.matches) || [])
+    };
+    var el = document.createElement('div');
+    el.id = 'mv-choix';
+    el.className = 'mv-choix';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'Choisir les matchs');
+    el.addEventListener('keydown', function(e) { if (e.key === 'Escape') { e.stopPropagation(); fermerChoixMulti(false); } });
+    mvc.appendChild(el);
+    rendreChoixMulti();
+    var premiere = el.querySelector('.mv-choix-carte') || el.querySelector('.mv-choix-fermer');
+    if (premiere) premiere.focus();
+    return el;
+}
+
+export function basculerCarteChoix(mid) {
+    if (!choixMulti) return null;
+    var avant = choixMulti.selection;
+    var apres = basculerChoix(avant, mid, MAX_VIDEOS);
+    if (apres.length === avant.length && apres.indexOf(String(mid)) < 0) showToast('Quatre vidéos au maximum : décochez-en une d\'abord.');
+    choixMulti.selection = apres;
+    rendreChoixMulti();
+    var el = document.getElementById('mv-choix');
+    var carte = el && Array.prototype.find.call(el.querySelectorAll('.mv-choix-carte'), function(c) { return c.getAttribute('data-mid') === String(mid); });
+    if (carte) carte.focus();
+    return apres;
+}
+
+export function fermerChoixMulti(appliquer) {
+    var el = document.getElementById('mv-choix');
+    if (el) el.remove();
+    var choix = choixMulti;
+    choixMulti = null;
+    if (!choix) return null;
+    var d = differenceChoix(mvFlux.map(function(f) { return String(f.mid); }), appliquer ? choix.selection : mvFlux.map(function(f) { return String(f.mid); }));
+    d.retirer.forEach(function(idx) { removeFromMultivision(idx); });
+    var sansLien = [];
+    d.ajouter.forEach(function(mid) {
+        var m = matchDeLaTuile(mid);
+        var liens = liensDuMatch(mid);
+        var jouables = liensCable(liens, optionsCable());
+        var lien = jouables[0] || liens[0];
+        if (!lien) { sansLien.push(nomDuMatch(m, mid)); return; }
+        addToMultivision(lien.url, nomDuMatch(m, mid), mid);
+    });
+    if (sansLien.length) showToast('Pas de lien pour ' + sansLien.join(', ') + '.');
+    else if (d.ajouter.length || d.retirer.length) showToast(mvFlux.length + ' vidéo' + (mvFlux.length > 1 ? 's' : '') + ' dans le lecteur.');
+    var bouton = document.querySelector('#mv-toolbar .mv-tb-btn.primary');
+    if (bouton && document.activeElement === document.body) bouton.focus();
+    return d;
+}
+
 /* ══ MULTIVISION MATCH SELECTOR ════════ */
 export function showMatchSelector(event, replaceIdx) {
     if (event) {
@@ -1392,10 +1565,48 @@ export function toggleMultiviewPip() {
         mvc.classList.remove('mv-full');
         mvc.classList.add('mv-pip');
         mvc.style.display = 'none';
+        /* Sauf Twitch (29 octobre 2026, « continuer lecture twitch lors de changement
+           d'onglet aussi ») : caché, de quelque façon que ce soit, le lecteur Twitch
+           s'arrête (exigeVisibiliteTotale, js/esports.js) ; les autres vidéos, elles,
+           continuent cachées. Seule une vidéo VISIBLE continue : avec une tuile Twitch, le
+           lecteur se réduit dans un coin (`mv-mini`) au lieu de disparaître, Twitch seul
+           à l'écran. C'est l'exception au retrait des fenêtres flottantes du 9 octobre,
+           limitée aux tuiles qui l'exigent. */
+        entrerMini(mvc);
         epg.style.display = 'flex';
         epg.style.paddingRight = '0';
         syncNavState(S.filter || 'live');
     }
+}
+
+/* Le mini-lecteur Twitch : le conteneur reste affiché (`display: flex`) mais garde
+   `mv-pip` (« pas au premier plan ») ; la feuille de style ne montre que les tuiles
+   Twitch, sous une petite barre « ▶ Lecteur · ✕ » posée AU-DESSUS d'elles, pas dessus. */
+function entrerMini(mvc) {
+    if (!mvc || !mvc.querySelector('.mv-cell.mv-strict')) return false;
+    var barre = mvc.querySelector('.mv-mini-barre');
+    if (!barre) {
+        barre = document.createElement('div');
+        barre.className = 'mv-mini-barre';
+        barre.innerHTML = '<button type="button" class="mv-mini-btn" onclick="openMultiviewTab()" title="Revenir au lecteur">▶ Lecteur</button>'
+            + '<span class="mv-mini-txt">Twitch continue ici</span>'
+            + '<button type="button" class="mv-mini-btn mv-mini-fermer" onclick="fermerMini()" title="Masquer (Twitch s\'arrête, et repart au retour dans le lecteur)" aria-label="Masquer le mini-lecteur">✕</button>';
+        mvc.insertBefore(barre, mvc.firstChild);
+    }
+    mvc.classList.add('mv-mini');
+    mvc.style.display = 'flex';
+    return true;
+}
+export function fermerMini() {
+    var mvc = document.getElementById('mv-container');
+    if (!mvc || !mvc.classList.contains('mv-mini')) return false;
+    mvc.classList.remove('mv-mini');
+    mvc.style.display = 'none';
+    return true;
+}
+/* Le lecteur est-il hors du premier plan (caché, ou réduit en mini-lecteur) ? */
+function lecteurEnRetrait(mvc) {
+    return !!mvc && (mvc.style.display === 'none' || mvc.classList.contains('mv-pip'));
 }
 
 /* Redimensionnement de la fenêtre. Le lecteur n'a plus de mode réduit (9 octobre 2026) :
@@ -1418,6 +1629,7 @@ window.addEventListener('resize', function() {
 function poserPleinCadre(mvc) {
     mvc.style.cssText = '';
     mvc.classList.remove('mv-pip');
+    mvc.classList.remove('mv-mini');
     mvc.classList.add('mv-full');
 }
 
@@ -1817,12 +2029,13 @@ export function setupMultivisionUI() {
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo choisie" aria-label="Source précédente"><span class="mv-tb-ic" aria-hidden="true">⏮</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⏭</span><span class="mv-tb-lb">Source<span class="mv-tb-lb-long"> suivante</span></span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-bar-direct" onclick="basculerDirectActif()" title="Basculer entre la page du site et le flux direct" hidden><span class="mv-tb-ic" aria-hidden="true">▶</span><span class="mv-tb-lb">Direct</span></button>'
+      + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-seule" onclick="basculerSeule()" aria-pressed="false" title="Voir la vidéo choisie seule" aria-label="Voir la vidéo choisie seule" hidden><span class="mv-tb-ic" aria-hidden="true">⤢</span><span class="mv-tb-lb mv-tb-lb-tel">Seule</span></button>'
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">🔊</span><span class="mv-tb-lb mv-tb-lb-tel">Son</span></button>'
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⋮</span><span class="mv-tb-lb mv-tb-lb-tel">Vidéo</span></button>'
       + '</div>'
       + '<div class="sp"></div>'
       + '<div id="mv-actions-menu" class="mv-bar-groupe mv-actions" role="group" aria-label="Lecteur">'
-      + '<button type="button" class="mv-tb-btn primary" onclick="showMatchSelector(event)" title="Choisir un match à ajouter"><span class="mv-tb-ic mv-tb-plus" aria-hidden="true">+</span><span class="mv-tb-lb">Ajouter</span></button>'
+      + '<button type="button" class="mv-tb-btn primary" onclick="ouvrirChoixMulti(event)" title="Choisir les matchs du lecteur"><span class="mv-tb-ic mv-tb-plus" aria-hidden="true">+</span><span class="mv-tb-lb">Ajouter</span></button>'
       + '<button type="button" class="mv-tb-btn" onclick="toggleFullscreen(document.getElementById(\'mv-grid-wrapper\'))" title="Plein écran"><span class="mv-tb-ic" aria-hidden="true">⛶</span><span class="mv-tb-lb">Plein écran</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-more-btn" onclick="ouvrirMenuBarre(this, event)" aria-haspopup="menu" aria-expanded="false" title="Réglages du lecteur"><span class="mv-tb-ic" aria-hidden="true">⚙</span><span class="mv-tb-lb">Réglages</span></button>'
       + '</div>';
@@ -2003,7 +2216,8 @@ export function setupMultivisionUI() {
     if (!window._mvKeydownAttached) {
         window.addEventListener('keydown', function(e) {
             var mvc = document.getElementById('mv-container');
-            if (!mvc || mvc.style.display === 'none') return;
+            /* Réduit en mini-lecteur, le lecteur n'écoute pas le clavier : on est sur le Live. */
+            if (!mvc || mvc.style.display === 'none' || mvc.classList.contains('mv-pip')) return;
 
             var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
             if (activeTag === 'input' || activeTag === 'textarea') return;
@@ -2286,7 +2500,9 @@ export var activeMvIdx = null;
 export function focusStream(idx) {
     if (idx < 0 || idx >= mvFlux.length) return;
 
+    var change = activeMvIdx !== idx;
     activeMvIdx = idx;
+    if (modeSeule && change) updateMultivisionLayout();
     applyMvFocusStyling();
     applyMvAudioState();
 
@@ -2295,16 +2511,22 @@ export function focusStream(idx) {
     }
 }
 
+/* La vidéo choisie, façon Prime Video (29 octobre 2026) : encadrée de blanc dès deux
+   vidéos, et 🔊 dans son en-tête quand c'est elle qu'on entend. Un liseré gris de 2 px,
+   posé en ombre intérieure, ne se voyait presque pas. Le cadre est une BORDURE de la
+   tuile (styles.css, .mv-cell.mv-active) : autour de la vidéo, jamais dessus, ce qui
+   arrêterait un lecteur Twitch (exigeVisibiliteTotale, js/esports.js). */
 export function applyMvFocusStyling() {
     majBarreVideos();
+    var plusieurs = mvFlux.length >= 2;
+    var cible = (activeMvIdx !== null && activeMvIdx < mvFlux.length) ? activeMvIdx : 0;
     var cells = toutesLesCellules();
     cells.forEach(function(cell) {
         var idx = parseInt(cell.dataset.index);
-        if (idx === activeMvIdx) {
-            cell.style.boxShadow = 'inset 0 0 0 2px rgba(150, 150, 150, 0.6)';
-        } else {
-            cell.style.boxShadow = 'none';
-        }
+        cell.style.boxShadow = '';
+        cell.classList.toggle('mv-active', plusieurs && idx === activeMvIdx);
+        var son = cell.querySelector('.mv-hdr-son');
+        if (son) son.hidden = !(plusieurs && idx === cible && mvFlux[idx] && !mvFlux[idx]._sonCoupe);
     });
 }
 
@@ -2340,11 +2562,25 @@ export function basculerSonTuile(idx) {
     s._sonCoupe = !s._sonCoupe;
     if (!s._sonCoupe) s._sonBloque = false; // un geste : le navigateur l'accepte
     applyMvAudioState();
-    majBarreVideos();
+    applyMvFocusStyling();
     showToast(s._sonCoupe ? '🔇 Son coupé : ' + (s.name || ('vidéo ' + (idx + 1))) : '🔊 Son remis : ' + (s.name || ('vidéo ' + (idx + 1))));
     return s._sonCoupe;
 }
 export function basculerSonActif() { return basculerSonTuile(tuileActive()); }
+
+/* Voir seule / Voir toutes (façon Prime Video, 29 octobre 2026). La vidéo vue seule est
+   toujours la vidéo choisie : une pastille de la barre en change, comme on change de
+   chaîne. */
+var modeSeule = false;
+export function seuleActive() { return modeSeule && mvFlux.length >= 2; }
+export function basculerSeule(etat) {
+    fermerMenus();
+    if (mvFlux.length < 2) { modeSeule = false; showToast('Une seule vidéo : elle prend déjà tout le lecteur.'); return false; }
+    modeSeule = (etat === undefined) ? !modeSeule : !!etat;
+    updateMultivisionLayout();
+    applyMvFocusStyling();
+    return modeSeule;
+}
 
 
 /* ── SON AUTOMATIQUE ─────────────────────────────────────────────────────────────
@@ -2463,6 +2699,9 @@ export function updateMultivisionLayout() {
 
     var count = mvFlux.length;
     var layout = dispositionEffective(count);
+    /* Plus de vidéo Twitch : plus de mini-lecteur (le lecteur redevient simplement caché). */
+    var mvcMini = document.getElementById('mv-container');
+    if (mvcMini && mvcMini.classList.contains('mv-mini') && !mvFlux.some(function(f) { return exigeVisibiliteTotale(f.url) || /(^|\.)twitch\.tv\//i.test(String(f.url || '').replace(/^https?:\/\//, '')); })) fermerMini();
     /* Deux écrans : la tuile 1 ici, les autres dans `#mv-grid-2` (js/deuxecrans.js). */
     var grid2 = secondeGrille();
     if (grid2) {
@@ -2478,8 +2717,11 @@ export function updateMultivisionLayout() {
     if (etire) surveillerFenetreEtiree();
 
     // Assign internal IDs to streams for tracking DOM elements
-    mvFlux.forEach(function(s, idx) {
-        if (!s._internalId) s._internalId = 'mv-flux-' + Date.now() + '-' + idx;
+    /* Un compteur, pas la position (29 octobre 2026) : le choix des matchs retire et ajoute
+       dans la même milliseconde, et une vidéo ajoutée à la place d'une autre prenait son
+       identifiant — les deux partageaient alors une seule tuile. */
+    mvFlux.forEach(function(s) {
+        if (!s._internalId) s._internalId = 'mv-flux-' + Date.now() + '-' + (++compteurTuiles);
     });
 
     // Remove old empty message if any
@@ -2489,7 +2731,7 @@ export function updateMultivisionLayout() {
             grid.innerHTML = '<div id="mv-empty-msg" class="mv-empty">'
                 + '<div class="mv-empty-ic">📺</div>'
                 + '<p>Aucune vidéo pour l\'instant.<br>Choisissez un match, puis une source : elle s\'affiche ici. Jusqu\'à quatre vidéos en même temps.</p>'
-                + '<button class="btn primary lg" onclick="showMatchSelector(event)">➕ Choisir un match</button>'
+                + '<button class="btn primary lg" onclick="ouvrirChoixMulti(event)">➕ Choisir les matchs</button>'
                 + '</div>';
         } else {
             // keep it
@@ -2577,7 +2819,19 @@ export function updateMultivisionLayout() {
                 }
             }
         }
-    }    // Existing cells
+    }
+    /* Voir seule (façon Prime Video, 29 octobre 2026) : la vidéo choisie prend tout le
+       lecteur, les autres restent chargées, cachées (une vidéo Twitch cachée repartira en
+       revenant : surveillerLecteurStrict). Pas en deux écrans ni en mini-lecteur. */
+    if (modeSeule && count < 2) modeSeule = false;
+    var seule = modeSeule && !grid2 && mvc && !mvc.classList.contains('mv-pip')
+        ? ((activeMvIdx !== null && activeMvIdx < count) ? activeMvIdx : 0) : -1;
+    grid.classList.toggle('mv-seule', seule >= 0);
+    if (seule >= 0) {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridTemplateRows = '1fr';
+    }
+    // Existing cells
     var existingCells = Array.from(grid.children).concat(grid2 ? Array.from(grid2.children) : []).filter(function(child) {
         return child.hasAttribute('data-internal-id');
     });
@@ -2709,6 +2963,7 @@ export function updateMultivisionLayout() {
                    « aucune iframe de lecteur ne porte d'attribut sandbox » le verrouille. */
                 container.appendChild(iframe);
                 cell.classList.toggle('mv-strict', exigeVisibiliteTotale(finalUrl));
+                if (exigeVisibiliteTotale(finalUrl)) surveillerLecteurStrict(iframe, s);
                 if (!estLecteurOfficiel(finalUrl)) demanderNettoyage(iframe);
 
                 s._posedAt = Date.now(); // pour reconnaître une sortie forcée (pagehide juste après)
@@ -2790,6 +3045,12 @@ export function updateMultivisionLayout() {
             }
             // Assign col index for tracking
             cell.dataset.col = colIndex.toString();
+            if (seule >= 0) {
+                cell.style.display = idx === seule ? 'flex' : 'none';
+                if (idx === seule) { cell.style.gridRow = '1'; cell.style.gridColumn = '1'; cell.style.resize = 'none'; cell.style.paddingRight = '0'; }
+            } else if (cell.style.display === 'none') {
+                cell.style.display = 'flex';
+            }
 
             // Reset inline width from previous resizes so CSS Grid takes over
             cell.style.width = '';
@@ -2950,6 +3211,8 @@ export function updateMultivisionLayout() {
                la tuile ne garde que son numéro, qui la relie à sa pastille, dès deux
                vidéos. */
             + (mvFlux.length >= 2 ? '<div class="mv-stream-number" title="Touche ' + (idx + 1) + '">' + (idx + 1) + '</div>' : '')
+            + '<span class="mv-hdr-son" title="On entend cette vidéo" aria-label="On entend cette vidéo"'
+            +   ((mvFlux.length >= 2 && idx === (activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : 0) && !s._sonCoupe) ? '' : ' hidden') + '>🔊</span>'
             + '</div>';
 
         /* En mode câble, l'échappatoire est à portée de pouce : suspendre les gestes de
@@ -3451,7 +3714,7 @@ export function addToMultivision(url, name, mid) {
         applyMvAudioState();
         armerRafraichissementTuiles();
         var mvcCable = document.getElementById('mv-container');
-        if (mvcCable && mvcCable.style.display === 'none') toggleMultiview();
+        if (lecteurEnRetrait(mvcCable)) toggleMultiview();
         relancerLectureTuile(0);
         annoncerCable(0);
         showToast('📺 ' + name);
@@ -3477,7 +3740,7 @@ export function addToMultivision(url, name, mid) {
 
     // Auto-open multiview if it's the first flux added
     var mvc = document.getElementById('mv-container');
-    if(mvc && mvc.style.display === 'none') {
+    if(lecteurEnRetrait(mvc)) {
         toggleMultiview();
     }
     showToast('Ajouté au Multivision: ' + name);
@@ -3917,6 +4180,7 @@ export function ouvrirMenuTuile(idx, bouton, event) {
            « Infos et statistiques » est ⚙ Réglages → Scores et statistiques (les stats du
            match de la vidéo choisie, que focusStream met à jour). */
         { titre: 'Cette tuile' },
+        mvFlux.length >= 2 ? { icon: seuleActive() ? '⊞' : '⤢', label: seuleActive() ? 'Voir toutes les vidéos' : 'Voir cette vidéo seule', detail: 'Les autres restent chargées', onSelect: function() { if (!seuleActive()) focusStream(idx); basculerSeule(); } } : null,
         { icon: fitInfo.icon, label: 'Cadrage de l\'image', detail: 'Actuellement : ' + fitInfo.label + ' (étiré → ajusté → rempli)', onSelect: function() { cycleMvFit(idx); } },
         (idx > 0 && (deuxEcransActif() || mvLayout === 'ecrans')) ? { icon: '🖥', label: 'Échanger avec la vidéo principale', onSelect: function() { mettreSurEcranPrincipal(idx); } } : null,
         idx > 0 ? { icon: empile ? '▲' : '◀', label: empile ? 'Monter' : 'Déplacer à gauche', onSelect: function() { moveMultiviewStream(idx, 'left'); } } : null,
@@ -5021,7 +5285,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v97';
+export var VERSION_APP = 'sports-guide-v98';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5556,6 +5820,18 @@ function majBarreVideos() {
         if (lb) lb.textContent = (s && s.mode === 'direct') ? 'Page du site' : 'Direct';
         if (ic) ic.textContent = (s && s.mode === 'direct') ? '🖼' : '▶';
     }
+    var btnSeule = document.getElementById('mv-bar-seule');
+    if (btnSeule) {
+        var actif = seuleActive();
+        btnSeule.hidden = mvFlux.length < 2;
+        btnSeule.classList.toggle('on', actif);
+        btnSeule.setAttribute('aria-pressed', actif ? 'true' : 'false');
+        btnSeule.title = actif ? 'Revoir toutes les vidéos' : 'Voir la vidéo choisie seule';
+        btnSeule.setAttribute('aria-label', btnSeule.title);
+        var icS = btnSeule.querySelector('.mv-tb-ic'), lbS = btnSeule.querySelector('.mv-tb-lb');
+        if (icS) icS.textContent = actif ? '⊞' : '⤢';
+        if (lbS) lbS.textContent = actif ? 'Toutes' : 'Seule';
+    }
     var son = document.getElementById('mv-bar-son');
     if (son) {
         var coupe = !!(s && s._sonCoupe);
@@ -5945,6 +6221,13 @@ window.installerScriptUtilisateur = installerScriptUtilisateur;
 window.telechargerExtension = telechargerExtensionGuide;
 window.changerSourceActive = changerSourceActive;
 window.basculerSonActif = basculerSonActif;
+window.ouvrirChoixMulti = ouvrirChoixMulti;
+window.basculerSeule = basculerSeule;
+window.seuleActive = seuleActive;
+window.fermerMini = fermerMini;
+window.relancesStrictes = function() { return RELANCES_STRICTES; };
+window.basculerCarteChoix = basculerCarteChoix;
+window.fermerChoixMulti = fermerChoixMulti;
 window.basculerSonTuile = basculerSonTuile;
 window.choisirVideo = choisirVideo;
 window.ouvrirMenuVideoActive = ouvrirMenuVideoActive;

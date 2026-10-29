@@ -1876,6 +1876,7 @@ window.retourTele = function() {
     var enqueteur = document.getElementById('investigator-modal');
     var look = document.getElementById('menu-look');
     var choixSource = document.getElementById('mv-flux-selector');
+    var choixMatchs = document.getElementById('mv-choix');
     var stats = document.getElementById('global-stats-sidebar');
     var statsOuvert = !!(stats && stats.style.transform === 'translateX(0px)');
     var barre = document.getElementById('nav-links');
@@ -1884,16 +1885,18 @@ window.retourTele = function() {
         navVisible: !!(boutonVue && boutonVue.getClientRects().length),
         dansNav: !!(barre && barre.contains(document.activeElement)),
         menuLecteur: menuEstOuvert(),
-        fenetre: !!(statsOuvert || choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
+        fenetre: !!(statsOuvert || choixMatchs || choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
         fiche: !!(mbg && mbg.classList.contains('open')),
         menuPlus: !!(menu && menu.classList.contains('open')),
         pleinCadre: document.body.getAttribute('data-view') === 'player' && typeof window.pleinCadreActif === 'function' && window.pleinCadreActif(),
+        seule: document.body.getAttribute('data-view') === 'player' && typeof window.seuleActive === 'function' && window.seuleActive(),
         vue: document.body.getAttribute('data-view') === 'player' ? 'player' : (S.filter === 'live' ? 'live' : 'autre')
     });
     if (action === 'menu') fermerMenus();
     else if (action === 'fenetre') {
         /* Le panneau des statistiques est la plus haute (z-index 999999) : il part d'abord. */
         if (statsOuvert && typeof window.toggleGlobalStats === 'function') window.toggleGlobalStats();
+        else if (choixMatchs && typeof window.fermerChoixMulti === 'function') window.fermerChoixMulti(false);
         else if (choixSource) choixSource.remove();
         else if (guide) guide.remove();
         else if (enqueteur && enqueteur.style.display === 'flex') { enqueteur.style.display = 'none'; var ic = document.getElementById('investigator-content'); if (ic) ic.innerHTML = ''; }
@@ -1901,6 +1904,7 @@ window.retourTele = function() {
     }
     else if (action === 'fiche') closeMod();
     else if (action === 'plein') window.quitterPleinCadre();
+    else if (action === 'seule') window.basculerSeule(false);
     else if (action === 'nav') { window.activerNavigationManette(); boutonVue.focus(); }
     else if (action === 'plus') { if (typeof window.toggleMenu === 'function') window.toggleMenu(); }
     else if (action === 'live') {
