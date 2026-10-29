@@ -10,7 +10,7 @@ import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayabilit
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
-import { bilan as bilanFluidite, ligneFluidite, noterArret as noterArretVideo } from './fluidite.js';
+import { bilan as bilanFluidite, ligneFluidite, noterArret as noterArretVideo, noterImages, pertesRecentes, bilanImages, ligneImages, ligneDecodage } from './fluidite.js';
 import { BIBLIOTHEQUES, typeDeMedia, configHls, decisionErreurHls, relanceAutorisee, RELANCES_MAX, DELAI_STAGNATION_MS, PERMISSIONS_CADRE } from './lecteurdirect.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
@@ -322,10 +322,24 @@ function texteDebut(octets) {
 function cheminDirect(media) { return pontPourDirect(media) ? 'pont' : (relaisApk() ? 'relais' : 'fetch'); }
 function finSonde(media, ok, raison, chemin, type) {
     sondesDirect[media.url] = { ok: ok, at: Date.now(), raison: raison || '', chemin: chemin, type: type || '' };
+    var aPasser = [];
     mvFlux.forEach(function(f, i) {
         var m = f && (f._media || mediaDirectPour(registreDirect(), f.url));
-        if (m && m.url === media.url) rafraichirPastille(i);
+        if (!m || m.url !== media.url) return;
+        rafraichirPastille(i);
+        /* Le direct automatique : le flux répond, par le chemin que prendra la lecture. */
+        var entree = mediaDirectPour(registreDirect(), f.url) || { echecs: 0 };
+        if (ok && chemin === cheminDirect(media) && peutPasserEnDirect(f, entree)) aPasser.push(i);
     });
+    aPasser.forEach(function(i) {
+        var f = mvFlux[i];
+        f._directAutoFait = true;
+        f.mode = 'direct';
+        f._currentUrl = null;
+        f._playing = false;
+        showToast('Vidéo ' + (i + 1) + ' : flux direct, sans la page du site (▶ Direct pour y revenir)');
+    });
+    if (aPasser.length) { saveMultivisionState(); updateMultivisionLayout(); }
 }
 function sonderDirect(media) {
     var so = sondesDirect[media.url];
@@ -473,6 +487,8 @@ export function toggleDirectMode(idx) {
     var media = s._media || mediaDirectPour(registreDirect(), s.url);
     if (s.mode !== 'direct' && !media) { showToast('Aucun flux direct connu pour cette source : laisse la page jouer une fois.'); return; }
     s.mode = (s.mode === 'direct') ? 'page' : 'direct';
+    // Remise en page à la main : le direct automatique ne la reprend plus (peutPasserEnDirect).
+    s._pageChoisie = (s.mode === 'page');
     s._currentUrl = null;
     s._playing = false;
     saveMultivisionState();
@@ -1122,6 +1138,30 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
     }, true);
 }
 
+/* ─── Le direct automatique (29 octobre 2026, « fais tout ça ») ─────────────────
+   Une page de site, c'est le lecteur et toute sa régie (DaddyLive : 180 à 385 cadres) ;
+   son flux direct, c'est un seul `<video>` décodé par la puce. Quand la sonde dit que le
+   flux d'une tuile répond par le chemin que prendra la lecture (`finSonde`), la tuile y
+   passe d'elle-même, une fois par lien, sur tous les appareils (site = APK). Jamais une
+   tuile remise en page à la main (`_pageChoisie`), jamais un flux qui a déjà échoué deux
+   fois ici (`aProposer`) ; refusé, `poserDirect` ramène la page, comme au bouton. Réglage
+   `direct_auto` (allumé par défaut), dans Lecteur → ⚙ Réglages. */
+var directAuto = true;
+try { directAuto = (localStorage.getItem('direct_auto') !== '0'); } catch (e) { directAuto = true; }
+export function directAutoActif() { return directAuto; }
+export function toggleDirectAuto() {
+    fermerMenus();
+    directAuto = !directAuto;
+    try { localStorage.setItem('direct_auto', directAuto ? '1' : '0'); } catch (e) {}
+    showToast(directAuto
+        ? '▶ Direct automatique : une vidéo dont le flux répond le joue sans sa page, plus léger.'
+        : 'Direct automatique coupé : les vidéos restent sur la page du site ; ▶ Direct reste à un clic.');
+    return directAuto;
+}
+export function peutPasserEnDirect(s, entree) {
+    return !!(directAuto && s && s.mode !== 'direct' && !s._pageChoisie && !s._directAutoFait && entree && aProposer(entree));
+}
+
 export function toggleGardeSortie() {
     fermerMenus();
     gardeSortie = !gardeSortie;
@@ -1688,6 +1728,64 @@ export function cadreDeTuile(idx) {
     return null;
 }
 
+/* ─── Les images perdues, tuile par tuile (29 octobre 2026) ───────────────────
+   « Mesurer combien de vidéos la télé tient en même temps ». Une page de site : le script
+   de nettoyage envoie ses compteurs avec `video_stats` (1.19). Le mode direct : on lit le
+   `<video>` de la tuile toutes les `RELEVE_IMAGES_MS`. Les notes vont au moniteur de
+   js/fluidite.js (Logs → Cet appareil → Images perdues) ; une vidéo qui perd plus d'un quart
+   de ses images sur 20 s le dit, une fois par `ECART_AVERTIR_PERTES_MS`. */
+export var RELEVE_IMAGES_MS = 5000;
+export var SEUIL_AVERTIR_PERTES = 0.25;
+export var ECART_AVERTIR_PERTES_MS = 5 * 60 * 1000;
+function videoDirecteDe(idx) {
+    var s = mvFlux[idx];
+    if (!s || s.mode !== 'direct') return null;
+    var c = celluleDeTuile(idx);
+    return c ? c.querySelector('video') : null;
+}
+export function videosEnCours() {
+    var n = 0;
+    mvFlux.forEach(function(s, i) {
+        if (!s) return;
+        var v = videoDirecteDe(i);
+        if (v ? (!v.paused && v.readyState >= 3) : s._playing) n++;
+    });
+    return n;
+}
+export function noterImagesTuile(idx, total, perdues) {
+    var s = mvFlux[idx];
+    if (!s || typeof window === 'undefined' || !window.__fluidite) return null;
+    var cle = 'vidéo ' + (idx + 1) + ' (' + (hostOfUrl(s._currentUrl || s.url) || '?') + ')';
+    var n = videosEnCours();
+    var note = noterImages(window.__fluidite.m, cle, total, perdues, Date.now(), n);
+    if (!note) return null;
+    var r = pertesRecentes(window.__fluidite.m, cle, Date.now(), 20000);
+    if (r.images >= 200 && r.taux >= SEUIL_AVERTIR_PERTES && Date.now() - (s._pertesAvertiAt || 0) > ECART_AVERTIR_PERTES_MS) {
+        s._pertesAvertiAt = Date.now();
+        showToast('La vidéo ' + (idx + 1) + ' perd ' + Math.round(r.taux * 100) + ' % de ses images : l\'appareil ne suit plus'
+            + (n > 1 ? ' avec ' + n + ' vidéos à la fois. En garder moins l\'aidera.' : '.'));
+    }
+    return note;
+}
+function releverImagesDirectes() {
+    mvFlux.forEach(function(s, i) {
+        var v = videoDirecteDe(i);
+        if (!v || typeof v.getVideoPlaybackQuality !== 'function') return;
+        try {
+            var q = v.getVideoPlaybackQuality();
+            if (q) noterImagesTuile(i, q.totalVideoFrames | 0, q.droppedVideoFrames | 0);
+        } catch (e) {}
+    });
+}
+var releveImagesArme = false;
+function armerReleveImages() {
+    if (releveImagesArme || typeof setInterval !== 'function') return;
+    releveImagesArme = true;
+    var t = setInterval(releverImagesDirectes, RELEVE_IMAGES_MS);
+    if (t && typeof t.unref === 'function') t.unref();
+}
+window.noterImagesTuile = noterImagesTuile;
+
 export function celluleDeTuile(idx) {
     var docs = documentsDuLecteur();
     for (var i = 0; i < docs.length; i++) {
@@ -2060,6 +2158,7 @@ export function setupMultivisionUI() {
     exitTheaterBtn.style.cssText = 'position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.8);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:8px 16px;cursor:pointer;display:none;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.15s;';
 
 
+    armerReleveImages();
     window.addEventListener('message', function(e) {
         if (e.data === 'mv_frame_clicked') {
             var idxClic = indexDeTuilePour(e.source);
@@ -2129,6 +2228,8 @@ export function setupMultivisionUI() {
             safeStorageSetJSON('debits', noterMesure(safeStorageGetJSON('debits', {}) || {}, sS.url, mesure));
             sS._mesure = mesure;
             rafraichirPastille(idxS);
+            // Images décodées et perdues de la vidéo de la page (script 1.19).
+            if (e.data.img && typeof e.data.img.t === 'number') noterImagesTuile(idxS, e.data.img.t, e.data.img.p);
             return;
         }
         if (e.data && typeof e.data === 'object' && e.data.__mv === 'video_state') {
@@ -3820,6 +3921,8 @@ function poserLienSurTuile(s, url) {
     s._playNoted = false;
     s._media = null;
     s._sortieForcee = false;
+    s._pageChoisie = false;
+    s._directAutoFait = false;
     s.mode = 'page';
     s.url = url;
     /* « Lecture automatique des lecteurs » (12 septembre 2026). Quand l'application sait
@@ -3834,7 +3937,9 @@ function poserLienSurTuile(s, url) {
        tuile revient d'elle-même à la page (poserDirect), et un direct qui a échoué deux
        fois pour ce lien n'est plus tenté d'office (aProposer). */
     var connu = mediaDirectPour(registreDirect(), url);
-    if ((modeCable || surTeleAndroid()) && (estMediaDirecte(url) || (connu && aProposer(connu)))) s.mode = 'direct';
+    /* Le direct automatique coupé (`direct_auto`), la télé reste sur la page comme ailleurs ;
+       le mode câble, lui, garde sa règle. */
+    if ((modeCable || (surTeleAndroid() && directAuto)) && (estMediaDirecte(url) || (connu && aProposer(connu)))) s.mode = 'direct';
 }
 
 /* Trois rappels, à 1,2 s d'intervalle : le lecteur d'un site apparaît souvent APRÈS le
@@ -4231,6 +4336,7 @@ export function ouvrirMenuBarre(bouton, event) {
         { icon: '📺', label: 'Mode câble', detail: 'Une seule vidéo ; glisser ↑↓ change de match, ←→ de source', actif: modeCable, onSelect: function() { toggleModeCable(); } },
         { icon: sonAuto ? '🔊' : '🔇', label: 'Son automatique', detail: 'La vidéo regardée prend le son dès qu\'elle joue', actif: sonAuto, onSelect: function() { toggleSonAuto(); } },
         { icon: '🛡', label: 'Bloquer les redirections', detail: 'Demande « Quitter le site ? » si une vidéo tente d\'emmener l\'onglet', actif: gardeSortie, onSelect: function() { toggleGardeSortie(); } },
+        { icon: '▶', label: 'Direct automatique', detail: 'Une vidéo dont le flux répond le joue sans la page du site : plus léger', actif: directAuto, onSelect: function() { toggleDirectAuto(); } },
         mvFlux.length ? { sep: true } : null,
         mvFlux.length ? { icon: '✕', label: 'Fermer toutes les vidéos', danger: true, onSelect: fermerToutesLesVideos } : null
     ], { label: 'Réglages du lecteur' });
@@ -5285,7 +5391,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v98';
+export var VERSION_APP = 'sports-guide-v99';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5394,6 +5500,11 @@ export function diagnosticAppareilHtml() {
     if (window.__fluidite) {
         var fl = ligneFluidite(bilanFluidite(window.__fluidite.m, Date.now()), window.__fluidite.observe);
         html += ligne('Fluidité', fl.etat, fl.texte);
+        // Combien de vidéos l'appareil tient, et si la puce décode elle-même (29 octobre 2026).
+        var im = ligneImages(bilanImages(window.__fluidite.m, Date.now()));
+        html += ligne('Images perdues', im.etat, im.texte);
+        var dec = ligneDecodage(window.__fluidite.decodage || null);
+        html += ligne('Décodage vidéo', dec.etat, dec.texte);
     }
     /* La garde contre les redirections, coupée par le menu ⚙ Réglages du lecteur, ne se voyait nulle
        part ailleurs (18 octobre 2026). */
@@ -6164,6 +6275,7 @@ window.nextFluxForTile = nextFluxForTile;
 window.toggleModeCable = toggleModeCable;
 window.toggleSonAuto = toggleSonAuto;
 window.toggleGardeSortie = toggleGardeSortie;
+window.toggleDirectAuto = toggleDirectAuto;
 window.gardeSortieArmee = gardeSortieArmee;
 window.autoriserSortie = autoriserSortie;
 window.basculerGestesTuile = basculerGestesTuile;

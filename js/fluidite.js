@@ -118,6 +118,96 @@ export function ligneFluidite(b, observe) {
     return { etat: (b.graves >= 3 || b.arrets >= 3) ? 'warn' : 'ok', texte: texte };
 }
 
+/* ─── Les images perdues, vidéo par vidéo (29 octobre 2026) ────────────────────
+   « Mesurer combien de vidéos la télé tient en même temps ». Le compte vient de
+   `getVideoPlaybackQuality()` (À APPELER : playwright#3789) : du `<video>` de la tuile en
+   mode direct, et du script de nettoyage (`video_stats`, 1.19) pour une page de site. Ce
+   sont des COMPTEURS depuis le début de la vidéo : on garde le dernier relevé de chaque
+   vidéo (`cle`) et on note l'écart. Un compteur qui recule, c'est une vidéo rechargée : on
+   repart de lui. `enCours` : combien de vidéos jouaient à ce moment, ce qui dit à partir de
+   combien l'appareil décroche. */
+export var SEUIL_PERTE = 0.1;          // 10 % d'images perdues : ça se voit
+export var IMAGES_MIN = 60;            // en dessous (2 s à 30 i/s), pas de verdict
+
+export function noterImages(m, cle, total, perdues, quand, enCours) {
+    if (!m || cle == null || !(total >= 0) || !(perdues >= 0)) return null;
+    if (!m.derniers) m.derniers = {};
+    if (!m.images) m.images = [];
+    var avant = m.derniers[cle];
+    m.derniers[cle] = { t: total, p: perdues };
+    if (!avant || total < avant.t || perdues < avant.p) return null;
+    var dt = total - avant.t, dp = perdues - avant.p;
+    if (!dt) return null;
+    var note = { k: String(cle), dt: dt, dp: dp, n: enCours | 0, t: quand };
+    m.images.push(note);
+    borner(m.images);
+    return note;
+}
+
+/* La part d'images perdues d'une vidéo sur les `fenetreMs` dernières : { taux, images }. */
+export function pertesRecentes(m, cle, maintenant, fenetreMs) {
+    var depuis = maintenant - (fenetreMs || FENETRE_FLUIDITE_MS);
+    var dt = 0, dp = 0;
+    ((m && m.images) || []).forEach(function (x) {
+        if (x.k === String(cle) && x.t >= depuis) { dt += x.dt; dp += x.dp; }
+    });
+    return { taux: dt ? dp / dt : 0, images: dt };
+}
+
+/* Le bilan des images sur la fenêtre : par vidéo, et le plus petit nombre de vidéos en
+   cours pour lequel une note a dépassé `SEUIL_PERTE` (null : l'appareil n'a jamais décroché). */
+export function bilanImages(m, maintenant) {
+    var depuis = maintenant - FENETRE_FLUIDITE_MS;
+    var par = {}, decroche = null, maxEnCours = 0;
+    ((m && m.images) || []).forEach(function (x) {
+        if (x.t < depuis) return;
+        var v = par[x.k] || (par[x.k] = { cle: x.k, images: 0, perdues: 0 });
+        v.images += x.dt; v.perdues += x.dp;
+        if (x.n > maxEnCours) maxEnCours = x.n;
+        if (x.dt >= IMAGES_MIN && x.dp / x.dt >= SEUIL_PERTE && x.n > 0 && (decroche === null || x.n < decroche)) decroche = x.n;
+    });
+    var videos = Object.keys(par).map(function (k) { var v = par[k]; v.taux = v.images ? v.perdues / v.images : 0; return v; })
+        .sort(function (a, b) { return b.taux - a.taux; });
+    return { videos: videos, decroche: decroche, maxEnCours: maxEnCours };
+}
+
+export function ligneImages(b) {
+    if (!b || !b.videos.length) return { etat: 'ok', texte: 'aucune vidéo mesurée ces 10 dernières minutes' };
+    var pct = function (x) { return Math.round(x * 1000) / 10 + ' %'; };
+    var texte = b.videos.slice(0, 4).map(function (v) { return v.cle + ' ' + pct(v.taux) + ' (sur ' + v.images + ')'; }).join(', ');
+    if (b.decroche) texte += ' · décroche à partir de ' + b.decroche + ' vidéo' + (b.decroche > 1 ? 's' : '') + ' à la fois';
+    else if (b.maxEnCours) texte += ' · tient ' + b.maxEnCours + ' vidéo' + (b.maxEnCours > 1 ? 's' : '') + ' à la fois sans décrocher';
+    return { etat: b.decroche ? 'warn' : 'ok', texte: texte };
+}
+
+/* ─── Le décodage vidéo de l'appareil (29 octobre 2026) ────────────────────────
+   La puce décode-t-elle elle-même le H.264 des flux (matériel, `powerEfficient`), ou le
+   processeur s'en charge-t-il (logiciel probable) ? `navigator.mediaCapabilities` le dit
+   pour le navigateur et la WebView ; le lecteur natif de l'APK écrit le nom de son décodeur
+   au journal (Decodeur.java). */
+export var PROFILS_DECODAGE = [
+    { nom: '1080p', contentType: 'video/mp4; codecs="avc1.640028"', width: 1920, height: 1080, bitrate: 6000000, framerate: 30 },
+    { nom: '720p', contentType: 'video/mp4; codecs="avc1.64001f"', width: 1280, height: 720, bitrate: 3000000, framerate: 30 }
+];
+export function sonderDecodage(nav) {
+    var mc = nav && nav.mediaCapabilities;
+    if (!mc || typeof mc.decodingInfo !== 'function') return Promise.resolve(null);
+    return Promise.all(PROFILS_DECODAGE.map(function (p) {
+        return mc.decodingInfo({ type: 'media-source', video: { contentType: p.contentType, width: p.width, height: p.height, bitrate: p.bitrate, framerate: p.framerate } })
+            .then(function (r) { return { nom: p.nom, supported: !!r.supported, smooth: !!r.smooth, powerEfficient: !!r.powerEfficient }; })
+            .catch(function () { return { nom: p.nom, supported: false, smooth: false, powerEfficient: false }; });
+    }));
+}
+export function ligneDecodage(res) {
+    if (!res) return { etat: 'ok', texte: 'non mesuré (ce navigateur ne le dit pas)' };
+    var dire = function (r) {
+        if (!r.supported) return r.nom + ' : non pris en charge';
+        return r.nom + ' : ' + (r.powerEfficient ? 'matériel' : 'logiciel probable') + (r.smooth ? '' : ', pas fluide');
+    };
+    var mauvais = res.some(function (r) { return !r.supported || !r.powerEfficient || !r.smooth; });
+    return { etat: mauvais ? 'warn' : 'ok', texte: 'H.264 ' + res.map(dire).join(' · ') };
+}
+
 /* Branche le moniteur sur la fenêtre : `window.__fluidite = { m, observe }`. */
 export function brancherMoniteur(win) {
     if (!win || win.__fluidite) return win && win.__fluidite;
@@ -136,5 +226,6 @@ export function brancherMoniteur(win) {
         });
         lo.observe({ type: 'long-animation-frame' });
     } catch (e) { /* Firefox, Safari : seulement le compte des gels */ }
+    try { sonderDecodage(win.navigator).then(function (r) { etat.decodage = r; }); } catch (e) {}
     return etat;
 }

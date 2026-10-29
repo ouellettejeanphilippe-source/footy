@@ -1,5 +1,5 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal } from './utils.js';
+import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal, sansLiensDuServeur } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
@@ -664,7 +664,7 @@ async function loadAllRun(isBackground, forceScrape){
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
+              ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: sansLiensDuServeur(finalMatches, window.prefetchedStreamMatches) });
 
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
@@ -868,7 +868,7 @@ async function loadAllRun(isBackground, forceScrape){
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
+              ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: sansLiensDuServeur(finalMatches, window.prefetchedStreamMatches) });
 
                     var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {

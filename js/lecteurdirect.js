@@ -31,8 +31,8 @@ export var BIBLIOTHEQUES = {
     hls: {
         global: 'Hls',
         adresses: [
-            'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js',
-            'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js'
+            'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.6.16/hls.min.js',
+            'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js'
         ]
     },
     dash: {

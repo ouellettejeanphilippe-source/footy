@@ -39,12 +39,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -98,7 +98,7 @@ jobs:
       # le remet ; en cas de conflit sur le fichier lui-même, la version produite à
       # l'instant l'emporte.
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: update hourly stream links cache"
           # domains.json est réécrit par le script quand un domaine meurt et qu'un
@@ -119,7 +119,7 @@ jobs:
         run: echo "maintenant=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Upload the cache to verify
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cache-a-verifier
           path: data/streams.json
@@ -132,7 +132,9 @@ jobs:
   # son budget de 5 min (§7.3 de docs/ARCHITECTURE.md) ; « rendre plus rapide… le taux de
   # fonctionnement des streams » (29 octobre 2026) : trois machines prennent chacune une
   # cible sur trois de la MÊME liste (même cache, même instant), avec un plafond par passage
-  # et par hôte relevé d'autant. Chacune rend ses relevés ; le job `annoter` les applique.
+  # et par hôte relevé d'autant. Le premier passage en trois parts (29 octobre 2026) : 139
+  # liens, chaque part finie en 2 min 30 sur 5, faute de cibles ; 5 liens par match et 12 par
+  # hôte (au lieu de 3 et 8) en donnent 200 sur le même cache. Chacune rend ses relevés ; le job `annoter` les applique.
   # Le dépôt est public : les minutes des runners ne coûtent rien. Un échec ici ne bloque
   # rien, le cache est déjà publié par le job précédent.
   verifier:
@@ -145,12 +147,12 @@ jobs:
         part: [0, 1, 2]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -159,7 +161,7 @@ jobs:
         run: npm ci
 
       - name: Download the cache to verify
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: cache-a-verifier
           path: data
@@ -167,7 +169,7 @@ jobs:
       # Chromium (~150 Mo) était retéléchargé à chaque passage : gardé d'une fois sur
       # l'autre, clé sur le lockfile, qui fixe la version de Playwright.
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -182,11 +184,11 @@ jobs:
           node scripts/verify_players.mjs
           --part ${{ matrix.part }}/3 --sortie releves-${{ matrix.part }}.json
           --maintenant ${{ needs.scrape.outputs.maintenant }}
-          --total 300 --par-hote 8
+          --total 300 --par-hote 12 --par-match 5
         continue-on-error: true
 
       - name: Upload the observations
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: releves-${{ matrix.part }}
           path: releves-${{ matrix.part }}.json
@@ -204,12 +206,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -218,7 +220,7 @@ jobs:
         run: npm ci
 
       - name: Download the observations
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: releves-*
           path: releves
@@ -238,7 +240,7 @@ jobs:
           git stash pop || { git checkout --theirs -- data/streams.json data/tv.json; git add data/streams.json data/tv.json; git stash drop; }
 
       - name: Commit the player verification
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: note which players actually play"
           # data/tv.json : la liste de l'appli Android TV (tv/), écrite par la vérification.

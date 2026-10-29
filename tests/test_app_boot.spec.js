@@ -859,9 +859,10 @@ test('le mode direct lit le flux par le pont du script, avec le Referer du lecte
   /* Le script 1.14, sous Tampermonkey : lecture binaire annoncée. La sonde repasse par le pont. */
   await page.evaluate(() => window.postMessage({ __mvBridge: 'mv_bridge_ready', version: '1.14', binaire: true }, '*'));
   await expect(page.locator('#mv-bar-direct'), 'par le pont, le manifeste répond : ▶ Direct').toBeVisible({ timeout: 10000 });
-  await page.evaluate(() => window.resetMvIdleTimer());
-  await page.locator('#mv-bar-direct').click();
+  /* Le direct automatique (29 octobre 2026) : la sonde a répondu par le pont, la tuile y
+     passe d'elle-même, sans clic. */
   await expect.poll(() => page.evaluate(() => window.mvFlux[0]._playing), { message: 'par le pont, le flux joue' }).toBe(true);
+  expect(await page.evaluate(() => window.mvFlux[0]._directAutoFait), 'passée seule en direct').toBe(true);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('direct');
   expect(await page.evaluate(() => (window.__hls || []).filter((h) => h.pont).length),
     'hls.js et son chargeur par le pont, même quand le navigateur lit le HLS lui-même').toBe(1);
@@ -1057,6 +1058,34 @@ test('Twitch continue en mini-lecteur au Live, et repart seul après avoir été
 
 /* Le pendant : sans lecteur Twitch, la présentation façon Netflix reste (barre posée sur
    la vidéo, 25 octobre 2026). */
+/* « Mesurer combien de vidéos la télé tient en même temps » (29 octobre 2026). Le script
+   (1.19) envoie les compteurs d'images de la page avec `video_stats` ; une vidéo qui en perd
+   plus d'un quart le dit, et Logs → Cet appareil dit à partir de combien de vidéos ça décroche. */
+test('une tuile qui perd ses images le dit, et Logs compte à partir de combien de vidéos', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => {
+    window.addToMultivision(o + '/__lecteur-calme?i1', 'Match A', 'mA');
+    window.addToMultivision(o + '/__lecteur-calme?i2', 'Match B', 'mB');
+  }, origin);
+  await expect(page.locator('.mv-cell iframe.mv-iframe')).toHaveCount(2);
+  const envoyer = (n, t, p) => page.evaluate(({ n, t, p }) => {
+    const f = document.querySelectorAll('.mv-cell iframe.mv-iframe')[n];
+    f.contentWindow.eval('window.top.postMessage({ __mv: "video_state", playing: true, cause: "joue" }, "*");'
+      + 'window.top.postMessage({ __mv: "video_stats", kbps: 0, w: 1280, h: 720, img: { t: ' + t + ', p: ' + p + ' } }, "*");');
+  }, { n, t, p });
+  await envoyer(0, 1000, 0);
+  await envoyer(1, 1000, 0);
+  await envoyer(0, 1300, 3);        // 1 % : rien à dire
+  await envoyer(1, 1300, 120);      // 40 % sur 300 images, deux vidéos en cours
+  await expect(page.locator('#toasttxt')).toContainText('La vidéo 2 perd 40 % de ses images');
+  await expect(page.locator('#toasttxt')).toContainText('avec 2 vidéos à la fois');
+  const logs = await page.evaluate(() => window.diagnosticAppareilHtml());
+  expect(logs).toContain('Images perdues');
+  expect(logs).toContain('décroche à partir de 2 vidéos à la fois');
+  expect(logs).toContain('Décodage vidéo');
+  expect(pageErrors).toEqual([]);
+});
+
 test('sans lecteur Twitch, la barre reste posée sur la vidéo', async ({ page }) => {
   const pageErrors = await bootOffline(page);
   await page.evaluate((o) => window.addToMultivision(o + '/__lecteur-calme', 'Match calme', 'mC'), origin);
@@ -2984,6 +3013,9 @@ for (const [nom, signe] of [
    (404 une seconde après son lecteur). Le bouton ▶ direct s'affichait pour tous. Il n'est
    plus montré qu'après avoir lu le manifeste depuis ce navigateur. */
 test('▶ direct ne s\'affiche que pour un flux qui répond d\'ici', async ({ page }) => {
+  /* Le bouton seul : le direct automatique (29 octobre 2026) emmènerait la tuile qui
+     répond en direct, qui, sans hls.js ni segment ici, reviendrait aussitôt à la page. */
+  await page.addInitScript(() => { try { localStorage.setItem('direct_auto', '0'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
   const autreOrigine = origin.replace('127.0.0.1', 'localhost');
   await page.route(autreOrigine + '/**', (route) => route.continue());
@@ -3010,6 +3042,39 @@ test('▶ direct ne s\'affiche que pour un flux qui répond d\'ici', async ({ pa
   await expect(bouton, 'et il revient avec la vidéo qui répond').toBeVisible();
   await page.evaluate(() => window.applyFilter('logs'));
   await expect(page.locator('#sources-status-container')).toContainText('1 sur 2 répondent · refusés : 1 × HTTP 404');
+  expect(pageErrors).toEqual([]);
+});
+
+/* Le direct automatique (29 octobre 2026, « passer seul en mode direct quand le test du flux
+   répond ») : la tuile dont le manifeste répond y passe d'elle-même, une fois par lien ; celle
+   dont le manifeste est mort reste sur la page ; réglage coupé, aucune ne bouge. */
+test('une tuile dont le flux répond passe seule en direct, une fois ; pas celle dont le flux est mort', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const autreOrigine = origin.replace('127.0.0.1', 'localhost');
+  await page.route(autreOrigine + '/**', (route) => route.continue());
+  const tuiles = { ok: autreOrigine + '/__lecteur-calme?a=ok', mort: autreOrigine + '/__lecteur-calme?a=mort' };
+  await page.evaluate(([t, o]) => {
+    const reg = {};
+    reg[t.ok] = { url: o + '/__manifeste-ok.m3u8', pageUrl: t.ok, at: Date.now(), echecs: 0 };
+    reg[t.mort] = { url: o + '/__manifeste-mort.m3u8', pageUrl: t.mort, at: Date.now(), echecs: 0 };
+    localStorage.setItem('direct_media', JSON.stringify(reg));
+    window.addToMultivision(t.ok, 'Match qui répond', 'mOk');
+    window.addToMultivision(t.mort, 'Match mort', 'mMort');
+  }, [tuiles, autreOrigine]);
+  await expect(page.locator('.mv-cell')).toHaveCount(2);
+  await expect.poll(() => page.evaluate(() => window.mvFlux[0]._directAutoFait === true), { timeout: 10000 }).toBe(true);
+  expect(await page.evaluate(() => window.mvFlux[1]._directAutoFait), 'le flux mort ne bouge pas').toBeFalsy();
+  expect(await page.evaluate(() => window.mvFlux[1].mode), 'il reste sur la page').not.toBe('direct');
+  /* Sans segment ni hls.js ici, le direct échoue et la tuile revient à la page : elle n'y
+     repart pas d'elle-même (une fois par lien, et l'échec est noté). */
+  await expect.poll(() => page.evaluate(() => window.mvFlux[0].mode), { timeout: 40000 }).toBe('page');
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => window.mvFlux[0].mode), 'pas de va-et-vient').toBe('page');
+  await expect(page.locator('#toasttxt')).toContainText('Direct refusé');
+  // Le réglage, dans Lecteur → ⚙ Réglages.
+  expect(await page.evaluate(() => window.toggleDirectAuto()), 'coupé').toBe(false);
+  expect(await page.evaluate(() => localStorage.getItem('direct_auto'))).toBe('0');
+  expect(await page.evaluate(() => window.toggleDirectAuto()), 'rallumé').toBe(true);
   expect(pageErrors).toEqual([]);
 });
 

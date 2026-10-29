@@ -112,6 +112,31 @@ export function allegerCalendrier(dateStr) {
     } catch (e) { return false; }
 }
 
+/* Le calendrier du jour, rangé SANS les liens qui reviennent du serveur (29 octobre 2026,
+   « bien meilleure performance sur CCGTV »). 590 Ko de ses 683 Ko étaient des liens de
+   data/streams.json, que chaque passe relit et refusionne : les ranger, c'était payer la mise
+   en texte à chaque passe et la relecture au démarrage pour rien. On ne garde que ceux que
+   l'appareil a trouvés lui-même (fiche d'un match, lecture des sources, rattrapage) : ceux-là
+   n'ont pas d'autre copie après 30 minutes (`stream_cache`). Sans la liste du serveur (pas
+   encore lue, injoignable), rien n'est retiré. Les matchs touchés sont copiés : la grille
+   garde ses liens. Un match laissé sans lien repasse `streamsLoaded = false`, comme
+   `allegerCalendrier`. */
+export function sansLiensDuServeur(matches, serveur) {
+    var urls = new Set();
+    (serveur || []).forEach(function(m) {
+        ((m && m.streamLinks) || []).forEach(function(l) { if (l && l.url) urls.add(l.url); });
+    });
+    if (!urls.size || !Array.isArray(matches)) return matches;
+    return matches.map(function(m) {
+        if (!m || !Array.isArray(m.streamLinks) || !m.streamLinks.length) return m;
+        var garde = m.streamLinks.filter(function(l) { return !l || !urls.has(l.url); });
+        if (garde.length === m.streamLinks.length) return m;
+        var copie = Object.assign({}, m, { streamLinks: garde });
+        if (!garde.length) copie.streamsLoaded = false;
+        return copie;
+    });
+}
+
 /* Taille approximative de ce que l'application garde en local, en kilo-octets. */
 export function tailleStockageKo() {
     try {
