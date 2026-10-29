@@ -34,6 +34,8 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      maintenant: ${{ steps.instant.outputs.maintenant }}
 
     steps:
       - name: Checkout repository
@@ -49,14 +51,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      # Chromium (~150 Mo) était retéléchargé à chaque passage : gardé d'une fois sur
-      # l'autre, clé sur le lockfile, qui fixe la version de Playwright.
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       # Le calendrier du jour, si la passe quotidienne (scrape_schedule.yml, 09:00 UTC) n'a
       # pas encore tourné : son cron subit les mêmes retards que celui-ci (le 10 septembre
@@ -118,22 +112,125 @@ jobs:
           skip_fetch: true
           skip_checkout: true
 
-      # Verification observee des lecteurs (scripts/verify_players.mjs) : un vrai
-      # Chromium charge les lecteurs des matchs en direct et note ce qui joue
-      # (`verified` par lien, `hostPlay` par hote, `verifiedAt`). Le navigateur est
-      # installe ici, pas dans le script : un echec ici ne bloque rien, le cache est
-      # deja publie par l'etape precedente.
+      # Le cache publié, tel quel, pour les machines de la vérification, et l'instant
+      # commun auquel elles choisiront leurs cibles (voir le job `verifier`).
+      - name: Hand the published cache to the verification
+        id: instant
+        run: echo "maintenant=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the cache to verify
+        uses: actions/upload-artifact@v4
+        with:
+          name: cache-a-verifier
+          path: data/streams.json
+          retention-days: 1
+
+  # ══ VÉRIFICATION, EN TROIS PARTS PARALLÈLES ═══════════════════════════════════
+  # Vérification observée des lecteurs (scripts/verify_players.mjs) : un vrai Chromium
+  # charge les lecteurs des matchs en direct et note ce qui joue (`verified` par lien,
+  # `hostPlay` par hôte, `verifiedAt`). Une seule machine n'éprouvait qu'~88 cibles dans
+  # son budget de 5 min (§7.3 de docs/ARCHITECTURE.md) ; « rendre plus rapide… le taux de
+  # fonctionnement des streams » (29 octobre 2026) : trois machines prennent chacune une
+  # cible sur trois de la MÊME liste (même cache, même instant), avec un plafond par passage
+  # et par hôte relevé d'autant. Chacune rend ses relevés ; le job `annoter` les applique.
+  # Le dépôt est public : les minutes des runners ne coûtent rien. Un échec ici ne bloque
+  # rien, le cache est déjà publié par le job précédent.
+  verifier:
+    needs: scrape
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1, 2]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download the cache to verify
+        uses: actions/download-artifact@v4
+        with:
+          name: cache-a-verifier
+          path: data
+
+      # Chromium (~150 Mo) était retéléchargé à chaque passage : gardé d'une fois sur
+      # l'autre, clé sur le lockfile, qui fixe la version de Playwright.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Le navigateur est installé ici, pas dans le script.
       - name: Install Chromium for player verification
         run: npx playwright install --with-deps chromium
         continue-on-error: true
 
       - name: Verify which players actually play
-        run: node scripts/verify_players.mjs
+        run: >-
+          node scripts/verify_players.mjs
+          --part ${{ matrix.part }}/3 --sortie releves-${{ matrix.part }}.json
+          --maintenant ${{ needs.scrape.outputs.maintenant }}
+          --total 300 --par-hote 8
         continue-on-error: true
 
-      # Second temps : l'annotation. `main` a pu bouger pendant la verification (un autre
-      # passage, une fusion de PR), donc on se replace avant de commiter. Sans changement
-      # — verification sautee ou sans nouvelle observation — l'action ne commite rien.
+      - name: Upload the observations
+        uses: actions/upload-artifact@v4
+        with:
+          name: releves-${{ matrix.part }}
+          path: releves-${{ matrix.part }}.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # Second temps : l'annotation. Les relevés des trois parts sont appliqués au
+  # data/streams.json de `main` à cet instant (un autre passage, une fusion de PR, ou
+  # l'application de bureau ont pu le réécrire entre-temps : un relevé retrouve son lien
+  # par son adresse, `appliquerReleves`, js/playability.js). Sans relevé, rien n'est écrit.
+  annoter:
+    needs: [scrape, verifier]
+    if: always() && needs.scrape.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download the observations
+        uses: actions/download-artifact@v4
+        with:
+          pattern: releves-*
+          path: releves
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Apply the observations to the cache
+        run: node scripts/verify_players.mjs --appliquer releves/*.json
+        continue-on-error: true
+
+      # `main` a pu bouger pendant l'application, donc on se replace avant de commiter.
+      # Sans changement, l'action ne commite rien.
       - name: Rebase again before committing the verification
         run: |
           git stash push --include-untracked -- data/streams.json data/tv.json || true

@@ -166,6 +166,75 @@ export function safeStorageSetJSON(key, value) {
     return safeStorageSet(key, JSON.stringify(value));
 }
 
+/* ─── Les gros caches locaux : écrits au plus tous les quarts d'heure ──────────
+   « Bien meilleure performance sur CCGTV » (29 octobre 2026). Mesuré dans Chromium,
+   processeur ralenti six fois : `api_calendar_cache_<jour>` pèse 683 Ko (122 matchs,
+   2 916 liens, dont 590 Ko de liens), et le réécrire coûtait 330 ms d'un seul tenant,
+   presque tout dans `localStorage.setItem` — la moitié du gel de chaque passe de
+   chargement (toutes les 5 min), et le même gel à chaque relève des scores en direct
+   (`majScoresDansCache`, chaque minute pendant les matchs), lecteur ouvert compris.
+   `last_scraped_matches` (les liens lus par le navigateur) suit la même voie. Ces caches
+   ne servent qu'à redessiner vite au démarrage, et une passe les refait aussitôt :
+   l'écriture part tout de suite si la dernière date de plus d'`ECART_ECRITURE_CACHE_MS`,
+   sinon elle attend (la dernière valeur seulement) et part au bout du délai, ou dès que
+   la page est cachée ou quittée. `lireCacheLocal` rend la valeur en attente : la lire
+   juste après l'avoir écrite donne bien ce qu'on vient d'écrire, comme avant. */
+export var ECART_ECRITURE_CACHE_MS = 15 * 60 * 1000;
+/* Posés à la première utilisation, pas à l'évaluation du module : `js/main.js` lit
+   `last_scraped_matches` pendant l'évaluation du cycle d'imports, avant ces lignes. */
+var cachesEnAttente;               // clé → texte JSON pas encore écrit
+var derniereEcritureCache;
+var minuteurCaches;
+function ecartEcriture() { return ECART_ECRITURE_CACHE_MS || 15 * 60 * 1000; }
+
+export function lireCacheLocal(key, fallback = null) {
+    if (cachesEnAttente && Object.prototype.hasOwnProperty.call(cachesEnAttente, key)) {
+        try { return JSON.parse(cachesEnAttente[key]); } catch (e) { return fallback; }
+    }
+    return safeStorageGetJSON(key, fallback);
+}
+
+/* Écrit tout ce qui attend ; rend le nombre de clés écrites. */
+export function viderCachesEnAttente() {
+    if (minuteurCaches) { clearTimeout(minuteurCaches); minuteurCaches = null; }
+    var cles = Object.keys(cachesEnAttente || {});
+    for (var i = 0; i < cles.length; i++) {
+        var texte = cachesEnAttente[cles[i]];
+        delete cachesEnAttente[cles[i]];
+        safeStorageSet(cles[i], texte);
+    }
+    if (cles.length) derniereEcritureCache = Date.now();
+    return cles.length;
+}
+
+export function ecrireCacheLocal(key, value) {
+    var texte = JSON.stringify(value);
+    cachesEnAttente = cachesEnAttente || {};
+    var ecart = Date.now() - (derniereEcritureCache || 0);
+    if (!minuteurCaches && (ecart >= ecartEcriture() || ecart < 0)) {
+        delete cachesEnAttente[key];
+        derniereEcritureCache = Date.now();
+        return safeStorageSet(key, texte);
+    }
+    cachesEnAttente[key] = texte;
+    if (!minuteurCaches) {
+        minuteurCaches = setTimeout(viderCachesEnAttente, Math.max(1000, ecartEcriture() - ecart));
+        // Sous Node (tests, scripts), un minuteur d'un quart d'heure ne doit pas retenir le processus.
+        if (minuteurCaches && typeof minuteurCaches.unref === 'function') minuteurCaches.unref();
+    }
+    return true;
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', viderCachesEnAttente);
+    if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') viderCachesEnAttente();
+        });
+    }
+    window.viderCachesEnAttente = viderCachesEnAttente;
+}
+
 
 export function pad(n){return String(n).padStart(2,'0');}
 export function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
