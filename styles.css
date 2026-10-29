@@ -751,6 +751,80 @@ body[data-view="player"] #epg, body[data-view="player"] .page { display: none !i
 body:has(.mv-cell.mv-strict) .app-header { box-shadow: none; }
 body:has(.mv-cell.mv-strict) #ui-effect-overlay { display: none !important; }
 body[data-view="player"]:has(.mv-cell.mv-strict) .toast { bottom: calc(12px + var(--safe-bottom)); box-shadow: none; }
+/* La vidéo choisie, façon Prime Video (29 octobre 2026) : une bordure blanche, autour de
+   la vidéo et pas dessus (applyMvFocusStyling, js/multiview.js). Transparente sur les
+   autres tuiles, pour que rien ne bouge quand on change de vidéo. */
+#mv-container.mv-full .mv-cell { border: 3px solid transparent; box-sizing: border-box; border-radius: 6px; transition: border-color var(--t-fast); }
+#mv-container.mv-full .mv-cell.mv-active { border-color: #fff; }
+.mv-hdr-son { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 8px; background: rgba(0,0,0,0.55); font-size: 14px; pointer-events: none; }
+.mv-hdr-son[hidden] { display: none; }
+
+/* Le mini-lecteur Twitch (29 octobre 2026, « continuer lecture twitch lors de changement
+   d'onglet aussi ») : hors du lecteur, une tuile Twitch reste visible dans un coin, sinon
+   elle s'arrête. Rien n'est posé sur sa vidéo : la petite barre est au-dessus d'elle, et
+   les toasts montent au-dessus du coin. Au-dessus de la fiche (z 200) : l'ouvrir ne
+   coupe pas le match. Voir entrerMini (js/multiview.js). */
+#mv-container.mv-mini { position: fixed; right: 16px; bottom: calc(16px + var(--safe-bottom)); width: 320px; height: auto; z-index: 250; display: flex; flex-direction: column; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.18); }
+#mv-container.mv-mini #mv-toolbar, #mv-container.mv-mini .mv-hdr, #mv-container.mv-mini .mv-idle-overlay, #mv-container.mv-mini .mv-cable-surface,
+#mv-container.mv-mini .mv-cell:not(.mv-strict), #mv-container.mv-mini #mv-choix, #mv-container.mv-mini #mv-empty-msg { display: none !important; }
+#mv-container.mv-mini #mv-grid-wrapper { flex: 0 0 auto; }
+#mv-container.mv-mini #mv-grid { display: flex !important; flex-direction: column; }
+#mv-container.mv-mini .mv-cell.mv-strict { width: 100% !important; height: 180px !important; padding: 0 !important; border: 0 !important; resize: none !important; }
+.mv-mini-barre { display: none; }
+#mv-container.mv-mini .mv-mini-barre { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #111; order: -1; }
+.mv-mini-txt { flex: 1; font-size: 12px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-mini-btn { border: none; border-radius: 8px; background: rgba(255,255,255,0.12); color: #fff; font-weight: 700; font-size: 13px; padding: 6px 10px; cursor: pointer; }
+.mv-mini-btn:hover, .mv-mini-btn:focus-visible { background: rgba(255,255,255,0.24); }
+.mv-mini-fermer { padding: 6px 9px; }
+body:has(#mv-container.mv-mini) .toast { bottom: calc(16px + 230px + var(--safe-bottom)); }
+@media (max-width: 768px) {
+  #mv-container.mv-mini { right: 8px; bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 8px); width: 256px; }
+  #mv-container.mv-mini .mv-cell.mv-strict { height: 144px !important; }
+  body:has(#mv-container.mv-mini) .toast { bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 8px + 190px); }
+}
+
+/* Choisir les matchs, façon Prime Video (29 octobre 2026, js/choixmulti.js) : un écran
+   posé dans le lecteur, des cartes à cocher, « Regarder ». Fond plein, sans flou (le flou
+   sur une vidéo qui joue coûte à Chrome à chaque image). */
+.mv-choix { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; background: rgb(8, 8, 10); color: var(--text); }
+.mv-choix-tete { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px 8px; background: rgb(8, 8, 10); }
+.mv-choix-titre { margin: 0; font-size: 22px; font-weight: 800; }
+.mv-choix-sous { margin: 4px 0 0; color: var(--muted2); font-size: 14px; }
+.mv-choix-fermer { flex-shrink: 0; width: 44px; height: 44px; border: none; border-radius: 50%; background: rgba(255,255,255,0.1); color: #fff; font-size: 18px; cursor: pointer; }
+.mv-choix-fermer:hover, .mv-choix-fermer:focus-visible { background: rgba(255,255,255,0.22); }
+/* Pas de défilement propre ni de `flex: 1` : en élément flex qui défile, Chrome bloquait
+   la hauteur des rangées à leur minimum, et un nom sur trois lignes sortait de sa carte.
+   C'est l'écran entier qui défile. */
+.mv-choix-grille { flex: 1 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-rows: minmax(150px, auto); align-content: start; gap: 14px; padding: 12px 24px 20px; }
+.mv-choix-carte { position: relative; height: auto; display: block; min-height: 150px; padding: 14px; text-align: left; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); background: #17171b; color: var(--text); cursor: pointer; transition: border-color var(--t-fast), transform var(--t-fast), background var(--t-fast); }
+.mv-choix-corps { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 118px; }
+.mv-choix-carte:hover { background: #1f1f25; }
+.mv-choix-carte:focus-visible { outline: none; border-color: rgba(255,255,255,0.55); transform: scale(1.03); }
+.mv-choix-carte.choisi { border-color: #fff; background: #22222a; }
+.mv-choix-carte[aria-disabled="true"] { opacity: 0.45; }
+.mv-choix-coche { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; }
+.mv-choix-carte.choisi .mv-choix-coche { background: #fff; border-color: #fff; color: #000; }
+.mv-choix-ligue { font-size: 12px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.04em; padding-right: 34px; }
+.mv-choix-equipes { display: flex; gap: 8px; min-height: 40px; align-items: center; }
+.mv-choix-logo { width: 40px; height: 40px; object-fit: contain; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; }
+.mv-choix-logo-vide { border-radius: 50%; background: rgba(255,255,255,0.1); font-size: 16px; font-weight: 800; }
+.mv-choix-nom { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.mv-choix-etat { font-size: 13px; color: var(--muted2); display: inline-flex; align-items: center; gap: 6px; margin-top: auto; }
+.mv-choix-etat.direct { color: #fff; }
+.mv-choix-point { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.mv-choix-vide { grid-column: 1 / -1; color: var(--muted2); font-size: 15px; padding: 24px 0; }
+.mv-choix-pied { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 14px 24px calc(14px + var(--safe-bottom)); border-top: 1px solid rgba(255,255,255,0.08); background: rgb(8, 8, 10); }
+.mv-choix-espace { flex: 1; }
+.mv-choix-regarder[disabled] { opacity: 0.5; cursor: default; }
+@media (max-width: 768px) {
+  .mv-choix-tete { padding: 14px 14px 4px; }
+  .mv-choix-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px 14px 14px; }
+  .mv-choix-carte { min-height: 132px; padding: 12px; }
+  .mv-choix-corps { min-height: 104px; }
+  .mv-choix-pied { padding: 10px 14px calc(10px + var(--safe-bottom)); flex-wrap: wrap; }
+  .mv-choix-pied .btn { flex: 1 1 auto; }
+  .mv-choix-espace { display: none; }
+}
 #mv-container.mv-full #mv-toolbar .mv-title { color: #fff; font-size: 17px; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 /* Une seule barre (25 octobre 2026, « moins all over the place ») : les vidéos, ce qu'on
    fait à la vidéo choisie, ce qu'on fait au lecteur — trois groupes, de gauche à droite.

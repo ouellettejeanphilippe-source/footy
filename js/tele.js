@@ -72,6 +72,8 @@ export function actionRetour(etat) {
     if (e.fiche) return 'fiche';
     if (e.menuPlus) return 'plus';
     if (e.pleinCadre) return 'plein';
+    /* Voir seule (façon Prime Video, 29 octobre 2026) : Retour ramène d'abord la grille. */
+    if (e.seule) return 'seule';
     if (e.navVisible && !e.dansNav && e.vue !== 'player') return 'nav';
     if (e.vue && e.vue !== 'live') return 'live';
     return 'quitter';
