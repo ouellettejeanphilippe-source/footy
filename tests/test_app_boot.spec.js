@@ -980,6 +980,53 @@ test('la fiche et le toast ne floutent pas ce qui est dessous, sur ordinateur au
   expect(pageErrors).toEqual([]);
 });
 
+/* Les alignements vivent dans les stats en direct du lecteur, plus dans la fiche (29 octobre
+   2026) ; avant la composition, l'effectif de chaque équipe y prend leur place (« Mettre
+   dans stats en direct du match »). Les réponses d'ESPN sont simulées : summary sans
+   composition, puis /teams/<id> et /teams/<id>/roster. */
+test('stats en direct du lecteur : l\'effectif avant la composition, et plus d\'alignements dans la fiche', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const requetes = [];
+  await page.route(/site\.api\.espn\.com/, (route) => {
+    const u = route.request().url();
+    requetes.push(u);
+    const json = (o) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(o) });
+    if (/\/summary\?/.test(u)) return json({ header: { competitions: [{ competitors: [{ id: '11', homeAway: 'home' }, { id: '22', homeAway: 'away' }] }] } });
+    if (/\/teams\/11\/roster/.test(u)) return json({ team: { displayName: 'Équipe A' }, athletes: [{ position: 'Goalies', items: [{ jersey: '36', displayName: 'Gardien Domicile', position: { abbreviation: 'G' } }] }] });
+    if (/\/teams\/22\/roster/.test(u)) return json({ team: { displayName: 'Équipe B' }, athletes: [{ position: 'Centers', items: [{ jersey: '71', displayName: 'Centre Visiteur', position: { abbreviation: 'C' } }] }] });
+    if (/\/teams\/(11|22)$/.test(u)) return json({ team: {} });
+    return route.abort();
+  });
+  const mid = await page.evaluate(() => String((window.S.matches.find((x) => String(x.id).startsWith('espn_')) || {}).id || ''));
+  expect(mid, 'un match ESPN dans les données').not.toBe('');
+
+  // La fiche n'a plus de place pour les alignements.
+  await page.evaluate((id) => window.openMod(window.S.matchMap.get(id)), mid);
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  expect(await page.locator('#mbg #alignements-container, #mbg .alignements').count(), 'pas d\'alignements dans la fiche').toBe(0);
+  await page.evaluate(() => window.closeMod());
+  /* La fiche lit déjà les deux équipes (leur bilan) : on ne compte que le panneau. */
+  requetes.length = 0;
+
+  await page.evaluate(([o, id]) => {
+    window.addToMultivision(o + '/__lecteur-calme?eff', 'Match', id);
+    if (document.body.getAttribute('data-view') !== 'player') window.openMultiviewTab();
+    window.focusStream(0);
+    window.toggleMvGameMode();
+  }, [origin, mid]);
+  const effectif = page.locator('#mv-stats-content .mv-alignements');
+  await expect(effectif, 'l\'effectif dans les stats en direct').toBeVisible();
+  await expect(effectif).toContainText('Effectif');
+  await expect(effectif).toContainText('Gardien Domicile');
+  expect(requetes.filter((u) => /\/roster/.test(u)).length, 'un roster par équipe').toBe(2);
+
+  // Le panneau se rafraîchit : l'effectif n'est pas redemandé.
+  await page.evaluate(() => window.updateMvGameModeStats && window.updateMvGameModeStats());
+  await expect(page.locator('#mv-stats-content .mv-alignements')).toContainText('Gardien Domicile');
+  expect(requetes.filter((u) => /\/roster/.test(u)).length, 'lu une fois par match').toBe(2);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 /* « Go pour le style Prime Video » (29 octobre 2026). Des matchs en direct fictifs, chacun
    avec une page de lecteur servie ici : l'écran de choix, l'encadré de la vidéo choisie,
    « Voir seule » et Retour. */
