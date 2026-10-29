@@ -4,7 +4,7 @@ import { MAX_VIDEOS, cartesDuChoix, basculerChoix, differenceChoix, libelleRegar
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, ongletDeLaVue, tailleStockageKo, plusGrossesCles } from './utils.js';
-import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
+import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchTeamInfo } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlignements } from './ui.js';
 import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
@@ -712,6 +712,20 @@ export function openPinnedStats(matchId) {
     }, 100);
 }
 
+/* Les effectifs d'un match (domicile, extérieur), une requête par équipe et par match :
+   le panneau se rafraîchit toutes les 5 minutes, l'effectif ne change pas. Un échec
+   n'est pas retenu. */
+var effectifsParMatch = {};
+function effectifsDuMatch(m, idDom, idExt) {
+    var cle = String(m.id);
+    if (!effectifsParMatch[cle]) {
+        effectifsParMatch[cle] = Promise.all([fetchTeamInfo(m.league, idDom), fetchTeamInfo(m.league, idExt)])
+            .then(function(r) { return [r[0] && r[0].roster, r[1] && r[1].roster]; })
+            .catch(function() { delete effectifsParMatch[cle]; return null; });
+    }
+    return effectifsParMatch[cle];
+}
+
 export function updateMvGameModeStats() {
     if (!mvGameModeActive) return;
 
@@ -875,6 +889,16 @@ export function updateMvGameModeStats() {
             al.style.display = 'none';
             bodyEl.appendChild(al);
             afficherAlignements(al, res.data);
+            /* Avant la composition, l'effectif (« Mettre dans stats en direct du match »,
+               29 octobre 2026) : les joueurs de chaque équipe par position, tirés des
+               `/roster` d'ESPN, lus une fois par match. Une composition arrivée entre-temps
+               garde la place (afficherAlignements ne la remplace jamais par l'effectif). */
+            if (al.dataset.alSource !== 'match' && mHomeId && mAwayId) {
+                effectifsDuMatch(m, mHomeId, mAwayId).then(function(rosters) {
+                    if (!mvGameModeActive || !al.isConnected || !rosters) return;
+                    afficherAlignements(al, null, [rosters[0], rosters[1], [m.homeTeam, m.awayTeam]]);
+                });
+            }
         }).catch(function() {
             var bodyEl = document.getElementById('mv-stat-body-' + m.id);
             if (bodyEl) bodyEl.innerHTML = '<div style="margin-top:15px; color:var(--muted); text-align:center;">Erreur lors du chargement des statistiques.</div>';
@@ -4926,7 +4950,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v102';
+export var VERSION_APP = 'sports-guide-v103';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

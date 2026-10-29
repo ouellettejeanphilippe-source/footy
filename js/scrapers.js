@@ -10,6 +10,7 @@ import { renderFluxItem } from './ui.js';
 import { adaptateurPour } from './sources/index.js';
 import { extraireMatchsGeneriques } from './genericlist.js';
 import { filtrerHotesEcartes } from './playability.js';
+import { icone } from './icones.js';
 
 
 export function extractQuality(text) {
@@ -3719,7 +3720,9 @@ export function updateMatchUiAfterScrape(m) {
                             cached.primeSnEl.parentNode.replaceChild(span, cached.primeSnEl);
                             cached.primeSnEl = span;
                         }
-                        cached.primeSnEl.textContent = '▶ ' + sn;
+                        /* Le même badge que la carte (js/ui.js) : le triangle est un tracé,
+                           pas le ▶ du texte, qui devient une pastille bleue sur Android. */
+                        cached.primeSnEl.innerHTML = icone('play') + sn;
                         cached.primeSnEl.title = sn + ' flux disponibles';
                     }
                 }
