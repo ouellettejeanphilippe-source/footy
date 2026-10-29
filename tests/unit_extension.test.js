@@ -148,10 +148,27 @@ function lireZip(octets) {
 test('le zip de l\'extension se relit, fichier pour fichier', async () => {
   const zip = await inst.zipExtension((chemin) => Promise.resolve(fs.readFileSync(path.join(EXT, chemin))));
   const fichiers = lireZip(zip);
-  assert.deepStrictEqual(Object.keys(fichiers).sort(), inst.FICHIERS_EXTENSION.map((f) => `${inst.DOSSIER_EXTENSION}/${f}`).sort());
-  assert.ok(fichiers[`${inst.DOSSIER_EXTENSION}/regles/blocage.json`].equals(fs.readFileSync(path.join(EXT, 'regles/blocage.json'))));
-  assert.ok(fichiers[`${inst.DOSSIER_EXTENSION}/icone.png`].equals(fs.readFileSync(path.join(EXT, 'icone.png'))), 'binaire intact');
+  assert.deepStrictEqual(Object.keys(fichiers).sort(), inst.FICHIERS_EXTENSION.slice().sort());
+  assert.ok(fichiers['regles/blocage.json'].equals(fs.readFileSync(path.join(EXT, 'regles/blocage.json'))));
+  assert.ok(fichiers['icone.png'].equals(fs.readFileSync(path.join(EXT, 'icone.png'))), 'binaire intact');
   assert.strictEqual(inst.crc32(Buffer.from('123456789')), 0xCBF43926, 'CRC-32 de référence');
+});
+
+/* « Failed to load extension · Manifest file is missing or unreadable » (29 octobre 2026,
+   Windows, dossier `~\Downloads\guide-des-sports-extension-1.6`). « Extraire tout » de
+   Windows (comme l'Utilitaire d'archive du Mac et 7-Zip) décompresse dans un dossier au nom
+   du zip : c'est ce dossier qu'on choisit dans Chrome, et `manifest.json` doit y être, pas
+   un niveau plus bas. */
+test('le zip décompressé dans un dossier à son nom donne un dossier que Chrome charge', async () => {
+  const zip = await inst.zipExtension((chemin) => Promise.resolve(fs.readFileSync(path.join(EXT, chemin))));
+  const fichiers = lireZip(zip);
+  assert.ok(fichiers['manifest.json'], 'manifest.json à la racine du zip');
+  const manifeste = JSON.parse(fichiers['manifest.json'].toString('utf8'));
+  // Tout ce que le manifeste désigne est là, au chemin qu'il donne.
+  const designes = [manifeste.background.service_worker, ...Object.values(manifeste.icons),
+    ...manifeste.declarative_net_request.rule_resources.map((r) => r.path),
+    ...manifeste.content_scripts.flatMap((c) => c.js)];
+  for (const f of designes) assert.ok(fichiers[f], `${f} à sa place dans le zip`);
 });
 
 test('la fenêtre du début : quand elle s\'ouvre', () => {

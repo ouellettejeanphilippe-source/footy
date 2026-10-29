@@ -5391,7 +5391,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v99';
+export var VERSION_APP = 'sports-guide-v100';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -6060,7 +6060,7 @@ export function brancherManetteApplication() {
 /* Le bouton du panneau Chrome du guide (index.html). */
 export function telechargerExtensionGuide() {
     return telechargerExtension().then(function(nom) {
-        showToast('⬇ ' + nom + ' : décompresser, puis « Charger l\'extension non empaquetée »');
+        showToast('⬇ ' + nom + ' : décompresser, puis « Charger l\'extension non empaquetée » → le dossier ' + nom.replace(/\.zip$/, ''));
         return nom;
     }, function(e) {
         showToast('Téléchargement de l\'extension impossible : ' + (e && e.message ? e.message : e));

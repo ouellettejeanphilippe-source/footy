@@ -24,9 +24,15 @@ export var VERSION_SCRIPT = '1.19';
    vide veut dire « déjà vue » (« 2 » vient du guide retiré). */
 export var GUIDE_VU = 'true';
 
-/* Ce que le zip contient, dans le dossier qu'il crée. Seulement ce que Chrome charge :
-   pas le gabarit ni le générateur. */
+/* Ce que le zip contient. Seulement ce que Chrome charge : pas le gabarit ni le
+   générateur. */
 export var FICHIERS_EXTENSION = ['manifest.json', 'fond.js', 'relais.js', 'nettoyeur.js', 'icone.png', 'regles/blocage.json'];
+
+/* Le nom du zip, sans sa version. Les fichiers sont à la RACINE du zip (29 octobre 2026,
+   « Failed to load extension · Manifest file is missing », Windows) : « Extraire tout »
+   de Windows, l'Utilitaire d'archive du Mac et 7-Zip les mettent dans un dossier au nom du
+   zip. Rangés dans un sous-dossier, ils se retrouvaient un niveau plus bas que le dossier
+   qu'on choisit dans Chrome (`guide-des-sports-extension-1.6\guide-des-sports-extension`). */
 export var DOSSIER_EXTENSION = 'guide-des-sports-extension';
 
 /* { type: 'extension' | 'script' | 'aucune', version, aJour } */
@@ -127,8 +133,9 @@ export function fabriquerZip(fichiers) {
 }
 
 /* Le bouton du panneau Chrome du guide : fabrique le zip et le fait télécharger. Rend le
-   nom du fichier. Le lien est cliqué par programme : la fenêtre du guide ne se ferme que
-   sur un vrai clic (`isTrusted`, installTampermonkey). */
+   nom du fichier, qui est aussi celui du dossier qu'on choisira dans Chrome une fois le
+   zip décompressé (sans « .zip »). Le lien est cliqué par programme : la fenêtre du
+   guide ne se ferme que sur un vrai clic (`isTrusted`, installTampermonkey). */
 export function telechargerExtension(lire, doc) {
   var d = doc || document;
   return zipExtension(lire).then(function (octets) {
@@ -154,7 +161,7 @@ export function zipExtension(lire) {
   };
   return Promise.all(FICHIERS_EXTENSION.map(function (chemin) {
     return charger(chemin).then(function (tampon) {
-      return { nom: DOSSIER_EXTENSION + '/' + chemin, octets: new Uint8Array(tampon) };
+      return { nom: chemin, octets: new Uint8Array(tampon) };
     });
   })).then(fabriquerZip);
 }

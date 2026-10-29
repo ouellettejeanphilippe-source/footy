@@ -429,8 +429,8 @@
       <ol>
         <li><button type="button" class="btn store chrome" onclick="telechargerExtension()">⬇ Télécharger l'extension (.zip)</button>, puis décompresser le fichier.</li>
         <li>Ouvrir <code>chrome://extensions</code> (Edge : <code>edge://extensions</code>) et activer le <strong>Mode développeur</strong>.</li>
-        <li>Cliquer <strong>Charger l'extension non empaquetée</strong> et choisir le dossier <code>guide-des-sports-extension</code>.</li>
-        <li>Recharger l'application. Pour une mise à jour : retélécharger, remplacer le dossier, puis ↻ sur la fiche de l'extension.</li>
+        <li>Cliquer <strong>Charger l'extension non empaquetée</strong> et choisir le dossier décompressé, <code>guide-des-sports-extension-…</code> (celui qui contient <code>manifest.json</code>).</li>
+        <li>Recharger l'application. Pour une mise à jour : retélécharger et décompresser, puis dans <code>chrome://extensions</code> retirer l'ancienne et charger le nouveau dossier.</li>
       </ol>
       <p class="help">Sans l'extension : uBlock Origin Lite (étape 1), puis Tampermonkey (étape 2) en activant <strong>Autoriser les scripts utilisateur</strong> dans ses détails (<code>chrome://extensions</code> → Tampermonkey → Détails), et le script (étape 3). Les pages qui refusent l'iframe ne s'ouvrent alors pas toujours.</p>
     </div>

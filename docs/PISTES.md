@@ -96,6 +96,14 @@ Fait le 29 octobre 2026 (« Go pour celles prioritaires ») : A.2, B.6, B.7, C.1
 
 Puis le même jour (« Fais tout ça ») : A.3, B.8, D.14, le direct automatique (la décision de A.1), le calendrier local sans les liens du serveur (683 → 52 Ko), 5 liens par match et 12 par hôte à la vérification (200 cibles au lieu de 139), et les actions des workflows sous Node 24. Restent A.4 (réglages de la WebView, à mesurer un par un sur la télé) et A.5 (bloqueur EasyList).
 
+## RAM et CPU des appareils faibles (29 octobre 2026)
+
+Demande : « Ya moyen, avec github ou par toi-même, de limiter l'utilisation de ram et cpu, pour laptop poches et ccgtv ». GitHub fait déjà le gros du travail à la place de l'appareil (calendrier, liens, vérification des lecteurs qui trouve le flux du mode direct) ; il ne peut pas brider un navigateur, seulement lui en laisser moins à faire. Ce qui reste se joue dans le site, et vaut pour le site et l'APK. Le même jour, aucune de ces pistes n'est faite : elles attendent un « go ».
+
+16. **Logos à la taille où on les montre.** *Mesuré.* Les 186 logos ESPN du calendrier du jour sont servis en 500 px et plus, pour un affichage de 24 à 60 px : 12 Mo à télécharger, **251 Mo une fois décodés** (RGBA, ce que le navigateur garde pour les peindre ; il en tient une partie, celle à l'écran et autour). Le service de redimensionnement d'ESPN, sur le même serveur (`https://a.espncdn.com/combiner/i?img=/i/teamlogos/…png&w=128&h=128`), rend les mêmes logos en 128 px : **1,7 Mo et 12 Mo**. Un logo absent y est absent de la même façon (404). À faire : une fonction qui réécrit l'adresse (`js/db.js`), appliquée partout où un logo est dessiné (`js/ui.js`, `js/multiview.js`, `js/config.js`, `js/main.js`), avec repli sur l'original en cas d'erreur.
+17. **Un mode léger, au choix et proposé d'office sur un appareil faible** (`navigator.deviceMemory` de 2 Go ou moins, comme le CCGTV, qui en a 1,5 à 2). Choisi d'après la capacité de l'appareil et non d'après la plateforme, il ne contredit pas « site = APK ». Contenu possible, chacun à mesurer avec Logs → Cet appareil : quitter le lecteur ferme les vidéos (ce que fait déjà Retour dans l'APK) au lieu de les laisser décoder cachées ; les vidéos non choisies, en mode direct, au niveau de qualité le plus bas ; plus d'animations en boucle (pastilles « en direct ») ni de transitions ; relève des scores au ralenti pendant le lecteur.
+18. **APK : survivre au manque de mémoire.** Aucun `onRenderProcessGone` dans `BloqueurWebViewClient` : si Android tue le moteur de la WebView faute de mémoire, l'application tombe au lieu de recharger le site. Et `onTrimMemory` (Android prévient avant de tuer) pourrait demander au site de fermer les vidéos muettes. C'est Android qui l'impose : exception admise à « site = APK ». Pas de SDK Android dans la session : à construire et essayer sur la télé.
+
 ## Écarté, et pourquoi
 
 | Piste | Pourquoi |
