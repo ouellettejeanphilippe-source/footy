@@ -1075,38 +1075,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Menu toggle logic
-export function toggleMenu(e) {
-  if (e) e.stopPropagation();
-  var menu = document.getElementById('main-menu');
-  var btn = document.getElementById('menu-btn');
-  if (menu) {
-      menu.classList.toggle('open');
-      menu.style.display = '';
-      var open = menu.classList.contains('open');
-      if (btn) {
-          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-          if (!btn.querySelector('.nav-ic')) btn.innerHTML = open ? '✕' : '☰';
-      }
-  }
-}
-
-// Close menu when clicking outside
-document.addEventListener('click', function(e) {
-  var menu = document.getElementById('main-menu');
-  var btn = document.getElementById('menu-btn');
-  if (menu && menu.classList.contains('open') && e.target !== btn && !btn.contains(e.target) && !menu.contains(e.target)) {
-      menu.style.display = '';
-      menu.classList.remove('open');
-      if (btn) {
-          btn.setAttribute('aria-expanded', 'false');
-          if (!btn.querySelector('.nav-ic')) btn.innerHTML = '☰';
-      }
-  }
-});
-
-
-
 // --- ZOOM SYSTEM ---
 export var currentZoomLevel = 1.0;
 
@@ -1577,7 +1545,6 @@ window.reevaluerFinsPresumees = reevaluerFinsPresumees;
 window.loadAll = loadAll;
 window.actualiserMaintenant = actualiserMaintenant;
 window.toggleSportFilters = toggleSportFilters;
-window.toggleMenu = toggleMenu;
 window.currentZoomLevel = currentZoomLevel;
 window.updateZoomDisplay = updateZoomDisplay;
 window.zoomIn = zoomIn;
@@ -1871,7 +1838,6 @@ window.activerTeleAndroid = function() {
    quitter. */
 window.retourTele = function() {
     var mbg = document.getElementById('mbg');
-    var menu = document.getElementById('main-menu');
     var guide = document.getElementById('tm-modal');
     var enqueteur = document.getElementById('investigator-modal');
     var look = document.getElementById('menu-look');
@@ -1887,7 +1853,6 @@ window.retourTele = function() {
         menuLecteur: menuEstOuvert(),
         fenetre: !!(statsOuvert || choixMatchs || choixSource || guide || (enqueteur && enqueteur.style.display === 'flex') || (look && !look.hidden)),
         fiche: !!(mbg && mbg.classList.contains('open')),
-        menuPlus: !!(menu && menu.classList.contains('open')),
         pleinCadre: document.body.getAttribute('data-view') === 'player' && typeof window.pleinCadreActif === 'function' && window.pleinCadreActif(),
         seule: document.body.getAttribute('data-view') === 'player' && typeof window.seuleActive === 'function' && window.seuleActive(),
         vue: document.body.getAttribute('data-view') === 'player' ? 'player' : (S.filter === 'live' ? 'live' : 'autre')
@@ -1906,21 +1871,27 @@ window.retourTele = function() {
     else if (action === 'plein') window.quitterPleinCadre();
     else if (action === 'seule') window.basculerSeule(false);
     else if (action === 'nav') { window.activerNavigationManette(); boutonVue.focus(); }
-    else if (action === 'plus') { if (typeof window.toggleMenu === 'function') window.toggleMenu(); }
     else if (action === 'live') {
         /* Dans l'APK, Retour hors du lecteur FERME les vidéos (28 octobre 2026, « revenir en arrière
            avec la touche ferme le stream dans l'APK, pour limiter les ressources ») : sur un
            Chromecast, une vidéo cachée garde son décodeur, sa mémoire et son flux. Sur le site, le
            lecteur continue en arrière-plan jusqu'au retour (9 octobre 2026). */
-        var avaitDesVideos = document.body.getAttribute('data-view') === 'player' && typeof window.dansApk === 'function' && window.dansApk() && typeof window.fermerToutesLesVideos === 'function';
-        if (avaitDesVideos) {
-            var n = (window.mvFlux && window.mvFlux.length) || 0;
-            window.fermerToutesLesVideos();
-            if (n) showToast(n > 1 ? 'Vidéos fermées' : 'Vidéo fermée');
-        }
-        window.applyFilter('live');
+        window.quitterLecteur('live');
     }
     return action !== 'quitter';
+};
+
+/* Sortir du lecteur, plein écran (29 octobre 2026) : vers la page d'où l'on vient (`vers`
+   absent : la dernière vue de la page, S.filter), par le bouton ← Retour de la barre ou la
+   touche Retour (qui mène au Live). */
+window.quitterLecteur = function(vers) {
+    var avaitDesVideos = document.body.getAttribute('data-view') === 'player' && typeof window.dansApk === 'function' && window.dansApk() && typeof window.fermerToutesLesVideos === 'function';
+    if (avaitDesVideos) {
+        var n = (window.mvFlux && window.mvFlux.length) || 0;
+        window.fermerToutesLesVideos();
+        if (n) showToast(n > 1 ? 'Vidéos fermées' : 'Vidéo fermée');
+    }
+    window.applyFilter(vers || S.filter || 'live');
 };
 
 // Auto-init at boot

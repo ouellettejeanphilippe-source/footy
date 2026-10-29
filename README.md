@@ -9,7 +9,7 @@ Toutes les heures sont celles de New York (heure de l'Est).
 - **Live** : les matchs en cours et ceux qui commencent dans l'heure, en cartes avec le score, la minute et le nombre de flux.
 - **Guide** : le programme complet du jour sur une grille de 24 h, par ligue, avec la ligne de l'heure courante. Un match commencé la veille qui joue encore après minuit reste affiché.
 - **Fiche de match** : buteurs, classement, statistiques de saison (matchs ESPN), et la liste des flux avec leurs actions.
-- **Lecteur** : jusqu'à quatre vidéos, dispositions automatiques, vidéos gardées en arrière-plan pendant qu'on navigue, bascule automatique de source quand une vidéo ne démarre pas (avec le script utilisateur).
+- **Lecteur** : en plein écran, comme un service de vidéo ; jusqu'à quatre vidéos, dispositions automatiques, vidéos gardées en arrière-plan pendant qu'on navigue, bascule automatique de source quand une vidéo ne démarre pas (avec le script utilisateur).
 - **Mode câble** (facultatif, `Lecteur → ⚙ Réglages → 📺`) : le lecteur se zappe au doigt — glisser ↑↓ change le match qui joue, ←→ change la source du match en cours, avec l'incrustation du décodeur.
 - **Favoris, ligues, apparence** : équipes et ligues favorites, niveaux de ligue (principale, secondaire, ignorée), palettes et formes de cartes.
 
@@ -21,17 +21,17 @@ L'application est un site statique : elle se sert telle quelle depuis le dépôt
 
 ### Installer sur téléphone ou ordinateur
 
-Dans le navigateur, « Installer l'application » (ou « Ajouter à l'écran d'accueil »). Vous obtenez une icône, le plein écran et une copie hors ligne de l'interface. En ligne, c'est toujours la version publiée qui s'affiche. Si un appareil semble rester sur une ancienne version, `Plus → ↻ Mettre à jour l'app` force la relecture sans toucher à vos réglages.
+Dans le navigateur, « Installer l'application » (ou « Ajouter à l'écran d'accueil »). Vous obtenez une icône, le plein écran et une copie hors ligne de l'interface. En ligne, c'est toujours la version publiée qui s'affiche. Si un appareil semble rester sur une ancienne version, `Réglages → ⬇ Mettre à jour l'app` force la relecture sans toucher à vos réglages.
 
 ### Le script utilisateur (recommandé)
 
 Les pages des lecteurs vidéo sont chargées telles quelles dans le lecteur. Sans aide, elles gardent leurs fenêtres surgissantes et leurs calques, et certaines refusent de s'afficher dans un cadre. Le script **Multiview Stream Cleaner** (`multiview-cleaner.user.js`) règle cela :
 
-- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script, avec les mêmes fonctions que sur Firefox, mode direct compris. `Plus → 🧩 Script → ⬇ Télécharger l'extension` (panneau Chrome) en fabrique le zip ; décompresser, puis dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier décompressé, `guide-des-sports-extension-<version>`, celui qui contient `manifest.json` (ou le dossier `extension/` du dépôt). Sans elle : uBlock Origin Lite, Tampermonkey avec « Autoriser les scripts utilisateur » (dans ses détails), et le script.
+- **Chrome, Edge, Brave, Opera** : l'**extension Guide des Sports** ([extension/](./extension/)) remplace uBlock Origin, qui ne s'y installe plus, Tampermonkey et le script, avec les mêmes fonctions que sur Firefox, mode direct compris. `Réglages → 🧩 Script → ⬇ Télécharger l'extension` (panneau Chrome) en fabrique le zip ; décompresser, puis dans `chrome://extensions` : « Mode développeur », « Charger l'extension non empaquetée », choisir le dossier décompressé, `guide-des-sports-extension-<version>`, celui qui contient `manifest.json` (ou le dossier `extension/` du dépôt). Sans elle : uBlock Origin Lite, Tampermonkey avec « Autoriser les scripts utilisateur » (dans ses détails), et le script.
 - **Firefox** :
   1. installez **uBlock Origin** (bloqueur de publicités) ;
   2. installez **Tampermonkey** (gestionnaire de scripts) ;
-  3. dans l'application, `Plus → 🧩 Script → Installer le script` (ou ouvrez [multiview-cleaner.user.js](./multiview-cleaner.user.js) et acceptez l'installation).
+  3. dans l'application, `Réglages → 🧩 Script → Installer le script` (ou ouvrez [multiview-cleaner.user.js](./multiview-cleaner.user.js) et acceptez l'installation).
 
 Ce que le script apporte : blocage des fenêtres surgissantes dès le premier octet de la page, nettoyage autour du lecteur, lecture automatique, une seule vidéo avec le son, bascule automatique de source, mesure du débit, et le **pont** qui lit les pages des sources depuis votre adresse quand les proxys sont refusés. Options → Réseau & proxys indique s'il est actif. Firefox demande quelques réglages en plus, expliqués sur la page 🧩 Script. Après une modification du script, `node extension/construire.mjs --script` remet l'extension à jour (`node extension/construire.mjs` refait aussi ses règles de blocage, après `cd mobile && npm install`).
 

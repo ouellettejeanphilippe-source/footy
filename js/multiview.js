@@ -3,7 +3,7 @@ import { DEFAULT_LEAGUES, OTHER_LEAGUES, teamColorPair, getLogo } from './db.js'
 import { MAX_VIDEOS, cartesDuChoix, basculerChoix, differenceChoix, libelleRegarder } from './choixmulti.js';
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
-import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, tailleStockageKo, plusGrossesCles } from './utils.js';
+import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, ongletDeLaVue, tailleStockageKo, plusGrossesCles } from './utils.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG } from './ui.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
@@ -2122,7 +2122,11 @@ export function setupMultivisionUI() {
      parti, comme « Ouvrir sur le site » du menu ⋮.
      ⏭ prend le focus quand la barre revient (focaliserCommandes). Les menus s'ouvrent
      par-dessus tout (js/mv-menu.js). */
-  var mvToolbarHtml = '<div class="mv-bar-videos" id="mv-bar-videos" role="group" aria-label="Vidéos du lecteur"><span class="mv-title">Lecteur</span></div>'
+  /* ← Retour, à gauche (29 octobre 2026) : le lecteur couvre tout l'écran, plus d'onglet
+     au-dessus de lui pour en sortir. Le même chemin que la touche Retour (quitterLecteur,
+     js/main.js). */
+  var mvToolbarHtml = '<button type="button" class="mv-tb-btn mv-tb-retour" id="mv-bar-retour" onclick="quitterLecteur()" title="Revenir à la page d\'avant (Échap)" aria-label="Retour"><span class="mv-tb-ic" aria-hidden="true">←</span><span class="mv-tb-lb">Retour</span></button>'
+      + '<div class="mv-bar-videos" id="mv-bar-videos" role="group" aria-label="Vidéos du lecteur"><span class="mv-title">Lecteur</span></div>'
       + '<div class="mv-bar-groupe mv-source-nav" role="group" aria-label="Vidéo choisie">'
       + '<button type="button" class="mv-tb-btn mv-tb-ic-seul" id="mv-src-prev" onclick="changerSourceActive(-1)" title="Source précédente de la vidéo choisie" aria-label="Source précédente"><span class="mv-tb-ic" aria-hidden="true">⏮</span></button>'
       + '<button type="button" class="mv-tb-btn" id="mv-src-next" onclick="changerSourceActive(1)" title="Source suivante de la vidéo choisie"><span class="mv-tb-ic" aria-hidden="true">⏭</span><span class="mv-tb-lb">Source<span class="mv-tb-lb-long"> suivante</span></span></button>'
@@ -5391,7 +5395,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v100';
+export var VERSION_APP = 'sports-guide-v101';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5467,10 +5471,10 @@ export function diagnosticAppareilHtml() {
        jours (18 octobre 2026). */
     var prot = etatProtection(typeof window !== 'undefined' ? window : {}, getBridgeStatus());
     if (prot.type === 'extension') html += ligne('Extension de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
-        : prot.version + ' — la ' + VERSION_EXTENSION + ' est sortie : Plus → 🧩 Script → Télécharger l\'extension, remplacer le dossier, puis ↻ dans chrome://extensions');
+        : prot.version + ' — la ' + VERSION_EXTENSION + ' est sortie : Réglages → 🧩 Script → Télécharger l\'extension, retirer l\'ancienne et charger le nouveau dossier dans chrome://extensions');
     else if (prot.type === 'script') html += ligne('Script de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
-        : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Plus → 🧩 Script → Installer le script, puis accepter la mise à jour dans Tampermonkey');
-    else html += ligne('Script de nettoyage', 'warn', 'absent — Plus → 🧩 Script');
+        : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Réglages → 🧩 Script → Installer le script, puis accepter la mise à jour dans Tampermonkey');
+    else html += ligne('Script de nettoyage', 'warn', 'absent — Réglages → 🧩 Script');
     /* Le mode direct, vu d'ici : combien de manifestes répondent, et pourquoi les autres
        non (18 octobre 2026, « le direct marche jamais »). */
     var sondes = Object.keys(sondesDirect).map(function(k) { return sondesDirect[k]; }).filter(function(x) { return x && !x.enCours; });
@@ -6016,15 +6020,17 @@ export function brancherManetteApplication() {
             retour: function() { if (typeof window.retourTele === 'function') window.retourTele(); },
             lecteur: function() { if (typeof window.openMultiviewTab === 'function') window.openMultiviewTab(); },
             live: function() { applyFilter('live'); },
-            menu: function() { if (typeof window.toggleMenu === 'function') window.toggleMenu(); },
-            /* Live ← Guide → Lecteur, sans boucler ; le bouton de la vue prend le focus. */
+            /* Select : l'onglet Réglages, qui a repris le menu « Plus » (29 octobre 2026). */
+            menu: function() { applyFilter('options'); },
+            /* LB / RB, hors du lecteur : d'un onglet à l'autre, Live ← Guide ← Favoris ←
+               Réglages, sans boucler ; le bouton de l'onglet prend le focus. Le lecteur n'est
+               plus un onglet : Start l'ouvre. */
             vue: function(sens) {
-                var ordre = ['live', 'all', 'player'];
-                var i = ordre.indexOf(document.body.getAttribute('data-view'));
+                var ordre = ['live', 'all', 'fav', 'options'];
+                var i = ordre.indexOf(ongletDeLaVue(document.body.getAttribute('data-view')));
                 var suivante = ordre[Math.min(Math.max((i < 0 ? 0 : i) + sens, 0), ordre.length - 1)];
-                if (suivante === 'player') { if (typeof window.openMultiviewTab === 'function') window.openMultiviewTab(); }
-                else applyFilter(suivante);
-                var bouton = document.getElementById(suivante === 'player' ? 'mv-toggle-btn' : 'filter-' + suivante);
+                applyFilter(suivante);
+                var bouton = document.getElementById('filter-' + suivante);
                 if (bouton && bouton.getClientRects().length) bouton.focus();
             },
             tuile: function(sens) { if (mvFlux.length) focusStream(tuileVoisine(activeMvIdx, mvFlux.length, sens)); },

@@ -615,13 +615,26 @@ export function showPage(id) {
 /* Onglet actif : une classe, pas des styles en ligne. L'ancienne version posait
    couleur, bordure, fond et ombre en `style` sur chaque bouton à chaque appel, ce que
    la feuille de style ne pouvait plus corriger. */
+/* Les pages de l'onglet Réglages (index.html, #reglages-barre) : l'onglet reste allumé
+   sur chacune, et la barre des Réglages dit laquelle est ouverte. */
+var PAGES_REGLAGES = ['options', 'logs', 'script'];
+export function ongletDeLaVue(vue) {
+  return PAGES_REGLAGES.indexOf(vue) !== -1 ? 'options' : vue;
+}
 export function syncNavState(active) {
+  var onglet = ongletDeLaVue(active);
   FILTERS.forEach(function(k) {
     var el = document.getElementById('filter-' + k);
     if (!el) return;
-    var on = k === active;
+    var on = k === onglet;
     el.classList.toggle('active-toggle', on);
     if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  });
+  PAGES_REGLAGES.forEach(function(k) {
+    var rb = document.getElementById('rb-' + k);
+    if (!rb) return;
+    rb.classList.toggle('active-toggle', k === active);
+    if (k === active) rb.setAttribute('aria-current', 'page'); else rb.removeAttribute('aria-current');
   });
   var mvBtn = document.getElementById('mv-toggle-btn');
   if (mvBtn) {
@@ -629,6 +642,8 @@ export function syncNavState(active) {
     mvBtn.classList.toggle('has-streams', active !== 'player' && mvFlux.length > 0);
     if (active === 'player') mvBtn.setAttribute('aria-current', 'page'); else mvBtn.removeAttribute('aria-current');
     mvBtn.style.cssText = '';
+    var compte = document.getElementById('nav-compte');
+    if (compte) { compte.hidden = !mvFlux.length; compte.textContent = mvFlux.length ? String(mvFlux.length) : ''; }
   }
   document.body.setAttribute('data-view', active);
   /* La grille retenue pendant le lecteur (buildEPG, js/ui.js) est dessinée en le

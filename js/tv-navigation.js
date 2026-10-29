@@ -61,7 +61,7 @@
     /* Les fenêtres qui gardent le focus, de la plus haute à la plus basse : le menu du
        lecteur (js/mv-menu.js), le choix d'une source (showFluxSelector), le guide des scripts, l'enquêteur, la fiche d'un match,
        le menu Look, le menu ⋯ Plus. */
-    const ZONES = ['.mv-menu', '#global-stats-sidebar', '#mv-choix', '#mv-flux-selector', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look', '#main-menu.open'];
+    const ZONES = ['.mv-menu', '#global-stats-sidebar', '#mv-choix', '#mv-flux-selector', '#tm-modal', '#investigator-modal', '#mbg', '#menu-look'];
 
     /* « La manette est bloquée par les modals » (28 octobre 2026). Le panneau Scores et
        statistiques (#global-stats-sidebar, z-index 999999 : au-dessus de tout, fiche

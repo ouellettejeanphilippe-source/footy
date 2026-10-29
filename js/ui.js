@@ -7,7 +7,7 @@ import { minutesDansLaJournee, comparerHeures, libelleJour, FENETRE_HEURES } fro
 import { etatCacheServeur, rattrapageNecessaire, ageEnClair } from './rattrapage.js';
 import { normName, lgColor, getTeamColors, getLogo, libelleSport } from './db.js';
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
-import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl } from './utils.js';
+import { lg, esc, toggleAccordion, escJs, pad, toggleLeague, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl, ongletDeLaVue } from './utils.js';
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
 import { liensLolDuDirect } from './esports.js';
@@ -299,9 +299,17 @@ function enregistrerPrefs() {
   var selC = document.getElementById('pref-card-color');
   if (selC && userPrefs.cardColor) selC.value = userPrefs.cardColor;
 }
+/* Look s'ouvre depuis les Réglages (29 octobre 2026), où la grille n'est pas : un choix ne
+   s'y voyait pas. On montre la vue qu'il change ; Look reste ouvert par-dessus, comme
+   quand il s'ouvrait du menu « Plus », au-dessus de la grille. */
+function montrerLaVue(vue) {
+  if (ongletDeLaVue(S.filter) !== 'options' || typeof window.applyFilter !== 'function') return;
+  window.applyFilter(vue === 'guide' ? 'all' : 'live');
+}
 export function choisirDisposition(nom, vue) {
   if (!userPrefs) return;
   var v = vue || vueCourante();
+  montrerLaVue(v);
   if (userPrefs.disposition) enregistrerPrefs();
   userPrefs[v === 'guide' ? 'dispositionGuide' : 'dispositionLive'] = dispositionValide(nom);
   enregistrerPrefs();
@@ -328,6 +336,7 @@ var COULEURS_LOOK = [
 ];
 export function choisirCouleurs(v) {
   if (!userPrefs) return;
+  montrerLaVue('live');
   userPrefs.cardColor = v;
   enregistrerPrefs();
   redessinerDisposition();
@@ -2491,7 +2500,9 @@ export function closeMod(){
   if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
 }
 
-/* Échap ferme la fiche, ou le menu « Plus » s'il est ouvert. */
+/* Échap ferme la fiche ; dans le lecteur, plein écran depuis le 29 octobre 2026, il en
+   sort (← Retour) quand rien n'est ouvert par-dessus : un menu du lecteur, le choix des
+   matchs ou d'une source se ferment d'abord, par leur propre Échap. */
 if (typeof document !== 'undefined') {
   document.addEventListener('keydown', function(e) {
     if (e.key !== 'Escape') return;
@@ -2499,8 +2510,11 @@ if (typeof document !== 'undefined') {
     if (mbg && mbg.classList.contains('open')) { closeMod(); return; }
     var inv = document.getElementById('investigator-modal');
     if (inv && inv.style.display === 'flex') { inv.style.display = 'none'; return; }
-    var menu = document.getElementById('main-menu');
-    if (menu && menu.classList.contains('open') && typeof window.toggleMenu === 'function') window.toggleMenu();
+    if (document.body.getAttribute('data-view') !== 'player' || e.defaultPrevented) return;
+    var t = e.target && e.target.closest ? e.target : null;
+    if (t && t.closest('.mv-menu, #mv-choix, #mv-flux-selector, #tm-modal, #menu-look')) return;
+    if (document.querySelector('.mv-menu, #mv-choix, #mv-flux-selector, #tm-modal')) return;
+    if (typeof window.quitterLecteur === 'function') window.quitterLecteur();
   });
 }
 

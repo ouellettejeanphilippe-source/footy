@@ -199,8 +199,8 @@ select.btn, .select {
 
 /* ── 4. En-tête et navigation ─────────────────────────────────────────────── */
 /* Haut de page nu (6 septembre 2026) : ni marque, ni recherche, ni pastilles de ligues,
-   ni date. L'en-tête ne porte que les onglets — Live, Guide, Lecteur, Plus — centrés,
-   gros, et nommés en clair. */
+   ni date. L'en-tête ne porte que les onglets — Live, Guide, Favoris, Réglages depuis le
+   29 octobre 2026 — centrés, gros, et nommés en clair, et ▶ Lecteur à droite. */
 .app-header {
   height: var(--hdr-height); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -231,22 +231,34 @@ select.btn, .select {
 .nav-btn.has-streams .nav-ic { color: var(--red); }
 .nav-btn.has-streams::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -10px; height: 2px; border-radius: 2px; background: var(--red); }
 
-/* Bouton « Plus » : deux icônes superposées, la classe aria-expanded choisit laquelle */
-#menu-btn .ic-x { display: none; }
-#menu-btn[aria-expanded="true"] .ic-menu { display: none; }
-#menu-btn[aria-expanded="true"] .ic-x { display: block; }
+/* ▶ Lecteur (29 octobre 2026) : hors des onglets, à droite, comme le « Reprendre » d'un
+   service de vidéo. Le nombre de vidéos qui tournent à côté. */
+.nav-lecteur { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); border: 1px solid var(--border2); }
+.nav-lecteur .nav-compte { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--red); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.nav-lecteur .nav-compte[hidden] { display: none; }
+.nav-lecteur.has-streams { border-color: rgba(255,255,255,0.35); }
+.nav-lecteur.has-streams::after { display: none; }
 
-.menu-wrap { position: relative; display: inline-flex; }
-.secondary-actions {
-  display: none; position: absolute; top: calc(100% + 10px); right: 0;
-  min-width: 190px; padding: 6px;
-  background: var(--bg-elev); border: 1px solid var(--border2); border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.6); z-index: 1000;
-  flex-direction: column; gap: 2px;
-}
-.secondary-actions.open { display: flex; }
-.secondary-actions .nav-btn { width: 100%; justify-content: flex-start; padding: 10px 12px; font-weight: 500; }
-.secondary-actions .nav-btn.active-toggle::after { display: none; }
+/* La barre de l'onglet Réglages : ses pages (Options, Script, Logs), Look, Actualiser et
+   Mettre à jour l'app, ce que portait le menu « Plus ». */
+.reglages-barre { display: none; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; max-width: 1100px; width: 100%; margin: 14px auto 0; padding: 0 20px; }
+body[data-view="options"] .reglages-barre, body[data-view="logs"] .reglages-barre, body[data-view="script"] .reglages-barre { display: flex; }
+/* Le bandeau du cache parle des liens du Live et du Guide : pas dans les Réglages. */
+body[data-view="options"] .bandeau-cache, body[data-view="logs"] .bandeau-cache, body[data-view="script"] .bandeau-cache { display: none !important; }
+.reglages-barre .rb-onglets, .reglages-barre .rb-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.rb-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border2); background: transparent; color: var(--muted2); font-weight: 600; font-size: 14px; white-space: nowrap; }
+.rb-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.rb-btn.active-toggle { color: #000 !important; background: #fff !important; border: 1px solid #fff !important; box-shadow: none !important; }
+.rb-actions .rb-btn { font-weight: 500; }
+body[data-view="options"] .menu-look, body[data-view="logs"] .menu-look, body[data-view="script"] .menu-look { top: calc(var(--hdr-height) + var(--safe-top) + 62px); left: max(20px, calc(50% - 530px)); right: auto; }
+
+/* Le lecteur en plein écran (29 octobre 2026, « multiview devrait pas juste être plein
+   écran… comme les plateformes de streaming normales ») : ni onglets, ni bandeau, ni
+   barre du bas au-dessus de lui ; on en sort par ← Retour, Échap ou la touche Retour.
+   Rien ne le recouvre non plus, ce que le lecteur Twitch exige (exigeVisibiliteTotale). */
+body[data-view="player"] .app-header, body[data-view="player"] .bandeau-cache, body[data-view="player"] .reglages-barre { display: none !important; }
+#mv-toolbar .mv-tb-retour { flex-shrink: 0; }
+#mv-toolbar .mv-tb-retour .mv-tb-ic { font-size: 20px; }
 
 /* ── 5. (Barre d'outils retirée) ──────────────────────────────────────────
    Recherche, rafraîchissement, liens manquants, date et pastilles de ligues ne sont
@@ -1068,11 +1080,23 @@ body[data-view="player"] .toast { bottom: calc(96px + var(--safe-bottom)); }
   .nav-links .nav-btn .nav-ic, .nav-links .nav-btn .nav-ic svg { width: 22px; height: 22px; }
   .nav-btn.active-toggle::after, .nav-btn.has-streams::after { left: 50%; right: auto; bottom: auto; top: 0; width: 22px; height: 2px; transform: translateX(-50%); }
   .nav-btn.active-toggle .nav-ic { color: var(--accent); }
-  .menu-wrap { flex: 1 1 0; display: flex; min-width: 0; }
-  .menu-wrap > .nav-btn { width: 100%; }
-  .secondary-actions { position: fixed; bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 8px); right: 8px; top: auto; left: auto; width: min(260px, calc(100vw - 16px)); }
-  .secondary-actions .nav-btn { flex-direction: row; font-size: 14px; padding: 12px 14px; }
-  .secondary-actions .nav-btn.active-toggle::after { display: none; }
+  /* ▶ Lecteur flotte au-dessus de la barre du bas, et seulement quand une vidéo tourne. */
+  .nav-lecteur { position: fixed; top: auto; right: 12px; transform: none; bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 12px); z-index: 1001; display: none; background: rgba(14, 14, 16, 0.98); min-height: 44px; padding: 8px 14px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+  .nav-lecteur.has-streams { display: inline-flex; }
+  /* Le lecteur prend aussi la place de la barre du bas. */
+  body[data-view="player"] { padding-bottom: var(--safe-bottom); }
+  .reglages-barre { margin-top: 10px; padding: 0 12px; }
+  .reglages-barre .rb-onglets { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .rb-btn { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  /* ← seul, à gauche des vidéos, sur la première rangée de la barre. */
+  #mv-toolbar .mv-tb-retour .mv-tb-lb { display: none; }
+  #mv-toolbar .mv-tb-btn.mv-tb-retour { flex: 0 0 44px; }
+  /* La rangée des vidéos a des marges de -10 px de chaque côté (de quoi loger l'anneau de
+     focus) : sa base les rend, sans quoi « ⏭ Source » se logeait, écrasé, au bout de la
+     première rangée. Et un bouton garde 40 px : la rangée suivante en tient sept. */
+  #mv-toolbar .mv-tb-retour + .mv-bar-videos { flex: 0 0 calc(100% - 28px); }
+  #mv-toolbar .mv-tb-btn { min-width: 40px; }
+  body[data-view="options"] .menu-look, body[data-view="logs"] .menu-look, body[data-view="script"] .menu-look { top: calc(var(--safe-top) + 58px); left: 12px; bottom: auto; }
 
   .btn.sm { min-height: 34px; }
 
@@ -1445,9 +1469,6 @@ body.dsp-on .app-header { height: auto; min-height: var(--hdr-height); padding-b
   .btn:hover { transform: none; filter: none; }
 }
 
-/* Séparateur du dernier élément de menu (bascule d'interface) */
-.secondary-actions .menu-sep { border-top: 1px solid var(--border) !important; border-radius: 0 0 8px 8px; margin-top: 4px; padding-top: 12px; color: var(--muted); }
-
 /* Ajustement du contenu d'une tuile Multivision (applyMvFit, js/multiview.js). Les
    dimensions sont calculées par le conteneur (unités cqw/cqh) : la tuile suit la grille
    sans observateur. `!important` : le cadre porte width/height 100 % en style en ligne. */
@@ -1505,7 +1526,7 @@ body.dsp-on .app-header { height: auto; min-height: var(--hdr-height); padding-b
   --carte-bandeau: rgba(255, 255, 255, 0.06);
   --carte-choisi: rgba(129, 140, 248, 0.22);
 }
-.menu-look, .secondary-actions, .toast, .zoom-controls, .modal, .panel {
+.menu-look, .toast, .zoom-controls, .modal, .panel {
   background: var(--carte-fond); border: 1px solid var(--carte-lisere); border-radius: var(--carte-rayon);
 }
 .toast { backdrop-filter: none; -webkit-backdrop-filter: none; }

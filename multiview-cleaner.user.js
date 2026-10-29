@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.19
+// @version      1.20
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -553,12 +553,6 @@
         // Maximiser le conteneur du lecteur
         mainPlayerBase.classList.add('mv-cleaner-maximized');
 
-        // Ajouter le bouton Cast si c'est une video
-
-        // Ajouter le bouton Cast si c'est une video
-        if (target.tagName === 'VIDEO') {
-            addMobileCastSupport(target);
-        }
 
 
 
@@ -696,8 +690,6 @@
     }
 
 
-    // --- CHROMECAST INJECTION ---
-
     function extractM3u8Url() {
         // Method 1: Check for standard global player objects
         if (window.player && window.player.options && window.player.options.sources) {
@@ -730,59 +722,11 @@
         return null;
     }
 
-    function addMobileCastSupport(videoElement) {
-        if (!videoElement || videoElement.dataset.mobileCastHandled) return;
-        videoElement.dataset.mobileCastHandled = 'true';
-
-        // Sur mobile, le fait d'injecter directement l'URL m3u8 dans le tag <video>
-        // ou d'offrir un lien d'ouverture externe permet au lecteur natif de gérer le Cast.
-
-        // On attend que la page soit bien chargée pour tenter l'extraction
-        setTimeout(() => {
-            let videoUrl = videoElement.src;
-            if (!videoUrl && videoElement.querySelector('source')) {
-                videoUrl = videoElement.querySelector('source').src;
-            }
-
-            if (!videoUrl || videoUrl.startsWith('blob:')) {
-                const m3u8 = extractM3u8Url();
-                if (m3u8) {
-                    console.log('[Multiview Cleaner] M3U8 trouvé pour support mobile :', m3u8);
-
-                    // Créer un bouton d'action rapide pour Mobile
-                    const btnContainer = document.createElement('div');
-                    btnContainer.style.cssText = 'position:absolute; top:50px; right:10px; z-index:9999999; display:flex; flex-direction:column; gap:8px;';
-
-                    // Bouton 1: Tenter de forcer le lecteur natif (permet le Cast iOS/Android)
-                    const forceNativeBtn = document.createElement('button');
-                    forceNativeBtn.innerText = '📱 Force Native Player (Cast)';
-                    forceNativeBtn.style.cssText = 'background:rgba(0,122,255,0.8); color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.5);';
-                    forceNativeBtn.onclick = () => {
-                        videoElement.src = m3u8;
-                        videoElement.load();
-                        videoElement.play().catch(e => console.log(e));
-                        forceNativeBtn.style.display = 'none';
-                    };
-
-                    // Bouton 2: Ouvrir dans une app de Cast tierce (ex: Web Video Caster, VLC)
-                    const openExternalBtn = document.createElement('button');
-                    openExternalBtn.innerText = '📺 Open in Cast App';
-                    openExternalBtn.style.cssText = 'background:rgba(255,149,0,0.8); color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.5);';
-                    openExternalBtn.onclick = () => {
-                        window.location.href = m3u8;
-                    };
-
-                    btnContainer.appendChild(forceNativeBtn);
-                    btnContainer.appendChild(openExternalBtn);
-
-                    const parent = videoElement.parentElement;
-                    if (parent) {
-                        parent.appendChild(btnContainer);
-                    }
-                }
-            }
-        }, 2000);
-    }
+    /* Les boutons « 📱 Force Native Player (Cast) » et « 📺 Open in Cast App », posés en haut
+       à droite de la vidéo dès qu'un manifeste se trouvait dans la page, sont retirés en
+       1.20 (29 octobre 2026) : ils chevauchaient les commandes de la tuile, sur toutes les
+       plateformes, et l'application joue déjà le flux elle-même (mode direct). Le
+       manifeste trouvé ici sert toujours, signalé à l'application (signalerManifeste). */
 // ----------------------------
 
     /* Écouteur des ordres de l'application, posé À LA RACINE.
@@ -1306,7 +1250,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.19';
+    var VERSION = '1.20';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche

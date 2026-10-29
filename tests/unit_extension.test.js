@@ -205,7 +205,7 @@ test('l\'ancien guide : la page Script, reprise par la fenêtre du début', () =
   assert.ok(page.includes('chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh'), 'uBlock Origin Lite pour Chrome');
   assert.ok(page.includes('microsoftedge.microsoft.com/addons/detail/ublock-origin-lite/cimighlppcgcoapaliogpjjdehbnofhn'), 'uBlock Origin Lite pour Edge');
   assert.ok(page.includes('addons.mozilla.org/fr/firefox/addon/ublock-origin/'), 'Firefox garde uBlock Origin');
-  assert.ok(html.includes('>🧩 Script</button>'), 'menu Plus');
+  assert.ok(/id="rb-script"[^>]*>🧩 Script<\/button>/.test(html), 'l\'onglet Réglages → 🧩 Script');
   const mv = lire('js/multiview.js');
   assert.ok(mv.includes("document.getElementById('guide-installation')"), 'la fenêtre reprend la page');
 });
