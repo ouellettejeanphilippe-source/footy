@@ -601,7 +601,8 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
       debutGrille: epg.top
     };
   });
-  expect(entete.enfants, 'l\'en-tête ne contient que la navigation').toEqual(['nav-links']);
+  /* Les onglets, et ▶ Lecteur à droite (29 octobre 2026 : le lecteur n'est plus un onglet). */
+  expect(entete.enfants, 'l\'en-tête ne contient que la navigation').toEqual(['nav-links', 'mv-toggle-btn']);
   expect(entete.hauteur, 'un en-tête d\'une seule rangée').toBeLessThanOrEqual(64);
   expect(entete.debutGrille, 'la grille commence juste sous les onglets, et sous le seul bandeau qui ait le droit de s\'y glisser')
     .toBeLessThanOrEqual(entete.basDuHaut + 1);
@@ -611,6 +612,61 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
   expect(await page.evaluate(() => document.querySelectorAll('.match-card, .mb, #marea [data-mid]').length), 'le Guide reste peuplé').toBeGreaterThan(0);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Le fait que multiview, menus et script se chevauchent weird, est-ce que multiview
+   devrait pas juste être plein écran et Live et Guide la page principale… comme les
+   plateformes de streaming normales ? » (29 octobre 2026). Le lecteur était posé sous les
+   onglets et le bandeau du cache, et le menu « Plus » s'ouvrait par-dessus les vidéos. Il
+   couvre maintenant tout l'écran, rien n'est peint au-dessus de lui, et on en sort par
+   ← Retour ou Échap vers la page d'où l'on vient ; les vidéos continuent, et ▶ Lecteur,
+   qui dit combien elles sont, y ramène (« continuent avec façon de retourner »). */
+for (const [nom, vp] of [['ordinateur', { width: 1366, height: 768 }], ['téléphone', { width: 390, height: 844 }]]) {
+  test(`le lecteur couvre tout l'écran, ← Retour et Échap ramènent à la page d'avant, ▶ Lecteur y retourne (${nom})`, async ({ page }) => {
+    await page.setViewportSize(vp);
+    const pageErrors = await bootOffline(page);
+    await page.evaluate(() => window.applyFilter('all'));
+    await expect(page.locator('#mv-toggle-btn').locator('#nav-compte'), 'pas de compte sans vidéo').toBeHidden();
+    await page.evaluate((o) => {
+      window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA');
+      window.addToMultivision(o + '/__faux-lecteur?b', 'Match B', 'mB');
+    }, origin);
+    await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+    await expect(page.locator('.mv-cell')).toHaveCount(2);
+
+    const ecran = await page.evaluate(() => {
+      const r = document.getElementById('mv-container').getBoundingClientRect();
+      const peints = [[window.innerWidth / 2, 3], [3, 3], [window.innerWidth - 3, 3], [window.innerWidth / 2, window.innerHeight - 3]]
+        .map(([x, y]) => { const el = document.elementFromPoint(x, y); return !!(el && el.closest('#mv-container')); });
+      return { top: r.top, left: r.left, right: r.right, bottom: r.bottom, w: window.innerWidth, h: window.innerHeight, peints };
+    });
+    expect([ecran.top, ecran.left], 'depuis le coin de l\'écran').toEqual([0, 0]);
+    expect(ecran.right, 'toute la largeur').toBeGreaterThanOrEqual(ecran.w - 0.5);
+    expect(ecran.bottom, 'toute la hauteur, barre du bas comprise').toBeGreaterThanOrEqual(ecran.h - 0.5);
+    expect(ecran.peints, 'ni onglets, ni bandeau, ni barre du bas peints au-dessus').toEqual([true, true, true, true]);
+    await expect(page.locator('#app-header')).toBeHidden();
+
+    // ← Retour : la page d'avant (le Guide), les vidéos continuent, ▶ Lecteur les compte.
+    await page.mouse.move(vp.width / 2, vp.height / 2);
+    await page.locator('#mv-bar-retour').click();
+    await expect(page.locator('body')).toHaveAttribute('data-view', 'all');
+    expect(await page.evaluate(() => window.mvFlux.length), 'les vidéos continuent').toBe(2);
+    await expect(page.locator('#mv-toggle-btn')).toBeVisible();
+    await expect(page.locator('#nav-compte')).toHaveText('2');
+
+    // ▶ Lecteur y ramène ; Échap ferme d'abord un menu du lecteur, puis le lecteur.
+    await page.locator('#mv-toggle-btn').click();
+    await expect(page.locator('body')).toHaveAttribute('data-view', 'player');
+    await page.mouse.move(vp.width / 2, vp.height / 2 + 5);
+    await page.locator('#mv-more-btn').click();
+    await expect(page.locator('.mv-menu')).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.mv-menu')).toHaveCount(0);
+    await expect(page.locator('body'), 'Échap a fermé le menu, pas le lecteur').toHaveAttribute('data-view', 'player');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('body')).toHaveAttribute('data-view', 'all');
+    expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+  });
+}
 
 /* « Faire que le dropdown des options soit par-dessus le multiview. » Les menus posés
    dans la tuile étaient rognés par son `overflow: hidden` et recouverts par la tuile
@@ -1262,18 +1318,23 @@ test('la page Live n\'a qu\'un fond : aucune section n\'en repeint une copie', a
 });
 
 /* « Look, mettre à jour et actualiser… dans le Plus » (25 octobre 2026) : plus de boutons
-   flottants posés sur la grille ; les trois sont dans le menu Plus, sur toutes les vues. */
-test('Actualiser est dans le menu Plus, et dit qu\'il travaille', async ({ page }) => {
+   flottants posés sur la grille. Le menu Plus est devenu l'onglet Réglages (29 octobre
+   2026) : les trois sont dans sa barre, au-dessus de chacune de ses pages. */
+test('Actualiser est dans la barre des Réglages, et dit qu\'il travaille', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
 
   expect(await page.locator('#fab-groupe, .fab-actualiser').count(), 'plus de boutons flottants').toBe(0);
-  await page.locator('#menu-btn').click();
-  await expect(page.locator('#main-menu #btn-actualiser')).toBeVisible();
-  await expect(page.locator('#main-menu #btn-look')).toBeVisible();
-  await expect(page.locator('#main-menu #btn-maj-app')).toBeVisible();
-  await page.locator('#menu-btn').click();
+  await expect(page.locator('#reglages-barre'), 'la barre des Réglages, sur leurs seules pages').toBeHidden();
+  await page.locator('#filter-options').click();
+  for (const vue of ['options', 'script', 'logs']) {
+    await page.evaluate((v) => window.applyFilter(v), vue);
+    await expect(page.locator('#filter-options'), 'l\'onglet Réglages reste allumé sur ' + vue).toHaveClass(/active-toggle/);
+    await expect(page.locator('#rb-' + vue), 'et la barre dit quelle page est ouverte').toHaveClass(/active-toggle/);
+    for (const id of ['btn-actualiser', 'btn-look', 'btn-maj-app']) await expect(page.locator('#reglages-barre #' + id)).toBeVisible();
+  }
+  await page.evaluate(() => window.applyFilter('live'));
 
   /* L'état « je travaille » est posé AVANT le premier aller-retour : on le lit dans la
      même évaluation que le clic, donc sans course. */
@@ -1491,14 +1552,16 @@ test('rien ne sort de son cadre, et les cartes des dispositions sont les cartes 
 
 /* « Séparer guide et live pour pouvoir mix and match » et « ajouter bouton pour changer
    look, proche de actualiser, ainsi que le mettre à jour l'app » (13 octobre 2026). */
-test('Live et Guide ont chacun leur disposition, et Look (menu Plus) les change', async ({ page }) => {
+test('Live et Guide ont chacun leur disposition, et Look (Réglages) les change', async ({ page }) => {
   const pageErrors = await bootOffline(page);
-  // Look est dans le menu Plus depuis le 25 octobre 2026 ; ouvrir Look ferme Plus.
-  await page.locator('#menu-btn').click();
-  await page.locator('#main-menu #btn-look').click();
-  await expect(page.locator('#main-menu')).not.toHaveClass(/open/);
+  // Look était dans le menu Plus (25 octobre 2026), devenu l'onglet Réglages (29 octobre 2026).
+  await page.locator('#filter-options').click();
+  await page.locator('#reglages-barre #btn-look').click();
   await expect(page.locator('#menu-look')).toBeVisible();
+  /* Depuis les Réglages, un choix montre la vue qu'il change, Look restant ouvert. */
   await page.locator('#menu-look [data-look-vue="live"][data-look-nom="tableau"]').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+  await expect(page.locator('#menu-look')).toBeVisible();
   await page.waitForSelector('#marea .dsp-tableau.dsp-vue-live');
   await page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]').click();
   await expect(page.locator('#menu-look [data-look-vue="guide"][data-look-nom="chaines"]')).toHaveAttribute('aria-checked', 'true');
@@ -1533,10 +1596,13 @@ test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche 
   expect(nav.top, 'la barre est en bas, pas en haut').toBeGreaterThan(nav.h / 2);
   expect(nav.width, 'la barre occupe toute la largeur').toBeGreaterThanOrEqual(nav.w - 1);
 
-  for (const id of ['filter-live', 'filter-all', 'mv-toggle-btn', 'menu-btn']) {
+  for (const id of ['filter-live', 'filter-all', 'filter-fav', 'filter-options']) {
     const box = await page.locator('#' + id).boundingBox();
     expect(box && box.height, id + ' est une cible tactile d\'au moins 40 px').toBeGreaterThanOrEqual(40);
   }
+  /* ▶ Lecteur n'est pas dans la barre (29 octobre 2026) : il flotte au-dessus d'elle,
+     seulement quand une vidéo tourne. */
+  await expect(page.locator('#mv-toggle-btn'), 'pas de ▶ Lecteur sans vidéo').toBeHidden();
 
   await page.locator('#marea .match-card').first().click();
   await expect(page.locator('#mbg')).toHaveClass(/open/);
@@ -2519,7 +2585,7 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
    (25 octobre 2026). Aucun navigateur ne branche une manette sans matériel : le test tient
    une manette « standard » par navigator.getGamepads, ce que lit l'application, et la
    vraie application fait le reste (navigation du mode TV, lecteur, Retour). */
-test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, Y plein cadre, B revient, Select le menu', async ({ page }) => {
+test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, Y plein cadre, B revient, RB l\'onglet, Select les Réglages', async ({ page }) => {
   await page.addInitScript(() => {
     const pad = { index: 0, id: 'Manette de test', connected: true, mapping: 'standard', timestamp: 0,
       buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })), axes: [0, 0, 0, 0] };
@@ -2536,7 +2602,7 @@ test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, 
     await page.evaluate((i) => window.__manette.relacher(i), b);
     await page.waitForTimeout(150);
   };
-  const BAS = 13, A = 0, B = 1, Y = 3, SELECT = 8, START = 9, RB = 5;
+  const BAS = 13, A = 0, B = 1, Y = 3, SELECT = 8, START = 9, LB = 4, RB = 5;
 
   // La croix : la navigation aux flèches se charge (sans le zoom du mode TV), l'aide s'affiche.
   await presser(BAS);
@@ -2577,11 +2643,23 @@ test('à la manette : la croix navigue, A ouvre, Start le lecteur, RB la tuile, 
   await presser(B);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
 
-  // Select : le menu ⋯ Plus ; B le referme.
+  /* Hors du lecteur, LB / RB passent d'un onglet à l'autre (Live, Guide, Favoris, Réglages,
+     29 octobre 2026), sans repasser par le lecteur, qui n'en est plus un. */
+  await presser(RB);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'all');
+  await expect(page.locator('#filter-all')).toBeFocused();
+  await presser(LB);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+  await presser(LB);
+  await expect(page.locator('body'), 'sans boucler').toHaveAttribute('data-view', 'live');
+
+  // Select : l'onglet Réglages (l'ancien menu « Plus ») ; B ramène à la barre, puis au Live.
   await presser(SELECT);
-  await expect(page.locator('#main-menu')).toHaveClass(/open/);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'options');
+  await expect(page.locator('#filter-options')).toHaveClass(/active-toggle/);
   await presser(B);
-  await expect(page.locator('#main-menu')).not.toHaveClass(/open/);
+  await presser(B);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });

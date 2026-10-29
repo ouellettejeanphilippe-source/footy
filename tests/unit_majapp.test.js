@@ -85,9 +85,9 @@ async function main() {
   const sw = require('fs').readFileSync(require('path').join(__dirname, '..', 'sw.js'), 'utf8');
   assert.ok(sw.indexOf("'" + mv.VERSION_APP + "'") >= 0, 'VERSION_APP et CACHE_NAME restent en phase');
   const html2 = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
-  assert.ok(/id="btn-maj-app"[^>]*mettreAJourApplication\(\)/.test(html2), 'et dans le menu « Plus », avec Look et Actualiser');
+  assert.ok(/id="btn-maj-app"[^>]*mettreAJourApplication\(\)/.test(html2), 'et dans la barre des Réglages, avec Look et Actualiser (ex-menu « Plus »)');
   assert.ok(!/id="btn-maj-fab"/.test(html2), 'plus de bouton flottant (« dans le Plus », 25 octobre 2026)');
-  ok('le bouton est offert dans la page Logs et dans le menu « Plus », pas en double');
+  ok('le bouton est offert dans la page Logs et dans la barre des Réglages, pas en double');
 
   console.log(`unit_majapp: ${n} groupes de tests OK`);
   process.exit(0);

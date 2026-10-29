@@ -37,11 +37,14 @@
 <body data-view="live">
 
 <!-- ═══ EN-TÊTE ═══════════════════════════════════════════════════════════════
-     Haut de page nu (6 septembre 2026) : ni marque, ni recherche, ni date, ni
-     pastilles de ligues — seulement les onglets. Bureau : centrés en haut.
-     Mobile : les onglets (.nav-links) passent en barre fixe au bas de l'écran.
-     Les identifiants sont ceux qu'attendent applyFilter (js/utils.js) et les tests
-     de démarrage. -->
+     Comme un service de vidéo (29 octobre 2026, « multiview devrait pas juste être plein
+     écran et Live et Guide la page principale et les autres des onglets accessibles dans
+     la page principale ») : quatre onglets, Live, Guide, Favoris, Réglages ; le lecteur
+     n'en est plus un. Il s'ouvre en plein écran par-dessus tout (body[data-view="player"],
+     styles.css) et le bouton ▶ Lecteur, à droite, y ramène. Bureau : onglets centrés en
+     haut. Mobile : en barre fixe au bas de l'écran, ▶ Lecteur au-dessus d'elle tant
+     qu'une vidéo tourne. Les identifiants sont ceux qu'attendent applyFilter et
+     syncNavState (js/utils.js) et les tests de démarrage. -->
 <header class="app-header" id="app-header">
   <nav class="nav-links" id="nav-links" aria-label="Navigation principale">
     <button class="nav-btn" id="filter-live" onclick="applyFilter('live')">
@@ -52,33 +55,44 @@
       <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5M8 14h4M14 14h2"/></svg></span>
       <span class="nav-lb">Guide</span>
     </button>
-    <button class="nav-btn" id="mv-toggle-btn" onclick="openMultiviewTab()">
-      <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg></span>
-      <span class="nav-lb">Lecteur</span>
+    <button class="nav-btn" id="filter-fav" onclick="applyFilter('fav')">
+      <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span>
+      <span class="nav-lb">Favoris</span>
     </button>
-    <div class="menu-wrap">
-      <button class="nav-btn" id="menu-btn" onclick="toggleMenu(event)" aria-label="Plus d'options" aria-haspopup="true" aria-expanded="false" aria-controls="main-menu">
-        <span class="nav-ic" aria-hidden="true"><svg class="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><svg class="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
-        <span class="nav-lb">Plus</span>
-      </button>
-      <div class="secondary-actions" id="main-menu" role="menu">
-        <button class="nav-btn" id="filter-fav" role="menuitem" onclick="applyFilter('fav'); toggleMenu(event);">⭐ Favoris</button>
-        <button class="nav-btn" id="filter-options" role="menuitem" onclick="applyFilter('options'); toggleMenu(event);">⚙️ Options</button>
-        <button class="nav-btn" id="filter-logs" role="menuitem" onclick="applyFilter('logs'); toggleMenu(event);">📋 Logs</button>
-        <button class="nav-btn" id="filter-script" role="menuitem" onclick="applyFilter('script'); toggleMenu(event);">🧩 Script</button>
-        <button class="nav-btn menu-sep" id="btn-look" role="menuitem" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look" onclick="toggleMenu(event); basculerMenuLook(event);">🎨 Look</button>
-        <button class="nav-btn" id="btn-actualiser" role="menuitem" onclick="toggleMenu(event); actualiserMaintenant();" title="Actualiser les scores et les liens maintenant"><span class="menu-ic" aria-hidden="true">↻</span> Actualiser</button>
-        <button class="nav-btn" id="btn-maj-app" role="menuitem" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">⬇ Mettre à jour l'app</button>
-      </div>
-    </div>
+    <button class="nav-btn" id="filter-options" onclick="applyFilter('options')">
+      <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
+      <span class="nav-lb">Réglages</span>
+    </button>
   </nav>
+  <button class="nav-btn nav-lecteur" id="mv-toggle-btn" onclick="openMultiviewTab()" title="Ouvrir le lecteur">
+      <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg></span>
+      <span class="nav-lb">Lecteur</span><span class="nav-compte" id="nav-compte" hidden></span>
+  </button>
 </header>
+
 
 <!-- ═══ BANDEAU DU CACHE SERVEUR ══════════════════════════════════════════════
      Les liens sont republiés toutes les 30 min par GitHub Actions. Quand ce n'est plus
      le cas, l'application le DIT ici — pendant la panne du 10 au 12 septembre 2026, elle
      a servi des liens de l'avant-veille pendant 45 h sans un mot (js/rattrapage.js). -->
 <div id="bandeau-cache" class="bandeau-cache" role="status" aria-live="polite" hidden></div>
+
+<!-- ═══ RÉGLAGES ══════════════════════════════════════════════════════════════
+     Ce qui était dans le menu « Plus » (Options, Look, Script, Logs, Actualiser, Mettre
+     à jour l'app), en onglets en tête des pages de l'onglet Réglages. Montrée par la
+     feuille de style sur ces seules pages (body[data-view]). -->
+<nav class="reglages-barre" id="reglages-barre" aria-label="Réglages">
+  <div class="rb-onglets">
+    <button class="rb-btn" id="rb-options" onclick="applyFilter('options')">⚙️ Options</button>
+    <button class="rb-btn" id="btn-look" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look" onclick="basculerMenuLook(event)">🎨 Look</button>
+    <button class="rb-btn" id="rb-script" onclick="applyFilter('script')">🧩 Script</button>
+    <button class="rb-btn" id="rb-logs" onclick="applyFilter('logs')">📋 Logs</button>
+  </div>
+  <div class="rb-actions">
+    <button class="rb-btn" id="btn-actualiser" onclick="actualiserMaintenant()" title="Actualiser les scores et les liens maintenant"><span class="menu-ic" aria-hidden="true">↻</span> Actualiser</button>
+    <button class="rb-btn" id="btn-maj-app" onclick="mettreAJourApplication()" title="Récupère la dernière version publiée : retire le service worker, vide ses caches et recharge. Les réglages et favoris sont gardés.">⬇ Mettre à jour l'app</button>
+  </div>
+</nav>
 
 <!-- ═══ GUIDE ═════════════════════════════════════════════════════════════════ -->
 <main class="epg" id="epg">
@@ -111,9 +125,9 @@
 </main>
 
 <!-- Le menu Look (dispositions du Live et du Guide, couleur des cartes, js/ui.js
-     basculerMenuLook), ouvert depuis le menu Plus. Look, Mettre à jour l'app et
-     Actualiser étaient des boutons flottants (13 octobre 2026) ; « Look, mettre à jour et
-     actualiser… dans le Plus » (25 octobre 2026). -->
+     basculerMenuLook), ouvert depuis Réglages → 🎨 Look. Look, Mettre à jour l'app et
+     Actualiser étaient des boutons flottants (13 octobre 2026), puis dans le menu « Plus »
+     (25 octobre 2026), devenu l'onglet Réglages (29 octobre 2026). -->
 <div class="menu-look" id="menu-look" role="menu" aria-label="Look" hidden></div>
 
 <!-- ═══ DÉBOGAGE ══════════════════════════════════════════════════════════════ -->
@@ -274,7 +288,7 @@
       </div>
 
       <div class="field row">
-        <div class="field-label">Disposition et couleurs<small>Par Plus → 🎨 Look : la disposition du Live et du Guide, et la couleur des cartes.</small></div>
+        <div class="field-label">Disposition et couleurs<small>Par Réglages → 🎨 Look : la disposition du Live et du Guide, et la couleur des cartes.</small></div>
       </div>
 
       <div class="field row">
@@ -429,8 +443,8 @@
       <ol>
         <li><button type="button" class="btn store chrome" onclick="telechargerExtension()">⬇ Télécharger l'extension (.zip)</button>, puis décompresser le fichier.</li>
         <li>Ouvrir <code>chrome://extensions</code> (Edge : <code>edge://extensions</code>) et activer le <strong>Mode développeur</strong>.</li>
-        <li>Cliquer <strong>Charger l'extension non empaquetée</strong> et choisir le dossier <code>guide-des-sports-extension</code>.</li>
-        <li>Recharger l'application. Pour une mise à jour : retélécharger, remplacer le dossier, puis ↻ sur la fiche de l'extension.</li>
+        <li>Cliquer <strong>Charger l'extension non empaquetée</strong> et choisir le dossier décompressé, <code>guide-des-sports-extension-…</code> (celui qui contient <code>manifest.json</code>).</li>
+        <li>Recharger l'application. Pour une mise à jour : retélécharger et décompresser, puis dans <code>chrome://extensions</code> retirer l'ancienne et charger le nouveau dossier.</li>
       </ol>
       <p class="help">Sans l'extension : uBlock Origin Lite (étape 1), puis Tampermonkey (étape 2) en activant <strong>Autoriser les scripts utilisateur</strong> dans ses détails (<code>chrome://extensions</code> → Tampermonkey → Détails), et le script (étape 3). Les pages qui refusent l'iframe ne s'ouvrent alors pas toujours.</p>
     </div>

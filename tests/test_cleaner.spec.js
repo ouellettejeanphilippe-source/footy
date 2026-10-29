@@ -397,6 +397,29 @@ test('le décor du site disparaît quand le lecteur arrive tardivement', async (
   await expect(cadre.locator('#lecteur')).toBeAttached();
 });
 
+/* « Le fait que multiview, menus et script se chevauchent weird » (29 octobre 2026). Le
+   script posait « 📱 Force Native Player (Cast) » et « 📺 Open in Cast App » à côté de la
+   vidéo, deux secondes après l'avoir isolée, dès qu'un manifeste se lisait dans la page (ici
+   `window.config.file`, que les lecteurs exposent). Son propre nettoyeur de calques les
+   retirait aussitôt (position absolue, z-index de plus de 1000) : ils ne faisaient que
+   passer. Retirés en 1.20 ; un observateur posé dans le cadre voit même un bouton qui ne
+   reste qu'un instant. */
+test('le script ne pose aucun bouton sur la vidéo, même quand la page expose son manifeste', async ({ page }) => {
+  const cadre = await monterTuile(page, true);
+  await cadre.evaluate(() => {
+    window.config = { file: 'https://cdn.exemple.test/live/chaine.m3u8' };
+    window.__boutonsPoses = [];
+    new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => {
+      if (n.nodeType === 1 && /Cast|Native Player/i.test(n.textContent || '')) window.__boutonsPoses.push(n.textContent);
+    }))).observe(document.documentElement, { childList: true, subtree: true });
+  });
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*'); });
+  await expect(cadre.locator('#decor'), 'la vidéo est isolée').toHaveCount(0, { timeout: 10000 });
+  await page.clock.fastForward('00:05');
+  await page.waitForTimeout(300);
+  expect(await cadre.evaluate(() => window.__boutonsPoses), 'aucun bouton Cast posé, même un instant').toEqual([]);
+});
+
 /* « Ça pogne pas toujours le bon iframe (genre chat). » Le nettoyage gardait la plus
    grande iframe de la page : la colonne de discussion l'emportait sur le lecteur, et la
    tuile était réduite au chat. */
