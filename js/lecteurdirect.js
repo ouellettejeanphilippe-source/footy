@@ -65,14 +65,34 @@ export function typeDeMedia(url, debut) {
    (`backBufferLength`, infini par défaut) et ce qu'il peut mettre devant au maximum
    (`maxMaxBufferLength`, 600 s par défaut). Un direct n'a pas besoin de dix minutes
    d'avance. `loader` (le pont du script utilisateur) et `xhrSetup` (le relais de l'APK)
-   viennent de l'appelant et passent tels quels. */
+   viennent de l'appelant et passent tels quels.
+
+   Démarrer vite et à la bonne qualité (29 octobre 2026, pistes B.6 et B.7 de
+   docs/PISTES.md) :
+   - `capLevelToPlayerSize` : jamais une définition plus grande que la tuile (dans une
+     grille de quatre, un quart d'écran au lieu du 1080p : moins de débit, moins de
+     décodage, et la télé tient plus de vidéos) ; la tuile passée en plein écran remonte
+     seule. Posé ici, au constructeur : hls.js 1.5 l'ignore s'il arrive après.
+   - `testBandwidth: false` : pas de segment de mesure avant le premier vrai ; l'estimation
+     de départ `abrEwmaDefaultEstimate` (5 Mb/s, un 720p) est remplacée dès le premier
+     segment, et une connexion lente redescend au deuxième. `abrEwmaDefaultEstimateMax`
+     l'empêche de partir plus haut qu'elle.
+   - `startFragPrefetch` : le premier segment se charge pendant que le lecteur s'attache.
+   - Sur la télé, `maxBufferSize` (60 Mo par défaut) est ramené à 30 Mo. */
+export var DEBIT_DEPART_BPS = 5000000;
 export function configHls(opts) {
     var o = opts || {};
     var c = {
         backBufferLength: o.tele ? 10 : 30,
         maxMaxBufferLength: o.tele ? 60 : 120,
-        enableWorker: true
+        enableWorker: true,
+        capLevelToPlayerSize: true,
+        testBandwidth: false,
+        abrEwmaDefaultEstimate: DEBIT_DEPART_BPS,
+        abrEwmaDefaultEstimateMax: DEBIT_DEPART_BPS,
+        startFragPrefetch: true
     };
+    if (o.tele) c.maxBufferSize = 30 * 1000 * 1000;
     if (o.loader) c.loader = o.loader;
     if (o.xhrSetup) c.xhrSetup = o.xhrSetup;
     return c;

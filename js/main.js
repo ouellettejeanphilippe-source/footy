@@ -1,5 +1,5 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
-import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage } from './utils.js';
+import { esc, showToast, fetchPage, applySportFilter, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
@@ -660,11 +660,11 @@ async function loadAllRun(isBackground, forceScrape){
 
           // Persist the updated scores/statuses back to cache even when skipping scraping
           var todayStr = getEspnDateStr(TARGET_DATE || new Date());
-              var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+              var cache = lireCacheLocal('api_calendar_cache_' + todayStr);
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
+              ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
 
           var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
@@ -860,15 +860,15 @@ async function loadAllRun(isBackground, forceScrape){
           window.lastScrapedMatches = scrapedMatches;
 
           safeStorageSet('last_scrape_time', window.lastScrapeTime.toString());
-              safeStorageSetJSON('last_scraped_matches', window.lastScrapedMatches);
+              ecrireCacheLocal('last_scraped_matches', window.lastScrapedMatches);
 
           // Persist the merged data (which now includes streams) back to localStorage
           var todayStr = getEspnDateStr(TARGET_DATE || new Date());
-              var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+              var cache = lireCacheLocal('api_calendar_cache_' + todayStr);
               var fetchDateToSave = todayStr;
               if (cache && cache.fetchDate) fetchDateToSave = cache.fetchDate;
 
-              safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
+              ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: fetchDateToSave, savedAt: Date.now(), matches: finalMatches });
 
                     var targetDateStr = getEstDateStrFromDate(TARGET_DATE);
           setMatches(finalMatches.filter(function(m) {
@@ -986,11 +986,11 @@ if (typeof window === 'undefined' || !window.__NO_AUTOSTART__) (function(){
   if (getEspnDateStr(yEst) !== todayStr && allegerCalendrier(getEspnDateStr(yEst))) lg('Cache calendrier allégé', 'liens d\'hier retirés');
 
   var lst = safeStorageGet('last_scrape_time');
-  var lsm = safeStorageGetJSON('last_scraped_matches');
+  var lsm = lireCacheLocal('last_scraped_matches');
   if (lst) window.lastScrapeTime = parseInt(lst, 10);
   if (lsm) window.lastScrapedMatches = lsm;
 
-  var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+  var cache = lireCacheLocal('api_calendar_cache_' + todayStr);
 
   if (cache && cache.fetchDate === todayStr && cache.matches && cache.matches.length > 0) {
             setMatches(cache.matches.filter(function(m) {

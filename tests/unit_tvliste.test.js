@@ -74,7 +74,14 @@ async function main() {
   {
     const v = lire('scripts/verify_players.mjs');
     assert.match(v, /obs\.mediaReferer = r\.request\(\)\.headers\(\)\['referer'\]/);
-    assert.match(v, /link\.mediaReferer = obs\.mediaReferer/);
+    /* Le relevé emporte le Referer et l'application le pose sur le lien (en parts
+       parallèles depuis le 29 octobre 2026 : releveDe, puis appliquerReleves). */
+    const lien = { url: 'https://xstream.st/e/1', source: 'ppv' };
+    const r = play.releveDe({ matchIndex: 0, linkIndex: 0, host: 'xstream.st' }, lien,
+      { media: 'https://cdn.x/a.m3u8', mediaReferer: 'https://xstream.st/' }, 'plays', '2026-10-29T00:00:00Z');
+    play.appliquerReleves({ matches: [{ streamLinks: [lien] }] }, [r], {}, {});
+    assert.strictEqual(lien.mediaReferer, 'https://xstream.st/');
+    assert.strictEqual(lien.media, 'https://cdn.x/a.m3u8');
     assert.match(v, /writeFileSync\('data\/tv\.json'/);
     assert.match(lire('scripts/scrape_streams.mjs'), /mediaReferer: l\.mediaReferer/);
     assert.match(lire('.github/workflows/scrape_streams.yml'), /file_pattern: "data\/streams\.json data\/tv\.json"/);

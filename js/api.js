@@ -4,7 +4,7 @@ import { formatLeagueName, lgFlag, lgColor, nomOfficielDansLigue, normName, leag
 import { isMatch, isMatchPair, mergeAltUrls, spectacleDeCatch } from './match.js';
 import { parsePWHLSchedule, parseF1Ics, parseIndycarIcs, parseSportsDbEvents } from './scrapers.js';
 import { addScrapeLog, S } from './state.js';
-import { safeStorageGetJSON, safeStorageSetJSON } from './utils.js';
+import { lireCacheLocal, ecrireCacheLocal } from './utils.js';
 import { liensDunEvenementEsports, estLigueLolSuivie } from './esports.js';
 import { appartientAuJour, nuitEnCours, veille, lendemain } from './nuit.js';
 import { urlScorebarLhjmq, lireScorebarLhjmq } from './lhjmq.js';
@@ -353,7 +353,7 @@ export function etatsDepuisEspn(data, path) {
    la passe complète suivante relit le cache et ramène les scores d'avant. */
 export function majScoresDansCache(todayStr, etats) {
     if (!etats || !etats.length) return 0;
-    var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+    var cache = lireCacheLocal('api_calendar_cache_' + todayStr);
     if (!cache || cache.fetchDate !== todayStr || !Array.isArray(cache.matches)) return 0;
     var parId = {};
     for (var i = 0; i < etats.length; i++) if (etats[i] && etats[i].id) parId[String(etats[i].id)] = etats[i];
@@ -367,7 +367,7 @@ export function majScoresDansCache(todayStr, etats) {
         if (f.startTime) m.startTime = f.startTime;
         touches++;
     }
-    if (touches) safeStorageSetJSON('api_calendar_cache_' + todayStr, cache);
+    if (touches) ecrireCacheLocal('api_calendar_cache_' + todayStr, cache);
     return touches;
 }
 
@@ -451,7 +451,7 @@ export function getApiFirstMatches(targetDate, forceRefresh) {
   var targetDateObj = targetDate || new Date();
   var targetDateStr = getEstDateStrFromDate(targetDateObj);
   var todayStr = getEspnDateStr(targetDateObj);
-  var cache = safeStorageGetJSON('api_calendar_cache_' + todayStr);
+  var cache = lireCacheLocal('api_calendar_cache_' + todayStr);
 
   /* Avant tout retour anticipé : c'est justement le retour anticipé sur le cache local
      qui empêchait l'armement. */
@@ -474,7 +474,7 @@ export function getApiFirstMatches(targetDate, forceRefresh) {
           })
           .then(function(cacheData) {
               if (cacheData && cacheData.fetchDate === todayStr && cacheData.matches) {
-                  safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: cacheData.matches });
+                  ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: cacheData.matches });
                   if (typeof window !== 'undefined') window.calendrierInfo = { source: 'schedule.json', ageMin: 0, count: cacheData.matches.length };
                   lg('Calendrier', cacheData.matches.length + ' matchs relus depuis data/schedule.json');
                   return cacheData.matches;
@@ -1099,7 +1099,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
       var complete = echecs === 0;
       var aEcrire = baseMatches;
       if (!complete) {
-          aEcrire = fusionnerPassePartielle(baseMatches, safeStorageGetJSON('api_calendar_cache_' + todayStr), todayStr);
+          aEcrire = fusionnerPassePartielle(baseMatches, lireCacheLocal('api_calendar_cache_' + todayStr), todayStr);
           lg('Calendrier', 'passe partielle (' + reponses + '/' + tentatives + ' réponses ESPN) : '
              + baseMatches.length + ' match(s) relus, ' + (aEcrire.length - baseMatches.length) + ' conservé(s) du calendrier connu');
       }
@@ -1107,7 +1107,7 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           return (a.startTime > b.startTime) ? 1 : ((a.startTime < b.startTime) ? -1 : 0);
       });
 
-      safeStorageSetJSON('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: aEcrire });
+      ecrireCacheLocal('api_calendar_cache_' + todayStr, { fetchDate: todayStr, savedAt: Date.now(), matches: aEcrire });
       if (typeof window !== 'undefined') window.calendrierInfo = { source: complete ? 'espn' : 'espn (partiel)', ageMin: 0, count: aEcrire.length, reponses: reponses, tentatives: tentatives };
       return aEcrire;
   });

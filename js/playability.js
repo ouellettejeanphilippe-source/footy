@@ -596,6 +596,88 @@ export function pickTargets(matches, opts) {
     return out.concat(plusTard).slice(0, total);
 }
 
+/* ─── La vérification en parts parallèles (29 octobre 2026) ────────────────────
+   « Rendre plus rapide… le taux de fonctionnement des streams » (piste C.10 de
+   docs/PISTES.md). Un passage n'éprouvait qu'~88 cibles dans ses cinq minutes. Le workflow
+   lance maintenant N machines (`scripts/verify_players.mjs --part i/N`) qui calculent la
+   même liste de cibles et en prennent une sur N, EN ALTERNANCE : chaque part reçoit sa
+   tranche des premières cibles, celles qui comptent si le budget coupe la fin. Chacune
+   rend ses RELEVÉS (ce qu'elle a vu, détaché du fichier) ; une dernière étape les
+   applique au `data/streams.json` du moment (`--appliquer`), qui a pu bouger entre-temps :
+   un relevé retrouve son lien par sa place, sinon par son adresse.
+
+   `lirePart('1/3')` rend { i: 1, n: 3 }, ou null. */
+export function lirePart(texte) {
+    var m = /^(\d+)\/(\d+)$/.exec(String(texte || '').trim());
+    if (!m) return null;
+    var i = Number(m[1]), n = Number(m[2]);
+    return n >= 1 && i < n ? { i: i, n: n } : null;
+}
+export function partDesCibles(cibles, part) {
+    var c = cibles || [];
+    if (!part) return c.slice();
+    return c.filter(function (x, k) { return k % part.n === part.i; });
+}
+/* Le relevé d'une cible observée : tout ce qu'il faut pour l'appliquer plus tard. */
+export function releveDe(cible, lien, obs, verdict, at) {
+    var r = { host: cible.host, verdict: verdict, at: at };
+    if (cible.ecarte) { r.ecarte = true; return r; }
+    r.matchIndex = cible.matchIndex;
+    r.linkIndex = cible.linkIndex;
+    r.url = lien && lien.url;
+    if (lien && lien.source) r.source = String(lien.source);
+    if (verdict === 'plays' && obs && obs.media) {
+        r.media = obs.media;
+        if (obs.mediaReferer) r.mediaReferer = obs.mediaReferer;
+    }
+    if (verdict === 'plays' && obs && obs.hauteur > 0) r.hauteur = obs.hauteur;
+    return r;
+}
+function lienDuReleve(matches, r) {
+    var m = matches[r.matchIndex];
+    var l = m && Array.isArray(m.streamLinks) ? m.streamLinks[r.linkIndex] : null;
+    if (l && l.url === r.url) return l;
+    for (var i = 0; i < matches.length; i++) {
+        var liens = (matches[i] && matches[i].streamLinks) || [];
+        for (var j = 0; j < liens.length; j++) if (liens[j] && liens[j].url === r.url) return liens[j];
+    }
+    return null;
+}
+/* Applique les relevés à `data` (matchs, `hotesEcartes`) et aux deux registres, comme le
+   faisait la vérification au fil de l'eau. Un lien disparu du fichier ne reçoit rien,
+   mais l'hôte et la source ont bien été observés : les registres comptent. */
+export function appliquerReleves(data, releves, ledger, ledgerSources) {
+    var stats = { appliques: 0, introuvables: 0, temoins: 0 };
+    var matches = (data && data.matches) || [];
+    (releves || []).forEach(function (r) {
+        if (!r || !r.host || !r.verdict) return;
+        if (r.ecarte) {
+            var e = data.hotesEcartes && data.hotesEcartes[r.host];
+            if (e) { e.essaiAt = r.at; e.verdict = r.verdict; stats.temoins++; }
+            recordObservation(ledger, r.host, r.verdict);
+            return;
+        }
+        if (r.source && ledgerSources) recordObservation(ledgerSources, r.source, r.verdict);
+        recordObservation(ledger, r.host, r.verdict);
+        var link = lienDuReleve(matches, r);
+        if (!link) { stats.introuvables++; return; }
+        stats.appliques++;
+        link.verified = r.verdict;
+        link.verifiedAt = r.at;
+        /* L'adresse du flux, quand on l'a vue arriver : elle permet au mode direct
+           (js/directmedia.js) d'être disponible dès la PREMIÈRE ouverture. */
+        if (r.media) {
+            link.media = r.media;
+            link.mediaAt = r.at;
+            if (r.mediaReferer) link.mediaReferer = r.mediaReferer; else delete link.mediaReferer;
+        } else {
+            delete link.media; delete link.mediaAt; delete link.mediaReferer;
+        }
+        if (r.hauteur > 0) link.hauteur = r.hauteur; else delete link.hauteur;
+    });
+    return stats;
+}
+
 /* Lien suivant dans l'ordre donné, après celui dont l'adresse est `currentUrl` ; revient
    au début en bout de liste. Rend null s'il n'y a pas d'autre lien. */
 export function nextLinkAfter(links, currentUrl) {
