@@ -24,7 +24,7 @@ import { detecterGeste, actionDuGeste, chainesDisponibles, chaineVoisine, indexD
 import { etatCacheServeur, ageEnClair } from './rattrapage.js';
 import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, partPremierEcran } from './deuxecrans.js';
 import { estLecteurOfficiel, exigeVisibiliteTotale } from './esports.js';
-import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml } from './sorties.js';
+import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml, lecteurAOublier } from './sorties.js';
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
@@ -948,8 +948,19 @@ export function marquerSortiesForcees(flux, record, now) {
     return n;
 }
 
+/* La dernière fois que la page était encore là (js/sorties.js, lecteurAOublier) : à sa
+   sortie, quand elle passe en arrière-plan, et chaque minute tant qu'elle est visible
+   (un navigateur tué d'un coup ne prévient pas). */
+var CLE_VIE = 'lecteur_vu_le';
+function noterVie() { safeStorageSetJSON(CLE_VIE, Date.now()); }
+
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') noterVie(); });
+    /* `unref` : sous Node (tests), la minuterie ne retient pas le processus. */
+    var minuterieVie = setInterval(function() { if (document.visibilityState === 'visible') noterVie(); }, 60000);
+    if (minuterieVie && typeof minuterieVie.unref === 'function') minuterieVie.unref();
     window.addEventListener('pagehide', function(e) {
+        noterVie();
         var urls = suspectsDeSortie(mvFlux, Date.now());
         if (urls.length) safeStorageSetJSON(CLE_SORTIE, { urls: urls, at: Date.now() });
         safeStorageSetJSON(CLE_SORTIES, marquerQuittee(safeStorageGetJSON(CLE_SORTIES, []), Date.now(), e && e.persisted));
@@ -2554,6 +2565,17 @@ export function saveMultivisionState() {
 export function restoreMultivisionState() {
     try {
         var parsed = safeStorageGetJSON('mv_state');
+        /* Fermé depuis plus de cinq minutes : le lecteur repart vide (la disposition
+           choisie, elle, reste). La séance d'avant ne revient que d'un rechargement ou
+           d'une fermeture brève. */
+        if (parsed && lecteurAOublier(safeStorageGetJSON(CLE_VIE), Date.now())) {
+            var garde = parsed && !Array.isArray(parsed) && parsed.layout ? parsed.layout : mvLayout;
+            safeStorageSetJSON('mv_state', { flux: [], layout: garde, horsCable: [] });
+            try { localStorage.removeItem(CLE_SORTIE); } catch (e) {}
+            noterVie();
+            return;
+        }
+        noterVie();
         if(parsed) {
 
             // Backward compatibility with just array
@@ -4950,7 +4972,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v103';
+export var VERSION_APP = 'sports-guide-v104';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

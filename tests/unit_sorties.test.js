@@ -73,6 +73,15 @@ async function main() {
   assert.match(d, /a\.example \(chargée il y a 4 s\), b\.example/);
   ok('une sortie dit où était le pointeur, la dernière touche, le focus et l\'âge de chaque vidéo');
 
+  // ── 6. Le lecteur oublié après cinq minutes de fermeture (29 octobre 2026) ─────
+  assert.strictEqual(S.OUBLI_LECTEUR_MS, 5 * 60 * 1000);
+  assert.strictEqual(S.lecteurAOublier(1000000 - 6 * 60000, 1000000), true, 'fermé depuis six minutes : vidé');
+  assert.strictEqual(S.lecteurAOublier(1000000 - 2 * 60000, 1000000), false, 'rechargé ou fermé deux minutes : gardé');
+  assert.strictEqual(S.lecteurAOublier(1000000 - 5 * 60000, 1000000), false, 'cinq minutes pile : gardé');
+  assert.strictEqual(S.lecteurAOublier(null, 1000000), false, 'jamais noté (version d\'avant) : gardé');
+  assert.strictEqual(S.lecteurAOublier(undefined, 1000000), false);
+  ok('le lecteur repart vide après plus de cinq minutes de fermeture, pas avant');
+
   console.log(`unit_sorties: ${n} groupes de tests OK`);
 }
 
