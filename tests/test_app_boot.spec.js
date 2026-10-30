@@ -1709,8 +1709,17 @@ test('un cache serveur momentanément injoignable ne vide pas la liste, et le re
      Ce qui compte, c'est qu'aucun compteur ne disparaisse. */
   await page.evaluate(() => {
     window.__compteurs = () => [...new Set([...document.querySelectorAll('div.card-streams')].map((e) => e.dataset.mid))];
+    /* Les matchs qui ne peuvent pas QUITTER le Live en onze minutes : en cours, ou à venir
+       dont l'heure n'est pas passée. Un match resté « à venir » des heures après son heure
+       (source muette) est retiré du Live quatre heures après le coup d'envoi ; le 30 octobre
+       2026, l'instant figé tombait à 20 h 00 pour un match de 16 h 05, et sa carte partait
+       avec son compteur au saut de onze minutes, sans que rien n'ait été vidé. */
+    window.__stables = () => {
+      const ny = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date());
+      return window.S.matches.filter((m) => m.status === 'live' || (m.status !== 'finished' && String(m.startTime || '') > ny)).map((m) => String(m.id));
+    };
   });
-  const avant = await page.evaluate(() => ({ n: window.prefetchedStreamMatches.length, compteurs: window.__compteurs() }));
+  const avant = await page.evaluate(() => { const stables = window.__stables(); return { n: window.prefetchedStreamMatches.length, compteurs: window.__compteurs().filter((id) => stables.includes(id)) }; });
   expect(avant.n).toBeGreaterThan(0);
   expect(avant.compteurs.length).toBeGreaterThan(0);
 
