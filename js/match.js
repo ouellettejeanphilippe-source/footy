@@ -951,7 +951,7 @@ export function isKnownDistinct(name1, name2) {
    seule fois au chargement de js/db.js et jamais modifiée ensuite : la retenir ne change
    aucune réponse. Plafonnée (MEMOIRE_ISMATCH_MAX) : pleine, elle repart de zéro plutôt que
    de grossir sur une télé à 2 Go. */
-export var MEMOIRE_ISMATCH_MAX = 250000;
+export var MEMOIRE_ISMATCH_MAX = 100000;
 /* Deux niveaux (premier nom, puis second), un jeu pour `strict` et un pour le reste : les
    noms ne sont pas recopiés dans une clé collée, ce qui garde chaque entrée petite (une
    entrée par paire, 126 736 paires pour 356 noms d'équipes du calendrier). */

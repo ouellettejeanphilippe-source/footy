@@ -683,7 +683,38 @@ export function sportOfTeamName(name) {
    Quand le sport est fourni et que la résolution aboutit à une équipe d'un AUTRE sport,
    on rend le nom d'origine : non résolu, mais jamais faux — le même parti pris que pour
    les alias ambigus plus haut dans ce module. */
+/* `getOfficialTeamName` retient ses réponses (30 octobre 2026). Profil CPU de la WebView sur un
+   Chromecast : `analyserPageDeListe` → `parseGenerique` → `officialTeamNameForLeague` →
+   `getOfficialTeamName` → `isMatch` prenait 57 % du temps de script, parce que chaque nom hors
+   de la table exacte est comparé aux 823 équipes de STATIC_TEAM_MAP, et que les mêmes noms
+   reviennent à chaque passe (2,3 millions d'appels d'`isMatch` en quelques minutes, 98 %
+   de paires jamais vues : mémoriser `isMatch` seul ne suffisait pas). La réponse ne dépend
+   que des quatre arguments, de TEAM_ALIASES et de STATIC_TEAM_MAP, remplis une fois au
+   chargement de ce module. Une réponse donnée AVANT que `isMatch` et `stringSimilarity`
+   existent (le tout début du démarrage : pas d'approximation) n'est pas retenue.
+   Plafonnée (MEMOIRE_NOMS_MAX) : pleine, elle repart de zéro. */
+export var MEMOIRE_NOMS_MAX = 20000;
+var memoireNoms = new Map();
+var statsNoms = { appels: 0, calculs: 0 };
+export function statsMemoireNomsOfficiels() { return { appels: statsNoms.appels, calculs: statsNoms.calculs, taille: memoireNoms.size }; }
 export function getOfficialTeamName(n, bypassFuzzyMatch, sport, sansApproximation) {
+    statsNoms.appels++;
+    if (!n || typeof n !== 'string' || typeof isMatch !== 'function' || typeof stringSimilarity !== 'function') {
+        statsNoms.calculs++;
+        return nomOfficielSansMemoire(n, bypassFuzzyMatch, sport, sansApproximation);
+    }
+    var cle = n + '\u0000' + (bypassFuzzyMatch ? '1' : '0') + (sansApproximation ? '1' : '0') + (sport || '');
+    var connu = memoireNoms.get(cle);
+    if (connu !== undefined) return connu;
+    statsNoms.calculs++;
+    var r = nomOfficielSansMemoire(n, bypassFuzzyMatch, sport, sansApproximation);
+    if (typeof r === 'string') {
+        if (memoireNoms.size >= MEMOIRE_NOMS_MAX) memoireNoms.clear();
+        memoireNoms.set(cle, r);
+    }
+    return r;
+}
+export function nomOfficielSansMemoire(n, bypassFuzzyMatch, sport, sansApproximation) {
     if (!n) return n;
     if (sport) {
         var resolu = getOfficialTeamName(n, bypassFuzzyMatch, undefined, sansApproximation);
