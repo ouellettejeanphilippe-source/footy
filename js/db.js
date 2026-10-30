@@ -697,12 +697,54 @@ export var MEMOIRE_NOMS_MAX = 20000;
 var memoireNoms = new Map();
 var statsNoms = { appels: 0, calculs: 0 };
 export function statsMemoireNomsOfficiels() { return { appels: statsNoms.appels, calculs: statsNoms.calculs, taille: memoireNoms.size }; }
+/* Gardée d'un lancement à l'autre (30 octobre 2026) : à froid, la recherche floue de
+   3 283 noms distincts contre 823 équipes (environ 2,7 millions de comparaisons) figeait la
+   télé plusieurs minutes À CHAQUE lancement. La mémoire est écrite dans localStorage, avec
+   une signature de la table d'équipes : une table différente invalide tout. */
+var CLE_MEMOIRE_NOMS = 'memoire_noms_officiels';
+var PERSISTES_MAX = 6000;
+var memoireNomsChargee = false;
+var minuterieNoms = null;
+function signatureNoms() {
+    var s = Object.keys(STATIC_TEAM_MAP).join('|');
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return 'v1:' + s.length + ':' + h;
+}
+function chargerMemoireNoms() {
+    memoireNomsChargee = true;
+    try {
+        var brut = localStorage.getItem(CLE_MEMOIRE_NOMS);
+        if (!brut) return;
+        var o = JSON.parse(brut);
+        if (!o || o.sig !== signatureNoms() || !o.d) return;
+        for (var c in o.d) if (typeof o.d[c] === 'string') memoireNoms.set(c, o.d[c]);
+    } catch (e) {}
+}
+export function ecrireMemoireNoms() {
+    try {
+        var d = {}, i = 0;
+        memoireNoms.forEach(function(v, k) { if (i++ < PERSISTES_MAX) d[k] = v; });
+        localStorage.setItem(CLE_MEMOIRE_NOMS, JSON.stringify({ sig: signatureNoms(), d: d }));
+    } catch (e) {}
+}
+function planifierEcritureNoms() {
+    if (minuterieNoms || typeof setTimeout !== 'function') return;
+    minuterieNoms = setTimeout(function() { minuterieNoms = null; ecrireMemoireNoms(); }, 5000);
+    if (minuterieNoms && typeof minuterieNoms.unref === 'function') minuterieNoms.unref();
+}
+/* Pour les tests : repart d'une mémoire vide, relue du stockage ou non. */
+export function reinitialiserMemoireNoms(relire) {
+    memoireNoms.clear();
+    memoireNomsChargee = !relire;
+}
 export function getOfficialTeamName(n, bypassFuzzyMatch, sport, sansApproximation) {
     statsNoms.appels++;
     if (!n || typeof n !== 'string' || typeof isMatch !== 'function' || typeof stringSimilarity !== 'function') {
         statsNoms.calculs++;
         return nomOfficielSansMemoire(n, bypassFuzzyMatch, sport, sansApproximation);
     }
+    if (!memoireNomsChargee) chargerMemoireNoms();
     var cle = n + '\u0000' + (bypassFuzzyMatch ? '1' : '0') + (sansApproximation ? '1' : '0') + (sport || '');
     var connu = memoireNoms.get(cle);
     if (connu !== undefined) return connu;
@@ -711,6 +753,7 @@ export function getOfficialTeamName(n, bypassFuzzyMatch, sport, sansApproximatio
     if (typeof r === 'string') {
         if (memoireNoms.size >= MEMOIRE_NOMS_MAX) memoireNoms.clear();
         memoireNoms.set(cle, r);
+        planifierEcritureNoms();
     }
     return r;
 }

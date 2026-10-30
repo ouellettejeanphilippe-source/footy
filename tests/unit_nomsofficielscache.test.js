@@ -67,6 +67,27 @@ async function main() {
     assert.ok(db.statsMemoireNomsOfficiels().taille <= db.MEMOIRE_NOMS_MAX);
     ok('vide, null et undefined : comme avant, et la mémoire reste sous son plafond');
 
+    // ── 5. Gardée d'un lancement à l'autre : un lancement à chaud ne refait aucune comparaison ──
+    db.ecrireMemoireNoms();
+    const ecrit = JSON.parse(localStorage.getItem('memoire_noms_officiels'));
+    assert.ok(ecrit && ecrit.sig && Object.keys(ecrit.d).length > 0, 'la mémoire est écrite dans le stockage');
+    db.reinitialiserMemoireNoms(true); // « nouveau lancement » : mémoire vide, relue du stockage
+    appelsIsMatch = 0;
+    noms.forEach((x, i) => assert.strictEqual(db.getOfficialTeamName(x), attendu[i], 'à chaud : ' + x));
+    assert.strictEqual(appelsIsMatch, 0, 'un lancement à chaud ne refait aucune comparaison');
+    ok('un nouveau lancement relit la mémoire écrite et ne refait aucune comparaison');
+
+    // Une table d'équipes différente (signature) invalide tout ce qui était écrit.
+    localStorage.setItem('memoire_noms_officiels', JSON.stringify({ sig: 'autre', d: ecrit.d }));
+    db.reinitialiserMemoireNoms(true);
+    appelsIsMatch = 0;
+    db.getOfficialTeamName('zzz club inconnu');
+    assert.ok(appelsIsMatch > 0, 'signature différente : tout est recalculé');
+    localStorage.setItem('memoire_noms_officiels', '{pas du json');
+    db.reinitialiserMemoireNoms(true);
+    assert.strictEqual(db.getOfficialTeamName('Toulon'), attendu[noms.indexOf('Toulon')], 'stockage corrompu : ignoré');
+    ok('une autre signature ou un stockage corrompu sont ignorés');
+
     console.log(`\n${n} tests passés`);
     delete globalThis.isMatch; delete globalThis.stringSimilarity;
 }
