@@ -3,6 +3,7 @@
 Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-archive.md).
 
 ## En cours
+- 2026-10-30 - **« back devrait quitter le lecteur et vider les videos dans le lecteur »** (Retour dans le lecteur natif d'Android). Aujourd'hui l'événement `ferme` (`ecouterNatif`, `js/multiview.js`) ne fait que remettre la tuile en page par choix : le lecteur reste ouvert et les vidéos restent. Voulu : `ferme` ferme toutes les vidéos et ramène au Live (`quitterLecteur`), comme Retour depuis la page. Test : `test_app_boot` (« sur la télé Android… »). `CACHE_NAME` / `VERSION_APP` à passer à v106.
 
 ## Blocages
 

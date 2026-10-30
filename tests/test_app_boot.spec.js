@@ -2484,14 +2484,13 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await page.evaluate(() => window.__natif.emettre({ type: 'chaine', sens: 1 }));
   expect(await page.evaluate(() => window.mvFlux[0].url)).toBe(avantZap);
 
-  /* Fermé par l'utilisateur (Retour dans le lecteur d'Android) : la tuile revient à la page
-     PAR CHOIX, et le direct automatique ne la reprend plus (30 octobre 2026, « le mode
-     direct essaie d'override après avoir quitté un stream »). Pas de relance du lecteur. */
-  await page.evaluate(() => window.__natif.emettre({ type: 'ferme' }));
+  /* Refusé par le lecteur d'Android (`echec`) : la tuile revient à la page, et le direct
+     automatique ne relance pas le lecteur par-dessus. */
+  await page.evaluate(() => window.__natif.emettre({ type: 'echec', raison: 'refus' }));
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
-  expect(await page.evaluate(() => ({ mode: window.mvFlux[0].mode, choisie: window.mvFlux[0]._pageChoisie }))).toEqual({ mode: 'page', choisie: true });
+  expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('page');
   await page.waitForTimeout(600);
-  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'fermé à la main : pas relancé').toBe(1);
+  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'refusé : pas relancé').toBe(1);
 
   // Refusé par le lecteur natif : la page, comme sur le site.
   await page.evaluate(() => window.toggleDirectMode(0));
@@ -2529,7 +2528,7 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), { message: 'le flux voisin va droit au lecteur natif' }).toBe(4);
   expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').pop()[1].media)).toBe('https://cdn.test/z/index.m3u8');
   expect(await page.evaluate(() => window.__hls.length), 'pas d\'essai hls.js derrière le lecteur natif').toBe(4);
-  await page.evaluate(() => { window.__natif.emettre({ type: 'ferme' }); window.toggleModeCable(); });
+  await page.evaluate(() => { window.toggleModeCable(); });
 
   /* Retour : le lecteur revient au Live ; sur le Live, la barre de navigation prend
      d'abord le focus (comme sur Netflix), puis Retour laisse quitter. */
@@ -2538,6 +2537,26 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   expect(await page.evaluate(() => window.retourTele()), 'sur le Live, Retour mène à la barre de navigation').toBe(true);
   expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).toBe('filter-live');
   expect(await page.evaluate(() => window.retourTele()), 'depuis la barre, Retour laisse quitter').toBe(false);
+
+  /* Retour dans le lecteur d'Android (`ferme`) : le lecteur se vide et l'on revient au Live
+     (30 octobre 2026, « back devrait quitter le lecteur et vider les videos dans le
+     lecteur »). Rien n'est relancé par-dessus. */
+  const avant = await page.evaluate(() => ({ hls: window.__hls.length, jouer: window.__natif.appels.filter((a) => a[0] === 'jouer').length }));
+  await page.evaluate((o) => {
+    const reg = JSON.parse(localStorage.getItem('direct_media') || '{}');
+    reg[o + '/__faux-lecteur?b'] = { url: 'https://cdn.test/b/index.m3u8', pageUrl: o + '/__faux-lecteur?b', referer: 'https://cadre.test/', at: Date.now(), echecs: 0 };
+    localStorage.setItem('direct_media', JSON.stringify(reg));
+    window.addToMultivision(o + '/__faux-lecteur?b', 'Match B', 'mB');
+    window.openMultiviewTab();
+  }, origin);
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(avant.hls + 1);
+  await page.evaluate(() => window.__hls[window.__hls.length - 1].echouer());
+  await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(avant.jouer + 1);
+  await page.evaluate(() => window.__natif.emettre({ type: 'ferme' }));
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+  expect(await page.evaluate(() => window.mvFlux.length), 'Retour dans le lecteur natif vide les vidéos').toBe(0);
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'fermé à la main : pas relancé').toBe(avant.jouer + 1);
 
   // Plus → Logs : le journal de l'APK est lisible sur l'appareil même.
   await page.evaluate(() => window.applyFilter('logs'));
