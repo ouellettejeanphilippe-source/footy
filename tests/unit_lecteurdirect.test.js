@@ -98,6 +98,10 @@ async function main() {
   }
   assert.ok(c.maxBufferSize > 0 && c.maxBufferSize < 60e6, 'sur la télé, moins de mémoire que les 60 Mo par défaut');
   assert.ok(!('maxBufferSize' in ld.configHls({})), 'ailleurs, le défaut de hls.js');
+  // La télé (30 octobre 2026) : pas de faible latence, et la définition baisse quand des images se perdent.
+  assert.strictEqual(c.lowLatencyMode, false, 'télé : lowLatencyMode coupé');
+  assert.strictEqual(c.capLevelOnFPSDrop, true, 'télé : capLevelOnFPSDrop');
+  assert.ok(!('lowLatencyMode' in ld.configHls({})) && !('capLevelOnFPSDrop' in ld.configHls({})), 'ailleurs, les défauts de hls.js');
   assert.ok(/encrypted-media/.test(ld.PERMISSIONS_CADRE) && /autoplay/.test(ld.PERMISSIONS_CADRE) && !/sandbox/.test(ld.PERMISSIONS_CADRE));
   ok('BIBLIOTHEQUES : deux miroirs https par bibliothèque, même version ; configHls borne le tampon ; permissions du cadre sans sandbox');
 

@@ -40,7 +40,11 @@ import java.util.Map;
  * <p><b>Le chargement est différé.</b> La liste fait près de cent mille hôtes ; la lire
  * sur le fil principal retarderait l'affichage. Elle se charge donc en tâche de fond, et
  * tant qu'elle n'est pas prête rien n'est bloqué — quelques requêtes passent au
- * démarrage, ce qui vaut mieux qu'une fenêtre figée.
+ * démarrage, ce qui vaut mieux qu'une fenêtre figée. Le fil est en priorité basse
+ * (29 octobre 2026) : sur les quatre cœurs d'un Chromecast, il partait à égalité avec le
+ * fil de l'interface et celui du rendu pendant les premières centaines de millisecondes,
+ * celles où la WebView dessine sa première page. Le journal « N hôtes chargés en T ms »
+ * vient de ce fil, pas du fil principal : il mesure le travail de fond, pas un gel.
  *
  * <p>Voir {@link ListeDeBlocage} pour la règle elle-même, qui ne connaît pas Android et
  * s'éprouve par un test unitaire ordinaire.
@@ -86,6 +90,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
 
     private void charger(final Context contexte) {
         new Thread(() -> {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
             long debut = System.currentTimeMillis();
             try (InputStream flux = contexte.getAssets().open(FICHIER)) {
                 ListeDeBlocage l = ListeDeBlocage.depuis(flux);
@@ -97,7 +102,7 @@ public class BloqueurWebViewClient extends BridgeWebViewClient {
                 // Sans liste, l'application marche : elle ne bloque simplement rien.
                 // C'est le bon comportement — un bloqueur en panne ne doit pas empêcher
                 // de regarder un match.
-                liste = new ListeDeBlocage(Collections.unmodifiableSet(new HashSet<>()));
+                liste = new ListeDeBlocage(Collections.<String>emptySet());
                 Journal.etat("bloqueur", "liste introuvable : rien n'est bloqué");
                 Log.w(TAG, "liste introuvable (" + FICHIER + ") : rien ne sera bloqué", e);
             }

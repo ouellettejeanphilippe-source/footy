@@ -104,6 +104,52 @@ public class ListeDeBlocageTest {
     }
 
     @Test
+    public void litLesFinsDeLigneWindowsEtLesDoublons() throws IOException {
+        // Un fichier passé par un éditeur Windows porte des \r\n ; une liste fusionnée
+        // porte des doublons. Ni l'un ni l'autre ne doit changer la décision.
+        String contenu = "doubleclick.net\r\nads.exemple.com\r\ndoubleclick.net\r\n";
+        ListeDeBlocage l = ListeDeBlocage.depuis(
+                new ByteArrayInputStream(contenu.getBytes(StandardCharsets.UTF_8)));
+        assertEquals(2, l.taille());
+        assertTrue(l.estBloque("doubleclick.net"));
+        assertTrue(l.estBloque("ads.exemple.com"));
+        assertFalse(l.estBloque("exemple.com"));
+    }
+
+    @Test
+    public void laListeLueEtLaListeConstruiteDisentLaMemeChose() throws IOException {
+        /* Les empreintes (29 octobre 2026) : ce que le fichier donne, octet par octet,
+           doit être exactement ce que le constructeur calcule sur des chaînes — y compris
+           pour un hôte hors ASCII, où les deux chemins diffèrent (octets UTF-8 d'un côté,
+           caractères de l'autre). */
+        String[] hotes = { "doubleclick.net", "pub.exemple.com", "r\u00e9gie.qu\u00e9bec", "xn--rgie-bpa.exemple" };
+        ListeDeBlocage lue = ListeDeBlocage.depuis(new ByteArrayInputStream(
+                (String.join("\n", hotes) + "\n").getBytes(StandardCharsets.UTF_8)));
+        ListeDeBlocage construite = avec(hotes);
+        assertEquals(hotes.length, lue.taille());
+        for (String h : hotes) {
+            assertTrue(h, lue.estBloque(h));
+            assertTrue(h, construite.estBloque(h));
+            assertTrue(h, lue.estBloque("cdn." + h));
+        }
+        assertFalse(lue.estBloque("innocent.com"));
+        assertFalse(lue.estBloque("qu\u00e9bec"));
+    }
+
+    @Test
+    public void unHoteTresLongNeCasseRien() throws IOException {
+        // Plus long que le tampon de ligne initial (256 octets).
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 40; i++) sb.append("etiquette").append(i).append('.');
+        sb.append("exemple.com");
+        String long_ = sb.toString();
+        ListeDeBlocage l = ListeDeBlocage.depuis(new ByteArrayInputStream((long_ + "\n").getBytes(StandardCharsets.UTF_8)));
+        assertEquals(1, l.taille());
+        assertTrue(l.estBloque(long_));
+        assertFalse(l.estBloque("exemple.com"));
+    }
+
+    @Test
     public void extraitLHoteDUneUrl() {
         assertEquals("exemple.com", ListeDeBlocage.hoteDe("https://exemple.com/a/b?c=1"));
         assertEquals("exemple.com", ListeDeBlocage.hoteDe("http://exemple.com"));

@@ -2391,8 +2391,10 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
       diagnostic: () => Promise.resolve({ etats: { webview: 'webview 140', script: 'posé dans tous les cadres (60 Ko)', bloqueur: '99113 hôtes' }, requetesBloquees: 7, navigationsRefusees: 1, hotesBloques: [{ hote: 'regie.example', n: 7 }], lignes: ['15:00:00  lecteur natif : joue'] }),
       addListener: (nom, f) => { if (nom === 'evenement') ecouteurs.push(f); return Promise.resolve({ remove() {} }); }
     } } };
+    /* Une seule fois : ce script est rejoué dans chaque cadre de même origine que la tuile
+       crée (le faux lecteur), et il écrasait ce que le test sème plus bas dans le registre. */
     try {
-      localStorage.setItem('direct_media', JSON.stringify({
+      if (!localStorage.getItem('direct_media')) localStorage.setItem('direct_media', JSON.stringify({
         [o + '/__faux-lecteur?a']: { url: 'https://cdn.test/a/index.m3u8', pageUrl: o + '/__faux-lecteur?a', referer: 'https://cadre.test/', at: Date.now(), echecs: 0 }
       }));
     } catch (e) {}
@@ -2468,21 +2470,57 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   expect(jouer.media).toBe('https://cdn.test/a/index.m3u8');
   expect(jouer.referers).toEqual(['https://cadre.test/', origin + '/__faux-lecteur?a', '']);
   await expect(page.locator('.mv-cell[data-index="0"] .mv-natif')).toBeVisible();
-  // ▲▼ ne zappe plus de match depuis le lecteur natif.
+  // ▲▼ ne zappe pas de match depuis le lecteur natif hors du mode câble (« ça part en mode câble »).
   const avantZap = await page.evaluate(() => window.mvFlux[0].url);
   await page.evaluate(() => window.__natif.emettre({ type: 'chaine', sens: 1 }));
   expect(await page.evaluate(() => window.mvFlux[0].url)).toBe(avantZap);
-  // Refusé là aussi : la page, comme sur le site.
+
+  /* Fermé par l'utilisateur (Retour dans le lecteur d'Android) : la tuile revient à la page
+     PAR CHOIX, et le direct automatique ne la reprend plus (30 octobre 2026, « le mode
+     direct essaie d'override après avoir quitté un stream »). Pas de relance du lecteur. */
+  await page.evaluate(() => window.__natif.emettre({ type: 'ferme' }));
+  await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
+  expect(await page.evaluate(() => ({ mode: window.mvFlux[0].mode, choisie: window.mvFlux[0]._pageChoisie }))).toEqual({ mode: 'page', choisie: true });
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), 'fermé à la main : pas relancé').toBe(1);
+
+  // Refusé par le lecteur natif : la page, comme sur le site.
+  await page.evaluate(() => window.toggleDirectMode(0));
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(2);
+  await page.evaluate(() => window.__hls[1].echouer());
+  await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(2);
   await page.evaluate(() => window.__natif.emettre({ type: 'echec', raison: 'ERROR_CODE_IO_BAD_HTTP_STATUS' }));
   await expect(page.locator('.mv-cell[data-index="0"] iframe')).toHaveCount(1);
   expect(await page.evaluate(() => window.mvFlux[0].mode)).toBe('page');
 
   // Un nouvel essai qui joue : la pastille le dit.
   await page.evaluate(() => window.toggleDirectMode(0));
-  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(2);
-  await page.evaluate(() => window.__hls[1].video.dispatchEvent(new Event('playing')));
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(3);
+  await page.evaluate(() => window.__hls[2].video.dispatchEvent(new Event('playing')));
   expect(await page.evaluate(() => window.mvFlux[0]._playing)).toBe(true);
   await page.evaluate(() => window.toggleDirectMode(0));
+
+  /* En mode câble, ▲▼ depuis le lecteur d'Android zappe de match (30 octobre 2026, « change
+     pas de match avec flèches verticales ») ; le flux du match voisin, connu, va TOUT DROIT au
+     lecteur natif, sans repasser par un essai dans la tuile. */
+  await page.evaluate(() => {
+    const reg = JSON.parse(localStorage.getItem('direct_media') || '{}');
+    window.S.matches.forEach((m) => (m.streamLinks || []).forEach((l) => {
+      if (l && l.url) reg[l.url] = { url: 'https://cdn.test/z/index.m3u8', pageUrl: l.url, referer: 'https://cadre.test/', at: Date.now(), echecs: 0 };
+    }));
+    localStorage.setItem('direct_media', JSON.stringify(reg));
+  });
+  await page.evaluate(() => window.toggleDirectMode(0));
+  await expect.poll(() => page.evaluate(() => window.__hls.length)).toBe(4);
+  await page.evaluate(() => window.__hls[3].echouer());
+  await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length)).toBe(3);
+  await page.evaluate(() => window.toggleModeCable());
+  await page.evaluate(() => window.__natif.emettre({ type: 'chaine', sens: 1 }));
+  await expect.poll(() => page.evaluate(() => window.mvFlux[0].url), { message: 'en mode câble, ▲▼ change de match' }).not.toBe(avantZap);
+  await expect.poll(() => page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').length), { message: 'le flux voisin va droit au lecteur natif' }).toBe(4);
+  expect(await page.evaluate(() => window.__natif.appels.filter((a) => a[0] === 'jouer').pop()[1].media)).toBe('https://cdn.test/z/index.m3u8');
+  expect(await page.evaluate(() => window.__hls.length), 'pas d\'essai hls.js derrière le lecteur natif').toBe(4);
+  await page.evaluate(() => { window.__natif.emettre({ type: 'ferme' }); window.toggleModeCable(); });
 
   /* Retour : le lecteur revient au Live ; sur le Live, la barre de navigation prend
      d'abord le focus (comme sur Netflix), puis Retour laisse quitter. */
