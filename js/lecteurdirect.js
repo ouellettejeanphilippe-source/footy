@@ -78,7 +78,11 @@ export function typeDeMedia(url, debut) {
      segment, et une connexion lente redescend au deuxième. `abrEwmaDefaultEstimateMax`
      l'empêche de partir plus haut qu'elle.
    - `startFragPrefetch` : le premier segment se charge pendant que le lecteur s'attache.
-   - Sur la télé, `maxBufferSize` (60 Mo par défaut) est ramené à 30 Mo. */
+   - Sur la télé, `maxBufferSize` (60 Mo par défaut) est ramené à 30 Mo.
+   - Sur la télé aussi (30 octobre 2026, recherche CCGTV) : `lowLatencyMode` coupé (vrai
+     par défaut ; ces flux n'ont pas de parties LL-HLS, et le mode coûte des requêtes et du
+     travail pour rien sur un processeur faible) et `capLevelOnFPSDrop` (une définition
+     plus basse dès que des images sont perdues, au lieu de continuer à décrocher). */
 export var DEBIT_DEPART_BPS = 5000000;
 export function configHls(opts) {
     var o = opts || {};
@@ -92,7 +96,7 @@ export function configHls(opts) {
         abrEwmaDefaultEstimateMax: DEBIT_DEPART_BPS,
         startFragPrefetch: true
     };
-    if (o.tele) c.maxBufferSize = 30 * 1000 * 1000;
+    if (o.tele) { c.maxBufferSize = 30 * 1000 * 1000; c.lowLatencyMode = false; c.capLevelOnFPSDrop = true; }
     if (o.loader) c.loader = o.loader;
     if (o.xhrSetup) c.xhrSetup = o.xhrSetup;
     return c;

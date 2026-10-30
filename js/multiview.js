@@ -413,6 +413,14 @@ function poserDirect(media, url, container, cell, s) {
         }
         versPage(raison);
     };
+    /* Le lecteur d'Android montre déjà cette tuile (◀▶ ou ▲▼ depuis lui) : le nouveau flux
+       y va tout droit, au lieu de passer d'abord par un essai dans la tuile, derrière lui,
+       qui le laissait jouer l'ancien flux jusqu'à vingt-cinq secondes. */
+    if (natifCourant && natifCourant.s === s && entetes && pluginNatif()) {
+        fini = true;
+        poserDirectNatif(pluginNatif(), media, url, container, s, idx, function(r) { versPage(r + ', lecteur d\'Android compris'); });
+        return;
+    }
     var sonde = sondesDirect[media.url];
     var video = creerLecteurVideo(media.url, revenir, pont, entetes, sonde && sonde.type);
     video.id = 'mv-iframe-' + idx;
@@ -433,9 +441,11 @@ function poserDirect(media, url, container, cell, s) {
    essaie le lecteur d'Android (LecteurNatifPlugin → LecteurActivity, ExoPlayer, plein
    écran) avant de revenir à la page. Il essaie les `Referer` de `referersPour` et lit
    les segments déguisés en image. La tuile garde sa place et montre de quoi le
-   relancer. Dans le lecteur natif, ◀▶ change de source (`changerSourceTuile`) ; ▲▼ ne
-   zappe plus de match (« ça part en mode câble »). Quand plus aucun `Referer` ne passe,
-   il le dit (`echec`) et la tuile revient à la page. */
+   relancer. Dans le lecteur natif, ◀▶ change de source (`changerSourceTuile`) ; ▲▼ zappe
+   de match en mode câble seulement (30 octobre 2026 ; hors de lui, rien : « ça part en
+   mode câble », 25 octobre). Quand plus aucun `Referer` ne passe, il le dit (`echec`)
+   et la tuile revient à la page ; fermé par l'utilisateur (`ferme`), la tuile revient à
+   la page par choix, sans que le direct automatique la reprenne. */
 var natifCourant = null;    // { s, url, idx, revenir } : la tuile que joue le lecteur natif
 var natifEcoute = false;
 function ecouterNatif(natif) {
@@ -447,6 +457,25 @@ function ecouterNatif(natif) {
         if (ev.type === 'joue') { c.s._playing = true; rafraichirPastille(c.idx); }
         else if (ev.type === 'echec') { natifCourant = null; c.revenir(ev.raison || 'lecteur natif'); }
         else if (ev.type === 'source') changerSourceTuile(c.idx, ev.sens < 0 ? -1 : 1);
+        /* ▲▼ : le match voisin, seulement en mode câble (30 octobre 2026, « change pas de
+           match avec flèches verticales ») ; hors de lui, rien, comme depuis le 25 octobre
+           (« ça part en mode câble »). */
+        else if (ev.type === 'chaine') { if (modeCable) zapperChaine(c.idx, ev.sens < 0 ? -1 : 1); }
+        /* Fermé par l'utilisateur (Retour dans le lecteur d'Android) : un choix, comme ▶ Direct
+           qui repasse en page. La tuile revient à la page et le direct automatique ne la
+           reprend plus pour ce lien ; sans cela, la tuile restait en direct et relançait le
+           lecteur natif par-dessus ce qu'il faisait (« le mode direct essaie d'override après
+           avoir quitté un stream », 30 octobre 2026). */
+        else if (ev.type === 'ferme') {
+            natifCourant = null;
+            c.s.mode = 'page';
+            c.s._pageChoisie = true;
+            c.s._currentUrl = null;
+            c.s._playing = false;
+            showToast('Lecteur d\'Android fermé : retour à la page du site (▶ Direct pour réessayer)');
+            saveMultivisionState();
+            updateMultivisionLayout();
+        }
     });
 }
 function poserDirectNatif(natif, media, url, container, s, idx, revenir) {
@@ -4972,7 +5001,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v104';
+export var VERSION_APP = 'sports-guide-v105';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
