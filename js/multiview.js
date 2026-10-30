@@ -444,8 +444,8 @@ function poserDirect(media, url, container, cell, s) {
    relancer. Dans le lecteur natif, ◀▶ change de source (`changerSourceTuile`) ; ▲▼ zappe
    de match en mode câble seulement (30 octobre 2026 ; hors de lui, rien : « ça part en
    mode câble », 25 octobre). Quand plus aucun `Referer` ne passe, il le dit (`echec`)
-   et la tuile revient à la page ; fermé par l'utilisateur (`ferme`), la tuile revient à
-   la page par choix, sans que le direct automatique la reprenne. */
+   et la tuile revient à la page ; fermé par l'utilisateur (`ferme`, Retour), le lecteur
+   se vide et l'on revient au Live (30 octobre 2026). */
 var natifCourant = null;    // { s, url, idx, revenir } : la tuile que joue le lecteur natif
 var natifEcoute = false;
 function ecouterNatif(natif) {
@@ -461,20 +461,18 @@ function ecouterNatif(natif) {
            match avec flèches verticales ») ; hors de lui, rien, comme depuis le 25 octobre
            (« ça part en mode câble »). */
         else if (ev.type === 'chaine') { if (modeCable) zapperChaine(c.idx, ev.sens < 0 ? -1 : 1); }
-        /* Fermé par l'utilisateur (Retour dans le lecteur d'Android) : un choix, comme ▶ Direct
-           qui repasse en page. La tuile revient à la page et le direct automatique ne la
-           reprend plus pour ce lien ; sans cela, la tuile restait en direct et relançait le
-           lecteur natif par-dessus ce qu'il faisait (« le mode direct essaie d'override après
-           avoir quitté un stream », 30 octobre 2026). */
+        /* Fermé par l'utilisateur (Retour dans le lecteur d'Android) : Retour quitte le lecteur
+           et vide ses vidéos, comme Retour depuis la page dans l'APK (« back devrait quitter le
+           lecteur et vider les videos dans le lecteur », 30 octobre 2026). Avant, la tuile
+           revenait seulement à la page par choix ; sans plus de tuile, le direct automatique
+           n'a plus rien à relancer par-dessus (« le mode direct essaie d'override après avoir
+           quitté un stream », 30 octobre 2026). */
         else if (ev.type === 'ferme') {
             natifCourant = null;
-            c.s.mode = 'page';
-            c.s._pageChoisie = true;
-            c.s._currentUrl = null;
-            c.s._playing = false;
-            showToast('Lecteur d\'Android fermé : retour à la page du site (▶ Direct pour réessayer)');
-            saveMultivisionState();
-            updateMultivisionLayout();
+            var n = mvFlux.length;
+            fermerToutesLesVideos();
+            if (n) showToast(n > 1 ? 'Vidéos fermées' : 'Vidéo fermée');
+            if (typeof window.quitterLecteur === 'function') window.quitterLecteur('live');
         }
     });
 }
@@ -5001,7 +4999,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v105';
+export var VERSION_APP = 'sports-guide-v106';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
