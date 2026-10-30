@@ -3,6 +3,7 @@
 Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-archive.md).
 
 ## En cours
+- 2026-10-30 - **« encore du lag » sur le Chromecast** : profil CPU de la WebView sur la télé (DevTools, APK avec `webContentsDebuggingEnabled`), page Live seule, sans lecteur ni iframe, 120 s : le fil JavaScript est saturé (tâches de 3 à 8 s), et **`isMatch` (`js/match.js`) prend 69 % du temps de script**, 85 % avec `stringSimilarity`, `levenshtein`, `categorieDuMatch`, `getOfficialTeamName`, `isMatchPair` : le rapprochement des matchs et des liens refait les mêmes comparaisons de noms à chaque passe (`loadAll`, toutes les cinq minutes). Fait : `isMatch` retient ses résultats (pure : deux noms, `strict`, et une base d'équipes construite une fois au chargement de `js/db.js`). Test : `tests/unit_ismatchcache.test.js`. `CACHE_NAME` / `VERSION_APP` : v107.
 - 2026-10-30 - **« back devrait quitter le lecteur et vider les videos dans le lecteur »** (Retour dans le lecteur natif d'Android). Aujourd'hui l'événement `ferme` (`ecouterNatif`, `js/multiview.js`) ne fait que remettre la tuile en page par choix : le lecteur reste ouvert et les vidéos restent. Voulu : `ferme` ferme toutes les vidéos et ramène au Live (`quitterLecteur`), comme Retour depuis la page. Test : `test_app_boot` (« sur la télé Android… »). `CACHE_NAME` / `VERSION_APP` à passer à v106.
 
 ## Blocages

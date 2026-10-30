@@ -942,7 +942,46 @@ export function isKnownDistinct(name1, name2) {
     return false;
 }
 
+/* `isMatch` retient ses réponses. Mesuré le 30 octobre 2026 sur un Chromecast (profil CPU de
+   la WebView, page Live seule) : elle prenait 69 % du temps de script, 85 % avec la
+   similarité, et figeait la page par tâches de 3 à 8 s ; le rapprochement des matchs et des
+   liens (`mergeMatches`, `isMatchPair`, les passes de `loadAll`, toutes les cinq minutes)
+   compare sans cesse les MÊMES paires de noms (748 noms d'équipes distincts dans le cache
+   réel). Elle ne dépend que de ses trois arguments et de la base d'équipes, construite une
+   seule fois au chargement de js/db.js et jamais modifiée ensuite : la retenir ne change
+   aucune réponse. Plafonnée (MEMOIRE_ISMATCH_MAX) : pleine, elle repart de zéro plutôt que
+   de grossir sur une télé à 2 Go. */
+export var MEMOIRE_ISMATCH_MAX = 250000;
+/* Deux niveaux (premier nom, puis second), un jeu pour `strict` et un pour le reste : les
+   noms ne sont pas recopiés dans une clé collée, ce qui garde chaque entrée petite (une
+   entrée par paire, 126 736 paires pour 356 noms d'équipes du calendrier). */
+var memoireIsMatch = [new Map(), new Map()];
+var tailleMemoireIsMatch = 0;
+var statsIsMatch = { appels: 0, calculs: 0 };
+export function statsMemoireIsMatch() { return { appels: statsIsMatch.appels, calculs: statsIsMatch.calculs, taille: tailleMemoireIsMatch }; }
 export function isMatch(name1, name2, strict) {
+  statsIsMatch.appels++;
+  if (typeof name1 !== 'string' || typeof name2 !== 'string') return isMatchSansCache(name1, name2, strict);
+  var jeu = memoireIsMatch[strict ? 1 : 0];
+  var ligne = jeu.get(name1);
+  if (ligne !== undefined) {
+    var connu = ligne.get(name2);
+    if (connu !== undefined) return connu;
+  }
+  statsIsMatch.calculs++;
+  var r = isMatchSansCache(name1, name2, strict);
+  if (tailleMemoireIsMatch >= MEMOIRE_ISMATCH_MAX) {
+    memoireIsMatch[0].clear();
+    memoireIsMatch[1].clear();
+    tailleMemoireIsMatch = 0;
+    ligne = undefined;
+  }
+  if (ligne === undefined) { ligne = new Map(); jeu.set(name1, ligne); }
+  ligne.set(name2, r);
+  tailleMemoireIsMatch++;
+  return r;
+}
+export function isMatchSansCache(name1, name2, strict) {
   if (name1 === '' && name2 === '') return true;
   if (!name1 || !name2) return false;
   if (name1 === name2) return true;
