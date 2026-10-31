@@ -249,6 +249,17 @@
     let ecouteSouris = false;
     let veilleLecteur = null;
 
+    /* Le garde-fou ultime : la page brute fait foi. Si une vidéo JOUAIT avant le nettoyage
+       (le flux marche, c'est observé) et qu'aucune ne joue plus après, c'est le nettoyage qui
+       a cassé le site — un lecteur qui dépend d'un nœud voisin, un script qui réagit à ce qui
+       disparaît, ce qu'on ne devine pas site par site. On remet la page telle qu'elle était
+       et on ne la nettoie plus : mieux vaut la page entière qu'une tuile noire. */
+    var SANTE_MUETS_MAX = 4;     // secondes de suite sans vidéo qui joue
+    var SANTE_PASSES_MAX = 12;   // la surveillance s'arrête là, ou dès qu'une vidéo joue 3 s de suite
+    let joueuses = [];
+    let santeTimer = null;
+    let nettoyageRenonce = false;
+
     function retirerReversible(n) {
         n.classList.add('mv-cleaner-hidden');
         var parent = n.parentNode;
@@ -261,6 +272,7 @@
 
     function annulerNettoyage() {
         if (veilleLecteur) { clearInterval(veilleLecteur); veilleLecteur = null; }
+        if (santeTimer) { clearInterval(santeTimer); santeTimer = null; }
         aDefaire.splice(0).forEach(function(f) { try { f(); } catch (e) {} });
         retires.splice(0).reverse().forEach(function(r) {
             try {
@@ -284,8 +296,28 @@
         return !cibleChoisie || !mainPlayerBase || !cibleChoisie.isConnected || !mainPlayerBase.isConnected
             || !mainPlayerBase.contains(cibleChoisie);
     }
+    function renoncerAuNettoyage(raison) {
+        console.log('[Multiview Cleaner] ' + raison + ' : nettoyage défait, la page reste entière');
+        nettoyageRenonce = true;
+        annulerNettoyage();
+        arreterRecherche();
+        tenterLecture(document);
+    }
+    function surveillerSante() {
+        if (santeTimer) clearInterval(santeTimer);
+        var muets = 0, vivantes = 0, passes = 0;
+        santeTimer = setInterval(function() {
+            if (!cleaned) { clearInterval(santeTimer); santeTimer = null; return; }
+            passes++;
+            var vivante = toutesLesVideos().some(function(v) { return videoJoue(v) && v.isConnected && v.offsetWidth > 50; });
+            muets = vivante ? 0 : muets + 1;
+            vivantes = vivante ? vivantes + 1 : 0;
+            if (muets >= SANTE_MUETS_MAX) { renoncerAuNettoyage('La vidéo qui jouait avant le nettoyage ne joue plus'); return; }
+            if (vivantes >= 3 || passes >= SANTE_PASSES_MAX) { clearInterval(santeTimer); santeTimer = null; }
+        }, 1000);
+    }
     function reprendreLeChoix() {
-        if (reprises >= REPRISES_MAX) return false;
+        if (reprises >= REPRISES_MAX) { renoncerAuNettoyage('Lecteur reconstruit trop de fois'); return true; }
         reprises++;
         console.log('[Multiview Cleaner] Lecteur reconstruit par le site : nettoyage défait, choix repris (' + reprises + ')');
         annulerNettoyage();
@@ -668,7 +700,8 @@
     }
 
     function cleanEverythingOutside(target) {
-        if (cleaned) return;
+        if (cleaned || nettoyageRenonce) return;
+        joueuses = toutesLesVideos().filter(videoJoue);
 
         injectStyles();
         cibleChoisie = target;
@@ -758,6 +791,7 @@
         }, 1000);
 
         cleaned = true;
+        if (joueuses.length) surveillerSante();
         console.log('[Multiview Cleaner] Page nettoyée avec succès !');
         lancerLectureImmediate(mainPlayerBase);
 
@@ -1257,7 +1291,7 @@
     }
 
     function findAndClean() {
-        if (cleaned) return;
+        if (cleaned || nettoyageRenonce) return;
 
         try { const m = extractM3u8Url(); if (m) signalerManifeste(m); } catch (e) {}
 
@@ -1330,7 +1364,7 @@
     }
 
     function relancerRecherche() {
-        if (cleaned) return;
+        if (cleaned || nettoyageRenonce) return;
         arreterRecherche();
         chercherSansCasser();
         if (cleaned) return;

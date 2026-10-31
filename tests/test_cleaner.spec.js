@@ -172,6 +172,27 @@ const SITE = `<html><body style="margin:0">
           + '<div id="commandes-neuves" class="vjs-control-bar" style="position:absolute;left:0;bottom:0;width:640px;height:40px;background:#000"><button>lecture</button></div>';
         document.body.appendChild(neuf);
       }
+      /* Un lecteur qui JOUE dans la page brute mais dépend d'un nœud voisin : tant que
+         #dependance est dans la page il joue, dès qu'il en disparaît il s'arrête et play() est
+         refusé. Aucune règle du script ne peut le deviner ; seule l'observation « elle jouait,
+         elle ne joue plus » le peut. */
+      if (e.data === 'poser_lecteur_dependant') {
+        var dep = document.createElement('div');
+        dep.id = 'dependance'; dep.textContent = 'donnees du lecteur'; dep.setAttribute('style', 'height:20px');
+        document.body.appendChild(dep);
+        var vd = document.createElement('video');
+        vd.id = 'lecteur'; vd.width = 640; vd.height = 360; vd.setAttribute('style', 'width:640px;height:360px');
+        var joue = true;
+        Object.defineProperty(vd, 'paused', { get: function () { return !joue; } });
+        Object.defineProperty(vd, 'readyState', { get: function () { return 4; } });
+        vd.play = function () {
+          if (!document.getElementById('dependance')) { joue = false; return Promise.reject(new DOMException('sans ses donnees', 'NotAllowedError')); }
+          joue = true; return Promise.resolve();
+        };
+        new MutationObserver(function () { if (!document.getElementById('dependance')) joue = false; })
+          .observe(document.documentElement, { childList: true, subtree: true });
+        document.body.appendChild(vd);
+      }
       /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
          bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
       if (e.data === 'poser_lecteur_bouton') {
@@ -624,6 +645,20 @@ test('un lecteur que la bibliothèque remplace après le nettoyage n\'est pas d�
   await expect(cadre.locator('#video-neuve')).toBeVisible();
   await expect(cadre.locator('#commandes-neuves'), 'ses commandes').toBeVisible();
   await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 5000 });
+});
+
+/* « On sait que le vidéo marche avant d'être nettoyé » : une vidéo qui jouait et que le
+   nettoyage arrête (ici, un lecteur qui dépend d'un nœud voisin) rend la page entière, et le
+   nettoyage ne revient plus. */
+test('une vidéo qui jouait avant le nettoyage et s\'arrête après : la page est rendue entière', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_dependant', '*'); });
+  await expect(cadre.locator('#decor'), 'le nettoyage commence : la vidéo jouait').toHaveCount(0, { timeout: 5000 });
+  await expect(cadre.locator('#decor'), 'puis il est défait : la vidéo ne jouait plus').toBeVisible({ timeout: 12000 });
+  await expect(cadre.locator('#dependance')).toBeAttached();
+  await expect.poll(() => cadre.evaluate(() => document.getElementById('lecteur').paused), { timeout: 5000 }).toBe(false);
+  await page.waitForTimeout(2500);
+  await expect(cadre.locator('#decor'), 'et la page n\'est plus nettoyée').toBeVisible();
 });
 
 /* Un lecteur déjà dans la page mais caché, montré plus tard par un changement de style :
