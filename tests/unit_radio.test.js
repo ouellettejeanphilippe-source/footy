@@ -62,7 +62,8 @@ test('une équipe sans station connue n\'a aucun lien : ni station inventée, ni
   const h = R.radioHtml(r, esc, I.icone);
   assert.ok(!/<a /.test(h), 'aucun lien');
   assert.ok(!/Chercher|search\?/.test(h), 'aucun bouton de recherche');
-  assert.strictEqual((h.match(/Aucune station officielle connue/g) || []).length, 2, 'dit une fois par équipe');
+  assert.strictEqual((h.match(/Aucune station officielle connue pour ce match/g) || []).length, 1, 'le dit une seule fois pour le match');
+  assert.ok(!h.includes('Zzz Inconnus'), 'pas de ligne pour une équipe sans station');
 });
 
 test('un match de la LNH : la station de chaque équipe, domicile puis visiteur', () => {
@@ -81,37 +82,41 @@ test('un match incomplet ne casse rien, une équipe ne s\'affiche pas deux fois'
   assert.strictEqual(R.radioHtml(null, esc, I.icone), '');
 });
 
-test('le HTML : liens sûrs, texte échappé, aucune recherche', () => {
-  const h = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Montreal Canadiens', awayTeam: 'A <b>"&" B' }), esc, I.icone);
+test('le HTML : liens sûrs, texte échappé, lignes seulement pour ce qui a une station', () => {
+  const h = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Montreal Canadiens', awayTeam: 'Zzz Inconnus' }), esc, I.icone);
   assert.ok(h.includes('class="fiche-radio-titre">Radio'));
   assert.ok(h.includes('<svg'), 'l\'icône radio est dessinée');
-  assert.ok(!h.includes('<b>'), 'le nom d\'équipe est échappé');
-  assert.ok(h.includes('A &lt;b&gt;&quot;&amp;&quot; B'));
   const liens = h.match(/<a [^>]*>/g);
-  assert.strictEqual(liens.length, 4, 'les quatre liens des Canadiens, rien pour l\'autre équipe');
+  assert.strictEqual(liens.length, 4, 'les quatre liens des Canadiens');
   for (const a of liens) assert.ok(/target="_blank" rel="noopener noreferrer"/.test(a), 'ouverture sûre : ' + a);
   assert.ok(h.includes('98,5 FM (français) · TuneIn'));
+  assert.ok(!h.includes('Zzz Inconnus'), 'l\'équipe sans station n\'a pas de ligne');
+  assert.ok(h.includes('Pas de ligne pour une équipe : aucune station officielle connue'), 'la note le dit');
   assert.ok(!/Chercher|search\?/.test(h), 'aucune recherche');
-  assert.ok(h.includes('Aucune station officielle connue'), 'dit qu\'il n\'y en a pas pour l\'autre équipe');
+  // Tout ce qui vient d'un nom ou d'une adresse est échappé.
+  const piege = R.radioHtml({ equipes: [{ equipe: 'A <b>"&" B', stations: [{ nom: '<i>x</i>', url: 'https://x.test/"y"', source: 'S&T' }] }], ligue: null }, esc, I.icone);
+  assert.ok(!piege.includes('<b>') && !piege.includes('<i>'), 'balises échappées');
+  assert.ok(piege.includes('A &lt;b&gt;&quot;&amp;&quot; B') && piege.includes('href="https://x.test/&quot;y&quot;"') && piege.includes('S&amp;T'));
 });
 
 test('le registre est cohérent : chaque clé existe, chaque station a un lien, chaque équipe est dans la base', () => {
   const cles = new Set(Object.values(T.TEAM_DATA).map((e) => R.cleEquipe(e.name)));
   const vusTunein = {}, vusIheart = {};
   for (const [k, s] of Object.entries(R.STATIONS)) {
-    assert.ok(s.tunein || s.iheart, 'au moins un annuaire connaît ' + k);
+    assert.ok(s.tunein || s.iheart || s.site, 'au moins un annuaire ou une page officielle pour ' + k);
     if (s.tunein) { assert.ok(/^s\d+$/.test(s.tunein), 'guide_id TuneIn de ' + k); assert.ok(!vusTunein[s.tunein], 'TuneIn en double : ' + k); vusTunein[s.tunein] = k; }
     if (s.iheart) { assert.ok(Number.isInteger(s.iheart), 'id iHeartRadio de ' + k); assert.ok(!vusIheart[s.iheart], 'iHeartRadio en double : ' + k); vusIheart[s.iheart] = k; }
-    assert.ok(['en', 'fr', 'es'].includes(s.lang), 'langue de ' + k);
-    assert.ok(s.nom && s.ind && s.freq, 'nom, indicatif et fréquence de ' + k);
+    assert.ok(['en', 'fr', 'es', 'de', 'nl'].includes(s.lang), 'langue de ' + k);
+    assert.ok(s.nom, 'nom de ' + k);
+    if (s.tunein || s.iheart) assert.ok(s.ind && s.freq, k + ' : un lien d\'annuaire s\'appuie sur un indicatif et une fréquence');
   }
   for (const [eq, ks] of Object.entries(R.RADIOS_EQUIPES)) {
-    assert.ok(cles.has(eq), 'équipe connue de la base : ' + eq);
+    assert.ok(eq.includes('@') || cles.has(eq) || ['golden state valkyries'].includes(eq), 'équipe connue de la base : ' + eq);
     assert.ok(ks.length >= 1 && new Set(ks).size === ks.length, 'stations sans doublon pour ' + eq);
     for (const k of ks) assert.ok(R.STATIONS[k], eq + ' → ' + k + ' existe');
   }
   for (const ks of Object.values(R.RADIOS_LIGUES)) for (const k of ks) assert.ok(R.STATIONS[k], 'station de ligue ' + k);
-  assert.ok(Object.keys(R.RADIOS_EQUIPES).length >= 100, 'NFL, LCF, NBA, MLB, MLS, LHJMQ : plus de cent équipes');
+  assert.ok(Object.keys(R.RADIOS_EQUIPES).length >= 170, 'pros, universités, rugby : plus de 170 entrées');
 });
 
 test('exemples : une station vérifiée par équipe, dans la bonne langue, par le bon annuaire', () => {
@@ -139,8 +144,49 @@ test('Premier League : talkSPORT au niveau du championnat, rien ailleurs', () =>
   const h = R.radioHtml(r, esc, I.icone);
   assert.ok(h.includes('talkSPORT · TuneIn') && h.includes('PREMIER LEAGUE'), 'la ligne du championnat');
   assert.ok(h.includes('Le championnat n\u2019en diffuse qu\u2019une partie'), 'la note dit que ce n\'est qu\'une partie des matchs');
-  assert.strictEqual(R.radiosDuMatch({ homeTeam: 'Real Madrid', awayTeam: 'FC Barcelona', league: 'LA LIGA' }).ligue, null);
+  assert.strictEqual(R.radiosDuMatch({ homeTeam: 'Napoli', awayTeam: 'Roma', league: 'SERIE A' }).ligue, null);
   assert.strictEqual(R.radiosDuMatch({ homeTeam: 'A', awayTeam: 'B' }).ligue, null);
+});
+
+test('un nom d\'école, deux sports : football et hockey ont chacun leur station', () => {
+  const foot = R.radiosDuMatch({ homeTeam: 'Air Force Falcons', awayTeam: 'Boston College Eagles', league: 'NCAA FOOTBALL' }).equipes;
+  const hock = R.radiosDuMatch({ homeTeam: 'Air Force Falcons', awayTeam: 'Boston College Eagles', league: "NCAA MEN'S ICE HOCKEY" }).equipes;
+  assert.ok(foot[0].stations.some((s) => s.nom.startsWith('KVOR')), 'football : KVOR 740');
+  assert.ok(!foot[0].stations.some((s) => s.nom.startsWith('XTRA')), 'pas la radio du hockey');
+  assert.ok(hock[0].stations.some((s) => s.nom.startsWith('XTRA Sports 1300')), 'hockey : XTRA Sports 1300');
+  assert.ok(!hock[0].stations.some((s) => s.nom.startsWith('KVOR')), 'pas la radio du football');
+  // Sans sport connu (hockey féminin, basket), une école n'emprunte rien à un autre sport.
+  const f = R.radiosDuMatch({ homeTeam: 'Air Force Falcons', awayTeam: 'Boston College Eagles', league: "NCAA WOMEN'S HOCKEY" }).equipes;
+  assert.ok(f.every((e) => e.stations.length === 0), 'hockey féminin : rien');
+  assert.strictEqual(R.sportDeLaLigue('NCAA FOOTBALL'), 'football');
+  assert.strictEqual(R.sportDeLaLigue("NCAA MEN'S ICE HOCKEY"), 'hockey');
+  assert.strictEqual(R.sportDeLaLigue('TOP 14'), 'rugby');
+  assert.strictEqual(R.sportDeLaLigue('NHL'), '');
+});
+
+test('les championnats : Bundesliga, Eredivisie, Premier League, F1, NASCAR ont leur ligne', () => {
+  for (const [ligue, n] of [['LA LIGA', 1], ['BUNDESLIGA', 1], ['EREDIVISIE', 1], ['PREMIER LEAGUE', 2], ['F1', 2], ['NASCAR', 2]]) {
+    const r = R.radiosDuMatch({ homeTeam: 'X', awayTeam: 'Y', league: ligue });
+    assert.ok(r.ligue && r.ligue.stations.length >= n, ligue + ' : ' + (r.ligue && r.ligue.stations.length));
+  }
+  const bl = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Bayern Munich', awayTeam: 'Dortmund', league: 'BUNDESLIGA' }), esc, I.icone);
+  assert.ok(bl.includes('(allemand)') && bl.includes('sportschau.de'), 'Sportschau, en allemand');
+  assert.ok(!bl.includes('Bayern Munich'), 'pas de ligne pour une équipe sans station');
+  // Une séance de F1 n'est pas une équipe : pas de ligne « Race » sans station.
+  const f1 = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Mexico City Grand Prix', awayTeam: 'Race', league: 'F1' }), esc, I.icone);
+  assert.ok(!f1.includes('>Race<') && f1.includes('BBC Radio 5 Live'), 'F1 : seulement la ligne du championnat');
+  assert.ok(!f1.includes('Pas de ligne pour une équipe') && !f1.includes('qu\u2019une partie'), 'F1 : ni « équipe sans station » ni « une partie des matchs »');
+  assert.deepStrictEqual(R.radiosDuMatch({ homeTeam: 'Mexico City Grand Prix', awayTeam: 'Race', league: 'F1' }).equipes, [], 'F1 : pas d\'équipes');
+  assert.ok(!bl.includes('qu\u2019une partie'), 'Bundesliga : un flux de chaque match, pas de note « une partie »');
+});
+
+test('toute station « site » est une adresse https, et seules celles hors annuaires en ont une', () => {
+  for (const [k, s] of Object.entries(R.STATIONS)) {
+    if (s.site) {
+      assert.ok(/^https:\/\//.test(s.site), k + ' : adresse https');
+      assert.ok(!s.tunein && !s.iheart, k + ' : un lien d\'annuaire passe avant la page officielle');
+    }
+  }
 });
 
 test('branchement : icône, fiche, service worker, version de l\'application', () => {
