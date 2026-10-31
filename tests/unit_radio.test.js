@@ -131,11 +131,16 @@ test('exemples : une station vérifiée par équipe, dans la bonne langue, par l
   assert.ok(urls('Rimouski Océanic').length >= 1, 'LHJMQ : CFYX');
 });
 
-test('pas de lien invérifiable : une équipe dont la station n\'est dans aucun des deux annuaires n\'en a pas', () => {
-  // Sportsnet 590 (Blue Jays, Raptors radio anglaise), WTMJ (Brewers, Bucks), KZNS (Jazz), Sacramento (plus de radio)…
-  for (const n of ['Toronto Blue Jays', 'Milwaukee Brewers', 'Utah Jazz', 'Sacramento Kings', 'Kansas City Chiefs', 'Miami Heat']) {
+test('pas de lien invérifiable : sans station dans un annuaire ni page officielle ouverte, une équipe n\'a rien', () => {
+  // WTMJ (Brewers, Bucks : site en 403), KZNS (Jazz), Sacramento (plus de radio locale), WDAE (Rays), Toronto FC.
+  for (const n of ['Milwaukee Brewers', 'Milwaukee Bucks', 'Utah Jazz', 'Sacramento Kings', 'Tampa Bay Rays', 'Toronto FC']) {
     assert.strictEqual(R.stationsDeLEquipe(n).length, 0, n + ' : aucune station inventée');
   }
+  // Une page d'écoute officielle ouverte avec succès remplace l'annuaire absent : Sportsnet 590 n'est ni chez TuneIn ni chez iHeartRadio.
+  const jays = R.stationsDeLEquipe('Toronto Blue Jays');
+  assert.ok(jays.some((s) => s.url === 'https://www.sportsnet.ca/590/' && s.source === 'Site de la station'), 'Blue Jays : Sportsnet 590');
+  const raps = R.stationsDeLEquipe('Toronto Raptors').map((s) => s.url);
+  assert.ok(raps.includes('https://www.sportsnet.ca/590/') && raps.includes('https://www.iheart.com/live/7495/'), 'Raptors : Sportsnet 590 (page) et TSN 1050 (iHeartRadio)');
 });
 
 test('Premier League : talkSPORT au niveau du championnat, rien ailleurs', () => {

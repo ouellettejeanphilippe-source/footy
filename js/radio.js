@@ -216,7 +216,26 @@ export var STATIONS = {
   'bbcradiogloucestershireecouteauroyaumeuni': { nom: 'BBC Radio Gloucestershire (écoute au Royaume-Uni)', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://www.bbc.co.uk/sounds/play/live:bbc_radio_gloucestershire' },
   'angelcityfciheartradio': { nom: 'Angel City FC (iHeartRadio)', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://www.iheart.com/live/angel-city-fc-9419/' },
   'sportstalk790': { nom: 'Sports Talk 790', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://790louisville.iheart.com/' },
-  'talksport1089': { nom: 'talkSPORT', ind: 'talkSPORT', freq: '1089', lang: 'en', tunein: 's17077', iheart: null }
+  'talksport1089': { nom: 'talkSPORT', ind: 'talkSPORT', freq: '1089', lang: 'en', tunein: 's17077', iheart: null },
+  'cjcl590': { nom: 'Sportsnet 590 The FAN', ind: 'CJCL', freq: '590', lang: 'en', tunein: null, iheart: null, site: 'https://www.sportsnet.ca/590/' },
+  'wqam1043': { nom: 'WQAM 104.3', ind: 'WQAM', freq: '104.3', lang: 'en', tunein: null, iheart: 10922 },
+  'kfnz965': { nom: '96.5 The Fan', ind: 'KFNZ', freq: '96.5', lang: 'en', tunein: null, iheart: null, site: 'https://www.audacy.com/965thefan' },
+  'wcbs880': { nom: 'WCBS 880', ind: 'WCBS', freq: '880', lang: 'en', tunein: null, iheart: null, site: 'https://www.audacy.com/wcbs880' },
+  'wbal1090': { nom: 'WBAL NewsRadio 1090', ind: 'WBAL', freq: '1090', lang: 'en', tunein: null, iheart: null, site: 'https://www.wbal.com/' },
+  'wjxl1010': { nom: '1010 XL', ind: 'WJXL', freq: '1010', lang: 'en', tunein: null, iheart: null, site: 'https://1010xl.com/' },
+  'kkse925': { nom: 'Altitude Sports Radio 92.5', ind: 'KKSE', freq: '92.5', lang: 'en', tunein: null, iheart: null, site: 'https://www.altitudesportsradio.com/' },
+  'wygm969': { nom: '96.9 The Game', ind: 'WYGM', freq: '96.9', lang: 'en', tunein: null, iheart: null, site: 'https://969thegame.iheart.com/' },
+  'lagalaxyradiofluxduclub': { nom: 'LA Galaxy Radio (flux du club)', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://www.lagalaxy.com/radio' },
+  'fcdallasradiofluxduclub': { nom: 'FC Dallas Radio (flux du club)', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://www.fcdallas.com/radio' },
+  'dynamoradiofluxduclub': { nom: 'Dynamo Radio (flux du club)', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://hdfc-radio.mixlr.com' },
+  'ticatsaudionetworkfluxduclub': { nom: 'Ticats Audio Network (flux du club)', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://ticats.ca/listen' },
+  'cita1051': { nom: 'Harvesters FM 105.1', ind: 'CITA', freq: '105.1', lang: 'en', tunein: null, iheart: null, site: 'https://inspire.fm/' },
+  'max931': { nom: 'Max 93.1', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://max931.ca/' },
+  'chyz943': { nom: 'CHYZ 94,3', ind: 'CHYZ', freq: '94.3', lang: 'fr', tunein: 's24676', iheart: null },
+  'lehockeydessagueneensiheartradio': { nom: 'Le hockey des Saguenéens (iHeartRadio)', ind: '', freq: '', lang: 'fr', tunein: null, iheart: null, site: 'https://www.iheart.com/live/le-hockey-des-sagueneens-7749/' },
+  'lehockeydesolympiques1047outaouais': { nom: 'Le hockey des Olympiques (104,7 Outaouais)', ind: '', freq: '', lang: 'fr', tunein: null, iheart: null, site: 'https://www.fm1047.ca/emissions/le-hockey-des-olympiques-de-gatineau' },
+  'newfoundlandregimentfluxduclub': { nom: 'Newfoundland Regiment (flux du club)', ind: '', freq: '', lang: 'en', tunein: null, iheart: null, site: 'https://nlregiment.mixlr.com/' },
+  'copetiempodejuego': { nom: 'COPE (Tiempo de Juego)', ind: '', freq: '', lang: 'es', tunein: null, iheart: null, site: 'https://www.cope.es/directos' }
 };
 
 /* Équipe (nom normalisé par `cleEquipe`, suivi de `@sport` pour une équipe universitaire ou de rugby dont le nom
@@ -224,7 +243,7 @@ export var STATIONS = {
 export var RADIOS_EQUIPES = {
   'arizona cardinals': ['kmvp987'],
   'atlanta falcons': ['wzgc929'],
-  'baltimore ravens': ['wiyy979'],
+  'baltimore ravens': ['wiyy979', 'wbal1090'],
   'buffalo bills': ['wgrf969'],
   'carolina panthers': ['wrfx997'],
   'chicago bears': ['wmvp1000', 'wviv935'],
@@ -280,7 +299,7 @@ export var RADIOS_EQUIPES = {
   'phoenix suns': ['kmvp987'],
   'portland trail blazers': ['kpoj620'],
   'san antonio spurs': ['woai1200'],
-  'toronto raptors': ['chum1050'],
+  'toronto raptors': ['chum1050', 'cjcl590'],
   'washington wizards': ['wjfk1067'],
   'arizona diamondbacks': ['kmvp987'],
   'athletics': ['kste650'],
@@ -398,18 +417,38 @@ export var RADIOS_EQUIPES = {
   'gloucester rugby@rugby': ['bbcradiogloucestershireecouteauroyaumeuni'],
   'golden state valkyries': ['kgmz957'],
   'angel city fc': ['angelcityfciheartradio'],
-  'racing louisville fc': ['sportstalk790']
+  'racing louisville fc': ['sportstalk790'],
+  'toronto blue jays': ['cjcl590'],
+  'toronto maple leafs': ['cjcl590', 'chum1050'],
+  'toronto argonauts': ['chum1050'],
+  'miami marlins': ['wqam1043'],
+  'miami heat': ['wqam1043'],
+  'miami hurricanes@football': ['wqam1043'],
+  'kansas city royals': ['kfnz965'],
+  'kansas city chiefs': ['kfnz965'],
+  'new york mets': ['wcbs880'],
+  'navy midshipmen@football': ['wbal1090'],
+  'jacksonville jaguars': ['wjxl1010'],
+  'denver nuggets': ['kkse925'],
+  'colorado rapids': ['kkse925'],
+  'orlando magic': ['wygm969'],
+  'ucf knights@football': ['wygm969'],
+  'la galaxy': ['lagalaxyradiofluxduclub'],
+  'fc dallas': ['fcdallasradiofluxduclub'],
+  'houston dynamo fc': ['dynamoradiofluxduclub'],
+  'hamilton tiger cats': ['ticatsaudionetworkfluxduclub'],
+  'moncton wildcats@hockey': ['cita1051'],
+  'charlottetown islanders@hockey': ['max931'],
+  'quebec remparts@hockey': ['chyz943'],
+  'chicoutimi sagueneens@hockey': ['lehockeydessagueneensiheartradio'],
+  'gatineau olympiques@hockey': ['lehockeydesolympiques1047outaouais'],
+  'newfoundland regiment@hockey': ['newfoundlandregimentfluxduclub']
 };
-
-/* COPE (« Tiempo de Juego ») : sa page de direct (cope.es/directos, ouverte avec succès le 31 octobre 2026)
-   montre la narration en direct de Betis – Málaga ; les droits radio de la Liga ne sont dits nulle part,
-   d'où « une partie des matchs ». */
-STATIONS.cope = { nom: 'COPE (Tiempo de Juego)', ind: '', freq: '', lang: 'es', tunein: null, iheart: null, site: 'https://www.cope.es/directos' };
 
 /* Diffuseurs de championnat : championnat normalisé (`cleEquipe` du nom de ligue) → clés de STATIONS.
    Aucune garantie que la station diffuse CE match : elle en diffuse une partie. */
 export var RADIOS_LIGUES = {
-  'la liga': ['cope'],
+  'la liga': ['copetiempodejuego'],
   'bundesliga': ['sportschauardaudiodechaquematch'],
   'eredivisie': ['nporadio1noslangsdelijn'],
   'premier league': ['bbcradio5liveecouteauroyaumeuni', 'talksport1089'],
