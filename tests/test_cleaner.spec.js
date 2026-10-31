@@ -172,26 +172,35 @@ const SITE = `<html><body style="margin:0">
           + '<div id="commandes-neuves" class="vjs-control-bar" style="position:absolute;left:0;bottom:0;width:640px;height:40px;background:#000"><button>lecture</button></div>';
         document.body.appendChild(neuf);
       }
-      /* Un lecteur qui JOUE dans la page brute mais dépend d'un nœud voisin : tant que
-         #dependance est dans la page il joue, dès qu'il en disparaît il s'arrête et play() est
-         refusé. Aucune règle du script ne peut le deviner ; seule l'observation « elle jouait,
-         elle ne joue plus » le peut. */
-      if (e.data === 'poser_lecteur_dependant') {
+      /* Un lecteur qui JOUE dans la page brute mais dépend d'un nœud voisin. Aucune règle du
+         script ne peut le deviner ; seule l'observation « elle jouait, elle ne joue plus » le
+         peut. 'retire' : il ne joue que tant que #dependance est dans la page (le nettoyage ne
+         retire plus rien, donc il continue). 'masque' : il ne joue que tant que #dependance
+         a une mise en page (offsetHeight > 0) ; le palier « masque » le casse, « couvre » le
+         rend. */
+      if (e.data === 'poser_lecteur_dependant' || e.data === 'poser_lecteur_fragile') {
+        var fragile = e.data === 'poser_lecteur_fragile';
         var dep = document.createElement('div');
         dep.id = 'dependance'; dep.textContent = 'donnees du lecteur'; dep.setAttribute('style', 'height:20px');
         document.body.appendChild(dep);
         var vd = document.createElement('video');
         vd.id = 'lecteur'; vd.width = 640; vd.height = 360; vd.setAttribute('style', 'width:640px;height:360px');
-        var joue = true;
-        Object.defineProperty(vd, 'paused', { get: function () { return !joue; } });
-        Object.defineProperty(vd, 'readyState', { get: function () { return 4; } });
-        vd.play = function () {
-          if (!document.getElementById('dependance')) { joue = false; return Promise.reject(new DOMException('sans ses donnees', 'NotAllowedError')); }
-          joue = true; return Promise.resolve();
+        var vivant = function () {
+          var d = document.getElementById('dependance');
+          return !!d && (!fragile || d.offsetHeight > 0);
         };
-        new MutationObserver(function () { if (!document.getElementById('dependance')) joue = false; })
-          .observe(document.documentElement, { childList: true, subtree: true });
+        Object.defineProperty(vd, 'paused', { get: function () { return !vivant(); } });
+        Object.defineProperty(vd, 'readyState', { get: function () { return 4; } });
+        vd.play = function () { return vivant() ? Promise.resolve() : Promise.reject(new DOMException('sans ses donnees', 'NotAllowedError')); };
         document.body.appendChild(vd);
+      }
+      /* Deux cadres de la même taille : une coquille sans adresse (la place d'une régie, remplie
+         par script) posée AVANT le vrai lecteur (live5.totalsportek.today > fsportshdz.xyz,
+         31 octobre 2026). À égalité, le premier gagnait, et le vrai lecteur était caché. */
+      if (e.data === 'poser_deux_cadres') {
+        document.getElementById('zone').innerHTML =
+          '<iframe id="coquille" style="width:640px;height:360px;border:0"></iframe>'
+          + '<iframe id="vrai-lecteur" src="/embed/1" style="width:640px;height:360px;border:0"></iframe>';
       }
       /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
          bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
@@ -442,8 +451,8 @@ test('le décor du site disparaît quand le lecteur arrive tardivement', async (
   await expect(cadre.locator('#lecteur')).toBeAttached();
   /* Le décor doit avoir été retiré : c'est tout l'objet du script. Avant correction, la
      recherche avait renoncé et le bandeau restait autour de la vidéo. */
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
-  await expect(cadre.locator('#avis')).toHaveCount(0);
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
+  await expect(cadre.locator('#avis')).toBeHidden();
   await expect(cadre.locator('#lecteur')).toBeAttached();
 });
 
@@ -464,7 +473,7 @@ test('le script ne pose aucun bouton sur la vidéo, même quand la page expose s
     }))).observe(document.documentElement, { childList: true, subtree: true });
   });
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*'); });
-  await expect(cadre.locator('#decor'), 'la vidéo est isolée').toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor'), 'la vidéo est isolée').toBeHidden({ timeout: 10000 });
   await page.clock.fastForward('00:05');
   await page.waitForTimeout(300);
   expect(await cadre.evaluate(() => window.__boutonsPoses), 'aucun bouton Cast posé, même un instant').toEqual([]);
@@ -478,9 +487,9 @@ test('le nettoyage garde le lecteur, pas la boîte de discussion plus grande que
   await page.evaluate(() => {
     document.getElementById('tuile').contentWindow.postMessage('poser_chat_et_lecteur', '*');
   });
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
   await expect(cadre.locator('#lecteur-cadre')).toBeAttached();
-  await expect(cadre.locator('#chat')).toHaveCount(0);
+  await expect(cadre.locator('#chat')).toBeHidden();
 });
 
 /* « Faire que les vidéos dans le multiview se lancent directement. » Une fois la page
@@ -491,7 +500,7 @@ test('la vidéo est lancée sans clic : play() appelé, relancé muet si refusé
   const cadre = await monterTuile(page, false);
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_bouton', '*'); });
   await expect(cadre.locator('#lecteur')).toBeAttached();
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
 
   await expect.poll(() => cadre.evaluate(() => window.__appelsPlay), { timeout: 8000 }).toBeGreaterThanOrEqual(2);
   const etat = await cadre.evaluate(() => ({ muet: window.__dernierMuet, clics: window.__clicsPlay || 0, bouton: !!document.getElementById('gros-play') }));
@@ -531,7 +540,7 @@ test('la tuile obéit aux ordres même sans nettoyage préalable', async ({ page
   await page.evaluate(() => {
     document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*');
   });
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
 });
 
 /* « Lecture automatique des lecteurs » (12 septembre 2026). Le mode câble envoie `mv_play`
@@ -567,7 +576,7 @@ test('le son rendu est vérifié : la vidéo qui s\'arrête est remise en muet, 
     document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_sonrefuse', '*');
   });
   await expect(cadre.locator('#lecteur')).toBeAttached();
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
   // La vidéo joue, muette (le repli du script).
   await expect.poll(() => cadre.evaluate(() => !document.querySelector('#lecteur').paused), { timeout: 8000 }).toBe(true);
 
@@ -606,7 +615,7 @@ test('seule la fenêtre qui encadre la tuile peut lui donner des ordres', async 
 test('les calques de pub posés sur la vidéo disparaissent, les commandes du lecteur restent', async ({ page }) => {
   const cadre = await monterTuile(page, false);
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_et_pub', '*'); });
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
   await expect(cadre.locator('#pub-banniere'), 'la bannière de paris posée sur l\'image').toBeHidden({ timeout: 5000 });
   await expect(cadre.locator('#pub-cadre'), 'l\'iframe d\'une régie dans l\'emballage d\'une <video>').toBeHidden();
   await expect(cadre.locator('#lecteur')).toBeVisible();
@@ -628,37 +637,61 @@ test('les calques de pub posés sur la vidéo disparaissent, les commandes du le
 test('un lecteur que la bibliothèque enveloppe après le nettoyage n\'est pas détruit', async ({ page }) => {
   const cadre = await monterTuile(page, false);
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_video_nue', '*'); });
-  await expect(cadre.locator('#decor'), 'la vidéo nue est prise pour le lecteur').toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor'), 'la vidéo nue est prise pour le lecteur').toBeHidden({ timeout: 10000 });
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('envelopper_video', '*'); });
   await expect(cadre.locator('#enveloppe'), 'le lecteur construit par la bibliothèque').toBeVisible({ timeout: 5000 });
   await expect(cadre.locator('#lecteur')).toBeVisible();
   await expect(cadre.locator('#commandes-js'), 'ses commandes').toBeVisible();
-  await expect(cadre.locator('#decor'), 'et le décor du site est de nouveau retiré, autour du bon lecteur').toHaveCount(0, { timeout: 5000 });
+  await expect(cadre.locator('#decor'), 'et le décor du site est de nouveau retiré, autour du bon lecteur').toBeHidden({ timeout: 5000 });
 });
 
 test('un lecteur que la bibliothèque remplace après le nettoyage n\'est pas détruit', async ({ page }) => {
   const cadre = await monterTuile(page, false);
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_video_nue', '*'); });
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('remplacer_video', '*'); });
   await expect(cadre.locator('#lecteur-neuf'), 'le lecteur neuf').toBeVisible({ timeout: 5000 });
   await expect(cadre.locator('#video-neuve')).toBeVisible();
   await expect(cadre.locator('#commandes-neuves'), 'ses commandes').toBeVisible();
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 5000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 5000 });
 });
 
-/* « On sait que le vidéo marche avant d'être nettoyé » : une vidéo qui jouait et que le
-   nettoyage arrête (ici, un lecteur qui dépend d'un nœud voisin) rend la page entière, et le
-   nettoyage ne revient plus. */
-test('une vidéo qui jouait avant le nettoyage et s\'arrête après : la page est rendue entière', async ({ page }) => {
+/* « Faut juste le rendre moins agressif » (31 octobre 2026). Le nettoyage ne retire plus rien :
+   il cache. Un lecteur qui cherche un nœud voisin le retrouve, et continue de jouer. */
+test('un lecteur qui dépend d\'un nœud voisin continue de jouer : les voisins sont cachés, pas retirés', async ({ page }) => {
   const cadre = await monterTuile(page, false);
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_dependant', '*'); });
-  await expect(cadre.locator('#decor'), 'le nettoyage commence : la vidéo jouait').toHaveCount(0, { timeout: 5000 });
-  await expect(cadre.locator('#decor'), 'puis il est défait : la vidéo ne jouait plus').toBeVisible({ timeout: 12000 });
+  await expect(cadre.locator('#decor'), 'la page est nettoyée').toBeHidden({ timeout: 5000 });
+  await expect(cadre.locator('#decor'), 'mais le décor est encore dans la page').toBeAttached();
   await expect(cadre.locator('#dependance')).toBeAttached();
+  await page.waitForTimeout(6000);
+  expect(await cadre.evaluate(() => document.getElementById('lecteur').paused), 'la vidéo joue toujours').toBe(false);
+  await expect(cadre.locator('#decor'), 'et la page reste nettoyée').toBeHidden();
+});
+
+/* « On sait que le vidéo marche avant d'être nettoyé » : un lecteur qui joue tant que son
+   voisin a une mise en page est cassé par le palier « masque » ; le script passe au palier
+   « couvre » : rien n'est caché, le lecteur couvre toute la tuile par-dessus la page. La
+   page entière n'est que le dernier recours — la vidéo ne doit pas rester petite. */
+test('une vidéo qui jouait et que le masquage arrête : le palier « couvre » la remet en plein cadre', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_fragile', '*'); });
+  await expect(cadre.locator('#decor'), 'palier masque d\'abord').toBeHidden({ timeout: 5000 });
+  await expect(cadre.locator('#dependance'), 'puis palier couvre : le voisin retrouve sa mise en page').toBeVisible({ timeout: 12000 });
   await expect.poll(() => cadre.evaluate(() => document.getElementById('lecteur').paused), { timeout: 5000 }).toBe(false);
+  const boite = await cadre.evaluate(() => { const r = document.getElementById('lecteur').getBoundingClientRect(); return { w: r.width, h: r.height }; });
+  expect(boite.w, 'la vidéo couvre toute la largeur de la tuile').toBeGreaterThanOrEqual(790);
+  expect(boite.h, 'et toute sa hauteur').toBeGreaterThanOrEqual(590);
   await page.waitForTimeout(2500);
-  await expect(cadre.locator('#decor'), 'et la page n\'est plus nettoyée').toBeVisible();
+  expect(await cadre.evaluate(() => document.getElementById('lecteur').paused)).toBe(false);
+});
+
+test('de deux cadres de même taille, celui qui a une adresse est le lecteur, pas la coquille vide', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_deux_cadres', '*'); });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
+  await expect(cadre.locator('#vrai-lecteur'), 'le cadre qui a une adresse').toBeVisible();
+  await expect(cadre.locator('#coquille'), 'la coquille sans adresse').toBeHidden();
 });
 
 /* Un lecteur déjà dans la page mais caché, montré plus tard par un changement de style :
@@ -673,14 +706,14 @@ test('un lecteur montré tard, sans nœud ajouté, est quand même trouvé', asy
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('montrer_lecteur', '*'); });
   await page.waitForTimeout(200);
   await page.clock.fastForward('00:04');
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 5000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 5000 });
   await expect(cadre.locator('#lecteur')).toBeVisible();
 });
 
 test('un lecteur dont la vidéo vit dans une racine fantôme est nettoyé', async ({ page }) => {
   const cadre = await monterTuile(page, false);
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_ombre', '*'); });
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 12000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 12000 });
   await expect(cadre.locator('#hote-ombre')).toBeVisible();
 });
 
@@ -690,7 +723,7 @@ test('un site qui a sa grille de programmes (.epg) est nettoyé comme les autres
   const cadre = await monterTuile(page, false, false, 'epg=1');
   await expect(cadre.locator('.epg')).toBeAttached();
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur', '*'); });
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
   await expect(cadre.locator('#lecteur')).toBeAttached();
 });
 
@@ -699,9 +732,9 @@ test('un site qui a sa grille de programmes (.epg) est nettoyé comme les autres
 test('un emballage qui contient le lecteur et la discussion ne fait pas écarter le lecteur', async ({ page }) => {
   const cadre = await monterTuile(page, false);
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_emballage_chat', '*'); });
-  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await expect(cadre.locator('#decor')).toBeHidden({ timeout: 10000 });
   await expect(cadre.locator('#lecteur-cadre')).toBeAttached();
-  await expect(cadre.locator('#chat')).toHaveCount(0);
+  await expect(cadre.locator('#chat')).toBeHidden();
 });
 
 /* Le pont lit en binaire pour le mode direct (« le bouton direct, ça marche avec AUCUN

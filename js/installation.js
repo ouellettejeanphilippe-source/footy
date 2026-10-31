@@ -12,13 +12,13 @@
    Sans import : `getBridgeStatus` est passé par l'appelant. */
 
 /* Doit suivre "version" de extension/manifest.json (vérifié par unit_extension). */
-export var VERSION_EXTENSION = '1.8';
+export var VERSION_EXTENSION = '1.9';
 
 /* Doit suivre @version de multiview-cleaner.user.js (vérifié par unit_extension). Un script
    plus ancien s'annonce « pas à jour » (18 octobre 2026 : le recul de l'onglet n'est bloqué
    dans les vidéos que depuis la 1.17, et rien ne disait que Tampermonkey tournait encore
    sur l'ancienne). */
-export var VERSION_SCRIPT = '1.21';
+export var VERSION_SCRIPT = '1.22';
 
 /* La valeur de `hasSeenScriptModal` posée après la fenêtre du début. Toute valeur non
    vide veut dire « déjà vue » (« 2 » vient du guide retiré). */
