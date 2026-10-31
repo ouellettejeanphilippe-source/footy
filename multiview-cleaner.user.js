@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.20
+// @version      1.22
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -144,6 +144,109 @@
 
     let cleaned = false;
     let mainPlayerBase = null;
+    let cibleChoisie = null;
+
+    /* Le nettoyage se défait (31 octobre 2026, « presque tous les sites chargent vite sans le
+       nettoyeur, il en fait planter les deux tiers » ; il faut que tous les sites passent).
+       Il choisit le lecteur sur ce qu'il voit au moment où il passe, et ce choix peut être
+       faux : une <video> nue que Video.js enveloppe ou remplace une seconde plus tard, un
+       lecteur reconstruit par sa bibliothèque. Sans retour en arrière, l'observateur retirait
+       alors le vrai lecteur comme n'importe quelle pub, et plus rien ne pouvait le remettre.
+       On garde donc de quoi tout rendre (classes, observateurs) et on reprend le choix, au
+       plus REPRISES_MAX fois par page.
+
+       Et le nettoyage est moins agressif : il ne SUPPRIME plus rien de la page, il cache
+       (« masque »). Un script du site qui cherche un nœud voisin le retrouve, au lieu de
+       tomber sur null et de laisser le lecteur à moitié monté. */
+    var REPRISES_MAX = 6;
+    var PALIERS = ['masque', 'couvre'];
+    let palier = 0;
+    let reprises = 0;
+    let aDefaire = [];
+    let ecouteSouris = false;
+    let veilleLecteur = null;
+
+    /* Le détecteur de ce qu'il ne fallait pas toucher : la page brute fait foi. Si une vidéo
+       JOUAIT avant le nettoyage (le flux marche, c'est observé) et qu'aucune ne joue plus
+       après, c'est le nettoyage qui a cassé le site — un lecteur qui dépend d'un nœud voisin
+       ou de sa taille, un script qui réagit à ce qui disparaît ; ce qu'on ne devine pas site
+       par site. Le script passe alors au palier suivant, plus doux, qui garde la vidéo en
+       plein cadre :
+         - « masque » : les voisins du lecteur sont cachés (display:none), rien n'est retiré ;
+         - « couvre » : rien n'est touché dans la page, seul le lecteur passe en plein cadre
+           par-dessus, sur fond noir ; la page reste vivante dessous ;
+       et, si même cela ne rend pas la lecture, la page entière (dernier recours : mieux vaut
+       une vidéo petite qu'une tuile noire). */
+    var SANTE_MUETS_MAX = 4;     // secondes de suite sans vidéo qui joue
+    var SANTE_PASSES_MAX = 12;   // la surveillance s'arrête là, ou dès qu'une vidéo joue 3 s de suite
+    let avaitJoue = false;
+    let santeTimer = null;
+    let nettoyageRenonce = false;
+
+    /* Cacher sans retirer. Le son d'une pub cachée est coupé (même document seulement). */
+    function masquer(n) {
+        n.classList.add('mv-cleaner-hidden');
+        try {
+            if (n.matches && n.matches('video, audio')) n.pause();
+            if (n.querySelectorAll) n.querySelectorAll('video, audio').forEach(function(m) { try { m.pause(); } catch (e) {} });
+        } catch (e) {}
+    }
+
+    function annulerNettoyage() {
+        if (veilleLecteur) { clearInterval(veilleLecteur); veilleLecteur = null; }
+        if (santeTimer) { clearInterval(santeTimer); santeTimer = null; }
+        aDefaire.splice(0).forEach(function(f) { try { f(); } catch (e) {} });
+        document.querySelectorAll('.mv-cleaner-hidden, .mv-cleaner-parent, .mv-cleaner-libre, .mv-cleaner-maximized').forEach(function(el) {
+            el.classList.remove('mv-cleaner-hidden', 'mv-cleaner-parent', 'mv-cleaner-libre', 'mv-cleaner-maximized');
+        });
+        var st = document.getElementById('multiview-cleaner-styles');
+        if (st) st.remove();
+        cleaned = false;
+        mainPlayerBase = null;
+        cibleChoisie = null;
+    }
+
+    /* Le lecteur choisi n'est plus ce qu'on a choisi : retiré de la page, ou sorti de son
+       emballage. */
+    function choixPerdu() {
+        return !cibleChoisie || !mainPlayerBase || !cibleChoisie.isConnected || !mainPlayerBase.isConnected
+            || !mainPlayerBase.contains(cibleChoisie);
+    }
+    function renoncerAuNettoyage(raison) {
+        annulerNettoyage();
+        if (palier + 1 < PALIERS.length) {
+            palier++;
+            console.log('[Multiview Cleaner] ' + raison + ' : palier plus doux (' + PALIERS[palier] + ')');
+            reprises = 0;
+            relancerRecherche();
+            return;
+        }
+        console.log('[Multiview Cleaner] ' + raison + ' : nettoyage défait, la page reste entière');
+        nettoyageRenonce = true;
+        arreterRecherche();
+        tenterLecture(document);
+    }
+    function surveillerSante() {
+        if (santeTimer) clearInterval(santeTimer);
+        var muets = 0, vivantes = 0, passes = 0;
+        santeTimer = setInterval(function() {
+            if (!cleaned) { clearInterval(santeTimer); santeTimer = null; return; }
+            passes++;
+            var vivante = toutesLesVideos().some(function(v) { return videoJoue(v) && v.isConnected && v.offsetWidth > 50; });
+            muets = vivante ? 0 : muets + 1;
+            vivantes = vivante ? vivantes + 1 : 0;
+            if (muets >= SANTE_MUETS_MAX) { renoncerAuNettoyage('La vidéo qui jouait avant le nettoyage ne joue plus'); return; }
+            if (vivantes >= 3 || passes >= SANTE_PASSES_MAX) { clearInterval(santeTimer); santeTimer = null; }
+        }, 1000);
+    }
+    function reprendreLeChoix() {
+        if (reprises >= REPRISES_MAX) { renoncerAuNettoyage('Lecteur reconstruit trop de fois'); return true; }
+        reprises++;
+        console.log('[Multiview Cleaner] Lecteur reconstruit par le site : nettoyage défait, choix repris (' + reprises + ')');
+        annulerNettoyage();
+        relancerRecherche();
+        return true;
+    }
 
     /* Ce que le bac à sable de l'iframe faisait, rendu ici à la main.
 
@@ -171,14 +274,20 @@
         const script = document.createElement('script');
         script.textContent = `
             /* Non réassignable : une régie qui fait « window.open = original » après nous
-               ne récupère rien. */
+               ne récupère rien. Mais l'écriture ne doit pas LEVER : avec « writable: false », un
+               script en mode strict qui écrit « window.open = … » (courant chez les régies et les
+               bibliothèques de lecteur) lève une TypeError et s'arrête là — le lecteur du site
+               ne se montait plus (hadcrak.cyou / matchix.org, 31 octobre 2026, qui jouait sans
+               le script). Un accesseur dont l'écriture est ignorée en silence fait les deux. */
             try {
+                var bloqueur = function() {
+                    console.log('[Multiview Cleaner] Popup bloqué (window.open)');
+                    return null;
+                };
                 Object.defineProperty(window, 'open', {
-                    configurable: false, writable: false, enumerable: true,
-                    value: function() {
-                        console.log('[Multiview Cleaner] Popup bloqué (window.open)');
-                        return null;
-                    }
+                    configurable: false, enumerable: true,
+                    get: function() { return bloqueur; },
+                    set: function() {}
                 });
             } catch (e) {
                 window.open = function() {
@@ -339,6 +448,17 @@
                 max-height: 100% !important;
                 overflow: hidden !important;
                 position: static !important;
+            }
+            /* Palier « couvre » : les ancêtres gardent leur mise en page, on leur retire seulement
+               ce qui ferait du plein cadre (position: fixed) un cadre local et non l'écran. */
+            .mv-cleaner-libre {
+                transform: none !important;
+                filter: none !important;
+                perspective: none !important;
+                contain: none !important;
+                backdrop-filter: none !important;
+                clip-path: none !important;
+                overflow: visible !important;
             }
             .mv-cleaner-maximized {
                 position: fixed !important;
@@ -520,9 +640,11 @@
     }
 
     function cleanEverythingOutside(target) {
-        if (cleaned) return;
+        if (cleaned || nettoyageRenonce) return;
+        if (!avaitJoue) avaitJoue = toutesLesVideos().some(videoJoue);
 
         injectStyles();
+        cibleChoisie = target;
         mainPlayerBase = getPlayerBase(target);
         /* Ceinture et bretelles : si la base remonte quand même à la racine, on retombe
            sur la cible elle-même. Une base égale à <body> ne masque rien du tout. */
@@ -535,17 +657,17 @@
             const parent = current.parentElement;
             if (!parent) break;
 
-            // Masquer tous les frères
-            const children = Array.from(parent.children);
-            for (const child of children) {
-                if (child !== current && !['SCRIPT', 'STYLE', 'LINK', 'META', 'HEAD'].includes(child.tagName)) {
-                    child.classList.add('mv-cleaner-hidden');
-                    // Retirer l'élément du flux si possible
-                    try { child.remove(); } catch(e) {}
+            /* Masquer tous les frères — sauf au palier « couvre », qui ne touche à rien. */
+            if (PALIERS[palier] === 'masque') {
+                const children = Array.from(parent.children);
+                for (const child of children) {
+                    if (child !== current && !['SCRIPT', 'STYLE', 'LINK', 'META', 'HEAD'].includes(child.tagName)) {
+                        masquer(child);
+                    }
                 }
             }
 
-            parent.classList.add('mv-cleaner-parent');
+            parent.classList.add(PALIERS[palier] === 'masque' ? 'mv-cleaner-parent' : 'mv-cleaner-libre');
             current = parent;
         }
 
@@ -579,9 +701,11 @@
         Array.from(document.documentElement.children).forEach(function(n) {
             if (horsCorps(n)) n.classList.add('mv-cleaner-hidden');
         });
-        new MutationObserver(function(mutations) {
+        var observateurRacine = new MutationObserver(function(mutations) {
             mutations.forEach(function(m) { m.addedNodes.forEach(function(n) { if (horsCorps(n)) n.classList.add('mv-cleaner-hidden'); }); });
-        }).observe(document.documentElement, { childList: true });
+        });
+        observateurRacine.observe(document.documentElement, { childList: true });
+        aDefaire.push(function() { observateurRacine.disconnect(); });
 
         /* Calques de pub : tout de suite, puis un moment encore, parce qu'une régie pose
            souvent sa bannière quelques secondes après le départ de la vidéo. */
@@ -598,8 +722,18 @@
             if (++passesCalques > 60) { clearInterval(boucleCalques); return; }
             retirerCalquesDePub(mainPlayerBase, target);
         }, 2000);
+        aDefaire.push(function() { clearInterval(boucleCalques); clearTimeout(calquesPrevus); calquesPrevus = null; });
+
+        /* Veille, indépendante de l'observateur : une bibliothèque qui retire le lecteur
+           choisi sans rien ajouter à côté (elle le reconstruit plus tard) n'est vue de
+           personne autrement. Une seconde, et seulement tant que le nettoyage tient. */
+        if (veilleLecteur) clearInterval(veilleLecteur);
+        veilleLecteur = setInterval(function() {
+            if (cleaned && choixPerdu()) reprendreLeChoix();
+        }, 1000);
 
         cleaned = true;
+        if (avaitJoue) surveillerSante();
         console.log('[Multiview Cleaner] Page nettoyée avec succès !');
         lancerLectureImmediate(mainPlayerBase);
 
@@ -608,11 +742,18 @@
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
+                        /* Le choix a pu être repris pendant ce lot de mutations. */
+                        if (!cleaned || !mainPlayerBase) return;
                         if (node.nodeType === 1 && !['SCRIPT', 'STYLE', 'LINK', 'META'].includes(node.tagName)) {
                             // Si le nouveau noeud n'est pas notre lecteur et n'est pas contenu dedans
                             if (node !== mainPlayerBase && !mainPlayerBase.contains(node)) {
-                                node.classList.add('mv-cleaner-hidden');
-                                try { node.remove(); } catch(e) {}
+                                /* Un nœud qui ENVELOPPE le lecteur choisi, ou un lecteur choisi qui n'est
+                                   plus dans la page : c'est la bibliothèque du lecteur qui s'initialise, pas
+                                   une pub. Le retirer détruisait le vrai lecteur. */
+                                if (node.contains(mainPlayerBase) || choixPerdu()) {
+                                    if (reprendreLeChoix()) return;
+                                }
+                                if (PALIERS[palier] === 'masque') masquer(node);
                             } else if (mainPlayerBase.contains(node)) {
                                 // Ne pas supprimer les éléments de contrôle qui pourraient être ajoutés dynamiquement
                                 if (isSafeControlElement(node)) return;
@@ -634,6 +775,7 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
+        aDefaire.push(function() { observer.disconnect(); });
 
         function attachMediaListeners(mediaEl) {
             if (mediaEl.dataset.mvListenersAttached) return;
@@ -682,11 +824,15 @@
             }
         });
         mediaObserver.observe(document.body, { childList: true, subtree: true });
+        aDefaire.push(function() { mediaObserver.disconnect(); });
 
         // Detect clicks anywhere in the window to broadcast click to parent
-        window.addEventListener('mousedown', function(e) {
-            window.top.postMessage('mv_frame_clicked', '*');
-        }, true);
+        if (!ecouteSouris) {
+            ecouteSouris = true;
+            window.addEventListener('mousedown', function(e) {
+                window.top.postMessage('mv_frame_clicked', '*');
+            }, true);
+        }
     }
 
 
@@ -1081,13 +1227,21 @@
         return false;
     }
 
+    /* Un cadre sans adresse (ni src, ni data-src, ni srcdoc) est la place d'une régie ou d'un
+       gabarit que la page remplit par script : à taille égale, il ne vaut pas un cadre qui
+       en a une (live5.totalsportek.today, 31 octobre 2026 : la coquille, première à égalité,
+       était prise pour le lecteur et le vrai cadre était caché). Pénalité, pas exclusion : un
+       lecteur écrit dans un cadre vide (document.write) reste possible, quand il est seul. */
     function noteCadre(ifr) {
         var w = ifr.offsetWidth, h = ifr.offsetHeight;
-        return w * h * (h > w ? 1 / 3 : 1);
+        var note = w * h * (h > w ? 1 / 3 : 1);
+        var src = (ifr.getAttribute('src') || ifr.getAttribute('data-src') || '').trim();
+        if ((!src || /^about:blank/i.test(src)) && !ifr.hasAttribute('srcdoc')) note /= 10;
+        return note;
     }
 
     function findAndClean() {
-        if (cleaned) return;
+        if (cleaned || nettoyageRenonce) return;
 
         try { const m = extractM3u8Url(); if (m) signalerManifeste(m); } catch (e) {}
 
@@ -1160,7 +1314,7 @@
     }
 
     function relancerRecherche() {
-        if (cleaned) return;
+        if (cleaned || nettoyageRenonce) return;
         arreterRecherche();
         chercherSansCasser();
         if (cleaned) return;
@@ -1250,7 +1404,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.20';
+    var VERSION = '1.22';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche

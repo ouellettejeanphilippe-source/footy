@@ -22,7 +22,7 @@
     'use strict';
     if (window.__footyNettoyeur) return;
 
-    var VERSION_EXTENSION = '1.7';
+    var VERSION_EXTENSION = '1.9';
     var HOTES_APPLICATION = ['127.0.0.1', 'localhost', 'ouellettejeanphilippe-source.github.io'];
 
     /* La fenêtre du haut, vue d'ici. `ancestorOrigins` la donne même depuis un cadre
