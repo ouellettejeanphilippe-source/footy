@@ -1520,6 +1520,44 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(pageErrors).toEqual([]);
 });
 
+/* « Embed les radios ? » puis « Comme YouTube et Twitch ? » (31 octobre 2026). Le bouton « Écouter »
+   d'un lien TuneIn de la fiche ferme la fiche et ajoute le lecteur d'intégration de TuneIn comme
+   tuile du lecteur — un lecteur officiel, comme Twitch et YouTube : ni nettoyeur ni bascule. */
+test('la fiche : « Écouter » ajoute le lecteur TuneIn comme tuile du lecteur', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  await page.route('https://tunein.com/embed/player/**', (route) => route.fulfill({
+    status: 200, contentType: 'text/html',
+    body: '<!doctype html><body style="margin:0;background:#fff"><div id="b">radio</div><script>window.__recus = []; window.addEventListener("message", function (e) { window.__recus.push(String(e.data)); });</script></body>'
+  }));
+  await page.evaluate(() => {
+    const m = window.S.matches[0];
+    m.homeTeam = 'Montreal Canadiens'; m.awayTeam = 'Toronto Maple Leafs'; m.league = 'NHL';
+    window.openMod(m);
+  });
+  const boutons = page.locator('#mbg .fiche-radio .radio-ecouter');
+  await expect(boutons.first()).toBeVisible();
+  expect(await page.locator('#mbg .fiche-radio .radio-ecouter').count(), 'trois stations TuneIn des Canadiens, une des Maple Leafs').toBe(4);
+  expect(await page.locator('#mbg .fiche-radio a[target="_blank"]').count()).toBeGreaterThanOrEqual(4);
+
+  await boutons.first().click();
+  await expect(page.locator('#mbg')).not.toHaveClass(/open/);
+  const iframe = page.locator('.mv-cell iframe.mv-iframe');
+  await expect(iframe).toHaveCount(1);
+  await expect(page.frameLocator('.mv-cell iframe.mv-iframe').locator('#b')).toBeVisible();
+  expect(await iframe.getAttribute('src'), 'le lecteur d\'intégration de TuneIn, station de l\'équipe').toBe('https://tunein.com/embed/player/s137385/');
+  /* Un lecteur officiel n'attend pas le « ça joue » du script nettoyeur : sans cela, la pastille de
+     chargement resterait (et, au bout de 30 s, la tuile passerait au lien suivant). */
+  await expect(page.locator('.mv-chargement'), 'pas de pastille de chargement : lecteur officiel').toHaveCount(0);
+  // Le nettoyeur ("mv_clean", envoyé au chargement puis toutes les 2 s) ne s'adresse pas à un lecteur officiel.
+  await page.waitForTimeout(2500);
+  const recus = await page.frames().find((f) => f.url().includes('tunein.com')).evaluate(() => window.__recus);
+  expect(recus.filter((m) => m === 'mv_clean'), 'aucun ordre de nettoyage envoyé au lecteur TuneIn').toEqual([]);
+  expect(await iframe.getAttribute('src'), 'la tuile garde sa source').toBe('https://tunein.com/embed/player/s137385/');
+  expect(pageErrors).toEqual([]);
+});
+
+
 /* Les dispositions (Tableau, Maintenant, Affiches, Chaînes) sont parties le 29 octobre 2026
    (« Tout retirer ») : Look (Réglages) ne garde que la couleur des cartes, et un ancien
    réglage de disposition resté dans le stockage ne change plus rien. */

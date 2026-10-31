@@ -483,6 +483,9 @@ export function cleEquipe(nom) {
 /* La page d'une station TuneIn ; TuneIn complète lui-même le nom dans l'adresse. */
 export function lienStationTuneIn(id) { return 'https://tunein.com/radio/' + encodeURIComponent(id) + '/'; }
 /* Idem chez iHeartRadio, qui redirige `/live/<id>/` vers la page de la station. */
+/* Le lecteur d'intégration officiel de TuneIn : il se charge dans un cadre (la page de la station,
+   elle, refuse : X-Frame-Options DENY). Rien de tel chez iHeartRadio ni chez les sites des stations. */
+export function lecteurTuneIn(id) { return 'https://tunein.com/embed/player/' + encodeURIComponent(id) + '/'; }
 export function lienStationIHeart(id) { return 'https://www.iheart.com/live/' + encodeURIComponent(id) + '/'; }
 
 /* Les liens d'une station du registre : un par annuaire qui la connaît (TuneIn, iHeartRadio),
@@ -492,7 +495,7 @@ export function liensDeStation(cleStation) {
   if (!s) return [];
   var nom = s.nom + (LANGUES[s.lang] || '');
   var liens = [];
-  if (s.tunein) liens.push({ nom: nom, url: lienStationTuneIn(s.tunein), source: 'TuneIn' });
+  if (s.tunein) liens.push({ nom: nom, url: lienStationTuneIn(s.tunein), source: 'TuneIn', lecteur: lecteurTuneIn(s.tunein), idLecteur: s.tunein });
   if (s.iheart) liens.push({ nom: nom, url: lienStationIHeart(s.iheart), source: 'iHeartRadio' });
   /* La page d'écoute officielle de la station, pour celles que ni TuneIn ni iHeartRadio n'ont. */
   if (s.site) liens.push({ nom: nom, url: s.site, source: 'Site de la station' });
@@ -505,7 +508,7 @@ export function stationsDeLEquipe(nomEquipe, sport) {
   var cle = cleEquipe(nomEquipe);
   var vues = {}, liste = [];
   function ajouter(l) { if (!vues[l.url]) { vues[l.url] = true; liste.push(l); } }
-  if (STATIONS_TUNEIN[cle]) ajouter({ nom: 'Station de l\u2019équipe', url: lienStationTuneIn(STATIONS_TUNEIN[cle]), source: 'TuneIn' });
+  if (STATIONS_TUNEIN[cle]) ajouter({ nom: 'Station de l\u2019équipe', url: lienStationTuneIn(STATIONS_TUNEIN[cle]), source: 'TuneIn', lecteur: lecteurTuneIn(STATIONS_TUNEIN[cle]), idLecteur: STATIONS_TUNEIN[cle] });
   var cles = (RADIOS_EQUIPES[cle] || []).concat(sport ? (RADIOS_EQUIPES[cle + '@' + sport] || []) : []);
   cles.forEach(function(k) { liensDeStation(k).forEach(ajouter); });
   return liste;
@@ -556,7 +559,13 @@ export function radioHtml(r, esc, icone) {
   var ico = icone ? icone('radio') : '';
   var out = '<div class="fiche-radio-tete">' + ico + '<span class="fiche-radio-titre">Radio</span></div>';
   function chips(stations) {
-    return stations.map(function(s) { return lien(esc(s.url), esc(s.nom) + ' · ' + esc(s.source), 'radio-station', ico); }).join('');
+    return stations.map(function(s) {
+      var h = lien(esc(s.url), esc(s.nom) + ' · ' + esc(s.source), 'radio-station', ico);
+      /* « Écouter » : le lecteur TuneIn dans une tuile du lecteur, comme YouTube et Twitch. Seulement
+         là où un lecteur d'intégration existe (TuneIn), jamais pour un lien d'iHeartRadio ou d'un site. */
+      if (s.lecteur) h += '<button type="button" class="radio-ecouter" data-lecteur="' + esc(s.lecteur) + '" data-id="' + esc(s.idLecteur || '') + '" data-nom="' + esc(s.nom) + '" aria-label="Écouter ' + esc(s.nom) + ' dans le lecteur">' + (icone ? icone('play') : '') + '<span>Écouter</span></button>';
+      return h;
+    }).join('');
   }
   r.equipes = r.equipes || [];
   var avec = r.equipes.filter(function(e) { return e.stations.length; });

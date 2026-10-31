@@ -194,9 +194,29 @@ test('toute station « site » est une adresse https, et seules celles hors annu
   }
 });
 
+test('« Écouter » : un bouton seulement là où le lecteur d\'intégration de TuneIn existe', () => {
+  assert.strictEqual(R.lecteurTuneIn('s12472'), 'https://tunein.com/embed/player/s12472/');
+  const st = R.stationsDeLEquipe('Montreal Canadiens');
+  const tune = st.filter((s) => s.source === 'TuneIn'), autres = st.filter((s) => s.source !== 'TuneIn');
+  assert.ok(tune.length === 3 && tune.every((s) => /^https:\/\/tunein\.com\/embed\/player\/s\d+\/$/.test(s.lecteur)), 'chaque lien TuneIn a son lecteur');
+  assert.ok(autres.length >= 1 && autres.every((s) => !s.lecteur), 'ni iHeartRadio ni un site n\'a de lecteur');
+  const h = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Montreal Canadiens', awayTeam: 'Toronto Maple Leafs', league: 'NHL' }), esc, I.icone);
+  const boutons = h.match(/<button [^>]*class="radio-ecouter"[^>]*>/g) || [];
+  assert.strictEqual(boutons.length, 4, 'trois TuneIn des Canadiens et la station des Maple Leafs');
+  assert.ok(boutons.every((b) => /type="button"/.test(b) && /data-lecteur="https:\/\/tunein\.com\/embed\/player\/s\d+\/"/.test(b)));
+  assert.ok(!/onclick/.test(h), 'rien d\'inline : les données sont dans des attributs');
+  // Un nom qui porte des guillemets ne casse ni l'attribut ni la page.
+  const piege = R.radioHtml({ equipes: [{ equipe: 'X', stations: [{ nom: 'A"B<i>', url: 'https://x.test/', source: 'TuneIn', lecteur: 'https://tunein.com/embed/player/s1/', idLecteur: 's1' }] }], ligue: null }, esc, I.icone);
+  assert.ok(piege.includes('data-nom="A&quot;B&lt;i&gt;"') && !piege.includes('<i>'), 'nom échappé');
+  // Une station qui n'a que sa page officielle n'a pas de bouton.
+  const bbc = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Mexico City Grand Prix', awayTeam: 'Race', league: 'F1' }), esc, I.icone);
+  assert.ok(!/radio-ecouter/.test(bbc), 'F1 : pages BBC, pas de lecteur');
+});
+
 test('branchement : icône, fiche, service worker, version de l\'application', () => {
   assert.ok(I.TRACES.radio && I.icone('radio').includes('<svg'), 'l\'icône radio existe');
   const ui = lire('js/ui.js');
+  assert.ok(ui.includes("closest('.radio-ecouter')") && ui.includes("'Radio : ' + nom"), 'la fiche branche le bouton « Écouter » sur le lecteur');
   assert.ok(/import \{ radiosDuMatch, radioHtml \} from '\.\/radio\.js';/.test(ui));
   assert.ok(ui.includes("radio.className = 'fiche-radio'"), 'la fiche pose la section');
   const sw = lire('sw.js');
