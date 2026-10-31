@@ -1223,9 +1223,18 @@
            lecteur est en paysage, une colonne latérale presque jamais. */
     var DISCUSSION_RE = /chat|shout|cbox|minnit|tlk\.io|rumbletalk|disqus|comment|discussion|messenger|tawk\.to/i;
 
+    /* Ce qui n'est PAS une discussion malgré le mot (31 octobre 2026, fbstream.st > dervlin.me : un
+       lecteur dans « stream-player-row stream-chat-hidden » était écarté comme un chat, donc la page
+       n'était jamais nettoyée — selon que la page posait la classe avant ou après la première passe) :
+         - un chat ÉTEINT (« chat-hidden », « no-chat », « chat-off »…) ;
+         - un emballage qui se dit lecteur (« player », « video », « embed ») : il porte le lecteur,
+           pas la boîte de discussion ;
+         - un jeton aléatoire de l'adresse (csrf=…chat…) : on ne lit la requête que si elle est courte. */
+    var CHAT_ETEINT_RE = /(no|hide|hidden|without|off|closed|disabled)[-_ ]?chat|chat[-_ ]?(hidden|hide|off|closed|disabled|none)/gi;
+    var NOM_LECTEUR_RE = /player|lecteur|video|embed/i;
     function estCadreDeDiscussion(ifr) {
         var src = ifr.getAttribute('src') || ifr.getAttribute('data-src') || '';
-        try { var u = new URL(src, location.href); src = u.hostname + u.pathname + u.search; } catch (e) {}
+        try { var u = new URL(src, location.href); src = u.hostname + u.pathname + (u.search.length < 40 ? u.search : ''); } catch (e) {}
         if (DISCUSSION_RE.test(src)) return true;
         var el = ifr;
         for (var n = 0; el && el !== document.body && n < 4; n++, el = el.parentElement) {
@@ -1235,7 +1244,8 @@
                page n'était jamais nettoyée (18 octobre 2026). */
             if (n > 0 && el.querySelectorAll('iframe, video').length > 1) break;
             var cls = typeof el.className === 'string' ? el.className : '';
-            var noms = [el.id, cls, el.getAttribute('name'), el.getAttribute('title'), el.getAttribute('aria-label')].join(' ');
+            var noms = [el.id, cls, el.getAttribute('name'), el.getAttribute('title'), el.getAttribute('aria-label')].join(' ').replace(CHAT_ETEINT_RE, ' ');
+            if (n > 0 && NOM_LECTEUR_RE.test(noms)) continue;
             if (DISCUSSION_RE.test(noms)) return true;
         }
         return false;

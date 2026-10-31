@@ -207,6 +207,17 @@ const SITE = `<html><body style="margin:0">
       if (e.data === 'poser_cadre_refuse') {
         document.getElementById('zone').innerHTML = '<iframe id="refuse" src="/refus-firefox" style="width:640px;height:360px;border:0"></iframe>';
       }
+      /* Un lecteur dont l'emballage dit que le chat est CACHÉ (fbstream.st > dervlin.me, 31 octobre
+         2026) : « stream-player-row stream-chat-hidden ». Le mot « chat » faisait écarter le lecteur
+         comme une discussion, et la page n'était jamais nettoyée (selon que la page posait la classe
+         avant ou après la première passe). Et une adresse de cadre dont le jeton aléatoire contient
+         « chat » (csrf=…chat…) ne dit rien non plus. */
+      if (e.data === 'poser_lecteur_chat_cache') {
+        document.getElementById('zone').innerHTML =
+          '<div class="row stream-player-row stream-chat-hidden"><div class="ratio stream-player">'
+          + '<iframe id="lecteur-cadre" title="Video player" src="/embed/1?csrf=Zm9vYmFyYmF6chatcXV4MTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6&expires=1793459506" style="width:640px;height:360px;border:0"></iframe>'
+          + '</div></div>';
+      }
       /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
          bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
       if (e.data === 'poser_lecteur_bouton') {
@@ -707,6 +718,13 @@ test('un cadre refusé par le site est annoncé à l\'application', async ({ pag
   expect(r.url, 'l\'adresse du cadre refusé').toContain('/refus-firefox');
   expect(r.etat).toBe('impossible');
   expect(await page.evaluate(() => window.__refus.length), 'une seule annonce par cadre').toBe(1);
+});
+
+test('un lecteur dans un emballage « chat-hidden » n\'est pas pris pour une discussion', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_chat_cache', '*'); });
+  await expect(cadre.locator('#decor'), 'la page est nettoyée').toBeHidden({ timeout: 10000 });
+  await expect(cadre.locator('#lecteur-cadre'), 'et le lecteur reste').toBeVisible();
 });
 
 test('de deux cadres de même taille, celui qui a une adresse est le lecteur, pas la coquille vide', async ({ page }) => {
