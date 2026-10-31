@@ -1902,8 +1902,8 @@ export function openMod(m,col){
   if (mhd) { mhd.classList.add('has-banner'); mhd.style.background = cardBg; }
   document.getElementById('mname').innerHTML = banniereHtml;
 
-  var wrapperHtml = '<div class="fiche-cols" style="display:flex; flex-direction:row; flex-wrap:wrap; gap: 24px; align-items: flex-start; width: 100%; position: relative;">' +
-      '<div id="modal-left-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
+  var wrapperHtml = '<div class="fiche-cols" style="display:flex; flex-direction:column; flex-wrap:nowrap; gap: 16px; align-items: stretch; width: 100%; position: relative;">' +
+      '<div id="modal-left-col" style="flex: 0 0 auto; width: 100%; display: flex; flex-direction: column; gap: 16px; z-index: 10; padding-bottom: 10px; padding-top: 10px;">' +
           '<div class="match-card scoreboard fiche-complements" style="display:flex; flex-direction:column; position:relative; pointer-events:none;">' +
               '<div class="prime-info" style="display:flex; flex-direction:column; padding: 4px 16px; pointer-events:auto; z-index: 2;">' +
                   '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-top:12px; font-size:13px; color:#fff; text-align:center; padding:0 8px;">' +
@@ -1919,7 +1919,7 @@ export function openMod(m,col){
           '</div>' +
           '<div id="modal-stats-container"></div>' +
       '</div>' +
-      '<div id="modal-right-col" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 12px;"></div>' +
+      '<div id="modal-right-col" style="flex: 0 0 auto; width: 100%; display: flex; flex-direction: column; gap: 12px;"></div>' +
   '</div>';
 
   body.innerHTML = wrapperHtml;

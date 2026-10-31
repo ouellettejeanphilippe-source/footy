@@ -193,7 +193,7 @@ test('l\'ancien guide : la page Script, reprise par la fenêtre du début', () =
   const html = lire('index.html');
   const debut = html.indexOf('<section id="script-page"');
   const page = html.slice(debut, html.indexOf('</section>', debut));
-  for (const texte of ['<h2>Installation des scripts</h2>', 'Recommandation : Firefox + uBlock Origin', 'Étape 1 : le bloqueur de publicités (uBlock Origin)',
+  for (const texte of ['<h2>Mises à jour</h2>', 'Première installation', 'Recommandation : Firefox + uBlock Origin', 'Étape 1 : le bloqueur de publicités (uBlock Origin)',
     'Étape 2 : le gestionnaire de scripts (Tampermonkey)', 'Étape 3 : le script de nettoyage', 'multiview-cleaner.user.js', 'about:config', 'id="guide-installation"']) {
     assert.ok(page.includes(texte), texte);
   }
@@ -205,7 +205,10 @@ test('l\'ancien guide : la page Script, reprise par la fenêtre du début', () =
   assert.ok(page.includes('chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh'), 'uBlock Origin Lite pour Chrome');
   assert.ok(page.includes('microsoftedge.microsoft.com/addons/detail/ublock-origin-lite/cimighlppcgcoapaliogpjjdehbnofhn'), 'uBlock Origin Lite pour Edge');
   assert.ok(page.includes('addons.mozilla.org/fr/firefox/addon/ublock-origin/'), 'Firefox garde uBlock Origin');
-  assert.ok(/id="rb-script"[^>]*>[^]*?<span>Script<\/span><\/button>/.test(html), 'l\'onglet Réglages → Script');
+  /* 31 octobre 2026, « remplacer la page script par qqchose qui aide plus les gens à rester à jour » :
+     la page s'appelle Mises à jour et montre d'abord l'état ; le guide reste dessous, replié
+     (tests/unit_misesajour.test.js). */
+  assert.ok(/id="rb-script"[^>]*>[^]*?<span>Mises à jour<\/span><\/button>/.test(html), 'l\'onglet Réglages → Mises à jour');
   const mv = lire('js/multiview.js');
   assert.ok(mv.includes("document.getElementById('guide-installation')"), 'la fenêtre reprend la page');
 });

@@ -22,7 +22,7 @@
     'use strict';
     if (window.__footyNettoyeur) return;
 
-    var VERSION_EXTENSION = '1.10';
+    var VERSION_EXTENSION = '1.11';
     var HOTES_APPLICATION = ['127.0.0.1', 'localhost', 'ouellettejeanphilippe-source.github.io'];
 
     /* La fenêtre du haut, vue d'ici. `ancestorOrigins` la donne même depuis un cadre
@@ -88,7 +88,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.23
+// @version      1.24
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -97,6 +97,8 @@
 // @grant        GM.xmlHttpRequest
 // @connect      *
 // @run-at       document-start
+// @updateURL    https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/multiview-cleaner.user.js
+// @downloadURL  https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/multiview-cleaner.user.js
 // ==/UserScript==
 
 (function() {
@@ -1308,9 +1310,18 @@
            lecteur est en paysage, une colonne latérale presque jamais. */
     var DISCUSSION_RE = /chat|shout|cbox|minnit|tlk\.io|rumbletalk|disqus|comment|discussion|messenger|tawk\.to/i;
 
+    /* Ce qui n'est PAS une discussion malgré le mot (31 octobre 2026, fbstream.st > dervlin.me : un
+       lecteur dans « stream-player-row stream-chat-hidden » était écarté comme un chat, donc la page
+       n'était jamais nettoyée — selon que la page posait la classe avant ou après la première passe) :
+         - un chat ÉTEINT (« chat-hidden », « no-chat », « chat-off »…) ;
+         - un emballage qui se dit lecteur (« player », « video », « embed ») : il porte le lecteur,
+           pas la boîte de discussion ;
+         - un jeton aléatoire de l'adresse (csrf=…chat…) : on ne lit la requête que si elle est courte. */
+    var CHAT_ETEINT_RE = /(no|hide|hidden|without|off|closed|disabled)[-_ ]?chat|chat[-_ ]?(hidden|hide|off|closed|disabled|none)/gi;
+    var NOM_LECTEUR_RE = /player|lecteur|video|embed/i;
     function estCadreDeDiscussion(ifr) {
         var src = ifr.getAttribute('src') || ifr.getAttribute('data-src') || '';
-        try { var u = new URL(src, location.href); src = u.hostname + u.pathname + u.search; } catch (e) {}
+        try { var u = new URL(src, location.href); src = u.hostname + u.pathname + (u.search.length < 40 ? u.search : ''); } catch (e) {}
         if (DISCUSSION_RE.test(src)) return true;
         var el = ifr;
         for (var n = 0; el && el !== document.body && n < 4; n++, el = el.parentElement) {
@@ -1320,7 +1331,8 @@
                page n'était jamais nettoyée (18 octobre 2026). */
             if (n > 0 && el.querySelectorAll('iframe, video').length > 1) break;
             var cls = typeof el.className === 'string' ? el.className : '';
-            var noms = [el.id, cls, el.getAttribute('name'), el.getAttribute('title'), el.getAttribute('aria-label')].join(' ');
+            var noms = [el.id, cls, el.getAttribute('name'), el.getAttribute('title'), el.getAttribute('aria-label')].join(' ').replace(CHAT_ETEINT_RE, ' ');
+            if (n > 0 && NOM_LECTEUR_RE.test(noms)) continue;
             if (DISCUSSION_RE.test(noms)) return true;
         }
         return false;
@@ -1503,7 +1515,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.23';
+    var VERSION = '1.24';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche

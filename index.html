@@ -75,6 +75,8 @@
      le cas, l'application le DIT ici — pendant la panne du 10 au 12 septembre 2026, elle
      a servi des liens de l'avant-veille pendant 45 h sans un mot (js/rattrapage.js). -->
 <div id="bandeau-cache" class="bandeau-cache" role="status" aria-live="polite" hidden></div>
+<!-- Le script ou l'extension est en retard (js/misesajour.js, rendreBandeauMaj dans js/multiview.js). -->
+<div id="bandeau-maj" class="bandeau-cache" role="status" aria-live="polite" hidden></div>
 
 <!-- ═══ RÉGLAGES ══════════════════════════════════════════════════════════════
      Ce qui était dans le menu « Plus » (Options, Look, Script, Logs, Actualiser, Mettre
@@ -84,7 +86,7 @@
   <div class="rb-onglets">
     <button class="rb-btn" id="rb-options" onclick="applyFilter('options')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg><span>Options</span></button>
     <button class="rb-btn" id="btn-look" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look" onclick="basculerMenuLook(event)"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2.5a9.5 9.5 0 1 0 0 19c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1 0-.9.7-1.6 1.6-1.6h1.9c2.9 0 5.2-2.4 5.2-5.3C21.5 6.3 17.2 2.5 12 2.5z"/><circle cx="7.5" cy="11" r="1" fill="currentColor"/><circle cx="10" cy="7" r="1" fill="currentColor"/><circle cx="15" cy="7" r="1" fill="currentColor"/></svg><span>Look</span></button>
-    <button class="rb-btn" id="rb-script" onclick="applyFilter('script')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>Script</span></button>
+    <button class="rb-btn" id="rb-script" onclick="applyFilter('script')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>Mises à jour</span></button>
     <button class="rb-btn" id="rb-logs" onclick="applyFilter('logs')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Logs</span></button>
   </div>
   <div class="rb-actions">
@@ -301,9 +303,13 @@
 <!-- ═══ SCRIPT ════════════════════════════════════════════════════════════════ -->
 <section id="script-page" class="page" style="display:none;">
   <div class="page-head">
-    <h2>Installation des scripts</h2>
-    <p class="help">Pour un Multivision sans publicités et avec le lecteur isolé, configurez votre navigateur en trois étapes.</p>
+    <h2>Mises à jour</h2>
+    <p class="help">Ce qui tourne sur cet appareil, s'il est à jour, et comment le mettre à jour.</p>
   </div>
+  <!-- Rempli par rendreMisesAJour (js/multiview.js, js/misesajour.js). -->
+  <div class="stack" id="maj-etat"></div>
+  <details id="maj-guide" class="maj-guide">
+    <summary>Première installation : le guide pas à pas</summary>
   <!-- Aussi le contenu de la fenêtre du début (installTampermonkey, js/multiview.js). -->
   <div class="stack prose" id="guide-installation">
     <div class="panel accent">
@@ -362,6 +368,7 @@
       <a href="https://raw.githubusercontent.com/ouellettejeanphilippe-source/footy/main/multiview-cleaner.user.js" target="_blank" rel="noopener" class="btn primary lg">Installer le script</a>
     </div>
   </div>
+  </details>
 </section>
 
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toasttxt"></span></div>

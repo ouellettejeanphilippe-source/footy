@@ -9,6 +9,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlig
 import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { estPageDeRefus, delaiRefus, doitSauterRefus } from './cadrerefuse.js';
+import { NOUVEAUTES, URL_SCRIPT, etatApplication, versionPubliee, cartesMiseAJour, nouveautesAfficher, miseAJourHtml, bandeauMaj, bandeauMajHtml, origineScript } from './misesajour.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
@@ -3375,8 +3376,11 @@ export function updateMultivisionLayout() {
         /* Les boutons d'une tuile sont pour la souris et le doigt (tabindex -1) : à la
            télécommande, le focus reste dans la barre, où sont les mêmes gestes, au lieu
            de sauter en haut de chaque tuile (js/tv-navigation.js les ignore). */
-        var hdrHtml = '<div class="mv-hdr-left">'
-            + '<div class="mv-drag-handle" role="button" tabindex="-1" aria-label="Déplacer" title="Glisser pour déplacer" onmousedown="this.closest(\'.mv-cell\').draggable=true;">' + svgDrag + '</div>'
+        /* Tout le bloc de gauche (poignée, numéro, son) se prend pour déplacer la tuile, pas
+           seulement la poignée de 28 px (31 octobre 2026, « plus facile de fermer et déplacer
+           streams ») ; au doigt aussi (ontouchstart). */
+        var hdrHtml = '<div class="mv-hdr-left" title="Glisser pour déplacer" onmousedown="this.closest(\'.mv-cell\').draggable=true;" ontouchstart="this.closest(\'.mv-cell\').draggable=true;">'
+            + '<div class="mv-drag-handle" role="button" tabindex="-1" aria-label="Déplacer">' + svgDrag + '</div>'
             /* « Pas de doublon de menu dans le haut du multiview ; même chose pour le
                titre » (25 octobre 2026) : le nom du match, sa source et le menu ⋮ sont
                dans la barre (la pastille de la vidéo, ⋮ de la vidéo choisie). Le haut de
@@ -3405,7 +3409,10 @@ export function updateMultivisionLayout() {
         var controlsHtml = '<div class="mv-hdr-right">'
             + boutonEchange
             + boutonGestes
-            + (surSecondEcran ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>' : '')
+            /* ✕ sur chaque tuile dès deux vidéos (31 octobre 2026, « plus facile de fermer ») : fermer
+               passait par choisir la vidéo, ouvrir ⋮, descendre au bas du menu. Le menu ⋮ garde « Fermer
+               cette vidéo ». Seule, une vidéo ne porte pas de ✕ : un appui malheureux quitterait le lecteur. */
+            + ((surSecondEcran || mvFlux.length >= 2) ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>' : '')
             + '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;
@@ -5036,7 +5043,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v112';
+export var VERSION_APP = 'sports-guide-v113';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5112,10 +5119,10 @@ export function diagnosticAppareilHtml() {
        jours (18 octobre 2026). */
     var prot = etatProtection(typeof window !== 'undefined' ? window : {}, getBridgeStatus());
     if (prot.type === 'extension') html += ligne('Extension de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
-        : prot.version + ' — la ' + VERSION_EXTENSION + ' est sortie : Réglages → 🧩 Script → Télécharger l\'extension, retirer l\'ancienne et charger le nouveau dossier dans chrome://extensions');
+        : prot.version + ' — la ' + VERSION_EXTENSION + ' est sortie : Réglages → Mises à jour → Télécharger l\'extension, retirer l\'ancienne et charger le nouveau dossier dans chrome://extensions');
     else if (prot.type === 'script') html += ligne('Script de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
-        : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Réglages → 🧩 Script → Installer le script, puis accepter la mise à jour dans Tampermonkey');
-    else html += ligne('Script de nettoyage', 'warn', 'absent — Réglages → 🧩 Script');
+        : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Réglages → Mises à jour → Mettre à jour le script, puis accepter la mise à jour dans Tampermonkey');
+    else html += ligne('Script de nettoyage', 'warn', 'absent — Réglages → Mises à jour');
     /* Le mode direct, vu d'ici : combien de manifestes répondent, et pourquoi les autres
        non (18 octobre 2026, « le direct marche jamais »). */
     var sondes = Object.keys(sondesDirect).map(function(k) { return sondesDirect[k]; }).filter(function(x) { return x && !x.enCours; });
@@ -5359,6 +5366,66 @@ export function openLogsPage() {
 
 export function openScriptPage() {
     showPage('script-page');
+    rendreMisesAJour();
+}
+
+/* La page Mises à jour (js/misesajour.js) : les cartes tout de suite avec ce qu'on sait,
+   puis relues quand sw.js a dit quelle version est publiée. */
+var _majPublication = null;
+export function rendreMisesAJour() {
+    var zone = document.getElementById('maj-etat');
+    if (!zone) return Promise.resolve();
+    var versions = { script: VERSION_SCRIPT, extension: VERSION_EXTENSION };
+    var dessiner = function() {
+        var prot = etatProtection(window, getBridgeStatus());
+        var cartes = cartesMiseAJour(etatApplication(VERSION_APP, _majPublication), prot, versions, origineScript(window));
+        zone.innerHTML = miseAJourHtml(cartes, nouveautesAfficher(prot.type === 'aucune' ? null : prot.version, NOUVEAUTES), esc);
+    };
+    dessiner();
+    return fetch('sw.js', { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.text() : ''; })
+        .then(function(texte) { _majPublication = versionPubliee(texte); dessiner(); })
+        .catch(function() {});
+}
+
+/* Le bandeau « votre script est en retard » (js/misesajour.js). Remis à plus tard : sept jours,
+   pour cette version attendue seulement (maj_bandeau_masque). « Mettre à jour » le cache
+   jusqu'au prochain chargement, pas pour sept jours : si la mise à jour n'est pas faite, il
+   revient. Relu quand le script s'annonce, parfois bien après le démarrage. */
+var _bandeauMajVu = null;
+export function rendreBandeauMaj() {
+    var el = document.getElementById('bandeau-maj');
+    if (!el) return;
+    var etat = etatProtection(window, getBridgeStatus());
+    var b = bandeauMaj(etat, { script: VERSION_SCRIPT, extension: VERSION_EXTENSION }, origineScript(window),
+        safeStorageGetJSON('maj_bandeau_masque', null), Date.now());
+    if (b && _bandeauMajVu === b.cle) b = null;
+    el.hidden = !b;
+    el.innerHTML = bandeauMajHtml(b, esc);
+    el.dataset.cle = b ? b.cle : '';
+}
+export function reporterBandeauMaj() {
+    var el = document.getElementById('bandeau-maj');
+    var cle = el && el.dataset.cle;
+    if (cle) safeStorageSetJSON('maj_bandeau_masque', { cle: cle, at: Date.now() });
+    rendreBandeauMaj();
+}
+export function actionBandeauMaj(action) {
+    var el = document.getElementById('bandeau-maj');
+    _bandeauMajVu = (el && el.dataset.cle) || null;
+    if (action === 'script') { try { window.open(URL_SCRIPT, '_blank', 'noopener'); } catch (e) {} }
+    else if (action === 'extension') { try { window.telechargerExtension(); } catch (e) {} applyFilter('script'); }
+    else applyFilter('script');
+    rendreBandeauMaj();
+}
+if (typeof window !== 'undefined') window.addEventListener('mvBridgeReady', function() { rendreBandeauMaj(); });
+
+/* « Voir comment l'installer » : ouvre le guide replié et y amène. */
+export function ouvrirGuideInstallation() {
+    var d = document.getElementById('maj-guide');
+    if (!d) return;
+    d.open = true;
+    try { d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { d.scrollIntoView(); }
 }
 
 // Kept for backward compatibility if called elsewhere, though shouldn't be needed
@@ -5369,7 +5436,7 @@ initPrefs(); // Run once on load
 
 
 /* La fenêtre du guide d'installation des scripts. Elle reprend le contenu de la page
-   Plus → 🧩 Script (#guide-installation, index.html) : « garder vieux guide plutôt que
+   Réglages → Mises à jour, replié (#guide-installation, index.html) : « garder vieux guide plutôt que
    nouveau » (13 octobre 2026). */
 export function installTampermonkey() {
     var existing = document.getElementById('tm-modal');
@@ -5420,6 +5487,7 @@ export function proposerGuideAuDemarrage() {
     return waitForBridge(1500).then(function() {
         var vu = safeStorageGet('hasSeenScriptModal');
         var etat = etatProtection(window, getBridgeStatus());
+        rendreBandeauMaj();
         if (!doitProposerGuide(vu, etat)) return false;
         safeStorageSet('hasSeenScriptModal', GUIDE_VU);
         installTampermonkey();
@@ -5705,6 +5773,9 @@ window.ouvrirMenuBarre = ouvrirMenuBarre;
 window.chargerQuandMeme = chargerQuandMeme;
 window.diagnosticAppareilHtml = diagnosticAppareilHtml;
 window.mettreAJourApplication = mettreAJourApplication;
+window.ouvrirGuideInstallation = ouvrirGuideInstallation;
+window.actionBandeauMaj = actionBandeauMaj;
+window.reporterBandeauMaj = reporterBandeauMaj;
 window.viderCachesApplication = viderCachesApplication;
 window.rechargerTuile = rechargerTuile;
 window.fermerToutesLesVideos = fermerToutesLesVideos;

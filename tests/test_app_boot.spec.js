@@ -660,6 +660,38 @@ for (const [nom, vp] of [['ordinateur', { width: 1366, height: 768 }], ['télép
   });
 }
 
+/* « Ya moyen d'améliorer le ui pour plus facile de fermer et déplacer streams ? » (31 octobre
+   2026). Fermer passait par choisir la vidéo, ouvrir ⋮, descendre au bas du menu ; déplacer, par
+   une poignée de 28 px. Maintenant : une ✕ sur chaque tuile dès deux vidéos, et tout le bloc de
+   gauche de l'en-tête (poignée, numéro, son) se prend pour glisser la tuile. */
+test('une tuile se déplace par le bloc de gauche de son en-tête et se ferme d\'un clic sur sa ✕', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  await bootOffline(page);
+  await page.evaluate((o) => {
+    window.addToMultivision(o + '/__faux-lecteur?a', 'Match A', 'mA');
+    window.addToMultivision(o + '/__faux-lecteur?b', 'Match B', 'mB');
+  }, origin);
+  await expect(page.locator('.mv-cell')).toHaveCount(2);
+  const noms = () => page.evaluate(() => window.mvFlux.map((s) => s.name));
+  expect(await noms()).toEqual(['Match A', 'Match B']);
+
+  const gauche = page.locator('.mv-cell').nth(0).locator('.mv-hdr-left');
+  const boite = await gauche.boundingBox();
+  expect(boite.height, 'la poignée n\'est plus un petit carré de 28 px').toBeGreaterThanOrEqual(36);
+  await page.locator('.mv-cell').nth(0).hover();
+  await gauche.dragTo(page.locator('.mv-cell').nth(1));
+  await expect.poll(noms, { message: 'glisser le bloc de gauche échange les tuiles' }).toEqual(['Match B', 'Match A']);
+
+  /* L'ordre des tuiles dans le DOM ne suit pas celui des flux après un échange : on vise la
+     seconde par son index, celle qui porte « Match A ». */
+  const seconde = page.locator('.mv-cell[data-index="1"]');
+  await seconde.hover();
+  await seconde.locator('.mv-close-btn').click();
+  await expect(page.locator('.mv-cell')).toHaveCount(1);
+  expect(await noms(), 'la ✕ de la seconde tuile ferme la seconde').toEqual(['Match B']);
+  await expect(page.locator('.mv-cell .mv-close-btn'), 'seule, une vidéo ne porte pas de ✕').toHaveCount(0);
+});
+
 /* « Faire que le dropdown des options soit par-dessus le multiview. » Les menus posés
    dans la tuile étaient rognés par son `overflow: hidden` et recouverts par la tuile
    voisine (et son iframe). Ils vivent désormais au niveau du document, en position
@@ -711,7 +743,11 @@ test('les menus du lecteur s\'ouvrent par-dessus les tuiles, entiers, et se ferm
   // Ni ce que la barre porte déjà : ⏭ Source suivante, ▶ Direct.
   expect(etat.items).not.toContain('Source suivante');
   expect(etat.items).not.toContain('Lire le flux direct');
-  await expect(page.locator('.mv-cell .mv-close-btn, .mv-cell .mv-swap-btn'), 'ni ✕ ni ⇄ sur les tuiles de la page : ils sont au menu ⋮').toHaveCount(0);
+  /* 31 octobre 2026, « ya moyen d'améliorer le ui pour plus facile de fermer et déplacer streams ? » :
+     la ✕ est revenue sur chaque tuile dès deux vidéos (elle avait été retirée le 25 octobre comme
+     doublon du menu ⋮, qui la garde). Le ⇄ « Principal », lui, reste au second écran. */
+  await expect(page.locator('.mv-cell .mv-close-btn'), 'une ✕ par tuile dès deux vidéos').toHaveCount(2);
+  await expect(page.locator('.mv-cell .mv-swap-btn'), 'pas de ⇄ dans la page : il est au menu ⋮').toHaveCount(0);
   await expect(page.locator('#mv-bar-site')).toHaveCount(0);
 
   await page.mouse.click(4, 4);

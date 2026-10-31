@@ -2,7 +2,7 @@
    le zip de l'extension maison (extension/).
 
    Le guide lui-même est l'ancien (uBlock Origin, Tampermonkey, le script ; Firefox
-   recommandé), écrit dans index.html (#guide-installation, page Plus → 🧩 Script) et
+   recommandé), écrit dans index.html (#guide-installation, page Réglages → Mises à jour, replié sous « Première installation ») et
    repris par la fenêtre du début : « garder vieux guide plutôt que nouveau »
    (13 octobre 2026). Depuis le 25 octobre 2026 (« les mêmes fonctions sur Firefox et
    Chrome »), un panneau Chrome y mène à l'extension (`telechargerExtension`) : uBlock
@@ -12,13 +12,13 @@
    Sans import : `getBridgeStatus` est passé par l'appelant. */
 
 /* Doit suivre "version" de extension/manifest.json (vérifié par unit_extension). */
-export var VERSION_EXTENSION = '1.10';
+export var VERSION_EXTENSION = '1.11';
 
 /* Doit suivre @version de multiview-cleaner.user.js (vérifié par unit_extension). Un script
    plus ancien s'annonce « pas à jour » (18 octobre 2026 : le recul de l'onglet n'est bloqué
    dans les vidéos que depuis la 1.17, et rien ne disait que Tampermonkey tournait encore
    sur l'ancienne). */
-export var VERSION_SCRIPT = '1.23';
+export var VERSION_SCRIPT = '1.24';
 
 /* La valeur de `hasSeenScriptModal` posée après la fenêtre du début. Toute valeur non
    vide veut dire « déjà vue » (« 2 » vient du guide retiré). */
