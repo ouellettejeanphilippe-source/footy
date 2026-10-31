@@ -42,28 +42,60 @@ export function etatApplication(locale, publiee) {
   return { statut: p > l ? 'en_retard' : 'a_jour', locale: locale, publiee: publiee };
 }
 
-/* Faut-il prévenir au démarrage que le script ou l'extension est en retard ? Une fois par
-   version attendue (la clé), pas à chaque ouverture ; jamais sans protection ni à jour. */
+/* D'où vient le script qui tourne : l'APK (Capacitor natif) et l'application de bureau
+   (Electron) l'EMBARQUENT, Tampermonkey ne peut rien y faire ; dans un navigateur, c'est
+   Tampermonkey ou l'extension. Le conseil de mise à jour n'est pas le même. */
+export function origineScript(win) {
+  var w = win || (typeof window !== 'undefined' ? window : {});
+  var cap = w.Capacitor;
+  if (cap && (typeof cap.isNativePlatform !== 'function' || cap.isNativePlatform())) return 'apk';
+  var ua = (w.navigator && w.navigator.userAgent) || '';
+  if (/Electron\//.test(ua)) return 'bureau';
+  return 'navigateur';
+}
+var NOM_ORIGINE = { apk: 'l\'application Android (APK)', bureau: 'l\'application de bureau' };
+
+/* La clé d'un retard : le type et la version attendue. Une nouvelle version attendue est un
+   nouveau retard, même si l'ancien a été remis à plus tard. */
 export function clePrevenirRetard(etat, versions) {
   if (!etat || etat.type === 'aucune' || etat.aJour) return null;
   var v = etat.type === 'extension' ? versions.extension : versions.script;
   return etat.type + ':' + v;
 }
-export function doitPrevenirRetard(etat, versions, derniereCle) {
-  var cle = clePrevenirRetard(etat, versions);
-  return cle && cle !== derniereCle ? cle : null;
-}
 
-/* Le texte du message de démarrage. */
-export function messageRetard(etat, versions) {
-  var quoi = etat.type === 'extension' ? 'L\'extension de nettoyage' : 'Le script de nettoyage';
+/* Le bandeau du haut de l'application (31 octobre 2026, « je veux que quelqu'un qui rouvre le
+   site deux mois plus tard soit à jour facilement »). Un message qui disparaît en quelques
+   secondes se rate ; le bandeau reste jusqu'à ce que ce soit fait, ou remis à plus tard
+   (DELAI_MASQUE_MS) — pour cette version attendue seulement. Rend null quand il n'y a rien à
+   dire, sinon { cle, texte, action, libelle } ; `action` : 'script' (le lien de Tampermonkey),
+   'extension' (le zip), 'page' (la page Mises à jour : APK, bureau). */
+export var DELAI_MASQUE_MS = 7 * 24 * 3600 * 1000;
+export function bandeauMaj(etat, versions, origine, masque, maintenant) {
+  var cle = clePrevenirRetard(etat, versions);
+  if (!cle) return null;
+  if (masque && masque.cle === cle && isFinite(masque.at) && (maintenant - masque.at) < DELAI_MASQUE_MS && maintenant >= masque.at) return null;
+  var o = origine || 'navigateur';
   var derniere = etat.type === 'extension' ? versions.extension : versions.script;
-  return quoi + ' n\'est pas à jour (' + etat.version + ' → ' + derniere + ') : Réglages → Mises à jour.';
+  var nom = etat.type === 'extension' ? 'Votre extension de nettoyage' : 'Votre script de nettoyage';
+  if (o !== 'navigateur') {
+    return { cle: cle, action: 'page', libelle: 'Voir comment',
+      texte: 'Le script de ' + NOM_ORIGINE[o] + ' est en retard (' + etat.version + ' → ' + derniere + ') : installez la dernière version de l\'application.' };
+  }
+  return { cle: cle, action: etat.type === 'extension' ? 'extension' : 'script', libelle: 'Mettre à jour',
+    texte: nom + ' est en retard (' + etat.version + ' → ' + derniere + ').' };
+}
+export function bandeauMajHtml(b, esc) {
+  var e = esc || function(s) { return String(s); };
+  if (!b) return '';
+  return '<span class="bc-txt">' + e(b.texte) + '</span>'
+    + '<button type="button" class="bc-btn" onclick="actionBandeauMaj(\'' + e(b.action) + '\')">' + e(b.libelle) + '</button>'
+    + '<button type="button" class="bc-btn" onclick="reporterBandeauMaj()">Plus tard</button>';
 }
 
 /* Les cartes. Chacune : { id, titre, statut: 'ok'|'warn'|'info', ligne, actions: [{ texte, href?, onclick?, primaire? }], aide: [texte] }.
    `app` vient de etatApplication, `prot` de etatProtection, `versions` = { script, extension }. */
-export function cartesMiseAJour(app, prot, versions) {
+export function cartesMiseAJour(app, prot, versions, origine) {
+  var o = origine || 'navigateur';
   var cartes = [];
 
   // 1. L'application
@@ -99,6 +131,15 @@ export function cartesMiseAJour(app, prot, versions) {
         'Retirez l\'ancienne extension, puis « Charger l\'extension non empaquetée » et choisissez le nouveau dossier.',
         'Rechargez l\'application.'
       ];
+    }
+  } else if (p.type === 'script' && o !== 'navigateur') {
+    /* Le script est dans l'application elle-même : Tampermonkey n'y est pour rien. */
+    if (p.aJour) {
+      carteProt.ligne = 'Script de nettoyage de ' + NOM_ORIGINE[o] + ' ' + p.version + ' : à jour.';
+    } else {
+      carteProt.statut = 'warn';
+      carteProt.ligne = 'Script de nettoyage de ' + NOM_ORIGINE[o] + ' ' + p.version + ' : la ' + versions.script + ' est disponible.';
+      carteProt.aide = ['Ce script est embarqué dans ' + NOM_ORIGINE[o] + ' : le reste du site se met à jour tout seul, mais le script demande d\'installer la dernière version de l\'application.'];
     }
   } else if (p.type === 'script') {
     if (p.aJour) {

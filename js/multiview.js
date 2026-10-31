@@ -9,7 +9,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlig
 import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { estPageDeRefus, delaiRefus, doitSauterRefus } from './cadrerefuse.js';
-import { NOUVEAUTES, etatApplication, versionPubliee, cartesMiseAJour, nouveautesAfficher, miseAJourHtml, doitPrevenirRetard, messageRetard } from './misesajour.js';
+import { NOUVEAUTES, URL_SCRIPT, etatApplication, versionPubliee, cartesMiseAJour, nouveautesAfficher, miseAJourHtml, bandeauMaj, bandeauMajHtml, origineScript } from './misesajour.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
@@ -5372,7 +5372,7 @@ export function rendreMisesAJour() {
     var versions = { script: VERSION_SCRIPT, extension: VERSION_EXTENSION };
     var dessiner = function() {
         var prot = etatProtection(window, getBridgeStatus());
-        var cartes = cartesMiseAJour(etatApplication(VERSION_APP, _majPublication), prot, versions);
+        var cartes = cartesMiseAJour(etatApplication(VERSION_APP, _majPublication), prot, versions, origineScript(window));
         zone.innerHTML = miseAJourHtml(cartes, nouveautesAfficher(prot.type === 'aucune' ? null : prot.version, NOUVEAUTES), esc);
     };
     dessiner();
@@ -5381,6 +5381,38 @@ export function rendreMisesAJour() {
         .then(function(texte) { _majPublication = versionPubliee(texte); dessiner(); })
         .catch(function() {});
 }
+
+/* Le bandeau « votre script est en retard » (js/misesajour.js). Remis à plus tard : sept jours,
+   pour cette version attendue seulement (maj_bandeau_masque). « Mettre à jour » le cache
+   jusqu'au prochain chargement, pas pour sept jours : si la mise à jour n'est pas faite, il
+   revient. Relu quand le script s'annonce, parfois bien après le démarrage. */
+var _bandeauMajVu = null;
+export function rendreBandeauMaj() {
+    var el = document.getElementById('bandeau-maj');
+    if (!el) return;
+    var etat = etatProtection(window, getBridgeStatus());
+    var b = bandeauMaj(etat, { script: VERSION_SCRIPT, extension: VERSION_EXTENSION }, origineScript(window),
+        safeStorageGetJSON('maj_bandeau_masque', null), Date.now());
+    if (b && _bandeauMajVu === b.cle) b = null;
+    el.hidden = !b;
+    el.innerHTML = bandeauMajHtml(b, esc);
+    el.dataset.cle = b ? b.cle : '';
+}
+export function reporterBandeauMaj() {
+    var el = document.getElementById('bandeau-maj');
+    var cle = el && el.dataset.cle;
+    if (cle) safeStorageSetJSON('maj_bandeau_masque', { cle: cle, at: Date.now() });
+    rendreBandeauMaj();
+}
+export function actionBandeauMaj(action) {
+    var el = document.getElementById('bandeau-maj');
+    _bandeauMajVu = (el && el.dataset.cle) || null;
+    if (action === 'script') { try { window.open(URL_SCRIPT, '_blank', 'noopener'); } catch (e) {} }
+    else if (action === 'extension') { try { window.telechargerExtension(); } catch (e) {} applyFilter('script'); }
+    else applyFilter('script');
+    rendreBandeauMaj();
+}
+if (typeof window !== 'undefined') window.addEventListener('mvBridgeReady', function() { rendreBandeauMaj(); });
 
 /* « Voir comment l'installer » : ouvre le guide replié et y amène. */
 export function ouvrirGuideInstallation() {
@@ -5449,11 +5481,7 @@ export function proposerGuideAuDemarrage() {
     return waitForBridge(1500).then(function() {
         var vu = safeStorageGet('hasSeenScriptModal');
         var etat = etatProtection(window, getBridgeStatus());
-        /* En retard : on le DIT une fois par version attendue (js/misesajour.js), au lieu de
-           laisser l'utilisateur sur un script de plusieurs versions derrière. */
-        var versions = { script: VERSION_SCRIPT, extension: VERSION_EXTENSION };
-        var cle = doitPrevenirRetard(etat, versions, safeStorageGet('maj_prevenue'));
-        if (cle) { safeStorageSet('maj_prevenue', cle); showToast(messageRetard(etat, versions)); }
+        rendreBandeauMaj();
         if (!doitProposerGuide(vu, etat)) return false;
         safeStorageSet('hasSeenScriptModal', GUIDE_VU);
         installTampermonkey();
@@ -5740,6 +5768,8 @@ window.chargerQuandMeme = chargerQuandMeme;
 window.diagnosticAppareilHtml = diagnosticAppareilHtml;
 window.mettreAJourApplication = mettreAJourApplication;
 window.ouvrirGuideInstallation = ouvrirGuideInstallation;
+window.actionBandeauMaj = actionBandeauMaj;
+window.reporterBandeauMaj = reporterBandeauMaj;
 window.viderCachesApplication = viderCachesApplication;
 window.rechargerTuile = rechargerTuile;
 window.fermerToutesLesVideos = fermerToutesLesVideos;

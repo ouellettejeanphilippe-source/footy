@@ -46,16 +46,45 @@ async function main() {
     assert.ok(c[1].actions.some((x) => x.onclick === 'ouvrirGuideInstallation()'), 'rien d\'installé : le guide');
     ok('chaque état a son bouton');
 
-    // 3. Prévenir au démarrage : une fois par version attendue, jamais sans retard.
+    // 3. Le bandeau : il reste tant que ce n'est pas fait, se remet à plus tard pour UNE version attendue.
     const enRetard = { type: 'script', version: '1.20', aJour: false };
-    const cle = M.doitPrevenirRetard(enRetard, versions, null);
-    assert.strictEqual(cle, 'script:' + versions.script);
-    assert.strictEqual(M.doitPrevenirRetard(enRetard, versions, cle), null, 'déjà prévenu pour cette version');
-    assert.ok(M.doitPrevenirRetard(enRetard, { script: '9.9', extension: versions.extension }, cle), 'une nouvelle version prévient de nouveau');
-    assert.strictEqual(M.doitPrevenirRetard({ type: 'script', version: versions.script, aJour: true }, versions, null), null);
-    assert.strictEqual(M.doitPrevenirRetard({ type: 'aucune' }, versions, null), null, 'sans protection, c\'est le guide qui parle');
-    assert.ok(M.messageRetard(enRetard, versions).includes('1.20') && M.messageRetard(enRetard, versions).includes('Mises à jour'));
-    ok('on prévient une fois par version');
+    const t0 = 1700000000000;
+    const b = M.bandeauMaj(enRetard, versions, 'navigateur', null, t0);
+    assert.ok(b, 'script en retard : un bandeau');
+    assert.strictEqual(b.cle, 'script:' + versions.script);
+    assert.strictEqual(b.action, 'script');
+    assert.ok(b.texte.includes('1.20') && b.texte.includes(versions.script));
+    assert.strictEqual(M.bandeauMaj({ type: 'extension', version: '1.5', aJour: false }, versions, 'navigateur', null, t0).action, 'extension');
+    assert.strictEqual(M.bandeauMaj({ type: 'script', version: versions.script, aJour: true }, versions, 'navigateur', null, t0), null, 'à jour : rien');
+    assert.strictEqual(M.bandeauMaj({ type: 'aucune' }, versions, 'navigateur', null, t0), null, 'sans protection : c\'est le guide qui parle');
+    // remis à plus tard : sept jours, pour cette version attendue seulement
+    const masque = { cle: b.cle, at: t0 };
+    assert.strictEqual(M.bandeauMaj(enRetard, versions, 'navigateur', masque, t0 + 3600 * 1000), null, 'caché une heure plus tard');
+    assert.ok(M.bandeauMaj(enRetard, versions, 'navigateur', masque, t0 + M.DELAI_MASQUE_MS + 1), 'revient après sept jours');
+    assert.ok(M.bandeauMaj(enRetard, { script: '9.9', extension: versions.extension }, 'navigateur', masque, t0 + 1000), 'une nouvelle version attendue revient tout de suite');
+    assert.ok(M.bandeauMaj(enRetard, versions, 'navigateur', { cle: b.cle, at: t0 + 9999999 }, t0), 'une date du futur n\'efface rien');
+    // l'APK et le bureau embarquent leur script : pas de lien Tampermonkey
+    for (const o of ['apk', 'bureau']) {
+        const bo = M.bandeauMaj(enRetard, versions, o, null, t0);
+        assert.strictEqual(bo.action, 'page', o + ' : la page, pas le lien Tampermonkey');
+        assert.ok(/application/.test(bo.texte), o);
+        const co = M.cartesMiseAJour(app, enRetard, versions, o);
+        assert.ok(!co[1].actions.some((x) => x.href), o + ' : aucun lien Tampermonkey');
+        assert.ok(/embarqué/.test(co[1].aide.join(' ')), o + ' : le script est embarqué');
+    }
+    ok('le bandeau reste jusqu\'à ce que ce soit fait');
+
+    // 3 bis. D'où vient le script.
+    assert.strictEqual(M.origineScript({ Capacitor: { isNativePlatform: () => true }, navigator: { userAgent: 'x' } }), 'apk');
+    assert.strictEqual(M.origineScript({ Capacitor: { isNativePlatform: () => false }, navigator: { userAgent: 'Chrome' } }), 'navigateur', 'Capacitor dans un navigateur : le web');
+    assert.strictEqual(M.origineScript({ navigator: { userAgent: 'Mozilla/5.0 Electron/30.0.0 Chrome/124' } }), 'bureau');
+    assert.strictEqual(M.origineScript({ navigator: { userAgent: 'Mozilla/5.0 Firefox/132.0' } }), 'navigateur');
+    assert.strictEqual(M.origineScript({}), 'navigateur');
+    ok('l\'APK, le bureau et le navigateur se reconnaissent');
+
+    const htmlBandeau = M.bandeauMajHtml(b, (s) => String(s).replace(/</g, '&lt;'));
+    assert.ok(htmlBandeau.includes("actionBandeauMaj('script')") && htmlBandeau.includes('reporterBandeauMaj()') && htmlBandeau.includes('Plus tard'));
+    assert.strictEqual(M.bandeauMajHtml(null), '', 'rien à dire : rien');
 
     // 4. Les nouveautés : celles que l'utilisateur n'a pas encore, et la version embarquée y figure.
     assert.ok(M.NOUVEAUTES.some((x) => x.version === I.VERSION_SCRIPT), 'une ligne « Ce qui a changé » pour la version embarquée du script (' + I.VERSION_SCRIPT + ')');
@@ -89,7 +118,10 @@ async function main() {
     assert.ok(/id="rb-script"[^>]*>[^]*?<span>Mises à jour<\/span><\/button>/.test(html), 'l\'onglet s\'appelle Mises à jour');
     assert.ok(lire('sw.js').includes("'./js/misesajour.js'"), 'module précaché');
     const mv = lire('js/multiview.js');
-    assert.ok(mv.includes('rendreMisesAJour();') && mv.includes("doitPrevenirRetard(etat, versions, safeStorageGet('maj_prevenue'))"), 'rendu et avertissement branchés');
+    assert.ok(mv.includes('rendreMisesAJour();') && mv.includes('rendreBandeauMaj();'), 'rendu de la page et du bandeau branchés');
+    assert.ok(mv.includes("window.addEventListener('mvBridgeReady'"), 'le bandeau se relit quand le script s\'annonce tard');
+    assert.ok(/id="bandeau-maj" class="bandeau-cache"/.test(html), 'le bandeau a sa place sous celui du cache');
+    assert.ok(mv.includes('window.actionBandeauMaj = actionBandeauMaj;') && mv.includes('window.reporterBandeauMaj = reporterBandeauMaj;'), 'ses boutons');
     assert.ok(mv.includes('window.ouvrirGuideInstallation = ouvrirGuideInstallation;'), 'le bouton du guide');
     assert.ok(!/Réglages → 🧩 Script/.test(mv), 'plus aucune consigne vers l\'ancien nom de la page');
     ok('la page, l\'onglet et le branchement');
