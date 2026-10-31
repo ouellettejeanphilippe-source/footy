@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.22
+// @version      1.23
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -1162,7 +1162,7 @@
     var cadresRepris = 0;
     function reprendreCadreRefuse(iframe) {
         if (!iframe || cadresRepris >= 1 || iframe.__mvRepris) return;
-        var src = iframe.getAttribute('src') || '';
+        var src = iframe.src || '';   // la propriété, pas l'attribut : une adresse relative (/embed/1) devient complète
         if (!/^https?:\/\//i.test(src)) return;
         var texte = '';
         try {
@@ -1171,11 +1171,20 @@
             texte = doc.body.innerText || '';
         } catch (e) { return; }
         if (texte.length < 40 || !REFUS_CADRE.test(texte)) return;
+        /* On DIT à l'application que ce cadre est refusé (31 octobre 2026) : une page que le
+           site interdit d'encadrer (X-Frame-Options, CSP frame-ancestors) laissait un lecteur
+           gris, sans vidéo, jusqu'à la bascule automatique. L'application passe au lien
+           suivant si rien ne joue après un court délai — plus long quand la reconstruction
+           ci-dessous a été tentée, pour lui laisser sa chance. */
+        var dire = function (etat) {
+            console.log('[Multiview Cleaner] Cadre refusé par le site (' + etat + ') : ' + src + ' — ' + texte.slice(0, 80).replace(/\s+/g, ' '));
+            try { window.top.postMessage({ __mv: 'cadre_refuse', url: src, etat: etat }, '*'); } catch (e) {}
+        };
         var GM_FETCH = (typeof GM_xmlhttpRequest === 'function') ? GM_xmlhttpRequest
             : (typeof GM !== 'undefined' && GM && typeof GM.xmlHttpRequest === 'function') ? GM.xmlHttpRequest
             : null;
-        if (!GM_FETCH) return;
         iframe.__mvRepris = 1;
+        if (!GM_FETCH) { dire('impossible'); return; }
         cadresRepris++;
         try {
             GM_FETCH({
@@ -1185,16 +1194,19 @@
                 headers: { 'Referer': src },
                 onload: function (res) {
                     var body = res && typeof res.responseText === 'string' ? res.responseText : '';
-                    if (!body || body.length < 200 || !res || res.status < 200 || res.status >= 400) return;
+                    if (!body || body.length < 200 || !res || res.status < 200 || res.status >= 400) { dire('impossible'); return; }
                     if (body.length > 1500000) body = body.slice(0, 1500000);
                     var base = String((res && res.finalUrl) || src).replace(/"/g, '&quot;');
                     try {
                         iframe.removeAttribute('src');
                         iframe.srcdoc = '<base href="' + base + '">' + body;
-                    } catch (e) {}
-                }
+                        dire('reconstruit');
+                    } catch (e) { dire('impossible'); }
+                },
+                onerror: function () { dire('impossible'); },
+                ontimeout: function () { dire('impossible'); }
             });
-        } catch (e) { iframe.__mvRepris = 0; cadresRepris--; }
+        } catch (e) { cadresRepris--; dire('impossible'); }
     }
 
     /* « Ça pogne pas toujours le bon iframe (genre chat) » (13 octobre 2026). Le choix
@@ -1404,7 +1416,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.22';
+    var VERSION = '1.23';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche
