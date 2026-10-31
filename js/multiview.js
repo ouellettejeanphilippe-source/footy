@@ -2286,6 +2286,14 @@ export function setupMultivisionUI() {
             if (idxR >= 0) cadreRefuseSurTuile(mvFlux[idxR], String(e.data.etat || 'impossible'));
             return;
         }
+        /* Le script a masqué un faux écran de vérification (« Verify you are human », « Cloudflare »,
+           Win + R) dans la tuile : cette source n'est pas sûre, et si rien ne joue, la tuile passe au
+           lien suivant (même chemin que le cadre refusé, js/cadrerefuse.js). */
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'faux_controle') {
+            var idxF = indexDeTuilePour(e.source);
+            if (idxF >= 0) { lg('Faux écran de vérification', 'masqué dans la tuile ' + (idxF + 1) + ' : ' + String(e.data.url || '').slice(0, 120)); cadreRefuseSurTuile(mvFlux[idxF], 'impossible'); }
+            return;
+        }
         if (e.data && typeof e.data === 'object' && e.data.__mv === 'video_state') {
             var idx = indexDeTuilePour(e.source);
             if (idx < 0) return;
@@ -5043,7 +5051,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v113';
+export var VERSION_APP = 'sports-guide-v114';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
