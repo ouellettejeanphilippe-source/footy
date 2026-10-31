@@ -1633,3 +1633,13 @@ select.btn, .select { background-color: var(--s2); border: 0; border-radius: var
   .mv-tb-btn.mv-tb-ic-seul .mv-tb-lb-long { display: none; }
   .mv-tb-btn.on { background: rgba(255,255,255,.18) !important; color: #fff !important; }
 }
+
+/* Page Mises à jour (js/misesajour.js) */
+.maj-carte p { margin: 6px 0; }
+.maj-puce { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.maj-ok { background: rgba(52,199,89,.18); color: #34c759; }
+.maj-warn { background: rgba(255,204,0,.18); color: #ffcc00; }
+.maj-info { background: rgba(142,142,147,.2); color: var(--text-2, #aaa); }
+.maj-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.maj-guide { margin-top: 14px; }
+.maj-guide > summary { cursor: pointer; font-weight: 700; padding: 10px 0; }

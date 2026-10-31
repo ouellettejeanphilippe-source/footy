@@ -9,6 +9,7 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlig
 import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { estPageDeRefus, delaiRefus, doitSauterRefus } from './cadrerefuse.js';
+import { NOUVEAUTES, etatApplication, versionPubliee, cartesMiseAJour, nouveautesAfficher, miseAJourHtml, doitPrevenirRetard, messageRetard } from './misesajour.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
@@ -5036,7 +5037,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v112';
+export var VERSION_APP = 'sports-guide-v113';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5112,10 +5113,10 @@ export function diagnosticAppareilHtml() {
        jours (18 octobre 2026). */
     var prot = etatProtection(typeof window !== 'undefined' ? window : {}, getBridgeStatus());
     if (prot.type === 'extension') html += ligne('Extension de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
-        : prot.version + ' — la ' + VERSION_EXTENSION + ' est sortie : Réglages → 🧩 Script → Télécharger l\'extension, retirer l\'ancienne et charger le nouveau dossier dans chrome://extensions');
+        : prot.version + ' — la ' + VERSION_EXTENSION + ' est sortie : Réglages → Mises à jour → Télécharger l\'extension, retirer l\'ancienne et charger le nouveau dossier dans chrome://extensions');
     else if (prot.type === 'script') html += ligne('Script de nettoyage', prot.aJour ? 'ok' : 'warn', prot.aJour ? prot.version + ' (à jour)'
-        : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Réglages → 🧩 Script → Installer le script, puis accepter la mise à jour dans Tampermonkey');
-    else html += ligne('Script de nettoyage', 'warn', 'absent — Réglages → 🧩 Script');
+        : prot.version + ' — la ' + VERSION_SCRIPT + ' est sortie : Réglages → Mises à jour → Mettre à jour le script, puis accepter la mise à jour dans Tampermonkey');
+    else html += ligne('Script de nettoyage', 'warn', 'absent — Réglages → Mises à jour');
     /* Le mode direct, vu d'ici : combien de manifestes répondent, et pourquoi les autres
        non (18 octobre 2026, « le direct marche jamais »). */
     var sondes = Object.keys(sondesDirect).map(function(k) { return sondesDirect[k]; }).filter(function(x) { return x && !x.enCours; });
@@ -5359,6 +5360,34 @@ export function openLogsPage() {
 
 export function openScriptPage() {
     showPage('script-page');
+    rendreMisesAJour();
+}
+
+/* La page Mises à jour (js/misesajour.js) : les cartes tout de suite avec ce qu'on sait,
+   puis relues quand sw.js a dit quelle version est publiée. */
+var _majPublication = null;
+export function rendreMisesAJour() {
+    var zone = document.getElementById('maj-etat');
+    if (!zone) return Promise.resolve();
+    var versions = { script: VERSION_SCRIPT, extension: VERSION_EXTENSION };
+    var dessiner = function() {
+        var prot = etatProtection(window, getBridgeStatus());
+        var cartes = cartesMiseAJour(etatApplication(VERSION_APP, _majPublication), prot, versions);
+        zone.innerHTML = miseAJourHtml(cartes, nouveautesAfficher(prot.type === 'aucune' ? null : prot.version, NOUVEAUTES), esc);
+    };
+    dessiner();
+    return fetch('sw.js', { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.text() : ''; })
+        .then(function(texte) { _majPublication = versionPubliee(texte); dessiner(); })
+        .catch(function() {});
+}
+
+/* « Voir comment l'installer » : ouvre le guide replié et y amène. */
+export function ouvrirGuideInstallation() {
+    var d = document.getElementById('maj-guide');
+    if (!d) return;
+    d.open = true;
+    try { d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { d.scrollIntoView(); }
 }
 
 // Kept for backward compatibility if called elsewhere, though shouldn't be needed
@@ -5369,7 +5398,7 @@ initPrefs(); // Run once on load
 
 
 /* La fenêtre du guide d'installation des scripts. Elle reprend le contenu de la page
-   Plus → 🧩 Script (#guide-installation, index.html) : « garder vieux guide plutôt que
+   Réglages → Mises à jour, replié (#guide-installation, index.html) : « garder vieux guide plutôt que
    nouveau » (13 octobre 2026). */
 export function installTampermonkey() {
     var existing = document.getElementById('tm-modal');
@@ -5420,6 +5449,11 @@ export function proposerGuideAuDemarrage() {
     return waitForBridge(1500).then(function() {
         var vu = safeStorageGet('hasSeenScriptModal');
         var etat = etatProtection(window, getBridgeStatus());
+        /* En retard : on le DIT une fois par version attendue (js/misesajour.js), au lieu de
+           laisser l'utilisateur sur un script de plusieurs versions derrière. */
+        var versions = { script: VERSION_SCRIPT, extension: VERSION_EXTENSION };
+        var cle = doitPrevenirRetard(etat, versions, safeStorageGet('maj_prevenue'));
+        if (cle) { safeStorageSet('maj_prevenue', cle); showToast(messageRetard(etat, versions)); }
         if (!doitProposerGuide(vu, etat)) return false;
         safeStorageSet('hasSeenScriptModal', GUIDE_VU);
         installTampermonkey();
@@ -5705,6 +5739,7 @@ window.ouvrirMenuBarre = ouvrirMenuBarre;
 window.chargerQuandMeme = chargerQuandMeme;
 window.diagnosticAppareilHtml = diagnosticAppareilHtml;
 window.mettreAJourApplication = mettreAJourApplication;
+window.ouvrirGuideInstallation = ouvrirGuideInstallation;
 window.viderCachesApplication = viderCachesApplication;
 window.rechargerTuile = rechargerTuile;
 window.fermerToutesLesVideos = fermerToutesLesVideos;

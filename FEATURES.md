@@ -273,9 +273,11 @@ Ce que l'appareil a appris **expire** (26 octobre 2026) : un hôte jugé mort ic
 - **Historique des requêtes** : journal horodaté, `📋 Copier le log` sur les entrées longues, `📥 Exporter` (fichier `jmtv-debug-logs-<date>.json`).
 - **Diagnostics des flux manuels** : les rapports produits par la recherche manuelle de la fiche.
 
-## 9. Installation des scripts (Réglages → Script)
+## 9. Mises à jour et installation des scripts (Réglages → Mises à jour)
 
-L'ancien guide, gardé à la demande de l'utilisateur, avec un chemin Chrome qui marche (25 octobre 2026). La même chose s'ouvre en fenêtre au premier démarrage, une seule fois, et seulement si rien ne protège déjà les lecteurs (extension, script, bureau, APK).
+**Le haut de la page dit où on en est** (31 octobre 2026, « remplacer la page script par qqchose qui aide plus les gens à rester à jour ») : trois cartes. **L'application** : sa version, celle qui est publiée (lue dans `sw.js`), et un bouton « Mettre à jour maintenant » quand elle est en retard. **La protection des lecteurs** : l'extension ou le script qui tourne, sa version contre celle que l'application attend, et le bouton qui convient (télécharger l'extension et ses quatre étapes ; mettre à jour le script, que Tampermonkey ouvre ; ou, sans rien d'installé, « Voir comment l'installer »). **Ce qui a changé** : les nouveautés des versions du script que l'appareil n'a pas encore. Au démarrage, un message prévient une fois par version attendue que le script ou l'extension est en retard. Le script demande aussi à Tampermonkey de vérifier lui-même les mises à jour (`@updateURL`, `@downloadURL`).
+
+Sous les cartes, **le guide d'installation**, replié (« Première installation »). C'est l'ancien guide, gardé à la demande de l'utilisateur, avec un chemin Chrome qui marche (25 octobre 2026). La même chose s'ouvre en fenêtre au premier démarrage, une seule fois, et seulement si rien ne protège déjà les lecteurs (extension, script, bureau, APK).
 
 - **Recommandation : Firefox + uBlock Origin.** Sur Chrome, Edge ou Brave, l'extension du Guide des Sports fait le même travail.
 - **Firefox : ce qui bloque les tuiles** : Ignore X-Frame-Options Header, lecture automatique dans `about:config`, protection contre le pistage coupée pour l'application.
