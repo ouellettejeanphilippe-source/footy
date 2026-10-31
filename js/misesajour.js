@@ -17,6 +17,7 @@ export var URL_SCRIPT = 'https://raw.githubusercontent.com/ouellettejeanphilippe
    version du script ; `unit_misesajour` exige celle de la version embarquée, pour que la
    page ne reste pas muette sur une nouveauté. */
 export var NOUVEAUTES = [
+  { version: '1.25', date: '31 octobre 2026', texte: 'Un faux écran de vérification (« Verify you are human », faux Cloudflare) qui apparaît par-dessus un lecteur est masqué, et une page ne peut plus écrire dans votre presse-papiers. Si rien ne joue, la tuile passe au lien suivant.' },
   { version: '1.24', date: '31 octobre 2026', texte: 'Tampermonkey vérifie maintenant lui-même si une nouvelle version du script existe. Un lecteur dont la page parle d\'un chat caché (stream-chat-hidden) n\'est plus pris pour une discussion : la page est nettoyée au lieu de garder son menu et ses pubs.' },
   { version: '1.23', date: '31 octobre 2026', texte: 'Un lien que le site refuse d\'afficher (lecteur gris, sans vidéo) fait passer la tuile au lien suivant au lieu de rester bloquée.' },
   { version: '1.22', date: '31 octobre 2026', texte: 'Nettoyage moins agressif : la page est cachée au lieu d\'être supprimée, et se replie sur un plein cadre si la vidéo s\'arrête. Un site qui réécrit window.open ne fait plus planter son lecteur.' },

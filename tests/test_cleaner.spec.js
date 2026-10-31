@@ -218,6 +218,31 @@ const SITE = `<html><body style="margin:0">
           + '<iframe id="lecteur-cadre" title="Video player" src="/embed/1?csrf=Zm9vYmFyYmF6chatcXV4MTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6&expires=1793459506" style="width:640px;height:360px;border:0"></iframe>'
           + '</div></div>';
       }
+      /* Un faux écran de vérification qui arrive APRÈS un moment, par-dessus la page
+         (topstream.help, 31 octobre 2026, « un faux Cloudflare après x temps »), et ce que font les
+         fausses vérifications : écrire une commande dans le presse-papiers. 'cloudflare' : le faux
+         écran classique ; 'clickfix' : la variante qui fait coller une commande ; 'cookies' : un avis
+         ordinaire, à ne PAS masquer. */
+      if (e.data && e.data.poser_faux) {
+        var kind = e.data.poser_faux;
+        setTimeout(function () {
+          var o = document.createElement('div');
+          o.id = 'faux-controle';
+          o.setAttribute('style', 'position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:2147483000;background:#fff;color:#222;font:16px sans-serif;display:flex;align-items:center;justify-content:center;text-align:center');
+          o.innerHTML = kind === 'cloudflare'
+            ? '<div><h1>Verify you are human</h1><p>Checking your browser before accessing the site.</p><label><input type="checkbox"> I am not a robot</label><p style="font-size:12px">Performance &amp; security by Cloudflare · Ray ID: 8a1b2c3d4e5f</p></div>'
+            : kind === 'clickfix'
+              ? '<div><h1>Verification required</h1><ol><li>Press Win + R</li><li>Press Ctrl + V</li><li>Press Enter</li></ol></div>'
+              : '<div><p>Nous utilisons des cookies pour améliorer votre expérience.</p><button>Accepter</button></div>';
+          document.body.appendChild(o);
+        }, 600);
+      }
+      if (e.data === 'ecrire_presse_papiers') {
+        var res = { api: false, exec: null };
+        try { navigator.clipboard.writeText('commande piégée').then(function () { res.api = 'ok'; window.top.postMessage({ __rep: 'presse_papiers', res: res }, '*'); }, function () { res.api = 'refuse'; window.top.postMessage({ __rep: 'presse_papiers', res: res }, '*'); }); }
+        catch (err) { res.api = 'absent'; window.top.postMessage({ __rep: 'presse_papiers', res: res }, '*'); }
+        try { res.exec = document.execCommand('copy'); } catch (err) { res.exec = 'erreur'; }
+      }
       /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
          bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
       if (e.data === 'poser_lecteur_bouton') {
@@ -725,6 +750,27 @@ test('un lecteur dans un emballage « chat-hidden » n\'est pas pris pour une di
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_lecteur_chat_cache', '*'); });
   await expect(cadre.locator('#decor'), 'la page est nettoyée').toBeHidden({ timeout: 10000 });
   await expect(cadre.locator('#lecteur-cadre'), 'et le lecteur reste').toBeVisible();
+});
+
+/* Un faux écran de vérification apparaît après un moment : il est masqué, et un avis de cookies
+   ordinaire ne l'est pas. */
+for (const [genre, doitEtreCache] of [['cloudflare', true], ['clickfix', true], ['cookies', false]]) {
+  test('un faux écran de vérification (' + genre + ') ' + (doitEtreCache ? 'est masqué' : 'ne l\'est pas'), async ({ page }) => {
+    const cadre = await monterTuile(page, false);
+    await page.evaluate((g) => { document.getElementById('tuile').contentWindow.postMessage({ poser_faux: g }, '*'); }, genre);
+    await expect(cadre.locator('#faux-controle')).toBeAttached({ timeout: 5000 });
+    if (doitEtreCache) await expect(cadre.locator('#faux-controle'), 'le faux écran est caché').toBeHidden({ timeout: 6000 });
+    else { await page.waitForTimeout(3500); await expect(cadre.locator('#faux-controle'), 'un avis de cookies reste').toBeVisible(); }
+  });
+}
+
+test('une page ne peut pas écrire dans le presse-papiers (fausses vérifications qui font coller une commande)', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { window.__repPP = null; window.addEventListener('message', (e) => { if (e.data && e.data.__rep === 'presse_papiers') window.__repPP = e.data.res; }); document.getElementById('tuile').contentWindow.postMessage('ecrire_presse_papiers', '*'); });
+  await expect.poll(() => page.evaluate(() => window.__repPP), { timeout: 5000 }).not.toBeNull();
+  const r = await page.evaluate(() => window.__repPP);
+  expect(r.api, 'navigator.clipboard.writeText est refusé').toBe('refuse');
+  expect(r.exec, 'execCommand(copy) aussi').toBe(false);
 });
 
 test('de deux cadres de même taille, celui qui a une adresse est le lecteur, pas la coquille vide', async ({ page }) => {

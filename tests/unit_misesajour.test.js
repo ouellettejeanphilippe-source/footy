@@ -88,8 +88,8 @@ async function main() {
 
     // 4. Les nouveautés : celles que l'utilisateur n'a pas encore, et la version embarquée y figure.
     assert.ok(M.NOUVEAUTES.some((x) => x.version === I.VERSION_SCRIPT), 'une ligne « Ce qui a changé » pour la version embarquée du script (' + I.VERSION_SCRIPT + ')');
-    assert.deepStrictEqual(M.nouveautesAfficher('1.22').map((x) => x.version), ['1.24', '1.23']);
-    assert.strictEqual(M.nouveautesAfficher('1.24').length, 0, 'à jour : rien de neuf');
+    assert.deepStrictEqual(M.nouveautesAfficher('1.22').map((x) => x.version), ['1.25', '1.24', '1.23']);
+    assert.strictEqual(M.nouveautesAfficher(I.VERSION_SCRIPT).length, 0, 'à jour : rien de neuf');
     assert.ok(M.nouveautesAfficher(null).length > 0, 'sans protection : tout');
     assert.ok(M.nouveautesAfficher('n/a').length > 0, 'version illisible : tout');
     ok('les nouveautés sont celles qu\'on n\'a pas');

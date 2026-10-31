@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.24
+// @version      1.25
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -297,6 +297,28 @@
                     return null;
                 };
             }
+
+            /* Presse-papiers (31 octobre 2026, « un faux Cloudflare après x temps ») : les fausses
+               vérifications (« ClickFix ») écrivent une commande dans le presse-papiers au clic sur
+               « Je ne suis pas un robot », puis font coller et lancer : un lecteur vidéo n'a aucune
+               raison d'y écrire. Refusé, sans lever d'erreur à la page. */
+            try {
+                var refuserPP = function() {
+                    console.log('[Multiview Cleaner] Écriture du presse-papiers bloquée');
+                    return Promise.reject(new DOMException('Écriture du presse-papiers bloquée', 'NotAllowedError'));
+                };
+                if (navigator.clipboard) {
+                    ['writeText', 'write'].forEach(function(nom) {
+                        try { Object.defineProperty(navigator.clipboard, nom, { configurable: false, writable: false, value: refuserPP }); } catch (e) {}
+                    });
+                }
+                var execOrigine = document.execCommand;
+                document.execCommand = function(commande) {
+                    var c = String(commande).toLowerCase();
+                    if (c === 'copy' || c === 'cut') { console.log('[Multiview Cleaner] Écriture du presse-papiers bloquée'); return false; }
+                    return execOrigine.apply(this, arguments);
+                };
+            } catch (e) {}
 
             /* Détournement de l'onglet entier : le travers le plus pénible de ces sites, et
                ce que 'allow-top-navigation' refusait quand le bac à sable était posé. On
@@ -1380,10 +1402,84 @@
         }
     }
 
+    /* Faux écran de vérification (31 octobre 2026, « topstream.help fait apparaître un faux Cloudflare
+       après x temps »). Une régie pose, au bout d'un moment, un calque plein écran qui imite une
+       vérification (« Verify you are human », « Checking your browser », « Ray ID », « Performance &
+       security by Cloudflare »), ou qui fait presser Win + R puis Ctrl + V (ClickFix). Aucun lecteur
+       n'en a besoin ; le calque est caché, où qu'il soit dans la page, et l'application en est prévenue
+       (elle passe au lien suivant si rien ne joue). Deux repères au moins du texte, ou la consigne de
+       coller une commande ; un calque qui couvre au moins la moitié du cadre. Un avis de cookies ne
+       ressemble à rien de cela. */
+    var FAUX_MOTIFS = [
+        /verif(y|ying)\s+(that\s+)?you(\s+a|'\s*a|’\s*a)?re\s+(a\s+)?human|verify\s+you\s+are\s+human/i,
+        /i(\s+a|'\s*a|’\s*a)?m\s+not\s+a\s+robot/i,
+        /checking\s+(if\s+the\s+site\s+connection\s+is\s+secure|your\s+browser)/i,
+        /performance\s+(&|and)\s+security\s+by\s+cloudflare/i,
+        /\bray\s+id\b/i,
+        /human\s+verification|vérification\s+humaine|vérifiez\s+que\s+vous\s+êtes/i,
+        /cloudflare/i
+    ];
+    var FAUX_COLLER = [/(press|appuyez)[^.]{0,30}(win|windows)[^.]{0,8}\+?\s*r\b/i, /ctrl\s*\+\s*v/i];
+    function ressembleAUnFauxControle(texte) {
+        var t = String(texte || '');
+        if (t.length < 20 || t.length > 2500) return false;
+        var coller = FAUX_COLLER.filter(function(re) { return re.test(t); }).length;
+        if (coller >= 2) return true;
+        return FAUX_MOTIFS.filter(function(re) { return re.test(t); }).length >= 2;
+    }
+    function cacherFauxControle(el) {
+        try { el.style.setProperty('display', 'none', 'important'); el.classList.add('mv-cleaner-hidden'); } catch (e) {}
+        console.log('[Multiview Cleaner] Faux écran de vérification masqué');
+        if (!cacherFauxControle.dit) {
+            cacherFauxControle.dit = true;
+            try { window.top.postMessage({ __mv: 'faux_controle', url: location.href }, '*'); } catch (e) {}
+        }
+    }
+    function estUnCalquePleinCadre(el) {
+        if (!el || el.nodeType !== 1 || el === document.body || el === document.documentElement) return false;
+        var cs = window.getComputedStyle(el);
+        if (cs.position !== 'fixed' && cs.position !== 'absolute') return false;
+        if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity < 0.05) return false;
+        var r = el.getBoundingClientRect();
+        var W = window.innerWidth || 1, H = window.innerHeight || 1;
+        return r.width >= W * 0.5 && r.height >= H * 0.5;
+    }
+    function verifierFauxControle(racine) {
+        var vus = 0;
+        var examiner = function(el, profondeur) {
+            if (!el || el.nodeType !== 1 || vus++ > 60) return false;
+            if (el.classList && el.classList.contains('mv-cleaner-hidden')) return false;
+            if (estUnCalquePleinCadre(el) && ressembleAUnFauxControle(el.innerText || el.textContent)) { cacherFauxControle(el); return true; }
+            if (profondeur < 2) for (var i = 0; i < el.children.length; i++) if (examiner(el.children[i], profondeur + 1)) return true;
+            return false;
+        };
+        examiner(racine, 0);
+    }
+    function surveillerFauxControle() {
+        if (surveillerFauxControle.actif) return;
+        surveillerFauxControle.actif = true;
+        var passe = function() {
+            if (document.body) Array.prototype.forEach.call(document.body.children, function(e) { verifierFauxControle(e); });
+            Array.prototype.forEach.call(document.documentElement.children, function(e) { if (e !== document.body && e !== document.head) verifierFauxControle(e); });
+        };
+        var planifie = null;
+        var obs = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) { m.addedNodes.forEach(function(n) { if (n.nodeType === 1) verifierFauxControle(n); }); });
+            if (!planifie) planifie = setTimeout(function() { planifie = null; }, 400);
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+        /* Un calque déjà dans la page, montré plus tard par un changement de style : une passe toutes
+           les trois secondes, pendant dix minutes. */
+        var n = 0;
+        var iv = setInterval(function() { if (++n > 200) { clearInterval(iv); return; } passe(); }, 3000);
+        passe();
+    }
+
     /* Le nettoyage et le signal de lecture attendent le DOM ; le blocage des popups, lui,
        est déjà posé (voir plus haut). */
     function demarrer() {
         if (estLApplication()) return;
+        surveillerFauxControle();
         setInterval(signalerLecture, 2000);
         /* Plus lent que le signal de lecture : une mesure de débit a besoin d'une fenêtre
            de dix secondes pour valoir quelque chose. */
@@ -1428,7 +1524,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.24';
+    var VERSION = '1.25';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche
