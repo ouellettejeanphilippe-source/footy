@@ -3376,8 +3376,11 @@ export function updateMultivisionLayout() {
         /* Les boutons d'une tuile sont pour la souris et le doigt (tabindex -1) : à la
            télécommande, le focus reste dans la barre, où sont les mêmes gestes, au lieu
            de sauter en haut de chaque tuile (js/tv-navigation.js les ignore). */
-        var hdrHtml = '<div class="mv-hdr-left">'
-            + '<div class="mv-drag-handle" role="button" tabindex="-1" aria-label="Déplacer" title="Glisser pour déplacer" onmousedown="this.closest(\'.mv-cell\').draggable=true;">' + svgDrag + '</div>'
+        /* Tout le bloc de gauche (poignée, numéro, son) se prend pour déplacer la tuile, pas
+           seulement la poignée de 28 px (31 octobre 2026, « plus facile de fermer et déplacer
+           streams ») ; au doigt aussi (ontouchstart). */
+        var hdrHtml = '<div class="mv-hdr-left" title="Glisser pour déplacer" onmousedown="this.closest(\'.mv-cell\').draggable=true;" ontouchstart="this.closest(\'.mv-cell\').draggable=true;">'
+            + '<div class="mv-drag-handle" role="button" tabindex="-1" aria-label="Déplacer">' + svgDrag + '</div>'
             /* « Pas de doublon de menu dans le haut du multiview ; même chose pour le
                titre » (25 octobre 2026) : le nom du match, sa source et le menu ⋮ sont
                dans la barre (la pastille de la vidéo, ⋮ de la vidéo choisie). Le haut de
@@ -3406,7 +3409,10 @@ export function updateMultivisionLayout() {
         var controlsHtml = '<div class="mv-hdr-right">'
             + boutonEchange
             + boutonGestes
-            + (surSecondEcran ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>' : '')
+            /* ✕ sur chaque tuile dès deux vidéos (31 octobre 2026, « plus facile de fermer ») : fermer
+               passait par choisir la vidéo, ouvrir ⋮, descendre au bas du menu. Le menu ⋮ garde « Fermer
+               cette vidéo ». Seule, une vidéo ne porte pas de ✕ : un appui malheureux quitterait le lecteur. */
+            + ((surSecondEcran || mvFlux.length >= 2) ? '<button type="button" tabindex="-1" class="mv-hdr-btn mv-close-btn" title="Fermer cette vidéo" aria-label="Fermer cette vidéo" onclick="removeFromMultivision(' + idx + '); event.stopPropagation();">' + svgClose + '</button>' : '')
             + '</div>';
 
         hdr.innerHTML = hdrHtml + controlsHtml;

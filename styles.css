@@ -579,7 +579,12 @@ body.view-timeline .zoom-controls { display: flex; }
 #modal-left-col .scoreboard { pointer-events: none; }
 #modal-left-col .scoreboard .prime-info { pointer-events: auto; }
 #modal-left-col .scoreboard .prime-thumbnail { box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
-@media (min-width: 769px) { #modal-left-col { position: sticky; top: 0; align-self: flex-start; } }
+/* Les statistiques (buteurs, classement, alignements) sont EN HAUT de la fiche, au-dessus des flux,
+   jamais à côté (31 octobre 2026, « page de liens, mettre stats dans le haut, jamais le côté ») :
+   .fiche-cols est une colonne, sans position collante. */
+.fiche-cols { flex-direction: column; }
+#modal-left-col { position: static; }
+#modal-left-col .match-card.scoreboard { width: 100%; max-width: none; }
 
 /* Ligne de flux (renderFluxItem, js/ui.js) */
 .si { display: flex; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,0.035); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 8px; padding-right: 6px; color: var(--text); transition: background var(--t-fast), border-color var(--t-fast); }
@@ -872,7 +877,10 @@ body:has(#mv-container.mv-mini) .toast { bottom: calc(16px + 230px + var(--safe-
 .mv-hdr-right { flex-shrink: 0; background: rgba(0,0,0,0.35); padding: 3px; border-radius: 10px; transition: opacity var(--t-fast); }
 @media (hover: hover) { .mv-cell:not(:hover) .mv-hdr-right { opacity: 0; } }
 body.manette .mv-hdr-right, body.manette .mv-drag-handle { display: none; }
-.mv-drag-handle { cursor: grab; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); }
+.mv-hdr-left { cursor: grab; }
+.mv-hdr-left:active { cursor: grabbing; }
+.mv-drag-handle { cursor: grab; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.22); color: rgba(255,255,255,0.9); }
+.mv-hdr-left:hover .mv-drag-handle { background: rgba(255,255,255,0.22); color: #fff; }
 .mv-stream-number { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.2); font-weight: 800; font-size: 14px; }
 /* Nom du match au-dessus de sa source (9 octobre 2026). */
 .mv-hdr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 36px; height: 36px; padding: 0 10px; border: none; border-radius: 8px; background: rgba(255,255,255,0.16); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background var(--t-fast); }
@@ -1533,6 +1541,17 @@ body.cards-poster .match-card .prime-thumbnail { aspect-ratio: 4 / 3; }
 .flux-head .icon-btn:hover { color: var(--t1); background: rgba(255,255,255,.12); }
 .si { background: var(--s1); border: 0; border-radius: var(--r-md); margin-bottom: 6px; box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
 .si:hover { background: var(--s2); border: 0; }
+/* La ligne ENTIÈRE se met en valeur quand elle est choisie au clavier, à la manette ou à la
+   télécommande, comme au survol (31 octobre 2026, « si stream sélectionné par manette, assurer
+   que ça hover tout, c'est difficile à lire »). Le focus est sur le lien .si-main : :hover, lui,
+   ne s'applique qu'à la souris, et seul un petit contour entourait le lien. Fond plus clair,
+   anneau intérieur sur toute la ligne, texte au contraste plein. */
+.si:has(:focus-visible), body.manette .si:focus-within, body.tv-mode .si:focus-within {
+  background: var(--s3); box-shadow: inset 0 0 0 3px var(--accent); }
+.si:has(:focus-visible) .si-ic, body.manette .si:focus-within .si-ic, body.tv-mode .si:focus-within .si-ic { color: var(--t1); background: rgba(255,255,255,.14); }
+.si:has(:focus-visible) .si-n, body.manette .si:focus-within .si-n, body.tv-mode .si:focus-within .si-n { color: #fff; }
+.si:has(:focus-visible) .si-meta, body.manette .si:focus-within .si-meta, body.tv-mode .si:focus-within .si-meta { color: var(--t1); }
+.si-main:focus-visible, .si-main:focus { outline: none; }
 .si-ic { border-radius: var(--r-sm); background: var(--s3); color: var(--t2); font-size: 18px; }
 .si:hover .si-ic { color: var(--t1); }
 .si-btn { display: inline-grid; place-items: center; font-size: 15px; color: var(--t3); }
