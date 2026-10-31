@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Multiview Stream Cleaner
 // @namespace    http://tampermonkey.net/
-// @version      1.20
+// @version      1.21
 // @description  Nettoie les lecteurs encadres dans le Multiview, lance la video sans clic, bloque leurs fenetres surgissantes des le premier script de la page, et sert de pont pour lire les pages des sources depuis le navigateur, Firefox inclus.
 // @author       Jules
 // @match        *://*/*
@@ -144,6 +144,67 @@
 
     let cleaned = false;
     let mainPlayerBase = null;
+    let cibleChoisie = null;
+
+    /* Le nettoyage se défait (31 octobre 2026, « presque tous les sites chargent vite sans le
+       nettoyeur, il en fait planter les deux tiers » ; il faut que tous les sites passent).
+       Il choisit le lecteur sur ce qu'il voit au moment où il passe, et ce choix peut être
+       faux : une <video> nue que Video.js enveloppe ou remplace une seconde plus tard, un
+       lecteur reconstruit par sa bibliothèque. Sans retour en arrière, l'observateur retirait
+       alors le vrai lecteur comme n'importe quelle pub, et plus rien ne pouvait le remettre.
+       On garde donc de quoi tout rendre (nœuds retirés, classes, observateurs) et on reprend
+       le choix, au plus REPRISES_MAX fois par page. */
+    var REPRISES_MAX = 6;
+    var RETIRES_MAX = 400;
+    let reprises = 0;
+    let retires = [];
+    let aDefaire = [];
+    let ecouteSouris = false;
+    let veilleLecteur = null;
+
+    function retirerReversible(n) {
+        n.classList.add('mv-cleaner-hidden');
+        var parent = n.parentNode;
+        if (parent) {
+            retires.push({ n: n, parent: parent, suivant: n.nextSibling });
+            if (retires.length > RETIRES_MAX) retires.shift();
+        }
+        try { n.remove(); } catch (e) {}
+    }
+
+    function annulerNettoyage() {
+        if (veilleLecteur) { clearInterval(veilleLecteur); veilleLecteur = null; }
+        aDefaire.splice(0).forEach(function(f) { try { f(); } catch (e) {} });
+        retires.splice(0).reverse().forEach(function(r) {
+            try {
+                if (!r.parent.isConnected) return;
+                r.parent.insertBefore(r.n, r.suivant && r.suivant.parentNode === r.parent ? r.suivant : null);
+            } catch (e) {}
+        });
+        document.querySelectorAll('.mv-cleaner-hidden, .mv-cleaner-parent, .mv-cleaner-maximized').forEach(function(el) {
+            el.classList.remove('mv-cleaner-hidden', 'mv-cleaner-parent', 'mv-cleaner-maximized');
+        });
+        var st = document.getElementById('multiview-cleaner-styles');
+        if (st) st.remove();
+        cleaned = false;
+        mainPlayerBase = null;
+        cibleChoisie = null;
+    }
+
+    /* Le lecteur choisi n'est plus ce qu'on a choisi : retiré de la page, ou sorti de son
+       emballage. */
+    function choixPerdu() {
+        return !cibleChoisie || !mainPlayerBase || !cibleChoisie.isConnected || !mainPlayerBase.isConnected
+            || !mainPlayerBase.contains(cibleChoisie);
+    }
+    function reprendreLeChoix() {
+        if (reprises >= REPRISES_MAX) return false;
+        reprises++;
+        console.log('[Multiview Cleaner] Lecteur reconstruit par le site : nettoyage défait, choix repris (' + reprises + ')');
+        annulerNettoyage();
+        relancerRecherche();
+        return true;
+    }
 
     /* Ce que le bac à sable de l'iframe faisait, rendu ici à la main.
 
@@ -523,6 +584,7 @@
         if (cleaned) return;
 
         injectStyles();
+        cibleChoisie = target;
         mainPlayerBase = getPlayerBase(target);
         /* Ceinture et bretelles : si la base remonte quand même à la racine, on retombe
            sur la cible elle-même. Une base égale à <body> ne masque rien du tout. */
@@ -539,9 +601,7 @@
             const children = Array.from(parent.children);
             for (const child of children) {
                 if (child !== current && !['SCRIPT', 'STYLE', 'LINK', 'META', 'HEAD'].includes(child.tagName)) {
-                    child.classList.add('mv-cleaner-hidden');
-                    // Retirer l'élément du flux si possible
-                    try { child.remove(); } catch(e) {}
+                    retirerReversible(child);
                 }
             }
 
@@ -579,9 +639,11 @@
         Array.from(document.documentElement.children).forEach(function(n) {
             if (horsCorps(n)) n.classList.add('mv-cleaner-hidden');
         });
-        new MutationObserver(function(mutations) {
+        var observateurRacine = new MutationObserver(function(mutations) {
             mutations.forEach(function(m) { m.addedNodes.forEach(function(n) { if (horsCorps(n)) n.classList.add('mv-cleaner-hidden'); }); });
-        }).observe(document.documentElement, { childList: true });
+        });
+        observateurRacine.observe(document.documentElement, { childList: true });
+        aDefaire.push(function() { observateurRacine.disconnect(); });
 
         /* Calques de pub : tout de suite, puis un moment encore, parce qu'une régie pose
            souvent sa bannière quelques secondes après le départ de la vidéo. */
@@ -598,6 +660,15 @@
             if (++passesCalques > 60) { clearInterval(boucleCalques); return; }
             retirerCalquesDePub(mainPlayerBase, target);
         }, 2000);
+        aDefaire.push(function() { clearInterval(boucleCalques); clearTimeout(calquesPrevus); calquesPrevus = null; });
+
+        /* Veille, indépendante de l'observateur : une bibliothèque qui retire le lecteur
+           choisi sans rien ajouter à côté (elle le reconstruit plus tard) n'est vue de
+           personne autrement. Une seconde, et seulement tant que le nettoyage tient. */
+        if (veilleLecteur) clearInterval(veilleLecteur);
+        veilleLecteur = setInterval(function() {
+            if (cleaned && choixPerdu()) reprendreLeChoix();
+        }, 1000);
 
         cleaned = true;
         console.log('[Multiview Cleaner] Page nettoyée avec succès !');
@@ -608,11 +679,18 @@
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
+                        /* Le choix a pu être repris pendant ce lot de mutations. */
+                        if (!cleaned || !mainPlayerBase) return;
                         if (node.nodeType === 1 && !['SCRIPT', 'STYLE', 'LINK', 'META'].includes(node.tagName)) {
                             // Si le nouveau noeud n'est pas notre lecteur et n'est pas contenu dedans
                             if (node !== mainPlayerBase && !mainPlayerBase.contains(node)) {
-                                node.classList.add('mv-cleaner-hidden');
-                                try { node.remove(); } catch(e) {}
+                                /* Un nœud qui ENVELOPPE le lecteur choisi, ou un lecteur choisi qui n'est
+                                   plus dans la page : c'est la bibliothèque du lecteur qui s'initialise, pas
+                                   une pub. Le retirer détruisait le vrai lecteur. */
+                                if (node.contains(mainPlayerBase) || choixPerdu()) {
+                                    if (reprendreLeChoix()) return;
+                                }
+                                retirerReversible(node);
                             } else if (mainPlayerBase.contains(node)) {
                                 // Ne pas supprimer les éléments de contrôle qui pourraient être ajoutés dynamiquement
                                 if (isSafeControlElement(node)) return;
@@ -634,6 +712,7 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
+        aDefaire.push(function() { observer.disconnect(); });
 
         function attachMediaListeners(mediaEl) {
             if (mediaEl.dataset.mvListenersAttached) return;
@@ -682,11 +761,15 @@
             }
         });
         mediaObserver.observe(document.body, { childList: true, subtree: true });
+        aDefaire.push(function() { mediaObserver.disconnect(); });
 
         // Detect clicks anywhere in the window to broadcast click to parent
-        window.addEventListener('mousedown', function(e) {
-            window.top.postMessage('mv_frame_clicked', '*');
-        }, true);
+        if (!ecouteSouris) {
+            ecouteSouris = true;
+            window.addEventListener('mousedown', function(e) {
+                window.top.postMessage('mv_frame_clicked', '*');
+            }, true);
+        }
     }
 
 
@@ -1250,7 +1333,7 @@
 
     /* Doit suivre @version de l'en-tête : c'est CE nombre que l'application reçoit et
        affiche. Désynchronisé, le script s'annonce sous une version qu'il n'a plus. */
-    var VERSION = '1.20';
+    var VERSION = '1.21';
     var MAX_BYTES = 4 * 1024 * 1024;
 
     /* Lecture BINAIRE, pour le mode direct (18 octobre 2026, « le bouton direct, ça marche

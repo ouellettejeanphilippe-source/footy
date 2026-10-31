@@ -143,6 +143,35 @@ const SITE = `<html><body style="margin:0">
         vp.setAttribute('style', 'width:40px;height:30px');
         document.getElementById('zone').appendChild(vp);
       }
+      /* Ce que fait Video.js (31 octobre 2026) : la page pose une <video> nue, le script
+         la prend pour le lecteur et nettoie, puis la bibliothèque s'initialise — elle
+         ENVELOPPE la vidéo dans un nouveau <div class="video-js"> (avec ses commandes), ou
+         la REMPLACE par un lecteur neuf. Dans les deux cas le vrai lecteur est un nœud
+         ajouté hors du lecteur choisi. */
+      if (e.data === 'poser_video_nue') {
+        var nue = document.createElement('video');
+        nue.id = 'lecteur'; nue.width = 640; nue.height = 360;
+        nue.setAttribute('style', 'width:640px;height:360px');
+        /* Directement sous <body>, comme sur vcloud.hudl.com : sans emballage reconnu, le lecteur
+           choisi est la <video> elle-même. */
+        document.body.appendChild(nue);
+      }
+      if (e.data === 'envelopper_video') {
+        var nue2 = document.getElementById('lecteur');
+        var env = document.createElement('div');
+        env.id = 'enveloppe'; env.className = 'video-js'; env.setAttribute('style', 'width:640px;height:360px;position:relative');
+        nue2.parentNode.insertBefore(env, nue2);
+        env.appendChild(nue2);
+        env.insertAdjacentHTML('beforeend', '<div id="commandes-js" class="vjs-control-bar" style="position:absolute;left:0;bottom:0;width:640px;height:40px;background:#000"><button>lecture</button></div>');
+      }
+      if (e.data === 'remplacer_video') {
+        document.getElementById('lecteur').remove();
+        var neuf = document.createElement('div');
+        neuf.id = 'lecteur-neuf'; neuf.className = 'video-js'; neuf.setAttribute('style', 'width:640px;height:360px;position:relative');
+        neuf.innerHTML = '<video id="video-neuve" width="640" height="360" style="width:640px;height:360px"></video>'
+          + '<div id="commandes-neuves" class="vjs-control-bar" style="position:absolute;left:0;bottom:0;width:640px;height:40px;background:#000"><button>lecture</button></div>';
+        document.body.appendChild(neuf);
+      }
       /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
          bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
       if (e.data === 'poser_lecteur_bouton') {
@@ -567,6 +596,34 @@ test('les calques de pub posés sur la vidéo disparaissent, les commandes du le
   await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_pub_tardive', '*'); });
   await expect(cadre.locator('#pub-tardive'), 'la bannière posée après le départ de la vidéo, z-index 50').toBeHidden({ timeout: 5000 });
   await expect(cadre.locator('#commandes')).toBeVisible();
+});
+
+/* « Sans nuker la page, presque tous les sites chargent vite ; le nettoyeur en fait planter
+   au moins les deux tiers » (Chromium, 31 octobre 2026). Mesuré sur un vrai lecteur Video.js
+   (vcloud.hudl.com) : il jouait sans le script, et le script le détruisait en moins de deux
+   secondes. Il choisissait la <video> nue AVANT l'initialisation de la bibliothèque, puis son
+   observateur retirait (`.remove()`) tout nœud ajouté hors du lecteur choisi — le vrai lecteur,
+   ses commandes et sa pub comprises. Le nettoyage doit se défaire et reprendre son choix. */
+test('un lecteur que la bibliothèque enveloppe après le nettoyage n\'est pas détruit', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_video_nue', '*'); });
+  await expect(cadre.locator('#decor'), 'la vidéo nue est prise pour le lecteur').toHaveCount(0, { timeout: 10000 });
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('envelopper_video', '*'); });
+  await expect(cadre.locator('#enveloppe'), 'le lecteur construit par la bibliothèque').toBeVisible({ timeout: 5000 });
+  await expect(cadre.locator('#lecteur')).toBeVisible();
+  await expect(cadre.locator('#commandes-js'), 'ses commandes').toBeVisible();
+  await expect(cadre.locator('#decor'), 'et le décor du site est de nouveau retiré, autour du bon lecteur').toHaveCount(0, { timeout: 5000 });
+});
+
+test('un lecteur que la bibliothèque remplace après le nettoyage n\'est pas détruit', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_video_nue', '*'); });
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 10000 });
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('remplacer_video', '*'); });
+  await expect(cadre.locator('#lecteur-neuf'), 'le lecteur neuf').toBeVisible({ timeout: 5000 });
+  await expect(cadre.locator('#video-neuve')).toBeVisible();
+  await expect(cadre.locator('#commandes-neuves'), 'ses commandes').toBeVisible();
+  await expect(cadre.locator('#decor')).toHaveCount(0, { timeout: 5000 });
 });
 
 /* Un lecteur déjà dans la page mais caché, montré plus tard par un changement de style :
