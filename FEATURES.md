@@ -102,6 +102,10 @@ Fond aux couleurs des équipes ; blason, nom et ★ de chaque côté ; au centre
 
 Dessous, comme une page de film : un gros bouton blanc **Regarder** (triangle de lecture) qui lance la meilleure source de la liste (filtres de site compris), avec son nom à côté. À la télécommande ou à la manette, c'est lui qui a le focus à l'ouverture. Sans source : `Chercher des liens` (loupe), ou `Aucun lien pour l'instant`. Les blasons sont grands, le score en chiffres compacts.
 
+### 4.1 bis Radio (31 octobre 2026)
+
+Sous le bouton **Regarder**, une section **Radio** : une ligne par équipe (domicile, puis visiteur). Pour une équipe de la **LNH**, la **station TuneIn de l'équipe** (« Station de l'équipe · TuneIn »), qui diffuse ses matchs ; pour les **Canadiens**, aussi **TSN 690** (anglais) et **98,5 FM** (français). Pour **tout match**, deux boutons par équipe, **Chercher sur TuneIn** et **Chercher sur iHeartRadio** (une recherche au nom de l'équipe, sans garantie qu'une station le diffuse : la note de la section le dit). Aucune station n'est inventée : en NBA, NFL, MLB, MLS et au soccer, seules les recherches s'affichent, faute de source qui dise quelle station diffuse quoi. Les liens s'ouvrent dans un nouvel onglet ; à la télécommande et à la manette, chacun est un arrêt.
+
 ### 4.2 Compléments (matchs ESPN seulement)
 
 Affichés dès qu'ils ont du contenu, rafraîchis toutes les 5 minutes pendant un direct :
