@@ -8,6 +8,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchTeamInfo } fro
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlignements } from './ui.js';
 import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
+import { estPageDeRefus, delaiRefus, doitSauterRefus } from './cadrerefuse.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
@@ -2277,6 +2278,13 @@ export function setupMultivisionUI() {
             if (e.data.img && typeof e.data.img.t === 'number') noterImagesTuile(idxS, e.data.img.t, e.data.img.p);
             return;
         }
+        /* Le script a lu la page d'erreur de Firefox dans un cadre de la tuile : le site
+           refuse d'être encadré (js/cadrerefuse.js). */
+        if (e.data && typeof e.data === 'object' && e.data.__mv === 'cadre_refuse') {
+            var idxR = indexDeTuilePour(e.source);
+            if (idxR >= 0) cadreRefuseSurTuile(mvFlux[idxR], String(e.data.etat || 'impossible'));
+            return;
+        }
         if (e.data && typeof e.data === 'object' && e.data.__mv === 'video_state') {
             var idx = indexDeTuilePour(e.source);
             if (idx < 0) return;
@@ -3129,6 +3137,14 @@ export function updateMultivisionLayout() {
                 } else {
                     poserChargement(container, 'Chargement de ' + (getDomain(finalUrl) || 'la vidéo') + '…');
                     iframe.addEventListener('load', function() { retirerChargement(cell); }, { once: true });
+                    /* Firefox laisse lire sa page d'erreur d'un cadre refusé ; Chromium non (illisible,
+                       on n'en sait rien et la bascule automatique reste le filet). */
+                    if (!estLecteurOfficiel(finalUrl)) iframe.addEventListener('load', function() {
+                        var texte = '';
+                        try { texte = (iframe.contentDocument && iframe.contentDocument.body && iframe.contentDocument.body.innerText) || ''; }
+                        catch (e) { return; }
+                        if (estPageDeRefus(texte)) cadreRefuseSurTuile(s, 'direct');
+                    });
                     iframe.src = finalUrl;
                     if (!estLecteurOfficiel(finalUrl)) poserTampon();
                 }
@@ -3550,6 +3566,27 @@ export function positionDuFlux(s) {
     var k = -1;
     for (var i = 0; i < L.length; i++) { if (L[i].url === s.url) { k = i; break; } }
     return { k: k + 1, n: L.length };
+}
+
+/* Un cadre de la tuile est refusé par le site (X-Frame-Options, CSP frame-ancestors).
+   Rien ne le fera jouer ici : si la tuile ne joue pas au bout d'un court délai (plus long
+   quand le script a tenté de recoller la page), elle passe au lien suivant sans attendre la
+   bascule automatique, et l'appareil note que cet hôte n'a rien donné (nextFluxForTile).
+   Voir js/cadrerefuse.js. */
+function cadreRefuseSurTuile(s, etat) {
+    if (!s || s._playing) return;
+    var posee = s._currentUrl;
+    armerMinuteur(s, 'refus', function(place) {
+        var L = liensDuMatch(s.mid);
+        if (!doitSauterRefus({
+            joue: s._playing,
+            adressePosee: s._currentUrl,
+            adresseAttendue: posee,
+            aSuivant: !!nextLinkAfter(L, s.url)
+        })) return;
+        couperMinuteur(s, 'auto');
+        nextFluxForTile(place, 'auto');
+    }, delaiRefus(etat));
 }
 
 /* Passe la tuile `idx` à la source suivante de son match.
@@ -4999,7 +5036,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v111';
+export var VERSION_APP = 'sports-guide-v112';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

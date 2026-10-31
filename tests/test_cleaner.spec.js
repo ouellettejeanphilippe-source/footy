@@ -202,6 +202,11 @@ const SITE = `<html><body style="margin:0">
           '<iframe id="coquille" style="width:640px;height:360px;border:0"></iframe>'
           + '<iframe id="vrai-lecteur" src="/embed/1" style="width:640px;height:360px;border:0"></iframe>';
       }
+      /* Un cadre que le site refuse d'afficher : Firefox y écrit sa page d'erreur (même origine
+         ici, donc lisible, comme le script la lit dans Firefox). */
+      if (e.data === 'poser_cadre_refuse') {
+        document.getElementById('zone').innerHTML = '<iframe id="refuse" src="/refus-firefox" style="width:640px;height:360px;border:0"></iframe>';
+      }
       /* Un lecteur « à la Video.js » : la vidéo dans un emballage reconnu, et un gros
          bouton de lecture par-dessus qui attend le clic de l'utilisateur. */
       if (e.data === 'poser_lecteur_bouton') {
@@ -249,6 +254,10 @@ test.beforeAll(async () => {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       const copies = /(^|[?&])double=1/.test(req.url) ? 2 : 1;
       return res.end('<html>' + gm + ('<script>' + SCRIPT + '</script>').repeat(copies) + '<body><div id="marea"></div><main class="epg"></main></body></html>');
+    }
+    if (rel === '/refus-firefox') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      return res.end('<html><body><h1>Firefox Can’t Open This Page</h1><p>To protect your security, ce-site.example will not allow Firefox to display the page if another site has embedded it.</p></body></html>');
     }
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end('<html><body style="margin:0"></body></html>');
@@ -684,6 +693,20 @@ test('une vidéo qui jouait et que le masquage arrête : le palier « couvre » 
   expect(boite.h, 'et toute sa hauteur').toBeGreaterThanOrEqual(590);
   await page.waitForTimeout(2500);
   expect(await cadre.evaluate(() => document.getElementById('lecteur').paused)).toBe(false);
+});
+
+/* « Un lecteur grisé sans vidéo » : le site refuse d'être encadré. Le script lit la page d'erreur
+   de Firefox dans le cadre et le DIT à l'application (cadre_refuse), qui passe au lien suivant.
+   Sans gestionnaire de scripts ici, la reconstruction est impossible : l'état est « impossible ». */
+test('un cadre refusé par le site est annoncé à l\'application', async ({ page }) => {
+  const cadre = await monterTuile(page, false);
+  await page.evaluate(() => { window.__refus = []; window.addEventListener('message', (e) => { if (e.data && e.data.__mv === 'cadre_refuse') window.__refus.push(e.data); }); });
+  await page.evaluate(() => { document.getElementById('tuile').contentWindow.postMessage('poser_cadre_refuse', '*'); });
+  await expect.poll(() => page.evaluate(() => window.__refus.length), { timeout: 10000 }).toBeGreaterThan(0);
+  const r = await page.evaluate(() => window.__refus[0]);
+  expect(r.url, 'l\'adresse du cadre refusé').toContain('/refus-firefox');
+  expect(r.etat).toBe('impossible');
+  expect(await page.evaluate(() => window.__refus.length), 'une seule annonce par cadre').toBe(1);
 });
 
 test('de deux cadres de même taille, celui qui a une adresse est le lecteur, pas la coquille vide', async ({ page }) => {
