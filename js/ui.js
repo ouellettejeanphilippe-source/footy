@@ -1942,6 +1942,18 @@ export function openMod(m,col){
   radio.className = 'fiche-radio';
   radio.innerHTML = radioHtml(radiosDuMatch(m), esc, icone);
   if (radio.innerHTML) body.insertBefore(radio, cta.nextSibling);
+  /* « Écouter » (31 octobre 2026, « comme YouTube et Twitch ») : le lecteur d'intégration de TuneIn
+     devient une tuile du lecteur, comme un flux de la fiche (openFlux : la fiche se ferme, la tuile
+     s'ajoute). Une tuile par radio ; les données viennent des attributs, jamais d'un onclick construit. */
+  radio.addEventListener('click', function(ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('.radio-ecouter') : null;
+    if (!b) return;
+    ev.preventDefault();
+    var url = b.getAttribute('data-lecteur'), nom = b.getAttribute('data-nom') || 'Radio';
+    if (!/^https:\/\/tunein\.com\/embed\/player\//.test(url || '')) return;
+    addToMultivision(url, 'Radio : ' + nom, 'radio_' + (b.getAttribute('data-id') || ''));
+    closeMod();
+  });
 
   /* Les compléments (buteurs, classement, statistiques) n'arrivent qu'après coup, pour
      les matchs ESPN seulement : la colonne qui les porte ne s'affiche que quand l'un

@@ -119,7 +119,13 @@ async function main() {
      'https://player.twitch.tv.example.com/?channel=x', 'https://notyoutube.com/embed/x', '', null, 'pas une adresse'].forEach((u) => {
         assert.ok(!E.estLecteurOfficiel(u), 'pas un lecteur officiel : ' + u);
     });
-    ok('estLecteurOfficiel : Twitch et YouTube encadrés, rien d\'autre');
+    // Le lecteur d'intégration de TuneIn (les radios, 31 octobre 2026) est un lecteur officiel ; sa page de station et les autres hôtes non.
+    assert.ok(E.estLecteurOfficiel('https://tunein.com/embed/player/s12472/'));
+    ['https://tunein.com/radio/TSN-690-s12472/', 'https://tunein.com/', 'https://tunein.com.example.com/embed/player/s1/', 'https://www.iheart.com/live/tsn-690-7450/'].forEach((u) => {
+        assert.ok(!E.estLecteurOfficiel(u), 'pas un lecteur officiel : ' + u);
+    });
+    assert.ok(!E.exigeVisibiliteTotale('https://tunein.com/embed/player/s12472/'), 'TuneIn ne mesure pas sa visibilité comme Twitch');
+    ok('estLecteurOfficiel : Twitch, YouTube et le lecteur TuneIn encadrés, rien d\'autre');
 
     /* « twitch est brisé? » (28 octobre 2026) : le lecteur Twitch refuse de démarrer, ou
        s'arrête, dès qu'un élément est peint par-dessus lui. YouTube, non. */

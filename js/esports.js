@@ -78,7 +78,8 @@ export function liensDunEvenementEsports(streams, hote) {
     return out;
 }
 
-/* Les lecteurs officiels (Twitch, YouTube) : déjà propres, et muets envers l'application.
+/* Les lecteurs officiels (Twitch, YouTube, et le lecteur d'intégration de TuneIn pour les radios,
+   31 octobre 2026) : déjà propres, et muets envers l'application.
 
    « It's stuck » (16 octobre 2026), sur « Chargement de player.twitch.tv… » : la tuile
    attend que le script nettoyeur lui dise « la vidéo joue ». Ce signal ne vient pas du
@@ -94,6 +95,7 @@ export function estLecteurOfficiel(url) {
     var h = u.hostname.toLowerCase();
     if (h === 'player.twitch.tv') return true;
     if (/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(h)) return u.pathname.indexOf('/embed/') === 0;
+    if (h === 'tunein.com') return u.pathname.indexOf('/embed/player/') === 0;
     return false;
 }
 
