@@ -19,6 +19,7 @@ import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 import { choisirVedette, bandeauVedette } from './vedette.js';
 import { icone } from './icones.js';
+import { radiosDuMatch, radioHtml } from './radio.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
    dans les boucles de rendu. Alias stable pour pouvoir journaliser depuis celles-ci. */
@@ -1934,6 +1935,13 @@ export function openMod(m,col){
   cta.innerHTML = '<button type="button" class="btn-regarder" data-focus-depart onclick="regarderMeilleurFlux()">' + icone('play') + '<span>Regarder</span></button>'
       + '<span class="fiche-cta-info"></span>';
   body.insertBefore(cta, body.firstChild);
+
+  /* La radio (31 octobre 2026, js/radio.js) : la station TuneIn de chaque équipe quand elle
+     existe, et pour tout match une recherche TuneIn / iHeartRadio par équipe. */
+  var radio = document.createElement('div');
+  radio.className = 'fiche-radio';
+  radio.innerHTML = radioHtml(radiosDuMatch(m), esc, icone);
+  if (radio.innerHTML) body.insertBefore(radio, cta.nextSibling);
 
   /* Les compléments (buteurs, classement, statistiques) n'arrivent qu'après coup, pour
      les matchs ESPN seulement : la colonne qui les porte ne s'affiche que quand l'un

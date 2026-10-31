@@ -1491,7 +1491,9 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
     flux: document.querySelectorAll('#modal-right-col .si').length,
     actions: document.querySelectorAll('#modal-right-col .si .si-btn').length,
     // « Pas de liens vers le vrai site, jamais » : ni ↗ par flux, ni liens vers les sources.
-    versLeSite: document.querySelectorAll('#mbg .si-ext, #mbg a[target="_blank"]').length,
+    // La section Radio (31 octobre 2026, js/radio.js) est voulue : ses liens ne vont qu'à TuneIn et iHeartRadio.
+    versLeSite: document.querySelectorAll('#mbg .si-ext, #mbg a[target="_blank"]:not(.fiche-radio a)').length,
+    radio: Array.from(document.querySelectorAll('#mbg .fiche-radio a')).map(function(a) { return new URL(a.href).hostname; }),
     barre: !!document.querySelector('#modal-right-col .flux-head #mv-refresh-btn')
   }));
   expect(fiche.croix, 'exactement une croix de fermeture visible').toBe(1);
@@ -1507,6 +1509,8 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   if (fiche.flux > 0) expect(fiche.actions, 'deux actions par ligne de flux (⭐ 👎)').toBe(fiche.flux * 2);
   expect(await page.locator('#mv-random-btn, #mbg .si-add').count(), 'ni ⊞ en tête des flux, ni ⊞ par ligne').toBe(0);
   expect(fiche.versLeSite, 'aucun lien vers le site').toBe(0);
+  expect(fiche.radio.length, 'la fiche a sa section Radio').toBeGreaterThan(0);
+  expect(fiche.radio.every(function(h) { return /(^|\.)(tunein\.com|iheart\.com)$/.test(h); }), 'la radio ne mène qu\'à TuneIn et iHeartRadio : ' + fiche.radio.join(',')).toBe(true);
 
   await page.keyboard.press('Escape');
   await expect(page.locator('#mbg')).not.toHaveClass(/open/);
