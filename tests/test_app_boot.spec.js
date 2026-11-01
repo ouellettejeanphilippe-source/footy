@@ -3721,3 +3721,45 @@ test('le lecteur : la tuile passe de la source télé à la source radio du matc
   await expect.poll(() => cadre.getAttribute('src')).toBe(tele);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Par sports, mais par section aussi, quitte à répéter le sport pour les ligues secondaires. Aussi,
+   dans favoris, pouvoir trier les sports et ligues aussi » (1er novembre 2026). */
+test('Live : sports des ligues principales puis « · secondaires » ; Favoris trie les sports et les ligues', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  // Sans favori : ils passent devant tout (« favoris en haut ») et masqueraient l'ordre choisi.
+  await page.addInitScript(() => { try { localStorage.setItem('fav_teams', '{}'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const titres = () => page.evaluate(() => [...document.querySelectorAll('#marea .section-title')].map((t) => t.innerText.split('\n')[0].trim()));
+  let t = await titres();
+  const secondaires = t.filter((x) => / · secondaires$/.test(x));
+  const principaux = t.filter((x) => !/ · secondaires$/.test(x) && !/^Favoris$|^Autres streams/.test(x));
+  expect(principaux.length, 'des sections de sport : ' + t.join(' | ')).toBeGreaterThan(1);
+  if (secondaires.length) {
+    expect(t.indexOf(secondaires[0]), 'les secondaires après tous les sports principaux').toBeGreaterThan(t.indexOf(principaux[principaux.length - 1]));
+  }
+  expect(t.some((x) => /^Ligues secondaires/.test(x)), 'plus de section « Ligues secondaires »').toBe(false);
+
+  // Favoris → Ligues : un titre par sport ; ▲ du deuxième sport principal le fait passer devant dans le Live.
+  await page.evaluate(() => { window.showPage && window.showPage('favs'); window.renderFavPage && window.renderFavPage(); });
+  const tetes = await page.evaluate(() => [...document.querySelectorAll('#fav-leagues-list .fav-sport-tete')].map((e) => e.getAttribute('data-sport')));
+  expect(tetes.length, 'les ligues groupées par sport').toBeGreaterThan(2);
+  expect(new Set(tetes).size).toBe(tetes.length);
+  const [premier, second] = principaux;
+  await page.evaluate((s) => { for (let k = 0; k < 30; k++) window.moveSportOrder(s, -1); }, second);
+  expect(await page.evaluate(() => window.ordreSports[0]), 'le sport monté est en tête de l\'ordre').toBe(second);
+  expect(await page.evaluate(() => document.querySelector('#fav-leagues-list .fav-sport-tete').getAttribute('data-sport'))).toBe(second);
+  await page.evaluate(() => window.applyFilter('live'));
+  t = (await titres()).filter((x) => x !== 'Favoris');
+  expect(t[0], 'le sport monté ouvre le Live : ' + t.join(' | ')).toBe(second);
+  expect(t.indexOf(second)).toBeLessThan(t.indexOf(premier));
+
+  // Une ligue ne se déplace que parmi celles de son sport.
+  await page.evaluate(() => window.renderFavPage());
+  const ligues = (sp) => page.evaluate((s) => [...document.querySelectorAll('#fav-leagues-list .fav-lg')].filter((e) => e.getAttribute('data-sport') === s).map((e) => e.getAttribute('data-lg')), sp);
+  const hockey = await ligues('Hockey');
+  expect(hockey.length, 'au moins deux ligues de hockey').toBeGreaterThan(1);
+  await page.evaluate((l) => window.moveLeagueOrder(l, -1), hockey[1]);
+  const hockeyApres = await ligues('Hockey');
+  expect(hockeyApres.slice(0, 2), 'la deuxième ligue de hockey passe première').toEqual([hockey[1], hockey[0]]);
+  expect(pageErrors).toEqual([]);
+});

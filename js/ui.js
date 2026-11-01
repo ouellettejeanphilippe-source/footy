@@ -6,7 +6,7 @@ import { marqueJouabilite } from './playability.js';
 import { minutesDansLaJournee, comparerHeures, libelleJour, FENETRE_HEURES } from './nuit.js';
 import { etatCacheServeur, rattrapageNecessaire, ageEnClair } from './rattrapage.js';
 import { normName, lgColor, getTeamColors, getLogo, libelleSport, fondEquipes } from './db.js';
-import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam } from './state.js';
+import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam, ordreSports } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl, ongletDeLaVue } from './utils.js';
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
@@ -981,15 +981,23 @@ function buildEPGInner(matches){
          chaque carte ; le sport qui a un favori d'abord, puis l'ordre des ligues (`filtered`) ;
          dans une section, favoris, direct, puis l'heure. Du 27 octobre au 1er novembre 2026,
          c'était une section par ligue. */
+      /* « Par sports, mais par section aussi, quitte à répéter le sport pour les ligues secondaires »
+         (même jour) : les sports des ligues principales, puis ceux des ligues secondaires
+         (« Hockey · secondaires »). L'ordre des sports vient de Favoris → Ligues (`ordreSports`). */
       var estFavoriLive = function(m) { return !!(favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]); };
-      sectionsParSport(principaux, {
+      var optionsSport = {
           sportDe: function(m) { return libelleSport(m.league); },
-          estSecondaire: function(m) { return leagueTier(m.league) === 'secondary'; },
           estFavori: estFavoriLive,
           estEnDirect: function(m) { return isLiveNow(m, now); },
-          comparer: function(a, b) { return comparerHeures(a, b, jourGrille); }
-      }).forEach(function(sec) {
+          comparer: function(a, b) { return comparerHeures(a, b, jourGrille); },
+          ordreSports: ordreSports
+      };
+      var estSecondaireLive = function(m) { return secondaryMatches.indexOf(m) !== -1; };
+      sectionsParSport(principaux.filter(function(m) { return !estSecondaireLive(m); }), optionsSport).forEach(function(sec) {
           renderMatches(sec.matches, fragment, sec.sport, true, idSectionSport(sec.sport));
+      });
+      sectionsParSport(principaux.filter(estSecondaireLive), optionsSport).forEach(function(sec) {
+          renderMatches(sec.matches, fragment, sec.sport + ' \u00b7 secondaires', true, idSectionSport(sec.sport) + '_sec');
       });
       if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0) {
           var vide = document.createElement('div');

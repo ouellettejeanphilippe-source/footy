@@ -1,4 +1,5 @@
-import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
+import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers, ordreSports, setOrdreSports } from './state.js';
+import { trierSports, deplacerSport } from './livesport.js';
 import { esc, showToast, fetchPage, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, safeStorageRemove, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal, sansLiensDuServeur } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
@@ -6,7 +7,7 @@ import { menuEstOuvert, fermerMenus } from './mv-menu.js';
 import { closeMod, fermerMenuLook } from './ui.js';
 import { getApiFirstMatches, TARGET_DATE, setApiTargetDate, mergeFluxToApi, getEspnDateStr, backgroundUpdateGuide } from './api.js';
 import { getDomain, getEstDateStrFromDate, sourcesActives, fetchRemoteConfig, getSourceCandidates, applySourceUrl, getSourcePages, sportOfLeague, finPresumee, raisonFinPresumee, isLiveNow, startsWithin, minutesUntilStart, isMatchPageBlocked, LIVE_WINDOW_MIN } from './config.js';
-import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier } from './db.js';
+import { lgFlag, STATIC_TEAMS, getLogo, normName, TEAM_ALIASES, DEFAULT_LEAGUES, OTHER_LEAGUES, leagueTier, defaultLeagueTier, libelleSport } from './db.js';
 import { PARSEURS, SOURCES_SERVEUR_SEULEMENT, analyserPageDeListe, updateMatchUiAfterScrape, fetchSubPages, compterFluxUtiles, getEmbedRegistry, saveEmbedRegistry, scrapeMatchFlux } from './scrapers.js';
 import { noteEmbedResult } from './extractors.js';
 import { retenirMediaDirect } from './directmedia.js';
@@ -1128,20 +1129,35 @@ export function renderFavPage() {
                  + ' style="padding:3px 8px; font-size:11px; border-radius:6px; white-space:nowrap; background:' + bg + '; color:' + (on ? '#fff' : 'var(--muted)') + ';">' + label + '</button>';
         };
 
-        displayOrder.forEach(function(lgKey, idx) {
+        /* Groupées par sport (1er novembre 2026, « dans favoris, pouvoir trier les sports et ligues
+           aussi ») : un titre par sport avec ▲ ▼ (`moveSportOrder`, l'ordre des sections du Live),
+           et dans chaque sport ses ligues, dans l'ordre des ligues ; ▲ ▼ d'une ligue la déplacent
+           parmi celles de son sport. */
+        var sportsAffiches = trierSports(displayOrder.map(function(l) { return libelleSport(l); }), ordreSports);
+        var parSportFav = {};
+        displayOrder.forEach(function(l) { var sp = libelleSport(l); (parSportFav[sp] = parSportFav[sp] || []).push(l); });
+        sportsAffiches.forEach(function(sp, si) {
+          lgHtml += '<div class="fav-sport-tete" data-sport="' + esc(sp) + '" style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin:' + (si ? '14px' : '0') + ' 0 4px; padding:4px 2px;">'
+              + '<span style="font-size:15px; font-weight:800;">' + esc(sp) + '</span>'
+              + '<span style="display:flex; gap:4px;">'
+              + '<button class="btn o" aria-label="Monter le sport ' + esc(sp) + '" style="padding:4px; font-size:12px; opacity:' + (si === 0 ? '0.3' : '1') + ';" onclick="moveSportOrder(\'' + escJs(sp) + '\', -1)" ' + (si === 0 ? 'disabled' : '') + '>▲</button>'
+              + '<button class="btn o" aria-label="Descendre le sport ' + esc(sp) + '" style="padding:4px; font-size:12px; opacity:' + (si === sportsAffiches.length - 1 ? '0.3' : '1') + ';" onclick="moveSportOrder(\'' + escJs(sp) + '\', 1)" ' + (si === sportsAffiches.length - 1 ? 'disabled' : '') + '>▼</button>'
+              + '</span></div>';
+          var liguesDuSport = parSportFav[sp] || [];
+        liguesDuSport.forEach(function(lgKey, idx) {
             var lgIcon = getLeagueIcon(lgKey);
             var isFirst = idx === 0;
-            var isLast = idx === displayOrder.length - 1;
+            var isLast = idx === liguesDuSport.length - 1;
             var curTier = leagueTier(lgKey);
             var isCustom = curTier !== defaultLeagueTier(lgKey);
             var tierCtrl = '<div style="display:flex; gap:4px; flex-wrap:wrap;">'
                 + tierBtn(lgKey, 'main', 'Principale', 'Afficher parmi les ligues principales', curTier)
-                + tierBtn(lgKey, 'secondary', 'Secondaire', 'Regrouper dans la section « Ligues secondaires »', curTier)
+                + tierBtn(lgKey, 'secondary', 'Secondaire', 'Ranger dans la section « secondaires » de son sport, sous les ligues principales', curTier)
                 + tierBtn(lgKey, 'ignored', 'Ignorée', 'Masquer cette ligue partout', curTier)
                 + (isCustom ? '<button class="btn o" title="Revenir au réglage par défaut" onclick="setLeagueTierPref(\'' + escJs(lgKey) + '\', \'\')" style="padding:3px 6px; font-size:11px; border-radius:6px;">↺</button>' : '')
                 + '</div>';
 
-            lgHtml += '<div draggable="true" ondragstart="handleDragStartLg(event, \'' + escJs(lgKey) + '\')" ondragend="handleDragEndLg(event)" ondragover="handleDragOverLg(event)" ondrop="handleDropLg(event, \'' + escJs(lgKey) + '\')" ondragenter="handleDragEnterLg(event)" ondragleave="handleDragLeaveLg(event)" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); cursor: grab; flex-wrap:wrap; gap:8px;">'
+            lgHtml += '<div class="fav-lg" data-lg="' + esc(lgKey) + '" data-sport="' + esc(sp) + '" draggable="true" ondragstart="handleDragStartLg(event, \'' + escJs(lgKey) + '\')" ondragend="handleDragEndLg(event)" ondragover="handleDragOverLg(event)" ondrop="handleDropLg(event, \'' + escJs(lgKey) + '\')" ondragenter="handleDragEnterLg(event)" ondragleave="handleDragLeaveLg(event)" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); cursor: grab; flex-wrap:wrap; gap:8px;">'
                    + '<div style="display:flex; align-items:center; gap:8px; pointer-events:none; min-width:120px; flex:1;">'
                    + '<span style="font-size:16px; pointer-events:none;">' + lgIcon + '</span>'
                    + '<span style="font-size:14px; font-weight:bold; pointer-events:none;">' + esc(lgKey) + '</span>'
@@ -1152,6 +1168,7 @@ export function renderFavPage() {
                    + '</div>'
                    + tierCtrl
                    + '</div>';
+        });
         });
         leaguesContainer.innerHTML = lgHtml;
     }
@@ -1386,8 +1403,12 @@ export function handleDropLg(event, dropLgKey) {
 }
 
 export function moveLeagueOrder(lgKey, direction) {
-    var displayOrder = customLgOrder.length > 0 ? customLgOrder : Object.keys(DEFAULT_LEAGUES);
-    var allLgs = Object.keys(DEFAULT_LEAGUES);
+    var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES);
+    var allLgs = Object.keys(DEFAULT_LEAGUES).concat(Object.keys(OTHER_LEAGUES || {}));
+    if (typeof S !== 'undefined' && S.matches) S.matches.forEach(function(m) {
+        var k = (m.league || '').toUpperCase();
+        if (k && k !== 'FAVORIS' && k !== 'EN DIRECT' && k !== 'AUTRES FLUX' && allLgs.indexOf(k) === -1) allLgs.push(k);
+    });
     allLgs.forEach(function(l) {
         if (displayOrder.indexOf(l) === -1) displayOrder.push(l);
     });
@@ -1395,7 +1416,10 @@ export function moveLeagueOrder(lgKey, direction) {
     var idx = displayOrder.indexOf(lgKey);
     if (idx === -1) return;
 
+    /* La ligue voisine du MÊME sport (la page les groupe par sport, 1er novembre 2026). */
+    var sport = libelleSport(lgKey);
     var newIdx = idx + direction;
+    while (newIdx >= 0 && newIdx < displayOrder.length && libelleSport(displayOrder[newIdx]) !== sport) newIdx += direction;
     if (newIdx < 0 || newIdx >= displayOrder.length) return;
 
     // Swap
@@ -1409,7 +1433,16 @@ export function moveLeagueOrder(lgKey, direction) {
 
 export function resetLgOrder() {
     setCustomLgOrder([]);
+    setOrdreSports([]);
     renderFavPage();
+}
+
+/* Déplace un sport d'un cran dans Favoris → Ligues : l'ordre des sections du Live (1er novembre 2026). */
+export function moveSportOrder(sport, direction) {
+    var titres = Array.prototype.map.call(document.querySelectorAll('#fav-leagues-list .fav-sport-tete'), function(el) { return el.getAttribute('data-sport'); });
+    setOrdreSports(deplacerSport(titres, sport, direction));
+    renderFavPage();
+    if (typeof buildEPG === 'function' && S && S.matches) buildEPG(S.matches);
 }
 
 /* Classe une ligue en principale / secondaire / ignorée (chaîne vide = valeur par défaut),
@@ -1534,6 +1567,7 @@ window.handleDragLeaveLg = handleDragLeaveLg;
 window.handleDropLg = handleDropLg;
 window.moveLeagueOrder = moveLeagueOrder;
 window.resetLgOrder = resetLgOrder;
+window.moveSportOrder = moveSportOrder;
 window.setLeagueTierPref = setLeagueTierPref;
 window.resetLeagueTiersPref = resetLeagueTiersPref;
 window.filterFavTeams = filterFavTeams;

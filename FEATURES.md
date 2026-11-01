@@ -44,7 +44,7 @@ Dessous, dans l'ordre, toutes repliables d'un clic, d'Entrée ou d'Espace sur le
 | Section | Contenu | Par défaut |
 |---|---|---|
 | **Favoris** | Les matchs dont une équipe ou la ligue est favorite. | Dépliée |
-| **Une section par sport** | Les ligues secondaires (Favoris → Ligues) y sont aussi, **sous les ligues principales** de leur sport, et un sport qui n'a que des ligues secondaires passe après les autres (« juste mettre les ligues secondaires en dessous des autres », 1er novembre 2026 : plus de section « Ligues secondaires » dans le Live ; le Guide garde la sienne, sous les principales). Les matchs en cours et ceux qui commencent dans l'heure, sport par sport (Hockey, Basketball, Football, Soccer…), chaque carte gardant sa ligue en surtitre (« regrouper par sports et non ligue », 1er novembre 2026 ; du 27 octobre au 1er novembre, une section par ligue). **Favoris en haut** : un sport qui a un match favori passe avant les autres ; dans une section, la ligue qui porte un favori d'abord, et les favoris devant, puis le direct, puis l'heure. | Dépliée |
+| **Une section par sport** | D'abord les sports des ligues principales, puis les **mêmes sports répétés pour les ligues secondaires** (« Hockey · secondaires »), sous toutes les sections principales (« par sports, mais par section aussi, quitte à répéter le sport pour les ligues secondaires », 1er novembre 2026 ; plus de section « Ligues secondaires » dans le Live ; le Guide garde la sienne, sous les principales). L'ordre des sports se choisit dans **Favoris → Ligues** (▲ ▼ d'un sport), après les sports qui ont un favori. Les matchs en cours et ceux qui commencent dans l'heure, sport par sport (Hockey, Basketball, Football, Soccer…), chaque carte gardant sa ligue en surtitre (« regrouper par sports et non ligue », 1er novembre 2026 ; du 27 octobre au 1er novembre, une section par ligue). **Favoris en haut** : un sport qui a un match favori passe avant les autres ; dans une section, la ligue qui porte un favori d'abord, et les favoris devant, puis le direct, puis l'heure. | Dépliée |
 | **Autres streams (n)** | Les flux que les sources annoncent sans qu'ESPN ait le match (ligue « Autres Flux »), sous-groupés par ligue annoncée. | Repliée |
 
 Les ligues classées « ignorée » n'apparaissent nulle part. Quand rien n'est en cours, la page dit « Aucun match en direct pour le moment » avec un bouton `Ouvrir le Guide`.
@@ -243,6 +243,9 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 
 - **Équipes** : la liste par ligue avec une ★ par équipe, une recherche instantanée, et `⭐️ MES FAVORIS` en tête. Un favori met ses matchs dans la section Favoris du Live et en avant dans le Guide.
 - **Ligues** : glisser-déposer (ou ▲/▼) pour l'ordre d'affichage, et pour chaque ligue trois niveaux, **Principale**, **Secondaire**, **Ignorée**, plus `↺` pour revenir au réglage par défaut. `Réinitialiser l'ordre` et `Réinitialiser le classement` remettent tout d'aplomb.
+
+
+**Trier les sports et les ligues** (1er novembre 2026, « dans favoris, pouvoir trier les sports et ligues aussi ») : dans Ligues, les ligues sont groupées sous un titre par sport. ▲ ▼ d'un sport changent l'ordre des sections du Live ; ▲ ▼ d'une ligue la déplacent parmi celles de son sport (l'ordre des ligues, comme avant, dans le Live et le Guide). « Réinitialiser l'ordre » remet aussi les sports par défaut.
 
 ## 7. Options (Réglages → Options)
 

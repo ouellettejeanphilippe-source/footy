@@ -55,3 +55,13 @@ test('les ligues secondaires sous les autres : après les principales dans leur 
   assert.deepStrictEqual(s.map((x) => x.sport), ['Hockey', 'Basketball', 'Crosse'], 'le sport tout secondaire en dernier, même avec un favori');
   assert.deepStrictEqual(s[0].matches.map((m) => m.id), [2, 1], 'la ligue principale avant la secondaire, même en direct');
 });
+
+test('l\'ordre des sports de Favoris : il range les sections après les favoris ; trier et déplacer', () => {
+  const ms = [{ id: 1, league: 'NHL', homeTeam: 'A', t: 0 }, { id: 2, league: 'NBA', homeTeam: 'B', t: 0 }, { id: 3, league: 'MLS', homeTeam: 'Fav', t: 0 }];
+  const opt = Object.assign(o(['Fav']), { ordreSports: ['Basketball', 'Hockey'] });
+  assert.deepStrictEqual(L.sectionsParSport(ms, opt).map((s) => s.sport), ['Soccer', 'Basketball', 'Hockey'], 'le favori d\'abord, puis l\'ordre choisi');
+  assert.deepStrictEqual(L.sectionsParSport(ms, Object.assign(o([]), { ordreSports: ['Basketball'] })).map((s) => s.sport), ['Basketball', 'Hockey', 'Soccer'], 'les sports non nommés gardent leur place, après');
+  assert.deepStrictEqual(L.trierSports(['Hockey', 'Soccer', 'Hockey', 'Golf'], ['Golf', 'Soccer']), ['Golf', 'Soccer', 'Hockey']);
+  assert.deepStrictEqual(L.deplacerSport(['A', 'B', 'C'], 'B', -1), ['B', 'A', 'C']);
+  assert.deepStrictEqual(L.deplacerSport(['A', 'B', 'C'], 'C', 1), ['A', 'B', 'C'], 'au bout, rien ne bouge');
+});
