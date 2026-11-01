@@ -1,5 +1,5 @@
 import { matchCardCache, S, addScrapeLog, updateSourceStatus, customLgOrder, setCustomLgOrder, favTeams, toggleFavTeam, setLeagueTier, resetLeagueTiers } from './state.js';
-import { esc, showToast, fetchPage, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal, sansLiensDuServeur } from './utils.js';
+import { esc, showToast, fetchPage, escJs, lg, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, safeStorageRemove, purgeStaleCalendarCache, allegerCalendrier, showPage, lireCacheLocal, ecrireCacheLocal, sansLiensDuServeur } from './utils.js';
 import { setupMultivisionUI, proposerGuideAuDemarrage, setModeCable } from './multiview.js';
 import { surTeleAndroid, reglagesImposesADefaire, CLE_APK_COMME_SITE, actionRetour, zoomInterface, doitEnregistrerServiceWorker } from './tele.js';
 import { menuEstOuvert, fermerMenus } from './mv-menu.js';
@@ -1690,32 +1690,15 @@ window.changerZoomTv = function(valeur) {
     appliquerZoomInterface();
 };
 
-window.toggleTvMode = function(enabled) {
-    localStorage.setItem('pref-tv-mode', enabled ? 'true' : 'false');
-
-    if (enabled) {
-        document.body.classList.add('tv-mode');
-        appliquerZoomInterface();
-        chargerNavigationSpatiale();
-    } else {
-        document.body.classList.remove('tv-mode');
-        appliquerZoomInterface();
-
-        // Retirer css
-        const link = document.getElementById('tv-css');
-        if (link) link.remove();
-
-        // Exécuter le nettoyage complet
-        if (window.__tvNavigationCleanup) {
-            window.__tvNavigationCleanup();
-            window.__tvNavigationCleanup = null;
-        }
-
-        // Retirer le script TV
-        const script = document.getElementById('tv-nav-script');
-        if (script) script.remove();
-    }
-};
+/* Le mode TV / tablette est retiré (1er novembre 2026, « enlever mode télé tablette dans settings
+   c'est brisé ») : plus d'interrupteur dans Options ni de `window.toggleTvMode`. Un mode allumé
+   par une version précédente est éteint et oublié au démarrage. La télé (APK) garde sa navigation
+   à la télécommande et son échelle (activerTeleAndroid), la manette aussi. */
+function oublierModeTv() {
+    safeStorageRemove('pref-tv-mode');
+    document.body.classList.remove('tv-mode');
+    appliquerZoomInterface();
+}
 
 /* La manette (js/manette.js) : la navigation aux flèches et le contour du focus, sans le
    zoom du mode TV ni son réglage. Rien n'est enregistré : c'est la manette qui sert, pas
@@ -1736,11 +1719,7 @@ window.activerTeleAndroid = function() {
     document.body.classList.add('android-tv');
     var aDefaire = reglagesImposesADefaire(function(k) { return safeStorageGet(k, null); });
     if (aDefaire) {
-        if (aDefaire.modeTv) {
-            window.toggleTvMode(false);
-            var cb = document.getElementById('pref-tv-mode');
-            if (cb) cb.checked = false;
-        }
+        if (aDefaire.modeTv) oublierModeTv();
         if (aDefaire.modeCable) setModeCable(false);
         safeStorageSet(CLE_APK_COMME_SITE, '1');
     }
@@ -1811,10 +1790,7 @@ window.quitterLecteur = function(vers) {
 // Auto-init at boot
 document.addEventListener('DOMContentLoaded', () => {
     brancherMoniteur(window);
-    const isTvMode = localStorage.getItem('pref-tv-mode') === 'true';
-    const tvCheckbox = document.getElementById('pref-tv-mode');
-    if (tvCheckbox) tvCheckbox.checked = isTvMode;
+    if (safeStorageGet('pref-tv-mode', null) !== null) oublierModeTv();
     const choixZoom = document.getElementById('pref-zoom-tv');
     if (choixZoom) choixZoom.value = safeStorageGet('zoom_tv', 'auto') || 'auto';
-    if (isTvMode) window.toggleTvMode(true);
 });

@@ -11,6 +11,7 @@ Les entrées jusqu'au 30 septembre 2026 sont dans [WORKLOG-archive.md](WORKLOG-a
 ## Blocages
 
 ## Fait
+- 2026-11-01 - **« Enlever mode télé tablette dans settings c'est brisé »** : l'interrupteur « Mode TV / tablette » quitte Options (`index.html`) ; `window.toggleTvMode` remplacé par `oublierModeTv` (`js/main.js`), qui efface `pref-tv-mode` et `body.tv-mode` au démarrage et dans `activerTeleAndroid` ; « Taille de l'interface » ne parle plus que de la télé. Manette et APK inchangés (`chargerNavigationSpatiale`). Tests : `test_app_boot` (télé Android sans `toggleTvMode`, nouveau test « le mode TV / tablette est retiré »). `CACHE_NAME` / `VERSION_APP` : v120. Reste : les règles `body.tv-mode` de `styles.css` / `tv.css` et la branche `modeTv` de `zoomInterface` sont mortes ; à retirer dans une passe à part, après grep.
 - 2026-11-01 - **« Juste mettre les ligues secondaires en dessous des autres et dégradés dans les matchs dans guide »**
   - Live : plus de section « Ligues secondaires » ; une ligue secondaire est dans la section de son sport, sous les principales (`sectionsParSport` : `estSecondaire` ; `renderMatches` trie le niveau avant le favori), un sport tout secondaire passe en dernier ; le bandeau vedette ne choisit plus un match secondaire. Le Guide garde sa grille « Ligues secondaires » sous les principales (déjà le cas).
   - Guide : la case prend le fond des cartes du Live (`--mb-fond` = `fondEquipes`, « Couleur des cartes »), sous un voile sombre ; direct = trait rouge à gauche ; case choisie toujours jaune.

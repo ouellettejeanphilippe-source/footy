@@ -2550,12 +2550,12 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
      2026). Une version précédente avait allumé d'office les modes TV et câble : la
      nouvelle les éteint une fois, et la télé garde la navigation à la télécommande et
      l'échelle d'un écran d'ordinateur. */
-  await page.evaluate(() => { window.toggleTvMode(true); localStorage.setItem('mode_cable', '1'); });
+  await page.evaluate(() => { localStorage.setItem('pref-tv-mode', 'true'); document.body.classList.add('tv-mode'); localStorage.setItem('mode_cable', '1'); });
   expect(await page.evaluate(() => { window.__ANDROID_TV__ = true; return window.activerTeleAndroid(); })).toBe(true);
   await expect(page.locator('body')).not.toHaveClass(/tv-mode/);
   await expect(page.locator('body')).toHaveClass(/android-tv/);
   await expect(page.locator('body')).toHaveClass(/manette/);
-  expect(await page.evaluate(() => ({ cable: localStorage.getItem('mode_cable'), fait: localStorage.getItem('apk_comme_site') }))).toEqual({ cable: '0', fait: '1' });
+  expect(await page.evaluate(() => ({ cable: localStorage.getItem('mode_cable'), fait: localStorage.getItem('apk_comme_site'), tv: localStorage.getItem('pref-tv-mode') }))).toEqual({ cable: '0', fait: '1', tv: null });
   const echelle = await page.evaluate(() => ({ zoom: Number(getComputedStyle(document.body).zoom), attendu: Math.round(Math.min(Math.max(innerWidth / 1200, 0.5), 1) * 100) / 100 }));
   expect(echelle.zoom, 'la page à l\'échelle d\'une appli de télé (1200 px)').toBeCloseTo(echelle.attendu, 2);
   // Comme sur Netflix : le focus de départ est un match, et les cartes du Guide s'atteignent.
@@ -2565,10 +2565,8 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await expect.poll(() => page.evaluate(() => { const c = document.querySelector('#marea .mb, #marea [data-mid]'); return c && c.getAttribute('tabindex'); })).toBe('0');
   await page.evaluate(() => window.applyFilter('live'));
 
-  // Ensuite, le mode TV est un choix comme un autre : le rallumer tient.
-  await page.evaluate(() => { window.toggleTvMode(true); window.activerTeleAndroid(); });
-  await expect(page.locator('body')).toHaveClass(/tv-mode/);
-  await page.evaluate(() => { window.toggleTvMode(false); });
+  /* Le mode TV / tablette est retiré (1er novembre 2026, « c'est brisé ») : ni réglage ni bascule. */
+  expect(await page.evaluate(() => ({ bascule: typeof window.toggleTvMode, reglage: !!document.getElementById('pref-tv-mode') }))).toEqual({ bascule: 'undefined', reglage: false });
 
   /* « Le mode direct… ça part en mode câble sur ma télé » ; « y marche pas à date, et ça
      chie avec le reste du UI » (25 octobre 2026). Un flux direct connu joue DANS SA
@@ -3663,4 +3661,17 @@ test('le Live comme un service de streaming : vedette, rangées par ligue, fiche
   await expect(page.locator('#mbg')).not.toHaveClass(/open/);
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Enlever mode télé tablette dans settings c'est brisé » (1er novembre 2026) : plus d'interrupteur
+   dans Options ; un mode TV allumé par une version précédente est éteint et oublié au démarrage. */
+test('le mode TV / tablette est retiré : pas de réglage, un ancien choix est oublié', async ({ page }) => {
+  await page.addInitScript(() => { try { if (!sessionStorage.getItem('deja')) { localStorage.setItem('pref-tv-mode', 'true'); sessionStorage.setItem('deja', '1'); } } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const etat = await page.evaluate(() => ({
+    reglage: !!document.getElementById('pref-tv-mode'), classe: document.body.classList.contains('tv-mode'),
+    stocke: localStorage.getItem('pref-tv-mode'), feuille: !!document.getElementById('tv-css'), texte: /Mode TV/.test(document.body.innerText)
+  }));
+  expect(etat).toEqual({ reglage: false, classe: false, stocke: null, feuille: false, texte: false });
+  expect(pageErrors).toEqual([]);
 });
