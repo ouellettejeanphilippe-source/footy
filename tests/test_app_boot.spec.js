@@ -3676,48 +3676,48 @@ test('le mode TV / tablette est retiré : pas de réglage, un ancien choix est o
   expect(pageErrors).toEqual([]);
 });
 
-/* « Quand écoute radio ou télé, possible dans le lecteur de switch » (1er novembre 2026) : le bouton
-   Radio / Télé du lecteur passe le son de la vidéo à la radio du match, et inversement ; fermer la
-   radio rend le son à la télé. <audio> est simulé (réseau coupé). */
-test('le lecteur : le son passe de la télé à la radio du match et revient', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.__joues = [];
-    window.Audio = class {
-      constructor() { this.paused = true; this.e = {}; this.src = ''; }
-      addEventListener(t, f) { (this.e[t] = this.e[t] || []).push(f); }
-      removeEventListener(t, f) { this.e[t] = (this.e[t] || []).filter((g) => g !== f); }
-      removeAttribute() { this.src = ''; } load() {} canPlayType() { return ''; }
-      play() { this.paused = false; window.__joues.push(this.src); (this.e.playing || []).forEach((f) => f()); return Promise.resolve(); }
-      pause() { this.paused = true; (this.e.pause || []).forEach((f) => f()); }
-    };
-  });
+/* « Quand écoute radio ou télé, possible dans le lecteur de switch », « je veux que ça soit possible
+   passer de la source radio à la source télé » (1er novembre 2026) : la radio est une source de la
+   tuile (radio.html), comme un stream télé ; le bouton Radio / Télé, le choix des sources et ⏭
+   passent de l'une à l'autre. */
+test('le lecteur : la tuile passe de la source télé à la source radio du match et revient', async ({ page }) => {
   const pageErrors = await bootOffline(page);
-  await page.evaluate((o) => {
+  const flux = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'radio.json'), 'utf8')).flux['tunein:s137385'];
+  const tele = origin + '/__faux-lecteur?a';
+  await page.evaluate((u) => {
     const m = window.S.matches[0];
     m.homeTeam = 'Montreal Canadiens'; m.awayTeam = 'Toronto Maple Leafs'; m.league = 'NHL';
-    window.addToMultivision(o + '/__faux-lecteur?a', 'Canadiens', m.id);
+    window.addToMultivision(u, 'Canadiens', m.id);
     window.openMultiviewTab();
-  }, origin);
+  }, tele);
   const bouton = page.locator('#mv-bar-radio');
   await expect.poll(() => bouton.evaluate((b) => b.hidden), { message: 'le match choisi a une radio : le bouton est là' }).toBe(false);
   await expect(bouton.locator('.mv-tb-lb')).toHaveText('Radio');
-  expect(await page.evaluate(() => window.sonDuLecteur())).toBe('tele');
 
-  await page.evaluate(() => window.basculerSonRadio());
-  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('radio');
-  await expect.poll(() => page.evaluate(() => window.__joues.length), { message: 'la radio part' }).toBe(1);
+  // Radio : la tuile pose radio.html avec le flux de la station des Canadiens.
+  expect(await page.evaluate(() => window.basculerSonRadio())).toBe('radio');
+  const cadre = page.locator('.mv-cell iframe.mv-iframe');
+  await expect.poll(() => cadre.getAttribute('src')).toContain('/radio.html?');
+  const src = new URL(await cadre.getAttribute('src'));
+  expect(src.searchParams.get('u'), 'le flux de data/radio.json').toBe(flux.url);
+  expect(src.searchParams.get('c')).toBe('tunein:s137385');
+  await expect(page.frameLocator('.mv-cell iframe.mv-iframe').locator('#nom')).toContainText('Montreal Canadiens');
   await expect(bouton.locator('.mv-tb-lb')).toHaveText('Télé');
-  expect(await page.evaluate(() => window.radioEnCours().cle)).toBe('tunein:s137385');
+  await expect(page.locator('.mv-chip.actif .mv-chip-etat')).toContainText('radio');
+  expect(await page.evaluate(() => window.mvFlux[0].url)).toContain('/radio.html?');
 
-  await page.evaluate(() => window.basculerSonRadio());
-  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('tele');
-  await expect.poll(() => page.evaluate(() => window.radioEnCours().enPause), { message: 'la radio en pause' }).toBe(true);
+  // Télé : la source d'avant revient.
+  expect(await page.evaluate(() => window.basculerSonRadio())).toBe('tele');
+  await expect.poll(() => cadre.getAttribute('src')).toBe(tele);
+  await expect(bouton.locator('.mv-tb-lb')).toHaveText('Radio');
 
-  // Retour à la radio (la même, reprise), puis on la ferme : le son revient à la télé.
-  await page.evaluate(() => window.basculerSonRadio());
-  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('radio');
-  expect(await page.evaluate(() => window.__joues.length), 'reprise, pas un second flux').toBe(2);
-  await page.evaluate(() => window.arreterRadio());
-  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('tele');
+  // Le choix des sources liste les stations ; en choisir une la pose ; ⏭ ramène à la télé.
+  await page.evaluate(() => window.showFluxSelector(0, window.mvFlux[0].mid));
+  const radios = page.locator('#mv-flux-selector .mv-flux-radio');
+  expect(await radios.count(), 'les stations des deux équipes').toBeGreaterThanOrEqual(2);
+  await radios.nth(1).click();
+  await expect.poll(() => cadre.getAttribute('src')).toContain('/radio.html?');
+  await page.evaluate(() => window.changerSourceActive(1));
+  await expect.poll(() => cadre.getAttribute('src')).toBe(tele);
   expect(pageErrors).toEqual([]);
 });

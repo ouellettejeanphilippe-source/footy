@@ -148,3 +148,19 @@ test('stationAEcouter : la première station qui a un flux, domicile, visiteur, 
   const pl = R.stationAEcouter(R.radiosDuMatch({ homeTeam: 'Inconnu A', awayTeam: 'Inconnu B', league: 'Premier League' }));
   assert.ok(pl && /^Premier League/.test(pl.nom), 'le championnat en dernier recours : ' + JSON.stringify(pl));
 });
+
+test('la source radio d\'une tuile : radio.html avec le flux, reconnue, et ses stations', () => {
+  const base = 'https://exemple.test/footy/index.html';
+  const u = R.adresseSourceRadio(base, { url: 'https://t.example/1.mp3', type: 'continu' }, 'Canadiens · Station', 'tunein:s1');
+  assert.ok(u.startsWith('https://exemple.test/footy/radio.html?'), u);
+  assert.strictEqual(new URL(u).searchParams.get('u'), 'https://t.example/1.mp3');
+  assert.strictEqual(R.estSourceRadio(u, 'https://exemple.test'), true);
+  assert.strictEqual(R.estSourceRadio(u, 'https://autre.test'), false, 'une radio.html d\'un autre site n\'en est pas une');
+  assert.strictEqual(R.estSourceRadio('https://exemple.test/footy/radio.html', 'https://exemple.test'), false, 'sans flux');
+  assert.strictEqual(R.estSourceRadio('https://site.test/embed/1'), false);
+  assert.deepStrictEqual(R.infoSourceRadio(u), { nom: 'Canadiens · Station', cle: 'tunein:s1' });
+  const toutes = R.stationsAEcouter(R.radiosDuMatch({ homeTeam: 'Montreal Canadiens', awayTeam: 'Toronto Maple Leafs', league: 'NHL' }));
+  assert.ok(toutes.length >= 4, 'les stations des deux équipes');
+  assert.strictEqual(new Set(toutes.map((s) => s.cle)).size, toutes.length, 'sans doublon');
+  assert.strictEqual(toutes[0].cle, 'tunein:s137385');
+});

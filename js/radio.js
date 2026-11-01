@@ -596,16 +596,49 @@ export function toutesLesClesDeFlux() {
    « quand écoute radio ou télé, possible dans le lecteur de switch ») : la première qui a un flux
    (`ecoute`), domicile, puis visiteur, puis le championnat. { cle, nom } ou null. */
 export function stationAEcouter(r) {
-  if (!r) return null;
+  return stationsAEcouter(r)[0] || null;
+}
+
+/* Toutes les stations d'un match qui ont un flux, dans le même ordre, sans doublon :
+   [{ cle, nom }] (les sources radio de la tuile du lecteur). */
+export function stationsAEcouter(r) {
+  if (!r) return [];
   var lignes = (r.equipes || []).map(function(e) { return { titre: e.equipe, stations: e.stations }; });
   if (r.ligue) lignes.push({ titre: r.ligue.nom, stations: r.ligue.stations });
-  for (var i = 0; i < lignes.length; i++) {
-    for (var j = 0; j < lignes[i].stations.length; j++) {
-      var s = lignes[i].stations[j];
-      if (s.ecoute) return { cle: s.ecoute, nom: lignes[i].titre + ' \u00b7 ' + s.nom };
-    }
-  }
-  return null;
+  var vues = {}, out = [];
+  lignes.forEach(function(l) {
+    l.stations.forEach(function(s) {
+      if (s.ecoute && !vues[s.ecoute]) { vues[s.ecoute] = 1; out.push({ cle: s.ecoute, nom: l.titre + ' \u00b7 ' + s.nom }); }
+    });
+  });
+  return out;
+}
+
+/* La radio comme SOURCE d'une tuile (1er novembre 2026, « je veux que ça soit possible passer de
+   la source radio à la source télé ») : radio.html, page du site qui lit le flux. `base` : l'adresse
+   de la page courante (location.href). */
+export function adresseSourceRadio(base, flux, nom, cle) {
+  var u = new URL('radio.html', base);
+  u.searchParams.set('u', flux.url);
+  u.searchParams.set('n', nom || 'Radio');
+  if (flux.type) u.searchParams.set('t', flux.type);
+  if (cle) u.searchParams.set('c', cle);
+  return u.href;
+}
+
+/* Vrai pour une adresse de source radio (radio.html avec un flux) ; `origine` : celle du site,
+   quand on la connaît (une page radio.html d'un autre site n'en est pas une). */
+export function estSourceRadio(url, origine) {
+  var u;
+  try { u = new URL(String(url || '')); } catch (e) { return false; }
+  if (origine && u.origin !== origine) return false;
+  return /\/radio\.html$/.test(u.pathname) && /^https?:\/\//.test(u.searchParams.get('u') || '');
+}
+
+/* Le nom et la clé d'une source radio : { nom, cle } (la pastille de la tuile, le choix des sources). */
+export function infoSourceRadio(url) {
+  try { var u = new URL(String(url)); return { nom: u.searchParams.get('n') || 'Radio', cle: u.searchParams.get('c') || '' }; }
+  catch (e) { return { nom: 'Radio', cle: '' }; }
 }
 
 /* Ce que la fiche montre pour un match :
