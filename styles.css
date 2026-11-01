@@ -1679,3 +1679,27 @@ select.btn, .select { background-color: var(--s2); border: 0; border-radius: var
 .maj-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .maj-guide { margin-top: 14px; }
 .maj-guide > summary { cursor: pointer; font-weight: 700; padding: 10px 0; }
+
+/* La barre radio (1er novembre 2026, js/radiodirect.js) : « Écouter » lit le flux de la station
+   tout de suite ; la barre, en bas à gauche, dit ce qui joue (pause, arrêt). Dans le lecteur, elle
+   s'efface devant une tuile qui exige d'être seule à l'écran (Twitch, `mv-strict`) : le son continue. */
+#radio-direct { position: fixed; left: 16px; bottom: calc(16px + var(--safe-bottom, 0px)); z-index: 1002; display: flex; align-items: center; gap: 10px; max-width: min(420px, calc(100% - 32px)); padding: 8px 8px 8px 14px; border-radius: 999px; background: rgba(14, 14, 16, 0.96); border: 1px solid var(--border2); box-shadow: 0 8px 24px rgba(0,0,0,0.45); color: var(--t1); }
+#radio-direct[hidden] { display: none; }
+#radio-direct .rd-ico { display: inline-flex; color: var(--accent); }
+#radio-direct .rd-ico svg { width: 18px; height: 18px; }
+#radio-direct .rd-texte { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+#radio-direct .rd-nom { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#radio-direct .rd-etat { font-size: 11px; color: var(--t2); }
+#radio-direct button { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--s3); color: var(--t1); font: inherit; font-size: 13px; cursor: pointer; }
+#radio-direct .rd-lecture { background: var(--accent); color: #fff; }
+#radio-direct button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body:has(#mv-container.mv-full .mv-cell.mv-strict) #radio-direct { display: none; }
+body[data-view="player"] #radio-direct { top: calc(16px + var(--safe-top, 0px)); bottom: auto; }
+@media (max-width: 768px) {
+  #radio-direct { left: 12px; bottom: calc(var(--bottom-nav) + var(--safe-bottom) + 12px); max-width: calc(100% - 150px); }
+  body[data-view="player"] #radio-direct { top: calc(var(--safe-top) + 12px); bottom: auto; }
+}
+
+/* La teinte du match (1er novembre 2026, js/teinte.js) : une lueur de la couleur du match en haut à
+   gauche du fond, sous tout le reste (le fond est en z -3, rien n'est peint sur une vidéo). */
+#app-bg-container::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at top left, var(--teinte-lueur, transparent) 0%, transparent 60%); }

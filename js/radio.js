@@ -31,7 +31,7 @@
    content/liveStations?callLetters=<indicatif>`, ou `ca.api` pour le Canada), l'inscrire
    dans STATIONS puis dans RADIOS_EQUIPES, et compléter le test.
 
-   SANS IMPORT : lu par js/ui.js (fiche du match). */
+   SANS IMPORT : lu par js/ui.js (fiche du match), js/radiodirect.js et scripts/radio_flux.mjs. */
 
 /* LNH : nom d'équipe normalisé → identifiant de la station TuneIn de l'équipe (`guide_id`). */
 export var STATIONS_TUNEIN = {
@@ -495,8 +495,8 @@ export function liensDeStation(cleStation) {
   if (!s) return [];
   var nom = s.nom + (LANGUES[s.lang] || '');
   var liens = [];
-  if (s.tunein) liens.push({ nom: nom, url: lienStationTuneIn(s.tunein), source: 'TuneIn', lecteur: lecteurTuneIn(s.tunein), idLecteur: s.tunein });
-  if (s.iheart) liens.push({ nom: nom, url: lienStationIHeart(s.iheart), source: 'iHeartRadio' });
+  if (s.tunein) liens.push({ nom: nom, url: lienStationTuneIn(s.tunein), source: 'TuneIn', lecteur: lecteurTuneIn(s.tunein), idLecteur: s.tunein, ecoute: cleFlux('tunein', s.tunein) });
+  if (s.iheart) liens.push({ nom: nom, url: lienStationIHeart(s.iheart), source: 'iHeartRadio', ecoute: cleFlux('iheart', s.iheart) });
   /* La page d'écoute officielle de la station, pour celles que ni TuneIn ni iHeartRadio n'ont. */
   if (s.site) liens.push({ nom: nom, url: s.site, source: 'Site de la station' });
   return liens;
@@ -508,7 +508,7 @@ export function stationsDeLEquipe(nomEquipe, sport) {
   var cle = cleEquipe(nomEquipe);
   var vues = {}, liste = [];
   function ajouter(l) { if (!vues[l.url]) { vues[l.url] = true; liste.push(l); } }
-  if (STATIONS_TUNEIN[cle]) ajouter({ nom: 'Station de l\u2019équipe', url: lienStationTuneIn(STATIONS_TUNEIN[cle]), source: 'TuneIn', lecteur: lecteurTuneIn(STATIONS_TUNEIN[cle]), idLecteur: STATIONS_TUNEIN[cle] });
+  if (STATIONS_TUNEIN[cle]) ajouter({ nom: 'Station de l\u2019équipe', url: lienStationTuneIn(STATIONS_TUNEIN[cle]), source: 'TuneIn', lecteur: lecteurTuneIn(STATIONS_TUNEIN[cle]), idLecteur: STATIONS_TUNEIN[cle], ecoute: cleFlux('tunein', STATIONS_TUNEIN[cle]) });
   var cles = (RADIOS_EQUIPES[cle] || []).concat(sport ? (RADIOS_EQUIPES[cle + '@' + sport] || []) : []);
   cles.forEach(function(k) { liensDeStation(k).forEach(ajouter); });
   return liste;
@@ -521,6 +521,75 @@ export function stationsDeLaLigue(nomLigue) {
     liensDeStation(k).forEach(function(l) { if (!vues[l.url]) { vues[l.url] = true; liste.push(l); } });
   });
   return liste;
+}
+
+/* ── Le flux audio d'une station (1er novembre 2026) ──
+   « Ya moyen de partir les streams tunein et cie directement ? » Oui : TuneIn (`Tune.ashx`) et
+   iHeartRadio (`liveStations/<id>`) donnent l'adresse du flux de la station, qu'un élément <audio>
+   lit sans cadre ni second geste. TuneIn ne permet pas l'appel depuis le navigateur (pas d'en-tête
+   CORS) : scripts/radio_flux.mjs le fait chaque jour et écrit data/radio.json. iHeartRadio, lui,
+   répond au navigateur (`Access-Control-Allow-Origin: *`) : js/radiodirect.js le demande à la volée
+   quand data/radio.json n'a pas la station. Seuls les flux en https passent (une page https ne lit
+   pas un flux http). */
+
+/* La clé d'un flux : « tunein:s137385 », « iheart:11724 ». */
+export function cleFlux(source, id) { return source + ':' + id; }
+
+/* Les adresses à interroger pour une clé (scripts/radio_flux.mjs, js/radiodirect.js). iHeartRadio
+   range chaque station dans l'annuaire de son pays : on essaie les États-Unis, puis le Canada. */
+export function adressesDuFlux(cle) {
+  var p = String(cle || '').split(':');
+  if (p[0] === 'tunein' && /^s\d+$/.test(p[1] || '')) return ['https://opml.radiotime.com/Tune.ashx?id=' + p[1] + '&render=json&formats=mp3,aac,ogg,hls'];
+  if (p[0] === 'iheart' && /^\d+$/.test(p[1] || '')) return ['https://us.api.iheart.com/api/v2/content/liveStations/' + p[1], 'https://ca.api.iheart.com/api/v2/content/liveStations/' + p[1]];
+  return [];
+}
+
+function https(u) { return typeof u === 'string' && /^https:\/\//.test(u) ? u : ''; }
+function estHls(u) { return /\.m3u8(\?|$)/i.test(u); }
+
+/* Le meilleur flux d'une réponse de TuneIn : en https, un flux continu (mp3, aac, ogg) direct avant
+   une liste HLS ; null sinon (une liste .pls ou .m3u n'est pas lisible par <audio>). */
+export function fluxDeTuneIn(json) {
+  var corps = json && Array.isArray(json.body) ? json.body : [];
+  var continus = [], hls = [];
+  corps.forEach(function(e) {
+    var u = https(e && e.url);
+    if (!u || /\.(pls|m3u)(\?|$)/i.test(u)) return;
+    if (e.media_type === 'hls' || estHls(u)) hls.push(u);
+    else if (/^(mp3|aac|ogg)$/.test(e.media_type || '')) continus.push(u);
+  });
+  if (continus.length) return { url: continus[0], type: 'continu' };
+  if (hls.length) return { url: hls[0], type: 'hls' };
+  return null;
+}
+
+/* Le meilleur flux d'une réponse d'iHeartRadio : le flux continu sécurisé, puis le HLS sécurisé. */
+export function fluxDIHeart(json) {
+  var h = json && Array.isArray(json.hits) ? json.hits[0] : null;
+  var s = h && h.streams;
+  if (!s) return null;
+  var c = https(s.secure_shoutcast_stream);
+  if (c) return { url: c, type: 'continu' };
+  var l = https(s.secure_hls_stream);
+  if (l) return { url: l, type: 'hls' };
+  return null;
+}
+
+/* La réponse brute d'un annuaire → flux, selon la clé. */
+export function fluxDeReponse(cle, json) {
+  return String(cle).indexOf('tunein:') === 0 ? fluxDeTuneIn(json) : fluxDIHeart(json);
+}
+
+/* Toutes les clés de flux que la fiche peut proposer (stations du registre et stations LNH). */
+export function toutesLesClesDeFlux() {
+  var vues = {};
+  Object.keys(STATIONS_TUNEIN).forEach(function(k) { vues[cleFlux('tunein', STATIONS_TUNEIN[k])] = 1; });
+  Object.keys(STATIONS).forEach(function(k) {
+    var s = STATIONS[k];
+    if (s.tunein) vues[cleFlux('tunein', s.tunein)] = 1;
+    if (s.iheart) vues[cleFlux('iheart', s.iheart)] = 1;
+  });
+  return Object.keys(vues).sort();
 }
 
 /* Ce que la fiche montre pour un match :
@@ -561,9 +630,11 @@ export function radioHtml(r, esc, icone) {
   function chips(stations) {
     return stations.map(function(s) {
       var h = lien(esc(s.url), esc(s.nom) + ' · ' + esc(s.source), 'radio-station', ico);
-      /* « Écouter » : le lecteur TuneIn dans une tuile du lecteur, comme YouTube et Twitch. Seulement
-         là où un lecteur d'intégration existe (TuneIn), jamais pour un lien d'iHeartRadio ou d'un site. */
-      if (s.lecteur) h += '<button type="button" class="radio-ecouter" data-lecteur="' + esc(s.lecteur) + '" data-id="' + esc(s.idLecteur || '') + '" data-nom="' + esc(s.nom) + '" aria-label="Écouter ' + esc(s.nom) + ' dans le lecteur">' + (icone ? icone('play') : '') + '<span>Écouter</span></button>';
+      /* « Écouter » (1er novembre 2026, « partir les streams tunein et cie directement ») : le flux
+         audio de la station joue tout de suite dans la barre radio (js/radiodirect.js), TuneIn comme
+         iHeartRadio. Sans flux connu, le lecteur d'intégration de TuneIn en tuile, comme avant, ou le
+         lien. Jamais pour la page d'un site (aucun flux vérifié). */
+      if (s.ecoute) h += '<button type="button" class="radio-ecouter" data-ecoute="' + esc(s.ecoute) + '" data-lecteur="' + esc(s.lecteur || '') + '" data-id="' + esc(s.idLecteur || '') + '" data-url="' + esc(s.url) + '" data-nom="' + esc(s.nom) + '" aria-label="Écouter ' + esc(s.nom) + '">' + (icone ? icone('play') : '') + '<span>Écouter</span></button>';
       return h;
     }).join('');
   }

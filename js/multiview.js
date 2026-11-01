@@ -28,6 +28,7 @@ import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, pa
 import { estLecteurOfficiel, exigeVisibiliteTotale } from './esports.js';
 import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml, lecteurAOublier } from './sorties.js';
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
+import { teinteDuMatch, appliquerTeinte } from './teinte.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -2702,6 +2703,24 @@ export function applyMvFocusStyling() {
         var son = cell.querySelector('.mv-hdr-son');
         if (son) son.hidden = !(plusieurs && idx === cible && mvFlux[idx] && !mvFlux[idx]._sonCoupe);
     });
+    majTeinte();
+}
+
+/* La couleur de l'interface selon le match (1er novembre 2026, js/teinte.js) : la fiche ouverte
+   (`ficheOuverte`, ou `S.ficheId`), sinon la vidéo choisie, sinon le match du bandeau vedette
+   (`S.vedetteId`, posé par buildEPG) ; l'accent de la palette quand aucun n'a de couleur utilisable
+   ou que Réglages → Look la coupe (`teinteMatch`). */
+export function majTeinte(ficheOuverte) {
+    if (!userPrefs || typeof document === 'undefined') return null;
+    var m = null;
+    if (userPrefs.teinteMatch !== false && typeof S !== 'undefined' && S && S.matchMap) {
+        if (ficheOuverte && ficheOuverte.homeTeam !== undefined) m = ficheOuverte;
+        if (!m && S.ficheId !== undefined && S.ficheId !== null) m = S.matchMap.get(String(S.ficheId)) || null;
+        var f = mvFlux.length ? mvFlux[tuileActive()] : null;
+        if (!m && f && f.mid !== undefined && f.mid !== null) m = S.matchMap.get(String(getOriginalMatchId(f.mid))) || null;
+        if (!m && S.vedetteId !== undefined && S.vedetteId !== null) m = S.matchMap.get(String(S.vedetteId)) || null;
+    }
+    return appliquerTeinte(document.documentElement, teinteDuMatch(m, teamColorPair), userPrefs.accent || '#0a84ff');
 }
 
 export function applyMvAudioState() {
@@ -4836,6 +4855,8 @@ export function initPrefs() {
      onglets, du survol et de l'en-tête, et effets (verre, néon) sont partis le
      29 octobre 2026 : l'identité de styles.css §17 vaut pour tous. */
   document.documentElement.style.setProperty('--accent', userPrefs.accent || '#0a84ff');
+  /* … sauf quand un match la donne (js/teinte.js, 1er novembre 2026). */
+  majTeinte();
 
   var selCardShape = document.getElementById('pref-card-shape');
   if (selCardShape) selCardShape.value = userPrefs.cardShape || 'auto';
@@ -5051,7 +5072,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v117';
+export var VERSION_APP = 'sports-guide-v118';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

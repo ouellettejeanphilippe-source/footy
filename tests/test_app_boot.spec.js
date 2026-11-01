@@ -3592,12 +3592,24 @@ test('le Live comme un service de streaming : vedette, rangées par ligue, fiche
       titres,
       rangees: grilles.length > 0 && grilles.every((g) => g.classList.contains('rangee') && getComputedStyle(g).overflowX === 'auto'),
       largeurVedette: document.querySelector('#marea .vedette').getBoundingClientRect().width, zone: zone.width,
-      ligues: [...new Set((window.S.matches || []).map((m) => m.league))]
+      ligues: [...new Set((window.S.matches || []).map((m) => m.league))],
+      titresHaut: [...document.querySelectorAll('#marea .section-title')].filter((t) => !t.closest('.autres-streams-sub-container')).map((t) => t.innerText.split('\n')[0].trim()),
+      teinte: document.documentElement.getAttribute('data-teinte'),
+      accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+      vedetteId: window.S.vedetteId
     };
   });
-  expect(live.titres.join(' | '), 'plus de section « Live » ni « À venir » à plat : une section par ligue').not.toMatch(/^Live$|À venir dans l'heure/);
-  const liguesEnTitre = live.titres.filter((t) => live.ligues.some((l) => t.endsWith(l)));
-  expect(liguesEnTitre.length, 'des sections portent un nom de ligue').toBeGreaterThan(0);
+  expect(live.titres.join(' | '), 'plus de section « Live » ni « À venir » à plat').not.toMatch(/^Live$|À venir dans l'heure/);
+  /* « Regrouper par sports et non ligue » (1er novembre 2026) : les sections portent un sport. */
+  const SPORTS = ['Hockey', 'Baseball', 'Basketball', 'Football', 'MMA', 'Boxe', 'Lutte', 'Formule 1', 'Sports motorisés', 'Rugby', 'Cricket', 'Tennis', 'Golf', 'Esports', 'Soccer', 'Sport'];
+  const sportsEnTitre = live.titresHaut.filter((t) => SPORTS.includes(t));
+  expect(sportsEnTitre.length, 'des sections portent un nom de sport : ' + live.titresHaut.join(' | ')).toBeGreaterThan(0);
+  expect(new Set(sportsEnTitre).size, 'une seule section par sport (hors sous-groupes des ligues secondaires)').toBe(sportsEnTitre.length);
+  expect(live.titresHaut.filter((t) => live.ligues.includes(t)), 'plus de section de premier niveau au nom d\'une ligue').toEqual([]);
+  /* « Couleur de l'interface selon le match » : sans vidéo, l'accent suit le match à la une. */
+  expect(live.vedetteId, 'le match à la une est retenu').toBeTruthy();
+  expect(live.teinte, 'une teinte de match est posée').toMatch(/^#[0-9a-f]{6}$/);
+  expect(live.accent, 'l\'accent est la couleur du match').toBe(live.teinte);
   expect(live.rangees, 'sur un grand écran, chaque section est une rangée horizontale').toBe(true);
   expect(live.largeurVedette, 'le bandeau prend toute la largeur').toBeGreaterThanOrEqual(live.zone - 2);
 

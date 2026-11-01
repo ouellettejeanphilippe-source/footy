@@ -194,7 +194,9 @@ test('toute station « site » est une adresse https, et seules celles hors annu
   }
 });
 
-test('« Écouter » : un bouton seulement là où le lecteur d\'intégration de TuneIn existe', () => {
+/* Depuis le 1er novembre 2026 (« partir les streams tunein et cie directement »), « Écouter » lit le
+   flux de la station (js/radiodirect.js) : TuneIn ET iHeartRadio ; le lecteur de TuneIn reste le repli. */
+test('« Écouter » : un bouton pour chaque lien TuneIn et iHeartRadio, le lecteur TuneIn en repli', () => {
   assert.strictEqual(R.lecteurTuneIn('s12472'), 'https://tunein.com/embed/player/s12472/');
   const st = R.stationsDeLEquipe('Montreal Canadiens');
   const tune = st.filter((s) => s.source === 'TuneIn'), autres = st.filter((s) => s.source !== 'TuneIn');
@@ -202,11 +204,13 @@ test('« Écouter » : un bouton seulement là où le lecteur d\'intégration de
   assert.ok(autres.length >= 1 && autres.every((s) => !s.lecteur), 'ni iHeartRadio ni un site n\'a de lecteur');
   const h = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Montreal Canadiens', awayTeam: 'Toronto Maple Leafs', league: 'NHL' }), esc, I.icone);
   const boutons = h.match(/<button [^>]*class="radio-ecouter"[^>]*>/g) || [];
-  assert.strictEqual(boutons.length, 4, 'trois TuneIn des Canadiens et la station des Maple Leafs');
-  assert.ok(boutons.every((b) => /type="button"/.test(b) && /data-lecteur="https:\/\/tunein\.com\/embed\/player\/s\d+\/"/.test(b)));
+  const nbIHeart = R.stationsDeLEquipe('Montreal Canadiens').concat(R.stationsDeLEquipe('Toronto Maple Leafs')).filter((s) => s.source === 'iHeartRadio').length;
+  assert.strictEqual(boutons.length, 4 + nbIHeart, 'trois TuneIn des Canadiens, la station des Maple Leafs, et les iHeartRadio');
+  assert.ok(boutons.every((b) => /type="button"/.test(b) && /data-ecoute="(tunein:s\d+|iheart:\d+)"/.test(b)));
+  assert.strictEqual(boutons.filter((b) => /data-lecteur="https:\/\/tunein\.com\/embed\/player\/s\d+\/"/.test(b)).length, 4, 'le repli TuneIn sur chaque bouton TuneIn');
   assert.ok(!/onclick/.test(h), 'rien d\'inline : les données sont dans des attributs');
   // Un nom qui porte des guillemets ne casse ni l'attribut ni la page.
-  const piege = R.radioHtml({ equipes: [{ equipe: 'X', stations: [{ nom: 'A"B<i>', url: 'https://x.test/', source: 'TuneIn', lecteur: 'https://tunein.com/embed/player/s1/', idLecteur: 's1' }] }], ligue: null }, esc, I.icone);
+  const piege = R.radioHtml({ equipes: [{ equipe: 'X', stations: [{ nom: 'A"B<i>', url: 'https://x.test/', source: 'TuneIn', lecteur: 'https://tunein.com/embed/player/s1/', idLecteur: 's1', ecoute: 'tunein:s1' }] }], ligue: null }, esc, I.icone);
   assert.ok(piege.includes('data-nom="A&quot;B&lt;i&gt;"') && !piege.includes('<i>'), 'nom échappé');
   // Une station qui n'a que sa page officielle n'a pas de bouton.
   const bbc = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Mexico City Grand Prix', awayTeam: 'Race', league: 'F1' }), esc, I.icone);
@@ -216,8 +220,9 @@ test('« Écouter » : un bouton seulement là où le lecteur d\'intégration de
 test('branchement : icône, fiche, service worker, version de l\'application', () => {
   assert.ok(I.TRACES.radio && I.icone('radio').includes('<svg'), 'l\'icône radio existe');
   const ui = lire('js/ui.js');
-  assert.ok(ui.includes("closest('.radio-ecouter')") && ui.includes("'Radio : ' + nom"), 'la fiche branche le bouton « Écouter » sur le lecteur');
-  assert.ok(/import \{ radiosDuMatch, radioHtml \} from '\.\/radio\.js';/.test(ui));
+  assert.ok(ui.includes("closest('.radio-ecouter')") && ui.includes("'Radio : ' + nom") && ui.includes('ecouterRadio('), 'la fiche branche « Écouter » sur la barre radio, le lecteur en repli');
+  assert.ok(/import \{ radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse \} from '\.\/radio\.js';/.test(ui));
+  assert.ok(lire('sw.js').includes("'./js/radiodirect.js'"), 'radiodirect.js est dans APP_SHELL');
   assert.ok(ui.includes("radio.className = 'fiche-radio'"), 'la fiche pose la section');
   const sw = lire('sw.js');
   assert.ok(sw.includes("'./js/radio.js'"), 'radio.js est dans APP_SHELL');
