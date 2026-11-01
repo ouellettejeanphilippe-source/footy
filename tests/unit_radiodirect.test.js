@@ -139,3 +139,12 @@ test('ecouterRadio : joue dans la barre, pause, arrêt ; repli sans flux', async
     global.document = avant.document; global.Audio = avant.Audio;
   }
 });
+
+test('stationAEcouter : la première station qui a un flux, domicile, visiteur, puis championnat', () => {
+  const r = R.radiosDuMatch({ homeTeam: 'Montreal Canadiens', awayTeam: 'Toronto Maple Leafs', league: 'NHL' });
+  assert.deepStrictEqual(R.stationAEcouter(r), { cle: 'tunein:s137385', nom: 'Montreal Canadiens · Station de l’équipe' });
+  assert.strictEqual(R.stationAEcouter(R.radiosDuMatch({ homeTeam: 'LA Galaxy', awayTeam: 'Inconnu', league: 'MLS' })), null, 'une page de site n\'a pas de flux');
+  assert.strictEqual(R.stationAEcouter(R.radiosDuMatch(null)), null);
+  const pl = R.stationAEcouter(R.radiosDuMatch({ homeTeam: 'Inconnu A', awayTeam: 'Inconnu B', league: 'Premier League' }));
+  assert.ok(pl && /^Premier League/.test(pl.nom), 'le championnat en dernier recours : ' + JSON.stringify(pl));
+});

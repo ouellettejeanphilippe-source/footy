@@ -16,6 +16,14 @@
 var chargement = null;
 var audio = null;
 var courant = null;
+/* Qui veut savoir quand la radio part, se met en pause ou s'arrête (le lecteur : le son passe
+   de la télé à la radio, 1er novembre 2026). */
+var ecouteurs = [];
+export function surRadio(fn) { if (typeof fn === 'function') ecouteurs.push(fn); }
+function prevenir() {
+  var etat = radioEnCours();
+  ecouteurs.slice().forEach(function(fn) { try { fn(etat); } catch (e) { /* un écouteur ne casse pas les autres */ } });
+}
 
 /* data/radio.json, lu une fois par session (et relu après un échec). */
 export function chargerFluxRadio(fetchFn) {
@@ -78,6 +86,8 @@ function barre() {
 
 function majBarre(etat) {
   var b = barre();
+  var cle = courant ? courant.cle + (audio && audio.paused ? ':p' : ':j') : '';
+  if (cle !== majBarre.derniere) { majBarre.derniere = cle; setTimeout(prevenir, 0); }
   if (!courant) { b.hidden = true; document.body.classList.remove('radio-en-cours'); return; }
   b.hidden = false;
   document.body.classList.add('radio-en-cours');
@@ -133,6 +143,16 @@ export function basculerRadio() {
   if (audio.paused) { var p = audio.play(); if (p && p.catch) p.catch(function() {}); }
   else audio.pause();
   majBarre();
+}
+
+/* Pause et reprise demandées d'ailleurs (le lecteur, qui rend le son à la télé). */
+export function pauseRadio() {
+  if (audio && courant && !audio.paused) { audio.pause(); majBarre(); }
+}
+export function reprendreRadio() {
+  if (!audio || !courant) return Promise.resolve(false);
+  var p = audio.play();
+  return (p && p.then ? p : Promise.resolve()).then(function() { majBarre(); return true; }, function() { majBarre(); return false; });
 }
 
 export function arreterRadio() {

@@ -29,6 +29,8 @@ import { estLecteurOfficiel, exigeVisibiliteTotale } from './esports.js';
 import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml, lecteurAOublier } from './sorties.js';
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 import { teinteDuMatch, appliquerTeinte } from './teinte.js';
+import { radiosDuMatch, stationAEcouter, adressesDuFlux, fluxDeReponse } from './radio.js';
+import { ecouterRadio, radioEnCours, pauseRadio, reprendreRadio, surRadio } from './radiodirect.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
 
@@ -2177,6 +2179,7 @@ export function setupMultivisionUI() {
       + bouton('id="mv-bar-direct" onclick="basculerDirectActif()" title="Basculer entre la page du site et le flux direct" hidden', 'direct', 'Direct', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-seule" onclick="basculerSeule()" aria-pressed="false" title="Voir la vidéo choisie seule" aria-label="Voir la vidéo choisie seule" hidden', 'seule', 'Seule', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"', 'son', 'Son', 'mv-tb-ic-seul')
+      + bouton('id="mv-bar-radio" onclick="basculerSonRadio()" aria-pressed="false" title="Écouter la radio du match (l\'image continue)" aria-label="Écouter la radio du match" hidden', 'radio', 'Radio', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"', 'points', 'Vidéo', 'mv-tb-ic-seul')
       + '</div>'
       + '<span class="mv-bar-sep" aria-hidden="true"></span>'
@@ -2723,10 +2726,60 @@ export function majTeinte(ficheOuverte) {
     return appliquerTeinte(document.documentElement, teinteDuMatch(m, teamColorPair), userPrefs.accent || '#0a84ff');
 }
 
+/* ── Le son : la télé ou la radio (1er novembre 2026) ─────────────────────────────
+   « Quand écoute radio ou télé, possible dans le lecteur de switch » : le bouton Radio / Télé
+   de la barre du lecteur (`#mv-bar-radio`) passe le son de la vidéo choisie à la radio du
+   match (l'image continue, muette) et inversement. Sans radio en cours, il lance la première
+   station du match choisi qui a un flux (`stationAEcouter`). Une radio lancée depuis une fiche
+   pendant qu'une vidéo joue prend aussi le son ; la fermer (✕ de la barre radio) le rend à la
+   télé. `sonSur` : 'tele' ou 'radio'. */
+var sonSur = 'tele';
+export function sonDuLecteur() { return sonSur; }
+function matchDeLaTuileActive() {
+    var f = mvFlux.length ? mvFlux[tuileActive()] : null;
+    if (!f || f.mid === undefined || f.mid === null || typeof S === 'undefined' || !S || !S.matchMap) return null;
+    return S.matchMap.get(String(getOriginalMatchId(f.mid))) || null;
+}
+function poserSon(v) {
+    sonSur = v;
+    applyMvAudioState();
+    majBarreVideos();
+}
+export function basculerSonRadio() {
+    if (sonSur === 'radio') {
+        pauseRadio();
+        poserSon('tele');
+        return Promise.resolve('tele');
+    }
+    var r = radioEnCours();
+    if (r) {
+        poserSon('radio');
+        return reprendreRadio().then(function(ok) { if (!ok) poserSon('tele'); return sonSur; });
+    }
+    var station = stationAEcouter(radiosDuMatch(matchDeLaTuileActive()));
+    if (!station) { showToast('Aucune radio connue pour ce match'); return Promise.resolve('tele'); }
+    poserSon('radio');
+    return ecouterRadio({ cle: station.cle, nom: station.nom, icone: icone('radio') }, {
+        adresses: adressesDuFlux, lireReponse: fluxDeReponse,
+        repli: function() { showToast('La radio de ce match ne se lit pas ici'); }
+    }).then(function(ok) { if (!ok) poserSon('tele'); return sonSur; });
+}
+if (typeof window !== 'undefined') {
+    surRadio(function(etat) {
+        if (!etat || etat.enPause) { if (sonSur === 'radio' && !etat) poserSon('tele'); else majBarreVideos(); return; }
+        /* Une radio qui joue : le son est à la radio (une vidéo présente ou ajoutée ensuite reste
+           muette, le bouton Télé le lui rend). */
+        if (sonSur !== 'radio') poserSon('radio');
+        else majBarreVideos();
+    });
+}
+
 export function applyMvAudioState() {
     // Determine which stream should be unmuted.
     // If activeMvIdx is null or out of bounds, unmute the first one (0) or default logic.
     var targetIdx = activeMvIdx !== null && activeMvIdx < mvFlux.length ? activeMvIdx : (mvFlux.length > 0 ? 0 : null);
+    /* Le son à la radio : toutes les vidéos muettes (l'image continue). */
+    if (sonSur === 'radio') targetIdx = null;
 
     mvFlux.forEach(function(s, idx) {
         /* Une vidéo dont on a coupé le son (basculerSonTuile) reste muette, même choisie. */
@@ -5072,7 +5125,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v120';
+export var VERSION_APP = 'sports-guide-v121';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5632,6 +5685,20 @@ function majBarreVideos() {
         var icSon = son.querySelector('.mv-tb-ic');
         if (icSon) icSon.innerHTML = icone(coupe ? 'sourdine' : 'son');
     }
+    /* Radio / Télé : montré quand une radio est en cours ou que le match choisi en a une. */
+    var btnRadio = document.getElementById('mv-bar-radio');
+    if (btnRadio) {
+        var surRadioMaintenant = sonSur === 'radio';
+        btnRadio.hidden = !(surRadioMaintenant || radioEnCours() || stationAEcouter(radiosDuMatch(matchDeLaTuileActive())));
+        btnRadio.classList.toggle('on', surRadioMaintenant);
+        btnRadio.setAttribute('aria-pressed', surRadioMaintenant ? 'true' : 'false');
+        var tR = surRadioMaintenant ? 'Revenir au son de la télé' : 'Écouter la radio du match (l\'image continue)';
+        btnRadio.title = tR;
+        btnRadio.setAttribute('aria-label', tR);
+        var icR = btnRadio.querySelector('.mv-tb-ic'), lbR = btnRadio.querySelector('.mv-tb-lb');
+        if (icR) icR.innerHTML = icone(surRadioMaintenant ? 'tele' : 'radio');
+        if (lbR) lbR.textContent = surRadioMaintenant ? 'Télé' : 'Radio';
+    }
     ['mv-src-prev', 'mv-src-next', 'mv-bar-son', 'mv-bar-video-menu'].forEach(function(id) {
         var b = document.getElementById(id);
         if (b) b.disabled = !s;
@@ -5844,6 +5911,8 @@ window.installTampermonkey = installTampermonkey;
 window.telechargerExtension = telechargerExtensionGuide;
 window.changerSourceActive = changerSourceActive;
 window.basculerSonActif = basculerSonActif;
+window.basculerSonRadio = basculerSonRadio;
+window.sonDuLecteur = sonDuLecteur;
 window.ouvrirChoixMulti = ouvrirChoixMulti;
 window.basculerSeule = basculerSeule;
 window.seuleActive = seuleActive;

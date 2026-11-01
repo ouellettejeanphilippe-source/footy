@@ -592,6 +592,22 @@ export function toutesLesClesDeFlux() {
   return Object.keys(vues).sort();
 }
 
+/* La station que le lecteur fait jouer quand on passe le son à la radio (1er novembre 2026,
+   « quand écoute radio ou télé, possible dans le lecteur de switch ») : la première qui a un flux
+   (`ecoute`), domicile, puis visiteur, puis le championnat. { cle, nom } ou null. */
+export function stationAEcouter(r) {
+  if (!r) return null;
+  var lignes = (r.equipes || []).map(function(e) { return { titre: e.equipe, stations: e.stations }; });
+  if (r.ligue) lignes.push({ titre: r.ligue.nom, stations: r.ligue.stations });
+  for (var i = 0; i < lignes.length; i++) {
+    for (var j = 0; j < lignes[i].stations.length; j++) {
+      var s = lignes[i].stations[j];
+      if (s.ecoute) return { cle: s.ecoute, nom: lignes[i].titre + ' \u00b7 ' + s.nom };
+    }
+  }
+  return null;
+}
+
 /* Ce que la fiche montre pour un match :
    { equipes: [{ equipe, stations: [...] }, ...], ligue: { nom, stations } ou null }
    Une entrée par équipe (domicile puis visiteur), jamais deux fois la même. Plus de

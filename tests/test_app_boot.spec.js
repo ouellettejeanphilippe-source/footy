@@ -3675,3 +3675,49 @@ test('le mode TV / tablette est retiré : pas de réglage, un ancien choix est o
   expect(etat).toEqual({ reglage: false, classe: false, stocke: null, feuille: false, texte: false });
   expect(pageErrors).toEqual([]);
 });
+
+/* « Quand écoute radio ou télé, possible dans le lecteur de switch » (1er novembre 2026) : le bouton
+   Radio / Télé du lecteur passe le son de la vidéo à la radio du match, et inversement ; fermer la
+   radio rend le son à la télé. <audio> est simulé (réseau coupé). */
+test('le lecteur : le son passe de la télé à la radio du match et revient', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__joues = [];
+    window.Audio = class {
+      constructor() { this.paused = true; this.e = {}; this.src = ''; }
+      addEventListener(t, f) { (this.e[t] = this.e[t] || []).push(f); }
+      removeEventListener(t, f) { this.e[t] = (this.e[t] || []).filter((g) => g !== f); }
+      removeAttribute() { this.src = ''; } load() {} canPlayType() { return ''; }
+      play() { this.paused = false; window.__joues.push(this.src); (this.e.playing || []).forEach((f) => f()); return Promise.resolve(); }
+      pause() { this.paused = true; (this.e.pause || []).forEach((f) => f()); }
+    };
+  });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => {
+    const m = window.S.matches[0];
+    m.homeTeam = 'Montreal Canadiens'; m.awayTeam = 'Toronto Maple Leafs'; m.league = 'NHL';
+    window.addToMultivision(o + '/__faux-lecteur?a', 'Canadiens', m.id);
+    window.openMultiviewTab();
+  }, origin);
+  const bouton = page.locator('#mv-bar-radio');
+  await expect.poll(() => bouton.evaluate((b) => b.hidden), { message: 'le match choisi a une radio : le bouton est là' }).toBe(false);
+  await expect(bouton.locator('.mv-tb-lb')).toHaveText('Radio');
+  expect(await page.evaluate(() => window.sonDuLecteur())).toBe('tele');
+
+  await page.evaluate(() => window.basculerSonRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('radio');
+  await expect.poll(() => page.evaluate(() => window.__joues.length), { message: 'la radio part' }).toBe(1);
+  await expect(bouton.locator('.mv-tb-lb')).toHaveText('Télé');
+  expect(await page.evaluate(() => window.radioEnCours().cle)).toBe('tunein:s137385');
+
+  await page.evaluate(() => window.basculerSonRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('tele');
+  await expect.poll(() => page.evaluate(() => window.radioEnCours().enPause), { message: 'la radio en pause' }).toBe(true);
+
+  // Retour à la radio (la même, reprise), puis on la ferme : le son revient à la télé.
+  await page.evaluate(() => window.basculerSonRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('radio');
+  expect(await page.evaluate(() => window.__joues.length), 'reprise, pas un second flux').toBe(2);
+  await page.evaluate(() => window.arreterRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('tele');
+  expect(pageErrors).toEqual([]);
+});
