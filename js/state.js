@@ -93,9 +93,20 @@ export function saveCustomLgOrder() {
     safeStorageSetJSON('custom_lg_order', customLgOrder);
 }
 
+/* L'ordre des sports choisi dans Favoris → Ligues (1er novembre 2026, « dans favoris, pouvoir trier
+   les sports et ligues aussi ») : ['Hockey', 'Soccer', …], libellés de libelleSport (js/db.js).
+   Vide : l'ordre des ligues décide. Lu par les sections du Live (js/livesport.js). */
+export var ordreSports = safeStorageGetJSON('ordre_sports', []) || [];
+export function setOrdreSports(liste) {
+    ordreSports = Array.isArray(liste) ? liste.slice() : [];
+    window.ordreSports = ordreSports;
+    safeStorageSetJSON('ordre_sports', ordreSports);
+}
+
 export function setCustomLgOrder(newOrder) {
     customLgOrder = newOrder;
     window.customLgOrder = customLgOrder;
+window.ordreSports = ordreSports;
     saveCustomLgOrder();
 }
 

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio</title>
+<!-- La radio comme source d'une tuile du lecteur (1er novembre 2026, « je veux que ça soit possible
+     passer de la source radio à la source télé »). js/multiview.js pose cette page dans la tuile
+     (radio.html?u=<flux https>&n=<nom>&t=<continu|hls>) ; elle lit le flux dans un <audio> et obéit
+     aux ordres de son de la tuile (mv_mute, mv_unmute, mv_play), comme un lecteur. Aucune ressource
+     externe : le flux seulement. -->
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #05070d; color: #eef1ff; font: 15px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+  .r { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; max-width: 90%; }
+  .ico { width: 56px; height: 56px; color: #fff; opacity: .9; }
+  .ico.joue { animation: pouls 1.6s ease-in-out infinite; }
+  @keyframes pouls { 50% { opacity: .45; } }
+  .nom { font-weight: 700; font-size: clamp(15px, 3.4vw, 26px); }
+  .etat { color: #9aa6d6; font-size: 13px; }
+  button { width: 56px; height: 56px; border: 0; border-radius: 50%; background: #fff; color: #000; font-size: 20px; cursor: pointer; }
+  button:focus-visible { outline: 3px solid #ffd21f; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { .ico.joue { animation: none; } }
+</style>
+</head>
+<body>
+<div class="r">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+  <div class="nom" id="nom">Radio</div>
+  <div class="etat" id="etat">Chargement…</div>
+  <button type="button" id="lecture" aria-label="Écouter">&#9654;</button>
+</div>
+<script>
+(function () {
+  var p = new URLSearchParams(location.search);
+  var url = p.get('u') || '', nom = p.get('n') || 'Radio';
+  var etat = document.getElementById('etat'), bouton = document.getElementById('lecture'), ico = document.querySelector('.ico');
+  document.getElementById('nom').textContent = nom;
+  document.title = nom;
+  /* Seulement un flux https (la page est servie en https ; un flux http serait refusé). */
+  if (!/^https:\/\//.test(url)) { etat.textContent = 'Flux radio introuvable'; bouton.hidden = true; return; }
+  var audio = new Audio();
+  audio.preload = 'none';
+  audio.src = url;
+  window.__radio = audio;
+  function maj(texte) {
+    etat.textContent = texte || (audio.paused ? 'En pause' : (audio.muted ? 'En direct · son coupé' : 'En direct'));
+    bouton.innerHTML = audio.paused ? '&#9654;' : '&#10074;&#10074;';
+    bouton.setAttribute('aria-label', audio.paused ? 'Écouter' : 'Pause');
+    ico.classList.toggle('joue', !audio.paused);
+  }
+  function jouer() {
+    var r = audio.play();
+    if (r && r.catch) r.catch(function () { maj('Touchez ▶ pour écouter'); });
+  }
+  ['playing', 'pause', 'volumechange'].forEach(function (e) { audio.addEventListener(e, function () { maj(); }); });
+  audio.addEventListener('waiting', function () { maj('Chargement…'); });
+  audio.addEventListener('error', function () { maj('Le flux ne répond pas'); });
+  bouton.addEventListener('click', function () { if (audio.paused) jouer(); else audio.pause(); });
+  /* Les ordres de la tuile (js/multiview.js, posterATuile) : le son suit la tuile choisie. */
+  window.addEventListener('message', function (e) {
+    var m = typeof e.data === 'string' ? e.data : '';
+    if (m === 'mv_mute') audio.muted = true;
+    else if (m === 'mv_unmute') { audio.muted = false; if (audio.paused) jouer(); }
+    else if (m === 'mv_play') jouer();
+  });
+  jouer();
+})();
+</script>
+</body>
+</html>

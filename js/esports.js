@@ -96,6 +96,8 @@ export function estLecteurOfficiel(url) {
     if (h === 'player.twitch.tv') return true;
     if (/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(h)) return u.pathname.indexOf('/embed/') === 0;
     if (h === 'tunein.com') return u.pathname.indexOf('/embed/player/') === 0;
+    /* La radio comme source d'une tuile (radio.html du site, 1er novembre 2026) : un lecteur à nous. */
+    if (typeof location !== 'undefined' && location.origin && u.origin === location.origin && /\/radio\.html$/.test(u.pathname)) return true;
     return false;
 }
 
