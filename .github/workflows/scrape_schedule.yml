@@ -16,6 +16,8 @@ on:
       - 'js/nuit.js'
       - 'js/db.js'
       - 'js/teams.js'
+      - 'js/radio.js'
+      - 'scripts/radio_flux.mjs'
       - '.github/workflows/scrape_schedule.yml'
 
 permissions:
@@ -54,6 +56,12 @@ jobs:
       - name: Run Scraper
         run: node scripts/scrape_schedule.mjs
 
+      # Les flux audio des radios de la fiche (1er novembre 2026) : TuneIn refuse l'appel depuis le
+      # navigateur, on le fait ici une fois par jour. Un échec garde le fichier précédent.
+      - name: Resolve radio streams
+        continue-on-error: true
+        run: node scripts/radio_flux.mjs
+
       # Le passage de 14 h 10 (6 septembre 2026) a produit un cache frais et n'a pas pu le
       # pousser : main avait bougé pendant les huit minutes du scrape (fusions de PR,
       # commit de la grille), et l'action de commit ne rebase pas -> « non-fast-forward »,
@@ -62,12 +70,12 @@ jobs:
       # conflit sur le fichier lui-même, la version produite à l'instant l'emporte.
       - name: Rebase on latest main before committing
         run: |
-          git stash push --include-untracked -- data/schedule.json || true
+          git stash push --include-untracked -- data/schedule.json data/radio.json || true
           git pull --rebase origin main
-          git stash pop || { git checkout --theirs -- data/schedule.json; git add data/schedule.json; git stash drop; }
+          git stash pop || { for f in data/schedule.json data/radio.json; do git checkout --theirs -- "$f" 2>/dev/null || true; git add "$f" 2>/dev/null || true; done; git stash drop; }
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: update daily ESPN schedule cache"
-          file_pattern: "data/schedule.json"
+          file_pattern: "data/schedule.json data/radio.json"

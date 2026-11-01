@@ -1520,12 +1520,49 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(pageErrors).toEqual([]);
 });
 
-/* « Embed les radios ? » puis « Comme YouTube et Twitch ? » (31 octobre 2026). Le bouton « Écouter »
-   d'un lien TuneIn de la fiche ferme la fiche et ajoute le lecteur d'intégration de TuneIn comme
-   tuile du lecteur — un lecteur officiel, comme Twitch et YouTube : ni nettoyeur ni bascule. */
-test('la fiche : « Écouter » ajoute le lecteur TuneIn comme tuile du lecteur', async ({ page }) => {
+/* « Ya moyen de partir les streams tunein et cie directement ? » (1er novembre 2026) : « Écouter »
+   lit le flux de data/radio.json tout de suite dans la barre radio ; la fiche reste ouverte, aucune
+   tuile. <audio> est simulé (le réseau est coupé). */
+test('la fiche : « Écouter » lit le flux de la station tout de suite dans la barre radio', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__joues = [];
+    window.Audio = class {
+      constructor() { this.paused = true; this.e = {}; this.src = ''; }
+      addEventListener(t, f) { (this.e[t] = this.e[t] || []).push(f); }
+      removeEventListener(t, f) { this.e[t] = (this.e[t] || []).filter((g) => g !== f); }
+      removeAttribute() { this.src = ''; } load() {} canPlayType() { return ''; }
+      play() { this.paused = false; window.__joues.push(this.src); (this.e.playing || []).forEach((f) => f()); return Promise.resolve(); }
+      pause() { this.paused = true; (this.e.pause || []).forEach((f) => f()); }
+    };
+  });
+  const pageErrors = await bootOffline(page);
+  const flux = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'radio.json'), 'utf8')).flux['tunein:s137385'];
+  expect(flux && flux.url, 'data/radio.json a le flux de la station des Canadiens').toMatch(/^https:\/\//);
+  await page.evaluate(() => {
+    const m = window.S.matches[0];
+    m.homeTeam = 'Montreal Canadiens'; m.awayTeam = 'Toronto Maple Leafs'; m.league = 'NHL';
+    window.openMod(m);
+  });
+  await page.locator('#mbg .fiche-radio .radio-ecouter').first().click();
+  await expect(page.locator('#radio-direct')).toBeVisible();
+  await expect(page.locator('#radio-direct .rd-etat')).toHaveText('En direct');
+  await expect(page.locator('#radio-direct .rd-nom')).toContainText('Montreal Canadiens');
+  expect(await page.evaluate(() => window.__joues), 'le flux part au premier clic').toEqual([flux.url]);
+  await expect(page.locator('#mbg'), 'la fiche reste ouverte').toHaveClass(/open/);
+  await expect(page.locator('.mv-cell iframe'), 'aucune tuile').toHaveCount(0);
+  await page.locator('#radio-direct .rd-fermer').click();
+  await expect(page.locator('#radio-direct')).toBeHidden();
+  expect(pageErrors).toEqual([]);
+});
+
+/* « Embed les radios ? » puis « Comme YouTube et Twitch ? » (31 octobre 2026). Sans flux connu
+   (repli depuis le 1er novembre 2026), le bouton « Écouter » d'un lien TuneIn ferme la fiche et ajoute
+   le lecteur d'intégration de TuneIn comme tuile du lecteur — un lecteur officiel, comme Twitch et
+   YouTube : ni nettoyeur ni bascule. */
+test('la fiche : sans flux connu, « Écouter » ajoute le lecteur TuneIn comme tuile du lecteur', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
   const pageErrors = await bootOffline(page);
+  await page.route('**/data/radio.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"flux":{}}' }));
   await page.route('https://tunein.com/embed/player/**', (route) => route.fulfill({
     status: 200, contentType: 'text/html',
     body: '<!doctype html><body style="margin:0;background:#fff"><div id="b">radio</div><script>window.__recus = []; window.addEventListener("message", function (e) { window.__recus.push(String(e.data)); });</script></body>'
@@ -1537,7 +1574,7 @@ test('la fiche : « Écouter » ajoute le lecteur TuneIn comme tuile du lecteur'
   });
   const boutons = page.locator('#mbg .fiche-radio .radio-ecouter');
   await expect(boutons.first()).toBeVisible();
-  expect(await page.locator('#mbg .fiche-radio .radio-ecouter').count(), 'trois stations TuneIn des Canadiens, une des Maple Leafs').toBe(4);
+  expect(await page.locator('#mbg .fiche-radio .radio-ecouter[data-lecteur^="https://tunein.com/embed/player/"]').count(), 'trois stations TuneIn des Canadiens, une des Maple Leafs').toBe(4);
   expect(await page.locator('#mbg .fiche-radio a[target="_blank"]').count()).toBeGreaterThanOrEqual(4);
 
   await boutons.first().click();
@@ -2513,12 +2550,12 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
      2026). Une version précédente avait allumé d'office les modes TV et câble : la
      nouvelle les éteint une fois, et la télé garde la navigation à la télécommande et
      l'échelle d'un écran d'ordinateur. */
-  await page.evaluate(() => { window.toggleTvMode(true); localStorage.setItem('mode_cable', '1'); });
+  await page.evaluate(() => { localStorage.setItem('pref-tv-mode', 'true'); document.body.classList.add('tv-mode'); localStorage.setItem('mode_cable', '1'); });
   expect(await page.evaluate(() => { window.__ANDROID_TV__ = true; return window.activerTeleAndroid(); })).toBe(true);
   await expect(page.locator('body')).not.toHaveClass(/tv-mode/);
   await expect(page.locator('body')).toHaveClass(/android-tv/);
   await expect(page.locator('body')).toHaveClass(/manette/);
-  expect(await page.evaluate(() => ({ cable: localStorage.getItem('mode_cable'), fait: localStorage.getItem('apk_comme_site') }))).toEqual({ cable: '0', fait: '1' });
+  expect(await page.evaluate(() => ({ cable: localStorage.getItem('mode_cable'), fait: localStorage.getItem('apk_comme_site'), tv: localStorage.getItem('pref-tv-mode') }))).toEqual({ cable: '0', fait: '1', tv: null });
   const echelle = await page.evaluate(() => ({ zoom: Number(getComputedStyle(document.body).zoom), attendu: Math.round(Math.min(Math.max(innerWidth / 1200, 0.5), 1) * 100) / 100 }));
   expect(echelle.zoom, 'la page à l\'échelle d\'une appli de télé (1200 px)').toBeCloseTo(echelle.attendu, 2);
   // Comme sur Netflix : le focus de départ est un match, et les cartes du Guide s'atteignent.
@@ -2528,10 +2565,8 @@ test('sur la télé Android : le site tel quel (modes imposés défaits), Retour
   await expect.poll(() => page.evaluate(() => { const c = document.querySelector('#marea .mb, #marea [data-mid]'); return c && c.getAttribute('tabindex'); })).toBe('0');
   await page.evaluate(() => window.applyFilter('live'));
 
-  // Ensuite, le mode TV est un choix comme un autre : le rallumer tient.
-  await page.evaluate(() => { window.toggleTvMode(true); window.activerTeleAndroid(); });
-  await expect(page.locator('body')).toHaveClass(/tv-mode/);
-  await page.evaluate(() => { window.toggleTvMode(false); });
+  /* Le mode TV / tablette est retiré (1er novembre 2026, « c'est brisé ») : ni réglage ni bascule. */
+  expect(await page.evaluate(() => ({ bascule: typeof window.toggleTvMode, reglage: !!document.getElementById('pref-tv-mode') }))).toEqual({ bascule: 'undefined', reglage: false });
 
   /* « Le mode direct… ça part en mode câble sur ma télé » ; « y marche pas à date, et ça
      chie avec le reste du UI » (25 octobre 2026). Un flux direct connu joue DANS SA
@@ -3315,7 +3350,8 @@ test('à la télécommande, la carte est un seul arrêt, et Retour depuis la fic
 /* « Rendre le guide Basique et celui qu'on a récemment mis de base plus clean et plein
    écran, comme le câble dans le temps » ; « pas de en direct en haut » ; « je veux logos
    quand même » (25 octobre 2026). */
-test('le Guide façon câble : cases plates avec logos', async ({ page }) => {
+/* « Dégradés dans les matchs dans guide » (1er novembre 2026) : la case prend le dégradé des équipes. */
+test('le Guide façon câble : cases aux couleurs des équipes, en dégradé, avec logos', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   const pageErrors = await bootOffline(page);
   await page.evaluate(() => { window.applyFilter('all'); });
@@ -3323,10 +3359,10 @@ test('le Guide façon câble : cases plates avec logos', async ({ page }) => {
   const bloc = await page.evaluate(() => {
     const b = document.querySelector('#marea .mb');
     const cs = getComputedStyle(b);
-    return { image: cs.backgroundImage, rayon: parseFloat(cs.borderTopLeftRadius), liseré: b.style.getPropertyValue('--mb-c1'), logos: b.querySelectorAll('.mb-logo').length, titre: !!b.querySelector('.mb-tt .mb-t') };
+    return { image: cs.backgroundImage, rayon: parseFloat(cs.borderTopLeftRadius), fond: b.style.getPropertyValue('--mb-fond'), logos: b.querySelectorAll('.mb-logo').length, titre: !!b.querySelector('.mb-tt .mb-t') };
   });
-  expect(bloc.image, 'une case plate : le liseré des équipes, pas un dégradé plein').toMatch(/^linear-gradient\(/);
-  expect(bloc.liseré, 'aux couleurs des équipes').not.toBe('');
+  expect(bloc.fond, 'le dégradé des équipes (« Couleur des cartes » : Dégradé par défaut)').toMatch(/^linear-gradient\(135deg, /);
+  expect(bloc.image, 'sous un voile, le dégradé de la case').toContain('linear-gradient(135deg');
   expect(bloc.rayon, 'coins presque droits').toBeLessThanOrEqual(4);
   expect(bloc.logos, 'avec les logos').toBeGreaterThan(0);
   expect(bloc.titre).toBe(true);
@@ -3592,12 +3628,24 @@ test('le Live comme un service de streaming : vedette, rangées par ligue, fiche
       titres,
       rangees: grilles.length > 0 && grilles.every((g) => g.classList.contains('rangee') && getComputedStyle(g).overflowX === 'auto'),
       largeurVedette: document.querySelector('#marea .vedette').getBoundingClientRect().width, zone: zone.width,
-      ligues: [...new Set((window.S.matches || []).map((m) => m.league))]
+      ligues: [...new Set((window.S.matches || []).map((m) => m.league))],
+      titresHaut: [...document.querySelectorAll('#marea .section-title')].filter((t) => !t.closest('.autres-streams-sub-container')).map((t) => t.innerText.split('\n')[0].trim()),
+      teinte: document.documentElement.getAttribute('data-teinte'),
+      accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+      vedetteId: window.S.vedetteId
     };
   });
-  expect(live.titres.join(' | '), 'plus de section « Live » ni « À venir » à plat : une section par ligue').not.toMatch(/^Live$|À venir dans l'heure/);
-  const liguesEnTitre = live.titres.filter((t) => live.ligues.some((l) => t.endsWith(l)));
-  expect(liguesEnTitre.length, 'des sections portent un nom de ligue').toBeGreaterThan(0);
+  expect(live.titres.join(' | '), 'plus de section « Live » ni « À venir » à plat').not.toMatch(/^Live$|À venir dans l'heure/);
+  /* « Regrouper par sports et non ligue » (1er novembre 2026) : les sections portent un sport. */
+  const SPORTS = ['Hockey', 'Baseball', 'Basketball', 'Football', 'MMA', 'Boxe', 'Lutte', 'Formule 1', 'Sports motorisés', 'Rugby', 'Cricket', 'Tennis', 'Golf', 'Esports', 'Soccer', 'Sport'];
+  const sportsEnTitre = live.titresHaut.filter((t) => SPORTS.includes(t));
+  expect(sportsEnTitre.length, 'des sections portent un nom de sport : ' + live.titresHaut.join(' | ')).toBeGreaterThan(0);
+  expect(new Set(sportsEnTitre).size, 'une seule section par sport (hors sous-groupes des ligues secondaires)').toBe(sportsEnTitre.length);
+  expect(live.titresHaut.filter((t) => live.ligues.includes(t)), 'plus de section de premier niveau au nom d\'une ligue').toEqual([]);
+  /* « Couleur de l'interface selon le match » : sans vidéo, l'accent suit le match à la une. */
+  expect(live.vedetteId, 'le match à la une est retenu').toBeTruthy();
+  expect(live.teinte, 'une teinte de match est posée').toMatch(/^#[0-9a-f]{6}$/);
+  expect(live.accent, 'l\'accent est la couleur du match').toBe(live.teinte);
   expect(live.rangees, 'sur un grand écran, chaque section est une rangée horizontale').toBe(true);
   expect(live.largeurVedette, 'le bandeau prend toute la largeur').toBeGreaterThanOrEqual(live.zone - 2);
 
@@ -3613,4 +3661,63 @@ test('le Live comme un service de streaming : vedette, rangées par ligue, fiche
   await expect(page.locator('#mbg')).not.toHaveClass(/open/);
 
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Enlever mode télé tablette dans settings c'est brisé » (1er novembre 2026) : plus d'interrupteur
+   dans Options ; un mode TV allumé par une version précédente est éteint et oublié au démarrage. */
+test('le mode TV / tablette est retiré : pas de réglage, un ancien choix est oublié', async ({ page }) => {
+  await page.addInitScript(() => { try { if (!sessionStorage.getItem('deja')) { localStorage.setItem('pref-tv-mode', 'true'); sessionStorage.setItem('deja', '1'); } } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const etat = await page.evaluate(() => ({
+    reglage: !!document.getElementById('pref-tv-mode'), classe: document.body.classList.contains('tv-mode'),
+    stocke: localStorage.getItem('pref-tv-mode'), feuille: !!document.getElementById('tv-css'), texte: /Mode TV/.test(document.body.innerText)
+  }));
+  expect(etat).toEqual({ reglage: false, classe: false, stocke: null, feuille: false, texte: false });
+  expect(pageErrors).toEqual([]);
+});
+
+/* « Quand écoute radio ou télé, possible dans le lecteur de switch » (1er novembre 2026) : le bouton
+   Radio / Télé du lecteur passe le son de la vidéo à la radio du match, et inversement ; fermer la
+   radio rend le son à la télé. <audio> est simulé (réseau coupé). */
+test('le lecteur : le son passe de la télé à la radio du match et revient', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__joues = [];
+    window.Audio = class {
+      constructor() { this.paused = true; this.e = {}; this.src = ''; }
+      addEventListener(t, f) { (this.e[t] = this.e[t] || []).push(f); }
+      removeEventListener(t, f) { this.e[t] = (this.e[t] || []).filter((g) => g !== f); }
+      removeAttribute() { this.src = ''; } load() {} canPlayType() { return ''; }
+      play() { this.paused = false; window.__joues.push(this.src); (this.e.playing || []).forEach((f) => f()); return Promise.resolve(); }
+      pause() { this.paused = true; (this.e.pause || []).forEach((f) => f()); }
+    };
+  });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate((o) => {
+    const m = window.S.matches[0];
+    m.homeTeam = 'Montreal Canadiens'; m.awayTeam = 'Toronto Maple Leafs'; m.league = 'NHL';
+    window.addToMultivision(o + '/__faux-lecteur?a', 'Canadiens', m.id);
+    window.openMultiviewTab();
+  }, origin);
+  const bouton = page.locator('#mv-bar-radio');
+  await expect.poll(() => bouton.evaluate((b) => b.hidden), { message: 'le match choisi a une radio : le bouton est là' }).toBe(false);
+  await expect(bouton.locator('.mv-tb-lb')).toHaveText('Radio');
+  expect(await page.evaluate(() => window.sonDuLecteur())).toBe('tele');
+
+  await page.evaluate(() => window.basculerSonRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('radio');
+  await expect.poll(() => page.evaluate(() => window.__joues.length), { message: 'la radio part' }).toBe(1);
+  await expect(bouton.locator('.mv-tb-lb')).toHaveText('Télé');
+  expect(await page.evaluate(() => window.radioEnCours().cle)).toBe('tunein:s137385');
+
+  await page.evaluate(() => window.basculerSonRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('tele');
+  await expect.poll(() => page.evaluate(() => window.radioEnCours().enPause), { message: 'la radio en pause' }).toBe(true);
+
+  // Retour à la radio (la même, reprise), puis on la ferme : le son revient à la télé.
+  await page.evaluate(() => window.basculerSonRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('radio');
+  expect(await page.evaluate(() => window.__joues.length), 'reprise, pas un second flux').toBe(2);
+  await page.evaluate(() => window.arreterRadio());
+  await expect.poll(() => page.evaluate(() => window.sonDuLecteur())).toBe('tele');
+  expect(pageErrors).toEqual([]);
 });

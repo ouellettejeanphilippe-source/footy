@@ -11,15 +11,17 @@ import { lg, esc, toggleAccordion, escJs, pad, safeStorageGetJSON, safeStorageSe
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
 import { liensLolDuDirect } from './esports.js';
-import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision } from './multiview.js';
+import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision, majTeinte } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
 import { mesurePour, formaterMesure } from './debit.js';
 import { extraireAlignements, extraireEffectifs, alignementsHtml } from './alignements.js';
 import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 import { choisirVedette, bandeauVedette } from './vedette.js';
+import { sectionsParSport, idSectionSport } from './livesport.js';
 import { icone } from './icones.js';
-import { radiosDuMatch, radioHtml } from './radio.js';
+import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
+import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
    dans les boucles de rendu. Alias stable pour pouvoir journaliser depuis celles-ci. */
@@ -311,7 +313,16 @@ function menuLookHtml() {
   return '<div class="ml-titre">Couleur des cartes</div><div class="ml-col" role="radiogroup" aria-label="Couleurs">' + COULEURS_LOOK.map(function(c) {
       var choisi = c[0] === actuelle;
       return '<button type="button" role="radio" aria-checked="' + choisi + '" data-look-couleur="' + c[0] + '"><span class="ml-pastille" style="background:' + apercu[c[0]] + '"></span><span>' + esc(c[1]) + '<small>' + esc(c[2]) + '</small></span></button>';
-    }).join('') + '</div>';
+    }).join('') + '</div>'
+    /* « Couleur de l'interface selon le match » (1er novembre 2026, js/teinte.js) : activée par défaut. */
+    + '<div class="ml-titre">Interface</div><div class="ml-col"><button type="button" role="switch" aria-checked="' + (userPrefs.teinteMatch !== false) + '" data-look-teinte><span class="ml-pastille" style="background:linear-gradient(135deg,#c41230,#00468b)"></span><span>Couleur du match<small>L\u2019accent prend la couleur du match regardé ou à la une</small></span></button></div>';
+}
+export function basculerTeinteMatch() {
+  if (!userPrefs) return;
+  userPrefs.teinteMatch = userPrefs.teinteMatch === false;
+  safeStorageSetJSON('user_prefs', userPrefs);
+  majTeinte();
+  majMenuLook();
 }
 function majMenuLook() {
   var m = typeof document !== 'undefined' && document.getElementById('menu-look');
@@ -339,6 +350,8 @@ if (typeof document !== 'undefined') {
     if (!m || m.hidden) return;
     var coul = e.target.closest && e.target.closest('#menu-look [data-look-couleur]');
     if (coul) { e.stopPropagation(); return choisirCouleurs(coul.getAttribute('data-look-couleur')); }
+    var teinte = e.target.closest && e.target.closest('#menu-look [data-look-teinte]');
+    if (teinte) { e.stopPropagation(); return basculerTeinteMatch(); }
     if (!e.target.closest('#menu-look') && !e.target.closest('#btn-look')) fermerMenuLook();
   });
   document.addEventListener('keydown', function(e) {
@@ -638,10 +651,18 @@ function buildEPGInner(matches){
           });
 
           var lgOrder = Object.keys(lgMap);
+          /* « Mettre favoris en haut » (1er novembre 2026) : dans une section (un sport), la ligue
+             qui porte un favori passe devant les autres. */
+          var ligueFavorite = function(k) {
+              return !!favTeams[k] || lgMap[k].matches.some(function(m) { return favTeams[m.homeTeam] || favTeams[m.awayTeam]; });
+          };
+          /* Les ligues secondaires restent sous les principales, même favorites (1er novembre 2026). */
           lgOrder.sort(function(a, b) {
               var rkA = { main: 0, secondary: 1 }[leagueTier(a)]; if (rkA === undefined) rkA = 2;
               var rkB = { main: 0, secondary: 1 }[leagueTier(b)]; if (rkB === undefined) rkB = 2;
               if (rkA !== rkB) return rkA - rkB;
+              var fvA = ligueFavorite(a) ? 0 : 1, fvB = ligueFavorite(b) ? 0 : 1;
+              if (fvA !== fvB) return fvA - fvB;
               var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
               var allLgs = Object.keys(DEFAULT_LEAGUES);
               allLgs.forEach(function(l) {
@@ -910,10 +931,10 @@ function buildEPGInner(matches){
               return;
           }
 
-          if (tier === 'secondary') {
-              secondaryMatches.push(m);
-              return;
-          }
+          /* « Juste mettre les ligues secondaires en dessous des autres » (1er novembre 2026) :
+             plus de section « Ligues secondaires » dans le Live ; une ligue secondaire va dans
+             la section de son sport, sous les ligues principales (renderMatches, lgOrder). */
+          if (tier === 'secondary') secondaryMatches.push(m);
 
           /* Deux issues seulement, et elles couvrent tout ce que `filtered` a
              laissé passer : il n'y a plus de troisième panier « plus tard ». */
@@ -929,14 +950,18 @@ function buildEPGInner(matches){
          Video, le Live s'ouvre sur UN match en grand avec « Regarder », premier arrêt de
          la télécommande. */
       var principaux = liveNow.concat(upNext);
+      S.vedetteId = null;
       if (principaux.length) {
           var maintenantLive = minutesMaintenant(now, jourGrille);
           var fichesLive = [];
-          principaux.forEach(function(m) {
+          /* Le bandeau vedette reste aux ligues principales (une ligue secondaire n'est pas « à la une »). */
+          var candidatsVedette = principaux.filter(function(m) { return secondaryMatches.indexOf(m) === -1; });
+          (candidatsVedette.length ? candidatsVedette : principaux).forEach(function(m) {
               try { fichesLive.push(ficheMatch(m, now, jourGrille, maintenantLive)); }
               catch (e) { logLine('Match ignoré (vedette)', (m && m.id ? m.id + ' — ' : '') + (e && e.message || e)); }
           });
           var vedette = choisirVedette(fichesLive);
+          if (vedette) S.vedetteId = vedette.id;
           if (vedette) {
               var hoteVedette = document.createElement('div');
               hoteVedette.innerHTML = bandeauVedette(vedette, maintenantLive);
@@ -948,26 +973,25 @@ function buildEPGInner(matches){
               fragment.appendChild(secVedette);
           }
       }
+      /* La teinte de l'interface suit le match à la une quand rien ne joue (js/teinte.js). */
+      majTeinte();
       if (favorisAujourdhui.length > 0) renderMatches(favorisAujourdhui, fragment, "Favoris", true, 'liveFavoris');
-      /* « Fait des sections par ligue dans LIVE » (27 octobre 2026) : une section par
-         ligue, dans l'ordre des ligues (favorites et principales d'abord, comme
-         `filtered`), le direct avant ce qui vient, puis l'heure. Les sections « Live » et
-         « À venir dans l'heure » à plat n'existent plus. */
-      var parLigueLive = {}, ordreLiguesLive = [];
-      principaux.forEach(function(m) {
-          var k = m.league || 'Autres';
-          if (!parLigueLive[k]) { parLigueLive[k] = []; ordreLiguesLive.push(k); }
-          parLigueLive[k].push(m);
+      /* « Regrouper par sports et non ligue. Mettre favoris en haut » (1er novembre 2026,
+         js/livesport.js) : une section par sport (Hockey, Basketball…), la ligue en surtitre de
+         chaque carte ; le sport qui a un favori d'abord, puis l'ordre des ligues (`filtered`) ;
+         dans une section, favoris, direct, puis l'heure. Du 27 octobre au 1er novembre 2026,
+         c'était une section par ligue. */
+      var estFavoriLive = function(m) { return !!(favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]); };
+      sectionsParSport(principaux, {
+          sportDe: function(m) { return libelleSport(m.league); },
+          estSecondaire: function(m) { return leagueTier(m.league) === 'secondary'; },
+          estFavori: estFavoriLive,
+          estEnDirect: function(m) { return isLiveNow(m, now); },
+          comparer: function(a, b) { return comparerHeures(a, b, jourGrille); }
+      }).forEach(function(sec) {
+          renderMatches(sec.matches, fragment, sec.sport, true, idSectionSport(sec.sport));
       });
-      ordreLiguesLive.forEach(function(k) {
-          var liste = parLigueLive[k].slice().sort(function(a, b) {
-              var la = isLiveNow(a, now) ? 0 : 1, lb = isLiveNow(b, now) ? 0 : 1;
-              if (la !== lb) return la - lb;
-              return comparerHeures(a, b, jourGrille);
-          });
-          renderMatches(liste, fragment, k, true, 'liveLg_' + k.replace(/[^a-zA-Z0-9]/g, ''));
-      });
-      if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
+      if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0) {
           var vide = document.createElement('div');
           vide.className = 'empty-state';
           vide.innerHTML = '<div class="empty-ic">' + icone('direct') + '</div>'
@@ -976,8 +1000,6 @@ function buildEPGInner(matches){
             + '<button class="btn sm" onclick="applyFilter(\'all\')">Ouvrir le Guide</button>';
           fragment.appendChild(vide);
       }
-      // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
-      renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesLive', false, function(m) { return m.league; });
       renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
           function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
 
@@ -1125,6 +1147,13 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               else if (userPrefs.cardColor === 'dark') c1 = c2 = 'rgba(255,255,255,0.25)';
               b.style.setProperty('--mb-c1', c1);
               b.style.setProperty('--mb-c2', c2);
+              /* « Dégradés dans les matchs dans guide » (1er novembre 2026) : la case prend le fond
+                 des cartes du Live (`fondEquipes`, « Couleur des cartes »), sous un voile sombre
+                 pour le texte ; une couleur seule devient un dégradé d'elle-même (une couche de
+                 fond multiple n'accepte qu'un dégradé). */
+              var fondMb = fondEquipes({ cDom: homeColor, cExt: m.awayTeam ? awayColor : homeColor, cLigue: lgCol }, userPrefs.cardColor);
+              if (!/gradient\(/.test(fondMb)) fondMb = 'linear-gradient(' + fondMb + ', ' + fondMb + ')';
+              b.style.setProperty('--mb-fond', fondMb);
 
               var timeBadge = timelineBadgeHtml(m);
 
@@ -1639,6 +1668,9 @@ export function afficherAlignements(cont, data, effectifs) {
 
 export function openMod(m,col){
   document.getElementById('mdot').style.background=col||'#888';
+  /* La teinte suit la fiche ouverte (js/teinte.js, 1er novembre 2026). */
+  S.ficheId = m && m.id !== undefined ? getOriginalMatchId(m.id) : null;
+  majTeinte(m);
 
   var hLogo = m.homeLogo || getLogo(m.homeTeam);
   var aLogo = m.awayLogo || getLogo(m.awayTeam);
@@ -1942,17 +1974,31 @@ export function openMod(m,col){
   radio.className = 'fiche-radio';
   radio.innerHTML = radioHtml(radiosDuMatch(m), esc, icone);
   if (radio.innerHTML) body.insertBefore(radio, cta.nextSibling);
-  /* « Écouter » (31 octobre 2026, « comme YouTube et Twitch ») : le lecteur d'intégration de TuneIn
-     devient une tuile du lecteur, comme un flux de la fiche (openFlux : la fiche se ferme, la tuile
-     s'ajoute). Une tuile par radio ; les données viennent des attributs, jamais d'un onclick construit. */
+  /* « Écouter » (1er novembre 2026, « partir les streams tunein et cie directement ») : le flux de la
+     station joue tout de suite dans la barre radio (js/radiodirect.js) et la fiche reste ouverte. Sans
+     flux lisible, le repli d'avant (31 octobre 2026, « comme YouTube et Twitch ») : le lecteur
+     d'intégration de TuneIn en tuile du lecteur (la fiche se ferme), ou le lien de la station dans un
+     nouvel onglet. Les données viennent des attributs, jamais d'un onclick construit. */
+  if (radio.innerHTML) chargerFluxRadio();
   radio.addEventListener('click', function(ev) {
     var b = ev.target && ev.target.closest ? ev.target.closest('.radio-ecouter') : null;
     if (!b) return;
     ev.preventDefault();
-    var url = b.getAttribute('data-lecteur'), nom = b.getAttribute('data-nom') || 'Radio';
-    if (!/^https:\/\/tunein\.com\/embed\/player\//.test(url || '')) return;
-    addToMultivision(url, 'Radio : ' + nom, 'radio_' + (b.getAttribute('data-id') || ''));
-    closeMod();
+    var lecteur = b.getAttribute('data-lecteur') || '', nom = b.getAttribute('data-nom') || 'Radio';
+    var lienExterne = b.getAttribute('data-url') || '';
+    var equipe = b.closest('.fiche-radio-ligne') && b.closest('.fiche-radio-ligne').querySelector('.fiche-radio-equipe');
+    ecouterRadio({ cle: b.getAttribute('data-ecoute') || '', nom: (equipe ? equipe.textContent + ' · ' : '') + nom, icone: icone('radio') }, {
+      adresses: adressesDuFlux,
+      lireReponse: fluxDeReponse,
+      repli: function() {
+        if (/^https:\/\/tunein\.com\/embed\/player\//.test(lecteur)) {
+          addToMultivision(lecteur, 'Radio : ' + nom, 'radio_' + (b.getAttribute('data-id') || ''));
+          closeMod();
+        } else if (/^https:\/\//.test(lienExterne)) {
+          window.open(lienExterne, '_blank', 'noopener');
+        }
+      }
+    });
   });
 
   /* Les compléments (buteurs, classement, statistiques) n'arrivent qu'après coup, pour
@@ -2287,6 +2333,8 @@ export function openMod(m,col){
 }
 export function closeMod(){
   document.getElementById('mbg').classList.remove('open');
+  S.ficheId = null;
+  majTeinte();
   arreterRafraichissementFiche();
   if (window.modalStatsInterval) { clearInterval(window.modalStatsInterval); window.modalStatsInterval = null; }
 }
@@ -2332,6 +2380,7 @@ window.applyCardShape = applyCardShape;
 window.cardShapePref = cardShapePref;
 window.basculerMenuLook = basculerMenuLook;
 window.choisirCouleurs = choisirCouleurs;
+window.basculerTeinteMatch = basculerTeinteMatch;
 window.updateNowLine = updateNowLine;
 window.scrollToNow = scrollToNow;
 window.QC = QC;
