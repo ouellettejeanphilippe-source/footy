@@ -42,3 +42,16 @@ test('le direct avant ce qui vient, puis l\'heure ; identifiant de section stabl
   assert.strictEqual(L.idSectionSport('Sports motorisés'), 'liveSp_Sportsmotorises');
   assert.deepStrictEqual(L.sectionsParSport([], o([])), []);
 });
+
+test('les ligues secondaires sous les autres : après les principales dans leur sport, un sport tout secondaire en dernier, même favori', () => {
+  const SEC = { AHL: 1, LHJMQ: 1 };
+  const SP = Object.assign({ LHJMQ: 'Hockey', NLL: 'Crosse' }, SPORT);
+  const opt = Object.assign(o(['Fav']), { sportDe: (m) => SP[m.league] || 'Crosse', estSecondaire: (m) => !!SEC[m.league] || m.league === 'NLL' });
+  const ms = [
+    { id: 1, league: 'AHL', homeTeam: 'A', t: 0, live: true }, { id: 2, league: 'NHL', homeTeam: 'B', t: 9 },
+    { id: 3, league: 'NLL', homeTeam: 'Fav', t: 0 }, { id: 4, league: 'NBA', homeTeam: 'C', t: 1 }
+  ];
+  const s = L.sectionsParSport(ms, opt);
+  assert.deepStrictEqual(s.map((x) => x.sport), ['Hockey', 'Basketball', 'Crosse'], 'le sport tout secondaire en dernier, même avec un favori');
+  assert.deepStrictEqual(s[0].matches.map((m) => m.id), [2, 1], 'la ligue principale avant la secondaire, même en direct');
+});

@@ -44,8 +44,7 @@ Dessous, dans l'ordre, toutes repliables d'un clic, d'Entrée ou d'Espace sur le
 | Section | Contenu | Par défaut |
 |---|---|---|
 | **Favoris** | Les matchs dont une équipe ou la ligue est favorite. | Dépliée |
-| **Une section par sport** | Les matchs en cours et ceux qui commencent dans l'heure, sport par sport (Hockey, Basketball, Football, Soccer…), chaque carte gardant sa ligue en surtitre (« regrouper par sports et non ligue », 1er novembre 2026 ; du 27 octobre au 1er novembre, une section par ligue). **Favoris en haut** : un sport qui a un match favori passe avant les autres ; dans une section, la ligue qui porte un favori d'abord, et les favoris devant, puis le direct, puis l'heure. | Dépliée |
-| **Ligues secondaires (n)** | Les ligues classées « secondaire » dans Favoris → Ligues, sous-groupées par sport. | Dépliée |
+| **Une section par sport** | Les ligues secondaires (Favoris → Ligues) y sont aussi, **sous les ligues principales** de leur sport, et un sport qui n'a que des ligues secondaires passe après les autres (« juste mettre les ligues secondaires en dessous des autres », 1er novembre 2026 : plus de section « Ligues secondaires » dans le Live ; le Guide garde la sienne, sous les principales). Les matchs en cours et ceux qui commencent dans l'heure, sport par sport (Hockey, Basketball, Football, Soccer…), chaque carte gardant sa ligue en surtitre (« regrouper par sports et non ligue », 1er novembre 2026 ; du 27 octobre au 1er novembre, une section par ligue). **Favoris en haut** : un sport qui a un match favori passe avant les autres ; dans une section, la ligue qui porte un favori d'abord, et les favoris devant, puis le direct, puis l'heure. | Dépliée |
 | **Autres streams (n)** | Les flux que les sources annoncent sans qu'ESPN ait le match (ligue « Autres Flux »), sous-groupés par ligue annoncée. | Repliée |
 
 Les ligues classées « ignorée » n'apparaissent nulle part. Quand rien n'est en cours, la page dit « Aucun match en direct pour le moment » avec un bouton `Ouvrir le Guide`.
@@ -86,13 +85,13 @@ Une grille horaire de **48 heures** — de 00:00 aujourd'hui à 00:00 après-dem
 
 ## 3 bis. Look (Réglages → Look)
 
-Un menu, sous la barre des Réglages : **la couleur des cartes** (Uni, Dégradé, Dégradé de côté, Deux couleurs, Ligue, Neutre), pour les vignettes du Live, la bannière de la fiche et le liseré des cases du Guide. Échap ou un clic ailleurs le ferme ; depuis les Réglages, un choix montre le Live.
+Un menu, sous la barre des Réglages : **la couleur des cartes** (Uni, Dégradé, Dégradé de côté, Deux couleurs, Ligue, Neutre), pour les vignettes du Live, la bannière de la fiche et les cases du Guide. Échap ou un clic ailleurs le ferme ; depuis les Réglages, un choix montre le Live.
 
 **Couleur du match** (1er novembre 2026, « couleur de l'interface selon le match actuellement ») : activée par défaut, l'interrupteur « Couleur du match » du même menu la coupe. La couleur d'accent (boutons, onglet actif, focus, étoiles) et une lueur en haut à gauche du fond prennent la couleur de l'équipe du match **actuel** : la fiche ouverte, sinon la vidéo choisie dans le lecteur, sinon le match **à la une** du Live. Le domicile d'abord ; une couleur noire, blanche ou grise est sautée, et la couleur retenue est éclaircie ou foncée pour rester lisible. Sans couleur utilisable, l'accent de la palette revient.
 
 Les dispositions (Tableau, Maintenant, Affiches, Chaînes, pour le Live et le Guide) sont parties le 29 octobre 2026 (« Tout retirer ») : une seule vue par onglet. Un ancien choix resté dans le stockage ne change plus rien.
 
-**Le Guide façon câble** (25 octobre 2026, « plus clean et plein écran, comme le câble dans le temps ») : la grille d'un guide de câblodistributeur, fond bleu nuit, cases plates aux coins presque droits séparées par un filet, la case choisie en jaune. Une case porte « Domicile – Extérieur » sur une ligne avec les deux logos, puis l'heure (ou le direct, le score) et le nombre de liens ; les couleurs des équipes ne sont qu'un liseré à gauche. À la manette, les ★ de la colonne des équipes ne sont pas des arrêts.
+**Le Guide façon câble** (25 octobre 2026, « plus clean et plein écran, comme le câble dans le temps ») : la grille d'un guide de câblodistributeur, fond bleu nuit, cases plates aux coins presque droits séparées par un filet, la case choisie en jaune. Une case porte « Domicile – Extérieur » sur une ligne avec les deux logos, puis l'heure (ou le direct, le score) et le nombre de liens ; les couleurs des équipes ne sont qu'un liseré à gauche. **Dégradés** (1er novembre 2026, « dégradés dans les matchs dans guide ») : la case prend maintenant le même fond que la carte du Live (le dégradé des équipes, selon « Couleur des cartes »), sous un voile sombre pour le texte ; une case en direct porte un trait rouge à gauche ; la case choisie reste jaune. À la manette, les ★ de la colonne des équipes ne sont pas des arrêts.
 
 ## 4. Fiche de match
 

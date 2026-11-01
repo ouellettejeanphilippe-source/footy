@@ -656,12 +656,13 @@ function buildEPGInner(matches){
           var ligueFavorite = function(k) {
               return !!favTeams[k] || lgMap[k].matches.some(function(m) { return favTeams[m.homeTeam] || favTeams[m.awayTeam]; });
           };
+          /* Les ligues secondaires restent sous les principales, même favorites (1er novembre 2026). */
           lgOrder.sort(function(a, b) {
-              var fvA = ligueFavorite(a) ? 0 : 1, fvB = ligueFavorite(b) ? 0 : 1;
-              if (fvA !== fvB) return fvA - fvB;
               var rkA = { main: 0, secondary: 1 }[leagueTier(a)]; if (rkA === undefined) rkA = 2;
               var rkB = { main: 0, secondary: 1 }[leagueTier(b)]; if (rkB === undefined) rkB = 2;
               if (rkA !== rkB) return rkA - rkB;
+              var fvA = ligueFavorite(a) ? 0 : 1, fvB = ligueFavorite(b) ? 0 : 1;
+              if (fvA !== fvB) return fvA - fvB;
               var displayOrder = customLgOrder.length > 0 ? customLgOrder.slice() : Object.keys(DEFAULT_LEAGUES).slice();
               var allLgs = Object.keys(DEFAULT_LEAGUES);
               allLgs.forEach(function(l) {
@@ -930,10 +931,10 @@ function buildEPGInner(matches){
               return;
           }
 
-          if (tier === 'secondary') {
-              secondaryMatches.push(m);
-              return;
-          }
+          /* « Juste mettre les ligues secondaires en dessous des autres » (1er novembre 2026) :
+             plus de section « Ligues secondaires » dans le Live ; une ligue secondaire va dans
+             la section de son sport, sous les ligues principales (renderMatches, lgOrder). */
+          if (tier === 'secondary') secondaryMatches.push(m);
 
           /* Deux issues seulement, et elles couvrent tout ce que `filtered` a
              laissé passer : il n'y a plus de troisième panier « plus tard ». */
@@ -953,7 +954,9 @@ function buildEPGInner(matches){
       if (principaux.length) {
           var maintenantLive = minutesMaintenant(now, jourGrille);
           var fichesLive = [];
-          principaux.forEach(function(m) {
+          /* Le bandeau vedette reste aux ligues principales (une ligue secondaire n'est pas « à la une »). */
+          var candidatsVedette = principaux.filter(function(m) { return secondaryMatches.indexOf(m) === -1; });
+          (candidatsVedette.length ? candidatsVedette : principaux).forEach(function(m) {
               try { fichesLive.push(ficheMatch(m, now, jourGrille, maintenantLive)); }
               catch (e) { logLine('Match ignoré (vedette)', (m && m.id ? m.id + ' — ' : '') + (e && e.message || e)); }
           });
@@ -981,13 +984,14 @@ function buildEPGInner(matches){
       var estFavoriLive = function(m) { return !!(favTeams[m.homeTeam] || favTeams[m.awayTeam] || favTeams[m.league]); };
       sectionsParSport(principaux, {
           sportDe: function(m) { return libelleSport(m.league); },
+          estSecondaire: function(m) { return leagueTier(m.league) === 'secondary'; },
           estFavori: estFavoriLive,
           estEnDirect: function(m) { return isLiveNow(m, now); },
           comparer: function(a, b) { return comparerHeures(a, b, jourGrille); }
       }).forEach(function(sec) {
           renderMatches(sec.matches, fragment, sec.sport, true, idSectionSport(sec.sport));
       });
-      if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0 && secondaryMatches.length === 0) {
+      if (favorisAujourdhui.length === 0 && liveNow.length === 0 && upNext.length === 0) {
           var vide = document.createElement('div');
           vide.className = 'empty-state';
           vide.innerHTML = '<div class="empty-ic">' + icone('direct') + '</div>'
@@ -996,8 +1000,6 @@ function buildEPGInner(matches){
             + '<button class="btn sm" onclick="applyFilter(\'all\')">Ouvrir le Guide</button>';
           fragment.appendChild(vide);
       }
-      // Ligues secondaires : dépliées par défaut (ce sont de vraies ligues reconnues)
-      renderGroupedSection(secondaryMatches, fragment, "Ligues secondaires", 'secondaryLeaguesLive', false, function(m) { return libelleSport(m.league); });
       renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
           function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });
 
@@ -1145,6 +1147,13 @@ var renderTimelineGuide = function(leaguesToRender, containerToAppend) {
               else if (userPrefs.cardColor === 'dark') c1 = c2 = 'rgba(255,255,255,0.25)';
               b.style.setProperty('--mb-c1', c1);
               b.style.setProperty('--mb-c2', c2);
+              /* « Dégradés dans les matchs dans guide » (1er novembre 2026) : la case prend le fond
+                 des cartes du Live (`fondEquipes`, « Couleur des cartes »), sous un voile sombre
+                 pour le texte ; une couleur seule devient un dégradé d'elle-même (une couche de
+                 fond multiple n'accepte qu'un dégradé). */
+              var fondMb = fondEquipes({ cDom: homeColor, cExt: m.awayTeam ? awayColor : homeColor, cLigue: lgCol }, userPrefs.cardColor);
+              if (!/gradient\(/.test(fondMb)) fondMb = 'linear-gradient(' + fondMb + ', ' + fondMb + ')';
+              b.style.setProperty('--mb-fond', fondMb);
 
               var timeBadge = timelineBadgeHtml(m);
 

@@ -1209,8 +1209,8 @@ body[data-view="player"] .toast { bottom: calc(96px + var(--safe-bottom)); }
    « Chaînes » est partie avec les dispositions le 29 octobre 2026) prend la grille d'un
    guide de câblodistributeur : fond bleu nuit, cases plates aux coins presque droits,
    séparées par un filet, le titre sur une ligne, et la case choisie en jaune. Les
-   couleurs des équipes ne sont plus qu'un liseré à gauche de la case (--mb-c1, --mb-c2,
-   posées par buildEPGInner selon « Couleur des cartes »). */
+   couleurs des équipes sont un dégradé dans la case depuis le 1er novembre 2026 (--mb-fond ;
+   du 25 octobre au 1er novembre, un liseré à gauche, --mb-c1, --mb-c2), selon « Couleur des cartes ». */
 :root {
   --cable-fond: #060c22;
   --cable-chaine: #0b1637;
@@ -1234,18 +1234,22 @@ body[data-view="player"] .toast { bottom: calc(96px + var(--safe-bottom)); }
 .epg-wrapper .mb {
   top: 3px; bottom: 3px; border: 0; border-radius: 3px; box-shadow: none;
   display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 4px; padding: 6px 12px 6px 16px;
-  background: linear-gradient(180deg, var(--mb-c1, #3b6cff), var(--mb-c2, #3b6cff)) left / 5px 100% no-repeat, var(--cable-case) !important;
+  /* « Dégradés dans les matchs dans guide » (1er novembre 2026) : le fond des cartes du Live
+     (--mb-fond, posé par buildEPGInner selon « Couleur des cartes »), sous un voile sombre qui
+     garde le texte lisible ; avant, une case unie et un liseré de 5 px. */
+  background: linear-gradient(rgba(6, 12, 34, 0.38), rgba(6, 12, 34, 0.38)), var(--mb-fond, linear-gradient(var(--cable-case), var(--cable-case))) !important;
   color: var(--cable-texte);
 }
+.epg-wrapper .mb .mb-t { text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
 .epg-wrapper .mb::before { display: none; }
-.epg-wrapper .mb.live { background: linear-gradient(180deg, var(--mb-c1, #3b6cff), var(--mb-c2, #3b6cff)) left / 5px 100% no-repeat, var(--cable-case-direct) !important; box-shadow: none; }
+.epg-wrapper .mb.live { box-shadow: inset 4px 0 0 var(--red, #ff453a); }
 .epg-wrapper .mb-tt { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
 .epg-wrapper .mb-logo { width: 20px; height: 20px; padding: 1px; border-radius: 3px; background: rgba(255,255,255,0.9); flex: none; }
 .epg-wrapper .mb-t { flex: 0 1 auto; color: inherit; text-shadow: none; font-size: 14px; font-weight: 700; }
 .epg-wrapper .mb-vs { flex: none; color: var(--cable-doux); }
 .epg-wrapper .mb-m { margin-top: 0; justify-content: flex-start; }
-.epg-wrapper .mb-time, .epg-wrapper .mb-score { background: none; padding: 0; color: var(--cable-doux); }
-.epg-wrapper .mb-sn { margin-left: 0; background: none; border: 0; padding: 0; color: var(--cable-doux); }
+.epg-wrapper .mb-time, .epg-wrapper .mb-score { background: none; padding: 0; color: rgba(255,255,255,0.82); }
+.epg-wrapper .mb-sn { margin-left: 0; background: none; border: 0; padding: 0; color: rgba(255,255,255,0.82); }
 .epg-wrapper .mb-sn::before { content: "· "; }
 .epg-wrapper .mb:hover, .epg-wrapper .mb:focus, .epg-wrapper .mb:focus-visible {
   background: var(--cable-choix) !important; color: #000; filter: none; box-shadow: none; outline: none !important; transform: none;
