@@ -3763,3 +3763,29 @@ test('Live : sports des ligues principales puis « · secondaires » ; Favoris t
   expect(hockeyApres.slice(0, 2), 'la deuxième ligue de hockey passe première').toEqual([hockey[1], hockey[0]]);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Créer section TV ? » (10 novembre 2026, js/chainestv.js) : les chaînes de data/chaines.json
+   en bas du Live, sans compter parmi les sections de matchs ; un clic pose la chaîne dans le
+   lecteur (le réseau est coupé : aucune chaîne réelle n'est jointe). */
+test('Live : la section « Télé » liste les chaînes et un clic en pose une dans le lecteur', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const { chainesValides } = await import('../js/chainestv.js');
+  const chaines = chainesValides(JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'chaines.json'), 'utf8')));
+  expect(chaines.length, 'data/chaines.json a des chaînes').toBeGreaterThan(0);
+  const pageErrors = await bootOffline(page);
+  await expect(page.locator('#marea .chaine-tv')).toHaveCount(chaines.length);
+  expect(await page.locator('#marea .titre-tele').innerText()).toBe('Télé');
+  expect(await page.locator('#marea .section-title.titre-tele').count(), 'pas une section de matchs').toBe(0);
+  expect(await page.evaluate(() => {
+    const t = document.querySelector('#marea .titre-tele');
+    const s = [...document.querySelectorAll('#marea .section-title')].filter((e) => !/^Autres streams/.test(e.innerText));
+    return !s.length || !!(s[s.length - 1].compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }), 'après les sections de matchs').toBe(true);
+  await page.locator('#marea .chaine-tv').first().click();
+  expect(await page.evaluate(() => (window.mvFlux || []).map((s) => [s.url, s.name, s.mid]))).toEqual([[chaines[0].url, chaines[0].nom, chaines[0].id]]);
+  await expect(page.locator('.mv-cell')).toHaveCount(1);
+  // La grille redessinée garde la section (le fichier n'est lu qu'une fois).
+  await page.evaluate(() => window.applyFilter('live'));
+  await expect(page.locator('#marea .chaine-tv')).toHaveCount(chaines.length);
+  expect(pageErrors).toEqual([]);
+});
