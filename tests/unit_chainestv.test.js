@@ -65,19 +65,39 @@ test('sectionTele : un bouton par chaîne, qui pose le flux dans le lecteur ; ri
   assert.ok(!html.includes('<img'), 'pas de logo : pas d\'image');
 });
 
-test('chainesValides et chargerChaines : le fichier est revérifié, lu une fois, relu après un échec', async () => {
+test('chainesValides et chargerChaines : le fichier est revérifié, chaque chaîne sondée, lu une fois, relu après un échec', async () => {
   const T = await charger();
   assert.deepStrictEqual(T.chainesValides(null), []);
   assert.deepStrictEqual(T.chainesValides({ chaines: [{ nom: 'A', url: 'http://a.example/x.m3u8' }, { nom: '', url: 'https://a.example/x.m3u8' }, null] }), []);
   T.oublierChaines();
   let appels = 0;
-  const bon = () => { appels++; return Promise.resolve({ ok: true, json: () => Promise.resolve({ chaines: [{ nom: 'A', url: 'https://a.example/x.m3u8', logo: 'http://i.example/a.png' }] }) }); };
-  assert.deepStrictEqual(await T.chargerChaines(bon), [{ id: 'tv_a', nom: 'A', url: 'https://a.example/x.m3u8', logo: '' }]);
+  const rep = (ok, corps) => Promise.resolve({ ok, text: () => Promise.resolve(corps), json: () => Promise.resolve(JSON.parse(corps)) });
+  const fichier = JSON.stringify({ chaines: [
+    { nom: 'A', url: 'https://a.example/x.m3u8', logo: 'http://i.example/a.png' },
+    { nom: 'Morte', url: 'https://a.example/404.m3u8' },
+    { nom: 'Bloquée', url: 'https://a.example/cors.m3u8' },
+    { nom: 'Page', url: 'https://a.example/page.m3u8' },
+    { nom: 'Dash', url: 'https://a.example/ok.mpd' },
+    { nom: 'Chiffrée', url: 'https://a.example/drm.mpd' },
+  ] });
+  const bon = (u) => {
+    if (u === 'data/chaines.json') { appels++; return rep(true, fichier); }
+    if (/404/.test(u)) return rep(false, 'Not Found');
+    if (/cors/.test(u)) return Promise.reject(new TypeError('Failed to fetch'));
+    if (/page/.test(u)) return rep(true, '<html>bloqué dans votre pays</html>');
+    if (/drm/.test(u)) return rep(true, '<?xml version="1.0"?><MPD><ContentProtection/></MPD>');
+    if (/\.mpd/.test(u)) return rep(true, '<?xml version="1.0"?><MPD type="dynamic"></MPD>');
+    return rep(true, '#EXTM3U\n#EXT-X-VERSION:3\n');
+  };
+  assert.deepStrictEqual(await T.chargerChaines(bon), [
+    { id: 'tv_a', nom: 'A', url: 'https://a.example/x.m3u8', logo: '' },
+    { id: 'tv_dash', nom: 'Dash', url: 'https://a.example/ok.mpd', logo: '' },
+  ], 'seules les chaînes dont le manifeste répond d\'ici : ni 404, ni refus CORS, ni page, ni DASH chiffré');
   await T.chargerChaines(bon);
   assert.strictEqual(appels, 1, 'lu une fois');
   T.oublierChaines();
   assert.deepStrictEqual(await T.chargerChaines(() => Promise.reject(new Error('hors ligne'))), []);
-  assert.strictEqual((await T.chargerChaines(bon)).length, 1, 'relu après un échec');
+  assert.strictEqual((await T.chargerChaines(bon)).length, 2, 'relu après un échec');
   T.oublierChaines();
 });
 

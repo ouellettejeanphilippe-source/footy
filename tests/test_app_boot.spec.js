@@ -1491,8 +1491,8 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
     flux: document.querySelectorAll('#modal-right-col .si').length,
     actions: document.querySelectorAll('#modal-right-col .si .si-btn').length,
     // « Pas de liens vers le vrai site, jamais » : ni ↗ par flux, ni liens vers les sources.
-    // La section Radio (31 octobre 2026, js/radio.js) est voulue : ses liens sont des stations officielles, jamais une recherche.
-    versLeSite: document.querySelectorAll('#mbg .si-ext, #mbg a[target="_blank"]:not(.fiche-radio a)').length,
+    // La section Radio (31 octobre 2026, js/radio.js) n'en a plus non plus (11 novembre 2026, « enlever liens vers les pages »).
+    versLeSite: document.querySelectorAll('#mbg .si-ext, #mbg a[target="_blank"]').length,
     sectionRadio: document.querySelectorAll('#mbg .fiche-radio').length,
     rechercheRadio: document.querySelectorAll('#mbg .fiche-radio .radio-recherche').length,
     radio: Array.from(document.querySelectorAll('#mbg .fiche-radio a')).map(function(a) { return a.href; }),
@@ -1513,7 +1513,7 @@ test('la fiche de match a une seule croix, se ferme par Échap, et ses flux port
   expect(fiche.versLeSite, 'aucun lien vers le site').toBe(0);
   expect(fiche.sectionRadio, 'la fiche a sa section Radio').toBe(1);
   expect(fiche.rechercheRadio, 'plus de bouton de recherche dans la radio').toBe(0);
-  expect(fiche.radio.every(function(h) { return h.indexOf('https://') === 0; }), 'les liens radio sont des liens https : ' + fiche.radio.join(',')).toBe(true);
+  expect(fiche.radio, 'plus aucun lien dans la section Radio').toEqual([]);
 
   await page.keyboard.press('Escape');
   await expect(page.locator('#mbg')).not.toHaveClass(/open/);
@@ -1575,7 +1575,7 @@ test('la fiche : sans flux connu, « Écouter » ajoute le lecteur TuneIn comme 
   const boutons = page.locator('#mbg .fiche-radio .radio-ecouter');
   await expect(boutons.first()).toBeVisible();
   expect(await page.locator('#mbg .fiche-radio .radio-ecouter[data-lecteur^="https://tunein.com/embed/player/"]').count(), 'trois stations TuneIn des Canadiens, une des Maple Leafs').toBe(4);
-  expect(await page.locator('#mbg .fiche-radio a[target="_blank"]').count()).toBeGreaterThanOrEqual(4);
+  expect(await page.locator('#mbg .fiche-radio a').count(), 'aucun lien vers la page d\'une station').toBe(0);
 
   await boutons.first().click();
   await expect(page.locator('#mbg')).not.toHaveClass(/open/);
@@ -3766,14 +3766,31 @@ test('Live : sports des ligues principales puis « · secondaires » ; Favoris t
 
 /* « Créer section TV ? » (10 novembre 2026, js/chainestv.js) : les chaînes de data/chaines.json
    en bas du Live, sans compter parmi les sections de matchs ; un clic pose la chaîne dans le
-   lecteur (le réseau est coupé : aucune chaîne réelle n'est jointe). */
-test('Live : la section « Télé » liste les chaînes et un clic en pose une dans le lecteur', async ({ page }) => {
+   lecteur. « Les streams marchent pas » (11 novembre 2026) : seules les chaînes dont le manifeste
+   répond depuis l'appareil sont montrées. Le réseau est coupé : le fichier et les manifestes sont
+   servis par un `fetch` de test, aucune chaîne réelle n'est jointe. */
+test('Live : la section « Télé » ne montre que les chaînes qui répondent, et un clic en pose une dans le lecteur', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 });
-  const { chainesValides } = await import('../js/chainestv.js');
-  const chaines = chainesValides(JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'chaines.json'), 'utf8')));
-  expect(chaines.length, 'data/chaines.json a des chaînes').toBeGreaterThan(0);
+  await page.addInitScript(() => {
+    const vrai = window.fetch.bind(window);
+    const rep = (corps, status) => Promise.resolve(new Response(corps, { status: status || 200 }));
+    window.fetch = (u, o) => {
+      const s = String(u && u.url || u);
+      if (/data\/chaines\.json/.test(s)) return rep(JSON.stringify({ chaines: [
+        { nom: 'Chaîne Une', url: 'https://tele.invalid/une.m3u8', logo: '' },
+        { nom: 'Morte', url: 'https://tele.invalid/morte.m3u8', logo: '' },
+        { nom: 'Bloquée', url: 'https://tele.invalid/bloquee.m3u8', logo: '' },
+        { nom: 'Chaîne Deux', url: 'https://tele.invalid/deux.m3u8', logo: '' },
+      ] }));
+      if (/tele\.invalid\/morte/.test(s)) return rep('Not Found', 404);
+      if (/tele\.invalid\/bloquee/.test(s)) return Promise.reject(new TypeError('Failed to fetch'));
+      if (/tele\.invalid\//.test(s)) return rep('#EXTM3U\n#EXT-X-VERSION:3\n');
+      return vrai(u, o);
+    };
+  });
   const pageErrors = await bootOffline(page);
-  await expect(page.locator('#marea .chaine-tv')).toHaveCount(chaines.length);
+  await expect(page.locator('#marea .chaine-tv')).toHaveCount(2);
+  expect(await page.locator('#marea .chaine-tv').allInnerTexts(), 'ni la chaîne morte, ni celle que le navigateur refuse').toEqual(['Chaîne Une', 'Chaîne Deux']);
   expect(await page.locator('#marea .titre-tele').innerText()).toBe('Télé');
   expect(await page.locator('#marea .section-title.titre-tele').count(), 'pas une section de matchs').toBe(0);
   expect(await page.evaluate(() => {
@@ -3782,10 +3799,10 @@ test('Live : la section « Télé » liste les chaînes et un clic en pose une d
     return !s.length || !!(s[s.length - 1].compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING);
   }), 'après les sections de matchs').toBe(true);
   await page.locator('#marea .chaine-tv').first().click();
-  expect(await page.evaluate(() => (window.mvFlux || []).map((s) => [s.url, s.name, s.mid]))).toEqual([[chaines[0].url, chaines[0].nom, chaines[0].id]]);
+  expect(await page.evaluate(() => (window.mvFlux || []).map((s) => [s.url, s.name, s.mid]))).toEqual([['https://tele.invalid/une.m3u8', 'Chaîne Une', 'tv_chaineune']]);
   await expect(page.locator('.mv-cell')).toHaveCount(1);
   // La grille redessinée garde la section (le fichier n'est lu qu'une fois).
   await page.evaluate(() => window.applyFilter('live'));
-  await expect(page.locator('#marea .chaine-tv')).toHaveCount(chaines.length);
+  await expect(page.locator('#marea .chaine-tv')).toHaveCount(2);
   expect(pageErrors).toEqual([]);
 });

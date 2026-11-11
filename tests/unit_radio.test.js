@@ -62,7 +62,7 @@ test('une équipe sans station connue n\'a aucun lien : ni station inventée, ni
   const h = R.radioHtml(r, esc, I.icone);
   assert.ok(!/<a /.test(h), 'aucun lien');
   assert.ok(!/Chercher|search\?/.test(h), 'aucun bouton de recherche');
-  assert.strictEqual((h.match(/Aucune station officielle connue pour ce match/g) || []).length, 1, 'le dit une seule fois pour le match');
+  assert.strictEqual((h.match(/Aucune station à écouter ici pour ce match/g) || []).length, 1, 'le dit une seule fois pour le match');
   assert.ok(!h.includes('Zzz Inconnus'), 'pas de ligne pour une équipe sans station');
 });
 
@@ -86,17 +86,17 @@ test('le HTML : liens sûrs, texte échappé, lignes seulement pour ce qui a une
   const h = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Montreal Canadiens', awayTeam: 'Zzz Inconnus' }), esc, I.icone);
   assert.ok(h.includes('class="fiche-radio-titre">Radio'));
   assert.ok(h.includes('<svg'), 'l\'icône radio est dessinée');
-  const liens = h.match(/<a [^>]*>/g);
-  assert.strictEqual(liens.length, 4, 'les quatre liens des Canadiens');
-  for (const a of liens) assert.ok(/target="_blank" rel="noopener noreferrer"/.test(a), 'ouverture sûre : ' + a);
+  /* « Pour radio, enlever liens vers les pages » (11 novembre 2026) : des boutons qui jouent ici, aucun lien. */
+  assert.ok(!/<a |href=|target=|data-url=/.test(h), 'aucun lien vers une page');
+  assert.strictEqual((h.match(/<button [^>]*class="radio-ecouter"/g) || []).length, 4, 'les quatre stations des Canadiens, en boutons');
   assert.ok(h.includes('98,5 FM (français) · TuneIn'));
   assert.ok(!h.includes('Zzz Inconnus'), 'l\'équipe sans station n\'a pas de ligne');
-  assert.ok(h.includes('Pas de ligne pour une équipe : aucune station officielle connue'), 'la note le dit');
+  assert.ok(h.includes('Pas de ligne pour une équipe : aucune station à écouter ici'), 'la note le dit');
   assert.ok(!/Chercher|search\?/.test(h), 'aucune recherche');
   // Tout ce qui vient d'un nom ou d'une adresse est échappé.
-  const piege = R.radioHtml({ equipes: [{ equipe: 'A <b>"&" B', stations: [{ nom: '<i>x</i>', url: 'https://x.test/"y"', source: 'S&T' }] }], ligue: null }, esc, I.icone);
+  const piege = R.radioHtml({ equipes: [{ equipe: 'A <b>"&" B', stations: [{ nom: '<i>x</i>', url: 'https://x.test/"y"', source: 'S&T', ecoute: 'tunein:s"1' }] }], ligue: null }, esc, I.icone);
   assert.ok(!piege.includes('<b>') && !piege.includes('<i>'), 'balises échappées');
-  assert.ok(piege.includes('A &lt;b&gt;&quot;&amp;&quot; B') && piege.includes('href="https://x.test/&quot;y&quot;"') && piege.includes('S&amp;T'));
+  assert.ok(piege.includes('A &lt;b&gt;&quot;&amp;&quot; B') && piege.includes('data-ecoute="tunein:s&quot;1"') && piege.includes('S&amp;T') && !piege.includes('x.test'));
 });
 
 test('le registre est cohérent : chaque clé existe, chaque station a un lien, chaque équipe est dans la base', () => {
@@ -175,11 +175,14 @@ test('les championnats : Bundesliga, Eredivisie, Premier League, F1, NASCAR ont 
     assert.ok(r.ligue && r.ligue.stations.length >= n, ligue + ' : ' + (r.ligue && r.ligue.stations.length));
   }
   const bl = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Bayern Munich', awayTeam: 'Dortmund', league: 'BUNDESLIGA' }), esc, I.icone);
-  assert.ok(bl.includes('(allemand)') && bl.includes('sportschau.de'), 'Sportschau, en allemand');
+  /* Ces championnats n'ont qu'une page officielle, sans flux connu : depuis le 11 novembre 2026
+     (« enlever liens vers les pages »), la fiche ne les montre plus. */
+  assert.ok(!bl.includes('sportschau.de') && !bl.includes('(allemand)') && !/<a /.test(bl), 'Bundesliga : la page de Sportschau n\'est plus liée');
+  assert.ok(bl.includes('Aucune station à écouter ici pour ce match'), 'et la fiche le dit');
   assert.ok(!bl.includes('Bayern Munich'), 'pas de ligne pour une équipe sans station');
   // Une séance de F1 n'est pas une équipe : pas de ligne « Race » sans station.
   const f1 = R.radioHtml(R.radiosDuMatch({ homeTeam: 'Mexico City Grand Prix', awayTeam: 'Race', league: 'F1' }), esc, I.icone);
-  assert.ok(!f1.includes('>Race<') && f1.includes('BBC Radio 5 Live'), 'F1 : seulement la ligne du championnat');
+  assert.ok(!f1.includes('>Race<') && !f1.includes('BBC Radio 5 Live') && !f1.includes('bbc.co.uk'), 'F1 : ni ligne « Race », ni page de la BBC');
   assert.ok(!f1.includes('Pas de ligne pour une équipe') && !f1.includes('qu\u2019une partie'), 'F1 : ni « équipe sans station » ni « une partie des matchs »');
   assert.deepStrictEqual(R.radiosDuMatch({ homeTeam: 'Mexico City Grand Prix', awayTeam: 'Race', league: 'F1' }).equipes, [], 'F1 : pas d\'équipes');
   assert.ok(!bl.includes('qu\u2019une partie'), 'Bundesliga : un flux de chaque match, pas de note « une partie »');
@@ -228,6 +231,7 @@ test('branchement : icône, fiche, service worker, version de l\'application', (
   assert.ok(sw.includes("'./js/radio.js'"), 'radio.js est dans APP_SHELL');
   const cache = sw.match(/CACHE_NAME = '([^']+)'/)[1];
   assert.ok(lire('js/multiview.js').includes("VERSION_APP = '" + cache + "'"), 'VERSION_APP = CACHE_NAME');
-  assert.ok(/^[^]*\.fiche-radio a:hover/.test(lire('styles.css')), 'le style de la radio');
+  assert.ok(/\.fiche-radio \.radio-ecouter \{/.test(lire('styles.css')) && !/\.fiche-radio a[ :{]/.test(lire('styles.css')), 'le style de la radio : des boutons, plus de liens');
+  assert.ok(!/window\.open\(lienExterne/.test(ui) && !ui.includes("getAttribute('data-url')"), 'plus d\'ouverture de la page d\'une station');
   assert.ok(!/^import /m.test(lire('js/radio.js')), 'radio.js reste sans import');
 });
