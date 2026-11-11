@@ -3,7 +3,8 @@
    Des chaînes de télé qui tournent 24 h sur 24, à côté des matchs : les chaînes canadiennes en
    clair de la liste Free-TV (https://github.com/Free-TV/IPTV, groupe « Canada » : CBC, ICI Télé,
    TVA, Noovo, Télé-Québec…). scripts/chaines_tv.mjs relit la liste une fois par jour et écrit
-   data/chaines.json ; ce module l'analyse (côté script), le charge et rend la section (côté page).
+   data/chaines.json ; ce module l'analyse (côté script), le charge, sonde chaque chaîne depuis
+   l'appareil et rend la section avec celles qui répondent (côté page).
 
    Une chaîne n'est PAS un match : elle n'entre ni dans S.matches, ni dans le Guide, ni dans les
    chaînes du mode câble. Un clic la pose dans le lecteur comme n'importe quel flux direct
@@ -80,14 +81,41 @@ export function sectionTele(chaines, esc, escJs) {
     + '<div class="chaines-tv">' + boutons + '</div>';
 }
 
-/* data/chaines.json, lu une fois par session (et relu après un échec). */
+/* Vrai si le manifeste d'une chaîne répond D'ICI, par le chemin que prendra la lecture (un `fetch`
+   de la page, donc soumis au CORS comme hls.js et dash.js). « Les streams marchent pas »
+   (11 novembre 2026) : mesuré ce jour-là, 4 chaînes sur 14 jouaient ; les autres étaient mortes
+   (404), bloquées hors du pays (403), sans en-tête CORS pour le site (Global News renvoie vers
+   Pluto, Noovo), ou chiffrées. Seul l'appareil de l'utilisateur sait lesquelles jouent chez lui.
+   Un DASH protégé (`ContentProtection`) ne joue pas dans dash.js sans licence : refusé. */
+export var DELAI_SONDE_MS = 8000;
+export function sonderChaine(c, fetchFn) {
+  var opts = { cache: 'no-store' };
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opts.signal = AbortSignal.timeout(DELAI_SONDE_MS);
+  return Promise.resolve().then(function() { return fetchFn(c.url, opts); })
+    .then(function(r) { return r && r.ok ? r.text() : ''; })
+    .then(function(t) {
+      t = String(t || '').slice(0, 20000);
+      return /^\s*#EXTM3U/.test(t) || (/<MPD[\s>]/.test(t) && !/ContentProtection/.test(t));
+    })
+    .catch(function() { return false; });
+}
+
+/* Les chaînes qui répondent, dans l'ordre de la liste ; toutes sondées en même temps. */
+export function chainesQuiRepondent(chaines, fetchFn) {
+  return Promise.all(chaines.map(function(c) { return sonderChaine(c, fetchFn); }))
+    .then(function(ok) { return chaines.filter(function(c, i) { return ok[i]; }); });
+}
+
+/* data/chaines.json, lu une fois par session (et relu après un échec), réduit aux chaînes qui
+   répondent d'ici. */
 var chargement = null;
 export function chargerChaines(fetchFn) {
-  var f = fetchFn || (typeof fetch === 'function' ? fetch : null);
+  var f = fetchFn || (typeof fetch === 'function' ? function(u, o) { return fetch(u, o); } : null);
   if (!f) return Promise.resolve([]);
   if (!chargement) {
-    chargement = f('data/chaines.json').then(function(r) { return r.ok ? r.json() : null; })
-      .then(chainesValides)
+    chargement = Promise.resolve().then(function() { return f('data/chaines.json'); })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(j) { return chainesQuiRepondent(chainesValides(j), f); })
       .catch(function() { chargement = null; return []; });
   }
   return chargement;

@@ -663,10 +663,6 @@ export function radiosDuMatch(m) {
   return { equipes: equipes, ligue: stLigue.length ? { nom: String(m.league), stations: stLigue, partiel: !!LIGUES_PARTIELLES[cleLigue] } : null };
 }
 
-function lien(url, texte, classe, ico) {
-  return '<a class="' + classe + '" href="' + url + '" target="_blank" rel="noopener noreferrer">' + (ico || '') + '<span>' + texte + '</span></a>';
-}
-
 /* Le HTML de la section « Radio » de la fiche. `esc` échappe le texte ; `icone`
    rend un tracé (js/icones.js). '' quand le match n'a aucune équipe. N'affiche que les
    lignes qui ont une station : une équipe sans station connue n'a pas de ligne (en F1 les
@@ -676,22 +672,21 @@ export function radioHtml(r, esc, icone) {
   if (!r || ((!r.equipes || !r.equipes.length) && !r.ligue)) return '';
   var ico = icone ? icone('radio') : '';
   var out = '<div class="fiche-radio-tete">' + ico + '<span class="fiche-radio-titre">Radio</span></div>';
+  /* « Pour radio, enlever liens vers les pages » (11 novembre 2026) : plus aucun lien vers TuneIn,
+     iHeartRadio ou le site d'une station. Une station est un bouton qui la fait jouer ici (le flux
+     dans la barre radio, js/radiodirect.js ; à défaut le lecteur d'intégration de TuneIn en tuile).
+     Une station qui n'a que sa page officielle (`ecoute` absent : aucun flux connu) n'est plus montrée. */
+  function jouables(stations) { return (stations || []).filter(function(s) { return s && s.ecoute; }); }
   function chips(stations) {
-    return stations.map(function(s) {
-      var h = lien(esc(s.url), esc(s.nom) + ' · ' + esc(s.source), 'radio-station', ico);
-      /* « Écouter » (1er novembre 2026, « partir les streams tunein et cie directement ») : le flux
-         audio de la station joue tout de suite dans la barre radio (js/radiodirect.js), TuneIn comme
-         iHeartRadio. Sans flux connu, le lecteur d'intégration de TuneIn en tuile, comme avant, ou le
-         lien. Jamais pour la page d'un site (aucun flux vérifié). */
-      if (s.ecoute) h += '<button type="button" class="radio-ecouter" data-ecoute="' + esc(s.ecoute) + '" data-lecteur="' + esc(s.lecteur || '') + '" data-id="' + esc(s.idLecteur || '') + '" data-url="' + esc(s.url) + '" data-nom="' + esc(s.nom) + '" aria-label="Écouter ' + esc(s.nom) + '">' + (icone ? icone('play') : '') + '<span>Écouter</span></button>';
-      return h;
+    return jouables(stations).map(function(s) {
+      return '<button type="button" class="radio-ecouter" data-ecoute="' + esc(s.ecoute) + '" data-lecteur="' + esc(s.lecteur || '') + '" data-id="' + esc(s.idLecteur || '') + '" data-nom="' + esc(s.nom) + '" aria-label="Écouter ' + esc(s.nom) + '">' + (icone ? icone('play') : '') + '<span>' + esc(s.nom) + ' · ' + esc(s.source) + '</span></button>';
     }).join('');
   }
   r.equipes = r.equipes || [];
-  var avec = r.equipes.filter(function(e) { return e.stations.length; });
-  var stLigue = r.ligue && r.ligue.stations.length ? r.ligue : null;
+  var avec = r.equipes.filter(function(e) { return jouables(e.stations).length; });
+  var stLigue = r.ligue && jouables(r.ligue.stations).length ? r.ligue : null;
   if (!avec.length && !stLigue) {
-    return out + '<div class="radio-aucune">Aucune station officielle connue pour ce match.</div>';
+    return out + '<div class="radio-aucune">Aucune station à écouter ici pour ce match.</div>';
   }
   avec.forEach(function(e) {
     out += '<div class="fiche-radio-ligne"><span class="fiche-radio-equipe">' + esc(e.equipe) + '</span><span class="fiche-radio-liens">' + chips(e.stations) + '</span></div>';
@@ -701,7 +696,7 @@ export function radioHtml(r, esc, icone) {
     if (stLigue.partiel) out += '<div class="fiche-radio-note">Le championnat n\u2019en diffuse qu\u2019une partie des matchs : la station du championnat peut ne pas avoir celui-ci.</div>';
   }
   if (avec.length < r.equipes.length) {
-    out += '<div class="fiche-radio-note">Pas de ligne pour une équipe : aucune station officielle connue.</div>';
+    out += '<div class="fiche-radio-note">Pas de ligne pour une équipe : aucune station à écouter ici.</div>';
   }
   return out;
 }

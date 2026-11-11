@@ -2002,15 +2002,15 @@ export function openMod(m,col){
   /* « Écouter » (1er novembre 2026, « partir les streams tunein et cie directement ») : le flux de la
      station joue tout de suite dans la barre radio (js/radiodirect.js) et la fiche reste ouverte. Sans
      flux lisible, le repli d'avant (31 octobre 2026, « comme YouTube et Twitch ») : le lecteur
-     d'intégration de TuneIn en tuile du lecteur (la fiche se ferme), ou le lien de la station dans un
-     nouvel onglet. Les données viennent des attributs, jamais d'un onclick construit. */
+     d'intégration de TuneIn en tuile du lecteur (la fiche se ferme). Plus de lien vers la page d'une
+     station (11 novembre 2026, « enlever liens vers les pages ») : sans flux ni lecteur, un message.
+     Les données viennent des attributs, jamais d'un onclick construit. */
   if (radio.innerHTML) chargerFluxRadio();
   radio.addEventListener('click', function(ev) {
     var b = ev.target && ev.target.closest ? ev.target.closest('.radio-ecouter') : null;
     if (!b) return;
     ev.preventDefault();
     var lecteur = b.getAttribute('data-lecteur') || '', nom = b.getAttribute('data-nom') || 'Radio';
-    var lienExterne = b.getAttribute('data-url') || '';
     var equipe = b.closest('.fiche-radio-ligne') && b.closest('.fiche-radio-ligne').querySelector('.fiche-radio-equipe');
     ecouterRadio({ cle: b.getAttribute('data-ecoute') || '', nom: (equipe ? equipe.textContent + ' · ' : '') + nom, icone: icone('radio') }, {
       adresses: adressesDuFlux,
@@ -2019,8 +2019,8 @@ export function openMod(m,col){
         if (/^https:\/\/tunein\.com\/embed\/player\//.test(lecteur)) {
           addToMultivision(lecteur, 'Radio : ' + nom, 'radio_' + (b.getAttribute('data-id') || ''));
           closeMod();
-        } else if (/^https:\/\//.test(lienExterne)) {
-          window.open(lienExterne, '_blank', 'noopener');
+        } else if (window.showToast) {
+          window.showToast('Cette station ne répond pas pour l\'instant.');
         }
       }
     });
