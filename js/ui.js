@@ -19,6 +19,7 @@ import { isMatch, debugMatchPair, stringSimilarity } from './match.js';
 import { DEFAULT_LEAGUES, lgFlag, leagueTier } from './db.js';
 import { choisirVedette, bandeauVedette } from './vedette.js';
 import { sectionsParSport, idSectionSport } from './livesport.js';
+import { chargerChaines, sectionTele } from './chainestv.js';
 import { icone } from './icones.js';
 import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
@@ -359,6 +360,9 @@ if (typeof document !== 'undefined') {
     if (e.key === 'Escape' && m && !m.hidden) { fermerMenuLook(); var b = document.getElementById('btn-look'); if (b) b.focus(); }
   });
 }
+
+/* Les chaînes de la section « Télé » : null tant que data/chaines.json n'a pas été demandé. */
+var chainesTele = null;
 
 /* Reconstruit la grille sans perdre le défilement de #marea (une couleur de cartes
    choisie dans Look). */
@@ -1007,6 +1011,19 @@ function buildEPGInner(matches){
             + '<div>Le Guide montre tout le programme du jour.</div>'
             + '<button class="btn sm" onclick="applyFilter(\'all\')">Ouvrir le Guide</button>';
           fragment.appendChild(vide);
+      }
+      /* La section « Télé » (10 novembre 2026, js/chainestv.js) : les chaînes canadiennes en clair
+         de data/chaines.json, après les matchs, même quand aucun ne joue. Le fichier est lu une
+         fois ; la grille est redessinée quand il arrive. */
+      if (chainesTele === null) {
+          chainesTele = [];
+          chargerChaines().then(function(l) { if (l.length) { chainesTele = l; if (S.filter === 'live') redessinerGrille(); } });
+      }
+      var htmlTele = sectionTele(chainesTele, esc, escJs);
+      if (htmlTele) {
+          var hoteTele = document.createElement('div');
+          hoteTele.innerHTML = htmlTele;
+          fragment.appendChild(hoteTele);
       }
       renderGroupedSection(autresFluxMatches, fragment, "Autres streams", 'autresStreams', true,
           function(m) { return m.scrapedLeagueName || m.league || 'Autres Flux'; });

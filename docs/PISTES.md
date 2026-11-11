@@ -104,6 +104,28 @@ Demande : « Ya moyen, avec github ou par toi-même, de limiter l'utilisation de
 17. **Un mode léger, au choix et proposé d'office sur un appareil faible** (`navigator.deviceMemory` de 2 Go ou moins, comme le CCGTV, qui en a 1,5 à 2). Choisi d'après la capacité de l'appareil et non d'après la plateforme, il ne contredit pas « site = APK ». Contenu possible, chacun à mesurer avec Logs → Cet appareil : quitter le lecteur ferme les vidéos (ce que fait déjà Retour dans l'APK) au lieu de les laisser décoder cachées ; les vidéos non choisies, en mode direct, au niveau de qualité le plus bas ; plus d'animations en boucle (pastilles « en direct ») ni de transitions ; relève des scores au ralenti pendant le lecteur.
 18. **APK : survivre au manque de mémoire.** Aucun `onRenderProcessGone` dans `BloqueurWebViewClient` : si Android tue le moteur de la WebView faute de mémoire, l'application tombe au lieu de recharger le site. Et `onTrimMemory` (Android prévient avant de tuer) pourrait demander au site de fermer les vidéos muettes. C'est Android qui l'impose : exception admise à « site = APK ». Pas de SDK Android dans la session : à construire et essayer sur la télé.
 
+## Listes IPTV publiques (10 novembre 2026)
+
+L'utilisateur a envoyé trois dépôts, sans consigne : [iptv-org/iptv](https://github.com/iptv-org/iptv), [Free-TV/IPTV](https://github.com/Free-TV/IPTV), [iptv-org/awesome-iptv](https://github.com/iptv-org/awesome-iptv). Lus et mesurés ce jour-là ; **rien n'est intégré** (« Intègre rien sans mon aval »).
+
+**Ce que c'est.** Des listes de **chaînes** (un flux qui tourne 24 h sur 24), pas de matchs : elles ne remplacent aucune de nos sources, qui donnent le flux d'un match précis.
+
+- **iptv-org/iptv** (CC0) : les listes sont publiées en `.m3u` (`https://iptv-org.github.io/iptv/categories/sports.m3u`, 508 entrées) et en JSON (`https://iptv-org.github.io/api/channels.json`, 31 797 chaînes ; `streams.json`, 18 615 flux, avec `quality`, `referrer`, `user_agent`). Les deux répondent avec `Access-Control-Allow-Origin: *`. Catégorie `sports` : 2 557 chaînes, dont 445 ont au moins un flux (785 flux, 748 en `.m3u8`).
+- **Free-TV/IPTV** : une seule liste (`playlist.m3u8`, 2 203 entrées), limitée à ce qui est gratuit chez soi (hertzien) ou sur Internet (Pluto, Plex, Samsung TV Plus, YouTube). 52 entrées « sport », presque toutes des chaînes publiques d'Europe et d'Asie ; pour le Canada, 20 chaînes généralistes (CBC, CTV, ICI Télé, TVA, Noovo, Télé-Québec), aucune sportive.
+- **awesome-iptv** (CC0) : un annuaire de lecteurs et d'outils, déplacé dans les Discussions du dépôt. Les fiches n'ont pas été lues une à une ; nos besoins voisins (contrôle de flux, écran d'erreur filmé) sont déjà jugés aux pistes C.11 et C.12.
+
+**Mesure** (depuis une machine de centre de données, pas depuis le Québec : le blocage par pays n'est **pas** mesuré). Les 312 flux sportifs d'iptv-org rangés sous CA, US, UK et FR, demandés une fois avec leur `Referer` et leur agent : **230 rendent un manifeste** (`#EXTM3U`), 48 refusent la connexion, 13 expirent, 11 répondent 404. Des 230 : 222 sont en `https` (les 8 en `http` ne peuvent pas jouer dans le site, contenu mixte), et **147 portent un en-tête CORS**, donc jouables par hls.js sans pont ; les autres demandent le pont du script utilisateur ou le lecteur natif de l'APK, comme nos manifestes actuels.
+
+Ce qui répondait : beaucoup de chaînes gratuites à pubs (CBS Sports HQ, CBS Sports Golazo, NBC Sports NOW, beIN SPORTS XTRA, FIFA+, Stadium, SportsGrid, PGA Tour, Pluto TV, Fight Network, Game+, L'Équipe, talkSPORT) et quelques chaînes payantes reprises par des tiers (NBA TV, NFL Network, NHL Network, Tennis Channel, Golf Channel, ESPN Amérique latine, Sky Sports F1/NFL/News, Eurosport 1 et 2). TSN4, ESPN, ESPN 2, Fox Sports 1 et 2, DAZN 1 à 5 et TNT Sports sont dans la liste mais **ne répondaient pas**. RDS et Sportsnet n'y sont pas.
+
+**Ce qu'on pourrait en faire**, par ordre d'intérêt :
+
+1. **Des chaînes dans le mode câble.** Un script quotidien (`scripts/chaines.mjs`, sur le modèle de `radio_flux.mjs`) lit l'API d'iptv-org, garde les chaînes sportives des pays voulus, sonde chaque flux et écrit `data/chaines.json`. Le mode câble (§7.8) les proposerait après les matchs : quand rien ne joue, il reste quelque chose à regarder. Rien d'externe à GitHub (l'API est une page GitHub Pages, lue comme ESPN l'est), rien de manuel.
+2. **Le diffuseur d'un match → sa chaîne.** `geoBroadcasts` d'ESPN nomme le diffuseur (non lu aujourd'hui par `scripts/scrape_schedule.mjs`, déjà noté pour la radio). Quand il s'appelle « NBA TV », « NFL Network » ou « NHL Network » et que la chaîne répond, le match gagne un lien direct sans page ni régie. Portée réelle faible aujourd'hui : les diffuseurs les plus fréquents (TSN, ESPN, FS1, TNT) sont justement ceux qui ne répondaient pas.
+3. **Une section « Chaînes » dans le Live** (CBC, ICI Télé, TVA depuis Free-TV pour les matchs en clair). *Fait le 10 novembre 2026* (« Créer section TV ? ») : section « Télé », `js/chainestv.js`. Les dispositions, dont « Chaînes », ont été retirées le 29 octobre 2026 (« Tout retirer ») : à ne pas refaire sans demande.
+
+**Réserves.** Les flux des chaînes payantes sont des reprises non officielles : ils vont et viennent (82 morts sur 312 le jour de la mesure), d'où la sonde quotidienne obligatoire. 90 flux sportifs exigent un agent particulier, que seul le relais de l'APK sait poser. Le blocage par pays reste à mesurer depuis l'appareil de l'utilisateur avant de retenir une chaîne.
+
 ## Écarté, et pourquoi
 
 | Piste | Pourquoi |

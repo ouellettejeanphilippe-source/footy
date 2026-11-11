@@ -1425,6 +1425,14 @@ body { font-size: 14px; letter-spacing: -0.006em; font-feature-settings: 'cv11' 
 .rail-toggle:hover { color: var(--t1); background: rgba(255,255,255,.06); }
 body.cards-poster .rail-toggle { display: inline-flex; }
 .match-grid { gap: 20px 16px; padding: 12px var(--page-x) 20px; }
+/* La section « Télé » du Live (js/chainestv.js) : le titre a l'allure d'un titre de section sans en
+   être un (il ne se replie pas) ; un bouton par chaîne, logo et nom. */
+.titre-tele { padding: 24px var(--page-x) 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; color: var(--t1); }
+.chaines-tv { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px var(--page-x) 24px; }
+.chaine-tv { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 16px; background: var(--s2); border: 1px solid rgba(255,255,255,.1); border-radius: var(--r-md); color: var(--t1); font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+.chaine-tv:hover { background: var(--s3); }
+.chaine-tv:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chaine-tv-logo { height: 24px; max-width: 56px; object-fit: contain; flex: 0 0 auto; }
 .match-grid.rangee { grid-auto-columns: minmax(240px, 21vw); scroll-padding-inline: var(--page-x); padding-block: 14px 26px; gap: 16px; }
 @media (min-width: 1600px) { .match-grid.rangee { grid-auto-columns: minmax(280px, 17vw); } }
 
@@ -1504,6 +1512,8 @@ body.cards-poster .match-card .prime-thumbnail { aspect-ratio: 4 / 3; }
   .match-grid, body.cards-poster .match-grid.expanded { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; padding: 8px 16px 16px; }
   body.cards-poster .match-grid:not(.expanded) { grid-auto-columns: minmax(200px, 62vw); gap: 12px; padding: 8px 16px 18px; }
   .section-title { padding: 20px 16px 2px; font-size: 18px; }
+  .titre-tele { padding: 20px 16px 2px; font-size: 18px; }
+  .chaines-tv { padding: 8px 16px 16px; }
   .match-card .prime-head, body.cards-poster .match-card .prime-head { top: 7px; left: 7px; right: 7px; }
   .match-card .prime-team-name, body.cards-poster .match-card .prime-team-name { font-size: 14px; }
   .match-card .prime-score, body.cards-poster .match-card .prime-score { font-size: 17px; }
