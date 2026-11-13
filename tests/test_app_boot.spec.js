@@ -3806,3 +3806,43 @@ test('Live : la section « Télé » ne montre que les chaînes qui répondent, 
   await expect(page.locator('#marea .chaine-tv')).toHaveCount(2);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Avoir un genre Twitter en direct, les commentaires des gens » (13 novembre 2026, js/reactions.js) :
+   X refuse d'être encadré, alors la recherche en direct de X sur les équipes du match s'ouvre dans
+   une fenêtre étroite à côté, depuis la barre du lecteur et depuis la fiche. */
+test('Réactions sur X : la barre du lecteur et la fiche ouvrent la recherche en direct du match dans une fenêtre à côté', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {}
+    window.__ouvertures = [];
+    window.open = function(u, nom, options) { window.__ouvertures.push([String(u), nom, options]); return { focus() {} }; };
+  });
+  const pageErrors = await bootOffline(page);
+  const attendue = 'https://x.com/search?q=' + encodeURIComponent('"Montreal Canadiens" OR "Toronto Maple Leafs"') + '&f=live';
+
+  const mid = await page.evaluate((u) => {
+    const m = window.S.matches[0];
+    m.homeTeam = 'Montreal Canadiens'; m.awayTeam = 'Toronto Maple Leafs'; m.league = 'NHL';
+    window.addToMultivision(u, 'Canadiens', m.id);
+    window.openMultiviewTab();
+    return m.id;
+  }, origin + '/__faux-lecteur?a');
+  const bouton = page.locator('#mv-bar-reactions');
+  await expect.poll(() => bouton.evaluate((b) => b.hidden), { message: 'la vidéo choisie est un match : le bouton est là' }).toBe(false);
+  await bouton.click();
+  let ouvertures = await page.evaluate(() => window.__ouvertures);
+  expect(ouvertures.length).toBe(1);
+  expect(ouvertures[0][0]).toBe(attendue);
+  expect(ouvertures[0][1]).toBe('footy_reactions_x');
+  expect(ouvertures[0][2]).toMatch(/^popup=yes,left=\d+,top=\d+,width=\d+,height=\d+$/);
+
+  // La fiche du même match : le bouton à côté de Regarder ouvre la même recherche, dans la même fenêtre.
+  await page.evaluate((id) => { window.quitterLecteur(); window.openMod(window.S.matches.find((x) => x.id === id)); }, mid);
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await page.locator('#mbg .fiche-cta .btn-reactions').click();
+  ouvertures = await page.evaluate(() => window.__ouvertures);
+  expect(ouvertures.length).toBe(2);
+  expect(ouvertures[1].slice(0, 2)).toEqual([attendue, 'footy_reactions_x']);
+  // « Pas de liens vers le vrai site » tient toujours : un bouton, pas un lien.
+  expect(await page.locator('#mbg a[target="_blank"]').count()).toBe(0);
+  expect(pageErrors).toEqual([]);
+});

@@ -104,6 +104,10 @@ Fond aux couleurs des équipes ; blason, nom et ★ de chaque côté ; au centre
 
 Dessous, comme une page de film : un gros bouton blanc **Regarder** (triangle de lecture) qui lance la meilleure source de la liste (filtres de site compris), avec son nom à côté. À la télécommande ou à la manette, c'est lui qui a le focus à l'ouverture. Sans source : `Chercher des liens` (loupe), ou `Aucun lien pour l'instant`. Les blasons sont grands, le score en chiffres compacts.
 
+### 4.1 ter Réactions sur X (13 novembre 2026)
+
+À côté de **Regarder**, sur ordinateur, le bouton **Réactions sur X** ouvre la recherche en direct de X sur les deux équipes du match (les messages les plus récents d'abord) dans une fenêtre étroite posée contre le bord droit de l'écran. X ne se laisse pas afficher dans une autre page : c'est une fenêtre à part, qui utilise ta session X (connecté d'avance, tu lis tout et tu peux répondre). La recherche se modifie dans la fenêtre. Le même bouton (**Réactions**, une bulle) est dans la barre du lecteur, pour le match de la vidéo choisie ; il réutilise la même fenêtre. Absent sur téléphone, dans l'APK et sur la télé. Si le navigateur bloque la fenêtre, un message le dit.
+
 ### 4.1 bis Radio (31 octobre 2026)
 
 **Depuis le 11 novembre 2026, la section Radio n'a plus aucun lien vers une page** (« enlever liens vers les pages ») : chaque station est un bouton qui la fait jouer dans l'application (`▶ TSN 690 · TuneIn`). Une station dont on ne connaît que la page officielle (Sportsnet 590, la BBC, Sportschau, les flux de club…) n'est plus montrée, et un match qui n'a que celles-là dit « Aucune station à écouter ici pour ce match ». Ce qui suit décrit le registre des stations ; les liens qu'il mentionne ne sont plus affichés.

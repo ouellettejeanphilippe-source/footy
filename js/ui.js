@@ -22,6 +22,7 @@ import { sectionsParSport, idSectionSport } from './livesport.js';
 import { chargerChaines, sectionTele } from './chainestv.js';
 import { icone } from './icones.js';
 import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
+import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
@@ -1992,6 +1993,20 @@ export function openMod(m,col){
   cta.innerHTML = '<button type="button" class="btn-regarder" data-focus-depart onclick="regarderMeilleurFlux()">' + icone('play') + '<span>Regarder</span></button>'
       + '<span class="fiche-cta-info"></span>';
   body.insertBefore(cta, body.firstChild);
+
+  /* « Réactions » (13 novembre 2026, js/reactions.js) : la recherche en direct de X sur les équipes
+     du match, dans une fenêtre à côté. Ordinateur seulement ; rien pour un match sans nom. */
+  if (reactionsPossibles(window) && adresseReactionsX(m)) {
+    var reac = document.createElement('button');
+    reac.type = 'button';
+    reac.className = 'btn-reactions';
+    reac.title = 'Ce que les gens en disent sur X, en direct, dans une fenêtre à côté';
+    reac.innerHTML = icone('bulle') + '<span>Réactions sur X</span>';
+    reac.addEventListener('click', function() {
+      if (ouvrirReactionsX(m, window) === 'bloquee' && window.showToast) window.showToast('Le navigateur a bloqué la fenêtre : autorise les fenêtres pour ce site.');
+    });
+    cta.insertBefore(reac, cta.querySelector('.fiche-cta-info'));
+  }
 
   /* La radio (31 octobre 2026, js/radio.js) : la station TuneIn de chaque équipe quand elle
      existe, et pour tout match une recherche TuneIn / iHeartRadio par équipe. */

@@ -30,6 +30,7 @@ import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml, le
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 import { teinteDuMatch, appliquerTeinte } from './teinte.js';
 import { radiosDuMatch, stationAEcouter, stationsAEcouter, adressesDuFlux, fluxDeReponse, adresseSourceRadio, estSourceRadio, infoSourceRadio } from './radio.js';
+import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { radioEnCours, pauseRadio, surRadio, trouverFlux, fluxLisible, arreterRadio } from './radiodirect.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
@@ -2212,6 +2213,7 @@ export function setupMultivisionUI() {
       + bouton('id="mv-bar-seule" onclick="basculerSeule()" aria-pressed="false" title="Voir la vidéo choisie seule" aria-label="Voir la vidéo choisie seule" hidden', 'seule', 'Seule', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"', 'son', 'Son', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-radio" onclick="basculerSonRadio()" aria-pressed="false" title="Passer à la source radio du match" aria-label="Passer à la source radio du match" hidden', 'radio', 'Radio', 'mv-tb-ic-seul')
+      + bouton('id="mv-bar-reactions" onclick="reactionsDuLecteur()" title="Réactions sur X, en direct, dans une fenêtre à côté" aria-label="Réactions sur X, en direct, dans une fenêtre à côté" hidden', 'bulle', 'Réactions', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"', 'points', 'Vidéo', 'mv-tb-ic-seul')
       + '</div>'
       + '<span class="mv-bar-sep" aria-hidden="true"></span>'
@@ -2816,6 +2818,13 @@ function poserSon(v) {
     sonSur = v;
     applyMvAudioState();
     majBarreVideos();
+}
+/* Le bouton Réactions de la barre (js/reactions.js) : la recherche en direct de X sur le match de
+   la vidéo choisie, dans une fenêtre à côté. */
+export function reactionsDuLecteur() {
+    var etat = ouvrirReactionsX(matchDeLaTuileActive(), window);
+    if (etat === 'bloquee') showToast('Le navigateur a bloqué la fenêtre : autorise les fenêtres pour ce site.');
+    return etat;
 }
 /* Le bouton Radio / Télé : rend 'radio' ou 'tele', la source de la tuile choisie après le geste. */
 export function basculerSonRadio() {
@@ -5192,7 +5201,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v125';
+export var VERSION_APP = 'sports-guide-v126';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
@@ -5767,6 +5776,9 @@ function majBarreVideos() {
         if (icR) icR.innerHTML = icone(surRadioMaintenant ? 'tele' : 'radio');
         if (lbR) lbR.textContent = surRadioMaintenant ? 'Télé' : 'Radio';
     }
+    /* Réactions sur X : sur ordinateur, quand la vidéo choisie est un match qui a un nom. */
+    var btnReac = document.getElementById('mv-bar-reactions');
+    if (btnReac) btnReac.hidden = !(reactionsPossibles(window) && adresseReactionsX(matchDeLaTuileActive()));
     ['mv-src-prev', 'mv-src-next', 'mv-bar-son', 'mv-bar-video-menu'].forEach(function(id) {
         var b = document.getElementById(id);
         if (b) b.disabled = !s;
@@ -5980,6 +5992,7 @@ window.telechargerExtension = telechargerExtensionGuide;
 window.changerSourceActive = changerSourceActive;
 window.basculerSonActif = basculerSonActif;
 window.basculerSonRadio = basculerSonRadio;
+window.reactionsDuLecteur = reactionsDuLecteur;
 window.passerTuileALaRadio = passerTuileALaRadio;
 window.revenirALaTele = revenirALaTele;
 window.tuileEnRadio = tuileEnRadio;

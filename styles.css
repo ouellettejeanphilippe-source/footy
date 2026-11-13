@@ -1549,6 +1549,11 @@ body.cards-poster .match-card .prime-thumbnail { aspect-ratio: 4 / 3; }
 .btn-regarder:hover, .btn-regarder:focus-visible { background: #fff; transform: scale(1.03); }
 .btn-regarder:disabled { background: var(--s3); color: var(--t3); box-shadow: none; opacity: 1; }
 .fiche-cta-info { color: var(--t2); font-size: 14px; }
+/* « Réactions sur X » (13 novembre 2026, js/reactions.js) : le second bouton de la fiche, discret
+   à côté de Regarder. */
+.btn-reactions { appearance: none; display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 22px; border: 1px solid var(--s3); border-radius: var(--r-md); background: var(--s2); color: var(--t1); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 200ms; }
+.btn-reactions .ico { width: 17px; height: 17px; }
+.btn-reactions:hover, .btn-reactions:focus-visible { background: var(--s3); outline: 2px solid var(--accent); outline-offset: 2px; }
 /* La radio de la fiche (31 octobre 2026, js/radio.js) : une ligne par équipe, des liens
    en pastilles ; chaque lien est un arrêt de la manette, le focus se voit en entier. */
 .fiche-radio { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; margin: 0 0 8px; border-radius: var(--r-md); background: var(--s2); }
