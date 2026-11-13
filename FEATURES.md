@@ -106,7 +106,11 @@ Dessous, comme une page de film : un gros bouton blanc **Regarder** (triangle de
 
 ### 4.1 ter Réactions sur X (13 novembre 2026)
 
-À côté de **Regarder**, sur ordinateur, le bouton **Réactions sur X** ouvre la recherche en direct de X sur les deux équipes du match (les messages les plus récents d'abord) dans une fenêtre étroite posée contre le bord droit de l'écran. X ne se laisse pas afficher dans une autre page : c'est une fenêtre à part, qui utilise ta session X (connecté d'avance, tu lis tout et tu peux répondre). La recherche se modifie dans la fenêtre. Le même bouton (**Réactions**, une bulle) est dans la barre du lecteur, pour le match de la vidéo choisie ; il réutilise la même fenêtre. Absent sur téléphone, dans l'APK et sur la télé. Si le navigateur bloque la fenêtre, un message le dit.
+À côté de **Regarder**, sur ordinateur, le bouton **Réactions sur X** ouvre la recherche en direct de X sur les deux équipes du match (les messages les plus récents d'abord) dans une fenêtre étroite posée contre le bord droit de l'écran. X ne se laisse pas afficher dans une autre page : c'est une fenêtre à part, qui utilise ta session X (connecté d'avance, tu lis tout et tu peux répondre). La recherche se modifie dans la fenêtre. Absent sur téléphone, dans l'APK et sur la télé. Si le navigateur bloque la fenêtre, un message le dit.
+
+**Le fil en direct, dans le lecteur.** Le bouton **Réactions** (une bulle) de la barre ouvre le panneau de droite sur l'onglet **Réactions** : les messages publics de **Bluesky** sur le match de la vidéo choisie, les plus récents en haut, relus toutes les 20 secondes. Du texte seulement (auteur, âge, message), sans compte à créer. Le fil ne garde que les messages qui citent les deux équipes, un mot-clic d'équipe (`#GoHabsGo`) ou une équipe et la ligue ; il change de match avec la vidéo choisie. **Voir sur X** (ordinateur) ouvre la recherche de X à côté. Un second clic sur la bulle ferme le panneau.
+
+**Panneau ouvert** (stats, scores ou réactions), les boutons du lecteur restent sous les vidéos : la barre s'arrête au bord du panneau. Les stats du panneau sont relues **chaque minute** (cinq avant), sans clignoter.
 
 ### 4.1 bis Radio (31 octobre 2026)
 

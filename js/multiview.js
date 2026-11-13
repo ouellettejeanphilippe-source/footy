@@ -30,7 +30,8 @@ import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml, le
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 import { teinteDuMatch, appliquerTeinte } from './teinte.js';
 import { radiosDuMatch, stationAEcouter, stationsAEcouter, adressesDuFlux, fluxDeReponse, adresseSourceRadio, estSourceRadio, infoSourceRadio } from './radio.js';
-import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
+import { adresseReactionsX, equipesAChercher, reactionsPossibles, ouvrirReactionsX, chargerFil, fusionnerFil, filHtml, INTERVALLE_FIL_MS } from './reactions.js';
+import { TEAM_DATA } from './teams.js';
 import { radioEnCours, pauseRadio, surRadio, trouverFlux, fluxLisible, arreterRadio } from './radiodirect.js';
 
 /* ══ MULTIVISION (SPLIT SCREEN) ═════════ */
@@ -565,6 +566,7 @@ export var globalStatsInterval = null;
 export function setGlobalStatsInterval(v) { globalStatsInterval = v; window.globalStatsInterval = v; }
 export var activeMvStatsCards = [];
 
+export var INTERVALLE_STATS_MS = 60000;
 export function toggleMvGameMode() {
     mvGameModeActive = !mvGameModeActive;
     var mvContainer = document.getElementById('mv-container');
@@ -580,11 +582,13 @@ export function toggleMvGameMode() {
             var headerHtml = '<div style="display:flex; border-bottom:1px solid rgba(255,255,255,0.1); padding:0;">' +
                              '<button id="gm-tab-stats" class="gm-tab active" onclick="switchGmTab(\'stats\')" style="flex:1; background:none; border:none; color:#fff; padding:15px 0; cursor:pointer; font-weight:bold; border-bottom: 2px solid var(--accent);">Stats du Match</button>' +
                              '<button id="gm-tab-scores" class="gm-tab" onclick="switchGmTab(\'scores\')" style="flex:1; background:none; border:none; color:var(--muted); padding:15px 0; cursor:pointer; font-weight:bold; border-bottom: 2px solid transparent;">Scores Live</button>' +
+                             '<button id="gm-tab-reactions" class="gm-tab" onclick="switchGmTab(\'reactions\')" style="flex:1; background:none; border:none; color:var(--muted); padding:15px 0; cursor:pointer; font-weight:bold; border-bottom: 2px solid transparent;">Réactions</button>' +
                              '</div>';
 
             var contentHtml = '<div id="gm-content-wrapper" style="flex:1; overflow-y:auto; padding:15px;">' +
                               '<div id="mv-stats-content" style="color:var(--muted); font-size:13px; text-align:center; padding-top:20px;">Chargement...</div>' +
                               '<div id="mv-scores-content" style="display:none; color:var(--muted); font-size:13px; text-align:center; padding-top:20px;">Chargement...</div>' +
+                              '<div id="mv-reactions-content" style="display:none;"></div>' +
                               '</div>';
 
             statsSidebar.innerHTML = headerHtml + contentHtml;
@@ -598,9 +602,13 @@ export function toggleMvGameMode() {
             document.getElementById('mv-stats-sidebar').style.width = '350px';
         }
 
-        updateGmCurrentTab();
+        /* Le panneau ouvert, la barre de commandes reste sous les vidéos (13 novembre 2026,
+           « boutons du vidéo restent dans zone vidéo, pas dans side bar » : styles.css, mv-panneau). */
+        if (mvContainer) mvContainer.classList.add('mv-panneau');
+        switchGmTab(gmCurrentTab);
         if (typeof mvGameModeInterval !== 'undefined' && mvGameModeInterval) clearInterval(mvGameModeInterval);
-        mvGameModeInterval = setInterval(updateGmCurrentTab, 300000); // Update every 5m
+        /* « Quand sidebar ouverte, stats mises à jour chaque minute » (13 novembre 2026 ; cinq avant). */
+        mvGameModeInterval = setInterval(function() { if (gmCurrentTab !== 'reactions') updateGmCurrentTab(); }, INTERVALLE_STATS_MS);
     } else {
 
         var statsSidebar = document.getElementById('mv-stats-sidebar');
@@ -608,6 +616,8 @@ export function toggleMvGameMode() {
             statsSidebar.style.display = 'none';
             statsSidebar.style.width = '0px';
         }
+        if (mvContainer) mvContainer.classList.remove('mv-panneau');
+        arreterFilReactions();
 
         if (mvGameModeInterval) {
             clearInterval(mvGameModeInterval);
@@ -617,26 +627,63 @@ export function toggleMvGameMode() {
 }
 
 export function switchGmTab(tab) {
-    gmCurrentTab = tab;
+    gmCurrentTab = tab === 'scores' || tab === 'reactions' ? tab : 'stats';
+    var onglets = { stats: ['gm-tab-stats', 'mv-stats-content'], scores: ['gm-tab-scores', 'mv-scores-content'], reactions: ['gm-tab-reactions', 'mv-reactions-content'] };
+    Object.keys(onglets).forEach(function(k) {
+        var bouton = document.getElementById(onglets[k][0]), contenu = document.getElementById(onglets[k][1]);
+        var actif = k === gmCurrentTab;
+        if (bouton) { bouton.style.color = actif ? '#fff' : 'var(--muted)'; bouton.style.borderBottomColor = actif ? 'var(--accent)' : 'transparent'; }
+        if (contenu) contenu.style.display = actif ? 'block' : 'none';
+    });
+    if (gmCurrentTab !== 'reactions') arreterFilReactions();
+    updateGmCurrentTab();
+    majBarreVideos();
+}
 
-    var tabStats = document.getElementById('gm-tab-stats');
-    var tabScores = document.getElementById('gm-tab-scores');
-    var contentStats = document.getElementById('mv-stats-content');
-    var contentScores = document.getElementById('mv-scores-content');
-
-    if (tab === 'stats') {
-        if(tabStats) { tabStats.style.color = '#fff'; tabStats.style.borderBottomColor = 'var(--accent)'; }
-        if(tabScores) { tabScores.style.color = 'var(--muted)'; tabScores.style.borderBottomColor = 'transparent'; }
-        if(contentStats) contentStats.style.display = 'block';
-        if(contentScores) contentScores.style.display = 'none';
-        updateMvGameModeStats();
-    } else {
-        if(tabScores) { tabScores.style.color = '#fff'; tabScores.style.borderBottomColor = 'var(--accent)'; }
-        if(tabStats) { tabStats.style.color = 'var(--muted)'; tabStats.style.borderBottomColor = 'transparent'; }
-        if(contentScores) contentScores.style.display = 'block';
-        if(contentStats) contentStats.style.display = 'none';
-        updateGmScoresTab();
-    }
+/* ── Le fil des réactions (13 novembre 2026, js/reactions.js) : l'onglet « Réactions » du panneau,
+   les messages publics de Bluesky sur le match de la vidéo choisie, relus toutes les 20 s tant
+   que l'onglet est affiché et la page visible. */
+var fil = { mid: null, posts: [], minuterie: null, enCours: false, erreur: false };
+function ficheReaction(nom) {
+    var d = TEAM_DATA[String(nom || '').toLowerCase().trim()] || null;
+    return { nom: nom, surnom: d && d.teamName, ville: d && d.city, alias: d && d.aliases };
+}
+function arreterFilReactions() {
+    if (fil.minuterie) { clearInterval(fil.minuterie); fil.minuterie = null; }
+}
+function rendreFilReactions(m) {
+    var c = document.getElementById('mv-reactions-content');
+    if (!c) return;
+    if (!m) { c.innerHTML = '<div class="fil-vide">Choisis la vidéo d\'un match pour voir ce que les gens en disent.</div>'; return; }
+    var tete = '<div class="fil-entete"><div><div class="fil-titre">' + esc(m.homeTeam) + (m.awayTeam ? ' – ' + esc(m.awayTeam) : '') + '</div>'
+        + '<div class="fil-source">En direct de Bluesky · relu toutes les ' + Math.round(INTERVALLE_FIL_MS / 1000) + ' s</div></div>'
+        + (reactionsPossibles(window) ? '<button type="button" class="fil-x" onclick="reactionsXDuLecteur()" title="La recherche en direct de X, dans une fenêtre à côté">Voir sur X</button>' : '')
+        + '</div>';
+    var corps = fil.erreur && !fil.posts.length ? '<div class="fil-vide">Bluesky ne répond pas pour l\'instant. Nouvel essai dans quelques secondes.</div>'
+        : (!fil.posts.length && fil.enCours ? '<div class="fil-vide">Chargement…</div>' : filHtml(fil.posts, esc, Date.now()));
+    c.innerHTML = tete + '<div class="fil-liste" aria-live="polite">' + corps + '</div>';
+}
+export function majFilReactions() {
+    if (!mvGameModeActive || gmCurrentTab !== 'reactions') { arreterFilReactions(); return Promise.resolve(null); }
+    if (!fil.minuterie) fil.minuterie = setInterval(function() { if (!document.hidden) majFilReactions(); }, INTERVALLE_FIL_MS);
+    var m = matchDeLaTuileActive();
+    var mid = m ? String(m.id) : null;
+    if (mid !== fil.mid) { fil.mid = mid; fil.posts = []; fil.erreur = false; }
+    if (!m || !adresseReactionsX(m)) { rendreFilReactions(null); return Promise.resolve(null); }
+    if (fil.enCours) return Promise.resolve(null);
+    fil.enCours = true;
+    rendreFilReactions(m);
+    /* Deux équipes : une requête chacune, sur son surnom. Un seul nom (course, gala) : ce nom. */
+    var noms = equipesAChercher(m);
+    var fiches = noms.length >= 2 ? noms.map(ficheReaction) : [{ nom: noms[0] }];
+    return chargerFil(fiches, m.league, function(u, o) { return fetch(u, o); }).then(function(r) {
+        fil.enCours = false;
+        if (fil.mid !== mid) return null;
+        fil.erreur = r.erreur;
+        fil.posts = fusionnerFil(fil.posts, r.posts, undefined, Date.now());
+        rendreFilReactions(m);
+        return fil.posts;
+    }, function() { fil.enCours = false; return null; });
 }
 
 export function toggleGmPinMatch(matchId, e) {
@@ -715,7 +762,9 @@ export function updateGmScoresTab() {
 }
 
 export function updateGmCurrentTab() {
-    if (gmCurrentTab === 'stats') {
+    if (gmCurrentTab === 'reactions') {
+        majFilReactions();
+    } else if (gmCurrentTab === 'stats') {
         updateMvGameModeStats();
     } else {
         updateGmScoresTab();
@@ -746,7 +795,7 @@ export function openPinnedStats(matchId) {
 }
 
 /* Les effectifs d'un match (domicile, extérieur), une requête par équipe et par match :
-   le panneau se rafraîchit toutes les 5 minutes, l'effectif ne change pas. Un échec
+   le panneau se rafraîchit chaque minute, l'effectif ne change pas. Un échec
    n'est pas retenu. */
 var effectifsParMatch = {};
 function effectifsDuMatch(m, idDom, idExt) {
@@ -829,12 +878,17 @@ export function updateMvGameModeStats() {
         carouselHtml += (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + esc(m.score[0]) + ' - ' + esc(m.score[1]) + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>');
         carouselHtml += '<div style="font-size:12px; color:var(--muted); text-align:center;">' + esc(m.flag) + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "\'" : '') + '</div>';
 
-        carouselHtml += '<div id="mv-stat-body-' + m.id + '"><div style="text-align:center; margin-top:20px; color:var(--muted);">Chargement des stats...</div></div>';
+        /* Relu chaque minute : ce qui était affiché reste jusqu'à la réponse, sans clignoter. */
+        var ancienCorps = document.getElementById('mv-stat-body-' + m.id);
+        carouselHtml += '<div id="mv-stat-body-' + m.id + '">' + (ancienCorps && !/Chargement des stats/.test(ancienCorps.innerHTML) ? ancienCorps.innerHTML : '<div style="text-align:center; margin-top:20px; color:var(--muted);">Chargement des stats...</div>') + '</div>';
         carouselHtml += '</div>';
     });
 
     carouselHtml += '</div>';
+    var ancienCarrousel = document.getElementById('mv-stats-carousel');
+    var defilement = ancienCarrousel ? ancienCarrousel.scrollLeft : 0;
     content.innerHTML = pinnedHtml + carouselHtml;
+    if (defilement) { var nouveauCarrousel = document.getElementById('mv-stats-carousel'); if (nouveauCarrousel) nouveauCarrousel.scrollLeft = defilement; }
 
     // Fetch stats for all cards
     matchCardsToFetch.forEach(function(m) {
@@ -2213,7 +2267,7 @@ export function setupMultivisionUI() {
       + bouton('id="mv-bar-seule" onclick="basculerSeule()" aria-pressed="false" title="Voir la vidéo choisie seule" aria-label="Voir la vidéo choisie seule" hidden', 'seule', 'Seule', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-son" onclick="basculerSonActif()" aria-pressed="false" title="Couper le son de la vidéo choisie" aria-label="Couper le son de la vidéo choisie"', 'son', 'Son', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-radio" onclick="basculerSonRadio()" aria-pressed="false" title="Passer à la source radio du match" aria-label="Passer à la source radio du match" hidden', 'radio', 'Radio', 'mv-tb-ic-seul')
-      + bouton('id="mv-bar-reactions" onclick="reactionsDuLecteur()" title="Réactions sur X, en direct, dans une fenêtre à côté" aria-label="Réactions sur X, en direct, dans une fenêtre à côté" hidden', 'bulle', 'Réactions', 'mv-tb-ic-seul')
+      + bouton('id="mv-bar-reactions" onclick="reactionsDuLecteur()" aria-pressed="false" title="Réactions en direct sur le match" aria-label="Réactions en direct sur le match" hidden', 'bulle', 'Réactions', 'mv-tb-ic-seul')
       + bouton('id="mv-bar-video-menu" onclick="ouvrirMenuVideoActive(this, event)" aria-haspopup="menu" aria-expanded="false" title="Options de la vidéo choisie" aria-label="Options de la vidéo choisie"', 'points', 'Vidéo', 'mv-tb-ic-seul')
       + '</div>'
       + '<span class="mv-bar-sep" aria-hidden="true"></span>'
@@ -2819,9 +2873,17 @@ function poserSon(v) {
     applyMvAudioState();
     majBarreVideos();
 }
-/* Le bouton Réactions de la barre (js/reactions.js) : la recherche en direct de X sur le match de
-   la vidéo choisie, dans une fenêtre à côté. */
+/* Le bouton Réactions de la barre (js/reactions.js) : ouvre le panneau sur le fil en direct du
+   match de la vidéo choisie, ou le referme s'il y est déjà. Rend l'état du fil : true = affiché. */
 export function reactionsDuLecteur() {
+    if (mvGameModeActive && gmCurrentTab === 'reactions') { toggleMvGameMode(); majBarreVideos(); return false; }
+    gmCurrentTab = 'reactions';
+    if (!mvGameModeActive) toggleMvGameMode(); else switchGmTab('reactions');
+    majBarreVideos();
+    return true;
+}
+/* « Voir sur X », dans le fil : la recherche en direct de X dans une fenêtre à côté. */
+export function reactionsXDuLecteur() {
     var etat = ouvrirReactionsX(matchDeLaTuileActive(), window);
     if (etat === 'bloquee') showToast('Le navigateur a bloqué la fenêtre : autorise les fenêtres pour ce site.');
     return etat;
@@ -5776,9 +5838,17 @@ function majBarreVideos() {
         if (icR) icR.innerHTML = icone(surRadioMaintenant ? 'tele' : 'radio');
         if (lbR) lbR.textContent = surRadioMaintenant ? 'Télé' : 'Radio';
     }
-    /* Réactions sur X : sur ordinateur, quand la vidéo choisie est un match qui a un nom. */
+    /* Réactions : quand la vidéo choisie est un match qui a un nom, ou que le fil est ouvert. */
     var btnReac = document.getElementById('mv-bar-reactions');
-    if (btnReac) btnReac.hidden = !(reactionsPossibles(window) && adresseReactionsX(matchDeLaTuileActive()));
+    if (btnReac) {
+        var filOuvert = mvGameModeActive && gmCurrentTab === 'reactions';
+        btnReac.hidden = !(filOuvert || adresseReactionsX(matchDeLaTuileActive()));
+        btnReac.classList.toggle('on', filOuvert);
+        btnReac.setAttribute('aria-pressed', filOuvert ? 'true' : 'false');
+        /* La vidéo choisie a changé : le fil suit. */
+        var mFil = matchDeLaTuileActive();
+        if (filOuvert && (mFil ? String(mFil.id) : null) !== fil.mid) majFilReactions();
+    }
     ['mv-src-prev', 'mv-src-next', 'mv-bar-son', 'mv-bar-video-menu'].forEach(function(id) {
         var b = document.getElementById(id);
         if (b) b.disabled = !s;
@@ -5993,6 +6063,8 @@ window.changerSourceActive = changerSourceActive;
 window.basculerSonActif = basculerSonActif;
 window.basculerSonRadio = basculerSonRadio;
 window.reactionsDuLecteur = reactionsDuLecteur;
+window.reactionsXDuLecteur = reactionsXDuLecteur;
+window.majFilReactions = majFilReactions;
 window.passerTuileALaRadio = passerTuileALaRadio;
 window.revenirALaTele = revenirALaTele;
 window.tuileEnRadio = tuileEnRadio;

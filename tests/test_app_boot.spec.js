@@ -3807,14 +3807,28 @@ test('Live : la section « Télé » ne montre que les chaînes qui répondent, 
   expect(pageErrors).toEqual([]);
 });
 
-/* « Avoir un genre Twitter en direct, les commentaires des gens » (13 novembre 2026, js/reactions.js) :
-   X refuse d'être encadré, alors la recherche en direct de X sur les équipes du match s'ouvre dans
-   une fenêtre étroite à côté, depuis la barre du lecteur et depuis la fiche. */
-test('Réactions sur X : la barre du lecteur et la fiche ouvrent la recherche en direct du match dans une fenêtre à côté', async ({ page }) => {
+/* « Avoir un genre Twitter en direct, les commentaires des gens », puis « j'aimerais fil en direct »
+   (13 novembre 2026, js/reactions.js). Le bouton Réactions de la barre ouvre le panneau du lecteur
+   sur le fil Bluesky du match (réseau coupé : la recherche est servie par un `fetch` de test) ;
+   « Voir sur X » et le bouton de la fiche ouvrent la recherche en direct de X dans une fenêtre à
+   côté (X refuse d'être encadré). « Boutons du vidéo restent dans zone vidéo, pas dans side bar » :
+   panneau ouvert, la barre de commandes s'arrête à son bord. */
+test('Réactions : le fil en direct dans le panneau du lecteur, la barre hors du panneau, X dans une fenêtre à côté', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
   await page.addInitScript(() => {
     try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {}
     window.__ouvertures = [];
     window.open = function(u, nom, options) { window.__ouvertures.push([String(u), nom, options]); return { focus() {} }; };
+    window.__bluesky = [];
+    const vrai = window.fetch.bind(window);
+    window.fetch = (u, o) => {
+      const s = String(u && u.url || u);
+      if (s.indexOf('https://api.bsky.app/') !== 0) return vrai(u, o);
+      const q = new URL(s).searchParams.get('q');
+      window.__bluesky.push(q);
+      const p = (id, texte) => ({ uri: 'at://' + q + '/' + id + '/' + window.__bluesky.length, record: { text: texte, createdAt: new Date().toISOString() }, author: { handle: 'fan.bsky.social', displayName: 'Fan <b>' + q + '</b>' } });
+      return Promise.resolve(new Response(JSON.stringify({ posts: [p(1, 'Quel but ! Canadiens 1, Maple Leafs 0'), p(2, 'Les ' + q + ' sont des gens polis')] }), { status: 200 }));
+    };
   });
   const pageErrors = await bootOffline(page);
   const attendue = 'https://x.com/search?q=' + encodeURIComponent('"Montreal Canadiens" OR "Toronto Maple Leafs"') + '&f=live';
@@ -3828,12 +3842,56 @@ test('Réactions sur X : la barre du lecteur et la fiche ouvrent la recherche en
   }, origin + '/__faux-lecteur?a');
   const bouton = page.locator('#mv-bar-reactions');
   await expect.poll(() => bouton.evaluate((b) => b.hidden), { message: 'la vidéo choisie est un match : le bouton est là' }).toBe(false);
+  const barreAvant = await page.locator('#mv-toolbar').evaluate((b) => Math.round(b.getBoundingClientRect().right));
+  expect(barreAvant).toBe(1400);
+
+  // Le bouton ouvre le panneau sur l'onglet Réactions : une requête par équipe, sur son surnom.
   await bouton.click();
+  const messages = page.locator('#mv-reactions-content .fil-msg');
+  await expect(messages).toHaveCount(2);
+  expect((await page.evaluate(() => window.__bluesky)).sort()).toEqual(['Canadiens', 'Maple Leafs']);
+  await expect(messages.first()).toContainText('Quel but !');
+  await expect(page.locator('#mv-reactions-content')).not.toContainText('gens polis');
+  expect(await page.locator('#mv-reactions-content a, #mv-reactions-content img, #mv-reactions-content .fil-auteur b').count(), 'du texte seulement').toBe(0);
+  await expect(bouton).toHaveAttribute('aria-pressed', 'true');
+
+  // La barre de commandes s'arrête au bord du panneau : aucun bouton sous lui.
+  const geo = await page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect();
+    return { barre: Math.round(r('#mv-toolbar').right), panneau: Math.round(r('#mv-stats-sidebar').left),
+      dernier: Math.round(Math.max(...[...document.querySelectorAll('#mv-toolbar .mv-tb-btn')].filter((b) => b.offsetParent).map((b) => b.getBoundingClientRect().right))) };
+  });
+  expect(geo.panneau).toBe(1050);
+  expect(geo.barre).toBe(geo.panneau);
+  expect(geo.dernier).toBeLessThanOrEqual(geo.panneau);
+
+  // Le fil se relit : les nouveaux messages s'ajoutent en tête, sans doublon.
+  await page.evaluate(() => window.majFilReactions());
+  await expect(messages).toHaveCount(4);
+
+  // « Voir sur X » : la recherche en direct de X, dans une fenêtre à côté.
+  await page.locator('#mv-reactions-content .fil-x').click();
   let ouvertures = await page.evaluate(() => window.__ouvertures);
   expect(ouvertures.length).toBe(1);
   expect(ouvertures[0][0]).toBe(attendue);
   expect(ouvertures[0][1]).toBe('footy_reactions_x');
   expect(ouvertures[0][2]).toMatch(/^popup=yes,left=\d+,top=\d+,width=\d+,height=\d+$/);
+
+  // Les autres onglets du panneau marchent toujours, et le fil s'arrête.
+  await page.locator('#gm-tab-stats').click();
+  await expect(page.locator('#mv-stats-content')).toBeVisible();
+  await expect(page.locator('#mv-reactions-content')).toBeHidden();
+  await expect(bouton).toHaveAttribute('aria-pressed', 'false');
+  const avant = (await page.evaluate(() => window.__bluesky)).length;
+  await page.evaluate(() => window.majFilReactions());
+  expect((await page.evaluate(() => window.__bluesky)).length, 'plus de requête hors de l\'onglet').toBe(avant);
+
+  // Le bouton rouvre le fil, un second clic ferme le panneau et rend sa largeur à la barre.
+  await bouton.click();
+  await expect(page.locator('#mv-reactions-content')).toBeVisible();
+  await bouton.click();
+  await expect(page.locator('#mv-stats-sidebar')).toBeHidden();
+  expect(await page.locator('#mv-toolbar').evaluate((b) => Math.round(b.getBoundingClientRect().right))).toBe(1400);
 
   // La fiche du même match : le bouton à côté de Regarder ouvre la même recherche, dans la même fenêtre.
   await page.evaluate((id) => { window.quitterLecteur(); window.openMod(window.S.matches.find((x) => x.id === id)); }, mid);

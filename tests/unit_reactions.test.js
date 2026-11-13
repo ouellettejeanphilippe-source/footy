@@ -74,3 +74,88 @@ test('branchement : module sans import, précaché, bouton dans la barre du lect
   const mv = fs.readFileSync(path.join(racine, 'js', 'multiview.js'), 'utf8');
   assert.ok(mv.includes('id="mv-bar-reactions"') && mv.includes('window.reactionsDuLecteur = reactionsDuLecteur'));
 });
+
+/* ── Le fil en direct (« j'aimerais fil en direct ») : Bluesky, une requête par équipe. ── */
+const habs = { nom: 'Montreal Canadiens', surnom: 'Canadiens', ville: 'Montreal', alias: ['habs', 'mtl', 'mc'] };
+const bruins = { nom: 'Boston Bruins', surnom: 'Bruins', ville: 'Boston', alias: ['bos'] };
+const post = (uri, texte, date, plus) => Object.assign({ uri, record: { text: texte, createdAt: new Date(date).toISOString() }, author: { handle: 'a.bsky.social', displayName: 'Alex' } }, plus || {});
+
+test('le terme cherché est le surnom, sinon le nom entier entre guillemets', () => {
+  assert.strictEqual(R.termeDeRecherche(habs), 'Canadiens');
+  assert.strictEqual(R.termeDeRecherche({ nom: 'Las Vegas Grand Prix' }), '"Las Vegas Grand Prix"');
+  assert.strictEqual(R.termeDeRecherche({}), '');
+  const u = new URL(R.adresseBluesky('Canadiens'));
+  assert.strictEqual(u.origin + u.pathname, R.API_BLUESKY);
+  assert.strictEqual(u.searchParams.get('q'), 'Canadiens');
+  assert.strictEqual(u.searchParams.get('sort'), 'latest');
+});
+
+test('estPertinent : les deux équipes, ou un mot-clic d\'équipe, ou une équipe et la ligue', () => {
+  const d = R.jetonsDEquipe(habs), v = R.jetonsDEquipe(bruins);
+  assert.ok(d.includes('habs') && d.includes('montreal') && !d.includes('mc'), 'alias de deux lettres écarté');
+  assert.strictEqual(R.estPertinent('Bruins were starting to swarm but the Habs get out of it', d, v, 'NHL'), true);
+  assert.strictEqual(R.estPertinent('Incredible first period from Fowler #gohabsgo', d, v, 'NHL'), true);
+  assert.strictEqual(R.estPertinent('Quel match des Canadiens ce soir en NHL', d, v, 'NHL'), true);
+  assert.strictEqual(R.estPertinent('Les Canadiens paient trop d\'impôts', d, v, 'NHL'), false, 'un surnom est aussi un mot courant');
+  assert.strictEqual(R.estPertinent('Montréal sous la neige', d, v, 'NHL'), false);
+  assert.strictEqual(R.estPertinent('Bruinsmania', d, v, 'NHL'), false, 'mot entier seulement');
+  assert.strictEqual(R.estPertinent('n\'importe quoi', d, [], 'F1'), true, 'un seul nom : pas de tri');
+});
+
+test('lireBluesky : texte aplati, messages étiquetés, vides ou sans date écartés', () => {
+  const liste = R.lireBluesky({ posts: [
+    post('at://1', 'But  de\nSuzuki !', 1000),
+    post('at://2', 'contenu sensible', 2000, { labels: [{ val: 'porn' }] }),
+    post('at://3', '   ', 3000),
+    { uri: 'at://4', record: { text: 'sans date' } },
+    post('at://5', 'auteur étiqueté', 5000, { author: { handle: 'x', labels: [{ val: 'spam' }] } }),
+    null
+  ] });
+  assert.deepStrictEqual(liste, [{ id: 'at://1', auteur: 'Alex', pseudo: 'a.bsky.social', texte: 'But de Suzuki !', date: 1000 }]);
+  assert.deepStrictEqual(R.lireBluesky(null), []);
+  assert.deepStrictEqual(R.lireBluesky({ posts: 'non' }), []);
+});
+
+test('fusionnerFil : sans doublon, récents d\'abord, borné, le futur ramené à maintenant', () => {
+  const a = { id: 'a', date: 100 }, b = { id: 'b', date: 300 }, c = { id: 'c', date: 200 }, futur = { id: 'f', date: 9999 };
+  assert.deepStrictEqual(R.fusionnerFil([a, b], [c, b]).map((p) => p.id), ['b', 'c', 'a']);
+  assert.deepStrictEqual(R.fusionnerFil([a, b], [c], 2).map((p) => p.id), ['b', 'c']);
+  assert.strictEqual(R.fusionnerFil([a], [futur], 10, 500)[0].date, 500);
+});
+
+test('filHtml : du texte échappé, ni lien ni image ; l\'âge en clair', () => {
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = R.filHtml([{ id: '1', auteur: '<b>Al</b>', texte: 'voir https://x.test <img src=x onerror=1>', date: 0 }], esc, 125000);
+  assert.ok(!/<a\b|<img\b|<b>/.test(html), html);
+  assert.ok(html.includes('2 min') && html.includes('&lt;img'));
+  assert.match(R.filHtml([], esc, 0), /fil-vide/);
+  assert.strictEqual(R.ageCourt(5000), 'à l\'instant');
+  assert.strictEqual(R.ageCourt(2 * 3600e3), '2 h');
+});
+
+test('chargerFil : une requête par équipe, tri de pertinence, une panne partielle ne vide pas le fil', async () => {
+  const demandes = [];
+  const lire = (u) => {
+    const q = new URL(u).searchParams.get('q');
+    demandes.push(q);
+    if (q === 'Bruins') return Promise.reject(new Error('panne'));
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ posts: [
+      post('at://1', 'Habs 2, Bruins 0', 2000), post('at://2', 'Les Canadiens votent', 3000), post('at://3', '#GoHabsGo', 1000)] }) });
+  };
+  const r = await R.chargerFil([habs, bruins], 'NHL', lire);
+  assert.deepStrictEqual(demandes.sort(), ['Bruins', 'Canadiens']);
+  assert.deepStrictEqual(r.posts.map((p) => p.id), ['at://1', 'at://3']);
+  assert.strictEqual(r.erreur, false);
+  const tout = await R.chargerFil([habs, bruins], 'NHL', () => Promise.resolve({ ok: false }));
+  assert.deepStrictEqual(tout, { posts: [], erreur: true });
+  const course = await R.chargerFil([{ nom: 'Las Vegas Grand Prix' }], 'F1', () => Promise.resolve({ ok: true, json: () => Promise.resolve({ posts: [post('at://9', 'Quel départ', 1)] }) }));
+  assert.strictEqual(course.posts.length, 1, 'un seul nom : tout est gardé');
+});
+
+test('le panneau du lecteur : stats relues chaque minute, barre arrêtée au bord du panneau', () => {
+  const mv = fs.readFileSync(path.join(racine, 'js', 'multiview.js'), 'utf8');
+  assert.match(mv, /INTERVALLE_STATS_MS = 60000/);
+  assert.ok(!/setInterval\(updateGmCurrentTab, 300000\)/.test(mv));
+  assert.match(fs.readFileSync(path.join(racine, 'js', 'config.js'), 'utf8'), /\}, 60000\)\);/);
+  assert.match(fs.readFileSync(path.join(racine, 'styles.css'), 'utf8'), /mv-panneau[^{]*#mv-toolbar \{ right: 350px; \}/);
+});

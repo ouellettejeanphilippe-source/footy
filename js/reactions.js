@@ -75,3 +75,136 @@ export function ouvrirReactionsX(m, w) {
     try { f.focus(); } catch (e) {}
     return 'ouverte';
 }
+
+/* ── Le fil en direct (13 novembre 2026, « j'aimerais fil en direct ») ─────────────────────────
+   Mesuré hors de l'application le 13 novembre 2026 : la recherche publique de Bluesky
+   (`api.bsky.app/xrpc/app.bsky.feed.searchPosts`, sans compte, `Access-Control-Allow-Origin: *`)
+   répond au navigateur, environ un message par minute pour une équipe de la LNH qui joue ;
+   `public.api.bsky.app` refuse (403), Reddit aussi (403 sans compte), X n'a pas d'accès gratuit.
+   La recherche ne comprend pas `OR` (les deux mots sont exigés) : une requête par équipe, sur son
+   surnom (« Canadiens », « Stars »), puis un tri de pertinence, parce qu'un surnom est souvent
+   un mot courant. */
+
+export var API_BLUESKY = 'https://api.bsky.app/xrpc/app.bsky.feed.searchPosts';
+export var INTERVALLE_FIL_MS = 20000;
+export var FIL_MAX = 80;
+
+export function sansAccent(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/* Ce qu'on cherche pour une équipe : son surnom quand la base en a un, sinon son nom entier
+   entre guillemets. `fiche` : { nom, surnom, ville, alias }. */
+export function termeDeRecherche(fiche) {
+    var f = fiche || {};
+    var surnom = propre(f.surnom), nom = propre(f.nom);
+    if (surnom) return surnom;
+    return nom ? '"' + nom + '"' : '';
+}
+
+/* Les mots qui désignent une équipe dans un message : surnom, ville, alias, nom entier. */
+export function jetonsDEquipe(fiche) {
+    var f = fiche || {}, vus = {}, liste = [];
+    [f.surnom, f.ville, f.nom].concat(f.alias || []).forEach(function(x) {
+        var j = sansAccent(propre(x));
+        if (j.length >= 3 && !vus[j]) { vus[j] = 1; liste.push(j); }
+    });
+    return liste;
+}
+
+function echappeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function citeLUn(texte, jetons) {
+    return jetons.some(function(j) { return new RegExp('(^|[^a-z0-9])' + echappeRegex(j) + '([^a-z0-9]|$)').test(texte); });
+}
+function motCliqueDe(texte, jetons) {
+    var tags = texte.match(/#[a-z0-9_]+/g) || [];
+    return tags.some(function(t) { return jetons.some(function(j) { return j.length >= 4 && t.indexOf(j.replace(/\s+/g, '')) > 0; }); });
+}
+
+/* Un message parle-t-il du match ? Oui s'il cite les DEUX équipes, ou porte un mot-clic d'une
+   des deux (#Habs, #GoHabsGo), ou cite une équipe et la ligue. Un événement à un seul nom
+   (course, gala) n'a pas de tri : la requête est déjà son nom entier. */
+export function estPertinent(texte, jetonsDom, jetonsVis, ligue) {
+    var dom = jetonsDom || [], vis = jetonsVis || [];
+    if (!dom.length || !vis.length) return true;
+    var t = sansAccent(texte);
+    var d = citeLUn(t, dom), v = citeLUn(t, vis);
+    if (d && v) return true;
+    if (motCliqueDe(t, dom) || motCliqueDe(t, vis)) return true;
+    var l = sansAccent(propre(ligue));
+    return !!((d || v) && l.length >= 3 && citeLUn(t, [l]));
+}
+
+export function adresseBluesky(terme, limite) {
+    return terme ? API_BLUESKY + '?q=' + encodeURIComponent(terme) + '&sort=latest&limit=' + (limite || 40) : '';
+}
+
+/* La réponse de Bluesky en messages { id, auteur, pseudo, texte, date }. Un message étiqueté
+   par la modération (contenu sensible) ou sans texte n'est pas gardé. */
+export function lireBluesky(json) {
+    var posts = json && Array.isArray(json.posts) ? json.posts : [];
+    var liste = [];
+    posts.forEach(function(p) {
+        if (!p || typeof p.uri !== 'string' || !p.record || typeof p.record.text !== 'string') return;
+        var texte = p.record.text.replace(/\s+/g, ' ').trim();
+        if (!texte) return;
+        if ((Array.isArray(p.labels) && p.labels.length) || (p.author && Array.isArray(p.author.labels) && p.author.labels.length)) return;
+        var date = Date.parse(p.record.createdAt || p.indexedAt || '');
+        if (!isFinite(date)) return;
+        var a = p.author || {};
+        liste.push({ id: p.uri, auteur: propre(a.displayName) || propre(a.handle) || 'Anonyme', pseudo: propre(a.handle), texte: texte.slice(0, 600), date: date });
+    });
+    return liste;
+}
+
+/* Le fil : sans doublon, les plus récents d'abord, `max` messages au plus. Un message daté
+   du futur (horloge de l'auteur) est ramené à maintenant, sinon il resterait en tête. */
+export function fusionnerFil(actuel, nouveaux, max, maintenant) {
+    var vus = {}, liste = [];
+    (nouveaux || []).concat(actuel || []).forEach(function(p) {
+        if (!p || vus[p.id]) return;
+        vus[p.id] = 1;
+        liste.push(maintenant && p.date > maintenant ? Object.assign({}, p, { date: maintenant }) : p);
+    });
+    liste.sort(function(a, b) { return b.date - a.date; });
+    return liste.slice(0, max || FIL_MAX);
+}
+
+export function ageCourt(ms) {
+    var s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return 'à l\'instant';
+    if (s < 3600) return Math.floor(s / 60) + ' min';
+    if (s < 86400) return Math.floor(s / 3600) + ' h';
+    return Math.floor(s / 86400) + ' j';
+}
+
+/* Le fil en HTML : du texte seulement, ni lien ni image (rien ne part vers un autre site). */
+export function filHtml(posts, esc, maintenant) {
+    if (!posts || !posts.length) return '<div class="fil-vide">Personne n\'en parle pour l\'instant. Le fil se remplit tout seul.</div>';
+    return posts.map(function(p) {
+        return '<div class="fil-msg"><div class="fil-tete"><span class="fil-auteur">' + esc(p.auteur) + '</span>'
+            + '<span class="fil-age">' + esc(ageCourt(maintenant - p.date)) + '</span></div>'
+            + '<div class="fil-texte">' + esc(p.texte) + '</div></div>';
+    }).join('');
+}
+
+/* Lit le fil d'un match : une requête par équipe, en parallèle ; une qui échoue n'empêche pas
+   l'autre. Rend { posts, erreur } : `erreur` seulement quand AUCUNE requête n'a répondu. */
+export function chargerFil(fiches, ligue, lire) {
+    var liste = (fiches || []).filter(function(f) { return termeDeRecherche(f); });
+    if (!liste.length || typeof lire !== 'function') return Promise.resolve({ posts: [], erreur: true });
+    var jetons = liste.map(jetonsDEquipe);
+    var deux = liste.length >= 2;
+    return Promise.all(liste.map(function(f) {
+        return Promise.resolve().then(function() { return lire(adresseBluesky(termeDeRecherche(f)), { signal: AbortSignal.timeout(8000) }); })
+            .then(function(r) { if (!r || !r.ok) throw new Error('refus'); return r.json(); })
+            .then(lireBluesky)
+            .catch(function() { return null; });
+    })).then(function(reponses) {
+        var recus = reponses.filter(Boolean);
+        var posts = [].concat.apply([], recus).filter(function(p) {
+            return !deux || estPertinent(p.texte, jetons[0], jetons[1], ligue);
+        });
+        return { posts: fusionnerFil([], posts), erreur: !recus.length };
+    });
+}
