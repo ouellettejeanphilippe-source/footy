@@ -9,7 +9,7 @@ import { normName, lgColor, getTeamColors, getLogo, libelleSport, fondEquipes } 
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam, ordreSports } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl, ongletDeLaVue } from './utils.js';
 import { primaryDomain, matchDomainStats } from './links.js';
-import { TARGET_DATE, fetchGameStats, formatStatLabel, fetchLolEsportsLiveStreams } from './api.js';
+import { TARGET_DATE, fetchGameStats, formatStatLabel, fetchTeamSeasonStats, fetchLolEsportsLiveStreams } from './api.js';
 import { liensLolDuDirect } from './esports.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision, majTeinte, fichesReaction } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
@@ -23,7 +23,7 @@ import { chargerChaines, sectionTele } from './chainestv.js';
 import { icone } from './icones.js';
 import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
 import { bilanHtml, statsEquipeHtml } from './bilan.js';
-import { statsDuMatch, comparaisonHtml } from './statsmatch.js';
+import { monterStats } from './statsmatch.js';
 import { couleursDuel } from './teinte.js';
 import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
@@ -1785,11 +1785,10 @@ export function openMod(m,col){
               var zoneStats = document.getElementById('stats-match-container');
               if (zoneStats) {
                   var duel = couleursDuel(getTeamColors(m.homeTeam), getTeamColors(m.awayTeam));
-                  var cmp = res.source === 'espn' ? comparaisonHtml(statsDuMatch(res.data, mHomeId), esc, { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis, noms: [m.homeTeam, m.awayTeam] }) : '';
-                  var ouvert = zoneStats.querySelector('.cmp-plus[open]');
-                  zoneStats.innerHTML = cmp ? '<h4 class="cmp-titre">Statistiques</h4>' + cmp : '';
-                  if (ouvert && zoneStats.querySelector('.cmp-plus')) zoneStats.querySelector('.cmp-plus').open = true;
-                  zoneStats.style.display = cmp ? 'block' : 'none';
+                  var montre = res.source === 'espn' && monterStats(zoneStats, { data: res.data, idDom: mHomeId, cle: m.id, esc: esc,
+                      options: { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis, noms: [m.homeTeam, m.awayTeam] },
+                      chargerSaison: mHomeId && mAwayId ? function() { return Promise.all([fetchTeamSeasonStats(m.league, mHomeId), fetchTeamSeasonStats(m.league, mAwayId)]); } : null });
+                  zoneStats.style.display = montre ? 'block' : 'none';
               }
 
               /* Les suites : le panneau Scores et statistiques (classement, calendrier des

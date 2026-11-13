@@ -1747,32 +1747,42 @@ body[data-view="player"] #radio-direct { top: calc(16px + var(--safe-top, 0px));
 
 /* ── Statistiques et infos de match (13 novembre 2026, js/statsmatch.js) ────────────────────────
    Un seul dessin pour la fiche, le panneau du lecteur et le panneau Scores et statistiques.
-   La comparaison : valeur du domicile, libellé, valeur du visiteur, et dessous une barre partagée
-   aux couleurs des deux équipes. Celle qui mène a sa valeur en blanc et en gras ; l'autre s'efface. */
-.cmp { --cmp-dom: var(--accent); --cmp-vis: #f59e0b; display: flex; flex-direction: column; gap: 2px; padding: 6px 12px 10px; border-radius: 14px; background: rgba(255,255,255,0.04); text-align: left; }
-.cmp-titre { margin: 18px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--t2, var(--muted)); text-align: left; }
-.cmp-noms { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0 4px; font-size: 12px; font-weight: 700; }
-.cmp-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; color: var(--t1, #fff); }
-.cmp-nom::before { content: ''; flex-shrink: 0; width: 10px; height: 10px; border-radius: 3px; background: var(--cmp-dom); }
+   Les statistiques sont rangées par thème (une carte par thème, dans l'ordre de THEMES). Une
+   ligne : valeur du domicile, libellé, valeur du visiteur, et dessous une barre partagée aux
+   couleurs des deux équipes. La valeur qui mène est dans une pastille à la couleur de son équipe. */
+.cmp { --cmp-dom: var(--accent); --cmp-vis: #f59e0b; text-align: left; }
+.cmp-titre { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 10px; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--t1, #fff); text-align: left; }
+.cmp-titre small { font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--t3, var(--muted)); }
+.cmp-onglets { display: inline-flex; gap: 4px; padding: 4px; margin: 16px 0 12px; border-radius: 999px; background: rgba(255,255,255,0.07); }
+.cmp-onglet { appearance: none; border: 0; min-height: 34px; padding: 0 18px; border-radius: 999px; background: transparent; color: var(--t2, var(--muted)); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; pointer-events: auto; transition: background 150ms, color 150ms; }
+.cmp-onglet:hover { color: #fff; }
+.cmp-onglet.on { background: #fff; color: #111; }
+.cmp-onglet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cmp-vide { padding: 22px 12px; border-radius: 14px; background: rgba(255,255,255,0.04); color: var(--t2, var(--muted)); font-size: 13px; text-align: center; }
+.cmp-noms { display: flex; justify-content: space-between; gap: 12px; padding: 0 2px 10px; font-size: 13px; font-weight: 700; }
+.cmp-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; color: var(--t1, #fff); }
+.cmp-nom::before { content: ''; flex-shrink: 0; width: 12px; height: 12px; border-radius: 4px; background: var(--cmp-dom); }
 .cmp-nom.cmp-vis { flex-direction: row-reverse; }
 .cmp-nom.cmp-vis::before { background: var(--cmp-vis); }
-.cmp-ligne { display: grid; grid-template-columns: minmax(44px, auto) 1fr minmax(44px, auto); align-items: baseline; column-gap: 8px; row-gap: 5px; padding: 8px 0 9px; border-top: 1px solid rgba(255,255,255,0.06); }
-.cmp-noms + .cmp-ligne, .cmp > .cmp-ligne:first-child, .cmp-plus > summary + .cmp-ligne { border-top: 0; }
-.cmp-v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.62); white-space: nowrap; }
-.cmp-v.cmp-vis { text-align: right; }
-.cmp-mene-dom .cmp-v.cmp-dom, .cmp-mene-vis .cmp-v.cmp-vis { color: #fff; font-weight: 800; }
-.cmp-l { min-width: 0; font-size: 12.5px; color: var(--t2, var(--muted)); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cmp-barre { grid-column: 1 / -1; display: flex; gap: 3px; height: 5px; }
-.cmp-barre i { display: block; height: 100%; min-width: 3px; border-radius: 3px; background: var(--cmp-dom); opacity: 0.6; transition: width 300ms; }
+.cmp-groupes { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.cmp-groupe { padding: 12px 14px 6px; border-radius: 14px; background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.05); }
+.cmp-theme { margin: 0 0 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--t3, var(--muted)); }
+.cmp-ligne { display: grid; grid-template-columns: minmax(52px, auto) 1fr minmax(52px, auto); align-items: center; column-gap: 8px; row-gap: 6px; padding: 9px 0 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+.cmp-theme + .cmp-ligne { border-top: 0; }
+.cmp-v { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cmp-v.cmp-vis { align-items: flex-end; }
+.cmp-v b { font-size: 15px; font-weight: 600; line-height: 1.2; color: rgba(255,255,255,0.6); padding: 2px 0; border-radius: 7px; }
+.cmp-v small { font-size: 11px; font-weight: 600; color: var(--t3, var(--muted)); }
+.cmp-mene-dom .cmp-v.cmp-dom b, .cmp-mene-vis .cmp-v.cmp-vis b { color: #fff; font-weight: 800; padding: 2px 8px; }
+.cmp-mene-dom .cmp-v.cmp-dom b { background: color-mix(in srgb, var(--cmp-dom) 38%, transparent); }
+.cmp-mene-vis .cmp-v.cmp-vis b { background: color-mix(in srgb, var(--cmp-vis) 38%, transparent); }
+.cmp-mene-dom .cmp-v.cmp-dom small, .cmp-mene-vis .cmp-v.cmp-vis small { color: var(--t1, #fff); }
+.cmp-l { min-width: 0; font-size: 13px; line-height: 1.25; color: var(--t2, var(--muted)); text-align: center; overflow-wrap: anywhere; }
+.cmp-barre { grid-column: 1 / -1; display: flex; gap: 3px; height: 6px; }
+.cmp-barre i { display: block; height: 100%; min-width: 4px; border-radius: 999px; background: var(--cmp-dom); opacity: 0.4; transition: width 300ms; }
 .cmp-barre i.cmp-vis { background: var(--cmp-vis); }
 .cmp-mene-dom .cmp-barre i.cmp-dom, .cmp-mene-vis .cmp-barre i.cmp-vis { opacity: 1; }
 .cmp-ligne:not(.cmp-mene-dom):not(.cmp-mene-vis) .cmp-barre i { opacity: 0.7; }
-.cmp-plus { border-top: 1px solid rgba(255,255,255,0.06); }
-.cmp-plus > summary { list-style: none; cursor: pointer; padding: 10px 0 4px; font-size: 12.5px; font-weight: 700; color: var(--t1, #fff); display: flex; align-items: center; justify-content: center; gap: 6px; }
-.cmp-plus > summary::-webkit-details-marker { display: none; }
-.cmp-plus > summary::after { content: ''; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform 150ms; }
-.cmp-plus[open] > summary::after { transform: rotate(-135deg) translateY(-2px); }
-.cmp-plus > summary:hover, .cmp-plus > summary:focus-visible { color: var(--accent); outline: none; }
 
 /* L'en-tête d'un match dans un panneau : logos, noms, score, état. */
 .em { padding: 4px 0 6px; text-align: center; }
@@ -1799,13 +1809,7 @@ body[data-view="player"] #radio-direct { top: calc(16px + var(--safe-top, 0px));
 .fiche-suite:hover, .fiche-suite:focus-visible { background: rgba(255,255,255,0.14); outline: 2px solid var(--accent); outline-offset: 2px; }
 .fiche-buteur { margin-top: 4px; }
 #stats-match-container .cmp-titre { margin-top: 12px; }
-/* Dans la fiche, la comparaison prend la largeur : deux colonnes de lignes sur grand écran. */
+/* Dans la fiche, la comparaison prend la largeur : les cartes de thème côte à côte. */
 #modal-left-col .fiche-complements, #modal-left-col .fiche-complements .prime-info, #stats-match-container { width: 100%; max-width: none; box-sizing: border-box; }
-@media (min-width: 900px) {
-  #stats-match-container .cmp { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
-  #stats-match-container .cmp-noms, #stats-match-container .cmp-plus { grid-column: 1 / -1; }
-  #stats-match-container .cmp-noms + .cmp-ligne + .cmp-ligne { border-top: 0; }
-  #stats-match-container .cmp-plus[open] { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
-  #stats-match-container .cmp-plus > summary { grid-column: 1 / -1; }
-  #stats-match-container .cmp-plus > summary + .cmp-ligne + .cmp-ligne { border-top: 0; }
-}
+#stats-match-container .cmp-groupes { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+#stats-match-container .cmp-onglets { margin-top: 12px; }

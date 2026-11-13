@@ -2,10 +2,10 @@ import { S } from './state.js';
 import { escJs, esc, lg, pad, safeStorageGetJSON, safeStorageSetJSON, formatTeamNameBreak } from './utils.js';
 import { isMatch } from './match.js';
 import { globalStatsInterval, setGlobalStatsInterval } from './multiview.js';
-import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
+import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule, fetchTeamSeasonStats } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS, sportOfLeague, teamColorPair } from './db.js';
-import { statsDuMatch, comparaisonHtml } from './statsmatch.js';
+import { monterStats } from './statsmatch.js';
 import { couleursDuel } from './teinte.js';
 import { buildProxyList } from './fetcher.js';
 import { playabilityScore, hostOfUrl, tileTarget, reputationLien, fusionAppareil, rangNotoriete } from './playability.js';
@@ -875,13 +875,18 @@ export function openGlobalStatsFromMatch(mid, isBack) {
         if (res.data) {
             /* La comparaison commune (js/statsmatch.js), la même que dans la fiche et le lecteur. */
             var duel = couleursDuel(teamColorPair(m.homeTeam), teamColorPair(m.awayTeam));
-            var cmp = res.source === 'espn' ? comparaisonHtml(statsDuMatch(res.data, mHomeId), esc, { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis, noms: [m.homeTeam, m.awayTeam] }) : '';
-            html += cmp ? '<h4 class="cmp-titre">Statistiques du match</h4>' + cmp
-                : '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Statistiques détaillées non disponibles.</div>';
+            html += '<div class="cmp-zone"></div>';
         }
 
         html += '</div>';
         content.innerHTML = html;
+        /* « Ce match » et « Saison » en onglets (js/statsmatch.js) ; la saison est lue à la demande. */
+        var zoneCmp = content.querySelector('.cmp-zone');
+        if (zoneCmp && !(res.source === 'espn' && monterStats(zoneCmp, { data: res.data, idDom: mHomeId, cle: m.id, esc: esc,
+                options: { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis, noms: [m.homeTeam, m.awayTeam] },
+                chargerSaison: mHomeId && mAwayId ? function() { return Promise.all([fetchTeamSeasonStats(m.league, mHomeId), fetchTeamSeasonStats(m.league, mAwayId)]); } : null }))) {
+            zoneCmp.innerHTML = '<div class="cmp-vide">Statistiques détaillées non disponibles.</div>';
+        }
 
     }).catch(function(e) {
         content.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:20px;">Oups, les données ne sont pas disponibles pour ce match.<br><br>Source: Non supportée ou API absente.</div>';

@@ -4,7 +4,7 @@ import { MAX_VIDEOS, cartesDuChoix, basculerChoix, differenceChoix, libelleRegar
 import { PROXIES } from './config.js';
 import { S, favTeams, sourcesStatus, scrapeLogs, manualStreamLogs, customLgOrder, setCustomLgOrder } from './state.js';
 import { esc, showToast, escJs, applyFilter, resolveStreamUrl, safeStorageGetJSON, safeStorageSetJSON, safeStorageGet, safeStorageSet, showPage, syncNavState, ongletDeLaVue, tailleStockageKo, plusGrossesCles } from './utils.js';
-import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchTeamInfo } from './api.js';
+import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchTeamInfo, fetchTeamSeasonStats } from './api.js';
 import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlignements } from './ui.js';
 import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
@@ -29,7 +29,7 @@ import { estLecteurOfficiel, exigeVisibiliteTotale } from './esports.js';
 import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml, lecteurAOublier } from './sorties.js';
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
 import { teinteDuMatch, appliquerTeinte, couleursDuel } from './teinte.js';
-import { statsDuMatch, comparaisonHtml, enteteMatchHtml } from './statsmatch.js';
+import { monterStats, enteteMatchHtml } from './statsmatch.js';
 import { statsEquipeHtml } from './bilan.js';
 import { radiosDuMatch, stationAEcouter, stationsAEcouter, adressesDuFlux, fluxDeReponse, adresseSourceRadio, estSourceRadio, infoSourceRadio } from './radio.js';
 import { adresseReactionsX, equipesAChercher, reactionsPossibles, ouvrirReactionsX, chargerFil, fusionnerFil, filHtml, INTERVALLE_FIL_MS } from './reactions.js';
@@ -938,10 +938,13 @@ export function updateMvGameModeStats() {
 
             /* La comparaison commune (js/statsmatch.js) : l'essentiel du sport, le reste replié. */
             var duel = couleursDuel(teamColorPair(m.homeTeam), teamColorPair(m.awayTeam));
-            var cmp = res.source === 'espn' ? comparaisonHtml(statsDuMatch(res.data, mHomeId), esc, { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis }) : '';
-            if (cmp) html += '<h4 class="cmp-titre">Statistiques</h4>' + cmp;
+            if (res.source === 'espn') html += '<div class="cmp-zone"></div>';
 
             bodyEl.innerHTML = html ? '<div style="margin-top:15px;">' + html + '</div>' : '<div style="margin-top:15px; color:var(--muted); text-align:center;">Aucune statistique détaillée disponible.</div>';
+            /* « Ce match » et « Saison » en onglets (js/statsmatch.js) ; la saison est lue à la demande. */
+            monterStats(bodyEl.querySelector('.cmp-zone'), { data: res.data, idDom: mHomeId, cle: m.id, esc: esc,
+                options: { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis },
+                chargerSaison: mHomeId && mAwayId ? function() { return Promise.all([fetchTeamSeasonStats(m.league, mHomeId), fetchTeamSeasonStats(m.league, mAwayId)]); } : null });
             /* Les alignements, ici seulement (29 octobre 2026, « alignements seulement
                lorsque stats en direct dans le multiview, pas dans la carte des streams ») :
                la composition, ou la feuille de match, du même `summary` ESPN. */

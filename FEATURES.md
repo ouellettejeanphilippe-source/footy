@@ -124,7 +124,15 @@ Sous le bouton **Regarder**, une section **Radio** : une ligne par équipe qui a
 
 ### 4.2 bis Statistiques du match (13 novembre 2026)
 
-Sous la radio, la **comparaison des deux équipes**, visible sans rien déplier : pour chaque statistique, la valeur du domicile, son nom en français, la valeur du visiteur, et une barre partagée aux couleurs des deux équipes. La valeur de l'équipe qui mène est en blanc et en gras (pour les fautes, les pénalités ou les buts accordés, c'est le plus petit nombre). Les huit statistiques qui comptent pour le sport viennent d'abord ; **Toutes les statistiques (n)** déplie le reste. Avant le match, ce sont les moyennes de la saison. Dessous, deux boutons : **Classement et équipes** (ouvre le panneau Scores et statistiques) et **Page du match sur ESPN**. Le même dessin sert dans le panneau du lecteur (`Stats du Match`, avec un en-tête : logos, score, état, rang et bilan) et dans le panneau Scores et statistiques. Le bouton « Voir les statistiques de la saison » est parti : le bilan est dans la bannière.
+Sous la radio, la **comparaison des deux équipes**, visible sans rien déplier.
+
+- **Par thème, dans un ordre qui suit le match** : Attaque (possession, tirs, corners), Jeu (passes, centres, mises au jeu), Défense (arrêts, tacles, tirs bloqués), Discipline et erreurs (fautes, cartons, pénalités, revirements) ; au basket Adresse et Rebonds, au football américain Efficacité. Ce que l'application ne sait pas ranger reste visible, dans « Autres ».
+- **Une ligne par idée** : « 246/310 » et « 80 % » dessous pour les passes, au lieu de trois lignes ; une statistique à 0 des deux côtés n'est pas montrée.
+- **Qui mène** : une barre partagée aux couleurs des deux équipes, et la valeur du meneur dans une pastille à sa couleur (pour les fautes, les pénalités ou les buts accordés, c'est le plus petit nombre).
+- **En direct et saison séparés** : deux onglets, **En direct** (ou **Ce match** une fois fini) et **Saison** (moyennes de la saison, lues quand on clique ; LNH, NBA, NFL — ESPN n'en donne pas pour le football, l'onglet le dit). Avant le match, il n'y a que la saison, sous ce titre. L'onglet choisi reste le même dans la fiche, le lecteur et le panneau.
+- Dessous, deux boutons : **Classement et équipes** (ouvre le panneau Scores et statistiques) et **Page du match sur ESPN**.
+
+Le même dessin sert dans le panneau du lecteur (`Stats du Match`, avec un en-tête : logos, score, état, rang et bilan) et dans le panneau Scores et statistiques. Le bouton « Voir les statistiques de la saison » est parti.
 
 ### 4.2 Compléments (matchs ESPN seulement)
 
