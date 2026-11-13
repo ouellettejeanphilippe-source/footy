@@ -133,7 +133,7 @@ test('filHtml : du texte échappé, ni lien ni image ; l\'âge en clair', () => 
   assert.strictEqual(R.ageCourt(2 * 3600e3), '2 h');
 });
 
-test('chargerFil : une requête par équipe, tri de pertinence, une panne partielle ne vide pas le fil', async () => {
+test('chargerFil : le surnom et le mot-clic de chaque équipe, tri de pertinence, une panne partielle ne vide pas le fil', async () => {
   const demandes = [];
   const lire = (u) => {
     const q = new URL(u).searchParams.get('q');
@@ -143,11 +143,12 @@ test('chargerFil : une requête par équipe, tri de pertinence, une panne partie
       post('at://1', 'Habs 2, Bruins 0', 2000), post('at://2', 'Les Canadiens votent', 3000), post('at://3', '#GoHabsGo', 1000)] }) });
   };
   const r = await R.chargerFil([habs, bruins], 'NHL', lire);
-  assert.deepStrictEqual(demandes.sort(), ['Bruins', 'Canadiens']);
+  assert.deepStrictEqual(demandes.sort(), ['#Bruins', '#Canadiens', 'Bruins', 'Canadiens'], 'le surnom et le mot-clic de chaque équipe');
+  assert.deepStrictEqual(r.termes, ['Canadiens', '#Canadiens', 'Bruins', '#Bruins']);
   assert.deepStrictEqual(r.posts.map((p) => p.id), ['at://1', 'at://3']);
   assert.strictEqual(r.erreur, false);
   const tout = await R.chargerFil([habs, bruins], 'NHL', () => Promise.resolve({ ok: false }));
-  assert.deepStrictEqual(tout, { posts: [], erreur: true });
+  assert.deepStrictEqual([tout.posts, tout.erreur], [[], true]);
   const course = await R.chargerFil([{ nom: 'Las Vegas Grand Prix' }], 'F1', () => Promise.resolve({ ok: true, json: () => Promise.resolve({ posts: [post('at://9', 'Quel départ', 1)] }) }));
   assert.strictEqual(course.posts.length, 1, 'un seul nom : tout est gardé');
 });
@@ -158,4 +159,45 @@ test('le panneau du lecteur : stats relues chaque minute, barre arrêtée au bor
   assert.ok(!/setInterval\(updateGmCurrentTab, 300000\)/.test(mv));
   assert.match(fs.readFileSync(path.join(racine, 'js', 'config.js'), 'utf8'), /\}, 60000\)\);/);
   assert.match(fs.readFileSync(path.join(racine, 'styles.css'), 'utf8'), /mv-panneau[^{]*#mv-toolbar \{ right: 350px; \}/);
+});
+
+/* ── « Y a des hashtags généralement sur X et Bluesky » : chercher par mots-clics. ── */
+test('le mot-clic d\'une équipe vient de son surnom ; X le reçoit en plus des noms', () => {
+  assert.strictEqual(R.motCliqueDeNom('Maple Leafs'), '#MapleLeafs');
+  assert.strictEqual(R.motCliqueDeNom('Montréal'), '#Montreal');
+  assert.strictEqual(R.motCliqueDeNom('76ers'), '#76ers');
+  assert.strictEqual(R.motCliqueDeNom('FC'), '', 'trop court');
+  assert.strictEqual(R.motCliqueDeNom('1904'), '', 'un mot-clic sans lettre n\'en est pas un');
+  assert.strictEqual(R.motCliqueDEquipe({ nom: 'Arsenal' }), '#Arsenal');
+  const m = { homeTeam: 'Montreal Canadiens', awayTeam: 'Toronto Maple Leafs' };
+  const leafs = { nom: 'Toronto Maple Leafs', surnom: 'Maple Leafs', ville: 'Toronto', alias: ['leafs'] };
+  assert.strictEqual(R.requeteReactions(m, [habs, leafs]), '"Montreal Canadiens" OR "Toronto Maple Leafs" OR #Canadiens OR #MapleLeafs');
+  assert.strictEqual(new URL(R.adresseReactionsX(m, [habs, leafs])).searchParams.get('q'), R.requeteReactions(m, [habs, leafs]));
+  assert.strictEqual(R.requeteReactions(m), '"Montreal Canadiens" OR "Toronto Maple Leafs"', 'sans fiche : les noms seuls');
+});
+
+test('les mots-clics des partisans s\'apprennent des messages, pas d\'un nom', () => {
+  const tags = R.jetonsDEquipe(habs, true), bru = R.jetonsDEquipe(bruins);
+  const p = (texte) => ({ texte });
+  const posts = [p('But ! #GoHabsGo contre les Bruins'), p('#gohabsgo #Habs 2 #Bruins 0'), p('#Habs mènent, Bruins dominés'),
+    p('#GoHabsGo sans adversaire cité'), p('#HabsFans Bruins, vu une fois'), p('#Montreal Bruins'), p('#Montreal encore, Bruins')];
+  assert.deepStrictEqual(R.motsCliquesFrequents(posts, tags, 2, ['#Canadiens'], bru), ['#gohabsgo', '#habs']);
+  assert.deepStrictEqual(R.motsCliquesFrequents(posts, tags, 2, ['#Canadiens', '#GoHabsGo'], bru), ['#habs'], 'les connus ne reviennent pas');
+  assert.deepStrictEqual(R.motsCliquesFrequents([p('#NYJets gagnent'), p('#nyjets encore')], ['jets'], 2, [], ['stars']), [], 'jamais à côté de l\'adversaire : une autre équipe');
+  assert.ok(!tags.includes('montreal') && R.jetonsDEquipe(habs).includes('montreal'), 'la ville cite l\'équipe, mais #Montreal n\'est pas son mot-clic');
+  assert.strictEqual(R.estPertinent('Immobilier à vendre #Montreal', R.jetonsDEquipe(habs), bru, 'NHL', tags, R.jetonsDEquipe(bruins, true)), false);
+  assert.deepStrictEqual(R.termesDEquipe(habs, ['#gohabsgo', '#habs', '#troisieme']), ['Canadiens', '#Canadiens', '#gohabsgo', '#habs'], 'deux appris au plus');
+  assert.deepStrictEqual(R.termesDEquipe({ nom: 'Arsenal', surnom: 'Arsenal' }, ['#arsenal']), ['Arsenal', '#Arsenal'], 'sans doublon, casse ignorée');
+});
+
+test('chargerFil repasse les mots-clics appris à la lecture suivante', async () => {
+  const demandes = [];
+  const lire = (u) => { const q = new URL(u).searchParams.get('q'); demandes.push(q);
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ posts: q === 'Canadiens' ? [post('at://1', '#GoHabsGo Bruins menés', 2000), post('at://2', 'Bruins battus #gohabsgo', 3000)] : [] }) }); };
+  const r = await R.chargerFil([habs, bruins], 'NHL', lire);
+  assert.deepStrictEqual(r.motsCliques, [['#gohabsgo'], []]);
+  demandes.length = 0;
+  await R.chargerFil([habs, bruins], 'NHL', lire, r.motsCliques);
+  assert.ok(demandes.includes('#gohabsgo'), demandes.join(' '));
+  assert.strictEqual(demandes.length, 5);
 });

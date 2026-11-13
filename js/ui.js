@@ -11,7 +11,7 @@ import { lg, esc, toggleAccordion, escJs, pad, safeStorageGetJSON, safeStorageSe
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
 import { liensLolDuDirect } from './esports.js';
-import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision, majTeinte } from './multiview.js';
+import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision, majTeinte, fichesReaction } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
 import { mesurePour, formaterMesure } from './debit.js';
 import { extraireAlignements, extraireEffectifs, alignementsHtml } from './alignements.js';
@@ -1997,7 +1997,7 @@ export function openMod(m,col){
     reac.title = 'Ce que les gens en disent sur X, en direct, dans une fenêtre à côté';
     reac.innerHTML = icone('bulle') + '<span>Réactions sur X</span>';
     reac.addEventListener('click', function() {
-      if (ouvrirReactionsX(m, window) === 'bloquee' && window.showToast) window.showToast('Le navigateur a bloqué la fenêtre : autorise les fenêtres pour ce site.');
+      if (ouvrirReactionsX(m, window, fichesReaction(m)) === 'bloquee' && window.showToast) window.showToast('Le navigateur a bloqué la fenêtre : autorise les fenêtres pour ce site.');
     });
     cta.insertBefore(reac, cta.querySelector('.fiche-cta-info'));
   }

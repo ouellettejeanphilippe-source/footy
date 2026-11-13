@@ -35,13 +35,28 @@ export function equipesAChercher(m) {
 
 /* La requête : chaque nom entre guillemets, l'un OU l'autre (un message ne cite souvent
    qu'une des deux équipes). Vide quand le match n'a pas de nom. */
-export function requeteReactions(m) {
-    return equipesAChercher(m).map(function(n) { return '"' + n + '"'; }).join(' OR ');
+export function requeteReactions(m, fiches) {
+    var termes = equipesAChercher(m).map(function(n) { return '"' + n + '"'; });
+    /* « Y a des hashtags généralement sur X et Bluesky » (13 novembre 2026) : le mot-clic de chaque
+       équipe (#Canadiens, #MapleLeafs) s'ajoute aux noms, X comprend `OR`. */
+    (fiches || []).forEach(function(f) { var t = motCliqueDEquipe(f); if (t && termes.indexOf(t) < 0) termes.push(t); });
+    return termes.join(' OR ');
+}
+
+/* Le mot-clic d'un nom : « Maple Leafs » → #MapleLeafs. '' pour un nom trop court ou sans lettre. */
+export function motCliqueDeNom(nom) {
+    var s = String(nom == null ? '' : nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]/g, '');
+    return s.length >= 3 && /[A-Za-z]/.test(s) ? '#' + s : '';
+}
+/* Le mot-clic d'une équipe : celui de son surnom, sinon de son nom. */
+export function motCliqueDEquipe(fiche) {
+    var f = fiche || {};
+    return motCliqueDeNom(f.surnom) || motCliqueDeNom(f.nom);
 }
 
 /* L'adresse de la recherche en direct de X, ou '' sans requête. */
-export function adresseReactionsX(m) {
-    var q = requeteReactions(m);
+export function adresseReactionsX(m, fiches) {
+    var q = requeteReactions(m, fiches);
     return q ? 'https://x.com/search?q=' + encodeURIComponent(q) + '&f=live' : '';
 }
 
@@ -66,8 +81,8 @@ export function reactionsPossibles(w) {
 
 /* Ouvre (ou réutilise, par son nom) la fenêtre des réactions du match. Rend 'ouverte',
    'bloquee' (le navigateur a refusé la fenêtre) ou 'rien' (match sans nom). */
-export function ouvrirReactionsX(m, w) {
-    var adresse = adresseReactionsX(m);
+export function ouvrirReactionsX(m, w, fiches) {
+    var adresse = adresseReactionsX(m, fiches);
     if (!adresse || !w || typeof w.open !== 'function') return 'rien';
     var f = null;
     try { f = w.open(adresse, NOM_FENETRE_REACTIONS, optionsFenetreReactions(w.screen)); } catch (e) { f = null; }
@@ -103,9 +118,11 @@ export function termeDeRecherche(fiche) {
 }
 
 /* Les mots qui désignent une équipe dans un message : surnom, ville, alias, nom entier. */
-export function jetonsDEquipe(fiche) {
+export function jetonsDEquipe(fiche, sansVille) {
     var f = fiche || {}, vus = {}, liste = [];
-    [f.surnom, f.ville, f.nom].concat(f.alias || []).forEach(function(x) {
+    /* `sansVille` : pour reconnaître un mot-clic d'équipe. #Philadelphia ou #Montreal parlent de
+       la ville, pas du match (mesuré : #philadelphia ramenait de l'immobilier). */
+    [f.surnom, sansVille ? '' : f.ville, f.nom].concat(f.alias || []).forEach(function(x) {
         var j = sansAccent(propre(x));
         if (j.length >= 3 && !vus[j]) { vus[j] = 1; liste.push(j); }
     });
@@ -124,15 +141,40 @@ function motCliqueDe(texte, jetons) {
 /* Un message parle-t-il du match ? Oui s'il cite les DEUX équipes, ou porte un mot-clic d'une
    des deux (#Habs, #GoHabsGo), ou cite une équipe et la ligue. Un événement à un seul nom
    (course, gala) n'a pas de tri : la requête est déjà son nom entier. */
-export function estPertinent(texte, jetonsDom, jetonsVis, ligue) {
+export function estPertinent(texte, jetonsDom, jetonsVis, ligue, tagsDom, tagsVis) {
     var dom = jetonsDom || [], vis = jetonsVis || [];
     if (!dom.length || !vis.length) return true;
     var t = sansAccent(texte);
     var d = citeLUn(t, dom), v = citeLUn(t, vis);
     if (d && v) return true;
-    if (motCliqueDe(t, dom) || motCliqueDe(t, vis)) return true;
+    if (motCliqueDe(t, tagsDom || dom) || motCliqueDe(t, tagsVis || vis)) return true;
     var l = sansAccent(propre(ligue));
     return !!((d || v) && l.length >= 3 && citeLUn(t, [l]));
+}
+
+/* Les mots-clics que les gens mettent vraiment (mesuré le 13 novembre 2026, Canadiens–Bruins :
+   #GoHabsGo 62 messages à l'heure, #Habs 26, #Canadiens 13) ne se devinent pas d'un nom : on les
+   apprend des messages reçus. Rend les `max` mots-clics les plus fréquents qui contiennent un mot
+   de l'équipe (#GoHabsGo contient « habs »), vus au moins deux fois, sans ceux de `connus`. */
+export function motsCliquesFrequents(posts, jetons, max, connus, jetonsAdverses) {
+    var compte = {}, deja = {};
+    (connus || []).forEach(function(c) { deja[sansAccent(c)] = 1; });
+    (posts || []).forEach(function(p) {
+        var vus = {};
+        var texte = sansAccent(p && p.texte);
+        /* Appris seulement d'un message qui cite aussi l'adversaire : #NYJets contient « jets »
+           mais ne se trouve jamais à côté des Stars. */
+        if (jetonsAdverses && jetonsAdverses.length && !citeLUn(texte, jetonsAdverses) && !motCliqueDe(texte, jetonsAdverses)) return;
+        (texte.match(/#[a-z0-9_]+/g) || []).forEach(function(t) {
+            if (vus[t] || deja[t] || t.length > 30) return;
+            vus[t] = 1;
+            if (!(jetons || []).some(function(j) { return j.length >= 4 && t.indexOf(j.replace(/\s+/g, '')) > 0; })) return;
+            compte[t] = (compte[t] || 0) + 1;
+        });
+    });
+    return Object.keys(compte).filter(function(t) { return compte[t] >= 2; })
+        .sort(function(a, b) { return compte[b] - compte[a] || (a < b ? -1 : 1); })
+        .slice(0, max || 2);
 }
 
 export function adresseBluesky(terme, limite) {
@@ -188,23 +230,43 @@ export function filHtml(posts, esc, maintenant) {
     }).join('');
 }
 
-/* Lit le fil d'un match : une requête par équipe, en parallèle ; une qui échoue n'empêche pas
-   l'autre. Rend { posts, erreur } : `erreur` seulement quand AUCUNE requête n'a répondu. */
-export function chargerFil(fiches, ligue, lire) {
+/* Les termes cherchés pour une équipe : son surnom, son mot-clic, et les mots-clics appris des
+   messages précédents (`appris`, deux au plus). */
+export function termesDEquipe(fiche, appris) {
+    var liste = [], vus = {};
+    [termeDeRecherche(fiche), motCliqueDEquipe(fiche)].concat((appris || []).slice(0, 2)).forEach(function(t) {
+        var k = sansAccent(t);
+        if (t && !vus[k]) { vus[k] = 1; liste.push(t); }
+    });
+    return liste;
+}
+
+/* Lit le fil d'un match : pour chaque équipe, une requête par terme (`termesDEquipe`), en
+   parallèle ; une qui échoue n'empêche pas les autres. Rend { posts, erreur, motsCliques, termes } :
+   `erreur` seulement quand AUCUNE requête n'a répondu ; `motsCliques` = par équipe, ceux appris
+   de cette lecture, à repasser en `appris` à la suivante. */
+export function chargerFil(fiches, ligue, lire, appris) {
     var liste = (fiches || []).filter(function(f) { return termeDeRecherche(f); });
-    if (!liste.length || typeof lire !== 'function') return Promise.resolve({ posts: [], erreur: true });
-    var jetons = liste.map(jetonsDEquipe);
+    if (!liste.length || typeof lire !== 'function') return Promise.resolve({ posts: [], erreur: true, motsCliques: [], termes: [] });
+    var jetons = liste.map(function(f) { return jetonsDEquipe(f); });
+    var tags = liste.map(function(f) { return jetonsDEquipe(f, true); });
     var deux = liste.length >= 2;
-    return Promise.all(liste.map(function(f) {
-        return Promise.resolve().then(function() { return lire(adresseBluesky(termeDeRecherche(f)), { signal: AbortSignal.timeout(8000) }); })
+    var termes = [];
+    liste.forEach(function(f, i) {
+        (deux ? termesDEquipe(f, appris && appris[i]) : [termeDeRecherche(f)]).forEach(function(t) { if (termes.indexOf(t) < 0) termes.push(t); });
+    });
+    return Promise.all(termes.map(function(t) {
+        return Promise.resolve().then(function() { return lire(adresseBluesky(t), { signal: AbortSignal.timeout(8000) }); })
             .then(function(r) { if (!r || !r.ok) throw new Error('refus'); return r.json(); })
             .then(lireBluesky)
             .catch(function() { return null; });
     })).then(function(reponses) {
         var recus = reponses.filter(Boolean);
         var posts = [].concat.apply([], recus).filter(function(p) {
-            return !deux || estPertinent(p.texte, jetons[0], jetons[1], ligue);
+            return !deux || estPertinent(p.texte, jetons[0], jetons[1], ligue, tags[0], tags[1]);
         });
-        return { posts: fusionnerFil([], posts), erreur: !recus.length };
+        posts = fusionnerFil([], posts);
+        return { posts: posts, erreur: !recus.length, termes: termes,
+            motsCliques: deux ? liste.map(function(f, i) { return motsCliquesFrequents(posts, tags[i], 2, [motCliqueDEquipe(f)], jetons[1 - i]); }) : [] };
     });
 }

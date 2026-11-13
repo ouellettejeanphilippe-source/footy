@@ -3827,11 +3827,11 @@ test('Réactions : le fil en direct dans le panneau du lecteur, la barre hors du
       const q = new URL(s).searchParams.get('q');
       window.__bluesky.push(q);
       const p = (id, texte) => ({ uri: 'at://' + q + '/' + id + '/' + window.__bluesky.length, record: { text: texte, createdAt: new Date().toISOString() }, author: { handle: 'fan.bsky.social', displayName: 'Fan <b>' + q + '</b>' } });
-      return Promise.resolve(new Response(JSON.stringify({ posts: [p(1, 'Quel but ! Canadiens 1, Maple Leafs 0'), p(2, 'Les ' + q + ' sont des gens polis')] }), { status: 200 }));
+      return Promise.resolve(new Response(JSON.stringify({ posts: [p(1, 'Quel but ! Canadiens 1, Maple Leafs 0'), p(2, 'Rien à voir avec le match, juste ' + q.replace('#', ''))] }), { status: 200 }));
     };
   });
   const pageErrors = await bootOffline(page);
-  const attendue = 'https://x.com/search?q=' + encodeURIComponent('"Montreal Canadiens" OR "Toronto Maple Leafs"') + '&f=live';
+  const attendue = 'https://x.com/search?q=' + encodeURIComponent('"Montreal Canadiens" OR "Toronto Maple Leafs" OR #Canadiens OR #MapleLeafs') + '&f=live';
 
   const mid = await page.evaluate((u) => {
     const m = window.S.matches[0];
@@ -3845,13 +3845,14 @@ test('Réactions : le fil en direct dans le panneau du lecteur, la barre hors du
   const barreAvant = await page.locator('#mv-toolbar').evaluate((b) => Math.round(b.getBoundingClientRect().right));
   expect(barreAvant).toBe(1400);
 
-  // Le bouton ouvre le panneau sur l'onglet Réactions : une requête par équipe, sur son surnom.
+  // Le bouton ouvre le panneau sur l'onglet Réactions : pour chaque équipe, son surnom et son mot-clic.
   await bouton.click();
   const messages = page.locator('#mv-reactions-content .fil-msg');
-  await expect(messages).toHaveCount(2);
-  expect((await page.evaluate(() => window.__bluesky)).sort()).toEqual(['Canadiens', 'Maple Leafs']);
+  await expect(messages).toHaveCount(4);
+  expect((await page.evaluate(() => window.__bluesky)).sort()).toEqual(['#Canadiens', '#MapleLeafs', 'Canadiens', 'Maple Leafs']);
+  await expect(page.locator('#mv-reactions-content .fil-termes')).toContainText('#MapleLeafs');
   await expect(messages.first()).toContainText('Quel but !');
-  await expect(page.locator('#mv-reactions-content')).not.toContainText('gens polis');
+  await expect(page.locator('#mv-reactions-content .fil-liste')).not.toContainText('Rien à voir');
   expect(await page.locator('#mv-reactions-content a, #mv-reactions-content img, #mv-reactions-content .fil-auteur b').count(), 'du texte seulement').toBe(0);
   await expect(bouton).toHaveAttribute('aria-pressed', 'true');
 
@@ -3867,7 +3868,7 @@ test('Réactions : le fil en direct dans le panneau du lecteur, la barre hors du
 
   // Le fil se relit : les nouveaux messages s'ajoutent en tête, sans doublon.
   await page.evaluate(() => window.majFilReactions());
-  await expect(messages).toHaveCount(4);
+  await expect(messages).toHaveCount(8);
 
   // « Voir sur X » : la recherche en direct de X, dans une fenêtre à côté.
   await page.locator('#mv-reactions-content .fil-x').click();

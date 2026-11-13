@@ -643,8 +643,8 @@ export function switchGmTab(tab) {
 /* ── Le fil des réactions (13 novembre 2026, js/reactions.js) : l'onglet « Réactions » du panneau,
    les messages publics de Bluesky sur le match de la vidéo choisie, relus toutes les 20 s tant
    que l'onglet est affiché et la page visible. */
-var fil = { mid: null, posts: [], minuterie: null, enCours: false, erreur: false };
-function ficheReaction(nom) {
+var fil = { mid: null, posts: [], minuterie: null, enCours: false, erreur: false, appris: [], termes: [] };
+export function ficheReaction(nom) {
     var d = TEAM_DATA[String(nom || '').toLowerCase().trim()] || null;
     return { nom: nom, surnom: d && d.teamName, ville: d && d.city, alias: d && d.aliases };
 }
@@ -656,19 +656,25 @@ function rendreFilReactions(m) {
     if (!c) return;
     if (!m) { c.innerHTML = '<div class="fil-vide">Choisis la vidéo d\'un match pour voir ce que les gens en disent.</div>'; return; }
     var tete = '<div class="fil-entete"><div><div class="fil-titre">' + esc(m.homeTeam) + (m.awayTeam ? ' – ' + esc(m.awayTeam) : '') + '</div>'
-        + '<div class="fil-source">En direct de Bluesky · relu toutes les ' + Math.round(INTERVALLE_FIL_MS / 1000) + ' s</div></div>'
+        + '<div class="fil-source">En direct de Bluesky · relu toutes les ' + Math.round(INTERVALLE_FIL_MS / 1000) + ' s</div>'
+        + (fil.termes.length ? '<div class="fil-termes">' + esc(fil.termes.join(' · ')) + '</div>' : '') + '</div>'
         + (reactionsPossibles(window) ? '<button type="button" class="fil-x" onclick="reactionsXDuLecteur()" title="La recherche en direct de X, dans une fenêtre à côté">Voir sur X</button>' : '')
         + '</div>';
     var corps = fil.erreur && !fil.posts.length ? '<div class="fil-vide">Bluesky ne répond pas pour l\'instant. Nouvel essai dans quelques secondes.</div>'
         : (!fil.posts.length && fil.enCours ? '<div class="fil-vide">Chargement…</div>' : filHtml(fil.posts, esc, Date.now()));
     c.innerHTML = tete + '<div class="fil-liste" aria-live="polite">' + corps + '</div>';
 }
+/* Les fiches des équipes d'un match (surnom, ville, alias de la base) ; vide pour un seul nom. */
+export function fichesReaction(m) {
+    var noms = equipesAChercher(m);
+    return noms.length >= 2 ? noms.map(ficheReaction) : [];
+}
 export function majFilReactions() {
     if (!mvGameModeActive || gmCurrentTab !== 'reactions') { arreterFilReactions(); return Promise.resolve(null); }
     if (!fil.minuterie) fil.minuterie = setInterval(function() { if (!document.hidden) majFilReactions(); }, INTERVALLE_FIL_MS);
     var m = matchDeLaTuileActive();
     var mid = m ? String(m.id) : null;
-    if (mid !== fil.mid) { fil.mid = mid; fil.posts = []; fil.erreur = false; }
+    if (mid !== fil.mid) { fil.mid = mid; fil.posts = []; fil.erreur = false; fil.appris = []; fil.termes = []; }
     if (!m || !adresseReactionsX(m)) { rendreFilReactions(null); return Promise.resolve(null); }
     if (fil.enCours) return Promise.resolve(null);
     fil.enCours = true;
@@ -676,10 +682,13 @@ export function majFilReactions() {
     /* Deux équipes : une requête chacune, sur son surnom. Un seul nom (course, gala) : ce nom. */
     var noms = equipesAChercher(m);
     var fiches = noms.length >= 2 ? noms.map(ficheReaction) : [{ nom: noms[0] }];
-    return chargerFil(fiches, m.league, function(u, o) { return fetch(u, o); }).then(function(r) {
+    return chargerFil(fiches, m.league, function(u, o) { return fetch(u, o); }, fil.appris).then(function(r) {
         fil.enCours = false;
         if (fil.mid !== mid) return null;
         fil.erreur = r.erreur;
+        fil.termes = r.termes || [];
+        /* Les mots-clics appris restent : une lecture qui n'en trouve pas n'efface pas les précédents. */
+        (r.motsCliques || []).forEach(function(liste, i) { if (liste && liste.length) fil.appris[i] = liste; });
         fil.posts = fusionnerFil(fil.posts, r.posts, undefined, Date.now());
         rendreFilReactions(m);
         return fil.posts;
@@ -2884,7 +2893,8 @@ export function reactionsDuLecteur() {
 }
 /* « Voir sur X », dans le fil : la recherche en direct de X dans une fenêtre à côté. */
 export function reactionsXDuLecteur() {
-    var etat = ouvrirReactionsX(matchDeLaTuileActive(), window);
+    var mX = matchDeLaTuileActive();
+    var etat = ouvrirReactionsX(mX, window, fichesReaction(mX));
     if (etat === 'bloquee') showToast('Le navigateur a bloqué la fenêtre : autorise les fenêtres pour ce site.');
     return etat;
 }

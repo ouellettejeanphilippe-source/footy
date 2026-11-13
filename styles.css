@@ -958,6 +958,7 @@ body.manette .mv-hdr-right, body.manette .mv-drag-handle { display: none; }
 .fil-entete { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .fil-titre { color: #fff; font-size: 14px; font-weight: 700; }
 .fil-source { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.fil-termes { color: var(--accent); font-size: 11px; margin-top: 3px; overflow-wrap: anywhere; }
 .fil-x { appearance: none; flex-shrink: 0; min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(255,255,255,0.12); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .fil-x:hover, .fil-x:focus-visible { background: rgba(255,255,255,0.24); }
 .fil-msg { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
