@@ -3931,3 +3931,26 @@ test('Live : la carte d\'un match montre le bilan de chaque équipe à côté de
   expect(tient).toBe(true);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Cacher les toast genre actualisation des matchs en arrière plan » (13 novembre 2026) : une
+   passe d'arrière-plan ne parle plus — ni « Actualisation des matchs en arrière-plan... », ni
+   « N matchs · N live », ni « Aucune source de streams joignable » (réseau coupé ici : toutes
+   les sources échouent, ce que cette passe annonçait). */
+test('une passe d\'arrière-plan ne montre aucun message', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => {
+    window.__messages = [];
+    const txt = document.getElementById('toasttxt');
+    txt.textContent = '';
+    document.getElementById('toast').classList.remove('show');
+    new MutationObserver(() => { if (txt.textContent) window.__messages.push(txt.textContent); }).observe(txt, { childList: true, characterData: true, subtree: true });
+  });
+  await page.evaluate(() => window.loadAll(true, true));
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => window.__messages), 'aucun toast pendant la passe').toEqual([]);
+  // Le témoin : un message demandé s'affiche toujours, et l'observateur le voit.
+  await page.evaluate(() => window.showToast('Un message'));
+  await expect.poll(() => page.evaluate(() => window.__messages)).toEqual(['Un message']);
+  expect(pageErrors).toEqual([]);
+});

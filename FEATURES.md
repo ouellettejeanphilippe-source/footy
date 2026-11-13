@@ -26,7 +26,7 @@ Autres éléments toujours présents :
   - moins de 45 min : rien du tout (la gigue du cron ne se raconte pas) ;
   - à partir de 45 min, en gris : « Liens datant de 50 min : un passage du serveur a été manqué », avec `↻ Actualiser` ;
   - passé 90 min, ou si le fichier est injoignable, en ambre : « le serveur ne publie plus », avec **`🔎 Chercher les liens ici`** — l'application va alors lire elle-même les pages des matchs qu'on peut regarder maintenant, et le bandeau montre l'avancement (« 2/4 matchs lus — 1 pourvu »). Elle le fait aussi d'elle-même, une fois le chargement fini, et prévient par un message quand un match reçoit ses liens.
-- **Messages** (toasts) en bas de l'écran, 2,5 s, remontés au-dessus de la barre d'onglets sur mobile.
+- **Messages** (toasts) en bas de l'écran, 2,5 s, remontés au-dessus de la barre d'onglets sur mobile. **Les mises à jour d'arrière-plan n'en montrent plus** (13 novembre 2026) : ni « Actualisation des matchs en arrière-plan... », ni le compte des matchs, ni les sources injoignables, ni les liens trouvés par l'application ; tout reste lisible dans `Réglages → Logs`. Le premier chargement et `↻ Actualiser` parlent toujours.
 - **Zoom** (`Maintenant`, `−`, pourcentage, `+`) en bas à droite, visible dans le Guide seulement.
 
 Ce qui n'est **pas** dans l'application : la navigation par date, la recherche globale et les pastilles de filtre par ligue. Elles vivaient dans l'interface classique, retirée le 30 septembre 2026.

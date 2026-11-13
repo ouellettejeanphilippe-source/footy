@@ -610,7 +610,10 @@ async function loadAllRun(isBackground, forceScrape){
       var s2 = document.getElementById('s2'); if(s2 && s2.querySelector('span')) s2.querySelector('span').textContent = 'Recherche de streams...';
       var s3 = document.getElementById('s3'); if(s3 && s3.querySelector('span')) s3.querySelector('span').textContent = 'Fusion et Affichage';
   } else {
-      showToast('Actualisation des matchs en arrière-plan...');
+      /* Une passe d'arrière-plan ne dit plus rien (13 novembre 2026, « cacher les toast genre
+         actualisation des matchs en arrière plan ») : ni son début, ni son bilan, ni ses sources
+         injoignables (elles restent dans Réglages → Logs). Seul ce que l'utilisateur a demandé
+         (↻ Actualiser) ou attend (le premier chargement) lui parle. */
       // Ensure it is definitely hidden if we've already loaded once
       hideLoadingOverlay();
   }
@@ -755,7 +758,7 @@ async function loadAllRun(isBackground, forceScrape){
                 hideLoadingOverlay();
                 window.hasLoadedOnce = true;
                 window.dispatchEvent(new Event('loadSequenceComplete'));
-                showToast(window.prefetchedStreamsError
+                if (!isBackground) showToast(window.prefetchedStreamsError
                     ? 'Liens serveur injoignables (' + window.prefetchedStreamsError + ') : recherche directe en cours…'
                     : 'Recherche des liens en cours…');
             }
@@ -797,7 +800,9 @@ async function loadAllRun(isBackground, forceScrape){
                   addScrapeLog(sources[idx].url, 'success', '');
               }
           });
-          if (failedDomains.length > 0 && failedDomains.length < sources.length) {
+          if (isBackground) {
+              /* en silence : addScrapeLog l'a noté */
+          } else if (failedDomains.length > 0 && failedDomains.length < sources.length) {
               showToast('Sources injoignables : ' + failedDomains.join(', '));
           } else if (sources.length && failedDomains.length === sources.length) {
               showToast('Aucune source de streams joignable (proxys CORS hors service ?). Liens pré-calculés utilisés.');
@@ -925,7 +930,7 @@ async function loadAllRun(isBackground, forceScrape){
               }
                         }, 0);
           var live=0; for(var i=0; i<S.matches.length; i++) { if(S.matches[i].status==='live') live++; }
-          showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
+          if (!isBackground) showToast(S.matches.length+' matchs'+(live?' · '+live+' live':''));
           });
       });
   }).catch(function(err){
@@ -1646,7 +1651,6 @@ export function lancerRattrapage(force) {
     return suite.then(function() {
         var r = window.rattrapageEtat;
         lg('Rattrapage', r.faits + ' page(s) lue(s), ' + r.trouves + ' match(s) pourvu(s)');
-        if (r.trouves) showToast('🔎 ' + r.trouves + ' match' + (r.trouves > 1 ? 's' : '') + ' a reçu ses liens : le serveur était muet, l\'application a cherché elle-même.');
         rattrapageEnCours = false;
         window.rattrapageEtat = null;
         majBandeauCache();
