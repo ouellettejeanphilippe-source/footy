@@ -8,6 +8,7 @@ import { lireCacheLocal, ecrireCacheLocal } from './utils.js';
 import { liensDunEvenementEsports, estLigueLolSuivie } from './esports.js';
 import { appartientAuJour, nuitEnCours, veille, lendemain } from './nuit.js';
 import { urlScorebarLhjmq, lireScorebarLhjmq } from './lhjmq.js';
+import { bilanDe } from './bilan.js';
 
 /* ══ ESPN API FALLBACK & API-SPORTS ════════════ */
 /* Endpoints ESPN partagés par le client et par scripts/scrape_schedule.mjs.
@@ -620,6 +621,9 @@ function fetchAndProcessApiMatches(targetDateObj, todayStr, targetDateStr) {
           matchDate: matchDate,
           homeLogo: isRacing ? null : (comp.competitors.find(function(c){return c.homeAway==='home';}).team.logo || null),
           awayLogo: isRacing ? null : (comp.competitors.find(function(c){return c.homeAway==='away';}).team.logo || null),
+          /* Le bilan de chaque équipe, pour la carte du Live (js/bilan.js). */
+          homeRecord: isRacing ? '' : bilanDe(comp.competitors.find(function(c){return c.homeAway==='home';})),
+          awayRecord: isRacing ? '' : bilanDe(comp.competitors.find(function(c){return c.homeAway==='away';})),
           startTime: startTime,
           durationMinutes: getLeagueDuration(leagueName),
           status: status,

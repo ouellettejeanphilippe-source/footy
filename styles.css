@@ -1506,6 +1506,8 @@ body.cards-poster .rail-toggle { display: inline-flex; }
 .match-card .prime-col-teams, .match-card .prime-col-scores { gap: 2px; }
 .match-card .prime-team-name, body.cards-poster .match-card .prime-team-name { font-size: 15px; line-height: 1.4; letter-spacing: -0.01em; gap: 6px; }
 .prime-team-name .ptn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Le bilan de l'équipe à côté de son nom (13 novembre 2026, js/bilan.js) : discret, jamais coupé. */
+.prime-team-name .prime-bilan { flex-shrink: 0; font-size: 0.78em; font-weight: 600; color: var(--t3, var(--muted)); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .match-card .prime-score, body.cards-poster .match-card .prime-score { font-size: 19px; line-height: 1.12; font-weight: 700; min-height: 1.12em; padding-top: 1px; }
 .match-card.finished .prime-info { color: var(--t2); }
 .match-card .prime-foot, body.cards-poster .match-card .prime-foot { padding: 4px 2px 0; font-size: 12px; font-weight: 500; color: var(--t3); }

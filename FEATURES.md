@@ -63,6 +63,8 @@ Une vignette 16:9 (29 octobre 2026, comme une tuile de service de streaming), le
 
 Un clic ouvre la fiche du match (section 4).
 
+**Bilan des équipes** (13 novembre 2026) : à côté de chaque nom, en petit et en gris, le bilan de la saison tel qu'ESPN le donne (`9-7-1` : victoires, défaites, puis prolongation ou nuls selon le sport). Il arrive avec le calendrier ou avec la première lecture des scores ; une équipe sans bilan connu (course, ligue hors ESPN) n'affiche rien. Si la place manque, c'est le nom qui est coupé, pas le bilan.
+
 ### 2.3 Affiches et rails sur téléphone
 
 Sous 900 px, les cartes prennent la forme « affiche » : la vignette en 4:3, la carte en portrait, deux par ligne au téléphone. Chaque section porte un bouton **Rail** / **Grille** : au téléphone, en grille par défaut (un seul axe au pouce) ; **sur un grand écran, en rangée par défaut** (27 octobre 2026) : chaque ligue est une rangée horizontale, comme sur Netflix. Le choix est retenu par section. Options → Forme des cartes force l'un ou l'autre format de carte sur tous les écrans.

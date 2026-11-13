@@ -22,6 +22,7 @@ import { sectionsParSport, idSectionSport } from './livesport.js';
 import { chargerChaines, sectionTele } from './chainestv.js';
 import { icone } from './icones.js';
 import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
+import { bilanHtml } from './bilan.js';
 import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
 
@@ -804,7 +805,7 @@ function buildEPGInner(matches){
                                   '<div class="prime-logo-wrapper home seul">' + homeLogoHtmlPrime + '</div>';
 
                   var teamsHtml = !isRacing ?
-                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam)+'</span>'+etoileCarte(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'"><span class="ptn">'+esc(m.awayTeam)+'</span>'+etoileCarte(m.awayTeam)+'</div>' :
+                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam)+'</span>'+bilanHtml(m.homeRecord, esc)+etoileCarte(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'"><span class="ptn">'+esc(m.awayTeam)+'</span>'+bilanHtml(m.awayRecord, esc)+etoileCarte(m.awayTeam)+'</div>' :
                                   '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam) + (m.awayTeam ? ' – ' + esc(m.awayTeam) : '') + '</span>'+etoileCarte(m.homeTeam)+'</div>';
 
                   var scoresHtml = !isRacing ?

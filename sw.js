@@ -76,6 +76,7 @@ const APP_SHELL = [
   './js/livesport.js',
   './js/chainestv.js',
   './js/reactions.js',
+  './js/bilan.js',
   './js/teinte.js',
   './js/relais.js',
   './js/sources/index.js',

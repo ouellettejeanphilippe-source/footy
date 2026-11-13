@@ -3904,3 +3904,30 @@ test('Réactions : le fil en direct dans le panneau du lecteur, la barre hors du
   expect(await page.locator('#mbg a[target="_blank"]').count()).toBe(0);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Dans la carte de sélection de match, mettre les stats genre la fiche où sont les noms et logos »
+   (13 novembre 2026, précisé : les cartes du Live). Le bilan de chaque équipe, que le scoreboard
+   d'ESPN porte déjà (js/bilan.js), s'affiche à côté de son nom ; une équipe sans bilan n'a rien. */
+test('Live : la carte d\'un match montre le bilan de chaque équipe à côté de son nom', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const cible = await page.evaluate(() => {
+    const cartes = [...document.querySelectorAll('#marea .match-card[id^="mb-"]')];
+    const c = cartes.find((x) => !/_fav_copy$/.test(x.id) && x.querySelectorAll('.prime-team-name').length === 2);
+    if (!c) return null;
+    const m = window.S.matches.find((x) => 'mb-' + x.id === c.id);
+    if (!m) return null;
+    /* Comme une lecture des scores d'ESPN : le bilan arrive avec elle et la carte se redessine. */
+    delete m.homeRecord; delete m.awayRecord;
+    window.applyScoreUpdates([{ id: m.id, status: m.status, score: m.score, minute: m.minute, period: m.period, detail: m.detail, homeRecord: '9-7-1', awayRecord: '' }]);
+    return c.id;
+  });
+  test.skip(!cible, 'aucun match à deux équipes rendu avec les données du jour');
+  const noms = page.locator('[id="' + cible + '"] .prime-team-name');
+  await expect(noms.nth(0).locator('.prime-bilan')).toHaveText('9-7-1');
+  await expect(noms.nth(1).locator('.prime-bilan')).toHaveCount(0);
+  // Le bilan n'est jamais coupé : c'est le nom qui cède la place.
+  const tient = await noms.nth(0).evaluate((n) => { const b = n.querySelector('.prime-bilan'); return b.scrollWidth <= b.clientWidth + 1 && b.getBoundingClientRect().right <= n.getBoundingClientRect().right + 1; });
+  expect(tient).toBe(true);
+  expect(pageErrors).toEqual([]);
+});

@@ -65,11 +65,16 @@ function scoreKey(m) {
    l'affichage. Retourne le nombre de matchs dont statut, score ou minute a changé. */
 export function applyScoreUpdates(fresh) {
     if (!Array.isArray(fresh) || !fresh.length) return 0;
-    var changed = 0;
+    var changed = 0, bilanChange = false;
     for (var i = 0; i < fresh.length; i++) {
         var f = fresh[i];
         var m = S.matchMap.get(String(f.id));
         if (!m) continue;
+        /* Le bilan des équipes (js/bilan.js), que la carte du Live affiche : le calendrier du
+           serveur peut ne pas l'avoir encore, ESPN le donne à chaque lecture des scores. Jamais
+           effacé par une réponse qui ne l'a pas. */
+        if (f.homeRecord && f.homeRecord !== m.homeRecord) { m.homeRecord = f.homeRecord; bilanChange = true; }
+        if (f.awayRecord && f.awayRecord !== m.awayRecord) { m.awayRecord = f.awayRecord; bilanChange = true; }
         if (scoreKey(m) !== scoreKey(f)) changed++;
         m.status = f.status;
         m.score = f.score;
@@ -88,6 +93,8 @@ export function applyScoreUpdates(fresh) {
         });
     }
     updateLiveScores(S.matches);
+    /* Le bilan est dans le nom de la carte, que updateLiveScores ne redessine pas. */
+    if (bilanChange && typeof document !== 'undefined') rebuildPreservingScroll();
     return changed;
 }
 
