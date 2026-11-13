@@ -173,7 +173,7 @@ export function statsDuMatch(data, idDom) {
 function pourcentLisible(v) { return /%/.test(v) ? v : String(v).replace('.', ',') + ' %'; }
 
 /* Une fusion en ligne : { nom, libelle, dom, vis, sousDom, sousVis, mesureDom, mesureVis }.
-   « 246/310 » en valeur, « 79 % » dessous ; la barre compare les pourcentages quand il y en a
+   « 80 % » en valeur, « 246/310 » en petit ; la barre compare les pourcentages quand il y en a
    (réussir 8 passes sur 10 vaut mieux qu'en réussir plus en en ratant la moitié). */
 function fusionner(cle, parNom) {
     var f = FUSIONS[cle], a = parNom[f.de[0]], b = f.de[1] ? parNom[f.de[1]] : null, p = f.pct ? parNom[f.pct] : null;
@@ -181,8 +181,10 @@ function fusionner(cle, parNom) {
        qu'elle montre : ses composantes restent alors des lignes à part. */
     if (!a || (f.de[1] && !b)) return null;
     var valeur = function(cote) { return b ? a[cote] + '/' + b[cote] : a[cote]; };
-    return { nom: cle, libelle: f.libelle, dom: valeur('dom'), vis: valeur('vis'),
-        sousDom: p ? pourcentLisible(p.dom) : '', sousVis: p ? pourcentLisible(p.vis) : '',
+    /* Un seul nombre à lire par côté : le pourcentage quand il existe, et le détail (« 246/310 »)
+       en petit à côté ; sans pourcentage, la fraction est la valeur. */
+    return { nom: cle, libelle: f.libelle, dom: p ? pourcentLisible(p.dom) : valeur('dom'), vis: p ? pourcentLisible(p.vis) : valeur('vis'),
+        sousDom: p ? valeur('dom') : '', sousVis: p ? valeur('vis') : '',
         mesureDom: p ? p.dom : a.dom, mesureVis: p ? p.vis : a.vis, composantes: f.de.concat(f.pct ? [f.pct] : []) };
 }
 

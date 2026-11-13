@@ -4049,8 +4049,10 @@ test('les statistiques d\'un match : même dessin partout, rangées par thème, 
   await expect(page.locator('#stats-match-container .cmp')).toBeVisible();
   expect(await lire('#stats-match-container')).toEqual(direct);
   const pp = page.locator('#stats-match-container .cmp-ligne[data-stat="avantageNumerique"]');
-  await expect(pp.locator('.cmp-dom b')).toHaveText('34/35');
-  await expect(pp.locator('.cmp-dom small')).toHaveText('36 %');
+  await expect(pp.locator('.cmp-dom b')).toHaveText('36 %');
+  await expect(pp.locator('.cmp-dom small')).toHaveText('34/35');
+  // Serré : une statistique tient sur une ligne, la barre n'est qu'un filet dessous.
+  expect(await pp.evaluate((l) => Math.round(l.getBoundingClientRect().height)), 'une ligne par statistique').toBeLessThanOrEqual(30);
   expect(await page.locator('#stats-match-container .cmp-ligne[data-stat="shotsTotal"]').getAttribute('class')).toContain('cmp-mene-dom');
   expect(await page.locator('#stats-match-container .cmp-ligne[data-stat="penaltyMinutes"]').getAttribute('class'), 'moins de pénalités : le visiteur mène').toContain('cmp-mene-vis');
   await expect(page.locator('#mbg .fiche-suite')).toHaveCount(1);

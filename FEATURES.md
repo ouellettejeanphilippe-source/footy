@@ -127,8 +127,9 @@ Sous le bouton **Regarder**, une section **Radio** : une ligne par équipe qui a
 Sous la radio, la **comparaison des deux équipes**, visible sans rien déplier.
 
 - **Par thème, dans un ordre qui suit le match** : Attaque (possession, tirs, corners), Jeu (passes, centres, mises au jeu), Défense (arrêts, tacles, tirs bloqués), Discipline et erreurs (fautes, cartons, pénalités, revirements) ; au basket Adresse et Rebonds, au football américain Efficacité. Ce que l'application ne sait pas ranger reste visible, dans « Autres ».
-- **Une ligne par idée** : « 246/310 » et « 80 % » dessous pour les passes, au lieu de trois lignes ; une statistique à 0 des deux côtés n'est pas montrée.
-- **Qui mène** : une barre partagée aux couleurs des deux équipes, et la valeur du meneur dans une pastille à sa couleur (pour les fautes, les pénalités ou les buts accordés, c'est le plus petit nombre).
+- **Serré** : une statistique tient sur une ligne (valeur, nom, valeur) ; les thèmes sont des intertitres, côte à côte dans la fiche.
+- **Une ligne par idée, un nombre par côté** : « 80 % » pour les passes, avec « 246/310 » en petit à côté, au lieu de trois lignes ; une statistique à 0 des deux côtés n'est pas montrée.
+- **Qui mène** : la valeur du meneur dans une pastille à la couleur de son équipe (pour les fautes, les pénalités ou les buts accordés, c'est le plus petit nombre), et un filet sous la ligne montre la part de chacun.
 - **En direct et saison séparés** : deux onglets, **En direct** (ou **Ce match** une fois fini) et **Saison** (moyennes de la saison, lues quand on clique ; LNH, NBA, NFL — ESPN n'en donne pas pour le football, l'onglet le dit). Avant le match, il n'y a que la saison, sous ce titre. L'onglet choisi reste le même dans la fiche, le lecteur et le panneau.
 - Dessous, deux boutons : **Classement et équipes** (ouvre le panneau Scores et statistiques) et **Page du match sur ESPN**.
 

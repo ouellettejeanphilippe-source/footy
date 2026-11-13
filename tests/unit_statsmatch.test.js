@@ -56,7 +56,7 @@ test('grouperStats : un ordre qui raconte le match, pas celui d\'ESPN', () => {
 test('les lignes qui disent la même chose sont fondues en une', () => {
   const g = M.grouperStats(M.statsDuMatch(foot));
   const passes = g[1].lignes.find((l) => l.nom === 'passes');
-  assert.deepStrictEqual([passes.libelle, passes.dom, passes.vis, passes.sousDom, passes.sousVis], ['Passes réussies', '246/310', '410/480', '80 %', '90 %']);
+  assert.deepStrictEqual([passes.libelle, passes.dom, passes.vis, passes.sousDom, passes.sousVis], ['Passes réussies', '80 %', '90 %', '246/310', '410/480']);
   assert.deepStrictEqual(M.mesureDeLigne(passes), { partDom: 47.1, mene: 'vis' }, 'la barre compare les pourcentages');
   const tacles = g[2].lignes.find((l) => l.nom === 'tacles');
   assert.deepStrictEqual([tacles.dom, tacles.sousDom], ['12/22', ''], 'sans pourcentage : la fraction seule');
@@ -95,7 +95,7 @@ test('comparaisonHtml : une carte par thème, la valeur qui mène marquée, tout
   assert.deepStrictEqual((html.match(/data-theme="[a-z]+"/g) || []), ['data-theme="attaque"', 'data-theme="jeu"', 'data-theme="defense"', 'data-theme="discipline"', 'data-theme="autres"']);
   assert.match(html, /<div class="cmp-ligne cmp-mene-vis" data-stat="possessionPct"><span class="cmp-v cmp-dom"><b>39,2 %<\/b><\/span><span class="cmp-l" title="Possession">Possession<\/span><span class="cmp-v cmp-vis"><b>60,8 %<\/b><\/span>/);
   assert.match(html, /data-stat="possessionPct">.*?<i class="cmp-dom" style="width:39\.2%"><\/i><i class="cmp-vis" style="width:60\.8%"><\/i>/);
-  assert.match(html, /data-stat="passes"><span class="cmp-v cmp-dom"><b>246\/310<\/b><small>80 %<\/small><\/span>/);
+  assert.match(html, /data-stat="passes"><span class="cmp-v cmp-dom"><b>80 %<\/b><small>246\/310<\/small><\/span>/);
   assert.ok(html.includes('title="Mystery Stat"'), 'le libellé d\'ESPN en dernier recours');
   assert.ok(!/<details/.test(html), 'plus rien de replié');
   assert.strictEqual(M.comparaisonHtml([], esc), '');
