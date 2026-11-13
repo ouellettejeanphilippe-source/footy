@@ -3999,3 +3999,100 @@ test('la fiche : rang et bilan de chaque équipe sous son nom, dans la bannière
   expect(await page.locator('#records-container').count()).toBe(0);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Tout ce qui est stats et infos du genre, présenter de manière plus agréable et fonctionnelle »,
+   « en ordre qui a du sens contextuellement », « séparer stats en direct et stats de la saison »
+   (13 novembre 2026, js/statsmatch.js) : la même comparaison des deux équipes dans la fiche, le
+   panneau du lecteur et le panneau Scores et statistiques — par thème, libellés en français, la
+   valeur qui mène en clair — et deux onglets, « En direct » et « Saison ». ESPN est simulé. */
+test('les statistiques d\'un match : même dessin partout, rangées par thème, le direct et la saison séparés', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const st = (name, label, displayValue) => ({ name, label, displayValue });
+  // Dans l'ordre d'ESPN (relevé LNH du 13 novembre 2026).
+  const noms = ['blockedShots', 'hits', 'takeaways', 'shotsTotal', 'powerPlayGoals', 'powerPlayOpportunities', 'powerPlayPct', 'shortHandedGoals', 'shootoutGoals', 'faceoffsWon', 'faceoffPercent', 'giveaways', 'penalties', 'penaltyMinutes'];
+  const equipe = (id, cote, base) => ({ homeAway: cote, team: { id }, statistics: noms.map((n, i) => st(n, 'English ' + n, n === 'shootoutGoals' ? '0' : String(base + i))) });
+  const cat = (name, o) => ({ name, stats: Object.keys(o).map((k) => ({ name: k, displayValue: o[k] })) });
+  const saison = (buts) => ({ results: { stats: { categories: [cat('general', { games: '20' }), cat('offensive', { goals: String(buts), shotsTotal: '600' }), cat('defensive', { avgGoalsAgainst: '3.00', savePct: '.899' })] } } });
+  const demandes = [];
+  await page.route(/site\.api\.espn\.com/, (route) => {
+    const u = route.request().url();
+    const json = (o) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(o) });
+    if (/\/teams\/(11|22)\/statistics/.test(u)) { demandes.push(u); return json(saison(/\/11\//.test(u) ? 80 : 50)); }
+    if (!/\/summary\?/.test(u)) return route.abort();
+    return json({
+      header: { competitions: [{ status: { type: { state: 'in' } }, competitors: [{ id: '11', homeAway: 'home', record: [{ summary: '10-7-1' }] }, { id: '22', homeAway: 'away', record: [{ summary: '4-12-2' }] }] }] },
+      boxscore: { teams: [equipe('22', 'away', 10), equipe('11', 'home', 30)] }
+    });
+  });
+  const mid = await page.evaluate(() => {
+    const m = window.S.matches.find((x) => String(x.id).startsWith('espn_') && x.homeTeam && x.awayTeam && !/^(race|fp|qual)/i.test(x.awayTeam));
+    if (!m) return '';
+    m.league = 'NHL'; m.status = 'live'; m.score = [4, 0]; m.minute = '2e 10:25';
+    window.openMod(m);
+    return String(m.id);
+  });
+  test.skip(!mid, 'aucun match ESPN à deux équipes dans les données du jour');
+
+  const lire = (racine) => page.evaluate((r) => {
+    const z = document.querySelector(r);
+    return { onglets: [...z.querySelectorAll('.cmp-onglet')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '')),
+      themes: [...z.querySelectorAll('.cmp-groupe')].map((g) => [g.querySelector('.cmp-theme').textContent, [...g.querySelectorAll('.cmp-ligne')].map((l) => l.querySelector('.cmp-l').textContent)]),
+      anglais: /English/.test(z.querySelector('.cmp').textContent) };
+  }, racine);
+  const direct = { onglets: ['En direct*', 'Saison'], anglais: false, themes: [
+    ['Attaque', ['Tirs', 'Avantage numérique', 'Buts en désavantage']], ['Jeu', ['Mises au jeu gagnées', 'Revirements provoqués']],
+    ['Défense', ['Tirs bloqués', 'Mises en échec']], ['Discipline et erreurs', ['Pénalités', 'Minutes de pénalité', 'Revirements']]] };
+
+  // La fiche : la comparaison est là sans rien déplier, par thème ; « buts en fusillade » 0-0 n'y est pas.
+  await expect(page.locator('#stats-match-container .cmp')).toBeVisible();
+  expect(await lire('#stats-match-container')).toEqual(direct);
+  const pp = page.locator('#stats-match-container .cmp-ligne[data-stat="avantageNumerique"]');
+  await expect(pp.locator('.cmp-dom b')).toHaveText('36 %');
+  await expect(pp.locator('.cmp-dom small')).toHaveText('34/35');
+  // Serré : une statistique tient sur une ligne, la barre n'est qu'un filet dessous.
+  expect(await pp.evaluate((l) => Math.round(l.getBoundingClientRect().height)), 'une ligne par statistique').toBeLessThanOrEqual(30);
+  expect(await page.locator('#stats-match-container .cmp-ligne[data-stat="shotsTotal"]').getAttribute('class')).toContain('cmp-mene-dom');
+  expect(await page.locator('#stats-match-container .cmp-ligne[data-stat="penaltyMinutes"]').getAttribute('class'), 'moins de pénalités : le visiteur mène').toContain('cmp-mene-vis');
+  await expect(page.locator('#mbg .fiche-suite')).toHaveCount(1);
+  expect(await page.locator('#mbg .fiche-complements').evaluate((e) => /📊|📰/.test(e.textContent)), 'plus d\'emoji en guise d\'icônes').toBe(false);
+  expect(demandes.length, 'la saison n\'est pas lue tant qu\'on ne la demande pas').toBe(0);
+
+  // « Saison » : lue au clic (une requête par équipe), sous ses propres thèmes.
+  await page.locator('#stats-match-container .cmp-onglet[data-onglet="saison"]').click();
+  await expect(page.locator('#stats-match-container .cmp-ligne[data-stat="avgGoals"] .cmp-dom b')).toHaveText('4.00');
+  expect((await lire('#stats-match-container')).themes).toEqual([['Attaque', ['Buts par match', 'Tirs par match']], ['Défense', ['Buts accordés par match', 'Arrêts']]]);
+  expect(demandes.length).toBe(2);
+
+  // Le panneau Scores et statistiques : même dessin, et l'onglet choisi suit.
+  await page.locator('#mbg .fiche-suite').click();
+  await expect(page.locator('#gstats-content .cmp-ligne[data-stat="avgGoals"]')).toBeVisible();
+  expect((await lire('#gstats-content')).onglets).toEqual(['En direct', 'Saison*']);
+  await page.locator('#gstats-content .cmp-onglet[data-onglet="match"]').click();
+  expect(await lire('#gstats-content')).toEqual(direct);
+  await page.evaluate(() => window.toggleGlobalStats());
+
+  // Le panneau du lecteur : l'en-tête commun (score, état, bilan) et la même comparaison.
+  await page.evaluate(([o, id]) => {
+    window.addToMultivision(o + '/__lecteur-calme?stats', 'Match', id);
+    if (document.body.getAttribute('data-view') !== 'player') window.openMultiviewTab();
+    window.focusStream(0);
+    window.toggleMvGameMode();
+  }, [origin, mid]);
+  await expect(page.locator('#mv-stats-content .cmp')).toBeVisible();
+  expect(await lire('#mv-stats-content')).toEqual(direct);
+  const tete = page.locator('#mv-stats-content .em');
+  await expect(tete).toHaveClass(/em-direct/);
+  await expect(tete.locator('.em-score')).toHaveText('4–0');
+  await expect(tete.locator('.em-etat')).toHaveText('2e 10:25');
+  await expect(tete.locator('.em-sous[data-cote="dom"]')).toHaveText('10-7-1');
+  // La relecture de chaque minute garde l'onglet choisi, sans redemander la saison.
+  await page.locator('#mv-stats-content .cmp-onglet[data-onglet="saison"]').click();
+  await expect(page.locator('#mv-stats-content .cmp-ligne[data-stat="avgGoals"]')).toBeVisible();
+  await page.evaluate(() => window.updateMvGameModeStats());
+  await page.waitForTimeout(600);
+  expect((await lire('#mv-stats-content')).onglets).toEqual(['En direct', 'Saison*']);
+  expect(demandes.length, 'la saison lue une fois par match').toBe(2);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});

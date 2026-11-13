@@ -1649,6 +1649,13 @@ export function fetchGameStats(matchId) {
 }
 
 
+/* Les statistiques de saison d'une équipe (13 novembre 2026, « séparer stats en direct et stats de
+   la saison ») : lues à la demande par l'onglet « Saison » (js/statsmatch.js, `saisonDEquipe`). */
+export function fetchTeamSeasonStats(leagueName, teamId) {
+    var url = 'https://site.api.espn.com/apis/site/v2/sports/' + getEspnPath(leagueName) + '/teams/' + encodeURIComponent(teamId) + '/statistics';
+    return fetch(url, { signal: AbortSignal.timeout(8000) }).then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+}
+
 export function fetchTeamInfo(leagueName, teamId) {
     var path = getEspnPath(leagueName);
     // Fetch base team info and roster info in parallel
