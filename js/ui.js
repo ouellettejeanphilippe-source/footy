@@ -11,7 +11,7 @@ import { lg, esc, toggleAccordion, escJs, pad, safeStorageGetJSON, safeStorageSe
 import { primaryDomain, matchDomainStats } from './links.js';
 import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
 import { liensLolDuDirect } from './esports.js';
-import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision, majTeinte } from './multiview.js';
+import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision, majTeinte, fichesReaction } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
 import { mesurePour, formaterMesure } from './debit.js';
 import { extraireAlignements, extraireEffectifs, alignementsHtml } from './alignements.js';
@@ -22,6 +22,8 @@ import { sectionsParSport, idSectionSport } from './livesport.js';
 import { chargerChaines, sectionTele } from './chainestv.js';
 import { icone } from './icones.js';
 import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
+import { bilanHtml, statsEquipeHtml } from './bilan.js';
+import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
 
 /* `lg` (le journal de bord) est masqué par la variable locale `lg` (l'objet ligue)
@@ -803,7 +805,7 @@ function buildEPGInner(matches){
                                   '<div class="prime-logo-wrapper home seul">' + homeLogoHtmlPrime + '</div>';
 
                   var teamsHtml = !isRacing ?
-                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam)+'</span>'+etoileCarte(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'"><span class="ptn">'+esc(m.awayTeam)+'</span>'+etoileCarte(m.awayTeam)+'</div>' :
+                                  '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam)+'</span>'+bilanHtml(m.homeRecord, esc)+etoileCarte(m.homeTeam)+'</div><div class="prime-team-name" title="'+esc(m.awayTeam)+'"><span class="ptn">'+esc(m.awayTeam)+'</span>'+bilanHtml(m.awayRecord, esc)+etoileCarte(m.awayTeam)+'</div>' :
                                   '<div class="prime-team-name" title="'+esc(m.homeTeam)+'"><span class="ptn">'+esc(m.homeTeam) + (m.awayTeam ? ' – ' + esc(m.awayTeam) : '') + '</span>'+etoileCarte(m.homeTeam)+'</div>';
 
                   var scoresHtml = !isRacing ?
@@ -1729,20 +1731,14 @@ export function openMod(m,col){
                   if(aC) mAwayId = aC.id;
               }
 
-              var recordsContainer = document.getElementById('records-container');
-              if (recordsContainer) {
-                  if (res.hRank || res.aRank || res.hForm || res.aForm) {
-                      var hFmt = (res.hRank ? '<span style="font-weight:bold; color:var(--text);">#' + res.hRank + '</span> ' : '') + (res.hForm ? '<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; margin-left:4px;">' + res.hForm + '</span>' : '');
-                      var aFmt = (res.aRank ? '<span style="font-weight:bold; color:var(--text);">#' + res.aRank + '</span> ' : '') + (res.aForm ? '<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; margin-left:4px;">' + res.aForm + '</span>' : '');
-                      var rHtml = '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.7); padding: 0 10px;">';
-                      rHtml += '<div style="flex:1; text-align:center; display:flex; justify-content:center; align-items:center;">' + hFmt + '</div>';
-                      rHtml += '<div style="flex:0.2;"></div>';
-                      rHtml += '<div style="flex:1; text-align:center; display:flex; justify-content:center; align-items:center;">' + aFmt + '</div>';
-                      rHtml += '</div>';
-                      recordsContainer.innerHTML = rHtml;
-                      recordsContainer.style.display = 'block';
-                  }
-              }
+              /* Rang et bilan : sous le nom et le logo de chaque équipe, dans la bannière
+                 (13 novembre 2026 ; avant, une ligne à part plus bas, #records-container). Le
+                 bilan du scoreboard, déjà affiché, reste si le summary n'en donne pas. */
+              [['home', res.hRank, res.hForm || m.homeRecord], ['away', res.aRank, res.aForm || m.awayRecord]].forEach(function(c) {
+                  var zone = document.querySelector('#mbg .fb-stats[data-cote="' + c[0] + '"]');
+                  var html = statsEquipeHtml(c[1], c[2], esc);
+                  if (zone && html) zone.innerHTML = html;
+              });
 
               if (res.scorers && res.scorers.length > 0) {
                   var hScorers = [], aScorers = [];
@@ -1947,14 +1943,14 @@ export function openMod(m,col){
      Le corps ne garde que les compléments (buteurs, classement, statistiques). */
   var etoile = function(nom) { return '<button type="button" class="fb-fav" title="Équipe favorite" aria-label="Équipe favorite" style="color:' + (favTeams[nom] ? 'var(--accent)' : 'rgba(255,255,255,0.55)') + ';" onclick="toggleFavTeam(\'' + escJs(nom) + '\'); event.stopPropagation();">★</button>'; };
   var banniereHtml = '<div class="fiche-banner' + (isRacing ? ' racing' : '') + '">'
-      + '<div class="fb-team home">' + homeLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.homeTeam) + '">' + esc(m.homeTeam) + ' ' + etoile(m.homeTeam) + '</div></div>'
+      + '<div class="fb-team home">' + homeLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.homeTeam) + '">' + esc(m.homeTeam) + ' ' + etoile(m.homeTeam) + '</div><div class="fb-stats" data-cote="home">' + statsEquipeHtml('', m.homeRecord, esc) + '</div></div>'
       + '<div class="fb-center">'
       +   '<div class="fb-league">' + esc(m.league || '') + '</div>'
       +   (isRacing ? '' : centerScoreHtml)
       +   (libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) ? '<span class="prime-day">' + libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) + '</span>' : '')
       +   statusHtml
       + '</div>'
-      + (isRacing ? '' : '<div class="fb-team away">' + awayLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.awayTeam) + '">' + etoile(m.awayTeam) + ' ' + esc(m.awayTeam) + '</div></div>')
+      + (isRacing ? '' : '<div class="fb-team away">' + awayLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.awayTeam) + '">' + etoile(m.awayTeam) + ' ' + esc(m.awayTeam) + '</div><div class="fb-stats" data-cote="away">' + statsEquipeHtml('', m.awayRecord, esc) + '</div></div>')
       + '</div>';
   var mhd = document.querySelector('#mbg .mhd');
   if (mhd) { mhd.classList.add('has-banner'); mhd.style.background = cardBg; }
@@ -1969,7 +1965,6 @@ export function openMod(m,col){
                       '<div style="flex:0.2;"></div>' +
                       '<div id="away-scorers-modal" style="flex:1; font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
                   '</div>' +
-                  '<div id="records-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="goal-stats-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="global-stats-toggle-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="espn-btn-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
@@ -1992,6 +1987,20 @@ export function openMod(m,col){
   cta.innerHTML = '<button type="button" class="btn-regarder" data-focus-depart onclick="regarderMeilleurFlux()">' + icone('play') + '<span>Regarder</span></button>'
       + '<span class="fiche-cta-info"></span>';
   body.insertBefore(cta, body.firstChild);
+
+  /* « Réactions » (13 novembre 2026, js/reactions.js) : la recherche en direct de X sur les équipes
+     du match, dans une fenêtre à côté. Ordinateur seulement ; rien pour un match sans nom. */
+  if (reactionsPossibles(window) && adresseReactionsX(m)) {
+    var reac = document.createElement('button');
+    reac.type = 'button';
+    reac.className = 'btn-reactions';
+    reac.title = 'Ce que les gens en disent sur X, en direct, dans une fenêtre à côté';
+    reac.innerHTML = icone('bulle') + '<span>Réactions sur X</span>';
+    reac.addEventListener('click', function() {
+      if (ouvrirReactionsX(m, window, fichesReaction(m)) === 'bloquee' && window.showToast) window.showToast('Le navigateur a bloqué la fenêtre : autorise les fenêtres pour ce site.');
+    });
+    cta.insertBefore(reac, cta.querySelector('.fiche-cta-info'));
+  }
 
   /* La radio (31 octobre 2026, js/radio.js) : la station TuneIn de chaque équipe quand elle
      existe, et pour tout match une recherche TuneIn / iHeartRadio par équipe. */

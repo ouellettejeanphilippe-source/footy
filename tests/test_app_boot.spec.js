@@ -3806,3 +3806,196 @@ test('Live : la section « Télé » ne montre que les chaînes qui répondent, 
   await expect(page.locator('#marea .chaine-tv')).toHaveCount(2);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Avoir un genre Twitter en direct, les commentaires des gens », puis « j'aimerais fil en direct »
+   (13 novembre 2026, js/reactions.js). Le bouton Réactions de la barre ouvre le panneau du lecteur
+   sur le fil Bluesky du match (réseau coupé : la recherche est servie par un `fetch` de test) ;
+   « Voir sur X » et le bouton de la fiche ouvrent la recherche en direct de X dans une fenêtre à
+   côté (X refuse d'être encadré). « Boutons du vidéo restent dans zone vidéo, pas dans side bar » :
+   panneau ouvert, la barre de commandes s'arrête à son bord. */
+test('Réactions : le fil en direct dans le panneau du lecteur, la barre hors du panneau, X dans une fenêtre à côté', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.addInitScript(() => {
+    try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {}
+    window.__ouvertures = [];
+    window.open = function(u, nom, options) { window.__ouvertures.push([String(u), nom, options]); return { focus() {} }; };
+    window.__bluesky = [];
+    const vrai = window.fetch.bind(window);
+    window.fetch = (u, o) => {
+      const s = String(u && u.url || u);
+      if (s.indexOf('https://api.bsky.app/') !== 0) return vrai(u, o);
+      const q = new URL(s).searchParams.get('q');
+      window.__bluesky.push(q);
+      const p = (id, texte) => ({ uri: 'at://' + q + '/' + id + '/' + window.__bluesky.length, record: { text: texte, createdAt: new Date().toISOString() }, author: { handle: 'fan.bsky.social', displayName: 'Fan <b>' + q + '</b>' } });
+      return Promise.resolve(new Response(JSON.stringify({ posts: [p(1, 'Quel but ! Canadiens 1, Maple Leafs 0'), p(2, 'Rien à voir avec le match, juste ' + q.replace('#', ''))] }), { status: 200 }));
+    };
+  });
+  const pageErrors = await bootOffline(page);
+  const attendue = 'https://x.com/search?q=' + encodeURIComponent('"Montreal Canadiens" OR "Toronto Maple Leafs" OR #Canadiens OR #MapleLeafs') + '&f=live';
+
+  const mid = await page.evaluate((u) => {
+    const m = window.S.matches[0];
+    m.homeTeam = 'Montreal Canadiens'; m.awayTeam = 'Toronto Maple Leafs'; m.league = 'NHL';
+    window.addToMultivision(u, 'Canadiens', m.id);
+    window.openMultiviewTab();
+    return m.id;
+  }, origin + '/__faux-lecteur?a');
+  const bouton = page.locator('#mv-bar-reactions');
+  await expect.poll(() => bouton.evaluate((b) => b.hidden), { message: 'la vidéo choisie est un match : le bouton est là' }).toBe(false);
+  const barreAvant = await page.locator('#mv-toolbar').evaluate((b) => Math.round(b.getBoundingClientRect().right));
+  expect(barreAvant).toBe(1400);
+
+  // Le bouton ouvre le panneau sur l'onglet Réactions : pour chaque équipe, son surnom et son mot-clic.
+  await bouton.click();
+  const messages = page.locator('#mv-reactions-content .fil-msg');
+  await expect(messages).toHaveCount(4);
+  expect((await page.evaluate(() => window.__bluesky)).sort()).toEqual(['#Canadiens', '#MapleLeafs', 'Canadiens', 'Maple Leafs']);
+  await expect(page.locator('#mv-reactions-content .fil-termes')).toContainText('#MapleLeafs');
+  await expect(messages.first()).toContainText('Quel but !');
+  await expect(page.locator('#mv-reactions-content .fil-liste')).not.toContainText('Rien à voir');
+  expect(await page.locator('#mv-reactions-content a, #mv-reactions-content img, #mv-reactions-content .fil-auteur b').count(), 'du texte seulement').toBe(0);
+  await expect(bouton).toHaveAttribute('aria-pressed', 'true');
+
+  // La barre de commandes s'arrête au bord du panneau : aucun bouton sous lui.
+  const geo = await page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect();
+    return { barre: Math.round(r('#mv-toolbar').right), panneau: Math.round(r('#mv-stats-sidebar').left),
+      dernier: Math.round(Math.max(...[...document.querySelectorAll('#mv-toolbar .mv-tb-btn')].filter((b) => b.offsetParent).map((b) => b.getBoundingClientRect().right))) };
+  });
+  expect(geo.panneau).toBe(1050);
+  expect(geo.barre).toBe(geo.panneau);
+  expect(geo.dernier).toBeLessThanOrEqual(geo.panneau);
+
+  // Le fil se relit : les nouveaux messages s'ajoutent en tête, sans doublon.
+  await page.evaluate(() => window.majFilReactions());
+  await expect(messages).toHaveCount(8);
+
+  // « Voir sur X » : la recherche en direct de X, dans une fenêtre à côté.
+  await page.locator('#mv-reactions-content .fil-x').click();
+  let ouvertures = await page.evaluate(() => window.__ouvertures);
+  expect(ouvertures.length).toBe(1);
+  expect(ouvertures[0][0]).toBe(attendue);
+  expect(ouvertures[0][1]).toBe('footy_reactions_x');
+  expect(ouvertures[0][2]).toMatch(/^popup=yes,left=\d+,top=\d+,width=\d+,height=\d+$/);
+
+  // Les autres onglets du panneau marchent toujours, et le fil s'arrête.
+  await page.locator('#gm-tab-stats').click();
+  await expect(page.locator('#mv-stats-content')).toBeVisible();
+  await expect(page.locator('#mv-reactions-content')).toBeHidden();
+  await expect(bouton).toHaveAttribute('aria-pressed', 'false');
+  const avant = (await page.evaluate(() => window.__bluesky)).length;
+  await page.evaluate(() => window.majFilReactions());
+  expect((await page.evaluate(() => window.__bluesky)).length, 'plus de requête hors de l\'onglet').toBe(avant);
+
+  // Le bouton rouvre le fil, un second clic ferme le panneau et rend sa largeur à la barre.
+  await bouton.click();
+  await expect(page.locator('#mv-reactions-content')).toBeVisible();
+  await bouton.click();
+  await expect(page.locator('#mv-stats-sidebar')).toBeHidden();
+  expect(await page.locator('#mv-toolbar').evaluate((b) => Math.round(b.getBoundingClientRect().right))).toBe(1400);
+
+  // La fiche du même match : le bouton à côté de Regarder ouvre la même recherche, dans la même fenêtre.
+  await page.evaluate((id) => { window.quitterLecteur(); window.openMod(window.S.matches.find((x) => x.id === id)); }, mid);
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  await page.locator('#mbg .fiche-cta .btn-reactions').click();
+  ouvertures = await page.evaluate(() => window.__ouvertures);
+  expect(ouvertures.length).toBe(2);
+  expect(ouvertures[1].slice(0, 2)).toEqual([attendue, 'footy_reactions_x']);
+  // « Pas de liens vers le vrai site » tient toujours : un bouton, pas un lien.
+  expect(await page.locator('#mbg a[target="_blank"]').count()).toBe(0);
+  expect(pageErrors).toEqual([]);
+});
+
+/* « Dans la carte de sélection de match, mettre les stats genre la fiche où sont les noms et logos »
+   (13 novembre 2026, précisé : les cartes du Live). Le bilan de chaque équipe, que le scoreboard
+   d'ESPN porte déjà (js/bilan.js), s'affiche à côté de son nom ; une équipe sans bilan n'a rien. */
+test('Live : la carte d\'un match montre le bilan de chaque équipe à côté de son nom', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const cible = await page.evaluate(() => {
+    const cartes = [...document.querySelectorAll('#marea .match-card[id^="mb-"]')];
+    const c = cartes.find((x) => !/_fav_copy$/.test(x.id) && x.querySelectorAll('.prime-team-name').length === 2);
+    if (!c) return null;
+    const m = window.S.matches.find((x) => 'mb-' + x.id === c.id);
+    if (!m) return null;
+    /* Comme une lecture des scores d'ESPN : le bilan arrive avec elle et la carte se redessine. */
+    delete m.homeRecord; delete m.awayRecord;
+    window.applyScoreUpdates([{ id: m.id, status: m.status, score: m.score, minute: m.minute, period: m.period, detail: m.detail, homeRecord: '9-7-1', awayRecord: '' }]);
+    return c.id;
+  });
+  test.skip(!cible, 'aucun match à deux équipes rendu avec les données du jour');
+  const noms = page.locator('[id="' + cible + '"] .prime-team-name');
+  await expect(noms.nth(0).locator('.prime-bilan')).toHaveText('9-7-1');
+  await expect(noms.nth(1).locator('.prime-bilan')).toHaveCount(0);
+  // Le bilan n'est jamais coupé : c'est le nom qui cède la place.
+  const tient = await noms.nth(0).evaluate((n) => { const b = n.querySelector('.prime-bilan'); return b.scrollWidth <= b.clientWidth + 1 && b.getBoundingClientRect().right <= n.getBoundingClientRect().right + 1; });
+  expect(tient).toBe(true);
+  expect(pageErrors).toEqual([]);
+});
+
+/* « Cacher les toast genre actualisation des matchs en arrière plan » (13 novembre 2026) : une
+   passe d'arrière-plan ne parle plus — ni « Actualisation des matchs en arrière-plan... », ni
+   « N matchs · N live », ni « Aucune source de streams joignable » (réseau coupé ici : toutes
+   les sources échouent, ce que cette passe annonçait). */
+test('une passe d\'arrière-plan ne montre aucun message', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  await page.evaluate(() => {
+    window.__messages = [];
+    const txt = document.getElementById('toasttxt');
+    txt.textContent = '';
+    document.getElementById('toast').classList.remove('show');
+    new MutationObserver(() => { if (txt.textContent) window.__messages.push(txt.textContent); }).observe(txt, { childList: true, characterData: true, subtree: true });
+  });
+  await page.evaluate(() => window.loadAll(true, true));
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => window.__messages), 'aucun toast pendant la passe').toEqual([]);
+  // Le témoin : un message demandé s'affiche toujours, et l'observateur le voit.
+  await page.evaluate(() => window.showToast('Un message'));
+  await expect.poll(() => page.evaluate(() => window.__messages)).toEqual(['Un message']);
+  expect(pageErrors).toEqual([]);
+});
+
+/* « Dans la carte de sélection de match, mettre les stats genre la fiche où sont les noms et logos »,
+   puis « je parle de quand on clique sur le match, la liste de streams » (13 novembre 2026) : dans
+   la fiche, le rang et le bilan de chaque équipe sont sous son nom et son logo, dans la bannière.
+   Le bilan du scoreboard s'affiche tout de suite ; le summary (simulé) apporte le rang. */
+test('la fiche : rang et bilan de chaque équipe sous son nom, dans la bannière', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  let repondre;
+  const attente = new Promise((r) => { repondre = r; });
+  await page.route(/site\.api\.espn\.com/, async (route) => {
+    const u = route.request().url();
+    if (!/\/summary\?/.test(u)) return route.abort();
+    await attente;
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({
+      header: { competitions: [{ competitors: [
+        { id: '11', homeAway: 'home', record: [{ summary: '10-7-1' }] }, { id: '22', homeAway: 'away', record: [{ summary: '4-12-2' }] }] }] },
+      standings: { groups: [{ standings: { entries: [
+        { id: '11', stats: [{ name: 'rank', displayValue: '3' }] }, { id: '22', stats: [{ name: 'rank', displayValue: '14' }] }] } }] }
+    }) });
+  });
+  const ok = await page.evaluate(() => {
+    const m = window.S.matches.find((x) => String(x.id).startsWith('espn_') && x.homeTeam && x.awayTeam && !/^(race|fp|qual)/i.test(x.awayTeam));
+    if (!m) return false;
+    m.homeRecord = '9-7-1'; delete m.awayRecord;
+    window.openMod(m);
+    return true;
+  });
+  test.skip(!ok, 'aucun match ESPN à deux équipes dans les données du jour');
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  const dom = page.locator('#mbg .fiche-banner .fb-team.home .fb-stats');
+  const ext = page.locator('#mbg .fiche-banner .fb-team.away .fb-stats');
+  // Tout de suite : le bilan déjà connu ; l'équipe sans bilan n'a pas de ligne.
+  await expect(dom.locator('.fb-bilan')).toHaveText('9-7-1');
+  await expect(ext).toBeHidden();
+  // Le summary arrive : rang et bilan à jour, des deux côtés.
+  repondre();
+  await expect(dom).toHaveText('#310-7-1');
+  await expect(ext.locator('.fb-rang')).toHaveText('#14');
+  await expect(ext.locator('.fb-bilan')).toHaveText('4-12-2');
+  // Plus de seconde ligne de stats ailleurs dans la fiche.
+  expect(await page.locator('#records-container').count()).toBe(0);
+  expect(pageErrors).toEqual([]);
+});

@@ -26,7 +26,7 @@ Autres éléments toujours présents :
   - moins de 45 min : rien du tout (la gigue du cron ne se raconte pas) ;
   - à partir de 45 min, en gris : « Liens datant de 50 min : un passage du serveur a été manqué », avec `↻ Actualiser` ;
   - passé 90 min, ou si le fichier est injoignable, en ambre : « le serveur ne publie plus », avec **`🔎 Chercher les liens ici`** — l'application va alors lire elle-même les pages des matchs qu'on peut regarder maintenant, et le bandeau montre l'avancement (« 2/4 matchs lus — 1 pourvu »). Elle le fait aussi d'elle-même, une fois le chargement fini, et prévient par un message quand un match reçoit ses liens.
-- **Messages** (toasts) en bas de l'écran, 2,5 s, remontés au-dessus de la barre d'onglets sur mobile.
+- **Messages** (toasts) en bas de l'écran, 2,5 s, remontés au-dessus de la barre d'onglets sur mobile. **Les mises à jour d'arrière-plan n'en montrent plus** (13 novembre 2026) : ni « Actualisation des matchs en arrière-plan... », ni le compte des matchs, ni les sources injoignables, ni les liens trouvés par l'application ; tout reste lisible dans `Réglages → Logs`. Le premier chargement et `↻ Actualiser` parlent toujours.
 - **Zoom** (`Maintenant`, `−`, pourcentage, `+`) en bas à droite, visible dans le Guide seulement.
 
 Ce qui n'est **pas** dans l'application : la navigation par date, la recherche globale et les pastilles de filtre par ligue. Elles vivaient dans l'interface classique, retirée le 30 septembre 2026.
@@ -62,6 +62,8 @@ Une vignette 16:9 (29 octobre 2026, comme une tuile de service de streaming), le
 6. **La minute de jeu**, en rouge, quand elle est parlante (période, manche, chrono).
 
 Un clic ouvre la fiche du match (section 4).
+
+**Bilan des équipes** (13 novembre 2026) : à côté de chaque nom, en petit et en gris, le bilan de la saison tel qu'ESPN le donne (`9-7-1` : victoires, défaites, puis prolongation ou nuls selon le sport). Il arrive avec le calendrier ou avec la première lecture des scores ; une équipe sans bilan connu (course, ligue hors ESPN) n'affiche rien. Si la place manque, c'est le nom qui est coupé, pas le bilan.
 
 ### 2.3 Affiches et rails sur téléphone
 
@@ -103,6 +105,16 @@ S'ouvre au clic sur une carte, un bloc ou le bouton **▶ Regarder** du bandeau 
 Fond aux couleurs des équipes ; blason, nom et ★ de chaque côté ; au centre la ligue, le score (ou `VS`), et l'état (`Direct`, la minute, `Fin`, `Fin ?`).
 
 Dessous, comme une page de film : un gros bouton blanc **Regarder** (triangle de lecture) qui lance la meilleure source de la liste (filtres de site compris), avec son nom à côté. À la télécommande ou à la manette, c'est lui qui a le focus à l'ouverture. Sans source : `Chercher des liens` (loupe), ou `Aucun lien pour l'instant`. Les blasons sont grands, le score en chiffres compacts.
+
+**Rang et bilan** (13 novembre 2026) : sous le nom de chaque équipe, dans la bannière, son rang au classement (`#3`) et son bilan (`9-7-1`). Le bilan s'affiche dès l'ouverture quand il est connu, le rang arrive avec les compléments ESPN. Ils remplacent la ligne de rangs et de bilans qui était plus bas dans la fiche.
+
+### 4.1 ter Réactions sur X (13 novembre 2026)
+
+À côté de **Regarder**, sur ordinateur, le bouton **Réactions sur X** ouvre la recherche en direct de X sur les deux équipes du match (leurs noms et leurs mots-clics, `#Canadiens OR #Bruins`) (les messages les plus récents d'abord) dans une fenêtre étroite posée contre le bord droit de l'écran. X ne se laisse pas afficher dans une autre page : c'est une fenêtre à part, qui utilise ta session X (connecté d'avance, tu lis tout et tu peux répondre). La recherche se modifie dans la fenêtre. Absent sur téléphone, dans l'APK et sur la télé. Si le navigateur bloque la fenêtre, un message le dit.
+
+**Le fil en direct, dans le lecteur.** Le bouton **Réactions** (une bulle) de la barre ouvre le panneau de droite sur l'onglet **Réactions** : les messages publics de **Bluesky** sur le match de la vidéo choisie, les plus récents en haut, relus toutes les 20 secondes. Du texte seulement (auteur, âge, message), sans compte à créer. Il cherche le surnom et le mot-clic de chaque équipe (`#Canadiens`, `#Bruins`), puis apprend en route les mots-clics que les partisans utilisent vraiment (`#GoHabsGo`, `#Habs`) et les cherche aussi ; ceux qu'il suit sont écrits en haut du fil. Il ne garde que les messages qui citent les deux équipes, un mot-clic d'équipe ou une équipe et la ligue ; il change de match avec la vidéo choisie. **Voir sur X** (ordinateur) ouvre la recherche de X à côté. Un second clic sur la bulle ferme le panneau.
+
+**Panneau ouvert** (stats, scores ou réactions), les boutons du lecteur restent sous les vidéos : la barre s'arrête au bord du panneau. Les stats du panneau sont relues **chaque minute** (cinq avant), sans clignoter.
 
 ### 4.1 bis Radio (31 octobre 2026)
 

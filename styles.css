@@ -528,6 +528,11 @@ body.view-timeline .zoom-controls { display: flex; }
    restait un disque blanc vide (capture du 29 septembre 2026). */
 .fb-team .prime-logo { width: 64px; height: 64px; padding: 9px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55)); font-size: 40px !important; }
 .fb-name { font-size: 14px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.7); display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+/* Rang et bilan de l'équipe, sous son nom (13 novembre 2026, js/bilan.js). Vide : aucune hauteur. */
+.fb-stats { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.85); text-shadow: 0 1px 3px rgba(0,0,0,0.7); margin-top: -4px; }
+.fb-stats:empty { display: none; }
+.fb-rang { font-weight: 800; color: #fff; }
+.fb-bilan { padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.35); font-weight: 600; }
 .fb-fav { background: transparent; border: none; font-size: 16px; line-height: 1; cursor: pointer; padding: 2px; }
 .fb-center { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 88px; }
 .fb-league { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.35); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
@@ -944,6 +949,24 @@ body.manette .mv-hdr-right, body.manette .mv-drag-handle { display: none; }
 .mv-empty .mv-empty-ic { font-size: 40px; opacity: 0.7; }
 .mv-empty p { max-width: 420px; line-height: 1.5; }
 #mv-stats-carousel::-webkit-scrollbar { display: none; }
+/* Le panneau du lecteur ouvert (stats, scores, réactions ; 13 novembre 2026) : la barre de
+   commandes s'arrête au bord du panneau, ses boutons restent sous les vidéos. 350 px = la
+   largeur de #mv-stats-sidebar (js/multiview.js). */
+@media (min-width: 769px) { #mv-container.mv-full.mv-panneau:not(:has(.mv-cell.mv-strict)) #mv-toolbar { right: 350px; } }
+/* Le fil des réactions (js/reactions.js) : du texte, les plus récents en haut. */
+#mv-reactions-content { text-align: left; }
+.fil-entete { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.fil-titre { color: #fff; font-size: 14px; font-weight: 700; }
+.fil-source { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.fil-termes { color: var(--accent); font-size: 11px; margin-top: 3px; overflow-wrap: anywhere; }
+.fil-x { appearance: none; flex-shrink: 0; min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(255,255,255,0.12); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fil-x:hover, .fil-x:focus-visible { background: rgba(255,255,255,0.24); }
+.fil-msg { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.fil-tete { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin-bottom: 3px; }
+.fil-auteur { color: #fff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fil-age { color: var(--muted); flex-shrink: 0; }
+.fil-texte { color: #d7d7dc; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.fil-vide { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 8px; }
 
 .mv-theater { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; margin: 0 !important; border-radius: 0 !important; background: var(--bg) !important; }
 .theater-close-btn { position: fixed; top: 10px; right: 10px; z-index: 9999999; background: rgba(0,0,0,0.8); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); opacity: 0.8; transition: opacity var(--t-fast), transform var(--t-fast); }
@@ -1489,6 +1512,8 @@ body.cards-poster .rail-toggle { display: inline-flex; }
 .match-card .prime-col-teams, .match-card .prime-col-scores { gap: 2px; }
 .match-card .prime-team-name, body.cards-poster .match-card .prime-team-name { font-size: 15px; line-height: 1.4; letter-spacing: -0.01em; gap: 6px; }
 .prime-team-name .ptn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Le bilan de l'équipe à côté de son nom (13 novembre 2026, js/bilan.js) : discret, jamais coupé. */
+.prime-team-name .prime-bilan { flex-shrink: 0; font-size: 0.78em; font-weight: 600; color: var(--t3, var(--muted)); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .match-card .prime-score, body.cards-poster .match-card .prime-score { font-size: 19px; line-height: 1.12; font-weight: 700; min-height: 1.12em; padding-top: 1px; }
 .match-card.finished .prime-info { color: var(--t2); }
 .match-card .prime-foot, body.cards-poster .match-card .prime-foot { padding: 4px 2px 0; font-size: 12px; font-weight: 500; color: var(--t3); }
@@ -1549,6 +1574,11 @@ body.cards-poster .match-card .prime-thumbnail { aspect-ratio: 4 / 3; }
 .btn-regarder:hover, .btn-regarder:focus-visible { background: #fff; transform: scale(1.03); }
 .btn-regarder:disabled { background: var(--s3); color: var(--t3); box-shadow: none; opacity: 1; }
 .fiche-cta-info { color: var(--t2); font-size: 14px; }
+/* « Réactions sur X » (13 novembre 2026, js/reactions.js) : le second bouton de la fiche, discret
+   à côté de Regarder. */
+.btn-reactions { appearance: none; display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 22px; border: 1px solid var(--s3); border-radius: var(--r-md); background: var(--s2); color: var(--t1); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 200ms; }
+.btn-reactions .ico { width: 17px; height: 17px; }
+.btn-reactions:hover, .btn-reactions:focus-visible { background: var(--s3); outline: 2px solid var(--accent); outline-offset: 2px; }
 /* La radio de la fiche (31 octobre 2026, js/radio.js) : une ligne par équipe, des liens
    en pastilles ; chaque lien est un arrêt de la manette, le focus se voit en entier. */
 .fiche-radio { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; margin: 0 0 8px; border-radius: var(--r-md); background: var(--s2); }

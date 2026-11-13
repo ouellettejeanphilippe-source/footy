@@ -791,7 +791,7 @@ export function openGlobalStatsFromMatch(mid, isBack) {
                 clearInterval(globalStatsInterval);
                 setGlobalStatsInterval(null);
             }
-        }, 300000));
+        }, 60000)); /* chaque minute, panneau ouvert (13 novembre 2026 ; cinq avant) */
     }
 
     // isBack ne rejoue pas l'empilement (déjà fait par gstatsGoBack), mais la vue

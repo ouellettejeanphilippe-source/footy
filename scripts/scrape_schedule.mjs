@@ -2,6 +2,7 @@ import fs from 'fs';
 import { JSDOM } from 'jsdom';
 import { appartientAuJour, nuitEnCours, veille, lendemain } from '../js/nuit.js';
 import { estLigueLolSuivie } from '../js/esports.js';
+import { bilanDe } from '../js/bilan.js';
 import { urlScorebarLhjmq, lireScorebarLhjmq } from '../js/lhjmq.js';
 
 // We emulate some DOM/window globals required by `scrapers.js` regex parsing if needed
@@ -489,6 +490,8 @@ async function run() {
                     matchDate,
                     homeLogo: isRacing ? null : (comp.competitors.find(c=>c.homeAway==='home').team.logo || null),
                     awayLogo: isRacing ? null : (comp.competitors.find(c=>c.homeAway==='away').team.logo || null),
+                    homeRecord: isRacing ? '' : bilanDe(comp.competitors.find(c=>c.homeAway==='home')),
+                    awayRecord: isRacing ? '' : bilanDe(comp.competitors.find(c=>c.homeAway==='away')),
                     startTime,
                     durationMinutes: getLeagueDuration(leagueName),
                     status, score, minute, streamLinks: [], streamsLoaded: false, source: 'api', isPlayoff
