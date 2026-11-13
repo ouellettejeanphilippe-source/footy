@@ -84,3 +84,15 @@ export function appliquerTeinte(racine, couleur, accentPalette) {
   }
   return c;
 }
+
+/* Deux couleurs pour comparer deux équipes côte à côte (js/statsmatch.js) : la première couleur
+   lisible du domicile, puis la première du visiteur qui s'en distingue (40° de teinte au moins) ;
+   null pour un côté sans couleur utilisable ou trop proche — l'appelant garde alors ses couleurs
+   par défaut. `paireDom` / `paireVis` : [couleur1, couleur2] (teamColorPair). */
+export function couleursDuel(paireDom, paireVis) {
+  var lisibles = function(p) { return (p || []).map(accentLisible).filter(Boolean); };
+  var d = lisibles(paireDom)[0] || null;
+  var ecart = function(a, b) { var x = Math.abs(versHsl(a).h - versHsl(b).h); return Math.min(x, 360 - x); };
+  var v = lisibles(paireVis).filter(function(c) { return !d || ecart(c, d) >= 40; })[0] || null;
+  return { dom: d, vis: v };
+}

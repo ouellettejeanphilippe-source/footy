@@ -28,7 +28,9 @@ import { ecranDeTuile, placementSecondEcran, ecranSecondaire, optionsFenetre, pa
 import { estLecteurOfficiel, exigeVisibiliteTotale } from './esports.js';
 import { noterSortie, marquerQuittee, noterRetour, noterBlocage, sortiesHtml, lecteurAOublier } from './sorties.js';
 import { ETAT_TAMPON, estTampon, tamponPossible, decisionRetour, BALAYAGE_MS } from './tampon.js';
-import { teinteDuMatch, appliquerTeinte } from './teinte.js';
+import { teinteDuMatch, appliquerTeinte, couleursDuel } from './teinte.js';
+import { statsDuMatch, comparaisonHtml, enteteMatchHtml } from './statsmatch.js';
+import { statsEquipeHtml } from './bilan.js';
 import { radiosDuMatch, stationAEcouter, stationsAEcouter, adressesDuFlux, fluxDeReponse, adresseSourceRadio, estSourceRadio, infoSourceRadio } from './radio.js';
 import { adresseReactionsX, equipesAChercher, reactionsPossibles, ouvrirReactionsX, chargerFil, fusionnerFil, filHtml, INTERVALLE_FIL_MS } from './reactions.js';
 import { TEAM_DATA } from './teams.js';
@@ -883,9 +885,14 @@ export function updateMvGameModeStats() {
             carouselHtml += '<button onclick="closePinnedStats(\'' + m.id + '\')" style="position:absolute; top:0; right:0; background:rgba(255,255,255,0.1); border:none; border-radius:50%; width:24px; height:24px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10;" aria-label="Fermer" title="Fermer">✕</button>';
         }
 
-        carouselHtml += '<div id="mv-gm-header-' + m.id + '" style="font-size:16px; font-weight:bold; color:#fff; text-align:center; padding: 0 25px;">' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
-        carouselHtml += (m.score ? '<div style="font-size:24px; font-weight:bold; color:var(--accent); text-align:center;">' + esc(m.score[0]) + ' - ' + esc(m.score[1]) + '</div>' : '<div style="text-align:center; color:var(--muted);">À venir</div>');
-        carouselHtml += '<div style="font-size:12px; color:var(--muted); text-align:center;">' + esc(m.flag) + ' ' + esc(m.league) + ' | ' + esc(m.startTime) + (m.status === 'live' && m.minute ? ' • ' + esc(m.minute) + "\'" : '') + '</div>';
+        /* L'en-tête commun des panneaux (js/statsmatch.js) : logos, noms, score, état, et sous
+           chaque nom son bilan (le rang arrive avec le summary). */
+        carouselHtml += '<div id="mv-gm-header-' + m.id + '">' + enteteMatchHtml({
+            dom: m.homeTeam, vis: m.awayTeam, logoDom: m.homeLogo || getLogo(m.homeTeam), logoVis: m.awayLogo || getLogo(m.awayTeam),
+            score: m.score, direct: m.status === 'live', ligue: m.league,
+            etat: m.status === 'live' ? (m.minute ? String(m.minute) : 'En direct') : (m.status === 'finished' ? 'Terminé' : m.startTime),
+            sousDom: statsEquipeHtml('', m.homeRecord, esc), sousVis: statsEquipeHtml('', m.awayRecord, esc)
+        }, esc) + '</div>';
 
         /* Relu chaque minute : ce qui était affiché reste jusqu'à la réponse, sans clignoter. */
         var ancienCorps = document.getElementById('mv-stat-body-' + m.id);
@@ -917,64 +924,22 @@ export function updateMvGameModeStats() {
                 if(aC) mAwayId = aC.id;
             }
 
-            var hRankFormStr = (res.hRank ? '#' + res.hRank + ' ' : '') + (res.hForm ? '[' + res.hForm + ']' : '');
-            var aRankFormStr = (res.aRank ? '#' + res.aRank + ' ' : '') + (res.aForm ? '[' + res.aForm + ']' : '');
-
             var hdr = document.getElementById('mv-gm-header-' + m.id);
-            if (hdr && (hRankFormStr || aRankFormStr)) {
-                 hdr.innerHTML = '<div style="display:flex; justify-content:space-between; font-size:11px; color:rgba(255,255,255,0.5); font-weight:normal;">' +
-                                 '<span>' + esc(hRankFormStr) + '</span><span>' + esc(aRankFormStr) + '</span></div>' +
-                                 '<div>' + esc(m.homeTeam) + ' vs ' + esc(m.awayTeam) + '</div>';
-            }
+            [['dom', res.hRank, res.hForm || m.homeRecord], ['vis', res.aRank, res.aForm || m.awayRecord]].forEach(function(c) {
+                var zone = hdr && hdr.querySelector('.em-sous[data-cote="' + c[0] + '"]');
+                var sous = statsEquipeHtml(c[1], c[2], esc);
+                if (zone && sous) zone.innerHTML = sous;
+            });
 
             if (res.scorers && res.scorers.length > 0) {
                 html += renderScorersHtml(res.scorers, m, mHomeId, mAwayId);
                 html += '<div style="height:15px;"></div>';
             }
 
-            var stats = [];
-            if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
-                var ts = res.data.boxscore.teams;
-                if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
-
-                    // Always try to put home team on the left, away on the right. Usually ts[0] is home if homeAway == 'home', else we need to swap
-                    var hIsTs0 = ts[0].homeAway === 'home';
-                    if (ts[0].homeAway !== 'home' && ts[1].homeAway === 'home') hIsTs0 = false;
-                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[0].team && ts[0].team.id === mHomeId) hIsTs0 = true;
-                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[1].team && ts[1].team.id === mHomeId) hIsTs0 = false;
-
-                    var homeStats = hIsTs0 ? ts[0].statistics : ts[1].statistics;
-                    var awayStats = hIsTs0 ? ts[1].statistics : ts[0].statistics;
-
-                    homeStats.forEach(function(hStat) {
-                        var aStat = awayStats.find(function(s) { return s.name === hStat.name; });
-                        if (aStat && hStat.displayValue && aStat.displayValue) {
-                            // Only add if there is some value to display to keep it clean, though we could just show all
-                            stats.push({
-                                label: hStat.name,
-                                displayLabel: hStat.label || hStat.displayName || hStat.name,
-                                h: hStat.displayValue,
-                                a: aStat.displayValue
-                            });
-                        }
-                    });
-                }
-            }
-
-            if(stats.length > 0) {
-                html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques</h4>';
-                html += '<div style="display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,0.02);padding:10px;border-radius:12px;">';
-                stats.forEach(function(st) {
-                    var label = formatStatLabel(st.label);
-                    if (!label || label === st.label) label = formatStatLabel(st.displayLabel) || st.displayLabel;
-                    html += '<div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;">';
-                    html += '<span style="font-weight:bold;width:40px;text-align:left;">'+esc(st.h)+'</span>';
-                    html += '<span style="color:var(--muted);flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(label)+'">'+esc(label)+'</span>';
-                    html += '<span style="font-weight:bold;width:40px;text-align:right;">'+esc(st.a)+'</span>';
-                    html += '</div>';
-                });
-                html += '</div>';
-            }
+            /* La comparaison commune (js/statsmatch.js) : l'essentiel du sport, le reste replié. */
+            var duel = couleursDuel(teamColorPair(m.homeTeam), teamColorPair(m.awayTeam));
+            var cmp = res.source === 'espn' ? comparaisonHtml(statsDuMatch(res.data, mHomeId), esc, { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis }) : '';
+            if (cmp) html += '<h4 class="cmp-titre">Statistiques</h4>' + cmp;
 
             bodyEl.innerHTML = html ? '<div style="margin-top:15px;">' + html + '</div>' : '<div style="margin-top:15px; color:var(--muted); text-align:center;">Aucune statistique détaillée disponible.</div>';
             /* Les alignements, ici seulement (29 octobre 2026, « alignements seulement
@@ -5273,7 +5238,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v126';
+export var VERSION_APP = 'sports-guide-v127';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

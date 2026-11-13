@@ -3999,3 +3999,71 @@ test('la fiche : rang et bilan de chaque équipe sous son nom, dans la bannière
   expect(await page.locator('#records-container').count()).toBe(0);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Tout ce qui est stats et infos du genre, présenter de manière plus agréable et fonctionnelle »
+   (13 novembre 2026, js/statsmatch.js) : la même comparaison des deux équipes dans la fiche, le
+   panneau du lecteur et le panneau Scores et statistiques — libellés en français, l'essentiel
+   d'abord, le reste replié, la valeur qui mène en clair. Le summary d'ESPN est simulé. */
+test('les statistiques d\'un match ont le même dessin dans la fiche, le lecteur et le panneau', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  const st = (name, label, displayValue) => ({ name, label, displayValue });
+  const noms = ['blockedShots', 'hits', 'takeaways', 'shotsTotal', 'powerPlayGoals', 'powerPlayOpportunities', 'powerPlayPct', 'shortHandedGoals', 'shootoutGoals', 'faceoffsWon', 'faceoffPercent', 'giveaways', 'penalties', 'penaltyMinutes'];
+  const equipe = (id, cote, base) => ({ homeAway: cote, team: { id }, statistics: noms.map((n, i) => st(n, 'English ' + n, String(base + i))) });
+  await page.route(/site\.api\.espn\.com/, (route) => {
+    if (!/\/summary\?/.test(route.request().url())) return route.abort();
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({
+      header: { competitions: [{ competitors: [{ id: '11', homeAway: 'home', record: [{ summary: '10-7-1' }] }, { id: '22', homeAway: 'away', record: [{ summary: '4-12-2' }] }] }] },
+      boxscore: { teams: [equipe('22', 'away', 10), equipe('11', 'home', 30)] }
+    }) });
+  });
+  const mid = await page.evaluate(() => {
+    const m = window.S.matches.find((x) => String(x.id).startsWith('espn_') && x.homeTeam && x.awayTeam && !/^(race|fp|qual)/i.test(x.awayTeam));
+    if (!m) return '';
+    m.league = 'NHL'; m.status = 'live'; m.score = [4, 0]; m.minute = '2e 10:25';
+    window.openMod(m);
+    return String(m.id);
+  });
+  test.skip(!mid, 'aucun match ESPN à deux équipes dans les données du jour');
+
+  const lire = (racine) => page.evaluate((r) => {
+    const z = document.querySelector(r);
+    const lignes = [...z.querySelectorAll('.cmp > .cmp-ligne')];
+    return { essentiel: lignes.map((l) => l.querySelector('.cmp-l').textContent), premiere: lignes[0] && [lignes[0].querySelector('.cmp-dom').textContent, lignes[0].querySelector('.cmp-vis').textContent, lignes[0].className],
+      replie: z.querySelectorAll('.cmp-plus .cmp-ligne').length, ouvert: !!z.querySelector('.cmp-plus[open]'), anglais: /English/.test(z.querySelector('.cmp').textContent) };
+  }, racine);
+  const attendu = { essentiel: ['Tirs', 'Buts en avantage numérique', 'Avantage numérique (%)', 'Mises au jeu (%)', 'Mises en échec', 'Tirs bloqués', 'Minutes de pénalité', 'Revirements'],
+    premiere: ['33', '13', 'cmp-ligne cmp-mene-dom'], replie: 6, ouvert: false, anglais: false };
+
+  // La fiche : la comparaison est là sans rien déplier, et les suites sont des boutons à icône.
+  await expect(page.locator('#stats-match-container .cmp')).toBeVisible();
+  expect(await lire('#stats-match-container')).toEqual(attendu);
+  expect(await page.locator('#stats-match-container .cmp-ligne[data-stat="penaltyMinutes"]').getAttribute('class'), 'moins de pénalités : le visiteur mène').toContain('cmp-mene-vis');
+  await expect(page.locator('#mbg .fiche-suite')).toHaveCount(1);
+  expect(await page.locator('#mbg .fiche-complements').evaluate((e) => /📊|📰/.test(e.textContent)), 'plus d\'emoji en guise d\'icônes').toBe(false);
+  await page.locator('#stats-match-container .cmp-plus > summary').click();
+  await expect(page.locator('#stats-match-container .cmp-plus .cmp-ligne').first()).toBeVisible();
+
+  // Le bouton de la fiche ouvre le panneau Scores et statistiques : même comparaison.
+  await page.locator('#mbg .fiche-suite').click();
+  await expect(page.locator('#gstats-content .cmp')).toBeVisible();
+  expect(await lire('#gstats-content')).toEqual(attendu);
+  await page.evaluate(() => window.toggleGlobalStats());
+
+  // Le panneau du lecteur : l'en-tête commun (score, état, bilan) et la même comparaison.
+  await page.evaluate(([o, id]) => {
+    window.addToMultivision(o + '/__lecteur-calme?stats', 'Match', id);
+    if (document.body.getAttribute('data-view') !== 'player') window.openMultiviewTab();
+    window.focusStream(0);
+    window.toggleMvGameMode();
+  }, [origin, mid]);
+  await expect(page.locator('#mv-stats-content .cmp')).toBeVisible();
+  expect(await lire('#mv-stats-content')).toEqual(attendu);
+  const tete = page.locator('#mv-stats-content .em');
+  await expect(tete).toHaveClass(/em-direct/);
+  await expect(tete.locator('.em-score')).toHaveText('4–0');
+  await expect(tete.locator('.em-etat')).toHaveText('2e 10:25');
+  await expect(tete.locator('.em-sous[data-cote="dom"]')).toHaveText('10-7-1');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});

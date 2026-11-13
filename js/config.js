@@ -4,7 +4,9 @@ import { isMatch } from './match.js';
 import { globalStatsInterval, setGlobalStatsInterval } from './multiview.js';
 import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStandings, fetchTeamInfo, fetchTeamSchedule } from './api.js';
 import { openMod, getOriginalMatchId } from './ui.js';
-import { getLogo, normName, STATIC_TEAMS, sportOfLeague } from './db.js';
+import { getLogo, normName, STATIC_TEAMS, sportOfLeague, teamColorPair } from './db.js';
+import { statsDuMatch, comparaisonHtml } from './statsmatch.js';
+import { couleursDuel } from './teinte.js';
 import { buildProxyList } from './fetcher.js';
 import { playabilityScore, hostOfUrl, tileTarget, reputationLien, fusionAppareil, rangNotoriete } from './playability.js';
 import { finPresumee as finPresumeeBrute, raisonFinPresumee as raisonFinPresumeeBrute } from './finpresumee.js';
@@ -871,70 +873,11 @@ export function openGlobalStatsFromMatch(mid, isBack) {
         }
 
         if (res.data) {
-            var stats = [];
-            // Parse ESPN stats if available
-            if (res.source === 'espn' && res.data.boxscore && res.data.boxscore.teams) {
-                var ts = res.data.boxscore.teams;
-                if(ts.length === 2 && ts[0].statistics && ts[1].statistics) {
-                    var hIsTs0 = ts[0].homeAway === 'home';
-                    if (ts[0].homeAway !== 'home' && ts[1].homeAway === 'home') hIsTs0 = false;
-                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[0].team && ts[0].team.id === mHomeId) hIsTs0 = true;
-                    else if (typeof mHomeId !== 'undefined' && mHomeId && ts[1].team && ts[1].team.id === mHomeId) hIsTs0 = false;
-
-                    var homeStats = hIsTs0 ? ts[0].statistics : ts[1].statistics;
-                    var awayStats = hIsTs0 ? ts[1].statistics : ts[0].statistics;
-
-                    homeStats.forEach(function(hStat) {
-                        var aStat = awayStats.find(function(s) { return s.name === hStat.name; });
-                        if (aStat && hStat.displayValue && aStat.displayValue) {
-                            stats.push({
-                                label: hStat.name,
-                                displayLabel: hStat.label || hStat.displayName || hStat.name,
-                                h: hStat.displayValue,
-                                a: aStat.displayValue
-                            });
-                        }
-                    });
-                }
-            }
-
-            if(stats.length > 0) {
-                html += '<h4 style="color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:4px;">Statistiques du match</h4>';
-                html += '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:12px;">';
-
-                stats.forEach(function(st) {
-                    var formattedLabel = formatStatLabel(st.label);
-                    if (!formattedLabel || formattedLabel === st.label) formattedLabel = formatStatLabel(st.displayLabel) || st.displayLabel;
-
-                    var valH = parseFloat(String(st.h).replace(/[^0-9.]/g, '')) || 0;
-                    var valA = parseFloat(String(st.a).replace(/[^0-9.]/g, '')) || 0;
-                    var maxVal = Math.max(valH, valA);
-                    var pctH = maxVal > 0 ? (valH / maxVal) * 100 : 0;
-                    var pctA = maxVal > 0 ? (valA / maxVal) * 100 : 0;
-                    if (valH === 0 && valA === 0 && String(st.h).trim() !== '0' && String(st.a).trim() !== '0') {
-                        pctH = 50; pctA = 50; // Fallback for purely non-numeric strings
-                    }
-
-                    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">';
-                    html += '<div style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">';
-                    html += '<span style="font-weight:bold;width:40px;text-align:left;white-space:nowrap;">'+st.h+'</span>';
-                    html += '<span style="color:var(--muted);flex:1;text-align:center;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+esc(formattedLabel)+'">'+formattedLabel+'</span>';
-                    html += '<span style="font-weight:bold;width:40px;text-align:right;white-space:nowrap;">'+st.a+'</span>';
-                    html += '</div>';
-                    html += '<div style="display:flex;height:4px;width:100%;gap:4px;">';
-                    html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-end;overflow:hidden;">';
-                    html += '<div style="height:100%;width:'+pctH+'%;background:var(--accent);border-radius:2px;"></div>';
-                    html += '</div>';
-                    html += '<div style="flex:1;background:rgba(255,255,255,0.05);border-radius:2px;display:flex;justify-content:flex-start;overflow:hidden;">';
-                    html += '<div style="height:100%;width:'+pctA+'%;background:#f59e0b;border-radius:2px;"></div>';
-                    html += '</div>';
-                    html += '</div>';
-                    html += '</div>';
-                });
-                html += '</div>';
-            } else {
-                html += '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Statistiques détaillées non disponibles.</div>';
-            }
+            /* La comparaison commune (js/statsmatch.js), la même que dans la fiche et le lecteur. */
+            var duel = couleursDuel(teamColorPair(m.homeTeam), teamColorPair(m.awayTeam));
+            var cmp = res.source === 'espn' ? comparaisonHtml(statsDuMatch(res.data, mHomeId), esc, { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis, noms: [m.homeTeam, m.awayTeam] }) : '';
+            html += cmp ? '<h4 class="cmp-titre">Statistiques du match</h4>' + cmp
+                : '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Statistiques détaillées non disponibles.</div>';
         }
 
         html += '</div>';

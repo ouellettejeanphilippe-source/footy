@@ -9,7 +9,7 @@ import { normName, lgColor, getTeamColors, getLogo, libelleSport, fondEquipes } 
 import { S, customLgOrder, favTeams, matchCardCache, toggleFavTeam, ordreSports } from './state.js';
 import { lg, esc, toggleAccordion, escJs, pad, safeStorageGetJSON, safeStorageSetJSON, resolveStreamUrl, ongletDeLaVue } from './utils.js';
 import { primaryDomain, matchDomainStats } from './links.js';
-import { TARGET_DATE, fetchGameStats, fetchTeamInfo, fetchLolEsportsLiveStreams } from './api.js';
+import { TARGET_DATE, fetchGameStats, formatStatLabel, fetchLolEsportsLiveStreams } from './api.js';
 import { liensLolDuDirect } from './esports.js';
 import { openFlux, mvFlux, saveMultivisionState, updateMultivisionLayout, addToMultivision, majTeinte, fichesReaction } from './multiview.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRelireLaPage, doitRafraichirFiche, INTERVALLE_FICHE_MS } from './scrapers.js';
@@ -23,6 +23,8 @@ import { chargerChaines, sectionTele } from './chainestv.js';
 import { icone } from './icones.js';
 import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
 import { bilanHtml, statsEquipeHtml } from './bilan.js';
+import { statsDuMatch, comparaisonHtml } from './statsmatch.js';
+import { couleursDuel } from './teinte.js';
 import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
 
@@ -1760,7 +1762,7 @@ export function openMod(m,col){
                       var hHtml = '';
                       hScorers.forEach(function(s) {
                           var passerHtml = s.passer ? ' <span style="font-size:10px; opacity:0.8;">(' + esc(s.passer) + ')</span>' : '';
-                          hHtml += '<div style="margin-top:4px;">⚽ <span style="color:#fff;">' + esc(s.player) + '</span> <span style="color:var(--accent);">' + esc(s.time) + '</span>' + passerHtml + '</div>';
+                          hHtml += '<div class="fiche-buteur"><span style="color:#fff;">' + esc(s.player) + '</span> <span style="color:var(--accent);">' + esc(s.time) + '</span>' + passerHtml + '</div>';
                       });
                       homeScorersModal.innerHTML = hHtml;
                   }
@@ -1770,121 +1772,47 @@ export function openMod(m,col){
                       var aHtml = '';
                       aScorers.forEach(function(s) {
                           var passerHtml = s.passer ? ' <span style="font-size:10px; opacity:0.8;">(' + esc(s.passer) + ')</span>' : '';
-                          aHtml += '<div style="margin-top:4px;">⚽ <span style="color:#fff;">' + esc(s.player) + '</span> <span style="color:var(--accent);">' + esc(s.time) + '</span>' + passerHtml + '</div>';
+                          aHtml += '<div class="fiche-buteur"><span style="color:#fff;">' + esc(s.player) + '</span> <span style="color:var(--accent);">' + esc(s.time) + '</span>' + passerHtml + '</div>';
                       });
                       awayScorersModal.innerHTML = aHtml;
                   }
               }
 
-              var espnBtnContainer = document.getElementById('espn-btn-container');
-              if (espnBtnContainer && res.espnLink) {
-                  var espnBtn = document.createElement('a');
-                  espnBtn.href = esc(res.espnLink);
-                  espnBtn.target = '_blank';
-                  espnBtn.innerHTML = '📰 Stats complètes sur ESPN';
-                  espnBtn.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:6px; color:var(--text); text-decoration:none; background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; border:1px solid rgba(255,255,255,0.1); transition:all 0.15s;';
-                  espnBtn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.1)'; };
-                  espnBtn.onmouseout = function() { this.style.background = 'rgba(255,255,255,0.05)'; };
-                  espnBtnContainer.appendChild(espnBtn);
-                  espnBtnContainer.style.display = 'block';
+              /* Les statistiques du match, tout de suite sous les yeux (13 novembre 2026,
+                 js/statsmatch.js) : la comparaison commune, l'essentiel d'abord. Avant, un bouton
+                 « Voir les statistiques de la saison » dépliait quatre chiffres tirés de deux
+                 requêtes de plus (le bilan est maintenant dans la bannière). */
+              var zoneStats = document.getElementById('stats-match-container');
+              if (zoneStats) {
+                  var duel = couleursDuel(getTeamColors(m.homeTeam), getTeamColors(m.awayTeam));
+                  var cmp = res.source === 'espn' ? comparaisonHtml(statsDuMatch(res.data, mHomeId), esc, { repli: formatStatLabel, couleurDom: duel.dom, couleurVis: duel.vis, noms: [m.homeTeam, m.awayTeam] }) : '';
+                  var ouvert = zoneStats.querySelector('.cmp-plus[open]');
+                  zoneStats.innerHTML = cmp ? '<h4 class="cmp-titre">Statistiques</h4>' + cmp : '';
+                  if (ouvert && zoneStats.querySelector('.cmp-plus')) zoneStats.querySelector('.cmp-plus').open = true;
+                  zoneStats.style.display = cmp ? 'block' : 'none';
               }
 
-              if (mHomeId && mAwayId) {
-                  Promise.all([
-                      fetchTeamInfo(m.league, mHomeId),
-                      fetchTeamInfo(m.league, mAwayId)
-                  ]).then(function(teamResults) {
-                      var hTeam = teamResults[0].team && teamResults[0].team.team ? teamResults[0].team.team : teamResults[0].team;
-                      var aTeam = teamResults[1].team && teamResults[1].team.team ? teamResults[1].team.team : teamResults[1].team;
-
-                      if (hTeam && aTeam && hTeam.record && aTeam.record && hTeam.record.items && aTeam.record.items) {
-                          var hTotalRec = hTeam.record.items.find(function(r) { return r.type === 'total'; });
-                          var aTotalRec = aTeam.record.items.find(function(r) { return r.type === 'total'; });
-
-                          if (hTotalRec && aTotalRec && hTotalRec.stats && aTotalRec.stats) {
-                              // Global Stats Toggle
-                              var globalStatsToggleContainer = document.getElementById('global-stats-toggle-container');
-                              if (globalStatsToggleContainer) {
-                                  var toggleBtn = document.createElement('button');
-                                  toggleBtn.innerHTML = '📊 Voir les statistiques de la saison';
-                                  toggleBtn.style.cssText = 'display:flex; width:100%; align-items:center; justify-content:center; gap:6px; color:var(--text); background:transparent; border:none; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; opacity:0.8; transition:all 0.15s;';
-                                  toggleBtn.onmouseover = function() { this.style.opacity = '1'; };
-                                  toggleBtn.onmouseout = function() { this.style.opacity = '0.8'; };
-
-                                  var statsContentId = 'inline-global-stats';
-                                  toggleBtn.onclick = function() {
-                                      var cont = document.getElementById(statsContentId);
-                                      if (cont) {
-                                          cont.style.display = cont.style.display === 'none' ? 'block' : 'none';
-                                      }
-                                  };
-
-                                  globalStatsToggleContainer.appendChild(toggleBtn);
-
-                                  var inlineStats = document.createElement('div');
-                                  inlineStats.id = statsContentId;
-                                  inlineStats.style.display = 'none';
-                                  inlineStats.style.marginTop = '12px';
-                                  inlineStats.style.paddingTop = '12px';
-                                  inlineStats.style.borderTop = '1px dashed rgba(255,255,255,0.05)';
-
-                                  var statsListHtml = '<div style="display:flex; flex-direction:column; gap:8px;">';
-
-                                  var statsToCompare = ['wins', 'losses', 'winPercent', 'streak'];
-                                  var statLabels = {
-                                      'wins': 'Victoires', 'losses': 'Défaites', 'differential': 'Différentiel', 'streak': 'Séquence',
-                                      'points': 'Pts', 'ties': 'Nuls', 'otLosses': 'DP', 'winPercent': 'Pourcentage', 'gamesBehind': 'Retard',
-                                      'pointsFor': 'Buts', 'pointDifferential': 'Différentiel', 'assists': 'Passes décisives', 'pointsAgainst': 'Buts encaissés'
-                                  };
-
-                                  var __lg = m.league ? m.league.toUpperCase() : '';
-                                  if (__lg.indexOf('LIGUE 1') > -1 || __lg.indexOf('PREMIER LEAGUE') > -1 || __lg.indexOf('LA LIGA') > -1 || __lg.indexOf('SERIE A') > -1 || __lg.indexOf('BUNDESLIGA') > -1 || __lg.indexOf('MLS') > -1 || __lg.indexOf('CHAMPIONS LEAGUE') > -1 || __lg.indexOf('EUROPA') > -1 || __lg.indexOf('SOCCER') > -1) {
-                                      statsToCompare = ['pointsFor', 'pointDifferential', 'assists', 'pointsAgainst'];
-                                  } else if (__lg === 'NHL' || __lg === 'PWHL' || __lg.indexOf('HOCKEY') > -1 || __lg === 'AHL' || __lg === 'QMJHL' || __lg === 'OHL' || __lg === 'WHL') {
-                                      statsToCompare = ['points', 'wins', 'losses', 'otLosses'];
-                                  } else if (__lg === 'MLB' || __lg.indexOf('BASEBALL') > -1) {
-                                      statsToCompare = ['wins', 'losses', 'winPercent', 'gamesBehind'];
-                                  }
-
-                                  statsToCompare.forEach(function(sName) {
-                                      var hStat = hTotalRec.stats.find(function(s) { return s.name === sName; });
-                                      var aStat = aTotalRec.stats.find(function(s) { return s.name === sName; });
-
-                                      if (hStat || aStat) {
-                                          var hVal = '-';
-                                          if (hStat) {
-                                              hVal = hStat.displayValue !== undefined ? hStat.displayValue : (hStat.value !== undefined ? hStat.value : '-');
-                                          }
-                                          var aVal = '-';
-                                          if (aStat) {
-                                              aVal = aStat.displayValue !== undefined ? aStat.displayValue : (aStat.value !== undefined ? aStat.value : '-');
-                                          }
-                                          var lbl = statLabels[sName] || sName;
-
-                                          statsListHtml += '<div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">';
-                                          statsListHtml += '<div style="flex:1; text-align:center; font-weight:bold;">' + esc(hVal) + '</div>';
-                                          statsListHtml += '<div style="flex:1; text-align:center; color:var(--muted);">' + esc(lbl) + '</div>';
-                                          statsListHtml += '<div style="flex:1; text-align:center; font-weight:bold;">' + esc(aVal) + '</div>';
-                                          statsListHtml += '</div>';
-                                      }
-                                  });
-
-                                  statsListHtml += '</div>';
-                                  statsListHtml += '<div style="text-align:center; margin-top:12px;"><button onclick="openGlobalStatsFromMatch(\'' + escJs(m.id) + '\'); closeMod();" style="background:var(--accent); color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:bold; cursor:pointer;">Ouvrir le panneau complet</button></div>';
-
-                                  inlineStats.innerHTML = statsListHtml;
-
-                                  globalStatsToggleContainer.appendChild(inlineStats);
-                                  globalStatsToggleContainer.style.display = 'block';
-                              }
-                          }
-                      }
-                  }).catch(function(e) {
-                      console.error("Failed to load team info for modal stats", e);
-                  });
+              /* Les suites : le panneau Scores et statistiques (classement, calendrier des
+                 équipes) et la page du match chez ESPN. Des boutons à icône, plus d'emoji. */
+              var suites = document.getElementById('espn-btn-container');
+              if (suites && !suites.firstChild) {
+                  var bPanneau = document.createElement('button');
+                  bPanneau.type = 'button';
+                  bPanneau.className = 'fiche-suite';
+                  bPanneau.innerHTML = icone('journal') + '<span>Classement et équipes</span>';
+                  bPanneau.onclick = function() { window.openGlobalStatsFromMatch(m.id); closeMod(); };
+                  suites.appendChild(bPanneau);
+                  if (res.espnLink && /^https:\/\//.test(res.espnLink)) {
+                      var espnBtn = document.createElement('a');
+                      espnBtn.href = res.espnLink;
+                      espnBtn.target = '_blank';
+                      espnBtn.rel = 'noopener';
+                      espnBtn.className = 'fiche-suite';
+                      espnBtn.innerHTML = icone('lien') + '<span>Page du match sur ESPN</span>';
+                      suites.appendChild(espnBtn);
+                  }
+                  suites.style.display = 'flex';
               }
-
-
           }).catch(function(e) {});
       }
   }
@@ -1966,8 +1894,8 @@ export function openMod(m,col){
                       '<div id="away-scorers-modal" style="flex:1; font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
                   '</div>' +
                   '<div id="goal-stats-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
-                  '<div id="global-stats-toggle-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
-                  '<div id="espn-btn-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
+                  '<div id="stats-match-container" style="display: none;"></div>' +
+                  '<div id="espn-btn-container" class="fiche-suites" style="display: none;"></div>' +
               '</div>' +
           '</div>' +
           '<div id="modal-stats-container"></div>' +
