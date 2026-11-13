@@ -22,7 +22,7 @@ import { sectionsParSport, idSectionSport } from './livesport.js';
 import { chargerChaines, sectionTele } from './chainestv.js';
 import { icone } from './icones.js';
 import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio.js';
-import { bilanHtml } from './bilan.js';
+import { bilanHtml, statsEquipeHtml } from './bilan.js';
 import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
 
@@ -1731,20 +1731,14 @@ export function openMod(m,col){
                   if(aC) mAwayId = aC.id;
               }
 
-              var recordsContainer = document.getElementById('records-container');
-              if (recordsContainer) {
-                  if (res.hRank || res.aRank || res.hForm || res.aForm) {
-                      var hFmt = (res.hRank ? '<span style="font-weight:bold; color:var(--text);">#' + res.hRank + '</span> ' : '') + (res.hForm ? '<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; margin-left:4px;">' + res.hForm + '</span>' : '');
-                      var aFmt = (res.aRank ? '<span style="font-weight:bold; color:var(--text);">#' + res.aRank + '</span> ' : '') + (res.aForm ? '<span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; margin-left:4px;">' + res.aForm + '</span>' : '');
-                      var rHtml = '<div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:rgba(255,255,255,0.7); padding: 0 10px;">';
-                      rHtml += '<div style="flex:1; text-align:center; display:flex; justify-content:center; align-items:center;">' + hFmt + '</div>';
-                      rHtml += '<div style="flex:0.2;"></div>';
-                      rHtml += '<div style="flex:1; text-align:center; display:flex; justify-content:center; align-items:center;">' + aFmt + '</div>';
-                      rHtml += '</div>';
-                      recordsContainer.innerHTML = rHtml;
-                      recordsContainer.style.display = 'block';
-                  }
-              }
+              /* Rang et bilan : sous le nom et le logo de chaque équipe, dans la bannière
+                 (13 novembre 2026 ; avant, une ligne à part plus bas, #records-container). Le
+                 bilan du scoreboard, déjà affiché, reste si le summary n'en donne pas. */
+              [['home', res.hRank, res.hForm || m.homeRecord], ['away', res.aRank, res.aForm || m.awayRecord]].forEach(function(c) {
+                  var zone = document.querySelector('#mbg .fb-stats[data-cote="' + c[0] + '"]');
+                  var html = statsEquipeHtml(c[1], c[2], esc);
+                  if (zone && html) zone.innerHTML = html;
+              });
 
               if (res.scorers && res.scorers.length > 0) {
                   var hScorers = [], aScorers = [];
@@ -1949,14 +1943,14 @@ export function openMod(m,col){
      Le corps ne garde que les compléments (buteurs, classement, statistiques). */
   var etoile = function(nom) { return '<button type="button" class="fb-fav" title="Équipe favorite" aria-label="Équipe favorite" style="color:' + (favTeams[nom] ? 'var(--accent)' : 'rgba(255,255,255,0.55)') + ';" onclick="toggleFavTeam(\'' + escJs(nom) + '\'); event.stopPropagation();">★</button>'; };
   var banniereHtml = '<div class="fiche-banner' + (isRacing ? ' racing' : '') + '">'
-      + '<div class="fb-team home">' + homeLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.homeTeam) + '">' + esc(m.homeTeam) + ' ' + etoile(m.homeTeam) + '</div></div>'
+      + '<div class="fb-team home">' + homeLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.homeTeam) + '">' + esc(m.homeTeam) + ' ' + etoile(m.homeTeam) + '</div><div class="fb-stats" data-cote="home">' + statsEquipeHtml('', m.homeRecord, esc) + '</div></div>'
       + '<div class="fb-center">'
       +   '<div class="fb-league">' + esc(m.league || '') + '</div>'
       +   (isRacing ? '' : centerScoreHtml)
       +   (libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) ? '<span class="prime-day">' + libelleJour(m, getEstDateStrFromDate(TARGET_DATE)) + '</span>' : '')
       +   statusHtml
       + '</div>'
-      + (isRacing ? '' : '<div class="fb-team away">' + awayLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.awayTeam) + '">' + etoile(m.awayTeam) + ' ' + esc(m.awayTeam) + '</div></div>')
+      + (isRacing ? '' : '<div class="fb-team away">' + awayLogoHtmlPrime + '<div class="fb-name" title="' + esc(m.awayTeam) + '">' + etoile(m.awayTeam) + ' ' + esc(m.awayTeam) + '</div><div class="fb-stats" data-cote="away">' + statsEquipeHtml('', m.awayRecord, esc) + '</div></div>')
       + '</div>';
   var mhd = document.querySelector('#mbg .mhd');
   if (mhd) { mhd.classList.add('has-banner'); mhd.style.background = cardBg; }
@@ -1971,7 +1965,6 @@ export function openMod(m,col){
                       '<div style="flex:0.2;"></div>' +
                       '<div id="away-scorers-modal" style="flex:1; font-size:11px; font-weight:500; color:var(--muted); text-align:center;"></div>' +
                   '</div>' +
-                  '<div id="records-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="goal-stats-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="global-stats-toggle-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +
                   '<div id="espn-btn-container" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 12px; padding-top: 12px; display: none;"></div>' +

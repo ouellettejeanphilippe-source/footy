@@ -3954,3 +3954,47 @@ test('une passe d\'arrière-plan ne montre aucun message', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__messages)).toEqual(['Un message']);
   expect(pageErrors).toEqual([]);
 });
+
+/* « Dans la carte de sélection de match, mettre les stats genre la fiche où sont les noms et logos »,
+   puis « je parle de quand on clique sur le match, la liste de streams » (13 novembre 2026) : dans
+   la fiche, le rang et le bilan de chaque équipe sont sous son nom et son logo, dans la bannière.
+   Le bilan du scoreboard s'affiche tout de suite ; le summary (simulé) apporte le rang. */
+test('la fiche : rang et bilan de chaque équipe sous son nom, dans la bannière', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });
+  const pageErrors = await bootOffline(page);
+  let repondre;
+  const attente = new Promise((r) => { repondre = r; });
+  await page.route(/site\.api\.espn\.com/, async (route) => {
+    const u = route.request().url();
+    if (!/\/summary\?/.test(u)) return route.abort();
+    await attente;
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({
+      header: { competitions: [{ competitors: [
+        { id: '11', homeAway: 'home', record: [{ summary: '10-7-1' }] }, { id: '22', homeAway: 'away', record: [{ summary: '4-12-2' }] }] }] },
+      standings: { groups: [{ standings: { entries: [
+        { id: '11', stats: [{ name: 'rank', displayValue: '3' }] }, { id: '22', stats: [{ name: 'rank', displayValue: '14' }] }] } }] }
+    }) });
+  });
+  const ok = await page.evaluate(() => {
+    const m = window.S.matches.find((x) => String(x.id).startsWith('espn_') && x.homeTeam && x.awayTeam && !/^(race|fp|qual)/i.test(x.awayTeam));
+    if (!m) return false;
+    m.homeRecord = '9-7-1'; delete m.awayRecord;
+    window.openMod(m);
+    return true;
+  });
+  test.skip(!ok, 'aucun match ESPN à deux équipes dans les données du jour');
+  await expect(page.locator('#mbg')).toHaveClass(/open/);
+  const dom = page.locator('#mbg .fiche-banner .fb-team.home .fb-stats');
+  const ext = page.locator('#mbg .fiche-banner .fb-team.away .fb-stats');
+  // Tout de suite : le bilan déjà connu ; l'équipe sans bilan n'a pas de ligne.
+  await expect(dom.locator('.fb-bilan')).toHaveText('9-7-1');
+  await expect(ext).toBeHidden();
+  // Le summary arrive : rang et bilan à jour, des deux côtés.
+  repondre();
+  await expect(dom).toHaveText('#310-7-1');
+  await expect(ext.locator('.fb-rang')).toHaveText('#14');
+  await expect(ext.locator('.fb-bilan')).toHaveText('4-12-2');
+  // Plus de seconde ligne de stats ailleurs dans la fiche.
+  expect(await page.locator('#records-container').count()).toBe(0);
+  expect(pageErrors).toEqual([]);
+});

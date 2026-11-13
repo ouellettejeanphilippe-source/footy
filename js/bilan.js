@@ -25,3 +25,16 @@ export function bilanHtml(bilan, esc) {
     if (!FORME.test(s)) return '';
     return '<span class="prime-bilan" title="Bilan de la saison : ' + esc(s) + '">' + esc(s) + '</span>';
 }
+
+/* Dans la fiche d'un match (13 novembre 2026, « je parle de quand on clique sur le match, la liste
+   de streams ») : le rang et le bilan d'une équipe sous son nom et son logo, dans la bannière.
+   `rang` vient du classement du `summary` (la fiche le lit déjà), `bilan` du même `summary` ou, en
+   attendant, du scoreboard (`homeRecord`). Rend '' quand il n'y a ni l'un ni l'autre. */
+export function statsEquipeHtml(rang, bilan, esc) {
+    var r = /^\d{1,3}$/.test(String(rang == null ? '' : rang).trim()) ? String(rang).trim() : '';
+    var b = typeof bilan === 'string' ? bilan.trim() : '';
+    if (b.length > 16) b = '';
+    if (!r && !b) return '';
+    return (r ? '<span class="fb-rang" title="Rang au classement">#' + esc(r) + '</span>' : '')
+        + (b ? '<span class="fb-bilan" title="Bilan de la saison">' + esc(b) + '</span>' : '');
+}

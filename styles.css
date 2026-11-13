@@ -528,6 +528,11 @@ body.view-timeline .zoom-controls { display: flex; }
    restait un disque blanc vide (capture du 29 septembre 2026). */
 .fb-team .prime-logo { width: 64px; height: 64px; padding: 9px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55)); font-size: 40px !important; }
 .fb-name { font-size: 14px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.7); display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+/* Rang et bilan de l'équipe, sous son nom (13 novembre 2026, js/bilan.js). Vide : aucune hauteur. */
+.fb-stats { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.85); text-shadow: 0 1px 3px rgba(0,0,0,0.7); margin-top: -4px; }
+.fb-stats:empty { display: none; }
+.fb-rang { font-weight: 800; color: #fff; }
+.fb-bilan { padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.35); font-weight: 600; }
 .fb-fav { background: transparent; border: none; font-size: 16px; line-height: 1; cursor: pointer; padding: 2px; }
 .fb-center { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 88px; }
 .fb-league { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.35); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }

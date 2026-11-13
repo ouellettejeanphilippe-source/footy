@@ -45,3 +45,15 @@ test('branchement : les deux lecteurs d\'ESPN posent homeRecord / awayRecord, mo
   assert.ok(lire('sw.js').includes("'./js/bilan.js'"), 'dans APP_SHELL');
   assert.ok(lire('js/ui.js').includes('bilanHtml(m.homeRecord, esc)') && lire('js/ui.js').includes('bilanHtml(m.awayRecord, esc)'));
 });
+
+test('statsEquipeHtml (bannière de la fiche) : rang et bilan sous le nom, rien sans l\'un ni l\'autre', () => {
+  const esc = (s) => String(s).replace(/</g, '&lt;');
+  assert.strictEqual(B.statsEquipeHtml('3', '9-7-1', esc),
+    '<span class="fb-rang" title="Rang au classement">#3</span><span class="fb-bilan" title="Bilan de la saison">9-7-1</span>');
+  assert.strictEqual(B.statsEquipeHtml('', '9-7-1', esc), '<span class="fb-bilan" title="Bilan de la saison">9-7-1</span>');
+  assert.strictEqual(B.statsEquipeHtml(12, '', esc), '<span class="fb-rang" title="Rang au classement">#12</span>');
+  assert.strictEqual(B.statsEquipeHtml('', '', esc), '');
+  assert.strictEqual(B.statsEquipeHtml(undefined, undefined, esc), '');
+  assert.strictEqual(B.statsEquipeHtml('<b>', 'un texte bien trop long pour être un bilan', esc), '');
+  assert.ok(!B.statsEquipeHtml('', '<i>x</i>', esc).includes('<i>'), 'échappé');
+});

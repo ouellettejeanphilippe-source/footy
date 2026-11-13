@@ -106,6 +106,8 @@ Fond aux couleurs des équipes ; blason, nom et ★ de chaque côté ; au centre
 
 Dessous, comme une page de film : un gros bouton blanc **Regarder** (triangle de lecture) qui lance la meilleure source de la liste (filtres de site compris), avec son nom à côté. À la télécommande ou à la manette, c'est lui qui a le focus à l'ouverture. Sans source : `Chercher des liens` (loupe), ou `Aucun lien pour l'instant`. Les blasons sont grands, le score en chiffres compacts.
 
+**Rang et bilan** (13 novembre 2026) : sous le nom de chaque équipe, dans la bannière, son rang au classement (`#3`) et son bilan (`9-7-1`). Le bilan s'affiche dès l'ouverture quand il est connu, le rang arrive avec les compléments ESPN. Ils remplacent la ligne de rangs et de bilans qui était plus bas dans la fiche.
+
 ### 4.1 ter Réactions sur X (13 novembre 2026)
 
 À côté de **Regarder**, sur ordinateur, le bouton **Réactions sur X** ouvre la recherche en direct de X sur les deux équipes du match (les messages les plus récents d'abord) dans une fenêtre étroite posée contre le bord droit de l'écran. X ne se laisse pas afficher dans une autre page : c'est une fenêtre à part, qui utilise ta session X (connecté d'avance, tu lis tout et tu peux répondre). La recherche se modifie dans la fenêtre. Absent sur téléphone, dans l'APK et sur la télé. Si le navigateur bloque la fenêtre, un message le dit.
