@@ -18,6 +18,7 @@ import { etatCacheServeur, rattrapageNecessaire, ciblesDeRattrapage, CIBLES_AVEC
 import { isMatchPair } from './match.js';
 import { buildEPG, scrollToNow, timelineBadgeHtml, belongsToLive, formatLiveMinute, getOriginalMatchId, majBandeauCache } from './ui.js';
 import { setMatches } from './state.js';
+import { scoreAffiche } from './divulgacheur.js';
 import { getBridgeStatus, waitForBridge } from './embed-bridge.js';
 import { brancherMoniteur } from './fluidite.js';
 
@@ -199,9 +200,9 @@ export function updateLiveScores(matches) {
         }
         var scoreEls = cached.scoreEls;
         if (scoreEls && scoreEls.length === 2) {
-            if (m.score && m.score.length === 2) {
-                scoreEls[0].textContent = m.score[0];
-                scoreEls[1].textContent = m.score[1];
+            if (scoreAffiche(m) && scoreAffiche(m).length === 2) {
+                scoreEls[0].textContent = scoreAffiche(m)[0];
+                scoreEls[1].textContent = scoreAffiche(m)[1];
             } else {
                 scoreEls[0].textContent = '';
                 scoreEls[1].textContent = '';
