@@ -10,6 +10,7 @@ import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { estPageDeRefus, delaiRefus, doitSauterRefus } from './cadrerefuse.js';
 import { scoreAffiche, matchSansDivulgacher } from './divulgacheur.js';
+import { prereglages, estClaire } from './reglages.js';
 import { raisonSansVideo, phraseSansVideo, noteAbandon } from './raisonflux.js';
 import { NOUVEAUTES, URL_SCRIPT, etatApplication, versionPubliee, cartesMiseAJour, nouveautesAfficher, miseAJourHtml, bandeauMaj, bandeauMajHtml, origineScript } from './misesajour.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
@@ -5089,7 +5090,7 @@ export function choisirPalette(p) {
 }
 
 function majPaletteChoisie() {
-  var items = document.querySelectorAll('.swatches-container .swatch-item');
+  var items = document.querySelectorAll('.swatches-container .swatch-item, .prereglages-container .prereglage');
   Array.prototype.forEach.call(items, function(el) {
     var on = el.dataset.c1 === userPrefs.c1 && el.dataset.accent === userPrefs.accent;
     el.classList.toggle('on', on);
@@ -5196,6 +5197,32 @@ export function buildSwatches() {
     // Add predefined palettes
     PALETTES.forEach(function(p) { palettesToRender.push(p); });
 
+    /* Les préréglages (14 novembre 2026, js/reglages.js) : l'identité d'origine et huit
+       palettes, nommées, en un clic. Même geste qu'une palette (`choisirPalette`). */
+    var zonePre = document.querySelector('.prereglages-container');
+    if (zonePre) {
+        zonePre.innerHTML = '';
+        prereglages(PALETTES).forEach(function(p) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'prereglage' + (estClaire(p.c1) ? ' clair' : '');
+            b.dataset.c1 = p.c1;
+            b.dataset.accent = p.accent;
+            b.dataset.prereglage = p.id;
+            b.style.setProperty('--sw-fond', 'linear-gradient(120deg, ' + p.c1 + ' 0%, ' + p.c2 + ' 70%, ' + p.c3 + ' 100%)');
+            b.style.setProperty('--sw-accent', p.accent);
+            var point = document.createElement('span');
+            point.className = 'pre-point';
+            point.setAttribute('aria-hidden', 'true');
+            var nom = document.createElement('span');
+            nom.textContent = p.name;
+            b.appendChild(point);
+            b.appendChild(nom);
+            b.onclick = function() { choisirPalette(p); };
+            zonePre.appendChild(b);
+        });
+    }
+
     palettesToRender.forEach(function(p) {
         var swatch = document.createElement('button');
         swatch.type = 'button';
@@ -5280,7 +5307,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v128';
+export var VERSION_APP = 'sports-guide-v129';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

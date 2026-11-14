@@ -1818,3 +1818,65 @@ body[data-view="player"] #radio-direct { top: calc(16px + var(--safe-top, 0px));
 #modal-left-col .fiche-complements, #modal-left-col .fiche-complements .prime-info, #stats-match-container { width: 100%; max-width: none; box-sizing: border-box; }
 #stats-match-container .cmp-groupes { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; column-gap: 28px; }
 #stats-match-container .cmp-onglets { margin-top: 12px; }
+
+/* ── 18. Rail de navigation et Réglages en rubriques (14 novembre 2026) ────────
+   « Go pour les captures » : sur ordinateur et sur la télé, les onglets quittent le haut
+   de l'écran pour un rail à gauche (icône et nom, ▶ Lecteur en bas), et la barre des
+   Réglages devient une colonne de rubriques avec un champ de recherche, les pages à sa
+   droite. Sous 901 px rien ne change : barre du bas au téléphone, onglets en haut entre
+   les deux. Les identifiants sont les mêmes (filter-*, rb-*, btn-look). */
+.rb-tete { width: 100%; }
+.rb-titre { display: none; }
+.rb-recherche { position: relative; }
+.rb-recherche .input { width: 100%; min-height: 40px; }
+.rb-resultats { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: var(--r-md); background: var(--s3); box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+.rb-resultats[hidden] { display: none; }
+.rb-resultat { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; min-height: 40px; padding: 8px 10px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--t1); font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.rb-resultat small { flex: none; font-size: 12px; font-weight: 500; color: var(--t3); }
+.rb-resultat:hover, .rb-resultat:focus-visible { background: rgba(255,255,255,.08); outline: none; }
+.rb-resultat-vide { padding: 10px; font-size: 13px; color: var(--t3); }
+/* Le réglage qu'on vient de chercher : cerclé un instant. */
+.rg-cible { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: var(--r-sm); }
+
+/* Les préréglages : le fond et l'accent assortis, nommés, en un clic. */
+.prereglages-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 4px 2px; }
+.prereglage { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 44px; padding: 0 16px; border: 1px solid rgba(255,255,255,.1); border-radius: var(--r-md); background: var(--sw-fond); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform 150ms ease; }
+.prereglage.clair { color: #111; }
+.prereglage .pre-point { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--sw-accent); box-shadow: 0 0 0 1px rgba(128,128,128,.4); }
+.prereglage:hover, .prereglage:focus-visible { transform: translateY(-1px); }
+.prereglage.on { box-shadow: 0 0 0 2px var(--s1, #12151c), 0 0 0 4px var(--t1, #fff); }
+/* Les titres des panneaux d'Options : une étiquette de section. */
+#options-page .panel > .panel-title { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--t2); }
+
+@media (min-width: 901px) {
+  :root { --rail-w: 84px; --side-w: 272px; --hdr-height: 0px; }
+  body { padding-left: var(--rail-w); }
+  body[data-view="player"] { padding-left: 0; }
+
+  /* Le rail. */
+  .app-header { position: fixed; left: 0; top: 0; bottom: 0; z-index: 60; width: var(--rail-w); height: auto; flex-direction: column; justify-content: flex-start; gap: 6px; padding: calc(14px + var(--safe-top)) 8px calc(14px + var(--safe-bottom)); border-bottom: 0; border-right: var(--hdr-border); box-shadow: none; }
+  .nav-links { flex-direction: column; gap: 6px; width: 100%; }
+  .nav-btn { flex-direction: column; justify-content: center; gap: 5px; width: 100%; min-height: 62px; padding: 8px 2px; border-radius: var(--r-md); font-size: 11.5px; font-weight: 600; }
+  .nav-btn .nav-ic, .nav-btn .nav-ic svg { width: 22px; height: 22px; }
+  .nav-btn.active-toggle .nav-ic { color: var(--accent); }
+  .nav-lecteur { position: relative; right: auto; top: auto; transform: none; margin-top: auto; }
+  .nav-lecteur .nav-compte { position: absolute; top: 4px; right: 12px; min-width: 18px; height: 18px; padding: 0 5px; font-size: 11px; }
+
+  /* Les Réglages : la colonne des rubriques, les pages à sa droite. */
+  body[data-view="options"] .reglages-barre, body[data-view="logs"] .reglages-barre, body[data-view="script"] .reglages-barre {
+    position: fixed; left: var(--rail-w); top: 0; bottom: 0; z-index: 40; width: var(--side-w); max-width: none; margin: 0;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 18px;
+    padding: calc(28px + var(--safe-top)) 16px calc(20px + var(--safe-bottom)); border-right: var(--hdr-border); overflow-y: auto;
+  }
+  .rb-tete { display: flex; flex-direction: column; gap: 14px; }
+  .rb-titre { display: block; padding: 0 6px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--t1); }
+  .reglages-barre .rb-onglets, .reglages-barre .rb-actions { flex-direction: column; flex-wrap: nowrap; gap: 2px; }
+  .reglages-barre .rb-actions { margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.06); }
+  .rb-btn { justify-content: flex-start; gap: 12px; width: 100%; min-height: 44px; padding: 0 12px; border-radius: var(--r-md); background: transparent; font-size: 14.5px; }
+  .rb-btn .ico { width: 18px; height: 18px; }
+  .rb-btn.active-toggle { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--t1) !important; }
+  .rb-btn.active-toggle .ico { color: var(--accent); }
+  #options-page, #logs-page, #script-page { margin: 0 0 0 var(--side-w); width: auto; max-width: none; padding: 28px clamp(20px, 3vw, 44px) calc(32px + var(--safe-bottom)); }
+  #options-page > *, #logs-page > *, #script-page > * { max-width: 980px; }
+  body[data-view="options"] .menu-look, body[data-view="logs"] .menu-look, body[data-view="script"] .menu-look { top: calc(24px + var(--safe-top)); left: calc(var(--rail-w) + var(--side-w) + 16px); right: auto; }
+}

@@ -588,14 +588,16 @@ test('le haut de page ne porte que les onglets : ni marque, ni recherche, ni dat
     const bc = document.getElementById('bandeau-cache');
     const visible = bc && bc.getBoundingClientRect().height > 0;
     return {
-      enfants: Array.from(h.children).map((c) => c.id), hauteur: r.height,
-      basDuHaut: visible ? bc.getBoundingClientRect().bottom : r.bottom,
+      enfants: Array.from(h.children).map((c) => c.id), largeur: r.width,
+      /* Depuis le 14 novembre 2026, sur ordinateur, l'en-tête est un rail à gauche : plus
+         rien au-dessus de la grille, sauf le bandeau. */
+      basDuHaut: visible ? bc.getBoundingClientRect().bottom : 0,
       debutGrille: epg.top
     };
   });
   /* Les onglets, et ▶ Lecteur à droite (29 octobre 2026 : le lecteur n'est plus un onglet). */
   expect(entete.enfants, 'l\'en-tête ne contient que la navigation').toEqual(['nav-links', 'mv-toggle-btn']);
-  expect(entete.hauteur, 'un en-tête d\'une seule rangée').toBeLessThanOrEqual(64);
+  expect(entete.largeur, 'un rail étroit : une seule colonne d\'onglets').toBeLessThanOrEqual(100);
   expect(entete.debutGrille, 'la grille commence juste sous les onglets, et sous le seul bandeau qui ait le droit de s\'y glisser')
     .toBeLessThanOrEqual(entete.basDuHaut + 1);
 
@@ -1664,6 +1666,66 @@ test('Look : « Masquer les scores » retire les scores des cartes, du bandeau e
   await page.evaluate(() => basculerScoresMasques());
   await expect(page.locator('html')).not.toHaveClass(/sans-scores/);
   expect(await scores()).toBeGreaterThan(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* « Go pour les captures » (14 novembre 2026) : sur ordinateur, les onglets sont un rail à
+   gauche, les Réglages une colonne de rubriques avec un champ de recherche, et Options
+   propose des préréglages en un clic (js/reglages.js, styles.css §18). */
+test('sur ordinateur : rail à gauche, Réglages en rubriques, recherche d\'un réglage, préréglages', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 840 });
+  const pageErrors = await bootOffline(page);
+  const boite = (sel) => page.locator(sel).boundingBox();
+
+  /* Le rail : à gauche, sur toute la hauteur, les onglets l'un sous l'autre, le contenu à côté. */
+  const rail = await boite('#app-header');
+  expect(rail.x).toBe(0);
+  expect(rail.width).toBeLessThan(100);
+  expect(rail.height).toBe(840);
+  const live = await boite('#filter-live'), guide = await boite('#filter-all'), lecteur = await boite('#mv-toggle-btn');
+  expect(guide.y, 'Guide sous Live').toBeGreaterThanOrEqual(live.y + live.height);
+  expect(Math.abs(guide.x - live.x)).toBeLessThan(2);
+  expect(lecteur.y, '▶ Lecteur en bas du rail').toBeGreaterThan(700);
+  expect((await boite('#marea')).x, 'la grille commence après le rail').toBeGreaterThanOrEqual(rail.width - 1);
+
+  /* Les Réglages : la colonne entre le rail et la page. */
+  await page.locator('#filter-options').click();
+  const colonne = await boite('#reglages-barre'), options = await boite('#options-page');
+  expect(colonne.x).toBeGreaterThanOrEqual(rail.width - 1);
+  expect(colonne.height).toBe(840);
+  expect(options.x, 'la page à droite de la colonne').toBeGreaterThanOrEqual(colonne.x + colonne.width - 1);
+  expect((await boite('#rb-logs')).y, 'les rubriques l\'une sous l\'autre').toBeGreaterThan((await boite('#rb-options')).y);
+
+  /* La recherche : un réglage d'une autre page, trouvé par son nom sans accent. */
+  await page.locator('#rb-logs').click();
+  await page.locator('#reglages-recherche').fill('prereglage');
+  await expect(page.locator('#reglages-resultats [data-reglage]')).toHaveCount(1);
+  await expect(page.locator('#reglages-resultats [data-reglage]').first()).toContainText('Préréglages');
+  await page.locator('#reglages-resultats [data-reglage]').first().click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'options');
+  await expect(page.locator('#options-page .field.rg-cible')).toHaveCount(1);
+  await expect(page.locator('#reglages-resultats')).toBeHidden();
+  await expect(page.locator('#reglages-recherche')).toHaveValue('');
+  await page.locator('#reglages-recherche').fill('zzzz');
+  await expect(page.locator('#reglages-resultats .rb-resultat-vide')).toBeVisible();
+  await page.locator('#reglages-recherche').fill('');
+  await expect(page.locator('#reglages-resultats')).toBeHidden();
+
+  /* Les préréglages : un clic pose le fond et l'accent ; « Défaut » rend l'identité. */
+  await expect(page.locator('.prereglages-container .prereglage')).toHaveCount(9);
+  await page.locator('.prereglage[data-prereglage="forest"]').click();
+  let prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'));
+  expect([prefs.c1, prefs.accent]).toEqual(['#064e3b', '#34d399']);
+  await expect(page.locator('.prereglage[data-prereglage="forest"]')).toHaveClass(/\bon\b/);
+  await page.locator('.prereglage[data-prereglage="defaut"]').click();
+  prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'));
+  expect([prefs.c1, prefs.c2, prefs.accent]).toEqual(['#0b0d12', '#151b2b', '#0a84ff']);
+  await expect(page.locator('.prereglage.on')).toHaveCount(1);
+
+  /* Le lecteur garde tout l'écran : ni rail ni marge. */
+  await page.evaluate(() => openMultiviewTab());
+  await expect(page.locator('#app-header')).toBeHidden();
+  expect(await page.evaluate(() => getComputedStyle(document.body).paddingLeft)).toBe('0px');
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 

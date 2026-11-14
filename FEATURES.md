@@ -8,7 +8,7 @@ Toutes les heures affichées sont celles de New York (heure de l'Est), qui est l
 
 ## 1. La coquille
 
-L'en-tête porte quatre onglets, comme un service de vidéo (29 octobre 2026, « Live et Guide la page principale et les autres des onglets accessibles dans la page principale »), et le bouton **▶ Lecteur** à droite. Sur téléphone (largeur ≤ 768 px), les onglets forment une barre fixe au bas de l'écran, icône au-dessus du libellé, et ▶ Lecteur flotte au-dessus d'elle, seulement quand une vidéo tourne.
+L'en-tête porte quatre onglets, comme un service de vidéo (29 octobre 2026, « Live et Guide la page principale et les autres des onglets accessibles dans la page principale »), et le bouton **▶ Lecteur** à droite. **Sur ordinateur et sur la télé (largeur > 900 px), c'est un rail à gauche** (14 novembre 2026, « Go pour les captures ») : les quatre onglets l'un sous l'autre, icône et nom, et ▶ Lecteur au bas du rail ; plus rien au-dessus de la page. Entre 769 et 900 px, les onglets restent en haut. Sur téléphone (largeur ≤ 768 px), les onglets forment une barre fixe au bas de l'écran, icône au-dessus du libellé, et ▶ Lecteur flotte au-dessus d'elle, seulement quand une vidéo tourne.
 
 | Bouton | Ce qu'il ouvre |
 |---|---|
@@ -282,10 +282,13 @@ Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
 
 « L'apparence d'abord ; les liens du serveur sont repliés plus bas. » Chaque changement est enregistré aussitôt (« Préférences sauvegardées »).
 
+**Les Réglages en rubriques** (14 novembre 2026) : sur ordinateur, la barre des Réglages est une colonne à gauche de la page — le titre, un champ **Chercher un réglage**, les rubriques (Options, Look, Mises à jour, Logs), et en bas Actualiser et Mettre à jour l'app. Le champ propose les réglages dont le nom ou l'explication contient les mots tapés (sans accent, « mise a jour » trouve « Mises à jour »), avec leur rubrique ; en choisir un (clic ou Entrée) ouvre sa page et le cercle un instant. Les réglages du menu Look et les deux actions y sont aussi. Sur téléphone, le champ est au-dessus des pastilles.
+
 ### 7.1 Apparence
 
 | Option | Choix |
 |---|---|
+| **Préréglages** | Neuf thèmes nommés, en un clic : **Défaut** (l'identité d'origine, noir bleuté et accent bleu, qu'on ne pouvait plus retrouver après avoir choisi une palette), Minuit, Vercel, Code Sombre, Cyberpunk, Océan, Forêt, Crépuscule, Minimal Clair. Même effet qu'une palette. |
 | **Palette** | 37 palettes nommées, plus une palette par équipe favorite : le fond de l'application, en dégradé doux, et sa couleur d'accent. La palette en cours est cerclée. (« Simplifier, mais garder les palettes, pas le reste », 29 octobre 2026 : styles de fond, couleurs du fond et d'accent à la pipette, assombrissement, « retirer le noir des maillages », formes des boutons et effets sont partis.) |
 | **Couleur des cartes** | Un renvoi à Réglages → Look (section 3 bis). |
 | **Forme des cartes** | Automatique (affiche sous 900 px), Affiche (vignette 4:3), Carte large (vignette 16:9). |
