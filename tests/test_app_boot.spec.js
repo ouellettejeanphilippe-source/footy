@@ -1625,6 +1625,48 @@ test('Look (Réglages) ne garde que la couleur des cartes ; une ancienne disposi
   expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
 });
 
+/* Mode anti-divulgâcheur (14 novembre 2026, js/divulgacheur.js) : Look → « Masquer les
+   scores ». Les cartes, le bandeau vedette et la fiche ne montrent plus aucun score, le
+   réglage tient au rechargement, et l'éteindre les rend. */
+test('Look : « Masquer les scores » retire les scores des cartes, du bandeau et de la fiche', async ({ page }) => {
+  const pageErrors = await bootOffline(page);
+  const scores = () => page.evaluate(() => Array.prototype.filter.call(document.querySelectorAll('#marea .prime-score, #marea .vedette-score:not(.vedette-vs)'), (e) => /\d/.test(e.textContent)).length);
+  /* Un match en direct avec un score, quel que soit le calendrier figé du test. */
+  const id = await page.evaluate(() => {
+    /* Un match dont la carte est dessinée dans le Live, avec ses deux cases de score. */
+    const m = S.matches.find((x) => { const c = document.getElementById('mb-' + x.id); return c && c.querySelectorAll('.prime-score').length === 2; });
+    m.score = [3, 1];
+    buildEPG(S.matches);
+    return String(m.id);
+  });
+  expect(await scores(), 'des scores sont visibles au départ').toBeGreaterThan(0);
+
+  await page.locator('#filter-options').click();
+  await page.locator('#reglages-barre #btn-look').click();
+  const inter = page.locator('#menu-look [data-look-scores]');
+  await expect(inter).toHaveAttribute('aria-checked', 'false');
+  await inter.click();
+  await expect(page.locator('#menu-look [data-look-scores]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('html')).toHaveClass(/sans-scores/);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'live');
+  expect(await page.locator('#marea .prime-score').count(), 'la grille du Live est bien là').toBeGreaterThan(0);
+  expect(await scores(), 'plus aucun score dans la grille').toBe(0);
+  expect((await page.evaluate(() => JSON.parse(localStorage.getItem('user_prefs') || '{}'))).masquerScores).toBe(true);
+  await page.keyboard.press('Escape');
+
+  /* La fiche : « VS » à la place du score. */
+  await page.evaluate((i) => openMod(S.matchMap.get(i)), id);
+  await expect(page.locator('#mbg .fb-score')).toHaveText('VS');
+  expect(await page.evaluate((i) => S.matchMap.get(i).score.join('-'), id), 'la donnée reste').toBe('3-1');
+  await page.evaluate(() => closeMod());
+
+  /* L'éteindre rend les scores. */
+  await page.evaluate(() => basculerScoresMasques());
+  await expect(page.locator('html')).not.toHaveClass(/sans-scores/);
+  expect(await scores()).toBeGreaterThan(0);
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
 test('sur mobile, les onglets forment une barre au bas de l\'écran et la fiche monte du bas', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => { try { localStorage.setItem('hasSeenScriptModal', '2'); } catch (e) {} });

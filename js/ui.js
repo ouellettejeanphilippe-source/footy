@@ -25,6 +25,7 @@ import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio
 import { bilanHtml, statsEquipeHtml } from './bilan.js';
 import { monterStats } from './statsmatch.js';
 import { couleursDuel } from './teinte.js';
+import { scoresMasques, reglerScoresMasques, scoreAffiche } from './divulgacheur.js';
 import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
 
@@ -253,7 +254,7 @@ export function ficheMatch(m, now, jourGrille, maintenant) {
   }
   var duree = m.durationMinutes || 120;
   if ((etat === 'bientot' || etat === 'plus-tard') && typeof maintenant === 'number' && debut + duree <= maintenant) etat = 'fin';
-  var avecScore = (etat === 'live' || etat === 'fin' || etat === 'fin?') && m.score && m.score.length === 2;
+  var avecScore = (etat === 'live' || etat === 'fin' || etat === 'fin?') && scoreAffiche(m) && scoreAffiche(m).length === 2;
   var minute = formatLiveMinute(m);
   return {
     id: String(m.id), ligue: m.league || '', dom: m.homeTeam || '', ext: ext, seul: seul,
@@ -261,7 +262,7 @@ export function ficheMatch(m, now, jourGrille, maintenant) {
     cDom: couleur(m.homeTeam), cExt: couleur(ext || m.homeTeam), cLigue: lgColor(m.league || ''),
     heure: m.startTime || '', debut: debut, duree: duree, etat: etat,
     chrono: minute === 'DIRECT' ? 'Direct' : minute,
-    sDom: avecScore ? m.score[0] : null, sExt: avecScore ? m.score[1] : null,
+    sDom: avecScore ? scoreAffiche(m)[0] : null, sExt: avecScore ? scoreAffiche(m)[1] : null,
     flux: (m.streamLinks || []).length,
     fav: !!(favTeams[m.homeTeam] || favTeams[ext] || favTeams[m.league]),
     jour: libelleJour(m, jourGrille) || '',
@@ -320,13 +321,24 @@ function menuLookHtml() {
       return '<button type="button" role="radio" aria-checked="' + choisi + '" data-look-couleur="' + c[0] + '"><span class="ml-pastille" style="background:' + apercu[c[0]] + '"></span><span>' + esc(c[1]) + '<small>' + esc(c[2]) + '</small></span></button>';
     }).join('') + '</div>'
     /* « Couleur de l'interface selon le match » (1er novembre 2026, js/teinte.js) : activée par défaut. */
-    + '<div class="ml-titre">Interface</div><div class="ml-col"><button type="button" role="switch" aria-checked="' + (userPrefs.teinteMatch !== false) + '" data-look-teinte><span class="ml-pastille" style="background:linear-gradient(135deg,#c41230,#00468b)"></span><span>Couleur du match<small>L\u2019accent prend la couleur du match regardé ou à la une</small></span></button></div>';
+    + '<div class="ml-titre">Interface</div><div class="ml-col"><button type="button" role="switch" aria-checked="' + (userPrefs.teinteMatch !== false) + '" data-look-teinte><span class="ml-pastille" style="background:linear-gradient(135deg,#c41230,#00468b)"></span><span>Couleur du match<small>L\u2019accent prend la couleur du match regardé ou à la une</small></span></button>'
+    /* Mode anti-divulgâcheur (14 novembre 2026, js/divulgacheur.js) : éteint par défaut. */
+    + '<button type="button" role="switch" aria-checked="' + scoresMasques() + '" data-look-scores><span class="ml-pastille ml-pastille-scores" aria-hidden="true">?–?</span><span>Masquer les scores<small>Ni score, ni buteurs, ni statistiques du match : pour regarder en retard</small></span></button></div>';
 }
 export function basculerTeinteMatch() {
   if (!userPrefs) return;
   userPrefs.teinteMatch = userPrefs.teinteMatch === false;
   safeStorageSetJSON('user_prefs', userPrefs);
   majTeinte();
+  majMenuLook();
+}
+export function basculerScoresMasques() {
+  if (!userPrefs) return;
+  montrerLeLive();
+  userPrefs.masquerScores = !scoresMasques();
+  safeStorageSetJSON('user_prefs', userPrefs);
+  reglerScoresMasques(userPrefs.masquerScores);
+  redessinerGrille();
   majMenuLook();
 }
 function majMenuLook() {
@@ -357,6 +369,8 @@ if (typeof document !== 'undefined') {
     if (coul) { e.stopPropagation(); return choisirCouleurs(coul.getAttribute('data-look-couleur')); }
     var teinte = e.target.closest && e.target.closest('#menu-look [data-look-teinte]');
     if (teinte) { e.stopPropagation(); return basculerTeinteMatch(); }
+    var scores = e.target.closest && e.target.closest('#menu-look [data-look-scores]');
+    if (scores) { e.stopPropagation(); return basculerScoresMasques(); }
     if (!e.target.closest('#menu-look') && !e.target.closest('#btn-look')) fermerMenuLook();
   });
   document.addEventListener('keydown', function(e) {
@@ -779,8 +793,8 @@ function buildEPGInner(matches){
                           ? '<button type="button" class="card-streams card-streams-retry" data-mid="' + esc(String(m.id)) + '" title="Les liens n\'ont pas pu être chargés : toucher pour réessayer" aria-label="Liens non chargés, réessayer" onclick="cardRetryLinks(event)">' + icone('alerte') + '</button>'
                           : '<button type="button" class="card-streams card-streams-search" data-mid="' + esc(String(m.id)) + '" title="Aucun lien : chercher maintenant" aria-label="Chercher des liens pour ce match" onclick="cardSearchLinks(event, \'' + escJs(m.id) + '\')">' + icone('search') + '</button>');
 
-                  var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
-                  var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
+                  var homeScore = scoreAffiche(m) && typeof scoreAffiche(m)[0] !== 'undefined' ? scoreAffiche(m)[0] : '';
+                  var awayScore = scoreAffiche(m) && typeof scoreAffiche(m)[1] !== 'undefined' ? scoreAffiche(m)[1] : '';
 
                   var homeLogoUrl = m.homeLogo || getLogo(m.homeTeam);
                   var awayLogoUrl = m.awayLogo || getLogo(m.awayTeam);
@@ -1343,8 +1357,8 @@ export function timelineBadgeHtml(m) {
     // « hier · » / « demain · » devant un match qui n'est pas daté du jour affiché (js/nuit.js).
     var prefixe = libelleJour(m, getEstDateStrFromDate(TARGET_DATE));
     prefixe = prefixe ? prefixe + ' · ' : '';
-    var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
-    var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
+    var homeScore = scoreAffiche(m) && typeof scoreAffiche(m)[0] !== 'undefined' ? scoreAffiche(m)[0] : '';
+    var awayScore = scoreAffiche(m) && typeof scoreAffiche(m)[1] !== 'undefined' ? scoreAffiche(m)[1] : '';
     var scoreTxt = (homeScore !== '' && awayScore !== '') ? esc(String(homeScore)) + ' - ' + esc(String(awayScore)) : '';
     if (m.status === 'live' && finPresumee(m)) {
         return '<div class="mb-time" title="' + esc(raisonFinPresumee(m)) + '" style="background:rgba(255,255,255,0.1);color:#fff;padding:2px 8px;border-radius:6px;font-weight:bold;">' + prefixe + 'Fin ?' + (scoreTxt ? ' | ' + scoreTxt : '') + '</div>';
@@ -1824,8 +1838,8 @@ export function openMod(m,col){
 
   var body=document.getElementById('mbody');
 
-  var homeScore = m.score && typeof m.score[0] !== 'undefined' ? m.score[0] : '';
-  var awayScore = m.score && typeof m.score[1] !== 'undefined' ? m.score[1] : '';
+  var homeScore = scoreAffiche(m) && typeof scoreAffiche(m)[0] !== 'undefined' ? scoreAffiche(m)[0] : '';
+  var awayScore = scoreAffiche(m) && typeof scoreAffiche(m)[1] !== 'undefined' ? scoreAffiche(m)[1] : '';
   var homeColor = lgColor(normName(m.homeTeam));
   var awayColor = lgColor(normName(m.awayTeam));
   var tColorsH = getTeamColors(m.homeTeam);
@@ -2329,6 +2343,7 @@ export var userPrefs = {
 
 var storedPrefs = safeStorageGetJSON('user_prefs');
 if (storedPrefs) userPrefs = Object.assign(userPrefs, storedPrefs);
+reglerScoresMasques(userPrefs.masquerScores === true);
 
 // Global bindings for HTML compatibility
 window.diagnosticScrape = diagnosticScrape;
@@ -2342,6 +2357,7 @@ window.cardShapePref = cardShapePref;
 window.basculerMenuLook = basculerMenuLook;
 window.choisirCouleurs = choisirCouleurs;
 window.basculerTeinteMatch = basculerTeinteMatch;
+window.basculerScoresMasques = basculerScoresMasques;
 window.updateNowLine = updateNowLine;
 window.scrollToNow = scrollToNow;
 window.QC = QC;

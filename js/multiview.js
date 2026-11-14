@@ -9,6 +9,8 @@ import { getOriginalMatchId, QI, QC, userPrefs, closeMod, buildEPG, afficherAlig
 import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { estPageDeRefus, delaiRefus, doitSauterRefus } from './cadrerefuse.js';
+import { scoreAffiche, matchSansDivulgacher } from './divulgacheur.js';
+import { raisonSansVideo, phraseSansVideo, noteAbandon } from './raisonflux.js';
 import { NOUVEAUTES, URL_SCRIPT, etatApplication, versionPubliee, cartesMiseAJour, nouveautesAfficher, miseAJourHtml, bandeauMaj, bandeauMajHtml, origineScript } from './misesajour.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
@@ -741,7 +743,7 @@ export function updateGmScoresTab() {
         var pinIcon = isPinned ? '📌' : '📍';
         var pinColor = isPinned ? 'var(--accent)' : 'var(--muted)';
 
-        var scoreStr = m.score ? (esc(m.score[0]) + ' - ' + esc(m.score[1])) : 'À venir';
+        var scoreStr = scoreAffiche(m) ? (esc(scoreAffiche(m)[0]) + ' - ' + esc(scoreAffiche(m)[1])) : 'À venir';
         var timeStr = (m.status === 'live' && m.minute) ? esc(m.minute) + "'" : esc(m.startTime);
         var statusColor = m.status === 'live' ? 'var(--accent)' : 'var(--muted)';
 
@@ -752,12 +754,12 @@ export function updateGmScoresTab() {
 
         html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
         html += '<div style="font-size:13px; font-weight:bold; color:#fff; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.homeTeam) + '</div>';
-        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? esc(m.score[0]) : '-') + '</div>';
+        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (scoreAffiche(m) ? esc(scoreAffiche(m)[0]) : '-') + '</div>';
         html += '</div>';
 
         html += '<div style="display:flex; justify-content:space-between; align-items:center;">';
         html += '<div style="font-size:13px; font-weight:bold; color:#fff; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(m.awayTeam) + '</div>';
-        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (m.score ? esc(m.score[1]) : '-') + '</div>';
+        html += '<div style="font-size:14px; font-weight:bold; color:' + statusColor + '; min-width:30px; text-align:right;">' + (scoreAffiche(m) ? esc(scoreAffiche(m)[1]) : '-') + '</div>';
         html += '</div>';
 
         html += '<div style="font-size:11px; color:' + statusColor + '; margin-top:4px; text-align:right;">' + timeStr + '</div>';
@@ -833,7 +835,7 @@ export function updateMvGameModeStats() {
             pinnedHtml += '<h4 style="color:#fff; margin-bottom:10px; font-size:14px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px;">Matchs Épinglés</h4>';
             pinnedHtml += '<div style="display:flex; flex-direction:column; gap:8px;">';
             pinnedList.forEach(function(pm) {
-                var scoreStr = pm.score ? (esc(pm.score[0]) + ' - ' + esc(pm.score[1])) : 'À venir';
+                var scoreStr = scoreAffiche(pm) ? (esc(scoreAffiche(pm)[0]) + ' - ' + esc(scoreAffiche(pm)[1])) : 'À venir';
                 var timeStr = (pm.status === 'live' && pm.minute) ? esc(pm.minute) + "'" : esc(pm.startTime);
                 var statusColor = pm.status === 'live' ? 'var(--accent)' : 'var(--muted)';
                 pinnedHtml += '<div onclick="openPinnedStats(\'' + pm.id + '\')" style="background:rgba(255,255,255,0.05); border-radius:8px; padding:10px; cursor:pointer; transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.1)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.05)\'">';
@@ -889,7 +891,7 @@ export function updateMvGameModeStats() {
            chaque nom son bilan (le rang arrive avec le summary). */
         carouselHtml += '<div id="mv-gm-header-' + m.id + '">' + enteteMatchHtml({
             dom: m.homeTeam, vis: m.awayTeam, logoDom: m.homeLogo || getLogo(m.homeTeam), logoVis: m.awayLogo || getLogo(m.awayTeam),
-            score: m.score, direct: m.status === 'live', ligue: m.league,
+            score: scoreAffiche(m), direct: m.status === 'live', ligue: m.league,
             etat: m.status === 'live' ? (m.minute ? String(m.minute) : 'En direct') : (m.status === 'finished' ? 'Terminé' : m.startTime),
             sousDom: statsEquipeHtml('', m.homeRecord, esc), sousVis: statsEquipeHtml('', m.awayRecord, esc)
         }, esc) + '</div>';
@@ -1551,7 +1553,7 @@ function carteChoixHtml(m, choisi, plein) {
     var nom = nomDuMatch(m, id);
     var direct = !m.inconnu && isLiveNow(m);
     var etat = m.inconnu ? 'Dans le lecteur'
-        : direct ? (Array.isArray(m.score) && m.score.length === 2 ? m.score[0] + ' – ' + m.score[1] : 'En direct')
+        : direct ? (Array.isArray(scoreAffiche(m)) && scoreAffiche(m).length === 2 ? scoreAffiche(m)[0] + ' – ' + scoreAffiche(m)[1] : 'En direct')
         : (m.startTime ? 'À ' + m.startTime : 'Bientôt');
     var nbLiens = (m.streamLinks || []).filter(function(l) { return l && l.url; }).length;
     var inactif = !choisi && plein;
@@ -2386,6 +2388,7 @@ export function setupMultivisionUI() {
                    (actionSansVideo). */
                 s._aJoueUrl = s._currentUrl || s.url;
                 retirerChargement(celluleDeTuile(idx));
+                retirerNoteTuile(celluleDeTuile(idx));
                 if (!s._playNoted) { s._playNoted = true; notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'plays'); }
                 /* Son automatique : la vidéo existe et joue, c'est maintenant que le son
                    peut lui être rendu — avant, le navigateur refusait et le script
@@ -3032,6 +3035,7 @@ export var ECART_CHARGEMENT_MS = 450;
 export var DUREE_CHARGEMENT_MS = 15000;
 function poserChargement(container, libelle) {
     var doc = container.ownerDocument || document;
+    retirerNoteTuile(container.closest ? container.closest('.mv-cell') : null);
     var el = doc.createElement('div');
     el.className = 'mv-chargement';
     el.setAttribute('role', 'status');
@@ -3041,6 +3045,35 @@ function poserChargement(container, libelle) {
     setTimeout(function() { el.remove(); }, DUREE_CHARGEMENT_MS);
     return el;
 }
+/* La note d'une tuile qui n'essaie plus rien d'elle-même : pourquoi la source ne joue pas
+   (js/raisonflux.js) et quoi faire. En bas de la tuile, sans prendre de clic ; retirée dès
+   qu'une vidéo joue ou qu'une autre page est posée (poserChargement). */
+function poserNoteTuile(cell, texte) {
+    if (!cell || !texte) return null;
+    retirerNoteTuile(cell);
+    var el = (cell.ownerDocument || document).createElement('div');
+    el.className = 'mv-raison';
+    el.setAttribute('role', 'status');
+    el.textContent = texte;
+    cell.appendChild(el);
+    return el;
+}
+function retirerNoteTuile(cell) {
+    if (!cell) return;
+    Array.prototype.forEach.call(cell.querySelectorAll('.mv-raison'), function(el) { el.remove(); });
+}
+/* Ce qu'on sait de la source `url` de la tuile : le refus de cadre que la tuile a lu, la
+   sonde du serveur sur l'hôte, le verdict du lien, le registre de l'hôte. Avec l'extension,
+   les en-têtes d'encadrement sont retirés : la mesure du serveur ne vaut plus ici. */
+function raisonPourTuile(s, url) {
+    var lien = lienDuMatchPourFlux(s, url) || { url: url };
+    var hote = hostOfUrl(tileTarget(lien));
+    var info = (typeof window !== 'undefined' && window.prefetchedStreamsInfo) || {};
+    var pol = (info.hostPolicy || {})[hote] || null;
+    if (pol && pol.embeddable === false && !pol.defi && typeof window !== 'undefined' && window.__footyExtension) pol = Object.assign({}, pol, { embeddable: null });
+    return raisonSansVideo({ lien: lien, politique: pol, hote: (playLedger() || {})[hote], refus: !!url && s._refusUrl === url });
+}
+
 export function retirerChargement(cell) {
     if (!cell) return;
     Array.prototype.forEach.call(cell.querySelectorAll('.mv-chargement'), function(el) { el.remove(); });
@@ -3776,6 +3809,7 @@ export function positionDuFlux(s) {
 function cadreRefuseSurTuile(s, etat) {
     if (!s || s._playing) return;
     var posee = s._currentUrl;
+    s._refusUrl = posee;
     armerMinuteur(s, 'refus', function(place) {
         var L = liensDuMatch(s.mid);
         if (!doitSauterRefus({
@@ -3801,6 +3835,9 @@ export function nextFluxForTile(idx, raison) {
     var L = liensDuMatch(s.mid);
     var suivant = nextLinkAfter(L, s.url);
     if (!suivant) { if (raison !== 'auto') showToast('Aucune autre source pour ce match.'); return false; }
+    /* La raison se lit AVANT de noter l'échec et de changer d'adresse : elle parle de la
+       source qu'on quitte. */
+    var pourquoi = raison === 'auto' ? raisonPourTuile(s, s.url) : null;
     if (raison === 'auto') notePlayability(lienDuMatchPourFlux(s, s.url) || { url: s.url }, 'none');
     /* Un ⏭ sur une source qui n'a rien montré apprend aussi à l'appareil, script
        utilisateur ou pas (sautManuelEstEchec, js/playability.js). */
@@ -3817,7 +3854,7 @@ export function nextFluxForTile(idx, raison) {
     saveMultivisionState();
     updateMultivisionLayout();
     var pos = positionDuFlux(s);
-    showToast((raison === 'auto' ? 'Aucune vidéo : source suivante' : 'Source suivante') + (pos ? ' (' + pos.k + '/' + pos.n + ')' : '') + ' — ' + getDomain(tileTarget(suivant)));
+    showToast((raison === 'auto' ? phraseSansVideo(pourquoi, 'source suivante') : 'Source suivante') + (pos ? ' (' + pos.k + '/' + pos.n + ')' : '') + ' — ' + getDomain(tileTarget(suivant)));
     return true;
 }
 
@@ -3906,13 +3943,15 @@ function armerBasculeAuto(s, idx, url) {
         var reste = L.length > 1 && (s._autoTried | 0) < BASCULES_AUTO_MAX && (s._autoTried | 0) < L.length - 1;
         var action = actionSansVideo(essais, reste, essaisMax, aJoue);
         if (action === 'recharger') {
-            showToast('Aucune vidéo : on recharge la source (essai ' + (essais + 1) + '/' + essaisMax + ')');
+            showToast(phraseSansVideo(raisonPourTuile(s, url), 'on recharge la source (essai ' + (essais + 1) + '/' + essaisMax + ')'));
             rechargerTuile(place);
             return;
         }
         if (action === 'suivante') { nextFluxForTile(place, 'auto'); return; }
         if ((s._autoTried | 0) >= BASCULES_AUTO_MAX && L.length > 1) showToast('On reste sur cette source. ⏭ pour en essayer une autre');
         else if (!reste) showToast('Plus d\'autre source pour ce match');
+        /* La tuile n'essaiera plus rien seule : elle dit pourquoi, et quoi faire. */
+        poserNoteTuile(celluleDeTuile(place), noteAbandon(raisonPourTuile(s, url), L.length > 1));
     }, delai);
 }
 
@@ -4354,7 +4393,7 @@ export function annoncerCable(idx, note) {
     if (!s || !cell) return null;
     var chaines = chainesDuCable();
     var pos = positionDuFlux(s);
-    var e = etiquetteChaine(matchDeLaTuile(s.mid) || { name: s.name }, indexDeChaine(chaines, s.mid) + 1, chaines.length, pos ? { k: pos.k, n: pos.n } : null);
+    var e = etiquetteChaine(matchSansDivulgacher(matchDeLaTuile(s.mid)) || { name: s.name }, indexDeChaine(chaines, s.mid) + 1, chaines.length, pos ? { k: pos.k, n: pos.n } : null);
     var osd = cell.querySelector('.mv-cable-osd');
     if (!osd) {
         osd = cell.ownerDocument.createElement('div');
@@ -5241,7 +5280,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v127';
+export var VERSION_APP = 'sports-guide-v128';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 

@@ -6,6 +6,7 @@ import { fetchGameStats, renderScorersHtml, formatStatLabel, fetchLeagueStanding
 import { openMod, getOriginalMatchId } from './ui.js';
 import { getLogo, normName, STATIC_TEAMS, sportOfLeague, teamColorPair } from './db.js';
 import { monterStats } from './statsmatch.js';
+import { scoreAffiche } from './divulgacheur.js';
 import { couleursDuel } from './teinte.js';
 import { buildProxyList } from './fetcher.js';
 import { playabilityScore, hostOfUrl, tileTarget, reputationLien, fusionAppareil, rangNotoriete } from './playability.js';
@@ -840,8 +841,8 @@ export function openGlobalStatsFromMatch(mid, isBack) {
 
         // Score
         html += '<div style="flex: 0.8; display:flex; justify-content:center; align-items:center; flex-direction:column;">';
-        if(m.score) {
-            html += '<div style="font-weight:800; font-size:36px; color:var(--text); letter-spacing:1px; line-height:1;">' + m.score[0] + ' <span style="color:var(--muted); font-size:24px;">-</span> ' + m.score[1] + '</div>';
+        if(scoreAffiche(m)) {
+            html += '<div style="font-weight:800; font-size:36px; color:var(--text); letter-spacing:1px; line-height:1;">' + scoreAffiche(m)[0] + ' <span style="color:var(--muted); font-size:24px;">-</span> ' + scoreAffiche(m)[1] + '</div>';
         } else {
             html += '<div style="font-weight:700; font-size:20px; color:var(--muted); line-height:1;">VS</div>';
         }

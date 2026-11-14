@@ -1541,7 +1541,7 @@ export function renderScorersHtml(scorers, m, hId, aId) {
         return tA - tB;
     });
 
-    var html = '<div style="display:flex; flex-direction:column; gap:8px; width:100%; font-size:13px; margin-top:8px; background:rgba(255,255,255,0.02); padding:12px; border-radius:12px;">';
+    var html = '<div class="buteurs" style="display:flex; flex-direction:column; gap:8px; width:100%; font-size:13px; margin-top:8px; background:rgba(255,255,255,0.02); padding:12px; border-radius:12px;">';
 
     var lgUpper = m && m.league ? m.league.toUpperCase() : '';
     var isBaseball = lgUpper === 'MLB' || lgUpper.indexOf('BASEBALL') > -1;
