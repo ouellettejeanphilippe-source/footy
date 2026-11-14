@@ -50,6 +50,23 @@ export function phraseSansVideo(raison, suite) {
     return 'Aucune vidéo' + t + (suite ? ' : ' + suite : '');
 }
 
+/* Un flux direct (une chaîne de télé, un manifeste collé à la main) a échoué : la raison
+   que rapporte le lecteur (`creerLecteurVideo`, js/multiview.js : « manifestLoadError
+   HTTP 403 », « erreur vidéo 4 », « dash … ») dite en clair. Une tuile de ce genre n'a pas
+   de page où revenir : sans cette phrase, elle restait noire. */
+export function raisonDirect(raison) {
+    var r = String(raison || '');
+    var http = /HTTP (\d{3})/.exec(r);
+    var code = http ? parseInt(http[1], 10) : 0;
+    if (code === 403 || code === 451) return 'le flux est refusé ici (' + code + '), souvent réservé à un pays';
+    if (code === 404 || code === 410) return 'le flux n\u2019existe plus (' + code + ')';
+    if (code >= 500) return 'le serveur du flux est en panne (' + code + ')';
+    if (/key|drm|protection|encrypt/i.test(r)) return 'le flux est chiffré';
+    if (/LoadError|LoadTimeOut|réseau|indisponible|dash 2[5-8]/i.test(r)) return 'le flux ne répond pas, ou refuse d\u2019être lu depuis cette page';
+    if (/erreur vidéo|Parsing|Codec|bufferA|dash|arrêté/i.test(r)) return 'ce navigateur ne lit pas ce flux' + (r ? ' (' + r.slice(0, 60) + ')' : '');
+    return r ? 'le flux a échoué (' + r.slice(0, 60) + ')' : 'le flux a échoué';
+}
+
 /* La note laissée sur la tuile quand elle n'essaie plus rien d'elle-même. */
 export function noteAbandon(raison, autresSources) {
     var t = raison && raison.texte ? raison.texte.charAt(0).toUpperCase() + raison.texte.slice(1) : 'Aucune vidéo sur cette source';

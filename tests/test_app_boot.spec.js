@@ -3905,6 +3905,10 @@ test('Live : la section « Télé » ne montre que les chaînes qui répondent, 
   await page.locator('#marea .chaine-tv').first().click();
   expect(await page.evaluate(() => (window.mvFlux || []).map((s) => [s.url, s.name, s.mid]))).toEqual([['https://tele.invalid/une.m3u8', 'Chaîne Une', 'tv_chaineune']]);
   await expect(page.locator('.mv-cell')).toHaveCount(1);
+  /* Ce flux ne joue pas (aucun réseau ici) : la tuile le dit au lieu de rester noire
+     (14 novembre 2026, « les postes de télé marchent pas », raisonDirect). */
+  await expect(page.locator('.mv-cell .mv-raison')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('.mv-cell .mv-raison')).toContainText('flux');
   // La grille redessinée garde la section (le fichier n'est lu qu'une fois).
   await page.evaluate(() => window.applyFilter('live'));
   await expect(page.locator('#marea .chaine-tv')).toHaveCount(2);

@@ -249,6 +249,18 @@ async function main() {
   mv.detruireLecteur(video4);
   ok('chargerBibliotheque : le second miroir est essayé quand le premier échoue');
 
+  /* Le lecteur HLS du navigateur bute avant de jouer : hls.js, une seule fois (14 novembre
+     2026, « les postes de télé marchent pas » : ICI RDI, DEMUXER_ERROR_COULD_NOT_PARSE). */
+  const LD = await import('../js/lecteurdirect.js');
+  assert.strictEqual(LD.repliVersHlsJs({ genre: 'hls', gere: false, aJoue: false, dejaTente: false, mse: true }), true);
+  assert.strictEqual(LD.repliVersHlsJs({ genre: 'hls', gere: false, aJoue: false, dejaTente: true, mse: true }), false, 'une seule fois');
+  assert.strictEqual(LD.repliVersHlsJs({ genre: 'hls', gere: false, aJoue: true, dejaTente: false, mse: true }), false, 'un flux qui a joué est relancé, pas changé de moteur');
+  assert.strictEqual(LD.repliVersHlsJs({ genre: 'hls', gere: true, aJoue: false, dejaTente: false, mse: true }), false, 'hls.js tient déjà la vidéo');
+  assert.strictEqual(LD.repliVersHlsJs({ genre: 'hls', gere: false, aJoue: false, dejaTente: false, mse: false }), false, 'sans Media Source Extensions (iPhone), hls.js ne tourne pas');
+  assert.strictEqual(LD.repliVersHlsJs({ genre: 'fichier', gere: false, aJoue: false, dejaTente: false, mse: true }), false, 'un mp4 n\'est pas du HLS');
+  assert.strictEqual(LD.repliVersHlsJs(), false);
+  ok('repliVersHlsJs : le HLS que le navigateur n\'a pas su lire repart par hls.js, une fois');
+
   console.log('\n' + n + ' cas passés.');
   process.exit(0);
 }

@@ -55,6 +55,19 @@ async function main() {
     assert.ok(/^Aucune vidéo sur cette source\. Aucune autre source/.test(R.noteAbandon(null, false)));
     ok('les messages portent la raison, ou rien de plus quand on ne sait pas');
 
+    // 6 bis. Un flux direct en échec (chaîne de télé) : la raison du lecteur, dite en clair.
+    assert.ok(/403.*pays/.test(R.raisonDirect('manifestLoadError HTTP 403')));
+    assert.ok(/n’existe plus \(404\)/.test(R.raisonDirect('manifestLoadError HTTP 404')));
+    assert.ok(/en panne \(503\)/.test(R.raisonDirect('levelLoadError HTTP 503')));
+    assert.ok(/ne répond pas/.test(R.raisonDirect('manifestLoadError')), 'sans code : muet ou CORS');
+    assert.ok(/ne répond pas/.test(R.raisonDirect('dash 25')), 'dash.js : manifeste illisible');
+    assert.ok(/chiffré/.test(R.raisonDirect('keyLoadError')));
+    assert.ok(/ne lit pas ce flux \(erreur vidéo 4\)/.test(R.raisonDirect('erreur vidéo 4')));
+    assert.strictEqual(R.raisonDirect(''), 'le flux a échoué');
+    const mvDirect = fs.readFileSync(path.join(__dirname, '..', 'js', 'multiview.js'), 'utf8');
+    assert.ok(/creerLecteurVideo\(url, function\(raison\) \{[\s\S]{0,400}raisonDirect\(raison\)/.test(mvDirect), 'un lien direct en échec pose la note');
+    ok('un flux direct en échec dit pourquoi (403, 404, panne, muet, chiffré, format)');
+
     // 7. Sans import, précaché, et employé par la tuile.
     const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'raisonflux.js'), 'utf8');
     assert.ok(!/^\s*import\s/m.test(src), 'module sans import');
