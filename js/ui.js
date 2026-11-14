@@ -25,6 +25,7 @@ import { radiosDuMatch, radioHtml, adressesDuFlux, fluxDeReponse } from './radio
 import { bilanHtml, statsEquipeHtml } from './bilan.js';
 import { monterStats } from './statsmatch.js';
 import { couleursDuel } from './teinte.js';
+import { indexer as indexerReglages, chercher as chercherReglages } from './reglages.js';
 import { scoresMasques, reglerScoresMasques, scoreAffiche } from './divulgacheur.js';
 import { adresseReactionsX, reactionsPossibles, ouvrirReactionsX } from './reactions.js';
 import { ecouterRadio, chargerFluxRadio } from './radiodirect.js';
@@ -345,6 +346,56 @@ function majMenuLook() {
   var m = typeof document !== 'undefined' && document.getElementById('menu-look');
   if (m && !m.hidden) m.innerHTML = menuLookHtml();
 }
+/* La recherche des Réglages (14 novembre 2026, js/reglages.js) : le champ de la colonne
+   propose les réglages dont le nom ou l'explication contient les mots tapés ; en choisir
+   un ouvre sa page et le montre. L'index est relu dans la page à chaque frappe : la page
+   Mises à jour se redessine. */
+var resultatsReglages = [];
+function rendreResultatsReglages(q) {
+  var zone = document.getElementById('reglages-resultats');
+  if (!zone) return;
+  resultatsReglages = chercherReglages(indexerReglages(document), q, 8);
+  if (!String(q || '').trim()) { zone.hidden = true; zone.innerHTML = ''; return; }
+  zone.innerHTML = resultatsReglages.length
+    ? resultatsReglages.map(function(e, i) {
+        return '<button type="button" class="rb-resultat" data-reglage="' + i + '"><span>' + esc(e.titre) + '</span><small>' + esc(e.rubrique) + '</small></button>';
+      }).join('')
+    : '<div class="rb-resultat-vide">Aucun réglage ne correspond.</div>';
+  zone.hidden = false;
+}
+export function ouvrirReglage(e) {
+  if (!e) return;
+  var champ = document.getElementById('reglages-recherche'), zone = document.getElementById('reglages-resultats');
+  if (champ) champ.value = '';
+  if (zone) { zone.hidden = true; zone.innerHTML = ''; }
+  if (e.action === 'actualiser') { if (typeof window.actualiserMaintenant === 'function') window.actualiserMaintenant(); return; }
+  if (e.action === 'maj') { if (typeof window.mettreAJourApplication === 'function') window.mettreAJourApplication(); return; }
+  /* Après le clic en cours : l'écouteur « clic ailleurs » du menu le refermerait. */
+  if (e.action === 'look') { setTimeout(function() { var m = document.getElementById('menu-look'); if (m && m.hidden) basculerMenuLook(); }, 0); return; }
+  if (e.vue && typeof window.applyFilter === 'function') window.applyFilter(e.vue);
+  var el = e.el;
+  if (!el || !el.isConnected) return;
+  var d = el.closest('details');
+  if (d) d.open = true;
+  if (el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+  el.classList.add('rg-cible');
+  setTimeout(function() { el.classList.remove('rg-cible'); }, 1800);
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('input', function(ev) {
+    if (ev.target && ev.target.id === 'reglages-recherche') rendreResultatsReglages(ev.target.value);
+  });
+  document.addEventListener('keydown', function(ev) {
+    if (!ev.target || ev.target.id !== 'reglages-recherche') return;
+    if (ev.key === 'Enter' && resultatsReglages.length) { ev.preventDefault(); ouvrirReglage(resultatsReglages[0]); }
+    else if (ev.key === 'Escape' && ev.target.value) { ev.stopPropagation(); ev.target.value = ''; rendreResultatsReglages(''); }
+  });
+  document.addEventListener('click', function(ev) {
+    var b = ev.target.closest && ev.target.closest('#reglages-resultats [data-reglage]');
+    if (b) { ev.stopPropagation(); ouvrirReglage(resultatsReglages[parseInt(b.getAttribute('data-reglage'), 10)]); }
+  });
+}
+
 export function fermerMenuLook() {
   var m = document.getElementById('menu-look'), b = document.getElementById('btn-look');
   if (m) m.hidden = true;

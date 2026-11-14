@@ -83,6 +83,15 @@
      à jour l'app), en onglets en tête des pages de l'onglet Réglages. Montrée par la
      feuille de style sur ces seules pages (body[data-view]). -->
 <nav class="reglages-barre" id="reglages-barre" aria-label="Réglages">
+  <!-- En colonne à gauche sur ordinateur (14 novembre 2026) : titre, recherche (js/reglages.js,
+       brancherRechercheReglages dans js/ui.js), rubriques, actions. -->
+  <div class="rb-tete">
+    <div class="rb-titre">Réglages</div>
+    <div class="rb-recherche">
+      <input type="search" id="reglages-recherche" class="input" placeholder="Chercher un réglage…" autocomplete="off" aria-label="Chercher un réglage" aria-controls="reglages-resultats">
+      <div id="reglages-resultats" class="rb-resultats" hidden></div>
+    </div>
+  </div>
   <div class="rb-onglets">
     <button class="rb-btn" id="rb-options" onclick="applyFilter('options')"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg><span>Options</span></button>
     <button class="rb-btn" id="btn-look" aria-haspopup="true" aria-expanded="false" aria-controls="menu-look" onclick="basculerMenuLook(event)"><svg class="ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2.5a9.5 9.5 0 1 0 0 19c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1 0-.9.7-1.6 1.6-1.6h1.9c2.9 0 5.2-2.4 5.2-5.3C21.5 6.3 17.2 2.5 12 2.5z"/><circle cx="7.5" cy="11" r="1" fill="currentColor"/><circle cx="10" cy="7" r="1" fill="currentColor"/><circle cx="15" cy="7" r="1" fill="currentColor"/></svg><span>Look</span></button>
@@ -207,7 +216,12 @@
       <div class="panel-title"><span>Apparence</span></div>
 
       <div class="field">
-        <div class="field-label">Palette<small>Le fond de l'application et sa couleur d'accent.</small></div>
+        <div class="field-label">Préréglages<small>Un clic : le fond et la couleur d'accent assortis. « Défaut » revient à l'identité d'origine.</small></div>
+        <div class="prereglages-container"></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Toutes les palettes<small>Le fond de l'application et sa couleur d'accent, plus une palette par équipe favorite.</small></div>
         <div class="swatches-container"></div>
       </div>
 

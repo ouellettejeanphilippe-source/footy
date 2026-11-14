@@ -161,4 +161,16 @@ export function relanceAutorisee(etat, now) {
    lecture automatique (déjà là), présentation (Cast), `encrypted-media` (un lecteur qui
    déchiffre par le navigateur, ClearKey ou Widevine, se tait sans elle) et
    `picture-in-picture`. Rien qui touche au bac à sable : aucun attribut `sandbox`. */
+/* Le lecteur HLS du navigateur a échoué : faut-il réessayer par hls.js ? (14 novembre 2026,
+   « les postes de télé marchent pas »). Les Chrome récents lisent le HLS eux-mêmes, et
+   l'application le leur confie (sans CORS, c'est ce qui joue le plus de flux) ; mais ce
+   lecteur-là bute sur des flux que hls.js lit — relevé sur ICI RDI, une fois sur trois :
+   DEMUXER_ERROR_COULD_NOT_PARSE, vidéo figée, rien à l'écran. Une seule fois, seulement
+   pour du HLS que le navigateur tenait lui-même, avant toute lecture, et là où hls.js
+   peut tourner (Media Source Extensions). */
+export function repliVersHlsJs(o) {
+    var x = o || {};
+    return x.genre === 'hls' && !x.gere && !x.aJoue && !x.dejaTente && !!x.mse;
+}
+
 export var PERMISSIONS_CADRE = 'fullscreen; autoplay; presentation; encrypted-media; picture-in-picture';

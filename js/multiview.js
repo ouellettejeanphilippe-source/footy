@@ -10,13 +10,14 @@ import { icone } from './icones.js';
 import { sortFluxLinks, getDomain, domainPrefs, toggleDomainPref, notePlayability, playLedger, isLiveNow, startsWithin } from './config.js';
 import { estPageDeRefus, delaiRefus, doitSauterRefus } from './cadrerefuse.js';
 import { scoreAffiche, matchSansDivulgacher } from './divulgacheur.js';
-import { raisonSansVideo, phraseSansVideo, noteAbandon } from './raisonflux.js';
+import { prereglages, estClaire } from './reglages.js';
+import { raisonSansVideo, phraseSansVideo, noteAbandon, raisonDirect } from './raisonflux.js';
 import { NOUVEAUTES, URL_SCRIPT, etatApplication, versionPubliee, cartesMiseAJour, nouveautesAfficher, miseAJourHtml, bandeauMaj, bandeauMajHtml, origineScript } from './misesajour.js';
 import { nextLinkAfter, hostOfUrl, tileTarget, patienceMs, playabilityScore, actionSansVideo, arretMeriteRechargement, essaisPourSource, budgetReprise, FENETRE_REPRISE_MS, BASCULES_AUTO_MAX, sautManuelEstEchec, OUBLI_APPAREIL_MS } from './playability.js';
 import { estManifeste, retenirMediaDirect, mediaDirectPour, noterEchecDirect, aProposer, chargeurParPont, refererPourDirect, origineDe, verdictSonde, SONDE_VALIDE_MS } from './directmedia.js';
 import { pluginNatif, referersPour, diagnosticAndroidHtml, surTeleAndroid } from './tele.js';
 import { bilan as bilanFluidite, ligneFluidite, noterArret as noterArretVideo, noterImages, pertesRecentes, bilanImages, ligneImages, ligneDecodage } from './fluidite.js';
-import { BIBLIOTHEQUES, typeDeMedia, configHls, decisionErreurHls, relanceAutorisee, RELANCES_MAX, DELAI_STAGNATION_MS, PERMISSIONS_CADRE } from './lecteurdirect.js';
+import { BIBLIOTHEQUES, typeDeMedia, configHls, decisionErreurHls, repliVersHlsJs, relanceAutorisee, RELANCES_MAX, DELAI_STAGNATION_MS, PERMISSIONS_CADRE } from './lecteurdirect.js';
 import { noterMesure, mesurePour, formaterMesure } from './debit.js';
 import { scrapeMatchFlux, compterFluxUtiles, doitRafraichirTuile, INTERVALLE_TUILE_MS, getEmbedRegistry } from './scrapers.js';
 import { loadAll, loadPrefetchedStreams } from './main.js';
@@ -189,6 +190,14 @@ export function creerLecteurVideo(url, surEchec, pont, entetes, type, opts) {
     video.addEventListener('error', function() {
         if (gere) return; // hls.js / dash.js rapportent eux-mêmes leurs erreurs
         var code = video.error && video.error.code;
+        /* Le lecteur HLS du navigateur a buté avant de jouer : hls.js, une fois
+           (repliVersHlsJs, js/lecteurdirect.js). */
+        if (repliVersHlsJs({ genre: genre, gere: gere, aJoue: aJoue, dejaTente: repliTente, mse: typeof window !== 'undefined' && !!(window.ManagedMediaSource || window.MediaSource) })) {
+            repliTente = true;
+            try { video.removeAttribute('src'); video.load(); } catch (e) {}
+            parHlsJs();
+            return;
+        }
         if (aJoue && typeof relancer === 'function') {
             var r = relanceAutorisee(etatRelance);
             etatRelance = r.etat;
@@ -206,8 +215,9 @@ export function creerLecteurVideo(url, surEchec, pont, entetes, type, opts) {
     video.muted = true;
 
     var genre = type || typeDeMedia(url, '');
+    var repliTente = false;
     var poserEntetes = entetes ? function(xhr) { Object.keys(entetes).forEach(function(k) { try { xhr.setRequestHeader(k, entetes[k]); } catch (e) {} }); return xhr; } : null;
-    if (genre === 'hls' && (pont || entetes || !video.canPlayType('application/vnd.apple.mpegurl'))) {
+    function parHlsJs() {
         chargerHlsJs().then(function(Hls) {
             if (fini) return;
             if (!(Hls && Hls.isSupported())) { video.src = url; return; } // dernier recours : certains navigateurs y arrivent quand même
@@ -239,6 +249,9 @@ export function creerLecteurVideo(url, surEchec, pont, entetes, type, opts) {
             video._hls = hls; // pour destruction propre (detruireLecteur)
             gere = true;
         }).catch(function() { if (!fini) video.src = url; });
+    }
+    if (genre === 'hls' && (pont || entetes || !video.canPlayType('application/vnd.apple.mpegurl'))) {
+        parHlsJs();
     } else if (genre === 'dash') {
         chargerBibliotheque('dash').then(function(dashjs) {
             if (fini) return;
@@ -542,7 +555,15 @@ function versVideoSiDirect(elementActuel, url, container) {
     if (!estMediaDirecte(url)) return elementActuel;
     /* Un lien qui EST un manifeste : aucun lecteur connu pour son `Referer`, mais le pont
        lève au moins le refus d'origine. */
-    var video = creerLecteurVideo(url, null, pontPourDirect({}));
+    /* Ce lien n'a pas de page où revenir : s'il échoue, la tuile le dit (raisonDirect,
+       js/raisonflux.js) au lieu de rester noire (14 novembre 2026, « les postes de télé
+       marchent pas »). */
+    var video = creerLecteurVideo(url, function(raison) {
+        var cell = container && container.closest ? container.closest('.mv-cell') : null;
+        lg('Flux direct en échec', String(raison || '') + ' : ' + String(url).slice(0, 140));
+        retirerChargement(cell);
+        poserNoteTuile(cell, noteAbandon({ texte: raisonDirect(raison) }, false).replace(' Aucune autre source pour ce match.', ''));
+    }, pontPourDirect({}));
     /* Le recadrage (`s.cropped`) est appliqué à l'iframe AVANT la résolution du
        tour de passe-passe, quand le lecteur n'arrive qu'après coup — sans quoi le
        remplacement tardif par une vidéo perdrait ce réglage. */
@@ -5089,7 +5110,7 @@ export function choisirPalette(p) {
 }
 
 function majPaletteChoisie() {
-  var items = document.querySelectorAll('.swatches-container .swatch-item');
+  var items = document.querySelectorAll('.swatches-container .swatch-item, .prereglages-container .prereglage');
   Array.prototype.forEach.call(items, function(el) {
     var on = el.dataset.c1 === userPrefs.c1 && el.dataset.accent === userPrefs.accent;
     el.classList.toggle('on', on);
@@ -5196,6 +5217,32 @@ export function buildSwatches() {
     // Add predefined palettes
     PALETTES.forEach(function(p) { palettesToRender.push(p); });
 
+    /* Les préréglages (14 novembre 2026, js/reglages.js) : l'identité d'origine et huit
+       palettes, nommées, en un clic. Même geste qu'une palette (`choisirPalette`). */
+    var zonePre = document.querySelector('.prereglages-container');
+    if (zonePre) {
+        zonePre.innerHTML = '';
+        prereglages(PALETTES).forEach(function(p) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'prereglage' + (estClaire(p.c1) ? ' clair' : '');
+            b.dataset.c1 = p.c1;
+            b.dataset.accent = p.accent;
+            b.dataset.prereglage = p.id;
+            b.style.setProperty('--sw-fond', 'linear-gradient(120deg, ' + p.c1 + ' 0%, ' + p.c2 + ' 70%, ' + p.c3 + ' 100%)');
+            b.style.setProperty('--sw-accent', p.accent);
+            var point = document.createElement('span');
+            point.className = 'pre-point';
+            point.setAttribute('aria-hidden', 'true');
+            var nom = document.createElement('span');
+            nom.textContent = p.name;
+            b.appendChild(point);
+            b.appendChild(nom);
+            b.onclick = function() { choisirPalette(p); };
+            zonePre.appendChild(b);
+        });
+    }
+
     palettesToRender.forEach(function(p) {
         var swatch = document.createElement('button');
         swatch.type = 'button';
@@ -5280,7 +5327,7 @@ export function mettreAJourApplication() {
 /* Version du code embarquée dans le paquet servi : à garder en phase avec `CACHE_NAME`
    (sw.js). Affichée dans la page Logs pour reconnaître un appareil qui tourne encore sur
    une copie plus ancienne servie par son service worker. */
-export var VERSION_APP = 'sports-guide-v128';
+export var VERSION_APP = 'sports-guide-v130';
 
 /* Ce que CET appareil-ci arrive à lire (7 septembre 2026).
 
