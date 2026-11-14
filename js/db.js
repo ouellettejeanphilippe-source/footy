@@ -329,6 +329,13 @@ export var DEFAULT_LEAGUES = {
 
 export var OTHER_LEAGUES = {
     'SAUDI PRO LEAGUE': { icon: '⚽' },
+    /* Les secondes divisions (14 novembre 2026, scripts/maj_equipes.mjs) : la ligue d'un club
+       relégué, pour Favoris ; le calendrier ne les lit pas (absentes d'ESPN_LEAGUES). */
+    'CHAMPIONSHIP': { icon: '⚽' },
+    'LA LIGA 2': { icon: '⚽' },
+    '2. BUNDESLIGA': { icon: '⚽' },
+    'SERIE B': { icon: '⚽' },
+    'LIGUE 2': { icon: '⚽' },
     'WORLD BASEBALL CLASSIC': { icon: '⚾' },
     'FIBA WORLD CUP': { icon: '🏀' },
     'NCAA MEN\'S BASKETBALL': { icon: '🏀' },

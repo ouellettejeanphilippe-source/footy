@@ -229,7 +229,9 @@ async function main() {
       </a></div></div>`;
     const flex = scrapers.parseFlexfitness(flexHomeHtml, 'https://flexfitness.fit/');
     assert.strictEqual(flex.length, 3, 'trois cartes, trois matchs (foot, motorsport, CFB)');
-    const flexMarit = flex.find((m) => m.homeTeam === 'Marítimo');
+    /* « Maritimo », sans accent : le nom d'ESPN, entré dans la base le 14 novembre 2026
+       (scripts/maj_equipes.mjs) ; la page écrit « Marítimo » et se résout dessus. */
+    const flexMarit = flex.find((m) => m.homeTeam === 'Maritimo');
     assert.strictEqual(flexMarit.awayTeam, 'Benfica');
     assert.strictEqual(flexMarit.status, 'live', 'badge "Live" détecté');
     assert.strictEqual(flexMarit.matchDate, '2026-09-05');

@@ -46,7 +46,6 @@ Dessous, dans l'ordre, toutes repliables d'un clic, d'Entrée ou d'Espace sur le
 | **Favoris** | Les matchs dont une équipe ou la ligue est favorite. | Dépliée |
 | **Une section par sport** | D'abord les sports des ligues principales, puis les **mêmes sports répétés pour les ligues secondaires** (« Hockey · secondaires »), sous toutes les sections principales (« par sports, mais par section aussi, quitte à répéter le sport pour les ligues secondaires », 1er novembre 2026 ; plus de section « Ligues secondaires » dans le Live ; le Guide garde la sienne, sous les principales). L'ordre des sports se choisit dans **Favoris → Ligues** (▲ ▼ d'un sport), après les sports qui ont un favori. Les matchs en cours et ceux qui commencent dans l'heure, sport par sport (Hockey, Basketball, Football, Soccer…), chaque carte gardant sa ligue en surtitre (« regrouper par sports et non ligue », 1er novembre 2026 ; du 27 octobre au 1er novembre, une section par ligue). **Favoris en haut** : un sport qui a un match favori passe avant les autres ; dans une section, la ligue qui porte un favori d'abord, et les favoris devant, puis le direct, puis l'heure. | Dépliée |
 | **Autres streams (n)** | Les flux que les sources annoncent sans qu'ESPN ait le match (ligue « Autres Flux »), sous-groupés par ligue annoncée. | Repliée |
-| **Télé** | Les chaînes canadiennes en clair (CBC, ICI Télé, ICI RDI, TVA, Noovo, Télé-Québec…), un bouton par chaîne, sous les matchs. Un clic pose la chaîne dans le lecteur. Liste relue chaque jour depuis Free-TV ; seules les chaînes qui répondent depuis l'appareil sont montrées (une chaîne morte, bloquée hors du pays ou refusée par le navigateur n'a pas de bouton), et la section n'apparaît pas si aucune ne répond. | Toujours ouverte |
 
 Les ligues classées « ignorée » n'apparaissent nulle part. Quand rien n'est en cours, la page dit « Aucun match en direct pour le moment » avec un bouton `Ouvrir le Guide`.
 
@@ -271,13 +270,14 @@ Un glissement de moins de 48 px, une diagonale ou un doigt qui traîne plus d'un
 
 ## 6. Favoris (onglet Favoris)
 
-Deux volets (onglets `Équipes` / `Ligues` sur téléphone) :
+Refaite le 14 novembre 2026 (« faire page favori pour meilleure navigation ») sur le modèle des Réglages : **une colonne de rubriques** à gauche (sur téléphone, des pastilles en haut) et le contenu de la rubrique à droite.
 
-- **Équipes** : la liste par ligue avec une ★ par équipe, une recherche instantanée, et `⭐️ MES FAVORIS` en tête. Un favori met ses matchs dans la section Favoris du Live et en avant dans le Guide.
-- **Ligues** : glisser-déposer (ou ▲/▼) pour l'ordre d'affichage, et pour chaque ligue trois niveaux, **Principale**, **Secondaire**, **Ignorée**, plus `↺` pour revenir au réglage par défaut. `Réinitialiser l'ordre` et `Réinitialiser le classement` remettent tout d'aplomb.
+- **La colonne** : un champ **Chercher une équipe**, la rubrique **Mes favoris**, puis **un sport par ligne**, dans l'ordre des sections du Live, avec le nombre de favoris de chacun. En bas, `Réinitialiser l'ordre` et `Réinitialiser le classement`.
+- **Mes favoris** : les équipes favorites, en grille (logo, nom, étoile). Un clic sur une équipe la retire. Un favori met ses matchs dans la section Favoris du Live et en avant dans le Guide.
+- **Un sport** : ses ligues, une par panneau, dans l'ordre du Live. Chaque panneau porte le nom de la ligue, son nombre d'équipes et de favoris, trois niveaux, **Principale**, **Secondaire**, **Ignorée** (`↺` revient au réglage par défaut), et ▲ ▼ pour la déplacer parmi les ligues de son sport (ou glisser-déposer). Dessous, **ses équipes** : un clic met une équipe en favori ou l'en retire. Les équipes d'une ligue principale sont montrées d'office (jusqu'à 40) ; le titre d'une ligue replie ou déplie les siennes. En tête de la page, ▲ ▼ changent la place du sport dans le Live.
+- **La recherche** : les équipes de tous les sports dont le nom ou un alias contient le texte tapé (sans accent), avec leur ligue sous le nom. Vider le champ revient à la rubrique.
 
-
-**Trier les sports et les ligues** (1er novembre 2026, « dans favoris, pouvoir trier les sports et ligues aussi ») : dans Ligues, les ligues sont groupées sous un titre par sport. ▲ ▼ d'un sport changent l'ordre des sections du Live ; ▲ ▼ d'une ligue la déplacent parmi celles de son sport (l'ordre des ligues, comme avant, dans le Live et le Guide). « Réinitialiser l'ordre » remet aussi les sports par défaut.
+**Les équipes sont rangées sous leur championnat du moment** (14 novembre 2026) : Arsenal sous PREMIER LEAGUE et non plus sous LEAGUE CUP, les 18 clubs de BUNDESLIGA, les secondes divisions (CHAMPIONSHIP, LA LIGA 2, 2. BUNDESLIGA, SERIE B, LIGUE 2, classées secondaires), la WNBA. Une coupe (FA CUP, DFB POKAL, COPA DEL REY) ne garde que les clubs des divisions inférieures.
 
 ## 7. Options (Réglages → Options)
 

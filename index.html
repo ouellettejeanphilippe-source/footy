@@ -104,6 +104,23 @@
   </div>
 </nav>
 
+<!-- ═══ FAVORIS : la colonne des rubriques ═══════════════════════════════════════
+     Même colonne que les Réglages (14 novembre 2026, « faire page favori pour meilleure
+     navigation ») : une recherche d'équipe, « Mes favoris », puis un sport par ligne. -->
+<nav class="reglages-barre" id="fav-barre" aria-label="Favoris">
+  <div class="rb-tete">
+    <div class="rb-titre">Favoris</div>
+    <div class="rb-recherche">
+      <input type="search" id="fav-team-search" class="input" placeholder="Chercher une équipe…" autocomplete="off" aria-label="Chercher une équipe" oninput="filterFavTeams(this.value)">
+    </div>
+  </div>
+  <div class="rb-onglets" id="fav-rubriques"></div>
+  <div class="rb-actions">
+    <button class="rb-btn" onclick="resetLgOrder()" title="L'ordre des sports et des ligues revient à celui d'origine">Réinitialiser l'ordre</button>
+    <button class="rb-btn" onclick="resetLeagueTiersPref()" title="Chaque ligue reprend son classement d'origine">Réinitialiser le classement</button>
+  </div>
+</nav>
+
 <!-- ═══ GUIDE ═════════════════════════════════════════════════════════════════ -->
 <main class="epg" id="epg">
   <div class="zoom-controls" aria-label="Zoom de la grille">
@@ -159,47 +176,13 @@
 
 <!-- ═══ FAVORIS ═══════════════════════════════════════════════════════════════ -->
 <section id="fav-page" class="page" style="display:none;">
+  <!-- Rempli par renderFavPage (js/main.js, js/favoris.js) : « Mes favoris », un sport, ou
+       les résultats de la recherche, selon la rubrique choisie dans #fav-barre. -->
   <div class="page-head">
-    <h2>Favoris</h2>
-    <p class="help">Les équipes et ligues favorites remontent en tête du Live et du Guide.</p>
+    <h2 id="fav-titre">Mes favoris</h2>
+    <p class="help" id="fav-aide"></p>
   </div>
-
-  <div class="fav-mobile-tabs seg" role="tablist">
-    <button class="btn active-toggle" id="fav-tab-teams" role="tab" onclick="switchFavTab('teams')">Équipes</button>
-    <button class="btn" id="fav-tab-leagues" role="tab" onclick="switchFavTab('leagues')">Ligues</button>
-  </div>
-
-  <div class="fav-container" id="fav-container">
-    <div class="fav-col-left">
-      <div class="panel">
-        <div class="panel-title">
-          <span>Équipes favorites</span>
-          <input type="text" id="fav-team-search" class="input" placeholder="Rechercher une équipe…" oninput="filterFavTeams(this.value)">
-        </div>
-        <div id="fav-teams-list" class="fav-teams-list"></div>
-      </div>
-    </div>
-
-    <div class="fav-col-right">
-      <div class="panel">
-        <div class="panel-title">
-          <span>Ligues</span>
-          <span class="btn-row">
-            <button class="btn xs" onclick="resetLgOrder()">Réinitialiser l'ordre</button>
-            <button class="btn xs" onclick="resetLeagueTiersPref()">Réinitialiser le classement</button>
-          </span>
-        </div>
-        <p class="help">
-          Les ligues sont groupées par sport : ▲ ▼ d'un sport changent l'ordre des sections du Live,
-          ▲ ▼ d'une ligue la déplacent parmi celles de son sport. Pour chaque ligue :
-          <b>Principale</b> l'affiche en tête du Live et du Guide,
-          <b>Secondaire</b> la range dans la section « secondaires » de son sport (Live) et sous les principales (Guide),
-          <b>Ignorée</b> la masque partout. ↺ revient au réglage par défaut.
-        </p>
-        <div id="fav-leagues-list" class="fav-leagues-list"></div>
-      </div>
-    </div>
-  </div>
+  <div id="fav-corps" class="stack"></div>
 </section>
 
 <!-- ═══ OPTIONS ═══════════════════════════════════════════════════════════════ -->

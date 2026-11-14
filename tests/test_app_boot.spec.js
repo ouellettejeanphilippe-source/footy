@@ -3843,23 +3843,23 @@ test('Live : sports des ligues principales puis « · secondaires » ; Favoris t
   }
   expect(t.some((x) => /^Ligues secondaires/.test(x)), 'plus de section « Ligues secondaires »').toBe(false);
 
-  // Favoris → Ligues : un titre par sport ; ▲ du deuxième sport principal le fait passer devant dans le Live.
-  await page.evaluate(() => { window.showPage && window.showPage('favs'); window.renderFavPage && window.renderFavPage(); });
-  const tetes = await page.evaluate(() => [...document.querySelectorAll('#fav-leagues-list .fav-sport-tete')].map((e) => e.getAttribute('data-sport')));
+  // Favoris : une rubrique par sport dans la colonne ; ▲ du deuxième sport principal le fait passer devant dans le Live.
+  await page.evaluate(() => window.applyFilter('fav'));
+  const tetes = await page.evaluate(() => [...document.querySelectorAll('#fav-rubriques [data-sport]')].map((e) => e.getAttribute('data-sport')));
   expect(tetes.length, 'les ligues groupées par sport').toBeGreaterThan(2);
   expect(new Set(tetes).size).toBe(tetes.length);
   const [premier, second] = principaux;
   await page.evaluate((s) => { for (let k = 0; k < 30; k++) window.moveSportOrder(s, -1); }, second);
   expect(await page.evaluate(() => window.ordreSports[0]), 'le sport monté est en tête de l\'ordre').toBe(second);
-  expect(await page.evaluate(() => document.querySelector('#fav-leagues-list .fav-sport-tete').getAttribute('data-sport'))).toBe(second);
+  expect(await page.evaluate(() => document.querySelector('#fav-rubriques [data-sport]').getAttribute('data-sport'))).toBe(second);
   await page.evaluate(() => window.applyFilter('live'));
   t = (await titres()).filter((x) => x !== 'Favoris');
   expect(t[0], 'le sport monté ouvre le Live : ' + t.join(' | ')).toBe(second);
   expect(t.indexOf(second)).toBeLessThan(t.indexOf(premier));
 
   // Une ligue ne se déplace que parmi celles de son sport.
-  await page.evaluate(() => window.renderFavPage());
-  const ligues = (sp) => page.evaluate((s) => [...document.querySelectorAll('#fav-leagues-list .fav-lg')].filter((e) => e.getAttribute('data-sport') === s).map((e) => e.getAttribute('data-lg')), sp);
+  await page.evaluate(() => { window.applyFilter('fav'); window.choisirRubriqueFav('Hockey'); });
+  const ligues = (sp) => page.evaluate((s) => [...document.querySelectorAll('#fav-corps .fav-lg')].filter((e) => e.getAttribute('data-sport') === s).map((e) => e.getAttribute('data-lg')), sp);
   const hockey = await ligues('Hockey');
   expect(hockey.length, 'au moins deux ligues de hockey').toBeGreaterThan(1);
   await page.evaluate((l) => window.moveLeagueOrder(l, -1), hockey[1]);
@@ -3868,50 +3868,73 @@ test('Live : sports des ligues principales puis « · secondaires » ; Favoris t
   expect(pageErrors).toEqual([]);
 });
 
-/* « Créer section TV ? » (10 novembre 2026, js/chainestv.js) : les chaînes de data/chaines.json
-   en bas du Live, sans compter parmi les sections de matchs ; un clic pose la chaîne dans le
-   lecteur. « Les streams marchent pas » (11 novembre 2026) : seules les chaînes dont le manifeste
-   répond depuis l'appareil sont montrées. Le réseau est coupé : le fichier et les manifestes sont
-   servis par un `fetch` de test, aucune chaîne réelle n'est jointe. */
-test('Live : la section « Télé » ne montre que les chaînes qui répondent, et un clic en pose une dans le lecteur', async ({ page }) => {
-  await page.setViewportSize({ width: 1400, height: 900 });
-  await page.addInitScript(() => {
-    const vrai = window.fetch.bind(window);
-    const rep = (corps, status) => Promise.resolve(new Response(corps, { status: status || 200 }));
-    window.fetch = (u, o) => {
-      const s = String(u && u.url || u);
-      if (/data\/chaines\.json/.test(s)) return rep(JSON.stringify({ chaines: [
-        { nom: 'Chaîne Une', url: 'https://tele.invalid/une.m3u8', logo: '' },
-        { nom: 'Morte', url: 'https://tele.invalid/morte.m3u8', logo: '' },
-        { nom: 'Bloquée', url: 'https://tele.invalid/bloquee.m3u8', logo: '' },
-        { nom: 'Chaîne Deux', url: 'https://tele.invalid/deux.m3u8', logo: '' },
-      ] }));
-      if (/tele\.invalid\/morte/.test(s)) return rep('Not Found', 404);
-      if (/tele\.invalid\/bloquee/.test(s)) return Promise.reject(new TypeError('Failed to fetch'));
-      if (/tele\.invalid\//.test(s)) return rep('#EXTM3U\n#EXT-X-VERSION:3\n');
-      return vrai(u, o);
-    };
-  });
+/* La page Favoris refaite pour s'y retrouver (14 novembre 2026, js/favoris.js) : la colonne
+   des rubriques, les ligues du sport avec leurs équipes dessous, la recherche d'une équipe,
+   et un clic qui met une équipe en favori. Et la base d'équipes remise à jour : un club est
+   sous son championnat, plus sous une coupe (scripts/maj_equipes.mjs). */
+test('Favoris : rubriques par sport, équipes sous leur ligue, recherche, et un clic met en favori', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 840 });
+  await page.addInitScript(() => { try { if (!sessionStorage.getItem('fav-test')) { localStorage.setItem('fav_teams', '{}'); sessionStorage.setItem('fav-test', '1'); } } catch (e) {} });
   const pageErrors = await bootOffline(page);
-  await expect(page.locator('#marea .chaine-tv')).toHaveCount(2);
-  expect(await page.locator('#marea .chaine-tv').allInnerTexts(), 'ni la chaîne morte, ni celle que le navigateur refuse').toEqual(['Chaîne Une', 'Chaîne Deux']);
-  expect(await page.locator('#marea .titre-tele').innerText()).toBe('Télé');
-  expect(await page.locator('#marea .section-title.titre-tele').count(), 'pas une section de matchs').toBe(0);
-  expect(await page.evaluate(() => {
-    const t = document.querySelector('#marea .titre-tele');
-    const s = [...document.querySelectorAll('#marea .section-title')].filter((e) => !/^Autres streams/.test(e.innerText));
-    return !s.length || !!(s[s.length - 1].compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING);
-  }), 'après les sections de matchs').toBe(true);
-  await page.locator('#marea .chaine-tv').first().click();
-  expect(await page.evaluate(() => (window.mvFlux || []).map((s) => [s.url, s.name, s.mid]))).toEqual([['https://tele.invalid/une.m3u8', 'Chaîne Une', 'tv_chaineune']]);
+  await page.locator('#filter-fav').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'fav');
+
+  /* La colonne : à droite du rail, « Mes favoris » choisie, puis les sports. */
+  const colonne = await page.locator('#fav-barre').boundingBox(), corps = await page.locator('#fav-page').boundingBox();
+  expect(colonne.height).toBe(840);
+  expect(corps.x, 'la page à droite de la colonne').toBeGreaterThanOrEqual(colonne.x + colonne.width - 1);
+  await expect(page.locator('#reglages-barre')).toBeHidden();
+  await expect(page.locator('#fav-rubriques [data-fav-rubrique="favoris"]')).toHaveClass(/active-toggle/);
+  const sports = await page.locator('#fav-rubriques [data-sport]').allInnerTexts();
+  expect(sports.map((s) => s.split('\n')[0])).toEqual(expect.arrayContaining(['Soccer', 'Hockey', 'Basketball', 'Baseball', 'Football']));
+
+  /* Un sport : ses ligues en panneaux, les équipes d'une ligue principale dessous. */
+  await page.locator('#fav-rubriques [data-sport="Soccer"]').click();
+  await expect(page.locator('#fav-titre')).toHaveText('Soccer');
+  const pl = page.locator('#fav-corps .fav-lg[data-lg="PREMIER LEAGUE"]');
+  await expect(pl.locator('.team-item')).toHaveCount(20);
+  await expect(pl.locator('.team-item[data-team-name="Arsenal"]')).toHaveCount(1);
+  await expect(page.locator('#fav-corps .fav-lg[data-lg="LEAGUE CUP"] .team-item[data-team-name="Arsenal"]'), 'Arsenal n\'est plus rangé sous une coupe').toHaveCount(0);
+  await expect(page.locator('#fav-corps .fav-lg[data-lg="BUNDESLIGA"] .team-item')).toHaveCount(18);
+  /* Une ligue secondaire est repliée ; son titre la déplie. */
+  const d2 = page.locator('#fav-corps .fav-lg[data-lg="CHAMPIONSHIP"]');
+  await expect(d2.locator('.team-item')).toHaveCount(0);
+  await d2.locator('.fav-lg-nom').click();
+  await expect(page.locator('#fav-corps .fav-lg[data-lg="CHAMPIONSHIP"] .team-item')).toHaveCount(24);
+
+  /* Un clic sur une équipe la met en favori : étoile, compteurs, « Mes favoris ». */
+  await page.locator('#fav-corps .fav-lg[data-lg="PREMIER LEAGUE"] .team-item[data-team-name="Arsenal"]').click();
+  await expect(page.locator('#fav-corps .fav-lg[data-lg="PREMIER LEAGUE"] .team-item[data-team-name="Arsenal"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#fav-rubriques [data-sport="Soccer"] .rb-compte')).toHaveText('1');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('fav_teams') || '{}').Arsenal)).toBe(1);
+  await page.locator('#fav-rubriques [data-fav-rubrique="favoris"]').click();
+  await expect(page.locator('#fav-corps .team-item')).toHaveCount(1);
+  await expect(page.locator('#fav-corps .team-item')).toContainText('Arsenal');
+
+  /* La recherche : tous sports confondus, avec la ligue sous le nom ; la vider revient. */
+  await page.locator('#fav-team-search').fill('canadiens');
+  await expect(page.locator('#fav-titre')).toHaveText('Recherche');
+  await expect(page.locator('#fav-corps .team-item[data-team-name="Montreal Canadiens"]')).toContainText('NHL');
+  await page.locator('#fav-team-search').fill('');
+  await expect(page.locator('#fav-titre')).toHaveText('Mes favoris');
+  expect(pageErrors, 'aucune exception :\n' + pageErrors.join('\n---\n')).toEqual([]);
+});
+
+/* La section « Télé » du Live (chaînes IPTV, 10 novembre 2026) est retirée le 14 novembre 2026
+   (« Enlever les postes IPTV »). Reste ce qu'elle avait fait corriger : un lien qui EST un
+   manifeste (collé à la main, flux direct) et qui ne joue pas le dit sur la tuile au lieu de
+   la laisser noire (raisonDirect, js/raisonflux.js). Le réseau est coupé : le flux échoue. */
+test('plus de section « Télé » dans le Live ; un flux direct qui ne joue pas le dit sur la tuile', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const demandes = [];
+  page.on('request', (r) => { if (/chaines\.json/.test(r.url())) demandes.push(r.url()); });
+  const pageErrors = await bootOffline(page);
+  await expect(page.locator('#marea .chaine-tv, #marea .titre-tele, #sectionTele')).toHaveCount(0);
+  expect(demandes, 'data/chaines.json n\'est plus demandé').toEqual([]);
+  await page.evaluate(() => openFlux(null, encodeURIComponent('https://tele.invalid/une.m3u8'), encodeURIComponent('Flux direct'), 'direct_test', false));
   await expect(page.locator('.mv-cell')).toHaveCount(1);
-  /* Ce flux ne joue pas (aucun réseau ici) : la tuile le dit au lieu de rester noire
-     (14 novembre 2026, « les postes de télé marchent pas », raisonDirect). */
   await expect(page.locator('.mv-cell .mv-raison')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('.mv-cell .mv-raison')).toContainText('flux');
-  // La grille redessinée garde la section (le fichier n'est lu qu'une fois).
-  await page.evaluate(() => window.applyFilter('live'));
-  await expect(page.locator('#marea .chaine-tv')).toHaveCount(2);
   expect(pageErrors).toEqual([]);
 });
 

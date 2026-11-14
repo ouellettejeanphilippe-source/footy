@@ -22,8 +22,13 @@ async function main() {
     // ── 1. Le défaut, tel qu'il était ────────────────────────────────────────
     /* Garde-fou du test lui-même : si l'appariement approximatif cessait de confondre
        ces noms, le groupe 2 passerait sans rien prouver. */
-    assert.strictEqual(db.getOfficialTeamName('Indiana Fever'), 'Indiana Pacers',
-        'la résolution aveugle confond toujours les deux clubs d\'Indianapolis');
+    /* Depuis le 14 novembre 2026 les clubs de la WNBA sont dans la base (scripts/maj_equipes.mjs) :
+       « Indiana Fever » se résout sur lui-même. Le défaut se montre encore sur un club absent
+       de la base, d'une ligue que le calendrier connaît (AHL). */
+    assert.strictEqual(db.getOfficialTeamName('Indiana Fever'), 'Indiana Fever', 'un club de la WNBA est maintenant dans la base');
+    assert.strictEqual(db.getOfficialTeamName('Toronto Marlies'), 'Toronto FC',
+        'la résolution aveugle confond toujours deux clubs de Toronto');
+    assert.strictEqual(db.nomOfficielDansLigue('Toronto Marlies', 'AHL'), 'Toronto Marlies', 'et la ligue l\'en empêche');
     ok('la résolution aveugle se trompe bien de ligue (le cas à corriger existe)');
 
     // ── 2. Un match WNBA garde les noms d'ESPN ───────────────────────────────

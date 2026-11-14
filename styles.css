@@ -237,9 +237,9 @@ select.btn, .select {
 /* La barre de l'onglet Réglages : ses pages (Options, Script, Logs), Look, Actualiser et
    Mettre à jour l'app, ce que portait le menu « Plus ». */
 .reglages-barre { display: none; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; max-width: 1100px; width: 100%; margin: 14px auto 0; padding: 0 20px; }
-body[data-view="options"] .reglages-barre, body[data-view="logs"] .reglages-barre, body[data-view="script"] .reglages-barre { display: flex; }
+body[data-view="options"] #reglages-barre, body[data-view="logs"] #reglages-barre, body[data-view="script"] #reglages-barre, body[data-view="fav"] #fav-barre { display: flex; }
 /* Le bandeau du cache parle des liens du Live et du Guide : pas dans les Réglages. */
-body[data-view="options"] .bandeau-cache, body[data-view="logs"] .bandeau-cache, body[data-view="script"] .bandeau-cache { display: none !important; }
+body[data-view="options"] .bandeau-cache, body[data-view="logs"] .bandeau-cache, body[data-view="script"] .bandeau-cache, body[data-view="fav"] .bandeau-cache { display: none !important; }
 .reglages-barre .rb-onglets, .reglages-barre .rb-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .rb-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border2); background: transparent; color: var(--muted2); font-weight: 600; font-size: 14px; white-space: nowrap; }
 .rb-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
@@ -703,13 +703,6 @@ input[type="range"] { width: 160px; accent-color: var(--accent); }
 .prose li { margin-bottom: 4px; }
 
 /* Favoris */
-.fav-container { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
-.fav-col-left { flex: 2 1 320px; min-width: 0; }
-.fav-col-right { flex: 1 1 280px; min-width: 0; }
-.fav-teams-list { display: flex; flex-direction: column; gap: 6px; max-height: 62vh; overflow-y: auto; padding-right: 6px; }
-.fav-leagues-list { display: flex; flex-direction: column; gap: 8px; }
-.team-item { transition: background var(--t-fast); }
-.team-item:hover { background: rgba(255,255,255,0.06) !important; }
 
 /* Inventaire par domaine primaire (page Logs) */
 .domain-stats { display: flex; flex-direction: column; gap: 6px; }
@@ -1117,12 +1110,6 @@ body[data-view="player"] .toast { bottom: calc(96px + var(--safe-bottom)); }
   .page { padding: 14px 12px calc(20px + var(--safe-bottom)); gap: 12px; }
   .page-head h2 { font-size: 19px; }
   .panel { padding: 12px; border-radius: 12px; }
-  .fav-mobile-tabs { display: flex; }
-  .fav-container:not(.show-leagues) .fav-col-right { display: none; }
-  .fav-container.show-leagues .fav-col-left { display: none; }
-  .fav-container { flex-direction: column; }
-  .fav-col-left, .fav-col-right { flex: none; width: 100%; }
-  .fav-teams-list { max-height: none; }
   .panel-title .input { max-width: none; width: 100%; }
 
   .side-panel { width: 100%; border-radius: 0; }
@@ -1453,14 +1440,6 @@ body { font-size: 14px; letter-spacing: -0.006em; font-feature-settings: 'cv11' 
 .rail-toggle:hover { color: var(--t1); background: rgba(255,255,255,.06); }
 body.cards-poster .rail-toggle { display: inline-flex; }
 .match-grid { gap: 20px 16px; padding: 12px var(--page-x) 20px; }
-/* La section « Télé » du Live (js/chainestv.js) : le titre a l'allure d'un titre de section sans en
-   être un (il ne se replie pas) ; un bouton par chaîne, logo et nom. */
-.titre-tele { padding: 24px var(--page-x) 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; color: var(--t1); }
-.chaines-tv { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px var(--page-x) 24px; }
-.chaine-tv { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 16px; background: var(--s2); border: 1px solid rgba(255,255,255,.1); border-radius: var(--r-md); color: var(--t1); font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
-.chaine-tv:hover { background: var(--s3); }
-.chaine-tv:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.chaine-tv-logo { height: 24px; max-width: 56px; object-fit: contain; flex: 0 0 auto; }
 .match-grid.rangee { grid-auto-columns: minmax(240px, 21vw); scroll-padding-inline: var(--page-x); padding-block: 14px 26px; gap: 16px; }
 @media (min-width: 1600px) { .match-grid.rangee { grid-auto-columns: minmax(280px, 17vw); } }
 
@@ -1542,8 +1521,6 @@ body.cards-poster .match-card .prime-thumbnail { aspect-ratio: 4 / 3; }
   .match-grid, body.cards-poster .match-grid.expanded { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; padding: 8px 16px 16px; }
   body.cards-poster .match-grid:not(.expanded) { grid-auto-columns: minmax(200px, 62vw); gap: 12px; padding: 8px 16px 18px; }
   .section-title { padding: 20px 16px 2px; font-size: 18px; }
-  .titre-tele { padding: 20px 16px 2px; font-size: 18px; }
-  .chaines-tv { padding: 8px 16px 16px; }
   .match-card .prime-head, body.cards-poster .match-card .prime-head { top: 7px; left: 7px; right: 7px; }
   .match-card .prime-team-name, body.cards-poster .match-card .prime-team-name { font-size: 14px; }
   .match-card .prime-score, body.cards-poster .match-card .prime-score { font-size: 17px; }
@@ -1863,7 +1840,7 @@ body[data-view="player"] #radio-direct { top: calc(16px + var(--safe-top, 0px));
   .nav-lecteur .nav-compte { position: absolute; top: 4px; right: 12px; min-width: 18px; height: 18px; padding: 0 5px; font-size: 11px; }
 
   /* Les Réglages : la colonne des rubriques, les pages à sa droite. */
-  body[data-view="options"] .reglages-barre, body[data-view="logs"] .reglages-barre, body[data-view="script"] .reglages-barre {
+  .reglages-barre {
     position: fixed; left: var(--rail-w); top: 0; bottom: 0; z-index: 40; width: var(--side-w); max-width: none; margin: 0;
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 18px;
     padding: calc(28px + var(--safe-top)) 16px calc(20px + var(--safe-bottom)); border-right: var(--hdr-border); overflow-y: auto;
@@ -1876,7 +1853,52 @@ body[data-view="player"] #radio-direct { top: calc(16px + var(--safe-top, 0px));
   .rb-btn .ico { width: 18px; height: 18px; }
   .rb-btn.active-toggle { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; color: var(--t1) !important; }
   .rb-btn.active-toggle .ico { color: var(--accent); }
-  #options-page, #logs-page, #script-page { margin: 0 0 0 var(--side-w); width: auto; max-width: none; padding: 28px clamp(20px, 3vw, 44px) calc(32px + var(--safe-bottom)); }
+  #options-page, #logs-page, #script-page, #fav-page { margin: 0 0 0 var(--side-w); width: auto; max-width: none; padding: 28px clamp(20px, 3vw, 44px) calc(32px + var(--safe-bottom)); }
   #options-page > *, #logs-page > *, #script-page > * { max-width: 980px; }
+  #fav-page > * { max-width: 1180px; }
   body[data-view="options"] .menu-look, body[data-view="logs"] .menu-look, body[data-view="script"] .menu-look { top: calc(24px + var(--safe-top)); left: calc(var(--rail-w) + var(--side-w) + 16px); right: auto; }
+}
+
+/* ── 19. Favoris (14 novembre 2026, js/favoris.js) ──────────────────────────────
+   La colonne est celle des Réglages (#fav-barre, §18). À droite : les ligues du sport en
+   panneaux, leurs équipes en grille de boutons (logo, nom, étoile). */
+.rb-btn .rb-compte { margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.1); font-family: var(--font-num); font-size: 12px; font-weight: 700; text-align: center; color: var(--t1); }
+.fav-equipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.team-item { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 48px; padding: 6px 10px; border: 1px solid transparent; border-radius: var(--r-md); background: rgba(255,255,255,.04); color: var(--t2); font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; transition: background var(--t-fast); }
+.team-item:hover, .team-item:focus-visible { background: rgba(255,255,255,.09); color: var(--t1); }
+.team-item.fav { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--t1); }
+.team-item .ti-logo { flex: none; width: 28px; height: 28px; object-fit: contain; }
+.team-item .ti-sans { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,.1); font-size: 13px; font-weight: 800; }
+.team-item .ti-nom { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.team-item .ti-nom, .team-item .ti-nom small { white-space: nowrap; text-overflow: ellipsis; }
+.team-item .ti-nom small { overflow: hidden; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
+.team-item .ti-etoile { flex: none; display: inline-flex; font-size: 17px; color: rgba(255,255,255,.22); }
+.team-item.fav .ti-etoile { color: #f5b83d; }
+.team-item.fav .ti-etoile svg { fill: currentColor; }
+.fav-sport-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--t3); }
+.fav-lg { gap: 14px; }
+.fav-lg-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+.fav-lg-nom { display: inline-flex; align-items: center; gap: 10px; min-width: 0; padding: 4px 6px 4px 0; border: 0; background: transparent; color: var(--t1); font-size: 16px; font-weight: 700; text-align: left; cursor: pointer; }
+.fav-lg-nom:disabled { cursor: default; }
+.fav-lg-nom > span:last-child { display: flex; flex-direction: column; }
+.fav-lg-nom small { font-size: 12px; font-weight: 500; color: var(--t3); }
+.fav-lg-nom .fav-chevron { display: inline-flex; color: var(--t3); transition: transform var(--t-fast); transform: rotate(-90deg); }
+.fav-lg-nom[aria-expanded="true"] .fav-chevron { transform: none; }
+.fav-lg-nom:disabled .fav-chevron { visibility: hidden; }
+.fav-lg-outils { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fav-niveaux { display: inline-flex; padding: 3px; border-radius: var(--r-md); background: rgba(255,255,255,.05); }
+.fav-niveau { min-height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--t3); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.fav-niveau:hover { color: var(--t1); }
+.fav-niveau.on { background: rgba(255,255,255,.14); color: var(--t1); }
+.fav-niveau.on.n-main { background: var(--accent); color: #fff; }
+.fav-niveau.on.n-ignored { background: rgba(229,72,77,.85); color: #fff; }
+.fav-fleche { min-width: 32px; min-height: 30px; padding: 0 6px; font-size: 12px; }
+.fav-fleche:disabled { opacity: .3; cursor: default; }
+.fav-lg.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
+@media (max-width: 900px) {
+  #fav-barre .rb-onglets { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .fav-equipes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  /* Deux colonnes étroites : le nom passe sur deux lignes plutôt que d'être coupé. */
+  .team-item .ti-nom { white-space: normal; line-height: 1.2; }
+  .team-item .ti-logo { width: 24px; height: 24px; }
 }
